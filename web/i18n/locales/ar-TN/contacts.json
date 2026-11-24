@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "اطلب إذنًا لعرض جهات الاتصال في مساحة العمل هذه.",
   "directory.removalCountTitle": "حذف جهات الاتصال ({{count}})؟",
   "directory.removalDescription": "ستتم إزالة جهات الاتصال المحددة نهائيًا من مساحة العمل هذه. لا يمكن التراجع عن هذا الإجراء.",
   "directory.removalSingleDescription": "سيُحذف {{name}} نهائيًا من مساحة العمل هذه. لا يمكن التراجع عن هذا الإجراء.",
   "directory.removalSingleFailed": "تعذّر حذف جهة الاتصال. حاول مجددًا.",
   "directory.removalSingleTitle": "حذف {{name}}؟",
   "directory.resultCount": "النتائج: {{count}}",
+  "directory.viewOnly": "لديك صلاحية قراءة جهات الاتصال فقط.",
   "imPlatform.action.configure": "تكوين",
   "imPlatform.action.configureChannel": "تكوين {{provider}}",
   "imPlatform.action.connect": "اتصال",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "مشكلة في الأذونات",
   "imPlatform.sync.latestSynced": "آخر مزامنة: {{date}}",
   "imPlatform.sync.loading": "جارٍ التحقق من وجود مزامنة نشطة.",
-  "imPlatform.sync.noPermission": "يمكن لمالكي مساحة العمل والمسؤولين فقط بدء مزامنة الدليل.",
+  "imPlatform.sync.noPermission": "يتطلب بدء مزامنة الدليل إذن إدارة القنوات.",
   "imPlatform.sync.noRuns": "لم تُنفّذ أي مزامنة للدليل بعد.",
   "imPlatform.sync.notConnected": "اربط موفّرًا واختبر الاتصال قبل بدء مزامنة الدليل.",
   "imPlatform.sync.startFailed": "تعذّر بدء مزامنة الدليل أو تحديثها. حاول مجددًا.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "في قائمة الانتظار",
   "imPlatform.sync.status.running": "قيد التشغيل",
   "imPlatform.sync.status.success": "نجاح",
-  "imPlatform.title": "القنوات"
+  "imPlatform.title": "القنوات",
+  "platformPicker.addForbidden": "تتطلب إضافة جهات اتصال المنصة تفعيل الإدارة المركزية للمراسلة الفورية والحصول على إذن إدارة جهات الاتصال."
 }

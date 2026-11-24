@@ -16,6 +16,7 @@ export type ContactsFeatureContextValue = {
   imCentrallyManaged: boolean | undefined
   imCapabilityError?: Error | null
   retryIMCapability?: () => void
+  permissionsLoading: boolean
   permissions: ContactsPermissions
   workspaceId: string
 }

@@ -79,7 +79,7 @@ describe('recipient selection through generated queries', () => {
     contactApi.batch.mockResolvedValue({ data: [{ ...contact, im_providers: ['feishu'] }] })
     const user = userEvent.setup()
     const observe = vi.fn()
-    renderContactOwner(<Harness observe={observe} />, 'editor')
+    renderContactOwner(<Harness observe={observe} />)
     await openPicker(user)
     await user.click(await screen.findByRole('option', { name: /Evan Zhang/ }))
     await user.click(
@@ -96,7 +96,7 @@ describe('recipient selection through generated queries', () => {
     const user = userEvent.setup()
     const observe = vi.fn()
     const selected: HumanInputV2Recipient[] = [{ type: 'contact', contact_id: contact.id }]
-    const first = renderContactOwner(<Harness initial={selected} observe={observe} />, 'editor')
+    const first = renderContactOwner(<Harness initial={selected} observe={observe} />)
     const info = await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ })
     await user.click(info)
     let dialog = await screen.findByRole('dialog', { name: contact.name })
@@ -109,7 +109,7 @@ describe('recipient selection through generated queries', () => {
     first.unmount()
     first.client.clear()
 
-    renderContactOwner(<Harness initial={selected} observe={observe} />, 'editor')
+    renderContactOwner(<Harness initial={selected} observe={observe} />)
     await user.click(
       await screen.findByRole('button', { name: /recipients.contactInfo.*Evan Zhang/ }),
     )
@@ -447,17 +447,21 @@ describe('recipient selection through generated queries', () => {
     expect(observe).not.toHaveBeenCalled()
   })
 
-  it.each(['owner', 'editor'] as const)(
-    'only queries the manager contact count for %s',
-    async (role) => {
-      const user = userEvent.setup()
-      renderContactOwner(<Harness />, role)
-      await openPicker(user)
-      await screen.findByRole('option', { name: 'QA workspace' })
-      if (role === 'owner') await waitFor(() => expect(contactApi.contacts).toHaveBeenCalled())
-      else expect(contactApi.contacts).not.toHaveBeenCalled()
-    },
-  )
+  it('shows the workspace recipient count to a directory reader', async () => {
+    renderContactOwner(<Harness initial={[{ type: 'all_workspace_contacts' }]} />, ['contact.view'])
+    expect(await screen.findByText('7')).toBeVisible()
+  })
+
+  it('selects all workspace contacts without reading the directory for a count', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    renderContactOwner(<Harness observe={observe} />)
+    await openPicker(user)
+    await user.click(await screen.findByRole('option', { name: 'QA workspace' }))
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'all_workspace_contacts' }])
+    expect(screen.queryByText('7')).not.toBeInTheDocument()
+    expect(contactApi.contacts).not.toHaveBeenCalled()
+  })
 
   it('preserves readonly recipients without editable actions', async () => {
     renderContactOwner(<Harness initial={[{ type: 'contact', contact_id: contact.id }]} readonly />)

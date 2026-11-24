@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "이 워크스페이스의 연락처를 볼 수 있는 권한을 요청하세요.",
   "directory.removalCountTitle": "연락처({{count}})를 삭제하시겠습니까?",
   "directory.removalDescription": "선택한 연락처가 이 워크스페이스에서 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
   "directory.removalSingleDescription": "{{name}} 님이 이 작업 공간에서 영구적으로 삭제됩니다. 이 작업은 취소할 수 없습니다.",
   "directory.removalSingleFailed": "연락처를 삭제하지 못했습니다. 다시 시도하세요.",
   "directory.removalSingleTitle": "{{name}} 님을 삭제하시겠습니까?",
   "directory.resultCount": "결과: {{count}}",
+  "directory.viewOnly": "연락처를 읽기 전용으로 볼 수 있습니다.",
   "imPlatform.action.configure": "구성",
   "imPlatform.action.configureChannel": "{{provider}} 구성",
   "imPlatform.action.connect": "연결",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "권한 문제",
   "imPlatform.sync.latestSynced": "마지막 동기화: {{date}}",
   "imPlatform.sync.loading": "진행 중인 동기화를 확인하고 있습니다.",
-  "imPlatform.sync.noPermission": "워크스페이스 소유자와 관리자만 디렉터리 동기화를 시작할 수 있습니다.",
+  "imPlatform.sync.noPermission": "디렉터리 동기화를 시작하려면 채널 관리 권한이 필요합니다.",
   "imPlatform.sync.noRuns": "아직 디렉터리 동기화를 실행하지 않았습니다.",
   "imPlatform.sync.notConnected": "디렉터리 동기화를 시작하기 전에 제공자를 연결하고 테스트하세요.",
   "imPlatform.sync.startFailed": "디렉터리 동기화를 시작하거나 새로고침할 수 없습니다. 다시 시도하세요.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "대기 중",
   "imPlatform.sync.status.running": "실행 중",
   "imPlatform.sync.status.success": "성공",
-  "imPlatform.title": "채널"
+  "imPlatform.title": "채널",
+  "platformPicker.addForbidden": "플랫폼 연락처를 추가하려면 IM 중앙 관리가 활성화되어 있어야 하며 연락처 관리 권한이 필요합니다."
 }

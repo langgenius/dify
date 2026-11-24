@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Richiedi l’autorizzazione a visualizzare i contatti di questo spazio di lavoro.",
   "directory.removalCountTitle": "Rimuovere i contatti ({{count}})?",
   "directory.removalDescription": "I contatti selezionati verranno rimossi definitivamente da questo spazio di lavoro. Questa azione non può essere annullata.",
   "directory.removalSingleDescription": "{{name}} verrà rimosso definitivamente da questo spazio di lavoro. Questa azione non può essere annullata.",
   "directory.removalSingleFailed": "Impossibile rimuovere il contatto. Riprova.",
   "directory.removalSingleTitle": "Rimuovere {{name}}?",
   "directory.resultCount": "Risultati: {{count}}",
+  "directory.viewOnly": "Hai accesso in sola lettura ai contatti.",
   "imPlatform.action.configure": "Configura",
   "imPlatform.action.configureChannel": "Configura {{provider}}",
   "imPlatform.action.connect": "Connetti",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problema di autorizzazione",
   "imPlatform.sync.latestSynced": "Ultima sincronizzazione: {{date}}",
   "imPlatform.sync.loading": "Verifica di una sincronizzazione attiva.",
-  "imPlatform.sync.noPermission": "Solo i proprietari e gli amministratori dello spazio di lavoro possono avviare la sincronizzazione della directory.",
+  "imPlatform.sync.noPermission": "Per avviare la sincronizzazione della directory è necessaria l’autorizzazione a gestire i canali.",
   "imPlatform.sync.noRuns": "Non è stata ancora eseguita alcuna sincronizzazione della directory.",
   "imPlatform.sync.notConnected": "Collega un fornitore e prova la connessione prima di avviare la sincronizzazione della directory.",
   "imPlatform.sync.startFailed": "Impossibile avviare o aggiornare la sincronizzazione della directory. Riprova.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "In coda",
   "imPlatform.sync.status.running": "In esecuzione",
   "imPlatform.sync.status.success": "Riuscito",
-  "imPlatform.title": "Canali"
+  "imPlatform.title": "Canali",
+  "platformPicker.addForbidden": "Per aggiungere contatti della piattaforma sono necessarie la gestione centralizzata della messaggistica istantanea e l’autorizzazione a gestire i contatti."
 }

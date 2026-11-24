@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "ขอสิทธิ์ดูรายชื่อติดต่อในเวิร์กสเปซนี้",
   "directory.removalCountTitle": "นำผู้ติดต่อออก ({{count}}) หรือไม่",
   "directory.removalDescription": "ผู้ติดต่อที่เลือกจะถูกลบออกจากพื้นที่ทำงานนี้อย่างถาวร การดำเนินการนี้ไม่สามารถยกเลิกได้",
   "directory.removalSingleDescription": "{{name}} จะถูกนำออกจากพื้นที่ทำงานนี้อย่างถาวร การดำเนินการนี้ไม่สามารถยกเลิกได้",
   "directory.removalSingleFailed": "ไม่สามารถนำผู้ติดต่อออกได้ โปรดลองอีกครั้ง",
   "directory.removalSingleTitle": "นำ {{name}} ออกหรือไม่",
   "directory.resultCount": "ผลลัพธ์: {{count}}",
+  "directory.viewOnly": "คุณมีสิทธิ์อ่านรายชื่อติดต่อเท่านั้น",
   "imPlatform.action.configure": "กําหนดค่า",
   "imPlatform.action.configureChannel": "กำหนดค่า {{provider}}",
   "imPlatform.action.connect": "ติด",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "ปัญหาด้านสิทธิ์",
   "imPlatform.sync.latestSynced": "ซิงค์ล่าสุด {{date}}",
   "imPlatform.sync.loading": "กำลังตรวจสอบการซิงค์ที่ใช้งานอยู่",
-  "imPlatform.sync.noPermission": "เฉพาะเจ้าของและผู้ดูแลเวิร์กสเปซเท่านั้นที่เริ่มซิงค์ไดเรกทอรีได้",
+  "imPlatform.sync.noPermission": "ต้องมีสิทธิ์จัดการช่องทางจึงจะเริ่มซิงค์ไดเรกทอรีได้",
   "imPlatform.sync.noRuns": "ยังไม่เคยซิงค์ไดเรกทอรี",
   "imPlatform.sync.notConnected": "เชื่อมต่อและทดสอบผู้ให้บริการก่อนเริ่มซิงค์ไดเรกทอรี",
   "imPlatform.sync.startFailed": "เริ่มหรือรีเฟรชการซิงค์ไดเรกทอรีไม่ได้ โปรดลองอีกครั้ง",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "อยู่ในคิว",
   "imPlatform.sync.status.running": "กำลังทำงาน",
   "imPlatform.sync.status.success": "สำเร็จ",
-  "imPlatform.title": "ช่องทาง"
+  "imPlatform.title": "ช่องทาง",
+  "platformPicker.addForbidden": "การเพิ่มรายชื่อติดต่อจากแพลตฟอร์มต้องเปิดใช้การจัดการ IM แบบรวมศูนย์และมีสิทธิ์จัดการรายชื่อติดต่อ"
 }

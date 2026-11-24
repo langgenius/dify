@@ -6,7 +6,7 @@ const currentWorkspacePermissionsQueryKey = consoleQueryKey(
   'workspaces.current.rbac.myPermissions.get',
 )
 
-const createWorkspacePermissionsFixture = (
+export const createWorkspacePermissionsFixture = (
   permissionKeys: readonly string[] = [],
 ): MyPermissionsResponse => ({
   workspace: {

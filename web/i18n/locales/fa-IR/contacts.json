@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "برای مشاهدهٔ مخاطبان این فضای کاری درخواست مجوز کنید.",
   "directory.removalCountTitle": "مخاطبین حذف شوند ({{count}})؟",
   "directory.removalDescription": "مخاطبان انتخاب‌شده برای همیشه از این فضای کاری حذف می‌شوند. این عمل قابل بازگشت نیست.",
   "directory.removalSingleDescription": "{{name}} برای همیشه از این فضای کاری حذف خواهد شد. این اقدام قابل بازگشت نیست.",
   "directory.removalSingleFailed": "مخاطب حذف نشد. دوباره تلاش کنید.",
   "directory.removalSingleTitle": "{{name}} حذف شود؟",
   "directory.resultCount": "نتایج: {{count}}",
+  "directory.viewOnly": "دسترسی شما به مخاطبان فقط برای خواندن است.",
   "imPlatform.action.configure": "پیکربندی",
   "imPlatform.action.configureChannel": "{{provider}} را پیکربندی کنید",
   "imPlatform.action.connect": "اتصال",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "مشکل مجوز",
   "imPlatform.sync.latestSynced": "آخرین همگام‌سازی: {{date}}",
   "imPlatform.sync.loading": "در حال بررسی همگام‌سازی فعال.",
-  "imPlatform.sync.noPermission": "فقط مالکان و مدیران فضای کاری می‌توانند همگام‌سازی فهرست مخاطبان را آغاز کنند.",
+  "imPlatform.sync.noPermission": "برای شروع همگام‌سازی فهرست مخاطبان به مجوز مدیریت کانال‌ها نیاز دارید.",
   "imPlatform.sync.noRuns": "هنوز همگام‌سازی فهرست مخاطبان اجرا نشده است.",
   "imPlatform.sync.notConnected": "پیش از شروع همگام‌سازی فهرست مخاطبان، یک ارائه‌دهنده متصل کنید و اتصال را آزمایش کنید.",
   "imPlatform.sync.startFailed": "همگام‌سازی فهرست مخاطبان آغاز یا تازه‌سازی نشد. دوباره تلاش کنید.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "در صف",
   "imPlatform.sync.status.running": "در حال اجرا",
   "imPlatform.sync.status.success": "موفق",
-  "imPlatform.title": "کانال‌ها"
+  "imPlatform.title": "کانال‌ها",
+  "platformPicker.addForbidden": "افزودن مخاطبان پلتفرم به مدیریت متمرکز پیام‌رسانی فوری و مجوز مدیریت مخاطبان نیاز دارد."
 }

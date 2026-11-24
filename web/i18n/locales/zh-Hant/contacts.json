@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "請申請此工作區的聯絡人檢視權限。",
   "directory.removalCountTitle": "移除聯絡人（{{count}}）？",
   "directory.removalDescription": "所選聯絡人將從此工作區永久移除，此操作無法復原。",
   "directory.removalSingleDescription": "{{name}} 將被永久移出此工作區，此操作無法復原。",
   "directory.removalSingleFailed": "無法移除此聯絡人，請重試。",
   "directory.removalSingleTitle": "移除 {{name}}？",
   "directory.resultCount": "結果：{{count}}",
+  "directory.viewOnly": "你對聯絡人有唯讀權限。",
   "imPlatform.action.configure": "配置",
   "imPlatform.action.configureChannel": "配置{{provider}}",
   "imPlatform.action.connect": "繫結",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "權限問題",
   "imPlatform.sync.latestSynced": "上次同步於 {{date}}",
   "imPlatform.sync.loading": "正在檢查是否有進行中的同步。",
-  "imPlatform.sync.noPermission": "只有工作區擁有者和管理員可以啟動通訊錄同步。",
+  "imPlatform.sync.noPermission": "啟動通訊錄同步需要渠道管理權限。",
   "imPlatform.sync.noRuns": "尚未執行任何通訊錄同步。",
   "imPlatform.sync.notConnected": "開始通訊錄同步前，請先連接平台並測試連線。",
   "imPlatform.sync.startFailed": "無法啟動或重新整理通訊錄同步，請重試。",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "排隊中",
   "imPlatform.sync.status.running": "執行中",
   "imPlatform.sync.status.success": "成功",
-  "imPlatform.title": "渠道"
+  "imPlatform.title": "渠道",
+  "platformPicker.addForbidden": "新增平台聯絡人需要工作區已啟用 IM 集中管理，且你擁有聯絡人管理權限。"
 }

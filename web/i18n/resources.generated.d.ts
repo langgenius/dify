@@ -2239,7 +2239,7 @@ export default interface Resources {
     'directory.externalEmptyTitle': 'Add your first external contact'
     'directory.filters': 'Contact type filters'
     'directory.loading': 'Loading contacts'
-    'directory.noAccessDescription': 'Only workspace owners and admins can browse the full Contacts directory.'
+    'directory.noAccessDescription': 'Request permission to view contacts in this workspace.'
     'directory.noAccessTitle': "You don't have access to Contacts"
     'directory.noResultsDescription': 'Try another search or clear the current type filter.'
     'directory.noResultsTitle': 'No matching contacts'
@@ -2258,7 +2258,7 @@ export default interface Resources {
     'directory.selectContact': 'Select {{name}}'
     'directory.selected': 'Selected'
     'directory.title': 'Contacts'
-    'directory.viewOnly': 'You can browse Contacts, but only workspace owners and admins can manage contacts.'
+    'directory.viewOnly': 'You have read-only access to contacts.'
     'external.add': 'Add'
     'external.adding': 'Adding'
     'external.description': 'Create a workspace-only contact that can be reached by email.'
@@ -2446,7 +2446,7 @@ export default interface Resources {
     'imPlatform.status.permission_issue': 'Permission issue'
     'imPlatform.sync.latestSynced': 'Last synced {{date}}'
     'imPlatform.sync.loading': 'Checking for an active sync.'
-    'imPlatform.sync.noPermission': 'Only workspace owners and admins can start directory sync.'
+    'imPlatform.sync.noPermission': 'Starting directory sync requires permission to manage channels.'
     'imPlatform.sync.noRuns': 'No directory sync has run yet.'
     'imPlatform.sync.notConnected': 'Connect and test a provider before starting directory sync.'
     'imPlatform.sync.startFailed': "Directory sync couldn't be started or refreshed. Try again."
@@ -2463,7 +2463,7 @@ export default interface Resources {
     'platformPicker.add': 'Add contacts'
     'platformPicker.addConflict': "The selected contacts couldn't be added because the data conflicts. Refresh the list and try again. Your selection has been kept."
     'platformPicker.addFailed': "The selected contacts couldn't be added. Your selection has been kept."
-    'platformPicker.addForbidden': 'Only workspace administrators in an Enterprise deployment can add Platform contacts.'
+    'platformPicker.addForbidden': 'Adding platform contacts requires centralized IM management and permission to manage contacts.'
     'platformPicker.adding': 'Adding'
     'platformPicker.allMembers': 'All Members'
     'platformPicker.description': 'Choose Platform contacts that are not already in this workspace Contacts directory.'
@@ -5064,6 +5064,9 @@ export default interface Resources {
     'billing.manage': 'Change subscription plans'
     'billing.subscription.manage': 'Manage billing and subscriptions in the billing portal'
     'billing.view': 'Access Billing settings'
+    'channel.manage': 'Manage channels'
+    'contact.manage': 'Manage contacts'
+    'contact.view': 'View contacts'
     'credential.create': 'Add credentials'
     'credential.manage': 'Edit and delete credentials'
     'credential.use': 'View and use credentials'

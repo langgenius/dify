@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Beantragen Sie Zugriff auf die Kontakte dieses Arbeitsbereichs.",
   "directory.removalCountTitle": "Kontakte entfernen ({{count}})?",
   "directory.removalDescription": "Die ausgewählten Kontakte werden dauerhaft aus diesem Arbeitsbereich entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
   "directory.removalSingleDescription": "{{name}} wird dauerhaft aus diesem Arbeitsbereich entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
   "directory.removalSingleFailed": "Der Kontakt konnte nicht entfernt werden. Versuche es erneut.",
   "directory.removalSingleTitle": "{{name}} entfernen?",
   "directory.resultCount": "Ergebnisse: {{count}}",
+  "directory.viewOnly": "Sie haben Lesezugriff auf die Kontakte.",
   "imPlatform.action.configure": "Konfigurieren",
   "imPlatform.action.configureChannel": "{{provider}} konfigurieren",
   "imPlatform.action.connect": "Verbinden",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Berechtigungsproblem",
   "imPlatform.sync.latestSynced": "Zuletzt synchronisiert am {{date}}",
   "imPlatform.sync.loading": "Aktive Synchronisierung wird geprüft.",
-  "imPlatform.sync.noPermission": "Nur Eigentümer und Administratoren des Arbeitsbereichs können die Verzeichnissynchronisierung starten.",
+  "imPlatform.sync.noPermission": "Zum Starten der Verzeichnissynchronisierung benötigen Sie die Berechtigung zur Kanalverwaltung.",
   "imPlatform.sync.noRuns": "Es wurde noch keine Verzeichnissynchronisierung ausgeführt.",
   "imPlatform.sync.notConnected": "Verbinde einen Anbieter und teste die Verbindung, bevor du die Verzeichnissynchronisierung startest.",
   "imPlatform.sync.startFailed": "Die Verzeichnissynchronisierung konnte nicht gestartet oder aktualisiert werden. Versuche es erneut.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "In Warteschlange",
   "imPlatform.sync.status.running": "Wird ausgeführt",
   "imPlatform.sync.status.success": "Erfolgreich",
-  "imPlatform.title": "Kanäle"
+  "imPlatform.title": "Kanäle",
+  "platformPicker.addForbidden": "Zum Hinzufügen von Plattformkontakten sind eine zentrale IM-Verwaltung und die Berechtigung zur Kontaktverwaltung erforderlich."
 }

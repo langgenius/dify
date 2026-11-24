@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "このワークスペースの連絡先を表示する権限をリクエストしてください。",
   "directory.removalCountTitle": "連絡先（{{count}}）を削除しますか？",
   "directory.removalDescription": "選択した連絡先はこのワークスペースから完全に削除されます。この操作は取り消せません。",
   "directory.removalSingleDescription": "{{name}} はこのワークスペースから完全に削除されます。この操作は取り消せません。",
   "directory.removalSingleFailed": "連絡先を削除できませんでした。再試行してください。",
   "directory.removalSingleTitle": "{{name}} を削除しますか？",
   "directory.resultCount": "検索結果：{{count}}",
+  "directory.viewOnly": "連絡先へのアクセスは読み取り専用です。",
   "imPlatform.action.configure": "設定",
   "imPlatform.action.configureChannel": "{{provider}} を構成する",
   "imPlatform.action.connect": "接続",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "権限の問題",
   "imPlatform.sync.latestSynced": "最終同期：{{date}}",
   "imPlatform.sync.loading": "実行中の同期を確認しています。",
-  "imPlatform.sync.noPermission": "ディレクトリ同期を開始できるのは、ワークスペースの所有者と管理者のみです。",
+  "imPlatform.sync.noPermission": "ディレクトリの同期を開始するには、チャネルの管理権限が必要です。",
   "imPlatform.sync.noRuns": "ディレクトリ同期はまだ実行されていません。",
   "imPlatform.sync.notConnected": "ディレクトリ同期を開始する前に、プロバイダーを接続してテストしてください。",
   "imPlatform.sync.startFailed": "ディレクトリ同期を開始または更新できませんでした。もう一度お試しください。",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "待機中",
   "imPlatform.sync.status.running": "実行中",
   "imPlatform.sync.status.success": "成功",
-  "imPlatform.title": "チャネル"
+  "imPlatform.title": "チャネル",
+  "platformPicker.addForbidden": "プラットフォームの連絡先を追加するには、IM の一元管理と連絡先の管理権限が必要です。"
 }

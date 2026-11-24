@@ -12,6 +12,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import { createWorkspacePermissionsFixture } from '@/test/console/workspace-permissions'
 import { createTestQueryClient } from '@/test/query-client'
 
 export const contactApi = {
@@ -34,6 +35,7 @@ export const testConsoleQuery = createTanstackQueryUtils({
   workspaces: {
     current: {
       summary: { get: contactApi.summary },
+      rbac: { myPermissions: { get: async () => createWorkspacePermissionsFixture() } },
       humanInput: {
         v2: {
           contacts: { get: contactApi.contacts },
@@ -71,15 +73,19 @@ export function resetContactApi() {
     ),
   }))
 }
-export function renderContactOwner(ui: ReactElement, role: 'owner' | 'editor' = 'owner') {
+export function renderContactOwner(ui: ReactElement, permissionKeys: string[] = []) {
   const client = createTestQueryClient()
   client.setQueryData(testConsoleQuery.workspaces.current.summary.get.queryKey(), {
     id: 'workspace-1',
     name: 'QA workspace',
-    role,
+    role: 'normal',
     plan: null,
     credits: null,
   } satisfies CurrentWorkspaceSummaryResponse)
+  client.setQueryData(
+    testConsoleQuery.workspaces.current.rbac.myPermissions.get.queryKey(),
+    createWorkspacePermissionsFixture(permissionKeys),
+  )
   const store = createStore()
   store.set(queryClientAtom, client)
   return {

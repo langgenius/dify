@@ -412,7 +412,7 @@ export function ContactsDirectoryPage() {
       {t(($) => $['directory.title'])}
     </h1>
   )
-  if (!context.permissions.canViewContacts) {
+  if (!context.permissionsLoading && !context.permissions.canViewContacts) {
     return (
       <div className="flex h-full flex-col">
         {stateHeader}
@@ -425,8 +425,8 @@ export function ContactsDirectoryPage() {
     )
   }
 
-  if (context.imCentrallyManaged === undefined) {
-    if (context.imCapabilityError) {
+  if (context.permissionsLoading || context.imCentrallyManaged === undefined) {
+    if (!context.permissionsLoading && context.imCapabilityError) {
       return (
         <div className="flex h-full flex-col">
           {stateHeader}
@@ -688,7 +688,6 @@ export function ContactsDirectoryPage() {
             contact={selectedContact}
             id={detailsPanelId}
             headingRef={detailsHeadingRef}
-            canManage={context.permissions.canManageContacts}
             removing={removeContacts.isPending}
             onClose={closeDetails}
             onEdit={() => {
@@ -742,7 +741,7 @@ export function ContactsDirectoryPage() {
             : ''}
       </p>
       <AlertDialog
-        open={removalOpen}
+        open={context.permissions.canManageContacts && removalOpen}
         onOpenChange={(open) => {
           if (removeContacts.isPending) return
           setRemovalError(false)
@@ -753,7 +752,7 @@ export function ContactsDirectoryPage() {
           }
         }}
       >
-        {selectedContactIds.length > 0 && (
+        {context.permissions.canManageContacts && selectedContactIds.length > 0 && (
           <div className="pointer-events-none absolute inset-s-0 inset-e-0 bottom-6 z-20 flex justify-center px-4">
             <div className="pointer-events-auto flex flex-col items-center gap-1">
               <div className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -835,15 +834,15 @@ export function ContactsDirectoryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <ExternalContactDialog
-        contact={editingContact ?? undefined}
-        open={externalDialogOpen}
-        onOpenChange={(open) => {
-          setExternalDialogOpen(open)
-        }}
-        onCreated={openDetails}
-      />
-      {context.imCentrallyManaged && (
+      {context.permissions.canManageContacts && (
+        <ExternalContactDialog
+          contact={editingContact ?? undefined}
+          open={externalDialogOpen}
+          onOpenChange={setExternalDialogOpen}
+          onCreated={openDetails}
+        />
+      )}
+      {context.permissions.canManageContacts && context.imCentrallyManaged && (
         <PlatformContactPickerDialog
           open={platformDialogOpen}
           onOpenChange={setPlatformDialogOpen}

@@ -1,10 +1,12 @@
 {
+  "directory.noAccessDescription": "Solicită permisiunea de a vedea contactele din acest spațiu de lucru.",
   "directory.removalCountTitle": "Eliminați contactele ({{count}})?",
   "directory.removalDescription": "Contactele selectate vor fi eliminate definitiv din acest spațiu de lucru. Această acțiune nu poate fi anulată.",
   "directory.removalSingleDescription": "{{name}} va fi eliminat definitiv din acest spațiu de lucru. Această acțiune nu poate fi anulată.",
   "directory.removalSingleFailed": "Contactul nu a putut fi eliminat. Încercați din nou.",
   "directory.removalSingleTitle": "Eliminați {{name}}?",
   "directory.resultCount": "Rezultate: {{count}}",
+  "directory.viewOnly": "Ai acces doar pentru citire la contacte.",
   "imPlatform.action.configure": "Configurează",
   "imPlatform.action.configureChannel": "Configurați {{provider}}",
   "imPlatform.action.connect": "Conectează",
@@ -136,7 +138,7 @@
   "imPlatform.status.permission_issue": "Problemă de permisiuni",
   "imPlatform.sync.latestSynced": "Ultima sincronizare: {{date}}",
   "imPlatform.sync.loading": "Se verifică dacă există o sincronizare activă.",
-  "imPlatform.sync.noPermission": "Numai proprietarii și administratorii spațiului de lucru pot porni sincronizarea directorului.",
+  "imPlatform.sync.noPermission": "Pornirea sincronizării directorului necesită permisiunea de a gestiona canalele.",
   "imPlatform.sync.noRuns": "Nu a fost efectuată încă nicio sincronizare a directorului.",
   "imPlatform.sync.notConnected": "Conectează un furnizor și testează conexiunea înainte de a porni sincronizarea directorului.",
   "imPlatform.sync.startFailed": "Sincronizarea directorului nu a putut fi pornită sau reîmprospătată. Încearcă din nou.",
@@ -144,5 +146,6 @@
   "imPlatform.sync.status.queued": "În așteptare",
   "imPlatform.sync.status.running": "În curs",
   "imPlatform.sync.status.success": "Reușit",
-  "imPlatform.title": "Canale"
+  "imPlatform.title": "Canale",
+  "platformPicker.addForbidden": "Adăugarea contactelor de pe platformă necesită gestionarea centralizată a mesageriei instantanee și permisiunea de a gestiona contactele."
 }
