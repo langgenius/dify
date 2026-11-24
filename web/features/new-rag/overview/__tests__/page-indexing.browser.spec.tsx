@@ -170,33 +170,56 @@ describe('KnowledgeOverviewPage indexing', () => {
     vi.restoreAllMocks()
   })
 
-  // TODO(https://github.com/langgenius/dify/issues/46699): the overview keeps polling after tasks
-  // finish, so this fails over HTTP; https://github.com/langgenius/dify/pull/46747 fixes the
-  // polling and turns it back on.
-  it.skip('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
+  it('polls until snapshots catch up and resumes when a new task starts', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.tasks[0]!.state = 'running'
     queryData.tasks[0]!.updated_at = '2026-07-29T10:00:00Z'
-    const { queryClient } = await renderOverview()
+    const { queryClient, refetch } = await renderOverview()
+    const overview = fake.console.knowledgeFs.spaces.byControlSpaceId.overview
+    const requests = [
+      overview.stats.get,
+      overview.queryOutcomes.get,
+      overview.inventory.get,
+      overview.attention.get,
+      overview.activity.get,
+    ]
+    const callCounts = () => requests.map((request) => request.mock.calls.length)
+    const advancePolling = async (milliseconds = 2000) => {
+      await vi.advanceTimersByTimeAsync(milliseconds)
+      await expect.poll(() => queryClient.isFetching()).toBe(0)
+    }
     await expect.element(page.getByText('10', { exact: true })).toBeVisible()
     queryData.stats.queries.value = 11
-    await vi.advanceTimersByTimeAsync(2000)
+    await advancePolling()
     await expect.element(page.getByText('11', { exact: true })).toBeVisible()
     queryData.tasks[0]!.state = 'completed'
     queryData.stats.queries.value = 12
-    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
-    await vi.advanceTimersByTimeAsync(2000)
+    await refetch(overviewKeys.tasks)
+    await advancePolling()
     await expect.element(page.getByText('12', { exact: true })).toBeVisible()
     queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    queryData.outcomes.generated_at = queryData.stats.generated_at
+    queryData.inventory.generated_at = queryData.stats.generated_at
     queryData.stats.queries.value = 13
-    await vi.advanceTimersByTimeAsync(2000)
+    await advancePolling()
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
-    await expect.poll(() => queryClient.isFetching()).toBe(0)
-    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
-    const caughtUp = stats.mock.calls.length
-    await vi.advanceTimersByTimeAsync(6000)
-    expect(stats).toHaveBeenCalledTimes(caughtUp)
+    const caughtUp = callCounts()
+    await advancePolling(6000)
+    expect(callCounts()).toEqual(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+
+    queryData.tasks.unshift({
+      ...queryData.tasks[0]!,
+      id: 'task-2',
+      state: 'running',
+      completed_at: null,
+      updated_at: '2026-07-29T10:02:00Z',
+    })
+    await refetch(overviewKeys.tasks)
+    await advancePolling()
+    const restarted = callCounts()
+    await advancePolling()
+    expect(callCounts()).toEqual(restarted.map((count) => count + 1))
   })
 
   it('keeps failed first-source tasks in Needs attention without a duplicate banner', async () => {

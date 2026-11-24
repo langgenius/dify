@@ -1,4 +1,5 @@
 import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { NotifyOnChangeProps } from '@tanstack/react-query'
 import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery, queryClientAtom } from 'jotai-tanstack-query'
@@ -15,6 +16,8 @@ const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
 ])
 const TASK_PAGE_SIZE = 20
 const ACTIVITY_PREVIEW_PAGE_SIZE = 20
+// A queued fetch-start notification can replay the previous data after the new snapshot arrives.
+const SNAPSHOT_NOTIFY_PROPS: NotifyOnChangeProps = ['data', 'status']
 
 export const overviewKnowledgeSpaceIdAtom = atomWithLazy<string>(() => {
   throw new Error('Missing overview knowledge space id')
@@ -31,6 +34,7 @@ function isFirstSourceTask(task: KnowledgeFsBackgroundTaskResponse) {
 
 const backgroundTasksQueryAtom = atomWithInfiniteQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
+    notifyOnChangeProps: SNAPSHOT_NOTIFY_PROPS,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     initialPageParam: null as string | null,
     input: (pageParam) => ({
@@ -87,18 +91,25 @@ export const overviewFailedFirstSourceTaskAtom = atom((get) => {
   return latestTask?.state === 'failed' ? latestTask : undefined
 })
 
+const snapshotRefetchIntervalAtom = atom((get) => {
+  const hasActiveTasks = get(overviewHasActiveTasksAtom)
+  const latestTaskUpdatedAt = get(latestTaskUpdatedAtAtom)
+  return (query: { state: { data?: { generated_at: string } } }) =>
+    overviewRefreshInterval({
+      generatedAt: query.state.data?.generated_at,
+      hasActiveTasks,
+      latestTaskUpdatedAt,
+    })
+})
+
 const statsQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.queryOptions({
     input: {
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
       query: { window: get(overviewWindowAtom) },
     },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    notifyOnChangeProps: SNAPSHOT_NOTIFY_PROPS,
+    refetchInterval: get(snapshotRefetchIntervalAtom),
   }),
 )
 export const overviewStatsDataAtom = selectAtom(statsQueryAtom, (query) => query.data)
@@ -112,12 +123,8 @@ const outcomesQueryAtom = atomWithQuery((get) =>
       params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) },
       query: { window: get(overviewWindowAtom) },
     },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    notifyOnChangeProps: SNAPSHOT_NOTIFY_PROPS,
+    refetchInterval: get(snapshotRefetchIntervalAtom),
   }),
 )
 export const overviewOutcomesDataAtom = selectAtom(outcomesQueryAtom, (query) => query.data)
@@ -128,12 +135,8 @@ const outcomesRefetchAtom = selectAtom(outcomesQueryAtom, (query) => query.refet
 const inventoryQueryAtom = atomWithQuery((get) =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.inventory.get.queryOptions({
     input: { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } },
-    refetchInterval: (query) =>
-      overviewRefreshInterval({
-        generatedAt: query.state.data?.generated_at,
-        hasActiveTasks: get(overviewHasActiveTasksAtom),
-        latestTaskUpdatedAt: get(latestTaskUpdatedAtAtom),
-      }),
+    notifyOnChangeProps: SNAPSHOT_NOTIFY_PROPS,
+    refetchInterval: get(snapshotRefetchIntervalAtom),
   }),
 )
 export const overviewInventoryDataAtom = selectAtom(inventoryQueryAtom, (query) => query.data)
