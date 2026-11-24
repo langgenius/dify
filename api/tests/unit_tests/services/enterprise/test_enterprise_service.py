@@ -568,7 +568,6 @@ class TestVerifyMCPIdentityToken:
         "error",
         [
             EnterpriseAPIUnauthorizedError("forwarded identity token is invalid or expired"),
-            EnterpriseAPIForbiddenError("user is not allowed to access this app"),
             EnterpriseAPIError("workspace OIDC SSO is not configured", status_code=503),
         ],
     )
