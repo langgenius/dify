@@ -9,11 +9,7 @@ import type {
 
 type TidyFinding = KnowledgeFsTidyFindingResponse
 type TidyDocumentCard = KnowledgeFsTidyDocumentCardResponse
-type TidyFindingKind = TidyFinding['kind']
 export type TidyAction = 'dismiss' | 'review' | 'disable_document' | 'undo'
-
-/** Conflicts first (they need a decision), then exact copies, then overlapping documents. */
-export const TIDY_KIND_ORDER: readonly TidyFindingKind[] = ['conflict', 'duplicate', 'similar']
 
 /** Identical documents linked by open duplicate findings (connected components). */
 export type DuplicateGroup = {

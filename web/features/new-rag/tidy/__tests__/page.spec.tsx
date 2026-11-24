@@ -140,7 +140,8 @@ describe('Tidy', () => {
     ).toHaveAttribute('aria-valuenow', '93')
     expect(screen.getByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.pausedAuthorization')
     expect(screen.getByText(/knowledgeSpace\.tidy\.failedCount/)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.similar 2' })).toBeVisible()
+    // Exact copies and overlapping documents share one tab and one count.
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.tidy.overlapKind 3' })).toBeVisible()
     await user.click(screen.getByRole('switch', { name: 'knowledgeSpace.tidy.conflicts' }))
     expect(service.configure).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toHaveTextContent('tidy.tokenNotice')
@@ -182,12 +183,71 @@ describe('Tidy', () => {
     renderPage()
     expect(await screen.findByText('knowledgeSpace.tidy.semanticReason')).toBeVisible()
     expect(screen.getByText(/knowledgeSpace\.tidy\.semanticCoverage/)).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.similar 0' }))
+    // The merged tab asks for both kinds; the API filters one kind per request.
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.tidy.overlapKind 0' }))
     await waitFor(() =>
-      expect(service.findings).toHaveBeenLastCalledWith(
-        expect.objectContaining({ query: { status: 'open', kind: 'similar' } }),
+      expect(service.findings.mock.calls.map(([input]) => input.query)).toEqual(
+        expect.arrayContaining([
+          { status: 'open', kind: 'duplicate' },
+          { status: 'open', kind: 'similar' },
+        ]),
       ),
     )
+  })
+  it('lists exact copies and overlapping documents together, most overlap first, and pages both', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    const finding = (id: string, kind: string, similarity: number, right: string) => ({
+      id,
+      kind,
+      left: { ...evidence, documentId: 'a', title: 'Guide A', text: `${id} A` },
+      right: { ...evidence, documentId: right, title: `Guide ${right}`, text: `${id} ${right}` },
+      reason: kind === 'duplicate' ? 'identical_content_hash' : 'textual_overlap',
+      similarity,
+      status: 'open',
+      revision: 1,
+      actionId: null,
+      createdAt: '2026-11-04',
+      stale: false,
+    })
+    service.findings.mockImplementation(async ({ query }) =>
+      query.kind === 'duplicate'
+        ? { items: query.cursor ? [] : [finding('copy', 'duplicate', 1, 'b')], nextCursor: null }
+        : query.cursor
+          ? { items: [finding('later', 'similar', 0.5, 'e')], nextCursor: null }
+          : {
+              items: [
+                finding('loose', 'similar', 0.6, 'c'),
+                finding('close', 'similar', 0.999, 'd'),
+              ],
+              nextCursor: 'more',
+            },
+    )
+    const user = userEvent.setup()
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter hasMemory searchParams="?tidyKind=overlap">
+        <KnowledgeSpaceTestProvider space={createKnowledgeSpaceFixture()}>
+          <TidyPage />
+        </KnowledgeSpaceTestProvider>
+      </NuqsTestingAdapter>,
+    )
+    const section = await screen.findByRole('region', {
+      name: 'knowledgeSpace.tidy.sectionOverlap',
+    })
+    const cards = within(section).getAllByRole('article')
+    expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual([
+      expect.stringContaining('copiesTitle'),
+      expect.stringContaining('Guide d'),
+      expect.stringContaining('Guide c'),
+    ])
+    // Only identical content may read as a full match.
+    expect(cards[0]).toHaveTextContent('knowledgeSpace.tidy.identical')
+    expect(cards[1]).toHaveTextContent('"percent":99')
+
+    // Copies ran out; the next page still shows the remaining overlapping documents.
+    await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    expect(await screen.findByRole('article', { name: /Guide e/ })).toBeVisible()
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'common.pagination.next' })).not.toBeInTheDocument()
   })
   it('allows readers to compare evidence without management controls', async () => {
     renderPage(false)
