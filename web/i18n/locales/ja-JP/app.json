@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "リンクされたアプリはこの接続を使用できなくなります。チャット履歴やサードパーティのデータは削除されません。",
   "endUser.disconnectConnectionTitle": "この接続を解除しますか？",
   "endUser.emptyApps": "アプリはまだありません",
-  "endUser.emptyAppsDescription": "アプリのリンクを開いて始めましょう。アクセスしたアプリがここに表示されます。",
+  "endUser.emptyAppsDescription": "アプリのリンクを開いて始めましょう。初回の実行後、そのアプリがここに表示されます。",
   "endUser.emptyStarredApps": "お気に入りのアプリはまだありません",
   "endUser.emptyStarredAppsDescription": "アプリの横にある星をクリックすると、ここに保存されます。",
   "endUser.lastUsed": "最終使用日時",

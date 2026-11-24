@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "لن تتمكن التطبيقات المرتبطة من استخدام هذا الاتصال بعد الآن. لن يتم حذف سجل محادثاتك وبيانات الجهات الخارجية.",
   "endUser.disconnectConnectionTitle": "قطع هذا الاتصال؟",
   "endUser.emptyApps": "لا توجد تطبيقات بعد",
-  "endUser.emptyAppsDescription": "افتح رابط تطبيق للبدء. ستظهر التطبيقات التي تزورها هنا.",
+  "endUser.emptyAppsDescription": "افتح رابطًا لأحد التطبيقات للبدء. سيظهر التطبيق هنا بعد تشغيله لأول مرة.",
   "endUser.emptyStarredApps": "لا توجد تطبيقات في المفضلة بعد",
   "endUser.emptyStarredAppsDescription": "انقر على النجمة بجانب تطبيق لحفظه هنا.",
   "endUser.lastUsed": "آخر استخدام",

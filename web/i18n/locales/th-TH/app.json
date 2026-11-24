@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "แอปที่เชื่อมโยงจะไม่สามารถใช้การเชื่อมต่อนี้ได้อีก ประวัติการแชทและข้อมูลของบุคคลที่สามจะไม่ถูกลบ",
   "endUser.disconnectConnectionTitle": "ตัดการเชื่อมต่อนี้หรือไม่?",
   "endUser.emptyApps": "ยังไม่มีแอป",
-  "endUser.emptyAppsDescription": "เปิดลิงก์แอปเพื่อเริ่มต้น แอปที่คุณเข้าชมจะปรากฏที่นี่",
+  "endUser.emptyAppsDescription": "เปิดลิงก์แอปเพื่อเริ่มต้น แอปจะปรากฏที่นี่หลังจากที่คุณเรียกใช้ครั้งแรก",
   "endUser.emptyStarredApps": "ยังไม่มีแอปที่ติดดาว",
   "endUser.emptyStarredAppsDescription": "คลิกดาวข้างแอปเพื่อบันทึกไว้ที่นี่",
   "endUser.lastUsed": "ใช้ล่าสุด",

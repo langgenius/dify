@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "برنامه‌های مرتبط دیگر نمی‌توانند از این اتصال استفاده کنند. تاریخچهٔ گفت‌وگو و داده‌های شخص ثالث شما حذف نخواهند شد.",
   "endUser.disconnectConnectionTitle": "این اتصال قطع شود؟",
   "endUser.emptyApps": "هنوز برنامه‌ای وجود ندارد",
-  "endUser.emptyAppsDescription": "برای شروع، پیوند یک برنامه را باز کنید. برنامه‌هایی که بازدید می‌کنید در اینجا نمایش داده می‌شوند.",
+  "endUser.emptyAppsDescription": "برای شروع، پیوند یک برنامه را باز کنید. پس از اولین اجرا، برنامه در اینجا نمایش داده می‌شود.",
   "endUser.emptyStarredApps": "هنوز برنامه‌ای ستاره‌دار نشده است",
   "endUser.emptyStarredAppsDescription": "برای ذخیره کردن یک برنامه در اینجا، روی ستاره کنار آن کلیک کنید.",
   "endUser.lastUsed": "آخرین استفاده",

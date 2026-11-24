@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Les applications liées ne pourront plus utiliser cette connexion. Votre historique de discussion et les données tierces ne seront pas supprimés.",
   "endUser.disconnectConnectionTitle": "Déconnecter cette connexion ?",
   "endUser.emptyApps": "Aucune application pour le moment",
-  "endUser.emptyAppsDescription": "Ouvrez un lien d’application pour commencer. Les applications que vous visitez apparaîtront ici.",
+  "endUser.emptyAppsDescription": "Ouvrez le lien d’une application pour commencer. L’application apparaîtra ici après sa première exécution.",
   "endUser.emptyStarredApps": "Aucune application favorite pour le moment",
   "endUser.emptyStarredAppsDescription": "Cliquez sur l’étoile à côté d’une application pour l’enregistrer ici.",
   "endUser.lastUsed": "Dernière utilisation",

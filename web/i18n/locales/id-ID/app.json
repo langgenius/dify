@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Aplikasi yang ditautkan tidak akan dapat menggunakan koneksi ini lagi. Riwayat percakapan dan data pihak ketiga Anda tidak akan dihapus.",
   "endUser.disconnectConnectionTitle": "Putuskan koneksi ini?",
   "endUser.emptyApps": "Belum ada aplikasi",
-  "endUser.emptyAppsDescription": "Buka tautan aplikasi untuk memulai. Aplikasi yang Anda kunjungi akan muncul di sini.",
+  "endUser.emptyAppsDescription": "Buka tautan aplikasi untuk memulai. Aplikasi akan muncul di sini setelah Anda menjalankannya untuk pertama kali.",
   "endUser.emptyStarredApps": "Belum ada aplikasi berbintang",
   "endUser.emptyStarredAppsDescription": "Klik bintang di samping aplikasi untuk menyimpannya di sini.",
   "endUser.lastUsed": "Terakhir digunakan",

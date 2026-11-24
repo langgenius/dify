@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Bağlı uygulamalar artık bu bağlantıyı kullanamayacak. Sohbet geçmişiniz ve üçüncü taraf verileri silinmeyecek.",
   "endUser.disconnectConnectionTitle": "Bu bağlantı kesilsin mi?",
   "endUser.emptyApps": "Henüz uygulama yok",
-  "endUser.emptyAppsDescription": "Başlamak için bir uygulama bağlantısı açın. Ziyaret ettiğiniz uygulamalar burada görünür.",
+  "endUser.emptyAppsDescription": "Başlamak için bir uygulama bağlantısı açın. İlk çalıştırmanın ardından uygulama burada görünecek.",
   "endUser.emptyStarredApps": "Henüz yıldızlı uygulama yok",
   "endUser.emptyStarredAppsDescription": "Bir uygulamayı buraya kaydetmek için yanındaki yıldıza tıklayın.",
   "endUser.lastUsed": "Son kullanım",

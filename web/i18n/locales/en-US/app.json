@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Linked apps will no longer be able to use this connection. Your chat history and third-party data won’t be deleted.",
   "endUser.disconnectConnectionTitle": "Disconnect this connection?",
   "endUser.emptyApps": "No apps yet",
-  "endUser.emptyAppsDescription": "Open an app link to get started. Apps you visit will appear here.",
+  "endUser.emptyAppsDescription": "Open an app link to get started, and the app will appear here after your first run.",
   "endUser.emptyStarredApps": "No starred apps yet",
   "endUser.emptyStarredAppsDescription": "Click the star next to an app to save it here.",
   "endUser.lastUsed": "Last used",
