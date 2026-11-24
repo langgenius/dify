@@ -25,7 +25,7 @@ import DebugWithSingleModel from '../index'
 
 const api = vi.hoisted(() => ({
   stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   suggestions:
     vi.fn<typeof consoleClient.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get>(),
@@ -35,7 +35,6 @@ const api = vi.hoisted(() => ({
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   ssePost: api.stream,
-  upload: api.upload,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -43,6 +42,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get': (input) =>
         api.suggestions(input),
@@ -133,7 +133,7 @@ beforeEach(() => {
   api.messages.mockResolvedValue({ data: [], has_more: false, limit: 10 })
   api.suggestions.mockResolvedValue({ data: [] })
   api.stop.mockResolvedValue({ result: 'success' })
-  api.upload.mockResolvedValue({ id: 'uploaded-file-1' })
+  api.upload.mockResolvedValue({ id: 'uploaded-file-1', name: 'upload', size: 1 })
 })
 afterEach(() => {
   toast.dismiss()
@@ -299,7 +299,7 @@ it.each([
   const file = new File(['attachment'], name, { type: mime })
   fireEvent.drop(screen.getByRole('textbox'), { dataTransfer: { files: [file] } })
   await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1))
-  expect(api.upload.mock.lastCall![0].data.get('file')).toEqual(file)
+  expect(api.upload.mock.lastCall![0].body.file).toEqual(file)
   await send(user, 'Read the attachment')
   expect(api.stream.mock.lastCall![1].body).toHaveProperty('files', [
     {
