@@ -1,17 +1,32 @@
-from unittest.mock import patch
+from collections.abc import Iterator
+from typing import NamedTuple, TypedDict
+from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
 
 from tasks.mail_inner_task import send_inner_email_task
 
 
+class ExternalServiceDependencies(NamedTuple):
+    is_inited: Mock
+    send_raw_email: Mock
+    render_template: Mock
+
+
+class EmailData(TypedDict):
+    to: list[str]
+    subject: str
+    body: str
+    substitutions: dict[str, str]
+
+
+@pytest.mark.usefixtures("db_session_with_containers")
 class TestMailInnerTask:
     """Integration tests for send_inner_email_task using testcontainers."""
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[ExternalServiceDependencies]:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.mail_inner_task.mail", autospec=True) as mock_mail,
@@ -25,13 +40,13 @@ class TestMailInnerTask:
             mock_email_service = mock_get_email_i18n_service.return_value  # Setup mock template rendering
             mock_render_template.return_value = "<html>Test email content</html>"
 
-            yield {
-                "mail": mock_mail,
-                "email_service": mock_email_service,
-                "render_template": mock_render_template,
-            }
+            yield ExternalServiceDependencies(
+                is_inited=mock_mail.is_inited,
+                send_raw_email=mock_email_service.send_raw_email,
+                render_template=mock_render_template.mock,
+            )
 
-    def _create_test_email_data(self, fake: Faker) -> dict:
+    def _create_test_email_data(self, fake: Faker) -> EmailData:
         """
         Helper method to create test email data for testing.
 
@@ -52,7 +67,7 @@ class TestMailInnerTask:
             },
         }
 
-    def test_send_inner_email_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_send_inner_email_success(self, mock_external_service_dependencies: ExternalServiceDependencies) -> None:
         """
         Test successful email sending with valid data.
 
@@ -76,24 +91,24 @@ class TestMailInnerTask:
 
         # Assert: Verify the expected outcomes
         # Verify mail service was checked for initialization
-        mock_external_service_dependencies["mail"].is_inited.assert_called_once()
+        mock_external_service_dependencies.is_inited.assert_called_once()
 
         # Verify template rendering was called with correct parameters
-        mock_external_service_dependencies["render_template"].assert_called_once_with(
+        mock_external_service_dependencies.render_template.assert_called_once_with(
             email_data["body"], email_data["substitutions"]
         )
 
         # Verify email service was called once with the full recipient list
-        mock_email_service = mock_external_service_dependencies["email_service"]
-        mock_email_service.send_raw_email.assert_called_once_with(
+        mock_send_raw_email = mock_external_service_dependencies.send_raw_email
+        mock_send_raw_email.assert_called_once_with(
             to=email_data["to"],
             subject=email_data["subject"],
             html_content="<html>Test email content</html>",
         )
 
     def test_send_inner_email_single_recipient(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceDependencies
+    ) -> None:
         """
         Test email sending with single recipient.
 
@@ -104,7 +119,7 @@ class TestMailInnerTask:
         """
         # Arrange: Create test data with single recipient
         fake = Faker()
-        email_data = {
+        email_data: EmailData = {
             "to": [fake.email()],
             "subject": fake.sentence(nb_words=3),
             "body": "Welcome {{user_name}}!",
@@ -122,16 +137,16 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_email_service = mock_external_service_dependencies["email_service"]
-        mock_email_service.send_raw_email.assert_called_once_with(
+        mock_send_raw_email = mock_external_service_dependencies.send_raw_email
+        mock_send_raw_email.assert_called_once_with(
             to=email_data["to"],
             subject=email_data["subject"],
             html_content="<html>Test email content</html>",
         )
 
     def test_send_inner_email_empty_substitutions(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceDependencies
+    ) -> None:
         """
         Test email sending with empty substitutions.
 
@@ -142,7 +157,7 @@ class TestMailInnerTask:
         """
         # Arrange: Create test data with empty substitutions
         fake = Faker()
-        email_data = {
+        email_data: EmailData = {
             "to": [fake.email()],
             "subject": fake.sentence(nb_words=3),
             "body": "This is a simple email without variables.",
@@ -158,18 +173,18 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify the expected outcomes
-        mock_external_service_dependencies["render_template"].assert_called_once_with(email_data["body"], {})
+        mock_external_service_dependencies.render_template.assert_called_once_with(email_data["body"], {})
 
-        mock_email_service = mock_external_service_dependencies["email_service"]
-        mock_email_service.send_raw_email.assert_called_once_with(
+        mock_send_raw_email = mock_external_service_dependencies.send_raw_email
+        mock_send_raw_email.assert_called_once_with(
             to=email_data["to"],
             subject=email_data["subject"],
             html_content="<html>Test email content</html>",
         )
 
     def test_send_inner_email_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceDependencies
+    ) -> None:
         """
         Test email sending when mail service is not initialized.
 
@@ -180,7 +195,7 @@ class TestMailInnerTask:
         - No exceptions raised
         """
         # Arrange: Setup mail service as not initialized
-        mock_external_service_dependencies["mail"].is_inited.return_value = False
+        mock_external_service_dependencies.is_inited.return_value = False
 
         fake = Faker()
         email_data = self._create_test_email_data(fake)
@@ -194,12 +209,12 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify no processing occurred
-        mock_external_service_dependencies["render_template"].assert_not_called()
-        mock_external_service_dependencies["email_service"].send_raw_email.assert_not_called()
+        mock_external_service_dependencies.render_template.assert_not_called()
+        mock_external_service_dependencies.send_raw_email.assert_not_called()
 
     def test_send_inner_email_template_rendering_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceDependencies
+    ) -> None:
         """
         Test email sending when template rendering fails.
 
@@ -208,7 +223,7 @@ class TestMailInnerTask:
         - No email service calls when template fails
         """
         # Arrange: Setup template rendering to raise an exception
-        mock_external_service_dependencies["render_template"].side_effect = Exception("Template rendering failed")
+        mock_external_service_dependencies.render_template.side_effect = Exception("Template rendering failed")
 
         fake = Faker()
         email_data = self._create_test_email_data(fake)
@@ -222,14 +237,14 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify template rendering was attempted
-        mock_external_service_dependencies["render_template"].assert_called_once()
+        mock_external_service_dependencies.render_template.assert_called_once()
 
         # Verify no email service calls due to exception
-        mock_external_service_dependencies["email_service"].send_raw_email.assert_not_called()
+        mock_external_service_dependencies.send_raw_email.assert_not_called()
 
     def test_send_inner_email_service_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceDependencies
+    ) -> None:
         """
         Test email sending when email service fails.
 
@@ -238,9 +253,7 @@ class TestMailInnerTask:
         - Graceful error handling
         """
         # Arrange: Setup email service to raise an exception
-        mock_external_service_dependencies["email_service"].send_raw_email.side_effect = Exception(
-            "Email service failed"
-        )
+        mock_external_service_dependencies.send_raw_email.side_effect = Exception("Email service failed")
 
         fake = Faker()
         email_data = self._create_test_email_data(fake)
@@ -254,11 +267,11 @@ class TestMailInnerTask:
         )
 
         # Assert: Verify template rendering occurred
-        mock_external_service_dependencies["render_template"].assert_called_once()
+        mock_external_service_dependencies.render_template.assert_called_once()
 
         # Verify email service was called (and failed)
-        mock_email_service = mock_external_service_dependencies["email_service"]
-        mock_email_service.send_raw_email.assert_called_once_with(
+        mock_send_raw_email = mock_external_service_dependencies.send_raw_email
+        mock_send_raw_email.assert_called_once_with(
             to=email_data["to"],
             subject=email_data["subject"],
             html_content="<html>Test email content</html>",
