@@ -38,10 +38,11 @@ worker:
 Both new ordinary signups and prior staging intents use the explicit shared
 route for Tokener bootstrap and metering, without redirects. In this mode the
 old exact-email selector is ignored. The package pin is signup-only; do not
-replace the global Tokener plugin, provider, endpoint or legacy settings. The
-shared server selects its staging Partner only for consumed staging intents;
-old non-staging intents retain the original Partner. Signup package signature
-checks and persisted identity are unchanged.
+replace the global Tokener plugin or provider. The shared server uses a single
+staging Partner for Tokener; it does not choose the environment by tenant or
+fall back to dev. Existing dev bindings and failed signup rows are not
+migrated or re-enrolled. Signup package signature checks and persisted
+identity are unchanged.
 
 Before enabling this mode, verify the shared Billing instance actually uses
 the approved Tokener staging partner and base for native bootstrap/metering.

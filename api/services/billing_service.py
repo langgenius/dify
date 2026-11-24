@@ -320,14 +320,20 @@ class BillingService:
         """Resolve the Billing base and redirect policy for the durable signup intent.
 
         No existing migration receipt, provider or billing route is an enrollment
-        proof. Staging intents require an explicit trusted route. The shared
-        server scopes its staging Partner client to the same durable provenance;
-        other tenants keep their original Billing route. Database failures fail closed.
+        proof. In opt-in shared staging mode there is one trusted Billing
+        target for all Tokener operations. Outside that mode, isolated
+        validation still uses the original durable intent and fails closed.
         """
         configured = dify_config.TOKENER_SIGNUP_VALIDATION_BILLING_API_URL
         default_base = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return default_base, False
+
+        if configured == TokenerSignupBillingCandidate.SHARED_STAGING:
+            staging_base = dify_config.get_agent_dev_staging_tokener_billing_url()
+            if staging_base is None or staging_base != configured:
+                raise BillingUpstreamUnavailableError
+            return staging_base, True
 
         from core.db.session_factory import session_factory
         from models.tokener import AccountTokenerSignupIntent
@@ -339,10 +345,6 @@ class BillingService:
                 if staging_base is None:
                     raise BillingUpstreamUnavailableError
                 return staging_base, True
-            if configured == TokenerSignupBillingCandidate.SHARED_STAGING:
-                if dify_config.get_agent_dev_staging_tokener_billing_url() != configured:
-                    raise BillingUpstreamUnavailableError
-                return default_base, False
             if not configured or configured == CANARY_BILLING_URL:
                 return default_base, False
             with session_factory.create_session() as session:

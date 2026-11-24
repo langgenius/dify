@@ -51,7 +51,8 @@ def test_hosted_candidate_does_not_move_existing_signup_or_fall_back_on_disable(
     native_owner = Account(name="older signup", email="older-signup@example.invalid")
     hosted = Tenant(name="hosted signup")
     native = Tenant(name="older native signup")
-    sqlite_session.add_all([owner, native_owner, hosted, native])
+    not_enrolled = Tenant(name="unbound workspace")
+    sqlite_session.add_all([owner, native_owner, hosted, native, not_enrolled])
     sqlite_session.flush()
     now = datetime(2026, 11, 19, 4, 0)
     sqlite_session.add_all(
@@ -95,8 +96,9 @@ def test_hosted_candidate_does_not_move_existing_signup_or_fall_back_on_disable(
     ):
         # Same persisted staging intent, without re-enrollment or credential rebind.
         assert BillingService._tokener_signup_validation_base(hosted.id) == (_EXISTING, True)
-        # The shared server uses the original Partner for an existing non-staging enrollment.
-        assert BillingService._tokener_signup_validation_base(native.id) == (_EXISTING, False)
+        # Shared mode uses the same trusted server regardless of signup provenance.
+        assert BillingService._tokener_signup_validation_base(native.id) == (_EXISTING, True)
+        assert BillingService._tokener_signup_validation_base(not_enrolled.id) == (_EXISTING, True)
 
     with config_overrides_context(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
