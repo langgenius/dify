@@ -2,12 +2,11 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
 import type { Recipient } from '@/app/components/workflow/nodes/human-input/types'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { getAvatarInitial } from '@/utils/avatar'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -90,7 +89,7 @@ export const MemberList: FC<Props> = ({
               >
                 <Avatar className={cn(isSelected && 'opacity-50')} size="sm" aria-hidden="true">
                   <AvatarFallback>{getAvatarInitial(account.name)}</AvatarFallback>
-                  <AccountAvatarImage src={account.avatar_url || undefined} alt="" />
+                  <AvatarImage src={account.avatar_url || undefined} alt="" />
                 </Avatar>
                 <div className={cn('grow', isSelected && 'opacity-50')}>
                   <div className="system-sm-medium text-text-secondary">

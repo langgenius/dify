@@ -1,10 +1,9 @@
 'use client'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -43,7 +42,7 @@ export default function AppSelector() {
       >
         <Avatar aria-hidden="true">
           <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-          <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>
       </MenuTrigger>
       <MenuContent className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0">
@@ -65,7 +64,7 @@ export default function AppSelector() {
             </div>
             <Avatar aria-hidden="true">
               <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-              <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
             </Avatar>
           </div>
         </div>

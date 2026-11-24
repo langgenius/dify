@@ -3,7 +3,7 @@
 import type { AvatarProps } from '@langgenius/dify-ui/avatar'
 import type { ImageIconInputValue } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -18,7 +18,6 @@ import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { ImageIconInput } from '@/app/components/base/icon-picker/image-input'
 import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks'
 import { toast } from '@/app/notifications'
@@ -107,7 +106,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
     return (
       <Avatar size={size} aria-hidden="true">
         <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
-        <AccountAvatarImage src={avatar || undefined} alt="" />
+        <AvatarImage src={avatar || undefined} alt="" />
       </Avatar>
     )
   }
@@ -126,7 +125,7 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
         >
           <Avatar size={size} aria-hidden="true">
             <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
-            <AccountAvatarImage src={avatar || undefined} alt="" />
+            <AvatarImage src={avatar || undefined} alt="" />
           </Avatar>
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 motion-safe:transition-opacity">
             <span aria-hidden="true" className="i-ri-pencil-line size-5" />

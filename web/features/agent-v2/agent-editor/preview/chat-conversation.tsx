@@ -10,13 +10,12 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { AgentRosterResponseContent } from '@/app/components/base/chat/chat/answer/agent-roster-response-content'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -336,7 +335,7 @@ export function AgentPreviewChatConversation({
       questionIcon={
         <Avatar size="xl" role="img" aria-label={userProfile.name}>
           <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-          <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>
       }
       onAnnotationEdited={handleAnnotationEdited}

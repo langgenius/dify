@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 
@@ -65,7 +64,7 @@ export const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => 
           <>
             <Avatar size="sm" aria-hidden="true">
               <AvatarFallback>{getAvatarInitial(currentValue.name)}</AvatarFallback>
-              <AccountAvatarImage src={currentValue.avatar_url || undefined} alt="" />
+              <AvatarImage src={currentValue.avatar_url || undefined} alt="" />
             </Avatar>
             <span className="grow truncate system-sm-medium text-text-secondary">
               {currentValue.name}
@@ -117,7 +116,7 @@ export const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => 
               >
                 <Avatar size="sm" aria-hidden="true">
                   <AvatarFallback>{getAvatarInitial(account.name)}</AvatarFallback>
-                  <AccountAvatarImage src={account.avatar_url || undefined} alt="" />
+                  <AvatarImage src={account.avatar_url || undefined} alt="" />
                 </Avatar>
                 <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}

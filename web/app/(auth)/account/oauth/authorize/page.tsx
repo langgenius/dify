@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -13,7 +13,6 @@ import {
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
@@ -202,7 +201,7 @@ export default function OAuthAuthorize() {
           <div className="flex items-center gap-2.5">
             <Avatar size="lg" aria-hidden="true">
               <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-              <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
             </Avatar>
             <div>
               <div className="text-text-secondary">{userProfile.name}</div>

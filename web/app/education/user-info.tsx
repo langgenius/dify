@@ -1,8 +1,7 @@
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -30,7 +29,7 @@ const UserInfo = () => {
       <div className="flex items-center">
         <Avatar className="me-4" size="2xl" aria-hidden="true">
           <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-          <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
         </Avatar>
         <div className="pt-1.5">
           <div className="system-md-semibold text-text-primary">{userProfile.name}</div>

@@ -1,9 +1,8 @@
 'use client'
 
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import AccountMenu from '@/app/components/header/account-menu'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -32,7 +31,7 @@ const AccountSection = ({ compact = false }: AccountSectionProps) => {
         >
           <Avatar size="md" className="size-7" aria-hidden="true">
             <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-            <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
           </Avatar>
           {!compact && (
             <span className="min-w-0 flex-1 truncate system-md-medium" title={userProfile.name}>

@@ -1,6 +1,11 @@
 import type { AvatarProps, AvatarSize } from '@langgenius/dify-ui/avatar'
-import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getUserColor } from '../utils/user-color'
 
@@ -28,7 +33,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>
-      <AccountAvatarImage src={collaborator.avatarUrl || undefined} alt="" />
+      <AvatarImage src={collaborator.avatarUrl || undefined} alt="" />
     </Avatar>
   )
 }

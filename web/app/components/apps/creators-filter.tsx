@@ -1,6 +1,12 @@
 'use client'
 
-import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@langgenius/dify-ui/avatar'
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -22,7 +28,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
@@ -138,7 +143,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                       style={{ zIndex: selectedAvatarCreators.length - index }}
                     >
                       <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
-                      <AccountAvatarImage src={creator.avatarUrl || undefined} alt="" />
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
                     </Avatar>
                   ))}
                   {remainingCount > 0 && <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>}
@@ -196,7 +201,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                   <ComboboxItemText className="flex items-center gap-2 px-1 font-normal">
                     <Avatar size="xs" aria-hidden="true">
                       <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
-                      <AccountAvatarImage src={creator.avatarUrl || undefined} alt="" />
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
                     </Avatar>
                     <span className="flex min-w-0 grow items-center justify-between gap-2">
                       <span className="truncate text-sm text-text-secondary">{creator.name}</span>

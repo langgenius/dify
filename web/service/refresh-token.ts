@@ -2,7 +2,6 @@ import { API_PREFIX } from '@/config'
 import { fetchWithRetry } from '@/utils'
 import { isClient } from '@/utils/client'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
-import { notifySessionRefreshed } from './session-refresh-events'
 
 const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
@@ -59,9 +58,11 @@ async function getNewAccessToken(timeout: number): Promise<void> {
           // No body needed - refresh token is in cookie
         }),
       )
-      if (error) return Promise.reject(error)
-      if (isHttpErrorStatus(ret.status)) throw await httpErrorFromResponse(ret)
-      if (ret.ok) notifySessionRefreshed()
+      if (error) {
+        return Promise.reject(error)
+      } else {
+        if (isHttpErrorStatus(ret.status)) throw await httpErrorFromResponse(ret)
+      }
     }
   } catch (error) {
     console.error(error)

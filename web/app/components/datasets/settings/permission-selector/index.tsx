@@ -1,5 +1,5 @@
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -7,7 +7,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AccountAvatarImage } from '@/app/components/base/account-avatar-image'
 import { SearchInput } from '@/app/components/base/search-input'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -126,7 +125,7 @@ const PermissionSelector = ({
             <div className="flex size-6 shrink-0 items-center justify-center">
               <Avatar size="xs" aria-hidden="true">
                 <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-                <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
               </Avatar>
             </div>
             <div
@@ -156,14 +155,14 @@ const PermissionSelector = ({
               {selectedMembers.length === 1 && (
                 <Avatar size="xs" aria-hidden="true">
                   <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
-                  <AccountAvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                  <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
                 </Avatar>
               )}
               {selectedMembers.length >= 2 && (
                 <>
                   <Avatar className="absolute inset-s-0 top-0 z-0" size="xxs" aria-hidden="true">
                     <AvatarFallback>{getAvatarInitial(selectedMembers[0]!.name)}</AvatarFallback>
-                    <AccountAvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
+                    <AvatarImage src={selectedMembers[0]!.avatar_url || undefined} alt="" />
                   </Avatar>
                   <Avatar
                     className="absolute inset-e-0 bottom-0 z-10"
@@ -171,7 +170,7 @@ const PermissionSelector = ({
                     aria-hidden="true"
                   >
                     <AvatarFallback>{getAvatarInitial(selectedMembers[1]!.name)}</AvatarFallback>
-                    <AccountAvatarImage src={selectedMembers[1]!.avatar_url || undefined} alt="" />
+                    <AvatarImage src={selectedMembers[1]!.avatar_url || undefined} alt="" />
                   </Avatar>
                 </>
               )}
@@ -219,7 +218,7 @@ const PermissionSelector = ({
               leftIcon={
                 <Avatar className="shrink-0" size="sm" aria-hidden="true">
                   <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-                  <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                  <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
                 </Avatar>
               }
               text={t(($) => $['form.permissionsOnlyMe'], { ns: 'datasetSettings' })}
@@ -270,7 +269,7 @@ const PermissionSelector = ({
                     leftIcon={
                       <Avatar className="shrink-0" size="sm" aria-hidden="true">
                         <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
-                        <AccountAvatarImage src={userProfile.avatar_url || undefined} alt="" />
+                        <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
                       </Avatar>
                     }
                     name={userProfile.name}
@@ -286,7 +285,7 @@ const PermissionSelector = ({
                     leftIcon={
                       <Avatar className="shrink-0" size="sm" aria-hidden="true">
                         <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
-                        <AccountAvatarImage src={member.avatar_url || undefined} alt="" />
+                        <AvatarImage src={member.avatar_url || undefined} alt="" />
                       </Avatar>
                     }
                     name={member.name}
