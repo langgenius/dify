@@ -45,7 +45,6 @@ from enums import DeploymentEdition
 from extensions.application_services.app_moderation import AppModeration
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.entities import WorkflowStartReason
-from graphon.enums import WorkflowType
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
 from graphon.runtime import RuntimeState
 from libs.broadcast_channel.channel import Subscriber, SupportsPreparedSubscription
@@ -53,6 +52,7 @@ from machinery.context import AppRequestContext
 from models.enums import ConversationFromSource, EndUserType, MessageStatus
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, EndUser, Message
+from models.workflow import WorkflowType
 from services.moderation_adapters import HostedOpenAIModerationGateway
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
@@ -556,7 +556,12 @@ def test_chatflow_model_failures_do_not_override_graphon_results(
         },
     )
     config = AdvancedChatAppConfigManager.get_app_config(app_model=app, workflow=workflow)
-    user = EndUser(id="end-user-1", tenant_id=app.tenant_id, type="session", session_id="session-id")
+    user = EndUser(
+        id="end-user-1",
+        tenant_id=app.tenant_id,
+        type=EndUserType.SERVICE_API if invoke_from == InvokeFrom.SERVICE_API else EndUserType.BROWSER,
+        session_id="session-id",
+    )
     conversation = make_conversation(app_id=app.id, mode=app.mode, from_source=ConversationFromSource.API)
     message = make_message(
         app_id=app.id,

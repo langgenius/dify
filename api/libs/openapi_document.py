@@ -52,10 +52,10 @@ class OpenAPISchema(_RefKeyword, total=False, extra_items=OpenAPIJSON):
     properties: dict[str, OpenAPISchema]
     required: list[str]
     items: OpenAPISchema
-    additionalProperties: OpenAPISchema | bool
-    anyOf: list[OpenAPISchema]
-    oneOf: list[OpenAPISchema]
-    allOf: list[OpenAPISchema]
+    additionalProperties: OpenAPISchema | bool  # noqa: N815  # OpenAPI wire key.
+    anyOf: list[OpenAPISchema]  # noqa: N815  # OpenAPI wire key.
+    oneOf: list[OpenAPISchema]  # noqa: N815  # OpenAPI wire key.
+    allOf: list[OpenAPISchema]  # noqa: N815  # OpenAPI wire key.
     discriminator: OpenAPIDiscriminator
 
 
