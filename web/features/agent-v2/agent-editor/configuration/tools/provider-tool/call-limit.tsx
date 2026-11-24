@@ -3,8 +3,14 @@
 import type { AgentToolAction } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  NumberField,
+  NumberFieldControls,
+  NumberFieldDecrement,
+  NumberFieldGroup,
+  NumberFieldIncrement,
+  NumberFieldInput,
+} from '@langgenius/dify-ui/number-field'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useSetAtom } from 'jotai'
@@ -26,7 +32,7 @@ export function ToolCallLimit({
   const limit = action.maxCallsPerRun
   const enabled = limit != null
   const [lastValid, setLastValid] = useState(limit ?? 3)
-  const [draft, setDraft] = useState(String(limit ?? 3))
+  const [draft, setDraft] = useState<number | null>(limit ?? 3)
   const [invalid, setInvalid] = useState(false)
   const titleId = useId()
 
@@ -35,7 +41,7 @@ export function ToolCallLimit({
     setPreviousLimit(limit)
     if (limit != null) {
       setLastValid(limit)
-      setDraft(String(limit))
+      setDraft(limit)
       setInvalid(false)
     }
   }
@@ -48,29 +54,15 @@ export function ToolCallLimit({
 
   const save = (value: number | null) =>
     setCallLimit({ toolId, actionId: action.id, maxCallsPerRun: value })
-  const commit = () => {
+  const commit = (value = draft) => {
     if (!enabled) return
-    const value = Number(draft)
-    if (!draft.trim() || !Number.isSafeInteger(value) || value <= 0) {
+    if (value == null || !Number.isSafeInteger(value) || value <= 0) {
       setInvalid(true)
       return
     }
     setInvalid(false)
     setLastValid(value)
     if (value !== limit) save(value)
-  }
-
-  const step = (direction: number) => {
-    const parsed = Number(draft)
-    const next = Math.max(
-      1,
-      (Number.isSafeInteger(parsed) && parsed > 0 ? parsed : lastValid) + direction,
-    )
-    if (!Number.isSafeInteger(next)) return
-    setDraft(String(next))
-    setLastValid(next)
-    setInvalid(false)
-    save(next)
   }
 
   return (
@@ -105,7 +97,7 @@ export function ToolCallLimit({
               checked={enabled}
               onCheckedChange={(checked) => {
                 setInvalid(false)
-                setDraft(String(lastValid))
+                setDraft(lastValid)
                 save(checked ? lastValid : null)
               }}
             />
@@ -114,47 +106,42 @@ export function ToolCallLimit({
             <FieldLabel className={cn('system-sm-regular', !enabled && 'text-text-disabled')}>
               {t(($) => $['toolCallLimit.maximum'])}
             </FieldLabel>
-            <InputGroup className="w-20">
-              <InputGroupInput
-                name="maximumCalls"
-                type="number"
-                min={1}
-                step={1}
-                required
-                disabled={!enabled}
-                value={draft}
-                onValueChange={(value) => {
-                  setDraft(value)
-                  if (Number.isSafeInteger(Number(value)) && Number(value) > 0) setInvalid(false)
-                }}
-                onBlur={commit}
-              />
-              <InputGroupAddon
-                align="inline-end"
-                className="w-6 flex-col border-s border-divider-subtle p-0"
-              >
-                <IconButton
-                  type="button"
-                  size="xs"
-                  className="w-full flex-1 rounded-none"
-                  disabled={!enabled}
-                  aria-label={t(($) => $['operation.increaseValue'], { ns: 'common' })}
-                  onClick={() => step(1)}
-                >
-                  <span aria-hidden className="i-ri-arrow-up-s-line size-3" />
-                </IconButton>
-                <IconButton
-                  type="button"
-                  size="xs"
-                  className="w-full flex-1 rounded-none"
-                  disabled={!enabled || Number(draft) === 1}
-                  aria-label={t(($) => $['operation.decreaseValue'], { ns: 'common' })}
-                  onClick={() => step(-1)}
-                >
-                  <span aria-hidden className="i-ri-arrow-down-s-line size-3" />
-                </IconButton>
-              </InputGroupAddon>
-            </InputGroup>
+            <NumberField
+              name="maximumCalls"
+              min={1}
+              max={Number.MAX_SAFE_INTEGER}
+              step={1}
+              smallStep={1}
+              snapOnStep
+              allowOutOfRange
+              required
+              disabled={!enabled}
+              value={draft}
+              onValueChange={(value) => {
+                setDraft(value)
+                if (value != null && Number.isSafeInteger(value) && value > 0) setInvalid(false)
+              }}
+              onValueCommitted={(value) => commit(value)}
+            >
+              <NumberFieldGroup className="w-20">
+                <NumberFieldInput
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      commit()
+                    }
+                  }}
+                />
+                <NumberFieldControls>
+                  <NumberFieldIncrement
+                    aria-label={t(($) => $['operation.increaseValue'], { ns: 'common' })}
+                  />
+                  <NumberFieldDecrement
+                    aria-label={t(($) => $['operation.decreaseValue'], { ns: 'common' })}
+                  />
+                </NumberFieldControls>
+              </NumberFieldGroup>
+            </NumberField>
             <FieldError match={invalid} className="col-span-2">
               {t(($) => $['toolCallLimit.invalid'])}
             </FieldError>
