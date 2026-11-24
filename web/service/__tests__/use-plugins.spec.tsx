@@ -33,18 +33,15 @@ import {
   useRemoveFilteredInstalledPluginPageOnUnmount,
 } from '../use-plugins'
 
-const { mockGet, mockGetMarketplace, mockPost, mockRequest } = vi.hoisted(() => ({
+const { mockGet, mockPost, mockRequest } = vi.hoisted(() => ({
   mockGet: vi.fn(),
-  mockGetMarketplace: vi.fn(),
   mockPost: vi.fn(),
   mockRequest: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  getMarketplace: mockGetMarketplace,
   post: mockPost,
-  postMarketplace: vi.fn(),
   request: mockRequest,
 }))
 
@@ -79,7 +76,6 @@ vi.mock('@/context/permission-state', async () => {
 
 beforeEach(() => {
   mockGet.mockReset()
-  mockGetMarketplace.mockReset()
   mockPost.mockReset()
 })
 

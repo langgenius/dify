@@ -124,6 +124,16 @@ export default defineConfig(({ command, mode, isPreview }) => {
       // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
       attachmentsDir: './.vitest-browser/attachments',
       forceRerunTriggers,
+      // boundary: Monaco's word highlighter schedules work on a 50 ms `Delayer` after cursor, focus
+      // and content changes and never handles the promise it returns, so disposing an editor inside
+      // that window rejects it with Monaco's `CancellationError`, which Monaco treats as expected.
+      // Browser specs unmount right after their last interaction, so ignore only that rejection.
+      onUnhandledError: (error) =>
+        !(
+          error.name === 'Canceled' &&
+          error.message === 'Canceled' &&
+          error.stack?.includes('/vs/editor/editor.main.js:')
+        ),
       coverage: {
         provider: 'v8',
         // Unit uploads establish the full source denominator; browser uploads add executed code.
