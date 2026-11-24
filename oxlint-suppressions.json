@@ -3296,11 +3296,14 @@
     }
   },
   "web/service/share.ts": {
+    "no-restricted-globals": {
+      "count": 1
+    },
     "no-restricted-imports": {
       "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 10
+      "count": 11
     },
     "typescript/no-explicit-any": {
       "count": 1

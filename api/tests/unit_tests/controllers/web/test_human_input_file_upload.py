@@ -261,18 +261,7 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
     service.upload_remote_file.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "request_body",
-    [
-        pytest.param(
-            {"data": {"url": "https://example.com/file.txt"}, "content_type": "multipart/form-data"}, id="form"
-        ),
-        pytest.param({"json": {"url": "https://example.com/file.txt"}}, id="json"),
-    ],
-)
-def test_remote_upload_delegates_to_human_input_upload_service(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, request_body: dict[str, object]
-) -> None:
+def test_remote_upload_delegates_to_human_input_upload_service(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
     service = MagicMock()
     context = _upload_context()
     service.validate_upload_token.return_value = context
@@ -283,7 +272,8 @@ def test_remote_upload_delegates_to_human_input_upload_service(
         "/api/human-input-forms/files",
         method="POST",
         headers={"Authorization": "Bearer hitl_upload_token-1"},
-        **request_body,
+        data={"url": "https://example.com/file.txt"},
+        content_type="multipart/form-data",
     ):
         result, status = HumanInputFileUploadApi().post()
 

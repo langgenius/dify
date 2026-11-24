@@ -128,13 +128,7 @@ def _parse_local_upload_file() -> FileStorage:
 
 
 def _parse_upload_form() -> HumanInputFileUploadFormPayload:
-    fields: dict[str, object] = dict(request.form.to_dict(flat=True))
-    # Remote-URL uploads carry no file, so contract clients send their fields as JSON.
-    if not fields and request.is_json:
-        payload = request.get_json(silent=True)
-        if isinstance(payload, dict):
-            fields = payload
-    return HumanInputFileUploadFormPayload.model_validate(fields)
+    return HumanInputFileUploadFormPayload.model_validate(request.form.to_dict(flat=True))
 
 
 def _upload_local_file(
@@ -217,12 +211,7 @@ class HumanInputFileUploadApi(Resource):
         consumes=["multipart/form-data"],
         params={
             "file": {"description": "Local file to upload", "in": "formData", "type": "file", "required": False},
-            "url": {
-                "description": "Remote file URL to fetch; may also be sent as a JSON body",
-                "in": "formData",
-                "type": "string",
-                "required": False,
-            },
+            "url": {"description": "Remote file URL to fetch", "in": "formData", "type": "string", "required": False},
         },
     )
     def post(self) -> JsonResponseWithStatus:
