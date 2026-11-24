@@ -32,7 +32,7 @@ import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
 import { resolveWebAppAddress } from './webapp-address'
 
-type IOnDataMoreInfo = {
+export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
   taskId?: string
