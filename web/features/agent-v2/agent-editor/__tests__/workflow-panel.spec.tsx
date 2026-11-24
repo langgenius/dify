@@ -24,7 +24,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 
-const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+const ssePost = vi.hoisted(() => vi.fn<import('@/test/stream-recorder').RecordedStreamCall>())
 
 const api = vi.hoisted(() => ({
   loadBuildDraft: vi.fn(),

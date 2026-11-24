@@ -14,7 +14,25 @@ vi.mock('../base', () => ({
   getPublic: vi.fn(),
   patchPublic: vi.fn(),
   postPublic: vi.fn(),
-  request: async (url: string, _init: unknown, options: { request: Request }) => {
+  request: async (
+    url: string,
+    _init: unknown,
+    options: { request: Request; onUploadProgress?: unknown; timeout?: false },
+  ) => {
+    // The HITL upload contract: record the token header, multipart or JSON fields and progress hook.
+    if (url === '/human-input-forms/files') {
+      const contentType = options.request.headers.get('content-type') ?? ''
+      const body = contentType.startsWith('multipart/form-data')
+        ? Object.fromEntries((await options.request.formData()).entries())
+        : await options.request.json()
+      const result = await mockUpload({
+        authorization: options.request.headers.get('authorization'),
+        body,
+        onUploadProgress: options.onUploadProgress,
+        timeout: options.timeout,
+      })
+      return Response.json(result ?? {})
+    }
     const text = await options.request.text()
     const result = await mockPublicRequest(
       url,
@@ -24,7 +42,6 @@ vi.mock('../base', () => ({
     return Response.json(result ?? {})
   },
   ssePost: vi.fn(),
-  upload: (...args: unknown[]) => mockUpload(...args),
 }))
 
 vi.mock('../webapp-auth', () => ({
@@ -102,21 +119,14 @@ describe('human input form upload services', () => {
     expect(mockPublicRequest.mock.calls).toEqual([
       ['/form/human_input/local-form-token/upload-token', 'POST'],
     ])
-    expect(mockUpload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.any(FormData),
-        headers: {
-          Authorization: 'bearer hitl-upload-token',
-        },
-      }),
-      true,
-      '/human-input-forms/files',
-    )
-    const uploadOptions = mockUpload.mock.calls[0]![0]
-    expect(uploadOptions.data.get('file')).toBe(file)
-    uploadOptions.onprogress(
-      new ProgressEvent('progress', { lengthComputable: true, loaded: 3, total: 7 }),
-    )
+    expect(mockUpload).toHaveBeenCalledExactlyOnceWith({
+      authorization: 'bearer hitl-upload-token',
+      body: { file: expect.objectContaining({ name: 'test.txt', size: 7 }) },
+      onUploadProgress: expect.any(Function),
+      // Uploads keep the legacy XHR's lack of a time limit.
+      timeout: false,
+    })
+    mockUpload.mock.calls[0]![0].onUploadProgress({ loaded: 3, total: 7 })
     expect(onProgressCallback).toHaveBeenCalledWith(42)
     expect(onSuccessCallback).toHaveBeenCalledWith(expect.objectContaining({ id: 'file-1' }))
     expect(onErrorCallback).not.toHaveBeenCalled()
@@ -148,19 +158,13 @@ describe('human input form upload services', () => {
     expect(mockPublicRequest.mock.calls).toEqual([
       ['/form/human_input/remote-form-token/upload-token', 'POST'],
     ])
-    expect(mockUpload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.any(FormData),
-        headers: {
-          Authorization: 'bearer hitl-remote-token',
-        },
-      }),
-      true,
-      '/human-input-forms/files',
-    )
-    const uploadCall = mockUpload.mock.calls[0]
-    const formData = uploadCall?.[0]?.data as FormData
-    expect(formData.get('url')).toBe('https://example.com/file.txt')
+    expect(mockUpload).toHaveBeenCalledExactlyOnceWith({
+      authorization: 'bearer hitl-remote-token',
+      body: { url: 'https://example.com/file.txt' },
+      onUploadProgress: undefined,
+      // Remote URLs finish only after the server fetches the file, so they have no time limit.
+      timeout: false,
+    })
     expect(response).toEqual(expect.objectContaining({ id: 'remote-file-1' }))
   })
 

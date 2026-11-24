@@ -23,6 +23,7 @@ import type {
   StreamCallbacks,
   StreamSender,
 } from './event-stream'
+import type { OnUploadProgress } from './xhr-fetch'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
@@ -47,7 +48,6 @@ import {
   getPublic as get,
   patchPublic as patch,
   postPublic as post,
-  upload,
 } from './base'
 import { streamEvents } from './event-stream'
 import { resolveWebAppAddress } from './webapp-address'
@@ -799,8 +799,8 @@ const getHumanInputFormUploadToken = async (formToken: string) => {
 
 const uploadHumanInputFormFile = async (
   formToken: string,
-  formData: FormData,
-  onProgress?: (e: ProgressEvent) => void,
+  body: { file: File } | { url: string },
+  onUploadProgress?: OnUploadProgress,
 ) => {
   const scope = captureAppAccessScope()
   const ensureCanUpload = () => {
@@ -818,17 +818,17 @@ const uploadHumanInputFormFile = async (
   }
   ensureCanUpload()
 
-  return upload(
+  return webAppClient.humanInputForms.files.post(
+    { body },
     {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      headers: {
-        Authorization: `bearer ${uploadToken}`,
+      context: {
+        silent: true,
+        headers: { Authorization: `bearer ${uploadToken}` },
+        onUploadProgress,
+        // The legacy XHR upload had no time limit; remote URLs finish only after the server fetches the file.
+        timeout: false,
       },
-      onprogress: onProgress,
     },
-    true,
-    '/human-input-forms/files',
   )
 }
 
@@ -839,22 +839,10 @@ export const uploadHumanInputFormLocalFile = async ({
   onSuccessCallback,
   onErrorCallback,
 }: HumanInputFormLocalFileUploadParams) => {
-  const formData = new FormData()
-  formData.append('file', file)
-
-  const onProgress = (e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor((e.loaded / e.total) * 100)
-      onProgressCallback(percent)
-    }
-  }
-
   try {
-    const response = (await uploadHumanInputFormFile(
-      formToken,
-      formData,
-      onProgress,
-    )) as HumanInputFormLocalFileUploadResponse
+    const response = (await uploadHumanInputFormFile(formToken, { file }, ({ loaded, total }) => {
+      onProgressCallback(Math.floor((loaded / total) * 100))
+    })) as HumanInputFormLocalFileUploadResponse
 
     onSuccessCallback(response)
   } catch (error) {
@@ -866,13 +854,9 @@ export const uploadHumanInputFormRemoteFileInfo = async (
   formToken: string,
   url: string,
 ): Promise<HumanInputFormRemoteFileUploadResponse> => {
-  const formData = new FormData()
-  formData.append('url', url)
-
-  return uploadHumanInputFormFile(
-    formToken,
-    formData,
-  ) as Promise<HumanInputFormRemoteFileUploadResponse>
+  return uploadHumanInputFormFile(formToken, {
+    url,
+  }) as Promise<HumanInputFormRemoteFileUploadResponse>
 }
 
 export const submitHumanInputForm = (

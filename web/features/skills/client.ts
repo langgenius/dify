@@ -7,11 +7,9 @@ import type {
   DefaultModel,
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-// oxlint-disable-next-line no-restricted-imports
-import type { IOnCompleted, IOnData, IOnError } from '@/service/base'
-// oxlint-disable-next-line no-restricted-imports
-import { ssePost } from '@/service/base'
+import type { IOnCompleted, IOnData, IOnError } from '@/service/event-stream'
 import { consoleClient } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 
 export async function uploadSkillFile(
   file: File,
@@ -68,7 +66,7 @@ export async function fetchSkillArchiveBlob(skillId: string): Promise<Blob> {
   )
 }
 
-export function sendSkillAssistMessage({
+export async function sendSkillAssistMessage({
   attachments,
   getAbortController,
   message,
@@ -96,32 +94,28 @@ export function sendSkillAssistMessage({
   targetPath?: string
 }) {
   let streamErrorHandled = false
-  return ssePost(
-    `/workspaces/current/skills/${encodeURIComponent(skillId)}/assist/messages`,
-    {
-      body: {
-        attachments,
-        history,
-        message,
-        model,
-        target_path: targetPath,
-      },
-    },
+  streamEvents(
+    (options) =>
+      consoleClient.workspaces.current.skills.bySkillId.assist.messages.post(
+        {
+          params: { skill_id: skillId },
+          body: {
+            attachments,
+            history,
+            message,
+            model,
+            target_path: targetPath,
+          },
+        },
+        options,
+      ),
     {
       silent: true,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)
       },
-      onData: (chunk, isFirstMessage, moreInfo) => {
-        if (moreInfo.errorMessage) {
-          streamErrorHandled = true
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          return
-        }
-
-        onData?.(chunk, isFirstMessage, moreInfo)
-      },
+      onData,
       onError: (errorMessage, errorCode) => {
         streamErrorHandled = true
         onError?.(errorMessage, errorCode)
