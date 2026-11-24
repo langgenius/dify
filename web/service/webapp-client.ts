@@ -1,7 +1,8 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { OnUploadProgress } from './xhr-fetch'
-import { contract as webAppContract } from '@dify/contracts/api/web/orpc.gen'
+import { contract as generatedWebAppContract } from '@dify/contracts/api/web/orpc.gen'
+import { webAppSsoContract } from '@dify/contracts/sso'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
@@ -18,6 +19,11 @@ type WebAppClientContext = {
   headers?: Record<string, string>
   /** Reports request-body upload progress; the call is sent over XHR without the default timeout. */
   onUploadProgress?: OnUploadProgress
+}
+
+const webAppContract = {
+  ...generatedWebAppContract,
+  enterprise: { sso: webAppSsoContract },
 }
 
 const getPublicApiBaseURL = () => new URL(PUBLIC_API_PREFIX, window.location.origin)

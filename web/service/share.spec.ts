@@ -48,6 +48,12 @@ const {
   fetchAppParams,
   fetchChatList,
   textToAudioStream,
+  fetchWebSAMLSSOUrl,
+  fetchWebOIDCSSOUrl,
+  fetchWebOAuth2SSOUrl,
+  fetchMembersSAMLSSOUrl,
+  fetchMembersOIDCSSOUrl,
+  fetchMembersOAuth2SSOUrl,
 } = await import('./share')
 
 const publicRequestCalls = () =>
@@ -623,5 +629,30 @@ describe('textToAudioStream', () => {
       { body, method: 'POST' },
       { isPublicAPI, needAllResponseContent: true },
     )
+  })
+})
+
+describe('web app SSO login URLs', () => {
+  beforeEach(() => {
+    request.mockReset().mockImplementation(async () => Response.json({ url: 'https://idp' }))
+  })
+
+  it.each([
+    ['SAML', fetchWebSAMLSSOUrl, '/enterprise/sso/saml/login'],
+    ['OIDC', fetchWebOIDCSSOUrl, '/enterprise/sso/oidc/login'],
+    ['OAuth2', fetchWebOAuth2SSOUrl, '/enterprise/sso/oauth2/login'],
+    ['member SAML', fetchMembersSAMLSSOUrl, '/enterprise/sso/members/saml/login'],
+    ['member OIDC', fetchMembersOIDCSSOUrl, '/enterprise/sso/members/oidc/login'],
+    ['member OAuth2', fetchMembersOAuth2SSOUrl, '/enterprise/sso/members/oauth2/login'],
+  ])('requests the %s login URL on the public API', async (_name, fetchUrl, path) => {
+    await expect(fetchUrl('app-code', 'https://dify.test/chat/app?x=1')).resolves.toEqual({
+      url: 'https://idp',
+    })
+
+    const query = new URLSearchParams({
+      app_code: 'app-code',
+      redirect_url: 'https://dify.test/chat/app?x=1',
+    })
+    expect(publicRequestCalls()).toEqual([[`${path}?${query}`, 'GET']])
   })
 })
