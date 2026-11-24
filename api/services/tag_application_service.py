@@ -6,6 +6,17 @@ from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
 
+# String.prototype.trim uses ECMAScript whitespace and line terminators on the Console.
+_TAG_NAME_PADDING = (
+    "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008"
+    "\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+)
+
+
+def normalize_tag_name(name: str) -> str:
+    """Accept a raw Console tag name and remove only surrounding whitespace, preserving case and internal text."""
+    return name.strip(_TAG_NAME_PADDING)
+
 
 class TagKind(StrEnum):
     """Application-owned tag pools with the Console's existing wire values."""

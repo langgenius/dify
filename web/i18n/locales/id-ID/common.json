@@ -322,6 +322,7 @@
   "tag.deleteTip": "Tag sedang digunakan, hapus?",
   "tag.failed": "Pembuatan tag gagal",
   "tag.manageTags": "Kelola Tag",
+  "tag.nameRequired": "Masukkan nama tag.",
   "tag.noTag": "Tidak ada tag",
   "tag.noTagsYet": "Belum ada tag.",
   "tag.noTagsYetCreateHint": "Belum ada tag. Ketik nama untuk membuat tag baru.",

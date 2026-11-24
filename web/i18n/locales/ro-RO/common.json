@@ -322,6 +322,7 @@
   "tag.deleteTip": "Eticheta este utilizată, ștergeți-o?",
   "tag.failed": "Crearea etichetei a eșuat",
   "tag.manageTags": "Gestionați etichete",
+  "tag.nameRequired": "Introduceți un nume pentru etichetă.",
   "tag.noTag": "Nicio etichetă",
   "tag.noTagsYet": "Nu există încă etichete.",
   "tag.noTagsYetCreateHint": "Nu există încă etichete. Introduceți un nume pentru a crea o etichetă.",

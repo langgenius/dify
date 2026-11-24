@@ -322,6 +322,7 @@
   "tag.deleteTip": "A tag está sendo usada, excluí-la?",
   "tag.failed": "Falha na criação da tag",
   "tag.manageTags": "Gerenciar tags",
+  "tag.nameRequired": "Digite um nome para a tag.",
   "tag.noTag": "Sem tags",
   "tag.noTagsYet": "Ainda não há tags.",
   "tag.noTagsYetCreateHint": "Ainda não há tags. Digite um nome para criar uma.",

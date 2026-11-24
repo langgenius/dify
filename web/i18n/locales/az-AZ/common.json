@@ -322,6 +322,7 @@
   "tag.deleteTip": "Etiket istifadə olunur, silinsin?",
   "tag.failed": "Etiket yaratmaq mümkün olmadı",
   "tag.manageTags": "Etiketləri idarə et",
+  "tag.nameRequired": "Etiket üçün ad daxil edin.",
   "tag.noTag": "Etiket yoxdur",
   "tag.noTagsYet": "Hələ etiket yoxdur.",
   "tag.noTagsYetCreateHint": "Hələ etiket yoxdur. Yeni etiket yaratmaq üçün ad yazın.",

@@ -89,12 +89,13 @@ it('keeps a failed draft available for correction and retry', async () => {
   })
 })
 
-it('ignores empty submissions through Enter and blur', async () => {
+it('rejects whitespace-only names and lets the user correct the draft', async () => {
   await renderModal()
-  await input().click()
+  await input().fill('   ')
   await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameRequired')
   await userEvent.tab()
-  await expect.element(dialog()).toBeVisible()
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
   // The next real submission goes through the same path, so an empty request would precede it.
   await input().fill('NextTag')
   await userEvent.keyboard('{Enter}')

@@ -2145,6 +2145,7 @@ export default interface Resources {
     'tag.deleteTip': 'The tag is being used, delete it?'
     'tag.failed': 'Tag creation failed'
     'tag.manageTags': 'Manage Tags'
+    'tag.nameRequired': 'Enter a tag name.'
     'tag.noTag': 'No tags'
     'tag.noTagsYet': 'No tags yet.'
     'tag.noTagsYetCreateHint': 'No tags yet. Type a name to create one.'

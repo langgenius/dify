@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
@@ -74,6 +75,25 @@ def tags_service() -> Iterator[MagicMock]:
     tags = MagicMock()
     with patch.object(module, "application_services", return_value=SimpleNamespace(tags=tags)):
         yield tags
+
+
+@pytest.mark.parametrize(
+    ("payload", "fields"),
+    [(TagBasePayload, {"type": TagType.AGENT}), (TagUpdateRequestPayload, {})],
+)
+def test_tag_names_validate_length_after_trimming(
+    payload: type[TagUpdateRequestPayload], fields: dict[str, TagType]
+) -> None:
+    for blank in ("   ", "\t\u3000\ufeff"):
+        with pytest.raises(ValidationError) as error:
+            payload.model_validate({**fields, "name": blank})
+        assert error.value.errors()[0]["type"] == "string_too_short"
+
+    name = "長  名" + "🚀" * 46
+    assert payload.model_validate({**fields, "name": f"\u3000\t{name}  "}).name == name
+    with pytest.raises(ValidationError) as error:
+        payload.model_validate({**fields, "name": name + "a"})
+    assert error.value.errors()[0]["type"] == "string_too_long"
 
 
 class TestTagListApi:

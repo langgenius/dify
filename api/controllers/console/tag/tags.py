@@ -29,16 +29,22 @@ from services.tag_application_service import (
     TagNameConflictError,
     TagNotFoundError,
     UpdateTagInput,
+    normalize_tag_name,
 )
-
-
-class TagBasePayload(BaseModel):
-    name: str = Field(description="Tag name", min_length=1, max_length=50)
-    type: TagType = Field(description="Tag type")
 
 
 class TagUpdateRequestPayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def normalize_name(cls, value: object) -> object:
+        """Strip surrounding whitespace before length validation; other inputs retain normal type validation."""
+        return normalize_tag_name(value) if isinstance(value, str) else value
+
+
+class TagBasePayload(TagUpdateRequestPayload):
+    type: TagType = Field(description="Tag type")
 
 
 class TagBindingPayload(BaseModel):

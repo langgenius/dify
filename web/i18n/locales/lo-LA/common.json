@@ -322,6 +322,7 @@
   "tag.deleteTip": "ແທັກກຳລັງຖືກໃຊ້ງານຢູ່, ຕ້ອງການລຶບບໍ?",
   "tag.failed": "ສ້າງແທັກບໍ່ສຳເລັດ",
   "tag.manageTags": "ຈັດການແທັກ",
+  "tag.nameRequired": "ປ້ອນຊື່ແທັກ.",
   "tag.noTag": "ບໍ່ມີແທັກ",
   "tag.noTagsYet": "ຍັງບໍ່ມີແທັກ.",
   "tag.noTagsYetCreateHint": "ຍັງບໍ່ມີແທັກ. ພິມຊື່ເພື່ອສ້າງແທັກໃໝ່.",

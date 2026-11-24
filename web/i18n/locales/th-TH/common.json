@@ -322,6 +322,7 @@
   "tag.deleteTip": "แท็กกําลังถูกใช้ลบออก?",
   "tag.failed": "การสร้างแท็กล้มเหลว",
   "tag.manageTags": "จัดการแท็ก",
+  "tag.nameRequired": "ป้อนชื่อแท็ก",
   "tag.noTag": "ไม่มีแท็ก",
   "tag.noTagsYet": "ยังไม่มีแท็ก",
   "tag.noTagsYetCreateHint": "ยังไม่มีแท็ก พิมพ์ชื่อเพื่อสร้างแท็กใหม่",
