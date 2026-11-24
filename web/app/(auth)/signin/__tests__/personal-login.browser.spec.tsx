@@ -198,6 +198,49 @@ it('returns email-code login through signin with its personal destination intact
   )
 })
 
+it('preserves the My Apps challenge across password login and returns the one-use code', async () => {
+  const challenge = 'b'.repeat(43)
+  mocks.searchParams.set('code_challenge', challenge)
+  mocks.searchParams.set('code_challenge_method', 'S256')
+  setWebAppAccessToken('legacy-bearer')
+  const screen = await showSignin(false, appFeatures)
+  await screen.getByLabelText('login.email').fill('personal@example.com')
+  await screen.getByLabelText('login.password').fill('Password123!')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(1)
+  const resume = new URL(mocks.redirect.mock.calls[0]![0].href)
+  expect(resume.searchParams.get('redirect_url')).toBe(destination)
+  expect(resume.searchParams.get('code_challenge')).toBe(challenge)
+  await screen.unmount()
+
+  mocks.searchParams = resume.searchParams
+  const webReturn = new URL(`${appFeatures.webapp_url}${destination}`)
+  vi.mocked(fetch).mockImplementationOnce(async (input, init) => {
+    requests.push(new Request(input, init))
+    return Response.json({
+      logged_in: true,
+      redirect_url: webReturn.href,
+      login_code: 'one-use-portal-code',
+    })
+  })
+  await showSignin(false, appFeatures)
+
+  await expect.poll(() => mocks.redirect.mock.calls.length).toBe(2)
+  expect(Object.fromEntries(new URL(requests[2]!.url).searchParams)).toEqual({
+    mode: 'end_user',
+    redirect_url: destination,
+    code_challenge: challenge,
+  })
+  const callback = new URL(mocks.redirect.mock.calls[1]![0].href)
+  expect(callback.origin).toBe(webReturn.origin)
+  expect(callback.pathname).toBe('/web/my-apps')
+  expect(callback.hash).toBe('#recent')
+  expect(callback.searchParams.get('search')).toBe('hello world')
+  expect(callback.searchParams.get('login_code')).toBe('one-use-portal-code')
+  expect(getWebAppAccessToken()).toBe('legacy-bearer')
+})
+
 it('preserves personal mode and the complete return URL across OAuth', async () => {
   const screen = await showSignin()
   const github = screen.getByRole('link', { name: 'login.withGitHub' })

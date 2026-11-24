@@ -5,10 +5,14 @@ import {
   startWebAppAccountSession,
 } from '../webapp-auth'
 import { webAppClient } from './index'
+import {
+  createWebAppLoginProof,
+  readWebAppLoginTransaction,
+  removeWebAppLoginTransaction,
+  storeWebAppLoginTransaction,
+} from './login-transaction'
 
 const TRANSACTION_PREFIX = 'webapp-account-login-'
-const TRANSACTION_TTL = 30 * 60 * 1000
-type Transaction = { verifier: string; redirectUrl: string; createdAt: number }
 const starts = new Map<string, Promise<string>>()
 const exchanges = new Map<
   string,
@@ -41,42 +45,11 @@ function transactionKey(code: string) {
   return `${TRANSACTION_PREFIX}${code}`
 }
 function removeTransaction(code: string) {
-  try {
-    sessionStorage.removeItem(transactionKey(code))
-  } catch {}
+  removeWebAppLoginTransaction(transactionKey(code))
 }
-function readTransaction(code: string): Transaction | null {
-  try {
-    const value: unknown = JSON.parse(sessionStorage.getItem(transactionKey(code)) || 'null')
-    if (
-      value &&
-      typeof value === 'object' &&
-      'verifier' in value &&
-      typeof value.verifier === 'string' &&
-      /^[\w-]{43}$/.test(value.verifier) &&
-      'redirectUrl' in value &&
-      typeof value.redirectUrl === 'string' &&
-      'createdAt' in value &&
-      typeof value.createdAt === 'number' &&
-      Date.now() >= value.createdAt &&
-      Date.now() - value.createdAt < TRANSACTION_TTL
-    )
-      return {
-        verifier: value.verifier,
-        redirectUrl: value.redirectUrl,
-        createdAt: value.createdAt,
-      }
-  } catch {}
-  removeTransaction(code)
-  return null
+function readTransaction(code: string) {
+  return readWebAppLoginTransaction(transactionKey(code))
 }
-function base64Url(value: Uint8Array) {
-  return btoa(String.fromCharCode(...value))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '')
-}
-
 /** Only the challenge leaves the Web origin; the verifier stays in this tab. */
 export function beginWebAppAccountLogin(
   accountLoginUrl: string,
@@ -98,20 +71,10 @@ export function beginWebAppAccountLogin(
       !login.pathname.endsWith('/signin')
     )
       throw new Error('Invalid Account sign-in URL.')
-    const verifier = base64Url(crypto.getRandomValues(new Uint8Array(32)))
-    const challenge = base64Url(
-      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))),
-    )
+    const { verifier, challenge } = await createWebAppLoginProof()
     if (!isSameSession() || window.location.href !== originalUrl)
       throw new DOMException('The Web App login changed.', 'AbortError')
-    sessionStorage.setItem(
-      transactionKey(target.address.code),
-      JSON.stringify({
-        verifier,
-        redirectUrl: target.url,
-        createdAt: Date.now(),
-      } satisfies Transaction),
-    )
+    storeWebAppLoginTransaction(transactionKey(target.address.code), verifier, target.url)
     login.searchParams.set('is_end_user', '1')
     login.searchParams.set('app_code', target.address.code)
     const returnUrl = new URL(target.url)

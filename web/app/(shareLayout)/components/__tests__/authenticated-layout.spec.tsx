@@ -121,9 +121,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => ({
 
 vi.mock('@/service/share-queries', () => ({
   webAppInfoQueryOptions: () => ({ queryKey: ['appInfo'] }),
-  webAppMetaQueryOptions: () => ({ queryKey: ['appMeta'] }),
   useGetWebAppParams: () => appParamsQueryState,
   useGetWebAppAccountStatus: () => accountStatusQueryState,
+  webAppMetaQueryOptions: () => ({ queryKey: ['appMeta'] }),
 }))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({

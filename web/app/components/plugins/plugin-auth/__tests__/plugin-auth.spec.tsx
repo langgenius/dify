@@ -162,7 +162,7 @@ describe('PluginAuth', () => {
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
     expect(await screen.findByRole('button', { name: /Selected API key/ })).toBeVisible()
     expect(requests.credentials).toHaveBeenLastCalledWith({
-      params: { provider: 'test-provider' },
+      params: { provider: defaultPayload.provider },
       query: { include_credential_ids: ['2'] },
     })
   })
@@ -452,7 +452,7 @@ describe('PluginAuth', () => {
       screen.getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
     ).toHaveValue('Use your own connection')
     expect(requests.credentials).toHaveBeenLastCalledWith({
-      params: { provider: 'test-provider' },
+      params: { provider: defaultPayload.provider },
       query: { include_credential_ids: ['workspace-selected', 'workspace-default'] },
     })
   })

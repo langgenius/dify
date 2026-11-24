@@ -4,12 +4,10 @@ import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { apiError, route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import EndUserLayout from '../../layout'
 import Account from '../index'
-
-// boundary: the rendered layout uses the pathname supplied by the Next.js router.
-vi.mock('@/next/navigation', () => ({ usePathname: () => '/my-account' }))
 
 const profileError = 'Profile unavailable.'
 const fake = setupFakeApi({
@@ -34,6 +32,7 @@ it('shows a failed profile request in a toast without an inline error or Retry',
         <Account />
       </EndUserLayout>
     </QueryClientProvider>,
+    { wrapper: createTestNavigation({ url: '/my-account' }).NavigationProvider },
   )
 
   await expect.element(screen.getByRole('dialog', { name: profileError })).toBeVisible()

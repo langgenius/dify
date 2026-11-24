@@ -1,52 +1,45 @@
 import { StrictMode } from 'react'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { apiError, pendingResponse, route, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import SignInPage from '../sign-in-page'
 
-const mocks = vi.hoisted(() => ({
-  searchParams: new URLSearchParams(),
-  request: vi.fn(),
-}))
-
-vi.mock('@/next/navigation', () => ({ useSearchParams: () => mocks.searchParams }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  request: mocks.request,
-}))
 vi.mock('@/app/components/base/amplitude/utils', () => ({ resetUser: vi.fn() }))
 
+const logout = vi.fn()
+const fake = setupFakeApi({ routes: [route('POST', 'console', '/logout', logout)] })
+
 it('keeps account login blocked after logout fails and lets the user retry', async () => {
-  const retry = createDeferred<Response>()
-  mocks.searchParams = new URLSearchParams({
+  const params = new URLSearchParams({
     is_end_user: '1',
     app_code: 'current-app',
     redirect_url: '/chat/current-app',
     code_challenge: 'a'.repeat(43),
     switch_account: '1',
   })
-  mocks.request
+  logout
     .mockReset()
-    .mockRejectedValueOnce(new Error('Logout failed'))
-    .mockReturnValueOnce(retry.promise)
+    .mockRejectedValueOnce(apiError({ status: 503, message: 'Logout failed' }))
+    .mockImplementationOnce(pendingResponse)
+  const { NavigationProvider } = createTestNavigation({ url: `/signin?${params}` })
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     systemFeatures: { webapp_url: 'https://apps.example' },
   })
   const screen = await render(
     <Wrapper>
-      <StrictMode>
-        <SignInPage />
-      </StrictMode>
+      <NavigationProvider>
+        <StrictMode>
+          <SignInPage />
+        </StrictMode>
+      </NavigationProvider>
     </Wrapper>,
   )
 
   await expect.element(screen.getByRole('alert')).toHaveTextContent('Logout failed')
-  expect(mocks.request).toHaveBeenCalledOnce()
+  expect(fake.route('POST', 'console', '/logout')).toHaveBeenCalledOnce()
   await screen.getByRole('button', { name: 'common.operation.retry' }).click()
   await expect.element(screen.getByRole('progressbar', { name: 'common.loading' })).toBeVisible()
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
-  expect(mocks.request).toHaveBeenCalledTimes(2)
-  expect(mocks.request.mock.calls.every(([url]) => new URL(url).pathname.endsWith('/logout'))).toBe(
-    true,
-  )
+  expect(fake.route('POST', 'console', '/logout')).toHaveBeenCalledTimes(2)
 })

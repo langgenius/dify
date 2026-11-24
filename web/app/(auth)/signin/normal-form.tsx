@@ -56,7 +56,7 @@ function NormalForm() {
   // prevents the redirect loop on 401.
   const { data: userResp, error: probeError } = useQuery({
     ...userProfileQueryOptions(),
-    enabled: !isInviteLink && !isEndUser,
+    enabled: !isEndUser && !isInviteLink,
     throwOnError: (err) => !isUnauthorizedError(err),
     refetchOnWindowFocus: false,
   })
@@ -65,6 +65,7 @@ function NormalForm() {
     accountSession.data?.redirect_url,
     accountInput,
     systemFeatures.webapp_url,
+    accountSession.data?.login_code,
   )
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||
@@ -118,7 +119,7 @@ function NormalForm() {
   useEffect(() => {
     if (isEndUser) {
       if (accountSession.data?.logged_in && accountCallback) {
-        if (!accountInput?.app_code) startWebAppAccountSession()
+        if (!accountInput?.app_code && !accountInput?.code_challenge) startWebAppAccountSession()
         replaceLoginRedirect({ kind: 'absolute', href: accountCallback }, router.replace, basePath)
       }
       return
@@ -135,6 +136,7 @@ function NormalForm() {
     accountSession.data,
     accountCallback,
     accountInput?.app_code,
+    accountInput?.code_challenge,
     isEndUser,
     isInvitationForCurrentAccount,
     isInviteLink,

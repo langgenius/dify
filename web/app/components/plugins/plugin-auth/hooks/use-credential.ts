@@ -42,23 +42,18 @@ export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload)
   const queryClient = useQueryClient()
   const toolListQueryKey = getToolListQueryKey(providerType)
 
-  return (options?: InvalidateOptions): void | Promise<void> => {
-    const refreshed =
-      category === AuthCategory.tool
-        ? queryClient.invalidateQueries(
-            {
-              queryKey:
-                consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
-                  {
-                    input: { params: { provider } },
-                  },
-                ),
-            },
-            options,
-          )
-        : undefined
+  return (options?: InvalidateOptions) => {
     if (toolListQueryKey) void queryClient.invalidateQueries({ queryKey: toolListQueryKey })
-    return refreshed
+    if (category !== AuthCategory.tool) return
+    return queryClient.invalidateQueries(
+      {
+        queryKey:
+          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key({
+            input: { params: { provider } },
+          }),
+      },
+      options,
+    )
   }
 }
 

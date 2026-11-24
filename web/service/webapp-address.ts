@@ -3,6 +3,14 @@ import { basePath } from '@/utils/var'
 const WEB_APP_ROUTE_SEGMENTS = new Set(['agent', 'chat', 'chatbot', 'completion', 'workflow'])
 const WEB_APP_SIGNIN_SEGMENTS = new Set(['webapp-signin', 'check-code', 'login'])
 
+export const WEBAPP_PORTAL_LOGIN_CODE = 'login_code'
+
+export function withWebAppPortalLoginCode(destination: URL, loginCode: string) {
+  const url = new URL(destination)
+  url.searchParams.set(WEBAPP_PORTAL_LOGIN_CODE, loginCode)
+  return url
+}
+
 export type WebAppAddress =
   | {
       kind: 'default'
