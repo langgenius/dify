@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { DialogBody, DialogFooter } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
@@ -182,7 +183,12 @@ export function ExternalAgentDetailsForm({
           variant="primary"
           loading={pending}
           disabled={!canSave}
-          className="min-w-18"
+          className={cn(
+            'min-w-18',
+            // Loading and unavailability share data-disabled; only an active save keeps primary colors.
+            pending &&
+              'data-disabled:bg-components-button-primary-bg data-disabled:text-components-button-primary-text data-disabled:inset-ring-components-button-primary-border',
+          )}
         >
           {locked && !pending
             ? t(($) => $['external.api.retrySave'])
