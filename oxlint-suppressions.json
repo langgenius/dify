@@ -965,22 +965,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create/file-uploader/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create/file-uploader/hooks/use-file-upload.ts": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create/step-one/components/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
@@ -1197,17 +1181,6 @@
   },
   "web/app/components/datasets/documents/detail/batch-modal/csv-downloader.tsx": {
     "eslint-react/static-components": {
-      "count": 2
-    }
-  },
-  "web/app/components/datasets/documents/detail/batch-modal/csv-uploader.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
       "count": 2
     }
   },

@@ -141,6 +141,7 @@ async function base<T>(
     getAbortController,
     fetchCompat = false,
     request,
+    onUploadProgress,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -189,15 +190,21 @@ async function base<T>(
     retry: {
       methods: [],
     },
+    // Uploads with progress keep the XHR behavior of having no client-side timeout.
+    ...(onUploadProgress ? { timeout: false as const } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+    async fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
         resource.headers.forEach((value, key) => {
           mergedHeaders.append(key, value)
         })
         options.headers = mergedHeaders
+      }
+      if (onUploadProgress) {
+        const { createXhrFetch } = await import('./xhr-fetch')
+        return createXhrFetch(onUploadProgress)(resource, options)
       }
       return globalThis.fetch(resource, options)
     },

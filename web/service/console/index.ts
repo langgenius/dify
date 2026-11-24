@@ -3,6 +3,7 @@ import type { ClientLink } from '@orpc/client'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { TanstackQueryOperationContext } from '@orpc/tanstack-query'
+import type { OnUploadProgress } from '../xhr-fetch'
 import { createORPCClient, DynamicLink } from '@orpc/client'
 import { consoleBrowserLink } from './browser'
 import { createConsoleQuery } from './query-policies'
@@ -11,6 +12,8 @@ export type ConsoleClientContext = TanstackQueryOperationContext & {
   keepalive?: boolean
   silent?: boolean
   onResponseHeaders?: (headers: Headers) => void
+  /** Reports request-body upload progress; the call is sent over XHR without the default timeout. */
+  onUploadProgress?: OnUploadProgress
 }
 
 export type ConsoleClient = JsonifiedClient<

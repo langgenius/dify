@@ -1,5 +1,6 @@
 import type { FetchOptionType } from './fetch'
 import type { RequestGuard } from './request-guard'
+import type { OnUploadProgress } from './xhr-fetch'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -265,6 +266,8 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  /** Sends the request over XHR to report request-body upload progress. */
+  onUploadProgress?: OnUploadProgress
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
