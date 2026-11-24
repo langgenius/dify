@@ -1037,3 +1037,177 @@ class TestGenerateTaskPipelineCoreCases:
             assert captured_factory_args["node_execution_id"] == "exec-id"
             assert captured_factory_args["enclosing_node_id"] == "loop-id"
             assert saver_calls == [({"k": "v"}, {"out": 1})]
+
+
+class TestWorkflowGenerativeUIPipeline:
+    @staticmethod
+    def _make_generative_ui_pipeline(
+        *,
+        generative_ui_enabled: bool = True,
+        stream: bool = True,
+        outputs: dict[str, object] | None = None,
+    ) -> WorkflowAppGenerateTaskPipeline:
+        graph = {
+            "nodes": [
+                {
+                    "id": "llm-1",
+                    "data": {
+                        "type": "llm",
+                        "title": "Report LLM",
+                        "generative_ui_enabled": generative_ui_enabled,
+                    },
+                }
+            ],
+            "edges": [],
+        }
+        workflow = make_workflow(
+            workflow_id="workflow-id",
+            tenant_id="tenant",
+            app_id="app",
+            graph=json.dumps(graph),
+            created_by="user",
+        )
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id="tenant",
+            app_id="app",
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id="workflow-id",
+        )
+        entity = WorkflowAppGenerateEntity.model_construct(
+            task_id="task-1",
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id="user",
+            stream=stream,
+            invoke_from=InvokeFrom.WEB_APP,
+            trace_scope=None,
+            workflow_execution_id="run-1",
+            extras={},
+            call_depth=0,
+        )
+        runtime_state = RuntimeState(
+            workflow_id="workflow-id",
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-1"),
+            ),
+            start_at=0.0,
+            outputs=outputs or {},
+        )
+        pipeline = WorkflowAppGenerateTaskPipeline(
+            application_generate_entity=entity,
+            workflow=workflow,
+            queue_manager=SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=runtime_state),
+            user=_end_user(),
+            stream=stream,
+            draft_var_saver_factory=lambda **_kwargs: None,
+        )
+        pipeline._workflow_execution_id = "run-1"
+        pipeline._workflow_response_converter.workflow_start_to_stream_response(
+            task_id="task-1",
+            workflow_run_id="run-1",
+            workflow_id="workflow-id",
+            reason=WorkflowStartReason.INITIAL,
+        )
+        return pipeline
+
+    def test_streaming_separates_prose_and_ui_and_projects_workflow_finish_outputs(self) -> None:
+        from core.app.entities.task_entities import MessageContentStreamResponse, TextChunkStreamResponse
+
+        raw_output = 'Intro.\n<dify_ui>\nroot = Card("Q1 Report")\n</dify_ui>\nOutro.'
+        pipeline = self._make_generative_ui_pipeline(
+            generative_ui_enabled=True,
+            stream=True,
+            outputs={"report": raw_output, "count": 3},
+        )
+
+        chunk_responses = [
+            *pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(text="Intro.\n<dify_ui>\n", from_variable_selector=["llm-1", "text"])
+            ),
+            *pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(
+                    text='root = Card("Q1 Report")\n</dify_ui>\nOutro.',
+                    from_variable_selector=["llm-1", "text"],
+                )
+            ),
+        ]
+        finish_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent()))
+
+        text_chunks = [r.data.text for r in chunk_responses if isinstance(r, TextChunkStreamResponse)]
+        content_events = [r for r in chunk_responses if isinstance(r, MessageContentStreamResponse)]
+        assert "".join(text_chunks) == "Intro.\nOutro."
+        assert len(content_events) >= 1
+
+        finish = finish_responses[-1]
+        assert isinstance(finish, WorkflowFinishStreamResponse)
+        assert finish.data.outputs == {"report": "Intro.\nOutro.", "count": 3}
+        assert [part.type for part in finish.data.parts] == ["text", "openui", "text"]
+        assert finish.data.parts[1].status == "completed"
+        assert 'Card("Q1 Report")' in finish.data.parts[1].source
+
+    def test_blocking_mode_extracts_parts_from_non_streamed_outputs(self) -> None:
+        from core.app.entities.task_entities import WorkflowAppBlockingResponse
+
+        raw_output = 'Overview.\n<dify_ui>\nroot = Card("Revenue")\n</dify_ui>\n'
+        pipeline = self._make_generative_ui_pipeline(
+            generative_ui_enabled=True,
+            stream=False,
+            outputs={"result": raw_output},
+        )
+
+        blocking = pipeline._to_blocking_response(
+            pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent())
+        )
+
+        assert isinstance(blocking, WorkflowAppBlockingResponse)
+        assert blocking.data.outputs == {"result": "Overview.\n"}
+        assert [part.type for part in blocking.data.parts] == ["text", "openui"]
+        assert blocking.data.parts[1].status == "completed"
+
+    @pytest.mark.parametrize(
+        ("terminal_event", "expected_ui_status"),
+        [
+            (QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), "cancelled"),
+            (QueueWorkflowFailedEvent(error="boom", exceptions_count=1), "error"),
+        ],
+    )
+    def test_stopped_or_failed_workflow_marks_unfinished_ui_block(
+        self,
+        terminal_event: QueueStopEvent | QueueWorkflowFailedEvent,
+        expected_ui_status: str,
+    ) -> None:
+        pipeline = self._make_generative_ui_pipeline(generative_ui_enabled=True, stream=True, outputs={})
+
+        list(
+            pipeline._handle_text_chunk_event(
+                QueueTextChunkEvent(
+                    text='Partial.\n<dify_ui>\nroot = Card("Incomplete',
+                    from_variable_selector=["llm-1", "text"],
+                )
+            )
+        )
+        responses = list(pipeline._handle_workflow_failed_and_stop_events(terminal_event))
+
+        finish = responses[-1]
+        assert isinstance(finish, WorkflowFinishStreamResponse)
+        openui_parts = [part for part in finish.data.parts if part.type == "openui"]
+        assert len(openui_parts) == 1
+        assert openui_parts[0].status == expected_ui_status
+
+    def test_disabled_workflow_leaves_outputs_untouched_and_omits_parts(self) -> None:
+        raw_output = 'Literal.\n<dify_ui>\nroot = Card("Raw")\n</dify_ui>\n'
+        pipeline = self._make_generative_ui_pipeline(
+            generative_ui_enabled=False,
+            stream=True,
+            outputs={"result": raw_output},
+        )
+
+        finish_responses = list(pipeline._handle_workflow_succeeded_event(QueueWorkflowSucceededEvent()))
+        finish = finish_responses[-1]
+        assert isinstance(finish, WorkflowFinishStreamResponse)
+        assert finish.data.outputs == {"result": raw_output}
+        assert finish.data.parts == []
+        assert "parts" not in finish.data.model_dump(mode="json")

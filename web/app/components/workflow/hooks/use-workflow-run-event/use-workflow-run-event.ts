@@ -1,6 +1,7 @@
 import { useWorkflowAgentLog } from './use-workflow-agent-log'
 import { useWorkflowFailed } from './use-workflow-failed'
 import { useWorkflowFinished } from './use-workflow-finished'
+import { useWorkflowMessageContent } from './use-workflow-message-content'
 import { useWorkflowNodeFinished } from './use-workflow-node-finished'
 import { useWorkflowNodeHumanInputFormFilled } from './use-workflow-node-human-input-form-filled'
 import { useWorkflowNodeHumanInputFormTimeout } from './use-workflow-node-human-input-form-timeout'
@@ -34,6 +35,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowNodeRetry } = useWorkflowNodeRetry()
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
+  const { handleWorkflowMessageContent } = useWorkflowMessageContent()
   const { handleWorkflowReasoning } = useWorkflowReasoning()
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
   const { handleWorkflowPaused } = useWorkflowPaused()
@@ -56,6 +58,7 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowNodeRetry,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowMessageContent,
     handleWorkflowReasoning,
     handleWorkflowAgentLog,
     handleWorkflowPaused,

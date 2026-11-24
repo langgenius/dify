@@ -6,12 +6,13 @@ from typing import Annotated
 from uuid import uuid4
 
 from dify_agent.protocol.knowledge_fs import KnowledgeFsCitation
-from pydantic import Field, WithJsonSchema, computed_field, field_validator
+from pydantic import AliasChoices, AliasPath, Field, WithJsonSchema, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, AnyJSONValue, MessageFile
 from graphon.file import File
+from libs.generative_ui import MessageContentPart
 from libs.helper import to_timestamp
 
 type JSONValueType = AnyJSONValue
@@ -59,6 +60,15 @@ class RetrieverResource(ResponseModel):
 
 
 class MessageListItem(ResponseModel):
+    parts: list[MessageContentPart] = Field(
+        default_factory=list,
+        exclude_if=lambda parts: not parts,
+        validation_alias=AliasChoices(
+            "parts",
+            AliasPath("metadata", "parts"),
+            AliasPath("message_metadata_dict", "parts"),
+        ),
+    )
     id: UUIDString
     conversation_id: UUIDString
     parent_message_id: UUIDString | None = None

@@ -43,7 +43,7 @@ from core.app.entities.task_entities import (
     MessageReplaceStreamResponse,
     MessageStreamResponse,
 )
-from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
+from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline, OutputModerationResult
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_manager import ModelInstance
@@ -466,6 +466,7 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
     hosted: bool,
     registered: bool,
 ) -> None:
+    """Model admission selects one backend for both input and output, returning the flagged app preset when selected."""
     config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
     code_based_extension.init()
     tenant_provider, tenant_client = make_tenant_moderation_provider()
@@ -549,9 +550,9 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
         else:
             result = model.invoke_llm(prompt, stream=False)
             assert isinstance(result, LLMResult)
-            assert pipeline.handle_output_moderation_when_task_finished(result.message.get_text_content()) == (
-                "App output replacement"
-            )
+            assert pipeline.handle_output_moderation_when_task_finished(
+                result.message.get_text_content()
+            ) == OutputModerationResult(answer="App output replacement", flagged=True)
 
     selected_client, unused_client = (hosted_client, tenant_client) if hosted else (tenant_client, hosted_client)
     key = "platform-key" if hosted else "tenant-key"

@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { MessageContentEvent } from '@/features/generative-ui/protocol/types'
 import type { IOtherOptions } from '@/service/base'
 import type {
   HumanInputFormTimeoutData,
@@ -16,6 +17,12 @@ import {
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import {
+  appendTextPart,
+  hasOpenUIParts,
+  interruptContentParts,
+  updateContentPart,
+} from '@/features/generative-ui/stream-reducer'
 import { sseGet } from '@/service/base'
 
 type Notify = (payload: { type: 'error' | 'warning'; message: string }) => void
@@ -176,23 +183,37 @@ const applyWorkflowFinishedState = (
 const applyWorkflowOutputs = (
   current: WorkflowProcess | undefined,
   outputs: WorkflowFinishedResponse['data']['outputs'],
+  parts?: WorkflowFinishedResponse['data']['parts'],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
     draft.error = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
+    if (hasOpenUIParts(parts)) draft.parts = parts
   })
 }
 
 const appendResultText = (current: WorkflowProcess | undefined, text: string) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.resultText = `${draft.resultText || ''}${text}`
+    if (draft.parts) draft.parts = appendTextPart(draft.parts, text)
   })
 }
 
 const replaceResultText = (current: WorkflowProcess | undefined, text: string) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.resultText = text
+    draft.parts = undefined
+  })
+}
+
+const applyWorkflowContent = (
+  current: WorkflowProcess | undefined,
+  update: MessageContentEvent['data'],
+) => {
+  return updateWorkflowProcess(current, (draft) => {
+    if (!draft.parts && draft.resultText) draft.parts = appendTextPart(undefined, draft.resultText)
+    draft.parts = updateContentPart(draft.parts, update)
   })
 }
 
@@ -351,10 +372,15 @@ export const createWorkflowStreamHandlers = ({
 
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
         setWorkflowProcessData(
-          applyWorkflowFinishedState(
-            getWorkflowProcessData(),
-            WorkflowRunningStatus.Stopped,
-            localizedError,
+          updateWorkflowProcess(
+            applyWorkflowFinishedState(
+              getWorkflowProcessData(),
+              WorkflowRunningStatus.Stopped,
+              localizedError,
+            ),
+            (draft) => {
+              draft.parts = interruptContentParts(draft.parts, 'cancelled')
+            },
           ),
         )
         finishWithFailure()
@@ -364,17 +390,24 @@ export const createWorkflowStreamHandlers = ({
       if (data.error) {
         notify({ type: 'error', message: localizedError! })
         setWorkflowProcessData(
-          applyWorkflowFinishedState(
-            getWorkflowProcessData(),
-            WorkflowRunningStatus.Failed,
-            localizedError,
+          updateWorkflowProcess(
+            applyWorkflowFinishedState(
+              getWorkflowProcessData(),
+              WorkflowRunningStatus.Failed,
+              localizedError,
+            ),
+            (draft) => {
+              draft.parts = interruptContentParts(draft.parts, 'error')
+            },
           ),
         )
         finishWithFailure()
         return
       }
 
-      setWorkflowProcessData(applyWorkflowOutputs(getWorkflowProcessData(), data.outputs))
+      setWorkflowProcessData(
+        applyWorkflowOutputs(getWorkflowProcessData(), data.outputs, data.parts),
+      )
       const serializedOutputs = serializeWorkflowOutputs(data.outputs)
       setCompletionRes(serializedOutputs)
       if (data.outputs) {
@@ -397,6 +430,9 @@ export const createWorkflowStreamHandlers = ({
     },
     onTextReplace: ({ data: { text } }) => {
       setWorkflowProcessData(replaceResultText(getWorkflowProcessData(), text))
+    },
+    onMessageContent: ({ data }) => {
+      setWorkflowProcessData(applyWorkflowContent(getWorkflowProcessData(), data))
     },
     onHumanInputRequired: ({ data }) => {
       setWorkflowProcessData(updateHumanInputRequired(getWorkflowProcessData(), data))

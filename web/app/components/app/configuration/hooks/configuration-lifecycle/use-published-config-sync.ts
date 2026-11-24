@@ -23,6 +23,7 @@ type UsePublishedConfigSyncParams = {
   setDataSets: (value: DatasetDetailWithPartialMembersResponse[]) => void
   setDatasetConfigs: (value: DatasetConfigs) => void
   setExternalDataToolsConfig: (value: ExternalDataTool[]) => void
+  setGenerativeUIConfig: (value: MoreLikeThisConfig) => void
   setIntroduction: (value: string) => void
   setModelConfig: (value: ModelConfig) => void
   setModerationConfig: (value: ModerationConfig) => void
@@ -44,6 +45,7 @@ export function usePublishedConfigSync({
   setDataSets,
   setDatasetConfigs,
   setExternalDataToolsConfig,
+  setGenerativeUIConfig,
   setIntroduction,
   setModelConfig,
   setModerationConfig,
@@ -83,6 +85,7 @@ export function usePublishedConfigSync({
       )
       setCitationConfig(publishedModelConfig.retriever_resource || { enabled: false })
       setModerationConfig(publishedModelConfig.sensitive_word_avoidance || { enabled: false })
+      setGenerativeUIConfig(publishedModelConfig.generative_ui || { enabled: false })
       const publishedVisionConfig = publishedModelConfig.file_upload?.image
       setVisionConfig(
         {
@@ -103,6 +106,7 @@ export function usePublishedConfigSync({
       setDataSets,
       setDatasetConfigs,
       setExternalDataToolsConfig,
+      setGenerativeUIConfig,
       setIntroduction,
       setModelConfig,
       setModerationConfig,

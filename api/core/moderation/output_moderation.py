@@ -41,7 +41,13 @@ class OutputModeration(BaseModel):
     _checked_length: int = PrivateAttr(default=0)
     _streamed: bool = PrivateAttr(default=False)
     _finished: bool = PrivateAttr(default=False)
+    _flagged: bool = PrivateAttr(default=False)
     _error: Exception | None = PrivateAttr(default=None)
+
+    @property
+    def flagged(self) -> bool:
+        """Return whether moderation flagged any segment, even if its replacement leaves the text unchanged."""
+        return self._flagged or self.should_direct_output()
 
     def should_direct_output(self) -> bool:
         """Return whether a checked segment replaced the entire answer and stopped further evaluation."""
@@ -77,6 +83,7 @@ class OutputModeration(BaseModel):
         if result is None or not result.flagged:
             self._answer += text
             return None
+        self._flagged = True
         if result.action == ModerationAction.DIRECT_OUTPUT:
             self.final_output = result.preset_response
             self._answer = result.preset_response
@@ -119,6 +126,13 @@ class OutputModeration(BaseModel):
                 flagged = flagged or replacement is not None
         self._finished = True
         return self._answer, flagged or self._answer != completion
+
+    def independent_output_is_flagged(self, text: str) -> bool:
+        """Check a complete content block without changing the prose buffer or replacement."""
+        independent = OutputModeration(
+            tenant_id=self.tenant_id, app_id=self.app_id, rule=self.rule, output_evaluator=self.output_evaluator
+        )
+        return independent.moderation_completion(text)[1]
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> ModerationOutputsResult | None:
         """Evaluate once on the response consumer; injected failures stay terminal without exposing diagnostics."""

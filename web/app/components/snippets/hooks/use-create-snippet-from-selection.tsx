@@ -249,11 +249,12 @@ const getSelectedSnippetGraph = (
     nodesWithInlineModels,
     selectedNodeIds,
   )
-  const nodes = nodesWithInlineModels.map((node) => ({
-    ...node,
-    data: rewriteVariableReferences(node.data, selectorMap) as Node['data'],
-    selected: false,
-  }))
+  const nodes = nodesWithInlineModels.map((node) => {
+    const data = rewriteVariableReferences(node.data, selectorMap) as Node['data']
+    if (data.type === BlockEnum.LLM) delete (data as LLMNodeType).generative_ui_enabled
+
+    return { ...node, data, selected: false }
+  })
 
   return {
     graph: {

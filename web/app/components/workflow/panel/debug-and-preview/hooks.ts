@@ -1,3 +1,4 @@
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { SuggestedQuestionsResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
@@ -29,6 +30,12 @@ import {
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
+import {
+  appendTextPart,
+  interruptContentParts,
+  replaceSavedBlockInParts,
+  updateContentPart,
+} from '@/features/generative-ui/stream-reducer'
 import { sseGet } from '@/service/base'
 import { useInvalidateAllLastRun } from '@/service/use-workflow'
 import { submitHumanInputForm } from '@/service/workflow'
@@ -62,6 +69,7 @@ export const useChat = (
   const hasStopRespondedRef = useRef(false)
   const workflowStore = useWorkflowStore()
   const conversationIdRef = useRef('')
+  const conversationGenerationRef = useRef(0)
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
@@ -207,6 +215,16 @@ export const useChat = (
 
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
+    const nextState = produce(chatTreeRef.current, (draft) => {
+      const queue = [...draft]
+      while (queue.length) {
+        const item = queue.shift()!
+        item.parts = interruptContentParts(item.parts, 'cancelled')
+        if (item.children) queue.push(...item.children)
+      }
+    })
+    chatTreeRef.current = nextState
+    setChatTree(nextState)
     handleResponding(false)
     if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
@@ -216,12 +234,14 @@ export const useChat = (
   }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
   const handleRestart = useCallback(() => {
+    conversationGenerationRef.current += 1
     handleStop()
     retireDebugWorkspacesRef.current?.()
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
+    chatTreeRef.current = []
     setChatTree([])
     setSuggestedQuestions([])
   }, [handleStop, setIterTimes, setLoopTimes])
@@ -327,6 +347,7 @@ export const useChat = (
       }
 
       handleResponding(true)
+      hasStopRespondedRef.current = false
 
       const { files, inputs, ...restParams } = params
       const bodyParams = {
@@ -347,6 +368,7 @@ export const useChat = (
       }
 
       let hasSetResponseId = false
+      const conversationGeneration = conversationGenerationRef.current
 
       handleRun(bodyParams, {
         getAbortController: (abortController) => {
@@ -358,6 +380,7 @@ export const useChat = (
           { conversationId: newConversationId, messageId, taskId }: any,
         ) => {
           responseItem.content = responseItem.content + message
+          if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
 
           if (messageId && !hasSetResponseId) {
             questionItem.id = `question-${messageId}`
@@ -371,6 +394,30 @@ export const useChat = (
           taskIdRef.current = taskId
           if (messageId) responseItem.id = messageId
 
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
+        onMessageContent: (event) => {
+          if (
+            conversationGeneration !== conversationGenerationRef.current ||
+            hasStopRespondedRef.current
+          )
+            return
+          if (!responseItem.parts && responseItem.content)
+            responseItem.parts = appendTextPart(undefined, responseItem.content)
+          responseItem.parts = updateContentPart(responseItem.parts, event.data)
+          if (!hasSetResponseId && event.message_id) {
+            questionItem.id = `question-${event.message_id}`
+            responseItem.id = event.message_id
+            responseItem.parentMessageId = questionItem.id
+            hasSetResponseId = true
+          }
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
+          taskIdRef.current = event.task_id
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -394,8 +441,19 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
+          if (conversationGeneration !== conversationGenerationRef.current) return
           const { workflowRunningData } = workflowStore.getState()
           handleResponding(false)
+          responseItem.parts = interruptContentParts(
+            responseItem.parts,
+            hasStopRespondedRef.current ? 'cancelled' : 'error',
+          )
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
           if (workflowRunningData?.result.status !== WorkflowRunningStatus.Paused) {
             fetchInspectVars({})
             invalidAllLastRun()
@@ -432,6 +490,7 @@ export const useChat = (
           }
         },
         onMessageEnd: (messageEnd) => {
+          if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy(
@@ -447,6 +506,7 @@ export const useChat = (
           })
         },
         onMessageReplace: (messageReplace) => {
+          if (messageReplace.reason === 'output_moderation') responseItem.parts = []
           responseItem.content = messageReplace.answer
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -456,6 +516,17 @@ export const useChat = (
           })
         },
         onError() {
+          if (conversationGeneration !== conversationGenerationRef.current) return
+          responseItem.parts = interruptContentParts(
+            responseItem.parts,
+            hasStopRespondedRef.current ? 'cancelled' : 'error',
+          )
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
           handleResponding(false)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
@@ -739,6 +810,7 @@ export const useChat = (
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
       const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
+      const conversationGeneration = conversationGenerationRef.current
 
       const otherOptions: IOtherOptions = {
         getAbortController: (abortController) => {
@@ -751,12 +823,27 @@ export const useChat = (
         ) => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.content = responseItem.content + message
+            if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
             if (msgId) responseItem.id = msgId
           })
 
           if (newConversationId) conversationIdRef.current = newConversationId
 
           if (taskId) taskIdRef.current = taskId
+        },
+        onMessageContent: (event) => {
+          if (
+            conversationGeneration !== conversationGenerationRef.current ||
+            hasStopRespondedRef.current
+          )
+            return
+          updateChatTreeNode(messageId, (responseItem) => {
+            if (!responseItem.parts && responseItem.content)
+              responseItem.parts = appendTextPart(undefined, responseItem.content)
+            responseItem.parts = updateContentPart(responseItem.parts, event.data)
+          })
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
+          taskIdRef.current = event.task_id
         },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
           const { message_id, reasoning, node_id, is_final } = reasoningData
@@ -770,8 +857,15 @@ export const useChat = (
         },
 
         async onCompleted(hasError?: boolean) {
+          if (conversationGeneration !== conversationGenerationRef.current) return
           const { workflowRunningData } = workflowStore.getState()
           handleResponding(false)
+          updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.parts = interruptContentParts(
+              responseItem.parts,
+              hasStopRespondedRef.current ? 'cancelled' : 'error',
+            )
+          })
 
           if (workflowRunningData?.result.status !== WorkflowRunningStatus.Paused) {
             fetchInspectVars({})
@@ -798,6 +892,7 @@ export const useChat = (
         },
         onMessageEnd: (messageEnd) => {
           updateChatTreeNode(messageId, (responseItem) => {
+            if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
             responseItem.citation = messageEnd.metadata?.retriever_resources || []
             const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
             responseItem.allFiles = uniqBy(
@@ -808,10 +903,18 @@ export const useChat = (
         },
         onMessageReplace: (messageReplace) => {
           updateChatTreeNode(messageId, (responseItem) => {
+            if (messageReplace.reason === 'output_moderation') responseItem.parts = []
             responseItem.content = messageReplace.answer
           })
         },
         onError() {
+          if (conversationGeneration !== conversationGenerationRef.current) return
+          updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.parts = interruptContentParts(
+              responseItem.parts,
+              hasStopRespondedRef.current ? 'cancelled' : 'error',
+            )
+          })
           handleResponding(false)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
@@ -1031,7 +1134,17 @@ export const useChat = (
     [handleResume],
   )
 
+  const handleContentBlockStateSaved = useCallback(
+    (messageId: string, block: OpenUIContentBlock) => {
+      updateChatTreeNode(messageId, (message) => {
+        message.parts = replaceSavedBlockInParts(message.parts, block)
+      })
+    },
+    [updateChatTreeNode],
+  )
+
   return {
+    handleContentBlockStateSaved,
     conversationId: conversationIdRef.current,
     chatList,
     setTargetMessageId,

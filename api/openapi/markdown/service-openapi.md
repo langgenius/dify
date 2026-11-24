@@ -7229,6 +7229,12 @@ Agent Knowledge Base is unavailable.
 | name | string |  | Yes |
 | type | string |  | Yes |
 
+#### MessageContentPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageContentPart | [TextContentPart](#textcontentpart)<br>[OpenUIContentBlock](#openuicontentblock) |  |  |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -7292,6 +7298,7 @@ A rating is required when there is no existing feedback to remove.
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | No |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
@@ -7425,6 +7432,26 @@ Please check if your app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your app mode matches the right API route. |  |
+
+#### OpenUIContentBlock
+
+An immutable snapshot of a single generative UI part.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| type | string |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
 
 #### OptionalServiceApiUserPayload
 
@@ -7977,6 +8004,16 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | ---- | ---- | ----------- | -------- |
 | name | string | Tag name. | Yes |
 | tag_id | string | Tag ID to update. | Yes |
+
+#### TextContentPart
+
+An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| text | string |  | Yes |
+| type | string |  | Yes |
 
 #### TextToAudioPayload
 

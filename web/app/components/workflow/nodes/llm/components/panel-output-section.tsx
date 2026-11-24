@@ -71,11 +71,12 @@ const PanelOutputSection: FC<Props> = ({
               </InfotipContent>
             </Infotip>
             <Switch
+              aria-labelledby={structuredLabelId}
               className="ms-2"
               checked={!!inputs.structured_output_enabled}
               onCheckedChange={handleStructureOutputEnableChange}
               size="md"
-              disabled={readOnly}
+              disabled={readOnly || !!inputs.generative_ui_enabled}
             />
           </div>
         }

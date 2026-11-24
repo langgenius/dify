@@ -105,6 +105,7 @@ function buildPublishedModelConfig({
     suggested_questions_after_answer: backendModelConfig.suggested_questions_after_answer,
     retriever_resource: backendModelConfig.retriever_resource,
     annotation_reply: buildAnnotationDraft(backendModelConfig.annotation_reply),
+    generative_ui: backendModelConfig.generative_ui,
     external_data_tools: externalDataTools,
     dataSets: nextDataSets,
     agentConfig:

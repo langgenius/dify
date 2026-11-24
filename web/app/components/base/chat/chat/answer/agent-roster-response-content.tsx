@@ -1,6 +1,7 @@
 import type { ToolActivity } from './tool-activity-item'
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
 import type { Locale } from '@/i18n'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { useEffect, useRef, useState } from 'react'
@@ -8,8 +9,11 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
+import { hasOpenUIParts } from '@/features/generative-ui/stream-reducer'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
+import { GenerativeUIContent } from './generative-ui-content'
 import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
+import { OrderedResponseContent } from './ordered-response-content'
 import { SHELL_TOOL_NAMES, ToolActivityItem } from './tool-activity-item'
 
 type AgentRosterResponseContentProps = {
@@ -23,6 +27,11 @@ type AgentActivityEntry =
   | {
       type: 'message'
       content: string
+      key: string
+    }
+  | {
+      type: 'openui'
+      block: OpenUIContentBlock
       key: string
     }
   | {
@@ -92,34 +101,32 @@ function getThoughtKey(thought: ThoughtItem) {
   return thought.id || `${thought.message_id}-${thought.position}`
 }
 
-function hashString(value: string) {
-  let hash = 5381
-  for (let i = 0; i < value.length; i++) hash = ((hash << 5) + hash) ^ value.charCodeAt(i)
-
-  return (hash >>> 0).toString(36)
-}
-
 function hasVisibleActivity(thought: ThoughtItem, showThoughts: boolean) {
   return (
     (showThoughts && !!thought.thought?.trim()) || !!thought.tool || !!thought.message_files?.length
   )
 }
 
+/** Live parts append in order, so message and UI identities stay stable as prose grows. */
 function getAgentActivityEntries(item: ChatItem, showThoughts: boolean): AgentActivityEntry[] {
   if (item.agent_response_parts?.length) {
     const keyOccurrences = new Map<string, number>()
 
-    return item.agent_response_parts.flatMap<AgentActivityEntry>((part) => {
+    return item.agent_response_parts.flatMap<AgentActivityEntry>((part, index) => {
       const baseKey =
         part.type === 'message'
-          ? `message-${part.content.length}-${hashString(part.content)}`
-          : `thought-${getThoughtKey(part.thought)}`
+          ? `message-${index}`
+          : part.type === 'openui'
+            ? `openui-${part.block.id}`
+            : `thought-${getThoughtKey(part.thought)}`
       const occurrence = keyOccurrences.get(baseKey) ?? 0
       keyOccurrences.set(baseKey, occurrence + 1)
       const key = occurrence ? `${baseKey}-${occurrence}` : baseKey
 
       if (part.type === 'message')
         return part.content ? [{ type: 'message', content: part.content, key }] : []
+
+      if (part.type === 'openui') return [{ type: 'openui', block: part.block, key }]
 
       return hasVisibleActivity(part.thought, showThoughts)
         ? [{ type: 'thought', thought: part.thought, key }]
@@ -133,7 +140,8 @@ function getAgentActivityEntries(item: ChatItem, showThoughts: boolean): AgentAc
       const parts: AgentActivityEntry[] = []
       const key = getThoughtKey(thought)
       const answer = thought.answer
-      if (answer?.trim()) parts.push({ type: 'message', content: answer, key: `message-${key}` })
+      if (!item.agent_response_is_partial && answer?.trim())
+        parts.push({ type: 'message', content: answer, key: `message-${key}` })
 
       if (hasVisibleActivity(thought, showThoughts))
         parts.push({ type: 'thought', thought, key: `thought-${key}` })
@@ -220,7 +228,7 @@ function AgentActivityDisclosure({
   defaultOpen?: boolean
   showThoughts: boolean
 }) {
-  const { t } = useTranslation(['agentV2'])
+  const { t } = useTranslation(['agentV2', 'appDebug'])
   const workingDuration = useWorkingDuration(responding)
   const latency = Number(item.more?.latency)
   const duration = responding
@@ -257,6 +265,13 @@ function AgentActivityDisclosure({
                 key={entry.key}
                 content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
               />
+            ) : entry.type === 'openui' ? (
+              <GenerativeUIContent
+                key={entry.key}
+                messageId={item.id}
+                block={entry.block}
+                fallbackText={t(($) => $['generativeUI.unavailable'], { ns: 'appDebug' })}
+              />
             ) : (
               <AgentActivityItem
                 key={entry.key}
@@ -278,12 +293,21 @@ export function AgentRosterResponseContent({
   content,
   showThoughts = false,
 }: AgentRosterResponseContentProps) {
+  const { t } = useTranslation(['appDebug'])
+
   if (item.annotation?.logAnnotation) {
     return (
-      <Markdown
-        content={item.annotation.logAnnotation.content || ''}
-        data-testid="agent-content-markdown"
-      />
+      <>
+        <Markdown
+          content={item.annotation.logAnnotation.content || ''}
+          data-testid="agent-content-markdown"
+        />
+        <OrderedResponseContent
+          item={{ id: item.id, parts: item.parts?.filter((part) => part.type === 'openui') }}
+          content=""
+          renderText={() => null}
+        />
+      </>
     )
   }
 
@@ -294,13 +318,8 @@ export function AgentRosterResponseContent({
   const hasActivity =
     hasThinkingStatus ||
     (hasLiveResponseParts ? entries.some((entry) => entry.type === 'thought') : entries.length > 0)
-  const standaloneMessages = hasLiveResponseParts
-    ? hasActivity
-      ? []
-      : entries.flatMap((entry) => (entry.type === 'message' ? [entry] : []))
-    : content
-      ? [{ type: 'message' as const, content, key: 'final-answer' }]
-      : []
+  const hasStandaloneLiveEntries = hasLiveResponseParts && !hasActivity
+  const hasFinalAnswer = !hasLiveResponseParts && (!!content || hasOpenUIParts(item.parts))
 
   return (
     <div
@@ -317,12 +336,31 @@ export function AgentRosterResponseContent({
           defaultOpen={hasLiveResponseParts && (!!responding || entries.length > 0)}
         />
       )}
-      {standaloneMessages.map((message) => (
-        <ResponseMessage
-          key={message.key}
-          content={resolveKnowledgeCitationLinks(message.content, item.citation)}
+      {hasStandaloneLiveEntries &&
+        entries.map((entry) =>
+          entry.type === 'message' ? (
+            <ResponseMessage
+              key={entry.key}
+              content={resolveKnowledgeCitationLinks(entry.content, item.citation)}
+            />
+          ) : entry.type === 'openui' ? (
+            <GenerativeUIContent
+              key={entry.key}
+              messageId={item.id}
+              block={entry.block}
+              fallbackText={t(($) => $['generativeUI.unavailable'])}
+            />
+          ) : null,
+        )}
+      {hasFinalAnswer && (
+        <OrderedResponseContent
+          item={{ id: item.id, parts: item.parts }}
+          content={content ?? item.content}
+          renderText={(text) => (
+            <ResponseMessage content={resolveKnowledgeCitationLinks(text, item.citation)} />
+          )}
         />
-      ))}
+      )}
     </div>
   )
 }

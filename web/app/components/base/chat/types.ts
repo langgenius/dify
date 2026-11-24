@@ -2,6 +2,7 @@ import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { AgentConfig } from '@/models/debug'
+import type { MessageContentPart } from '@/features/generative-ui/protocol/types'
 import type { ModelConfig } from '@/types/app'
 import type { HumanInputFilledFormData, HumanInputFormData, NodeTracing } from '@/types/workflow'
 
@@ -30,6 +31,7 @@ export type ChatConfig = Omit<ModelConfig, 'model' | 'system_parameters' | 'agen
   more_like_this: {
     enabled: boolean
   }
+  generative_ui?: EnableType
 }
 
 export type WorkflowProcess = {
@@ -38,6 +40,7 @@ export type WorkflowProcess = {
   error?: string
   expand?: boolean // for UI
   resultText?: string
+  parts?: MessageContentPart[]
   files?: FileEntity[]
   humanInputFormDataList?: HumanInputFormData[]
   humanInputFilledFormDataList?: HumanInputFilledFormData[]

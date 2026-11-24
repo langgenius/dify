@@ -103,6 +103,7 @@ function toPanelFeatures(appFeatures?: AgentSoulAppFeaturesConfig): Features {
     speech2text: appFeatures?.speech_to_text ?? defaultFeatureState.speech2text,
     citation: appFeatures?.retriever_resource ?? defaultFeatureState.citation,
     showThoughts: appFeatures?.show_thoughts ?? defaultFeatureState.showThoughts,
+    generativeUI: appFeatures?.generative_ui,
     moderation:
       (appFeatures?.sensitive_word_avoidance as Features['moderation'] | undefined) ??
       defaultFeatureState.moderation,
@@ -129,6 +130,7 @@ function toAppFeatures(
     speech_to_text: features.speech2text,
     retriever_resource: features.citation,
     show_thoughts: features.showThoughts,
+    generative_ui: features.generativeUI,
     file_upload: toAgentFileUploadFeatureConfig(features.file),
   }
 }
@@ -162,6 +164,7 @@ function AgentChatFeaturesPanelContent({
       showThoughtsToggle
       showModeration={false}
       showAnnotationReply={false}
+      showGenerativeUI
       drawerClassName="bg-components-panel-bg! data-[swipe-direction=right]:top-1! data-[swipe-direction=right]:right-0! data-[swipe-direction=right]:bottom-1! data-[swipe-direction=right]:rounded-r-none!"
       title={t(($) => $['agentDetail.configure.chatFeatures.title'])}
       description={t(($) => $['agentDetail.configure.chatFeatures.description'])}

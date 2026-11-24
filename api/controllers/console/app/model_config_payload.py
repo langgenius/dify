@@ -382,3 +382,4 @@ class AppModelConfigPayload(BaseModel):
     text_to_speech: AppTextToSpeechPayload | None = None
     retriever_resource: AppFeaturePayload | None = None
     sensitive_word_avoidance: AppModerationPayload | None = None
+    generative_ui: AppFeaturePayload | None = None

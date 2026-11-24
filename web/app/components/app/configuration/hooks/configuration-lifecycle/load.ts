@@ -75,6 +75,7 @@ export async function loadConfigurationState({
     ),
     datasetConfigs,
     externalDataToolsConfig: publishedConfig.externalDataToolsConfig,
+    generativeUIConfig: backendModelConfig.generative_ui || { enabled: false },
     mode,
     moreLikeThisConfig: backendModelConfig.more_like_this || { enabled: false },
     nextDataSets,

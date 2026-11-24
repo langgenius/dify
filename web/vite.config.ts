@@ -110,6 +110,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     ...(!isTest && !isStorybook
       ? {
           optimizeDeps: {
+            // The renderer is loaded with the first UI response; discover its dependencies before streaming starts.
+            include: ['@openuidev/lang-core', '@openuidev/react-lang', 'zod/v4'],
             // Keep skipToken shared by the unbundled React Query and oRPC clients.
             exclude: ['@tanstack/react-query', '@tanstack/query-core'],
           },
@@ -180,10 +182,18 @@ export default defineConfig(({ command, mode, isPreview }) => {
               '@base-ui/react/popover',
               '@base-ui/react/slider',
               '@lexical/react/LexicalExtensionComposer',
+              '@openuidev/lang-core',
+              '@openuidev/react-lang',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
+              'echarts-for-react/esm/core',
+              'echarts/charts',
+              'echarts/components',
+              'echarts/core',
+              'echarts/features',
+              'echarts/renderers',
               'es-toolkit/function',
               // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
               'next/dist/shared/lib/app-router-context.shared-runtime',
@@ -191,6 +201,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'next/navigation',
               'next/script',
               'react-textarea-autosize',
+              'zod/v4',
             ],
           },
           test: {

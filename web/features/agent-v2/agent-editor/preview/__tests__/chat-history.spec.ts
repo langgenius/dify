@@ -2,8 +2,8 @@ import type { MessageDetailResponse } from '@dify/contracts/api/console/agent/ty
 import { describe, expect, it } from 'vite-plus/test'
 import { getFormattedAgentDebugChatTree } from '../chat-history'
 
-describe('Agent history knowledge evidence', () => {
-  it('preserves trusted receipt identity, source content and version on history reload', () => {
+describe('Agent chat history', () => {
+  it('preserves trusted citations and independent UI form state on history reload', () => {
     const citation = {
       id: `kfs_${'a'.repeat(32)}`,
       control_space_id: '00000000-0000-4000-8000-000000000001',
@@ -21,6 +21,22 @@ describe('Agent history knowledge evidence', () => {
       query: 'Question',
       inputs: {},
       metadata: {},
+      parts: [
+        {
+          id: 'ui-1',
+          type: 'openui',
+          library_version: 'dify-ui-v1',
+          source: 'root = Stack([])',
+          sequence: 2,
+          status: 'completed',
+          form_state: { filters: { region: { value: 'West' } } },
+        },
+        {
+          id: 'text:1',
+          type: 'text',
+          text: `[Manual](kfs://${citation.id})`,
+        },
+      ],
       message: [],
       agent_thoughts: [],
       message_files: [],
@@ -46,6 +62,7 @@ describe('Agent history knowledge evidence', () => {
     }
     const answer = getFormattedAgentDebugChatTree([message])[0]?.children?.[0]
     expect(answer?.content).toBe(message.answer)
+    expect(answer?.parts).toEqual(message.parts)
     expect(answer?.citation?.[0]).toMatchObject({
       knowledge_fs_citation: citation,
       document_asset_id: 'doc',

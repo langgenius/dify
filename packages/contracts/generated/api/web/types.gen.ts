@@ -571,6 +571,14 @@ export type MalformedUploadTokenError = ErrorResponse & {
   status: 400
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -631,6 +639,35 @@ export type NotCompletionAppError = ErrorResponse & {
 export type NotWorkflowAppError = ErrorResponse & {
   code: 'not_workflow_app'
   status: 400
+}
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  type: 'openui'
+}
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
+
+export type OpenUiStatePayload = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+}
+
+export type OpenUiStateResponse = {
+  block: OpenUiContentBlock
+}
+
+export type OpenuiBlockNotReadyError = ErrorResponse & {
+  code: 'openui_block_not_ready'
+  status: 409
 }
 
 export type ParagraphInputConfig = {
@@ -1274,6 +1311,12 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type TextToAudioPayload = {
   message_id?: string | null
   streaming?: boolean | null
@@ -1395,6 +1438,7 @@ export type WebMessageListItem = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -1511,6 +1555,7 @@ export type WebMessageListItemWritable = {
   message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -2418,6 +2463,31 @@ export type GetMessagesResponses = {
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateData = {
+  body: OpenUiStatePayload
+  path: {
+    block_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/messages/{message_id}/content-blocks/{block_id}/state'
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateErrors = {
+  409: OpenuiBlockNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateError =
+  PutMessagesByMessageIdContentBlocksByBlockIdStateErrors[keyof PutMessagesByMessageIdContentBlocksByBlockIdStateErrors]
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateResponses = {
+  200: OpenUiStateResponse
+}
+
+export type PutMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  PutMessagesByMessageIdContentBlocksByBlockIdStateResponses[keyof PutMessagesByMessageIdContentBlocksByBlockIdStateResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
   body: MessageFeedbackPayload

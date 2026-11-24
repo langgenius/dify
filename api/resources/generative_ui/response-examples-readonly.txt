@@ -1,0 +1,14 @@
+Example 1 — Plain text without UI (explanation only):
+No sales records were found for the selected period, so there is no chart or comparison to display.
+
+Example 2 — Prose conclusion, read-only visualization UI, and follow-up prose:
+Revenue grew 20% month over month, driven primarily by the East region.
+
+<dify_ui>
+root = Stack([metric, trend, comparison])
+metric = MetricCard("Monthly revenue", 144, 120, "USD", "vs. previous month", true)
+trend = LineChart("Monthly revenue", [{label: "May", value: 120}, {label: "June", value: 144}], "USD")
+comparison = BarChart("Revenue by region", [{label: "East", value: 80}, {label: "West", value: 64}], "USD")
+</dify_ui>
+
+Review cost margins alongside regional growth before reallocating next quarter's budget.

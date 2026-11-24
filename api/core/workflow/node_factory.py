@@ -12,7 +12,7 @@ from configs import dify_config
 from constants.trigger import TRIGGER_NODE_TYPES
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
-from core.credit_usage import created_by_from_app_type
+from core.credit_usage import CreditUsageAppType, created_by_from_app_type
 from core.db.session_factory import get_session_maker, session_factory
 from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
@@ -769,6 +769,7 @@ class DifyNodeFactory(NodeFactory):
         if validated_node_data.type == BuiltinNodeTypes.LLM:
             node_init_kwargs["default_query_selector"] = system_variable_selector(SystemVariableKey.QUERY)
             node_init_kwargs["polling_finalizer"] = cast(DifyPreparedLLM, node_model_instance).finalize_llm_polling
+            node_init_kwargs["generative_ui_read_only"] = app_type == CreditUsageAppType.WORKFLOW
         return node_init_kwargs
 
     @staticmethod

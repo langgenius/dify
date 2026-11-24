@@ -717,6 +717,28 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [PUT] /messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
 
@@ -1921,6 +1943,12 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | MalformedUploadTokenError |  | The upload token is malformed. |  |
 
+#### MessageContentPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageContentPart | [TextContentPart](#textcontentpart)<br>[OpenUIContentBlock](#openuicontentblock) |  |  |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -2011,6 +2039,46 @@ Please check if your Workflow app mode matches the right API route.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | NotWorkflowAppError |  | Please check if your Workflow app mode matches the right API route. |  |
+
+#### OpenUIContentBlock
+
+An immutable snapshot of a single generative UI part.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| type | string |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
+
+#### OpenUIStatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+
+#### OpenUIStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block | [OpenUIContentBlock](#openuicontentblock) |  | Yes |
+
+#### OpenuiBlockNotReadyError
+
+Only completed OpenUI blocks accept form state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenuiBlockNotReadyError |  | Only completed OpenUI blocks accept form state. |  |
 
 #### ParagraphInputConfig
 
@@ -2427,6 +2495,16 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
+#### TextContentPart
+
+An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
@@ -2595,6 +2673,7 @@ Too many form requests. Please try again later.
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |

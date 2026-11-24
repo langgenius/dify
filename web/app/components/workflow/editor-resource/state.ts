@@ -1,7 +1,7 @@
 import type { EditorResource } from './resource'
 import { atom } from 'jotai'
 import { atomWithLazy } from 'jotai/utils'
-import { isChatflow } from './resource'
+import { isChatflow, supportsGenerativeUI } from './resource'
 
 export const editorResourceAtom = atomWithLazy<EditorResource>(() => {
   throw new Error('EditorResourceScope is required for the workflow editor')
@@ -22,6 +22,9 @@ export const editorPipelineIdAtom = atom((get) => {
 })
 
 export const isChatflowAtom = atom((get) => isChatflow(get(editorResourceAtom)))
+export const supportsGenerativeUIAtom = atom((get) =>
+  supportsGenerativeUI(get(editorResourceAtom)),
+)
 
 export const workflowAppIdentityAtom = atom((get) => {
   const resource = get(editorResourceAtom)

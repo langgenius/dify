@@ -70,4 +70,30 @@ describe('ResultText', () => {
       screen.queryByRole('button', { name: 'runLog.resultEmpty.link' }),
     ).not.toBeInTheDocument()
   })
+
+  it('renders read-only generative UI parts without interactive buttons', async () => {
+    render(
+      <ResultText
+        outputs="Q1 summary"
+        parts={[
+          { id: 'text-1', type: 'text', text: 'Q1 summary' },
+          {
+            id: 'ui-1',
+            type: 'openui',
+            status: 'completed',
+            sequence: 1,
+            library_version: 'dify-ui-v1',
+            form_state: {},
+            source:
+              'root = Stack([metric, action])\nmetric = MetricCard("Revenue", 144, 120, "USD", "vs. previous month", true)\naction = ActionButton("Export", "Export report")',
+          },
+        ]}
+      />,
+    )
+
+    expect(await screen.findByText('Q1 summary')).toBeInTheDocument()
+    expect(await screen.findByText('Revenue')).toBeInTheDocument()
+    expect(await screen.findByText(/144/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Export' })).not.toBeInTheDocument()
+  })
 })

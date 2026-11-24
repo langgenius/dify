@@ -9,6 +9,7 @@ import type {
 } from 'reactflow'
 import type { BlockDefaultValue } from '../block-selector/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
@@ -19,7 +20,10 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
-import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  isChatflowAtom,
+  supportsGenerativeUIAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
@@ -172,6 +176,7 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
 export const useNodesInteractions = () => {
   const { t } = useTranslation(['workflow'] as const)
   const isChatflow = useAtomValue(isChatflowAtom)
+  const supportsGenerativeUI = useAtomValue(supportsGenerativeUIAtom)
   const { data: appDslVersion = '' } = useQuery(
     consoleQuery.appDslVersion.get.queryOptions({
       staleTime: Infinity,
@@ -2183,6 +2188,12 @@ export const useNodesInteractions = () => {
           delete node.data.memory
       })
     }
+    if (!supportsGenerativeUI) {
+      nodesToPaste.forEach((node) => {
+        if (node.data.type === BlockEnum.LLM)
+          delete (node.data as LLMNodeType).generative_ui_enabled
+      })
+    }
 
     const newNodes = produce(nodes, (draft: Node[]) => {
       parentChildrenToAppend.forEach(({ parentId, childId, childType }) => {
@@ -2211,6 +2222,7 @@ export const useNodesInteractions = () => {
     getNodeDefaultValueForPaste,
     appDslVersion,
     isChatflow,
+    supportsGenerativeUI,
   ])
 
   const handleNodesDuplicate = useCallback(

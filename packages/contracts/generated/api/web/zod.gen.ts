@@ -1004,6 +1004,52 @@ export const zNotWorkflowAppError = zErrorResponse.and(
 )
 
 /**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  type: z.literal('openui'),
+})
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+/**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * PassportAccessTokenResponse
  */
 export const zPassportAccessTokenResponse = z.object({
@@ -1783,6 +1829,22 @@ export const zParameters = z.object({
 })
 
 /**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
+
+/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -2088,6 +2150,7 @@ export const zWebMessageListItem = z.object({
   message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.uuid().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2262,6 +2325,7 @@ export const zWebMessageListItemWritable = z.object({
   message_tokens: z.int().optional().default(0),
   metadata: zJsonValueType.nullish(),
   parent_message_id: z.uuid().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2566,6 +2630,18 @@ export const zGetMessagesQuery = z.object({
  * Success
  */
 export const zGetMessagesResponse = zWebMessageInfiniteScrollPagination
+
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStateBody = zOpenUiStatePayload
+
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStatePath = z.object({
+  block_id: z.string(),
+  message_id: z.uuid(),
+})
+
+/**
+ * Draft saved
+ */
+export const zPutMessagesByMessageIdContentBlocksByBlockIdStateResponse = zOpenUiStateResponse
 
 export const zPostMessagesByMessageIdFeedbacksBody = zMessageFeedbackPayload
 

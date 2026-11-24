@@ -272,6 +272,7 @@ class AppModelConfigDict(TypedDict):
     completion_prompt_config: CompletionPromptConfig
     dataset_configs: DatasetConfigs
     file_upload: FileUploadConfig
+    generative_ui: NotRequired[EnabledConfig]
     # Added dynamically in Conversation.model_config
     model_id: NotRequired[str | None]
     provider: NotRequired[str | None]
@@ -788,6 +789,7 @@ class AppModelConfig(TypeBase):
     dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
     external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
     file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
+    generative_ui: Mapped[str | None] = mapped_column(LongText, default=None)
 
     def app_with_session(self, *, session: Session) -> App | None:
         return session.scalar(select(App).where(App.id == self.app_id))
@@ -827,6 +829,10 @@ class AppModelConfig(TypeBase):
     @property
     def more_like_this_dict(self) -> EnabledConfig:
         return self._get_enabled_config(self.more_like_this)
+
+    @property
+    def generative_ui_dict(self) -> EnabledConfig:
+        return self._get_enabled_config(self.generative_ui)
 
     @property
     def sensitive_word_avoidance_dict(self) -> SensitiveWordAvoidanceConfig:
@@ -915,6 +921,7 @@ class AppModelConfig(TypeBase):
             "completion_prompt_config": self.completion_prompt_config_dict,
             "dataset_configs": self.dataset_configs_dict,
             "file_upload": self.file_upload_dict,
+            "generative_ui": self.generative_ui_dict,
         }
 
     @staticmethod
@@ -943,6 +950,7 @@ class AppModelConfig(TypeBase):
         self.completion_prompt_config = self._dump_optional(model_config.get("completion_prompt_config"))
         self.dataset_configs = self._dump_optional(model_config.get("dataset_configs"))
         self.file_upload = self._dump_optional(model_config.get("file_upload"))
+        self.generative_ui = self._dump_optional(model_config.get("generative_ui"))
         return self
 
 

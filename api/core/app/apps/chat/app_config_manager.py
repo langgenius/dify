@@ -10,6 +10,7 @@ from core.app.app_config.easy_ui_based_app.prompt_template.manager import Prompt
 from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
+from core.app.app_config.features.generative_ui.manager import GenerativeUIConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
 from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
 from core.app.app_config.features.speech_to_text.manager import SpeechToTextConfigManager
@@ -146,6 +147,10 @@ class ChatAppConfigManager(BaseAppConfigManager):
         config, current_related_config_keys = SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(
             tenant_id, config
         )
+        related_config_keys.extend(current_related_config_keys)
+
+        # generative_ui
+        config, current_related_config_keys = GenerativeUIConfigManager.validate_and_set_defaults(config)
         related_config_keys.extend(current_related_config_keys)
 
         related_config_keys = list(set(related_config_keys))

@@ -479,6 +479,18 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentPublishPayload
  */
 export const zAgentPublishPayload = z.object({
@@ -1323,6 +1335,15 @@ export const zMessageFile = z.object({
   url: z.string().nullish(),
 })
 
+export const zJsonValue = z.unknown()
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+})
+
 /**
  * AgentReferencingWorkflowResponse
  */
@@ -1465,6 +1486,32 @@ export const zAppAnnotationReplyDisabledResponse = z.object({
 })
 
 /**
+ * AppEnabledExternalDataToolResponse
+ */
+export const zAppEnabledExternalDataToolResponse = z.object({
+  config: z.record(z.string(), zJsonValue),
+  enabled: z.literal(true),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  label: z.string().optional(),
+  type: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * AppDisabledExternalDataToolResponse
+ */
+export const zAppDisabledExternalDataToolResponse = z.object({
+  config: z.record(z.string(), zJsonValue).optional(),
+  enabled: z.literal(false),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  label: z.string().optional(),
+  type: z.string().optional(),
+  variable: z.string().optional(),
+})
+
+/**
  * AppEnabledConfigResponse
  */
 export const zAppEnabledConfigResponse = z.object({
@@ -1477,6 +1524,16 @@ export const zAppEnabledConfigResponse = z.object({
  * Prompt configuration type
  */
 export const zPromptType = z.enum(['advanced', 'simple'])
+
+/**
+ * AppSensitiveWordAvoidanceResponse
+ */
+export const zAppSensitiveWordAvoidanceResponse = z.object({
+  config: z.record(z.string(), zJsonValue).optional(),
+  configs: z.array(zJsonValue).optional(),
+  enabled: z.boolean(),
+  type: z.string().optional(),
+})
 
 /**
  * AppTextToSpeechResponse
@@ -1904,9 +1961,32 @@ export const zFeedback = z.object({
 })
 
 /**
+ * HumanInputFormSubmissionData
+ */
+export const zHumanInputFormSubmissionData = z.object({
+  action_id: z.string(),
+  action_text: z.string(),
+  node_id: z.string(),
+  node_title: z.string(),
+  rendered_content: z.string(),
+  submitted_data: z.record(z.string(), zJsonValue).nullish(),
+})
+
+/**
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
+
+/**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
 
 /**
  * KnowledgeFsCitation
@@ -1957,6 +2037,38 @@ export const zRetrievalSourceMetadata = z.object({
   title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
+
+/**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  type: z.literal('openui'),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
 
 /**
  * AgentAverageResponseTimeStatisticResponse
@@ -2094,6 +2206,34 @@ export const zAppAgentPromptResponse = z.object({
 export const zPlanningStrategy = z.enum(['function_call', 'react', 'react_router', 'router'])
 
 /**
+ * AppLegacyGoogleSearchToolResponse
+ */
+export const zAppLegacyGoogleSearchToolResponse = z.object({
+  google_search: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyWebReaderToolResponse
+ */
+export const zAppLegacyWebReaderToolResponse = z.object({
+  web_reader: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyWikipediaToolResponse
+ */
+export const zAppLegacyWikipediaToolResponse = z.object({
+  wikipedia: z.record(z.string(), zJsonValue),
+})
+
+/**
+ * AppLegacyCurrentDatetimeToolResponse
+ */
+export const zAppLegacyCurrentDatetimeToolResponse = z.object({
+  current_datetime: z.record(z.string(), zJsonValue),
+})
+
+/**
  * AppEmbeddingModelResponse
  */
 export const zAppEmbeddingModelResponse = z.object({
@@ -2160,84 +2300,6 @@ export const zRerankMode = z.enum(['reranking_model', 'weighted_score'])
 export const zAppRerankingModelResponse = z.object({
   reranking_model_name: z.string().optional(),
   reranking_provider_name: z.string().optional(),
-})
-
-export const zJsonValue = z.unknown()
-
-/**
- * AppEnabledExternalDataToolResponse
- */
-export const zAppEnabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue),
-  enabled: z.literal(true),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string(),
-  variable: z.string(),
-})
-
-/**
- * AppDisabledExternalDataToolResponse
- */
-export const zAppDisabledExternalDataToolResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  enabled: z.literal(false),
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  label: z.string().optional(),
-  type: z.string().optional(),
-  variable: z.string().optional(),
-})
-
-/**
- * AppSensitiveWordAvoidanceResponse
- */
-export const zAppSensitiveWordAvoidanceResponse = z.object({
-  config: z.record(z.string(), zJsonValue).optional(),
-  configs: z.array(zJsonValue).optional(),
-  enabled: z.boolean(),
-  type: z.string().optional(),
-})
-
-/**
- * HumanInputFormSubmissionData
- */
-export const zHumanInputFormSubmissionData = z.object({
-  action_id: z.string(),
-  action_text: z.string(),
-  node_id: z.string(),
-  node_title: z.string(),
-  rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue).nullish(),
-})
-
-/**
- * AppLegacyGoogleSearchToolResponse
- */
-export const zAppLegacyGoogleSearchToolResponse = z.object({
-  google_search: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyWebReaderToolResponse
- */
-export const zAppLegacyWebReaderToolResponse = z.object({
-  web_reader: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyWikipediaToolResponse
- */
-export const zAppLegacyWikipediaToolResponse = z.object({
-  wikipedia: z.record(z.string(), zJsonValue),
-})
-
-/**
- * AppLegacyCurrentDatetimeToolResponse
- */
-export const zAppLegacyCurrentDatetimeToolResponse = z.object({
-  current_datetime: z.record(z.string(), zJsonValue),
 })
 
 /**
@@ -3056,6 +3118,7 @@ export const zAppModelConfigResponse = z.object({
     z.union([zAppEnabledExternalDataToolResponse, zAppDisabledExternalDataToolResponse]),
   ),
   file_upload: zAppFileUploadResponse,
+  generative_ui: zAppEnabledConfigResponse.optional(),
   model: zAppModelSelectionResponse,
   more_like_this: zAppEnabledConfigResponse,
   opening_statement: z.string().nullable(),
@@ -3151,6 +3214,7 @@ export const zAgentFileUploadFeatureConfig = z.object({
  */
 export const zAgentSoulAppFeaturesConfig = z.object({
   file_upload: zAgentFileUploadFeatureConfig.optional(),
+  generative_ui: zAgentFeatureToggleConfig.optional(),
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
@@ -3783,6 +3847,7 @@ export const zMessageDetailResponse = z.object({
   message_tokens: z.int(),
   metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number(),
   query: z.string(),
   retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
@@ -4539,6 +4604,21 @@ export const zGetAgentByAgentIdMessagesByMessageIdPath = z.object({
  * Message retrieved successfully
  */
 export const zGetAgentByAgentIdMessagesByMessageIdResponse = zMessageDetailResponse
+
+export const zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateBody =
+  zOpenUiStatePayload
+
+export const zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStatePath = z.object({
+  agent_id: z.uuid(),
+  block_id: z.string(),
+  message_id: z.uuid(),
+})
+
+/**
+ * Draft saved
+ */
+export const zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  zOpenUiStateResponse
 
 export const zPostAgentByAgentIdPublishBody = zAgentPublishPayload
 

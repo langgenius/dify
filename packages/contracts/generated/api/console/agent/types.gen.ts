@@ -499,11 +499,27 @@ export type MessageDetailResponse = {
   message_tokens: number
   metadata: AnyJsonValue
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency: number
   query: string
   retriever_resources?: Array<RetrievalSourceMetadata>
   status: string
   workflow_run_id?: string | null
+}
+
+export type OpenUiStatePayload = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+}
+
+export type OpenUiStateResponse = {
+  block: OpenUiContentBlock
+}
+
+export type OpenuiBlockNotReadyError = ErrorResponse & {
+  code: 'openui_block_not_ready'
+  status: 409
 }
 
 export type AgentPublishPayload = {
@@ -854,6 +870,7 @@ export type AppModelConfigResponse = {
     AppEnabledExternalDataToolResponse | AppDisabledExternalDataToolResponse
   >
   file_upload: AppFileUploadResponse
+  generative_ui?: AppEnabledConfigResponse
   model: AppModelSelectionResponse
   more_like_this: AppEnabledConfigResponse
   opening_statement: string | null
@@ -1280,6 +1297,14 @@ export type MessageFile = {
   url?: string | null
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type RetrievalSourceMetadata = {
   content?: string | null
   data_source_type?: string | null
@@ -1308,6 +1333,20 @@ export type RetrievalSourceMetadata = {
   summary?: string | null
   title?: string | null
   word_count?: number | null
+}
+
+export type JsonValue = unknown
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  type: 'openui'
 }
 
 export type AgentReferencingWorkflowResponse = {
@@ -1490,6 +1529,10 @@ export type AppFileUploadResponse = {
   number_limits?: number
 }
 
+export type AppEnabledConfigResponse = {
+  enabled: boolean
+}
+
 export type AppModelSelectionResponse = {
   completion_params?: {
     [key: string]: JsonValue
@@ -1498,10 +1541,6 @@ export type AppModelSelectionResponse = {
   name?: string | null
   provider?: string | null
   [key: string]: unknown
-}
-
-export type AppEnabledConfigResponse = {
-  enabled: boolean
 }
 
 export type PromptType = 'advanced' | 'simple'
@@ -1590,6 +1629,7 @@ export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
   file_upload?: AgentFileUploadFeatureConfig
+  generative_ui?: AgentFeatureToggleConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -1858,6 +1898,12 @@ export type HumanInputFormSubmissionData = {
 
 export type ExecutionContentType = 'human_input'
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type KnowledgeFsCitation = {
   artifact_hash: string
   control_space_id: string
@@ -1873,6 +1919,8 @@ export type KnowledgeFsCitation = {
   space_name: string
   start_offset?: number | null
 }
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
 
 export type AgentAverageResponseTimeStatisticResponse = {
   date: string
@@ -2034,8 +2082,6 @@ export type AppWeightsResponse = {
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first'
   [key: string]: unknown
 }
-
-export type JsonValue = unknown
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
@@ -3993,6 +4039,33 @@ export type GetAgentByAgentIdMessagesByMessageIdResponses = {
 
 export type GetAgentByAgentIdMessagesByMessageIdResponse =
   GetAgentByAgentIdMessagesByMessageIdResponses[keyof GetAgentByAgentIdMessagesByMessageIdResponses]
+
+export type PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateData = {
+  body: OpenUiStatePayload
+  path: {
+    agent_id: string
+    block_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/messages/{message_id}/content-blocks/{block_id}/state'
+}
+
+export type PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  409: OpenuiBlockNotReadyError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateError =
+  PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateErrors[keyof PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateErrors]
+
+export type PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponses = {
+  200: OpenUiStateResponse
+}
+
+export type PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponses[keyof PutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponses]
 
 export type PostAgentByAgentIdPublishData = {
   body: AgentPublishPayload

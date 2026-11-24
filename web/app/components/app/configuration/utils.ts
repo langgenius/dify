@@ -65,6 +65,7 @@ export const buildConfigurationFeaturesData = (
     suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
     citation: modelConfig.retriever_resource || { enabled: false },
     annotationReply: modelConfig.annotation_reply || { enabled: false },
+    generativeUI: modelConfig.generative_ui || { enabled: false },
   }
 }
 

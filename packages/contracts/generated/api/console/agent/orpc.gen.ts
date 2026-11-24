@@ -28,6 +28,7 @@ import {
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
+  zOpenuiBlockNotReadyError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -234,6 +235,9 @@ import {
   zPutAgentByAgentIdComposerBody,
   zPutAgentByAgentIdComposerPath,
   zPutAgentByAgentIdComposerResponse,
+  zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+  zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+  zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponse,
   zPutAgentByAgentIdPath,
   zPutAgentByAgentIdResponse,
 } from './zod.gen.ts'
@@ -1231,6 +1235,38 @@ export const logs = {
   byConversationId,
 }
 
+export const put3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdState',
+    path: '/agent/{agent_id}/messages/{message_id}/content-blocks/{block_id}/state',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateBody,
+      params: zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStatePath,
+    }),
+  )
+  .output(zPutAgentByAgentIdMessagesByMessageIdContentBlocksByBlockIdStateResponse)
+  .errors({
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    openui_block_not_ready: { status: 409, data: zOpenuiBlockNotReadyError },
+  })
+
+export const state = {
+  put: put3,
+}
+
+export const byBlockId = {
+  state,
+}
+
+export const contentBlocks = {
+  byBlockId,
+}
+
 /**
  * Get Agent App message details by ID
  */
@@ -1252,6 +1288,7 @@ export const get22 = oc
 
 export const byMessageId2 = {
   get: get22,
+  contentBlocks,
 }
 
 export const messages2 = {
@@ -1836,7 +1873,7 @@ export const get35 = oc
 /**
  * Update a roster Agent App and return its current detail
  */
-export const put3 = oc
+export const put4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -1855,7 +1892,7 @@ export const put3 = oc
 export const byAgentId = {
   delete: delete6,
   get: get35,
-  put: put3,
+  put: put4,
   apiAccess,
   apiEnable,
   apiKeys,

@@ -3367,6 +3367,14 @@ export type KnowledgeTagResponse = {
   type: string
 }
 
+export type MessageContentPart =
+  | ({
+      type: 'text'
+    } & TextContentPart)
+  | ({
+      type: 'openui'
+    } & OpenUiContentBlock)
+
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -3418,6 +3426,7 @@ export type MessageListItem = {
   message_files: Array<MessageFile>
   message_tokens?: number
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -3520,6 +3529,20 @@ export type NotWorkflowAppError = ErrorResponse & {
   code: 'not_workflow_app'
   status: 400
 }
+
+export type OpenUiContentBlock = {
+  form_state: {
+    [key: string]: JsonValue
+  }
+  id: string
+  library_version: 'dify-ui-v1'
+  sequence: number
+  source: string
+  status: OpenUiContentStatus
+  type: 'openui'
+}
+
+export type OpenUiContentStatus = 'cancelled' | 'completed' | 'error' | 'streaming'
 
 export type OptionalServiceApiUserPayload = {
   user?: string
@@ -4285,6 +4308,12 @@ export type TagUpdatePayload = {
   tag_id: string
 }
 
+export type TextContentPart = {
+  id: string
+  text: string
+  type: 'text'
+}
+
 export type TextToAudioPayload = {
   message_id?: string | null
   streaming?: boolean | null
@@ -4629,6 +4658,7 @@ export type MessageListItemWritable = {
   message_files: Array<MessageFile>
   message_tokens?: number
   parent_message_id?: string | null
+  parts?: Array<MessageContentPart>
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>

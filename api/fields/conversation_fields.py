@@ -4,11 +4,12 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import Field, WithJsonSchema, field_validator, model_validator
+from pydantic import AliasChoices, AliasPath, Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from fields.base import ResponseModel, SessionResponseSource
 from graphon.file import File
+from libs.generative_ui import MessageContentPart
 from libs.helper import to_timestamp
 from models.account import Account
 from models.model import (
@@ -253,6 +254,15 @@ class AgentThought(ResponseModel):
 
 
 class MessageDetail(ResponseModel):
+    parts: list[MessageContentPart] = Field(
+        default_factory=list,
+        exclude_if=lambda parts: not parts,
+        validation_alias=AliasChoices(
+            "parts",
+            AliasPath("metadata", "parts"),
+            AliasPath("message_metadata_dict", "parts"),
+        ),
+    )
     retriever_resources: list[RetrievalSourceMetadata] = Field(default_factory=list)
     id: str
     conversation_id: str

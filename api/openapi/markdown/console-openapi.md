@@ -1370,6 +1370,30 @@ Get Agent App message details by ID
 | 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [PUT] /agent/{agent_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /agent/{agent_id}/publish
 #### Parameters
 
@@ -3442,6 +3466,30 @@ Get message details by ID
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /apps/{app_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| block_id | path |  | Yes | string |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/model-config
@@ -8618,6 +8666,32 @@ Request body:
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /installed-apps/{installed_app_id}/messages/{message_id}/content-blocks/{block_id}/state
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| block_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OpenUIStatePayload](#openuistatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft saved | **application/json**: [OpenUIStateResponse](#openuistateresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [OpenuiBlockNotReadyError](#openuiblocknotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -21719,6 +21793,7 @@ Visibility and lifecycle scope of an Agent record.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | file_upload | [AgentFileUploadFeatureConfig](#agentfileuploadfeatureconfig) |  | No |
+| generative_ui | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
@@ -23250,6 +23325,7 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | dataset_query_variable | string |  | No |
 | external_data_tools | [ [AppExternalDataToolPayload](#appexternaldatatoolpayload) ] |  | No |
 | file_upload | [AppFileUploadPayload](#appfileuploadpayload) |  | No |
+| generative_ui | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | model | [AppModelSelectionPayload](#appmodelselectionpayload) |  | Yes |
 | more_like_this | [AppFeaturePayload](#appfeaturepayload) |  | No |
 | opening_statement | string |  | No |
@@ -23277,6 +23353,7 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 | dataset_query_variable | string |  | Yes |
 | external_data_tools | [ [AppEnabledExternalDataToolResponse](#appenabledexternaldatatoolresponse)<br>[AppDisabledExternalDataToolResponse](#appdisabledexternaldatatoolresponse) ] |  | Yes |
 | file_upload | [AppFileUploadResponse](#appfileuploadresponse) |  | Yes |
+| generative_ui | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | No |
 | model | [AppModelSelectionResponse](#appmodelselectionresponse) |  | Yes |
 | more_like_this | [AppEnabledConfigResponse](#appenabledconfigresponse) |  | Yes |
 | opening_statement | string |  | Yes |
@@ -27427,6 +27504,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
@@ -32351,6 +32429,12 @@ The member is not in the workspace.
 | account_id | string |  | No |
 | account_name | string |  | No |
 
+#### MessageContentPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageContentPart | [TextContentPart](#textcontentpart)<br>[OpenUIContentBlock](#openuicontentblock) |  |  |
+
 #### MessageCursorNotFoundError
 
 The message cursor is not in this conversation. Refresh the list and try again.
@@ -32382,6 +32466,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | message_tokens | integer |  | Yes |
 | metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrievalSourceMetadata](#retrievalsourcemetadata) ] |  | No |
@@ -32412,6 +32497,7 @@ The message cursor is not in this conversation. Refresh the list and try again.
 | message_tokens | integer |  | Yes |
 | metadata | [AnyJSONValue](#anyjsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrievalSourceMetadata](#retrievalsourcemetadata) ] |  | No |
@@ -33423,6 +33509,46 @@ OAuth schema
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | type | string, <br>**Default:** onetime_email |  | No |
+
+#### OpenUIContentBlock
+
+An immutable snapshot of a single generative UI part.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+| id | string |  | Yes |
+| library_version | string |  | Yes |
+| sequence | integer |  | Yes |
+| source | string |  | Yes |
+| status | [OpenUIContentStatus](#openuicontentstatus) |  | Yes |
+| type | string |  | Yes |
+
+#### OpenUIContentStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenUIContentStatus | string |  |  |
+
+#### OpenUIStatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_state | object |  | Yes |
+
+#### OpenUIStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| block | [OpenUIContentBlock](#openuicontentblock) |  | Yes |
+
+#### OpenuiBlockNotReadyError
+
+Only completed OpenUI blocks accept form state.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenuiBlockNotReadyError |  | Only completed OpenUI blocks accept form state. |  |
 
 #### Option
 
@@ -37330,6 +37456,16 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
 
+#### TextContentPart
+
+An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
 #### TextContentResponse
 
 | Name | Type | Description | Required |
@@ -38722,6 +38858,7 @@ Data entity
 | finished_at | integer |  | Yes |
 | id | string |  | Yes |
 | outputs | object |  | No |
+| parts | [ [MessageContentPart](#messagecontentpart) ] |  | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
 | total_steps | integer |  | Yes |
 | total_tokens | integer |  | Yes |

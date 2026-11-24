@@ -670,6 +670,18 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
 )
 
 /**
+ * OpenuiBlockNotReadyError
+ *
+ * Only completed OpenUI blocks accept form state.
+ */
+export const zOpenuiBlockNotReadyError = zErrorResponse.and(
+  z.object({
+    code: z.literal('openui_block_not_ready'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
@@ -1858,6 +1870,13 @@ export const zJsonValue = z.unknown()
 export const zMessageTemplateTestRequest = z.object({
   channel: zDebugChannel,
   inputs: z.record(z.string(), zJsonValue).optional(),
+})
+
+/**
+ * OpenUIStatePayload
+ */
+export const zOpenUiStatePayload = z.object({
+  form_state: z.record(z.string(), zJsonValue),
 })
 
 export const zShallowJsonValue = z
@@ -3586,6 +3605,17 @@ export const zHumanInputFormSubmissionData = z.object({
 export const zExecutionContentType = z.enum(['human_input'])
 
 /**
+ * TextContentPart
+ *
+ * An ordered prose segment persisted alongside UI blocks in ``metadata.parts``.
+ */
+export const zTextContentPart = z.object({
+  id: z.string(),
+  text: z.string(),
+  type: z.literal('text'),
+})
+
+/**
  * KnowledgeFsCitation
  *
  * Immutable evidence identity; no signed URLs, tokens or storage keys.
@@ -3636,6 +3666,38 @@ export const zRetrievalSourceMetadata = z.object({
 })
 
 /**
+ * OpenUIContentStatus
+ */
+export const zOpenUiContentStatus = z.enum(['cancelled', 'completed', 'error', 'streaming'])
+
+/**
+ * OpenUIContentBlock
+ *
+ * An immutable snapshot of a single generative UI part.
+ */
+export const zOpenUiContentBlock = z.object({
+  form_state: z.record(z.string(), zJsonValue),
+  id: z.string(),
+  library_version: z.literal('dify-ui-v1'),
+  sequence: z.int().gte(0),
+  source: z.string(),
+  status: zOpenUiContentStatus,
+  type: z.literal('openui'),
+})
+
+/**
+ * OpenUIStateResponse
+ */
+export const zOpenUiStateResponse = z.object({
+  block: zOpenUiContentBlock,
+})
+
+export const zMessageContentPart = z.discriminatedUnion('type', [
+  zTextContentPart,
+  zOpenUiContentBlock,
+])
+
+/**
  * MessageDetail
  */
 export const zMessageDetail = z.object({
@@ -3658,6 +3720,7 @@ export const zMessageDetail = z.object({
   message_tokens: z.int(),
   metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number(),
   query: z.string(),
   retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
@@ -3697,6 +3760,15 @@ export const zAppExternalDataToolPayload = z
   .catchall(z.json())
 
 /**
+ * AppFeaturePayload
+ */
+export const zAppFeaturePayload = z
+  .object({
+    enabled: z.boolean().nullish(),
+  })
+  .catchall(z.json())
+
+/**
  * AppModelSelectionPayload
  */
 export const zAppModelSelectionPayload = z
@@ -3705,15 +3777,6 @@ export const zAppModelSelectionPayload = z
     mode: z.string().nullish(),
     name: z.string(),
     provider: z.string(),
-  })
-  .catchall(z.json())
-
-/**
- * AppFeaturePayload
- */
-export const zAppFeaturePayload = z
-  .object({
-    enabled: z.boolean().nullish(),
   })
   .catchall(z.json())
 
@@ -5524,6 +5587,7 @@ export const zAppModelConfigResponse = z.object({
     z.union([zAppEnabledExternalDataToolResponse, zAppDisabledExternalDataToolResponse]),
   ),
   file_upload: zAppFileUploadResponse,
+  generative_ui: zAppEnabledConfigResponse.optional(),
   model: zAppModelSelectionResponse,
   more_like_this: zAppEnabledConfigResponse,
   opening_statement: z.string().nullable(),
@@ -5739,6 +5803,7 @@ export const zMessageDetailResponse = z.object({
   message_tokens: z.int(),
   metadata: zAnyJsonValue,
   parent_message_id: z.string().nullish(),
+  parts: z.array(zMessageContentPart).optional(),
   provider_response_latency: z.number(),
   query: z.string(),
   retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
@@ -5880,6 +5945,7 @@ export const zAppModelConfigPayload = z.object({
   dataset_query_variable: z.string().nullish(),
   external_data_tools: z.array(zAppExternalDataToolPayload).nullish(),
   file_upload: zAppFileUploadPayload.nullish(),
+  generative_ui: zAppFeaturePayload.nullish(),
   model: zAppModelSelectionPayload,
   more_like_this: zAppFeaturePayload.nullish(),
   opening_statement: z.string().nullish(),
@@ -6149,6 +6215,7 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
  */
 export const zAgentSoulAppFeaturesConfig = z.object({
   file_upload: zAgentFileUploadFeatureConfig.optional(),
+  generative_ui: zAgentFeatureToggleConfig.optional(),
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),
@@ -7599,6 +7666,20 @@ export const zGetAppsByAppIdMessagesByMessageIdPath = z.object({
  * Message retrieved successfully
  */
 export const zGetAppsByAppIdMessagesByMessageIdResponse = zMessageDetailResponse
+
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateBody = zOpenUiStatePayload
+
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStatePath = z.object({
+  app_id: z.uuid(),
+  block_id: z.string(),
+  message_id: z.uuid(),
+})
+
+/**
+ * Draft saved
+ */
+export const zPutAppsByAppIdMessagesByMessageIdContentBlocksByBlockIdStateResponse =
+  zOpenUiStateResponse
 
 export const zPostAppsByAppIdModelConfigBody = zAppModelConfigPayload
 

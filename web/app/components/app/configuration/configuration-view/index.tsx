@@ -287,6 +287,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               show
               inWorkflow={false}
               showFileUpload={false}
+              showGenerativeUI={contextValue.mode === 'chat'}
               isChatMode={contextValue.mode !== 'completion'}
               disabled={!!contextValue.readonly}
               onChange={onFeaturesChange}

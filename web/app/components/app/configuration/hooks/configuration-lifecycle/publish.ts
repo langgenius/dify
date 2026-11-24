@@ -98,6 +98,7 @@ export function buildPublishBody({
       ? zAppSuggestedQuestionsPayload.parse(features.suggested)
       : undefined,
     retriever_resource: features?.citation,
+    generative_ui: features?.generativeUI,
     agent_mode: zAppAgentModePayload.parse({
       ...modelConfig.agentConfig,
       strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -263,6 +264,9 @@ export const createPublishHandler =
             ...body.sensitive_word_avoidance,
             enabled: body.sensitive_word_avoidance.enabled ?? false,
           }
+        : null
+      draft.generative_ui = body.generative_ui
+        ? { ...body.generative_ui, enabled: body.generative_ui.enabled ?? false }
         : null
       draft.external_data_tools = externalDataToolsConfig
       draft.agentConfig = {

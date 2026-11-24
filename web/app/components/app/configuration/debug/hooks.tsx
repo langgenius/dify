@@ -59,6 +59,7 @@ export const useConfigFromDebugContext = () => {
     suggestedQuestionsAfterAnswerConfig,
     citationConfig,
     moderationConfig,
+    generativeUIConfig,
     chatPromptConfig,
     completionPromptConfig,
     dataSets,
@@ -92,6 +93,7 @@ export const useConfigFromDebugContext = () => {
     speech_to_text: speechToTextConfig,
     retriever_resource: citationConfig,
     sensitive_word_avoidance: moderationConfig,
+    generative_ui: generativeUIConfig ?? { enabled: false },
     agent_mode: {
       ...modelConfig.agentConfig,
       strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,

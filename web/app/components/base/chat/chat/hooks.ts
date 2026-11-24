@@ -2,6 +2,8 @@ import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { OpenUiContentBlock as OpenUIContentBlock } from '@dify/contracts/api/console/agent/types.gen'
+import type { MessageContentEvent } from '@/features/generative-ui/protocol/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
 import type { VisionFile } from '@/types/app'
@@ -31,6 +33,13 @@ import {
   hasAppAccessError,
   isAppAccessScopeCurrent,
 } from '@/features/app-access-error/state'
+import {
+  appendTextPart,
+  hasOpenUIParts,
+  interruptContentParts,
+  replaceSavedBlockInParts,
+  updateContentPart,
+} from '@/features/generative-ui/stream-reducer'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
@@ -47,12 +56,14 @@ type HistoryMessageFile = Partial<FileResponse> & {
 type HistoryConversationMessage = {
   id: string
   answer?: string
+  parts?: ChatItem['parts']
   status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
   message_files?: HistoryMessageFile[]
   agent_thoughts?: ThoughtItem[] | null
   retriever_resources?: ChatItem['citation']
   metadata?: {
+    agent_response_is_partial?: boolean
     reasoning?: ChatItem['reasoningContent']
   }
   created_at?: number
@@ -109,35 +120,83 @@ function upsertStreamingThought(thoughts: ThoughtItem[], thought: ThoughtItem) {
   thoughts.push(thought)
 }
 
-function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
-  if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
+function ensureAgentResponseParts(responseItem: ChatItemInTree) {
+  if (responseItem.agent_response_parts) return responseItem.agent_response_parts
+  responseItem.agent_response_parts =
+    responseItem.parts?.map((part) =>
+      part.type === 'openui'
+        ? { type: 'openui' as const, block: part }
+        : { type: 'message' as const, content: part.text },
+    ) ?? []
+  return responseItem.agent_response_parts
+}
 
-  const lastPart = responseItem.agent_response_parts.at(-1)
+function appendAgentResponseMessagePart(responseItem: ChatItemInTree, message: string) {
+  const agentParts = ensureAgentResponseParts(responseItem)
+
+  const lastPart = agentParts.at(-1)
   if (lastPart?.type === 'message') {
     lastPart.content += message
   } else {
-    responseItem.agent_response_parts.push({
+    agentParts.push({
       type: 'message',
       content: message,
     })
   }
 }
 
-function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
-  if (!responseItem.agent_response_parts) responseItem.agent_response_parts = []
+function applyOpenUIContentUpdate(
+  responseItem: ChatItemInTree,
+  update: MessageContentEvent['data'],
+) {
+  if (!responseItem.parts && responseItem.content)
+    responseItem.parts = appendTextPart(undefined, responseItem.content)
+  responseItem.parts = updateContentPart(responseItem.parts, update)
+  if (!responseItem.agent_response_parts?.length) return
 
+  const existingBlocks = responseItem.agent_response_parts.flatMap((part) =>
+    part.type === 'openui' ? [part.block] : [],
+  )
+  const nextBlock = updateContentPart(existingBlocks, update).find(
+    (part) => part.type === 'openui' && part.id === update.id,
+  )
+  if (!nextBlock || nextBlock.type !== 'openui') return
   const partIndex = responseItem.agent_response_parts.findIndex(
+    (part) => part.type === 'openui' && part.block.id === nextBlock.id,
+  )
+  if (partIndex > -1) {
+    responseItem.agent_response_parts[partIndex] = { type: 'openui', block: nextBlock }
+  } else {
+    responseItem.agent_response_parts.push({ type: 'openui', block: nextBlock })
+  }
+}
+
+function interruptAgentResponseParts(
+  parts: ChatItemInTree['agent_response_parts'],
+  status: 'cancelled' | 'error',
+) {
+  return parts?.map((part) =>
+    part.type === 'openui' && part.block.status === 'streaming'
+      ? { ...part, block: { ...part.block, status } }
+      : part,
+  )
+}
+
+function upsertAgentResponseThoughtPart(responseItem: ChatItemInTree, thought: ThoughtItem) {
+  const agentParts = ensureAgentResponseParts(responseItem)
+
+  const partIndex = agentParts.findIndex(
     (part) => part.type === 'thought' && part.thought.id === thought.id,
   )
   if (partIndex > -1) {
-    responseItem.agent_response_parts[partIndex] = {
+    agentParts[partIndex] = {
       type: 'thought',
       thought,
     }
     return
   }
 
-  responseItem.agent_response_parts.push({
+  agentParts.push({
     type: 'thought',
     thought,
   })
@@ -548,7 +607,25 @@ export const useChat = (
 
   useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
 
+  const interruptStreamingContent = useCallback(() => {
+    const nextState = produce(chatTreeRef.current, (draft) => {
+      const queue = [...draft]
+      while (queue.length) {
+        const item = queue.shift()!
+        item.parts = interruptContentParts(item.parts, 'cancelled')
+        item.agent_response_parts = interruptAgentResponseParts(
+          item.agent_response_parts,
+          'cancelled',
+        )
+        if (item.children) queue.push(...item.children)
+      }
+    })
+    chatTreeRef.current = nextState
+    setChatTree(nextState)
+  }, [])
+
   const stopLocalResponse = useCallback(() => {
+    interruptStreamingContent()
     hasStopRespondedRef.current = true
     handleResponding(false)
     if (conversationMessagesAbortControllerRef.current)
@@ -557,7 +634,7 @@ export const useChat = (
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
     resetWorkflowEventsSubscription()
-  }, [handleResponding, resetWorkflowEventsSubscription])
+  }, [handleResponding, interruptStreamingContent, resetWorkflowEventsSubscription])
 
   const handleStop = useCallback(async () => {
     if (options.isNewAgent && isRespondingRef.current) {
@@ -661,6 +738,7 @@ export const useChat = (
       }
       const getOrCreatePlayer = createAudioPlayerManager()
       let hasSettled = false
+      let isGenerativeUIFinal = false
       const settleSend = (hasError?: boolean) => {
         if (hasSettled) return
 
@@ -681,11 +759,15 @@ export const useChat = (
           updateChatTreeNode(messageId, (responseItem) => {
             const agentThoughts = responseItem.agent_thoughts ?? []
             const isNewAgentMessage =
-              options.isNewAgent && (event === 'agent_message' || event === 'message')
+              options.isNewAgent &&
+              !isGenerativeUIFinal &&
+              (event === 'agent_message' || event === 'message')
             if (isNewAgentMessage) {
               appendAgentResponseMessagePart(responseItem, message)
+              if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
             } else if (!agentThoughts.length || options.isNewAgent) {
               responseItem.content = responseItem.content + message
+              if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
             } else {
               const lastThought = agentThoughts[agentThoughts.length - 1]
               if (lastThought) lastThought.thought = lastThought.thought + message
@@ -696,6 +778,14 @@ export const useChat = (
           if (isFirstMessage && newConversationId) conversationIdRef.current = newConversationId
 
           if (taskId) taskIdRef.current = taskId
+        },
+        onMessageContent: (event) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          updateChatTreeNode(messageId, (responseItem) => {
+            applyOpenUIContentUpdate(responseItem, event.data)
+          })
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
+          taskIdRef.current = event.task_id
         },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
           const { message_id, reasoning, node_id, is_final } = reasoningData
@@ -711,6 +801,13 @@ export const useChat = (
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
           handleResponding(false)
+          updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+            responseItem.agent_response_parts = interruptAgentResponseParts(
+              responseItem.agent_response_parts,
+              'error',
+            )
+          })
 
           try {
             if (hasError) return
@@ -819,6 +916,8 @@ export const useChat = (
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
           updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.agent_response_is_partial = messageEnd.metadata?.agent_response_is_partial
+            if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
             if (messageEnd.metadata?.annotation_reply) {
               responseItem.annotation = {
                 id: messageEnd.metadata.annotation_reply.id,
@@ -836,12 +935,33 @@ export const useChat = (
         },
         onMessageReplace: (messageReplace) => {
           updateChatTreeNode(messageId, (responseItem) => {
+            if (
+              messageReplace.reason === 'generative_ui_final' ||
+              messageReplace.reason === 'output_moderation'
+            ) {
+              isGenerativeUIFinal = true
+              responseItem.agent_response_parts = undefined
+              responseItem.parts = messageReplace.reason === 'output_moderation' ? [] : undefined
+            }
+            if (messageReplace.reason === 'output_moderation') {
+              responseItem.agent_thoughts = responseItem.agent_thoughts?.map((thought) => ({
+                ...thought,
+                answer: undefined,
+              }))
+            }
             responseItem.content = messageReplace.answer
           })
         },
         onError() {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+            responseItem.agent_response_parts = interruptAgentResponseParts(
+              responseItem.agent_response_parts,
+              'error',
+            )
+          })
           handleResponding(false)
           settleSend(true)
         },
@@ -1199,6 +1319,7 @@ export const useChat = (
       }
 
       let isAgentMode = false
+      let isGenerativeUIFinal = false
       let hasSetResponseId = false
       let hasSettled = false
       let hasPaused = false
@@ -1232,11 +1353,14 @@ export const useChat = (
           { event, conversationId: newConversationId, messageId, taskId }: any,
         ) => {
           const isNewAgentMessage =
-            options.isNewAgent && (event === 'agent_message' || event === 'message')
+            options.isNewAgent &&
+            !isGenerativeUIFinal &&
+            (event === 'agent_message' || event === 'message')
           if (isNewAgentMessage) {
             appendAgentResponseMessagePart(responseItem, message)
           } else if (!isAgentMode || options.isNewAgent) {
             responseItem.content = responseItem.content + message
+            if (responseItem.parts) responseItem.parts = appendTextPart(responseItem.parts, message)
           } else {
             const lastThought =
               responseItem.agent_thoughts?.[responseItem.agent_thoughts.length - 1]
@@ -1262,6 +1386,24 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
+        onMessageContent: (event) => {
+          if (!isCurrentRequest()) return
+          applyOpenUIContentUpdate(responseItem, event.data)
+          if (!hasSetResponseId && event.message_id) {
+            questionItem.id = `question-${event.message_id}`
+            responseItem.id = event.message_id
+            responseItem.parentMessageId = questionItem.id
+            hasSetResponseId = true
+          }
+          if (event.conversation_id) conversationIdRef.current = event.conversation_id
+          taskIdRef.current = event.task_id
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
           const { reasoning, node_id, is_final } = reasoningData
           const reasoningContent =
@@ -1280,7 +1422,18 @@ export const useChat = (
         async onCompleted(hasError?: boolean) {
           if (!isCurrentRequest()) return
 
-          handleResponding(false)
+          handleResponding(hasOpenUIParts(responseItem.parts))
+          responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+          responseItem.agent_response_parts = interruptAgentResponseParts(
+            responseItem.agent_response_parts,
+            'error',
+          )
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
 
           try {
             if (hasError && !options.isNewAgent) return
@@ -1327,6 +1480,8 @@ export const useChat = (
               const historyAnswerFiles = getHistoryAnswerFiles(newResponseItem)
               updateChatTreeNode(responseItem.id, {
                 content: isUseAgentThought ? '' : historyAnswer,
+                parts: newResponseItem.parts,
+                agent_response_is_partial: newResponseItem.metadata?.agent_response_is_partial,
                 isError:
                   options.isNewAgent &&
                   (newResponseItem.status === 'error' || (!!hasError && !newResponseItem.status)),
@@ -1370,6 +1525,7 @@ export const useChat = (
               })
             }
 
+            handleResponding(false)
             notifyConversationComplete(completedWorkflowRunId)
 
             if (
@@ -1394,6 +1550,7 @@ export const useChat = (
               }
             }
           } finally {
+            if (isCurrentRequest()) handleResponding(false)
             settleSend(hasError)
           }
         },
@@ -1495,6 +1652,8 @@ export const useChat = (
           })
         },
         onMessageEnd: (messageEnd) => {
+          responseItem.agent_response_is_partial = messageEnd.metadata?.agent_response_is_partial
+          if (messageEnd.metadata?.parts) responseItem.parts = messageEnd.metadata.parts
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
           if (messageEnd.metadata?.annotation_reply) {
@@ -1527,7 +1686,27 @@ export const useChat = (
           })
         },
         onMessageReplace: (messageReplace) => {
+          if (
+            messageReplace.reason === 'generative_ui_final' ||
+            messageReplace.reason === 'output_moderation'
+          ) {
+            isGenerativeUIFinal = true
+            responseItem.agent_response_parts = undefined
+            responseItem.parts = messageReplace.reason === 'output_moderation' ? [] : undefined
+          }
+          if (messageReplace.reason === 'output_moderation') {
+            responseItem.agent_thoughts = responseItem.agent_thoughts?.map((thought) => ({
+              ...thought,
+              answer: undefined,
+            }))
+          }
           responseItem.content = messageReplace.answer
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
         },
         onError(_message, _code, identity) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
@@ -1540,6 +1719,11 @@ export const useChat = (
           }
           if (options.isNewAgent && hasStopRespondedRef.current) return
           if (options.isNewAgent) responseItem.isError = true
+          responseItem.parts = interruptContentParts(responseItem.parts, 'error')
+          responseItem.agent_response_parts = interruptAgentResponseParts(
+            responseItem.agent_response_parts,
+            'error',
+          )
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({
@@ -1950,7 +2134,20 @@ export const useChat = (
     if (clearChatList) handleRestart(() => clearChatListCallback?.(false))
   }, [clearChatList, clearChatListCallback, handleRestart])
 
+  const handleContentBlockStateSaved = useCallback(
+    (messageId: string, block: OpenUIContentBlock) => {
+      updateChatTreeNode(messageId, (message) => {
+        message.parts = replaceSavedBlockInParts(message.parts, block)
+        message.agent_response_parts = message.agent_response_parts?.map((part) =>
+          part.type === 'openui' && part.block.id === block.id ? { ...part, block } : part,
+        )
+      })
+    },
+    [updateChatTreeNode],
+  )
+
   return {
+    handleContentBlockStateSaved,
     chatList,
     setTargetMessageId,
     isResponding,

@@ -17,6 +17,7 @@ import {
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { saveGenerativeUIState } from '@/features/generative-ui/state-client'
 import { consoleQuery } from '@/service/console'
 import {
   fetchConversationMessages,
@@ -68,6 +69,7 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       suggested_questions_after_answer: features.suggested,
       retriever_resource: features.citation,
       annotation_reply: features.annotationReply,
+      generative_ui: features.generativeUI,
     } as ChatConfig
   }, [configTemplate, features])
   const inputsForm = useMemo(() => {
@@ -75,7 +77,14 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
       .filter((item) => item.type !== 'api')
       .map((item) => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   }, [modelConfig.configs.prompt_variables])
-  const { chatList, isResponding, handleSend, suggestedQuestions, handleRestart } = useChat(
+  const {
+    chatList,
+    isResponding,
+    handleSend,
+    suggestedQuestions,
+    handleRestart,
+    handleContentBlockStateSaved,
+  } = useChat(
     config,
     {
       inputs,
@@ -175,6 +184,19 @@ const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
         </Avatar>
       }
       allToolIcons={allToolIcons}
+      onGenerativeUIStateChange={
+        canTestAndRun
+          ? async (messageId, blockId, state) => {
+              const { block } = await saveGenerativeUIState(
+                { kind: 'app', appId },
+                messageId,
+                blockId,
+                state,
+              )
+              handleContentBlockStateSaved(messageId, block)
+            }
+          : undefined
+      }
       noSpacing
     />
   )

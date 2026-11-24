@@ -6,7 +6,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { isChatflowAtom, supportsGenerativeUIAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -27,6 +27,7 @@ const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatflow = useAtomValue(isChatflowAtom)
+  const supportsGenerativeUI = useAtomValue(supportsGenerativeUIAtom)
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type] as
     | LLMDefaultConfig
@@ -210,6 +211,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     deleteNodeInspectorVars,
   })
 
+  const handleGenerativeUIChange = (enabled: boolean) => {
+    const nextInputs = produce(inputRef.current, (draft) => {
+      draft.generative_ui_enabled = enabled
+    })
+    setInputs(nextInputs)
+    deleteNodeInspectorVars(id)
+  }
+
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: promptConfig.filterVar,
@@ -253,6 +262,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleStructureOutputEnableChange: structuredOutputConfig.handleStructureOutputEnableChange,
     filterJinja2InputVar: promptConfig.filterJinja2InputVar,
     handleReasoningFormatChange: structuredOutputConfig.handleReasoningFormatChange,
+    handleGenerativeUIChange,
+    supportsGenerativeUI,
   }
 }
 
