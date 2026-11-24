@@ -1,9 +1,11 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import Cookies from 'js-cookie'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateTimezone } from '@/test/browser-media-emulation'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
-import { getBrowserTimezone } from '@/utils/timezone'
+import { createTestNavigation } from '@/test/next-navigation'
 import ChangePasswordForm from '../page'
 
 const tracking = vi.hoisted(() => ({
@@ -12,20 +14,8 @@ const tracking = vi.hoisted(() => ({
   sendGAEvent: vi.fn(),
 }))
 
-const navigation = vi.hoisted(() => ({
-  replace: vi.fn(),
-  search: 'token=register-token',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: navigation.replace }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
-
-// boundary: pin the browser timezone so the submitted profile is deterministic.
-vi.mock('@/utils/timezone', () => ({
-  getBrowserTimezone: vi.fn(),
-}))
+let search = 'token=register-token'
+let navigation: TestNavigation
 
 // boundary: analytics stops at the Google tag adapter.
 vi.mock('@/utils/gtag', () => ({
@@ -49,10 +39,14 @@ const tokens = { access_token: 'access', csrf_token: 'csrf', refresh_token: 'ref
 
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: `/signup/set-password?${search}` })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <ChangePasswordForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ChangePasswordForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -60,13 +54,13 @@ const fake = setupFakeApi(() => ({
   console: { emailRegister: { post: () => ({ result: 'fail', data: tokens }) } },
 }))
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Pin the browser's own timezone so the submitted profile is deterministic.
+  await emulateTimezone('Asia/Shanghai')
   tracking.rememberCreateAppExternalAttribution.mockReset()
   tracking.rememberRegistrationSuccess.mockReset()
   tracking.sendGAEvent.mockReset()
-  navigation.replace.mockReset()
-  navigation.search = 'token=register-token'
-  vi.mocked(getBrowserTimezone).mockReset().mockReturnValue('Asia/Shanghai')
+  search = 'token=register-token'
   Cookies.remove('utm_info')
 })
 
@@ -139,11 +133,11 @@ it('records successful registration and returns to the console home', async () =
   expect(tracking.sendGAEvent).toHaveBeenCalledWith('user_registration_success', {
     method: 'email',
   })
-  expect(navigation.replace).toHaveBeenCalledWith('/')
+  expect(navigation.router.replace).toHaveBeenCalledWith('/')
 })
 
 it('returns to a requested console page after registration', async () => {
-  navigation.search = 'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow'
+  search = 'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow'
   fake.console.emailRegister.post.mockResolvedValue({ result: 'success', data: tokens })
   const screen = await renderPage()
   await userEvent.fill(screen.getByLabelText('accountSettings.account.newPassword'), validPassword)
@@ -153,7 +147,9 @@ it('returns to a requested console page after registration', async () => {
   )
   await userEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
 
-  await vi.waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/apps?tag=workflow'))
+  await vi.waitFor(() =>
+    expect(navigation.router.replace).toHaveBeenCalledWith('/apps?tag=workflow'),
+  )
 })
 
 it('records UTM attribution and clears its browser cookie after registration', async () => {

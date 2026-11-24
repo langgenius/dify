@@ -1,6 +1,7 @@
 'use client'
 
 import type { MarketplacePlugin } from '@dify/contracts/marketplace'
+import type { QueryClient } from '@tanstack/react-query'
 import { keepPreviousData, skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { marketplaceQuery } from '@/service/marketplace'
@@ -49,3 +50,13 @@ export const useMarketplacePluginSearch = <TData>(
     }),
   )
 }
+
+// The legacy plugin search and collection hooks exclude installed plugins, so refetch them after
+// the workspace installs, updates or removes one.
+export const invalidateMarketplacePluginLists = (queryClient: QueryClient) =>
+  Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: marketplaceQuery.searchAdvanced.key({ type: 'infinite' }),
+    }),
+    queryClient.invalidateQueries({ queryKey: marketplaceQuery.collectionPlugins.key() }),
+  ])

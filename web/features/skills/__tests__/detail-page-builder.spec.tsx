@@ -515,7 +515,10 @@ describe('SkillDetailPage builder', () => {
     const promptInput = await screen.findByPlaceholderText(
       'skill.skillManagement.detail.builder.modifyPlaceholder',
     )
-    await user.type(promptInput, 'Update the skill{Enter}')
+    // Model fallback is independent of per-keystroke editing, which rerenders this full page.
+    await user.click(promptInput)
+    await user.paste('Update the skill')
+    await user.keyboard('{Enter}')
 
     expect(mocks.sendSkillAssistMessage).toHaveBeenCalledWith(
       expect.objectContaining({

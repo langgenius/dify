@@ -265,6 +265,11 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  /**
+   * `false` lifts the time limit on the response headers. Event streams send their headers with
+   * the first frame, which can take longer than the limit; abort them through their signal.
+   */
+  timeout?: false
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
@@ -1049,114 +1054,6 @@ export const sseGet = async (
     })
 }
 
-export type GeneratorStreamCallbacks = {
-  /** Fired once when the planner stage finishes — carries the high-level plan. */
-  onPlan?: (data: Record<string, unknown>) => void
-  /** Fired once when the builder + validation finish — carries the final graph envelope. */
-  onResult?: (data: Record<string, unknown>) => void
-  onError?: (message: string) => void
-  onCompleted?: () => void
-  getAbortController?: (abortController: AbortController) => void
-}
-
-/**
- * Dedicated SSE consumer for the workflow generator's plan-first stream
- * (`/workflow-generate/stream`). Kept separate from ``ssePost`` /
- * ``handleStream`` on purpose: those are wired to the chat / workflow-run event
- * vocabulary (``message``, ``node_finished``, …) and threading two more
- * positional callbacks through that shared, high-blast-radius path isn't worth
- * it. This helper reuses the same cookie-auth + CSRF + abort setup but
- * only understands the generator's two events: ``plan`` then ``result``.
- * @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception.
- */
-export const sseGeneratorPost = (
-  url: string,
-  body: unknown,
-  { onPlan, onResult, onError, onCompleted, getAbortController }: GeneratorStreamCallbacks,
-) => {
-  const abortController = new AbortController()
-  const baseOptions = getBaseOptions()
-  const options = Object.assign({}, baseOptions, {
-    method: 'POST',
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-      'Content-Type': ContentType.json,
-    }),
-    body: JSON.stringify(body),
-  } as RequestInit)
-
-  getAbortController?.(abortController)
-
-  const urlWithPrefix = formatURL(url, false)
-
-  const fail = (e: unknown) => {
-    // Aborts are intentional (modal close / regenerate) — never surface them.
-    if (e instanceof Error && e.name === 'AbortError') return
-    onError?.(`${e}`)
-  }
-
-  globalThis
-    .fetch(urlWithPrefix, options)
-    .then((res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
-          refreshAccessTokenOrReLogin(TIME_OUT)
-            .then(() =>
-              sseGeneratorPost(url, body, {
-                onPlan,
-                onResult,
-                onError,
-                onCompleted,
-                getAbortController,
-              }),
-            )
-            .catch(() => onError?.('Unauthorized'))
-          return
-        }
-        res
-          .json()
-          .then((data: { message?: string }) => onError?.(data?.message || 'Server Error'))
-          .catch(() => onError?.('Server Error'))
-        return
-      }
-
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder('utf-8')
-      let buffer = ''
-      const read = () => {
-        reader
-          ?.read()
-          .then(({ done, value }) => {
-            if (done) {
-              onCompleted?.()
-              return
-            }
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            // Process every complete line; keep the trailing partial in the buffer.
-            lines.slice(0, -1).forEach((message) => {
-              if (!message.startsWith('data: ')) return
-              let obj: Record<string, unknown>
-              try {
-                obj = JSON.parse(message.slice(6))
-              } catch {
-                // A chunk boundary split the JSON — it'll re-arrive intact next read.
-                return
-              }
-              if (obj.event === 'plan') onPlan?.(obj)
-              else if (obj.event === 'result') onResult?.(obj)
-            })
-            buffer = lines[lines.length - 1] || ''
-            read()
-          })
-          .catch(fail)
-      }
-      read()
-    })
-    .catch(fail)
-}
-
 // base request
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -1272,12 +1169,6 @@ export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-// For Marketplace API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
-}
-
 /**
  * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
  * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
@@ -1286,12 +1177,6 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
  */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
-}
-
-// For Marketplace API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */

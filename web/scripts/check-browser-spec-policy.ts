@@ -25,6 +25,14 @@ const MOCK_ALLOWLIST: MockAllowance[] = []
 // Existing oversized suites only. Each W2 split must delete its exact entry.
 const LINE_ALLOWLIST: LineAllowance[] = []
 
+// Specs that need a navigation export `createTestNavigation` cannot provide.
+const NAVIGATION_MOCK_ALLOWLIST: LineAllowance[] = [
+  {
+    path: 'app/components/provider/__tests__/i18n-hydration.browser.spec.tsx',
+    reason: 'collects useServerInsertedHTML callbacks while server-rendering the same tree',
+  },
+]
+
 export type PolicyViolation = {
   kind:
     | 'missing-boundary-comment'
@@ -32,6 +40,7 @@ export type PolicyViolation = {
     | 'service-mock'
     | 'raw-network-stub'
     | 'expected-failure-with-fake-api'
+    | 'navigation-mock'
   path: string
   line?: number
   specifier?: string
@@ -43,6 +52,7 @@ type SourceAnalysis = {
   violations: PolicyViolation[]
   observedMockAllowances: Set<string>
   observedLineAllowance: boolean
+  observedNavigationAllowance: boolean
 }
 
 const browserSpecPattern = /\.browser\.spec\.[cm]?[jt]sx?$/
@@ -73,6 +83,13 @@ function resolveWebModule(specifier: string, specPath: string) {
       ? posix.normalize(posix.join(posix.dirname(specPath.replaceAll('\\', '/')), specifier))
       : undefined
   return target?.replace(/\.[cm]?[jt]sx?$/, '')
+}
+
+// `next/navigation` itself or the `@/next/navigation` re-export, from any spec location.
+export function isNavigationMockSpecifier(specifier: string, specPath = '') {
+  return (
+    specifier === 'next/navigation' || resolveWebModule(specifier, specPath) === 'next/navigation'
+  )
 }
 
 export function isServiceMockSpecifier(specifier: string, specPath = '') {
@@ -214,9 +231,14 @@ export function analyzeBrowserSpec(
   options: {
     mockAllowlist?: MockAllowance[]
     lineAllowlist?: LineAllowance[]
+    navigationMockAllowlist?: LineAllowance[]
     maxLines?: number
   } = {},
 ): SourceAnalysis {
+  const navigationAllowed = (options.navigationMockAllowlist ?? []).some(
+    (entry) => entry.path === path,
+  )
+  let observedNavigationAllowance = false
   const mockAllowlist = options.mockAllowlist ?? []
   const lineAllowlist = options.lineAllowlist ?? []
   const maxLines = options.maxLines ?? MAX_BROWSER_SPEC_LINES
@@ -267,7 +289,20 @@ export function analyzeBrowserSpec(
           message: `mocks ${specifier}; serve API data with installFakeApi/setupFakeApi from @/test/fake-api instead`,
         })
       }
-      if (specifier && isOwnedMockSpecifier(specifier)) {
+      const navigationMock = Boolean(specifier && isNavigationMockSpecifier(specifier, path))
+      if (specifier && navigationMock) {
+        if (navigationAllowed) observedNavigationAllowance = true
+        else {
+          violations.push({
+            kind: 'navigation-mock',
+            path,
+            line: sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1,
+            specifier,
+            message: `mocks ${specifier}; render inside createTestNavigation's NavigationProvider from @/test/next-navigation instead`,
+          })
+        }
+      }
+      if (specifier && !navigationMock && isOwnedMockSpecifier(specifier)) {
         const occurrence = (occurrences.get(specifier) ?? 0) + 1
         occurrences.set(specifier, occurrence)
         const key = mockAllowanceKey(path, specifier, occurrence)
@@ -305,6 +340,7 @@ export function analyzeBrowserSpec(
     violations,
     observedMockAllowances,
     observedLineAllowance: lineAllowed && lineCount > maxLines,
+    observedNavigationAllowance,
   }
 }
 
@@ -327,12 +363,15 @@ export function checkBrowserSpecPolicy(
   options: {
     mockAllowlist?: MockAllowance[]
     lineAllowlist?: LineAllowance[]
+    navigationMockAllowlist?: LineAllowance[]
   } = {},
 ): PolicyCheckResult {
   const mockAllowlist = options.mockAllowlist ?? MOCK_ALLOWLIST
   const lineAllowlist = options.lineAllowlist ?? LINE_ALLOWLIST
+  const navigationMockAllowlist = options.navigationMockAllowlist ?? NAVIGATION_MOCK_ALLOWLIST
   const observedMockAllowances = new Set<string>()
   const observedLineAllowances = new Set<string>()
+  const observedNavigationAllowances = new Set<string>()
   const violations = browserSpecsIn(webRoot)
     .sort()
     .flatMap((absolutePath) => {
@@ -340,9 +379,11 @@ export function checkBrowserSpecPolicy(
       const analysis = analyzeBrowserSpec(path, readFileSync(absolutePath, 'utf8'), {
         mockAllowlist,
         lineAllowlist,
+        navigationMockAllowlist,
       })
       analysis.observedMockAllowances.forEach((key) => observedMockAllowances.add(key))
       if (analysis.observedLineAllowance) observedLineAllowances.add(path)
+      if (analysis.observedNavigationAllowance) observedNavigationAllowances.add(path)
       return analysis.violations
     })
 
@@ -360,6 +401,9 @@ export function checkBrowserSpecPolicy(
     ...lineAllowlist
       .filter((entry) => !observedLineAllowances.has(entry.path))
       .map((entry) => `stale line allowlist: ${entry.path}`),
+    ...navigationMockAllowlist
+      .filter((entry) => !observedNavigationAllowances.has(entry.path))
+      .map((entry) => `stale navigation mock allowlist: ${entry.path}`),
   ]
 
   return { violations, staleAllowances }

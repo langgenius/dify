@@ -7,7 +7,6 @@ const { mockUninstallPost } = vi.hoisted(() => ({
 
 vi.mock('./base', () => ({
   get: vi.fn(),
-  getMarketplace: vi.fn(),
   post: vi.fn(),
   upload: vi.fn(),
 }))

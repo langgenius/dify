@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
@@ -171,12 +171,7 @@ it('distinguishes keyboard focus from the selected color', async () => {
 })
 
 it('locks image editing during submission and restores it after failure', async () => {
-  let rejectUpload!: (reason: Error) => void
-  fake.console.files.upload.post.mockReturnValueOnce(
-    new Promise((_, reject) => {
-      rejectUpload = reject
-    }),
-  )
+  const upload = hold(fake.console.files.upload.post)
   const client = new QueryClient()
   client.setQueryData(emojiCatalogOptions.queryKey, [])
   await render(
@@ -201,11 +196,12 @@ it('locks image editing during submission and restores it after failure', async 
   await expect.element(crop).toHaveFocus()
   const zoom = page.getByRole('slider', { name: 'app.iconPicker.zoom' })
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
-  await expect.poll(() => fake.console.files.upload.post.mock.calls.length).toBe(1)
   await expect.element(zoom).toBeDisabled()
+  // Cropping and encoding take a while on a slow runner; wait for the request itself.
+  await upload.arrived
   cropElement.focus()
   expect(document.activeElement).not.toBe(cropElement)
-  rejectUpload(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
+  upload.reject(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(zoom).toBeEnabled()
   cropElement.focus()

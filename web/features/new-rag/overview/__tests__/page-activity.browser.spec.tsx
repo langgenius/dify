@@ -6,6 +6,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
+import { createTestNavigation } from '@/test/next-navigation'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { KnowledgeOverviewPage } from '../page'
 
@@ -22,13 +23,6 @@ vi.mock('@/next/link', () => ({
       {children}
     </a>
   ),
-}))
-
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '/datasets/new/space-1/overview',
-  useRouter: () => ({ push: vi.fn() }),
 }))
 
 let queryData = createOverviewData()
@@ -121,16 +115,21 @@ async function renderOverview({
     systemFeatures: { deployment_edition: deploymentEdition },
   })
   onTestFinished(() => queryClient.clear())
+  const { NavigationProvider } = createTestNavigation({
+    url: `/datasets/new/space-1/overview${searchParams}`,
+  })
   const view = await render(
-    <Wrapper>
-      <QueryTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-        <KnowledgeSpaceTestProvider
-          space={createKnowledgeSpaceFixture({ permission_keys: spacePermissions })}
-        >
-          <KnowledgeOverviewPage knowledgeSpaceId="space-1" />
-        </KnowledgeSpaceTestProvider>
-      </QueryTestingAdapter>
-    </Wrapper>,
+    <NavigationProvider>
+      <Wrapper>
+        <QueryTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+          <KnowledgeSpaceTestProvider
+            space={createKnowledgeSpaceFixture({ permission_keys: spacePermissions })}
+          >
+            <KnowledgeOverviewPage knowledgeSpaceId="space-1" />
+          </KnowledgeSpaceTestProvider>
+        </QueryTestingAdapter>
+      </Wrapper>
+    </NavigationProvider>,
   )
   if (settle) await expect.poll(() => queryClient.isFetching()).toBe(0)
   const refetch = async (path: () => readonly unknown[]) => {
@@ -325,8 +324,8 @@ describe('KnowledgeOverviewPage activity', () => {
   })
 
   it('shows the actual elapsed minutes for recent activity', async () => {
-    const now = Date.parse('2026-07-29T09:04:30Z')
-    vi.spyOn(Date, 'now').mockReturnValue(now)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime('2026-07-29T09:04:30Z')
     queryData.activity.data[0]!.occurred_at = '2026-07-29T08:05:00Z'
     await renderOverview()
     await expect.element(page.getByText('59 minutes ago')).toBeInTheDocument()

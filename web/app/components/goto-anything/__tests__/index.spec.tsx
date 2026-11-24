@@ -69,17 +69,17 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.get': api.agents,
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
       'workspaces.current.models.modelTypes.byModelType.get': async () => ({ data: [] }),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
+        manifest: createPluginDeclarationFixture(),
+      }),
+      'workspaces.current.plugin.install.marketplace.post': api.install,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',
       }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.marketplace.pkg.get': async () => ({
-        manifest: createPluginDeclarationFixture(),
-      }),
-      'workspaces.current.plugin.install.marketplace.post': api.install,
     }),
   }
 })

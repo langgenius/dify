@@ -32,7 +32,7 @@ beforeEach(async () => {
     reader.readAsDataURL(png)
   })
   copied = undefined
-  // boundary: the system clipboard is external; ClipboardItem, decoding and conversion stay real.
+  // boundary: the system clipboard is shared by spec files running in parallel; ClipboardItem, decoding and conversion stay real.
   clipboardWrite = vi.spyOn(navigator.clipboard, 'write').mockImplementation(async (items) => {
     copied = await items[0]!.getType('image/png')
   })

@@ -1,32 +1,26 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import CheckCode from '../page'
 
-const navigation = vi.hoisted(() => ({
-  back: vi.fn(),
-  push: vi.fn(),
-  replace: vi.fn(),
-  search: 'email=user%40example.com&token=signup-token',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    back: navigation.back,
-    push: navigation.push,
-    replace: navigation.replace,
-  }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
+let navigation: TestNavigation
 
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({
+    url: '/signup/check-code?email=user%40example.com&token=signup-token',
+  })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <CheckCode />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <CheckCode />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -41,10 +35,6 @@ const fake = setupFakeApi(() => ({
 }))
 
 beforeEach(() => {
-  navigation.back.mockReset()
-  navigation.push.mockReset()
-  navigation.replace.mockReset()
-  navigation.search = 'email=user%40example.com&token=signup-token'
   localStorage.setItem(COUNT_DOWN_KEY, String(COUNT_DOWN_TIME_MS))
 })
 
@@ -79,8 +69,8 @@ it('focuses the one-time code field and submits the native form with Enter', asy
     }),
   )
   expect(fake.console.emailRegister.validity.post).toHaveBeenCalledTimes(1)
-  await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledTimes(1))
-  const destination = new URL(navigation.push.mock.calls[0]![0], window.location.origin)
+  await vi.waitFor(() => expect(navigation.router.push).toHaveBeenCalledTimes(1))
+  const destination = new URL(navigation.router.push.mock.calls[0]![0], window.location.origin)
   expect(destination.pathname).toBe('/signup/set-password')
   expect(destination.searchParams.get('email')).toBe('user@example.com')
   expect(destination.searchParams.get('token')).toBe('verified-token')
