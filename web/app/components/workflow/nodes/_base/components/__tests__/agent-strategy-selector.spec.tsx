@@ -22,12 +22,12 @@ const { request, marketplace, marketplaceLookup, install, manifest } = vi.hoiste
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
-  postMarketplace: marketplace,
 }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const { withMarketplaceResponses } = await import('@/test/marketplace-service')
   return withMarketplaceResponses(await importOriginal(), {
     pluginsByIdentifiers: marketplaceLookup,
+    searchAdvanced: marketplace,
   })
 })
 vi.mock('@/service/console', async (importOriginal) => {
@@ -222,10 +222,11 @@ it('keeps marketplace search and its category link alongside the installed catal
   })
   expect(await screen.findByText('Marketplace strategy')).toBeInTheDocument()
   expect(marketplace).toHaveBeenCalledWith(
-    '/plugins/search/advanced',
     expect.objectContaining({
+      params: { kind: 'plugins' },
       body: expect.objectContaining({ query: 'react', category: PluginCategoryEnum.agent }),
     }),
+    expect.anything(),
   )
 })
 
