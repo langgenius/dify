@@ -78,11 +78,11 @@ const InputItem: FC<Props> = ({
           placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
             ns: 'workflowIntegrations',
           })!}
-          placeholderClassName="leading-[21px]!"
+          placeholderClassName="truncate leading-[21px]!"
           insertVarTipToLeft={insertVarTipToLeft}
         />
       ) : (
-        <div className="h-full w-full pl-0.5 leading-4.5">
+        <div className="h-full w-full ps-0.5 leading-4.5">
           {!hasValue && (
             <div className="text-xs font-normal text-text-quaternary">{placeholder}</div>
           )}
@@ -104,7 +104,7 @@ const InputItem: FC<Props> = ({
               placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
                 ns: 'workflowIntegrations',
               })!}
-              placeholderClassName="leading-[21px]!"
+              placeholderClassName="truncate leading-[21px]!"
               promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
             />
@@ -113,7 +113,7 @@ const InputItem: FC<Props> = ({
       )}
       {hasRemove && !isFocus && (
         <RemoveButton
-          className="absolute top-0.5 right-1 hidden group-hover:block"
+          className="absolute inset-e-1 top-0.5 hidden group-hover:block"
           onClick={handleRemove}
         />
       )}

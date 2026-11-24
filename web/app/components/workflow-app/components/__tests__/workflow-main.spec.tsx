@@ -76,12 +76,12 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.publish.get': async () => createWorkflowResponseFixture(),
       'enterprise.appDeploy.deploymentService.listAppEnvironments': async () => ({ data: [] }),
+      'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [],
       'apps.byAppId.workflows.draft.post': api.saveDraft,
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
-      'apps.byAppId.workflow.comments.get': async () => ({ data: [] }),
     }),
   }
 })

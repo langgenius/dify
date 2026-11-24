@@ -11,7 +11,7 @@ const ChunkLabel: FC<ChunkLabelProps> = (props) => {
   return (
     <div className="flex items-center text-xs font-medium text-text-tertiary">
       <span aria-hidden className="i-custom-public-knowledge-selection-mod size-2.5" />
-      <p className="ml-0.5 flex gap-2">
+      <p className="ms-0.5 flex gap-2">
         <span>{label}</span>
         <span>·</span>
         <span>{`${characterCount} characters`}</span>

@@ -52,8 +52,8 @@ export default function AppSelector() {
               <div className="system-md-medium break-all text-text-primary">
                 {userProfile.name}
                 {isEducationAccount && (
-                  <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
-                    <span aria-hidden="true" className="mr-1 i-ri-graduation-cap-fill size-3" />
+                  <PremiumBadge size="s" color="blue" className="ms-1 px-2!">
+                    <span aria-hidden="true" className="me-1 i-ri-graduation-cap-fill size-3" />
                     <span className="system-2xs-medium">EDU</span>
                   </PremiumBadge>
                 )}
@@ -72,7 +72,7 @@ export default function AppSelector() {
           <MenuItem className="h-9 justify-start px-3" onClick={() => logout()}>
             <span
               aria-hidden="true"
-              className="mr-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
+              className="me-1 i-custom-vender-line-general-log-out-01 flex size-4 text-text-tertiary"
             />
             <span className="text-[14px] font-normal text-text-secondary">
               {t(($) => $['userProfile.logout'], { ns: 'common' })}

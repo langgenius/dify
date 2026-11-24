@@ -8,6 +8,7 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -17,12 +18,15 @@ import pytest
 import requests
 from azure.core.credentials import AccessToken
 from azure.core.exceptions import ClientAuthenticationError
+from azure.core.pipeline.transport import HttpRequest as AzureHttpRequest
+from azure.core.pipeline.transport import RequestsTransportResponse
 from botbuilder.schema import ConversationResourceResponse, ResourceResponse
 from botframework.connector.auth import ChannelValidation, ClaimsIdentity, JwtTokenExtractor
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
+from urllib3.response import HTTPResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -51,6 +55,7 @@ from core.human_input_v2.im_integration.adapters import (
     WebhookRequest,
     ms_teams,
 )
+from core.human_input_v2.im_integration.adapters.entities import CredentialTestRejectedError
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
@@ -73,6 +78,18 @@ def _credentials() -> MSTeamsCredentials:
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
         client_secret="test-only-client-secret",
+    )
+
+
+def _graph_authentication_rejection() -> ClientAuthenticationError:
+    response = requests.Response()
+    response.status_code = 400
+    response._content = b'{"error":"invalid_client","error_codes":[7000215]}'
+    return ClientAuthenticationError(
+        "test-only rejected credentials",
+        response=RequestsTransportResponse(
+            AzureHttpRequest("POST", "https://login.microsoftonline.com/test-only-tenant/oauth2/v2.0/token"), response
+        ),
     )
 
 
@@ -168,7 +185,9 @@ def _card_intent(
     action_style: ButtonStyle = ButtonStyle.PRIMARY,
 ) -> ResolvedForm:
     if input_type == "select":
-        input_block: FormPart = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
+        input_block: FormPart = SelectInput(
+            output_variable_name="comment", options=("One", "Two"), resolved_default_value="One"
+        )
     elif input_type == "file":
         input_block = FileInput(
             output_variable_name="comment",
@@ -185,7 +204,7 @@ def _card_intent(
             number_limits=1,
         )
     else:
-        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
+        input_block = ParagraphInput(output_variable_name="comment", resolved_default_value="Initial")
     return ResolvedForm(
         title="Approval",
         parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="After input")),
@@ -328,6 +347,55 @@ def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker: M
     bot_credentials.get_access_token.assert_called_once_with()
 
 
+@pytest.mark.parametrize(
+    ("tenant_id", "client_id", "error_number", "provider_code"),
+    [
+        ("00000000-0000-0000-0000-000000000000", _credentials().client_id, 900021, "AADSTS900021"),
+        (_credentials().client_id, _credentials().tenant_id, 90002, "AADSTS90002"),
+    ],
+    ids=["nonexistent-tenant", "swapped-ids"],
+)
+@pytest.mark.parametrize("request_id", [None, "MsFT-Request.MixedCase_42"])
+def test_credential_test_classifies_real_sdk_tenant_discovery_rejections(
+    mocker: MockerFixture,
+    tenant_id: str,
+    client_id: str,
+    error_number: int,
+    provider_code: str,
+    request_id: str | None,
+) -> None:
+    credentials = _credentials().model_copy(update={"tenant_id": tenant_id, "client_id": client_id})
+    response = requests.Response()
+    response.status_code = 400
+    response._content = json.dumps(
+        {
+            "error": "invalid_tenant",
+            "error_codes": [error_number],
+            "error_description": f"AADSTS7000215: {credentials.client_secret}",
+        }
+    ).encode()
+    if request_id is not None:
+        response.headers["x-ms-request-id"] = request_id
+    response.raw = HTTPResponse(body=BytesIO(response._content), status=response.status_code, preload_content=False)
+    mocker.patch.object(requests.Session, "send", autospec=True, return_value=response)
+    adapter = ms_teams.MSTeamsIMProviderAdapter(credentials)
+    try:
+        with pytest.raises(CredentialTestRejectedError) as captured:
+            adapter.test_credentials()
+    finally:
+        adapter.close()
+
+    result = captured.value.failure
+    assert isinstance(result, CredentialTestFailure)
+    assert result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert result.provider_error_code == provider_code
+    assert result.provider_request_id == request_id
+    assert result.http_status == 400
+    assert "App Tenant ID" in result.reason
+    assert "Microsoft App ID" in result.reason
+    assert credentials.client_secret not in repr(result)
+
+
 @pytest.mark.parametrize("rejected_scope", ["graph", "bot"])
 def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
     monkeypatch: pytest.MonkeyPatch,
@@ -342,7 +410,7 @@ def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
 
         def get_token(self, _scope: str) -> AccessToken:
             if not self.cached and not credentials_valid and rejected_scope == "graph":
-                raise ClientAuthenticationError("AADSTS7000215: invalid client secret")
+                raise _graph_authentication_rejection()
             self.cached = True
             return AccessToken(expires_on=2000000000, token="opaque-graph-token")
 
@@ -367,7 +435,12 @@ def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
 
     assert adapter.test_credentials() == CredentialTestSuccess(IMProvider.MS_TEAMS, _credentials().tenant_id)
     credentials_valid = False
-    rejected = adapter.test_credentials()
+    if rejected_scope == "graph":
+        with pytest.raises(CredentialTestRejectedError) as captured:
+            adapter.test_credentials()
+        rejected = captured.value.failure
+    else:
+        rejected = adapter.test_credentials()
 
     assert isinstance(rejected, CredentialTestFailure)
     assert rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
@@ -453,11 +526,18 @@ def test_credential_test_propagates_graph_and_bot_execution_failures(
         graph_claims={},
         bot_claims={},
     )
-    graph_credential.get_token.side_effect = ClientAuthenticationError("AADSTS7000215: sensitive graph rejection")
-    graph_rejected = adapter.test_credentials()
+    graph_credential.get_token.side_effect = _graph_authentication_rejection()
+    with pytest.raises(CredentialTestRejectedError) as captured_rejection:
+        adapter.test_credentials()
+    graph_rejected = captured_rejection.value.failure
     assert isinstance(graph_rejected, CredentialTestFailure)
     assert graph_rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
     assert graph_rejected.provider_error_code == "AADSTS7000215"
+
+    graph_credential.get_token.side_effect = ClientAuthenticationError("AADSTS7000215: not a provider response")
+    with pytest.raises(ClientAuthenticationError) as captured_authentication:
+        adapter.test_credentials()
+    assert captured_authentication.value is graph_credential.get_token.side_effect
 
     graph_credential.get_token.side_effect = RuntimeError("sensitive graph failure")
     with pytest.raises(RuntimeError) as captured:
@@ -978,18 +1058,18 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker: 
     "intent",
     [
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=(), default_value=None),),
+            blocks=(SelectInput(output_variable_name="choice", options=(), resolved_default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=("",), default_value=None),),
+            blocks=(SelectInput(output_variable_name="choice", options=("",), resolved_default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), default_value="One"),),
+            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), resolved_default_value="One"),),
         ),
         _custom_card_intent(
             blocks=(
-                ParagraphInput(output_variable_name="comment", default_value=None),
-                ParagraphInput(output_variable_name="comment", default_value=None),
+                ParagraphInput(output_variable_name="comment", resolved_default_value=None),
+                ParagraphInput(output_variable_name="comment", resolved_default_value=None),
             ),
         ),
         _custom_card_intent(blocks=(MarkdownFragment(text=""),)),

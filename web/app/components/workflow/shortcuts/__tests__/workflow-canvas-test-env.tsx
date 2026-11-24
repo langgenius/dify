@@ -3,6 +3,7 @@ import type { FlowHandle } from './workflow-canvas-fixture'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowBrowserComponent as render } from '../../__tests__/workflow-browser-test-env'
 import { ControlMode } from '../../types'
@@ -55,8 +56,9 @@ export async function setupWorkflowCanvas(props: CanvasProps = {}, commentMode =
   const flowHandle: FlowHandle = {}
   const nodes = props.nodes ?? initialNodes
   const edges = props.edges ?? []
+  const { NavigationProvider } = createTestNavigation({ url: '/app/app-1/workflow' })
   const screen = await render(
-    <>
+    <NavigationProvider>
       <button>Before canvas</button>
       <WorkflowCanvasFixture
         nodes={nodes}
@@ -64,7 +66,7 @@ export async function setupWorkflowCanvas(props: CanvasProps = {}, commentMode =
         contextMenuType={props.contextMenuType}
         flowHandle={flowHandle}
       />
-    </>,
+    </NavigationProvider>,
     {
       queryClient,
       resource: {

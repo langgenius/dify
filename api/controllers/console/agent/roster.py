@@ -1,12 +1,14 @@
+import json
 from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import UnprocessableEntity
 
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -70,7 +72,6 @@ from fields.agent_fields import (
 )
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
-from libs.datetime_utils import parse_time_range
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
@@ -78,27 +79,19 @@ from machinery.context import RequestContext
 from models import Account
 from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
-from models.agent_config_entities import AgentSoulConfig
 from models.model import App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
     AgentAccessNotReadyError,
-    AgentBuildSandboxNotFoundError,
-    AgentHomeSnapshotCreateFailedError,
-    AgentHomeSnapshotTooLargeError,
     AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
-    AgentSoulLockedError,
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
     PlaintextSecretNotAllowedError,
 )
-from services.agent.observability_service import (
-    AgentLogQueryParams,
-    AgentObservabilityService,
-    AgentStatisticsQueryParams,
-)
+from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError
+from services.agent.observability_contracts import AgentStatisticsQuery as AgentObservabilityStatisticsQuery
 from services.agent.roster_service import AgentRosterService
 from services.agent.version_store import (
     AgentVersionPlanRequiredError,
@@ -113,7 +106,7 @@ from services.app.agent_app_contracts import (
 )
 from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
+from services.entities.agent_entities import RosterListQuery
 from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.system_feature_service import SystemFeatureService
 
@@ -122,6 +115,7 @@ AgentPublicationStatus = Literal["published", "drafts"]
 
 class AgentInviteOptionsQuery(RosterListQuery):
     app_id: str | None = Field(default=None, description="Workflow app id for in-current-workflow markers")
+    tag_ids: list[UUID] = Field(default_factory=list, description="Agent tag IDs; every selected tag must match")
 
 
 class AgentAppListQuery(AppListQuery):
@@ -289,12 +283,6 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     access_ready: bool = False
 
 
-class AgentDebugConversationRefreshResponse(BaseModel):
-    debug_conversation_id: str
-    debug_conversation_has_messages: bool = False
-    debug_conversation_message_count: int = 0
-
-
 class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
@@ -311,25 +299,6 @@ class AgentPublishResponse(ResponseModel):
     active_config_snapshot_id: str
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
     draft: AgentConfigDraftSummaryResponse | None = None
-
-
-class AgentBuildDraftCheckoutPayload(BaseModel):
-    force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
-
-
-class AgentBuildDraftResponse(ResponseModel):
-    variant: str
-    draft: AgentConfigDraftSummaryResponse
-    agent_soul: AgentSoulConfig
-
-
-class AgentBuildDraftApplyResponse(BaseModel):
-    result: str
-    draft: dict[str, object]
-
-
-class AgentSimpleResultResponse(BaseModel):
-    result: str
 
 
 class AgentPublicationCountsResponse(ResponseModel):
@@ -356,8 +325,6 @@ register_schema_models(
     AgentAppUpdatePayload,
     AgentAppCopyPayload,
     AgentPublishPayload,
-    AgentBuildDraftCheckoutPayload,
-    ComposerSavePayload,
     AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -373,11 +340,7 @@ register_response_schema_models(
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
-    AgentDebugConversationRefreshResponse,
     AgentPublishResponse,
-    AgentBuildDraftResponse,
-    AgentBuildDraftApplyResponse,
-    AgentSimpleResultResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -521,22 +484,6 @@ def _resolve_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID
     return _agent_roster_service(session).get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
 
 
-def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
-    return _agent_roster_service(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
-
-
-def _agent_observability_service(session: Session) -> AgentObservabilityService:
-    return AgentObservabilityService(session)
-
-
-def _parse_observability_time_range(start: str | None, end: str | None, account: Account):
-    timezone = account.timezone or "UTC"
-    try:
-        return parse_time_range(start, end, timezone)
-    except ValueError as exc:
-        abort(400, description=str(exc))
-
-
 def _query_values(name: str, alias_name: str | None = None) -> list[str]:
     def _get_values(field_name: str) -> list[str]:
         values = request.args.getlist(field_name)
@@ -607,6 +554,8 @@ class AgentAppListApi(Resource):
             detail = application_services().agent_apps.collection.create(context, params)
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError from exc
+        except AgentAppNameConflictError as exc:
+            raise AgentNameConflictError from exc
         return _agent_app_detail_response(detail), HTTPStatus.CREATED
 
 
@@ -679,36 +628,6 @@ class AgentAppApi(Resource):
         return "", HTTPStatus.NO_CONTENT
 
 
-@console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
-class AgentDebugConversationRefreshApi(Resource):
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(
-        200,
-        "Agent debug conversation refreshed",
-        console_ns.models[AgentDebugConversationRefreshResponse.__name__],
-    )
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        debug_conversation_id = _agent_roster_service(session).reset_build_conversation(
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-        return AgentDebugConversationRefreshResponse(
-            debug_conversation_id=debug_conversation_id,
-            debug_conversation_has_messages=False,
-            debug_conversation_message_count=0,
-        ).model_dump(mode="json")
-
-
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
     @error_responses(
@@ -744,134 +663,6 @@ class AgentPublishApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             version_note=req_data.version_note,
-        )
-
-
-@console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
-class AgentBuildDraftCheckoutApi(Resource):
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
-    @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    @model_validate(AgentBuildDraftCheckoutPayload)
-    def post(
-        self,
-        req_data: AgentBuildDraftCheckoutPayload,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        return AgentComposerService.checkout_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-            force=req_data.force,
-        )
-
-
-@console_ns.route("/agent/<uuid:agent_id>/build-draft")
-class AgentBuildDraftApi(Resource):
-    @error_responses(AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
-    @console_ns.response(404, "Agent build draft not found")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.load_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError)
-    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
-    @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    @model_validate(ComposerSavePayload)
-    def put(
-        self,
-        req_data: ComposerSavePayload,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        return AgentComposerService.save_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-            payload=req_data,
-        )
-
-    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
-    @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.discard_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
-        )
-
-
-@console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
-class AgentBuildDraftApplyApi(Resource):
-    @error_responses(
-        AgentBuildSandboxNotFoundError,
-        AgentHomeSnapshotCreateFailedError,
-        AgentHomeSnapshotTooLargeError,
-        AgentNotFoundError,
-        AgentVersionNotFoundError,
-        InvalidComposerConfigError,
-        PlaintextSecretNotAllowedError,
-    )
-    @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        return AgentComposerService.apply_agent_app_build_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=str(agent_id),
-            account_id=current_user.id,
         )
 
 
@@ -962,13 +753,23 @@ class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
     @console_ns.response(HTTPStatus.OK, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
     @console_account_admission()
-    @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
-        req_data: AgentInviteOptionsQuery,
         context: RequestContext,
     ) -> dict[str, object]:
-        """Return visible Workflow-callable Agents and their current workflow usage."""
+        """Return visible Workflow-callable Agents matching validated tag filters.
+
+        Preconditions: Console admission supplies the active workspace identity.
+        Postconditions: repeated tag_ids are validated as UUIDs and passed with
+        name/pagination filters; the response contains detached Agent tags.
+        """
+        try:
+            req_data = query_params_from_request(AgentInviteOptionsQuery, list_fields=("tag_ids",))
+        except ValidationError as exc:
+            # Preserve this endpoint's existing @model_validate 422 contract
+            # while parsing repeated tag IDs without exposing submitted values.
+            errors = exc.errors(include_url=False, include_input=False, include_context=False)
+            raise UnprocessableEntity(json.dumps(errors)) from None
         return dump_response(
             AgentInviteOptionsResponse,
             application_services().agent_invite_options.list(
@@ -977,47 +778,45 @@ class AgentInviteOptionsApi(Resource):
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
+                tag_ids=tuple(str(tag_id) for tag_id in req_data.tag_ids),
             ),
         )
+
+
+def _agent_log_query() -> AgentLogQuery:
+    """Parse repeated and indexed log query parameters, including singular aliases."""
+    query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
+    query_data["sources"] = _query_values("sources", "source")
+    query_data["statuses"] = _query_values("statuses", "status")
+    query = AgentLogsQuery.model_validate(query_data)
+    return AgentLogQuery(
+        page=query.page,
+        limit=query.limit,
+        keyword=query.keyword,
+        statuses=tuple(query.statuses),
+        sources=tuple(query.sources),
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        start=query.start,
+        end=query.end,
+    )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs")
 class AgentLogsApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
-    @console_ns.response(200, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _query_values("sources", "source")
-        query_data["statuses"] = _query_values("statuses", "status")
-        query = AgentLogsQuery.model_validate(query_data)
-        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+    @console_ns.response(HTTPStatus.OK, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's conversation logs."""
+        query = _agent_log_query()
         try:
-            payload = _agent_observability_service(session).list_logs(
-                app=app_model,
-                agent_id=str(agent_id),
-                params=AgentLogQueryParams(
-                    page=query.page,
-                    limit=query.limit,
-                    keyword=query.keyword,
-                    statuses=tuple(query.statuses),
-                    sources=tuple(query.sources),
-                    sort_by=query.sort_by,
-                    sort_order=query.sort_order,
-                    start=start,
-                    end=end,
-                ),
-            )
+            payload = application_services().agent_observability.list_logs(context, str(agent_id), query)
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogListResponse, payload)
 
 
@@ -1025,57 +824,33 @@ class AgentLogsApi(Resource):
 class AgentLogMessagesApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
-    @console_ns.response(200, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _query_values("sources", "source")
-        query_data["statuses"] = _query_values("statuses", "status")
-        query = AgentLogsQuery.model_validate(query_data)
-        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+    @console_ns.response(HTTPStatus.OK, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID, conversation_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's messages for a conversation."""
+        query = _agent_log_query()
         try:
-            payload = _agent_observability_service(session).list_log_messages(
-                app=app_model,
-                agent_id=str(agent_id),
-                conversation_id=str(conversation_id),  # pyrefly: ignore[unnecessary-type-conversion]
-                params=AgentLogQueryParams(
-                    page=query.page,
-                    limit=query.limit,
-                    keyword=query.keyword,
-                    statuses=tuple(query.statuses),
-                    sources=tuple(query.sources),
-                    sort_by=query.sort_by,
-                    sort_order=query.sort_order,
-                    start=start,
-                    end=end,
-                ),
+            payload = application_services().agent_observability.list_log_messages(
+                context, str(agent_id), str(conversation_id), query
             )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogMessageListResponse, payload)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/log-sources")
 class AgentLogSourcesApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        payload = _agent_observability_service(session).list_log_sources(app=app_model, agent_id=str(agent_id))
+    @console_ns.response(HTTPStatus.OK, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's available log sources."""
+        try:
+            payload = application_services().agent_observability.list_log_sources(context, str(agent_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         return dump_response(AgentLogSourceListResponse, payload)
 
 
@@ -1084,37 +859,24 @@ class AgentStatisticsSummaryApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentStatisticsQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Agent monitoring summary and chart data",
         console_ns.models[AgentStatisticSummaryEnvelopeResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_MONITOR, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_MONITOR, AgentId())])
     @model_validate(AgentStatisticsQuery)
-    def get(
-        self,
-        req_data: AgentStatisticsQuery,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        timezone = current_user.timezone or "UTC"
-        start, end = _parse_observability_time_range(req_data.start, req_data.end, current_user)
+    def get(self, req_data: AgentStatisticsQuery, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return Agent monitoring data using the admitted account's timezone."""
         try:
-            payload = _agent_observability_service(session).get_statistics_summary(
-                app=app_model,
-                agent_id=str(agent_id),
-                params=AgentStatisticsQueryParams(source=req_data.source, start=start, end=end, timezone=timezone),
+            payload = application_services().agent_observability.statistics(
+                context,
+                str(agent_id),
+                AgentObservabilityStatisticsQuery(source=req_data.source, start=req_data.start, end=req_data.end),
             )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 

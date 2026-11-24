@@ -1253,7 +1253,7 @@ class TestKnowledgeFSRoleMutations:
 
 class TestKnowledgeFSPermissions:
     def test_batch_get_returns_empty_without_remote_call(self, transport: RBACTransport) -> None:
-        assert svc.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "acct-1", [], session=None) == {}  # type: ignore[arg-type]
+        assert svc.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "acct-1", []) == {}
         assert transport.requests == []
 
     def test_batch_get_uses_full_legacy_permissions_when_rbac_disabled(
@@ -1264,7 +1264,6 @@ class TestKnowledgeFSPermissions:
             "tenant-1",
             "acct-1",
             ["control-1", "control-2"],
-            session=None,  # type: ignore[arg-type]
         )
 
         assert transport.requests == []
@@ -1294,7 +1293,6 @@ class TestKnowledgeFSPermissions:
             "tenant-1",
             "acct-1",
             ["control-1", "control-2"],
-            session=None,  # type: ignore[arg-type]
         )
 
         call = _call_args(transport)

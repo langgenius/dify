@@ -119,16 +119,15 @@ export type InferSchema<
         ? Root extends { readonly [schemaTypeMap]: unknown }
           ? ReferencedSchema<Root, `#/${P}`, Json>
           : InferSchema<Pointer<Root, P>, Root, Next<D>, Json>
-        :
-            | (BaseSchema<S, Root, D, Json> &
-                (S extends { readonly oneOf: readonly (infer O)[] }
-                  ? InferSchema<O, Root, Next<D>, Json>
-                  : unknown) &
-                (S extends { readonly anyOf: readonly (infer O)[] }
-                  ? InferSchema<O, Root, Next<D>, Json>
-                  : unknown) &
-                (S extends { readonly allOf: infer A } ? AllOf<A, Root, D, Json> : unknown))
-            | (S extends { readonly nullable: true } ? null : never)
+        : | (BaseSchema<S, Root, D, Json> &
+              (S extends { readonly oneOf: readonly (infer O)[] }
+                ? InferSchema<O, Root, Next<D>, Json>
+                : unknown) &
+              (S extends { readonly anyOf: readonly (infer O)[] }
+                ? InferSchema<O, Root, Next<D>, Json>
+                : unknown) &
+              (S extends { readonly allOf: infer A } ? AllOf<A, Root, D, Json> : unknown))
+          | (S extends { readonly nullable: true } ? null : never)
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options' | 'trace'
 export type OpenApiDocument = { readonly openapi: string; readonly paths: object }

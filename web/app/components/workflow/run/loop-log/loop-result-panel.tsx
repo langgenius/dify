@@ -106,7 +106,7 @@ const LoopResultPanel: FC<Props> = ({
           onBack()
         }}
       >
-        <RiArrowLeftLine className="mr-1 size-4" />
+        <RiArrowLeftLine className="me-1 size-4" />
         <div className="system-sm-medium">
           {t(($) => $[`${i18nPrefix}.back`], { ns: 'workflow' })}
         </div>
@@ -124,7 +124,7 @@ const LoopResultPanel: FC<Props> = ({
               className={cn(
                 'flex w-full cursor-pointer items-center justify-between px-3',
                 expandedLoops[index] ? 'pt-3 pb-2' : 'py-3',
-                'rounded-xl text-left',
+                'rounded-xl text-start',
               )}
               onClick={() => toggleLoop(index)}
             >

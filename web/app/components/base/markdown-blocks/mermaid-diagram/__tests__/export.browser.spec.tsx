@@ -3,6 +3,7 @@ import { render } from 'vitest-browser-react'
 import { downloadBlob } from '@/utils/download'
 import { MermaidDiagram } from '..'
 
+// boundary: record the exported blob instead of triggering a browser download.
 vi.mock('@/utils/download', () => ({ downloadBlob: vi.fn() }))
 
 it('downloads the complete themed drawing independently of the preview zoom', async () => {
