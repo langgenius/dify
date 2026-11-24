@@ -323,6 +323,7 @@
   "tag.failed": "タグの作成に失敗しました",
   "tag.manageTags": "タグの管理",
   "tag.nameRequired": "タグ名を入力してください。",
+  "tag.nameTooLong": "タグ名は {{max}} 文字以内で入力してください。",
   "tag.noTag": "タグなし",
   "tag.noTagsYet": "タグはまだありません。",
   "tag.noTagsYetCreateHint": "タグはまだありません。名前を入力してタグを作成できます。",

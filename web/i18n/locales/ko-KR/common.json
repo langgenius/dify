@@ -323,6 +323,7 @@
   "tag.failed": "태그 생성에 실패했습니다",
   "tag.manageTags": "태그 관리",
   "tag.nameRequired": "태그 이름을 입력하세요.",
+  "tag.nameTooLong": "태그 이름은 {{max}}자 이내로 입력하세요.",
   "tag.noTag": "태그 없음",
   "tag.noTagsYet": "아직 태그가 없습니다.",
   "tag.noTagsYetCreateHint": "아직 태그가 없습니다. 태그를 만들려면 이름을 입력하세요.",

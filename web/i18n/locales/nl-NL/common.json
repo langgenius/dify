@@ -323,6 +323,7 @@
   "tag.failed": "Tag creation failed",
   "tag.manageTags": "Manage Tags",
   "tag.nameRequired": "Voer een naam voor de tag in.",
+  "tag.nameTooLong": "Een tagnaam mag maximaal {{max}} tekens lang zijn.",
   "tag.noTag": "No tags",
   "tag.noTagsYet": "Er zijn nog geen tags.",
   "tag.noTagsYetCreateHint": "Er zijn nog geen tags. Typ een naam om een tag te maken.",

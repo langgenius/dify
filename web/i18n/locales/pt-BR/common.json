@@ -323,6 +323,7 @@
   "tag.failed": "Falha na criação da tag",
   "tag.manageTags": "Gerenciar tags",
   "tag.nameRequired": "Digite um nome para a tag.",
+  "tag.nameTooLong": "O nome da tag pode ter no máximo {{max}} caracteres.",
   "tag.noTag": "Sem tags",
   "tag.noTagsYet": "Ainda não há tags.",
   "tag.noTagsYetCreateHint": "Ainda não há tags. Digite um nome para criar uma.",

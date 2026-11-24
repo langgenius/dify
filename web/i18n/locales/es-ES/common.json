@@ -323,6 +323,7 @@
   "tag.failed": "Creación de etiqueta fallida",
   "tag.manageTags": "Gestionar Etiquetas",
   "tag.nameRequired": "Escribe un nombre para la etiqueta.",
+  "tag.nameTooLong": "El nombre de la etiqueta puede tener hasta {{max}} caracteres.",
   "tag.noTag": "Sin etiquetas",
   "tag.noTagsYet": "Aún no hay etiquetas.",
   "tag.noTagsYetCreateHint": "Aún no hay etiquetas. Escribe un nombre para crear una.",

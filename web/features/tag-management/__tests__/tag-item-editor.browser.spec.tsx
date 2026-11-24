@@ -118,6 +118,23 @@ it('shows a rename failure and restores the original name for editing again', as
   await expect.element(input()).toHaveValue('Frontend')
 })
 
+it('rejects 51 code points before saving and accepts a 50-character replacement', async () => {
+  const validName = '🔖'.repeat(50)
+  await renderEditor()
+  await edit().click()
+  await input().fill(`${validName}x`)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameTooLong:{"max":50}')
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+  await input().fill(validName)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByText(validName, { exact: true })).toBeVisible()
+  expect(fake.console.tags.byTagId.patch).toHaveBeenCalledExactlyOnceWith({
+    params: { tag_id: frontendId },
+    body: { name: validName },
+  })
+})
+
 it('removes an unbound tag from the real list without a success notification', async () => {
   await renderEditor('0')
   await remove().click()

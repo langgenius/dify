@@ -323,6 +323,7 @@
   "tag.failed": "टैग बनाना असफल रहा",
   "tag.manageTags": "टैग प्रबंधित करें",
   "tag.nameRequired": "टैग का नाम दर्ज करें।",
+  "tag.nameTooLong": "टैग के नाम में अधिकतम {{max}} वर्ण हो सकते हैं।",
   "tag.noTag": "कोई टैग नहीं",
   "tag.noTagsYet": "अभी कोई टैग नहीं है।",
   "tag.noTagsYetCreateHint": "अभी कोई टैग नहीं है। नया टैग बनाने के लिए उसका नाम लिखें।",

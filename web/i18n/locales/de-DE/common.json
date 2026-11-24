@@ -323,6 +323,7 @@
   "tag.failed": "Tag-Erstellung fehlgeschlagen",
   "tag.manageTags": "Tags verwalten",
   "tag.nameRequired": "Geben Sie einen Namen für das Tag ein.",
+  "tag.nameTooLong": "Tag-Namen dürfen höchstens {{max}} Zeichen lang sein.",
   "tag.noTag": "Keine Tags",
   "tag.noTagsYet": "Es gibt noch keine Tags.",
   "tag.noTagsYetCreateHint": "Es gibt noch keine Tags. Geben Sie einen Namen ein, um ein Tag zu erstellen.",

@@ -2146,6 +2146,7 @@ export default interface Resources {
     'tag.failed': 'Tag creation failed'
     'tag.manageTags': 'Manage Tags'
     'tag.nameRequired': 'Enter a tag name.'
+    'tag.nameTooLong': 'Tag names can be at most {{max}} characters.'
     'tag.noTag': 'No tags'
     'tag.noTagsYet': 'No tags yet.'
     'tag.noTagsYetCreateHint': 'No tags yet. Type a name to create one.'

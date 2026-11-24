@@ -323,6 +323,7 @@
   "tag.failed": "Tạo thẻ không thành công",
   "tag.manageTags": "Quản lý thẻ",
   "tag.nameRequired": "Nhập tên thẻ.",
+  "tag.nameTooLong": "Tên thẻ không được dài quá {{max}} ký tự.",
   "tag.noTag": "Không có thẻ",
   "tag.noTagsYet": "Chưa có thẻ nào.",
   "tag.noTagsYetCreateHint": "Chưa có thẻ nào. Nhập tên để tạo thẻ mới.",

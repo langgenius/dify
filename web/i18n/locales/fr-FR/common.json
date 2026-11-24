@@ -323,6 +323,7 @@
   "tag.failed": "La création de la balise a échoué",
   "tag.manageTags": "Gérer les balises",
   "tag.nameRequired": "Saisissez un nom pour la balise.",
+  "tag.nameTooLong": "Le nom de la balise ne peut pas dépasser {{max}} caractères.",
   "tag.noTag": "Aucune balise",
   "tag.noTagsYet": "Aucune balise pour le moment.",
   "tag.noTagsYetCreateHint": "Aucune balise pour le moment. Saisissez un nom pour en créer une.",

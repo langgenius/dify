@@ -323,6 +323,7 @@
   "tag.failed": "Ustvarjanje oznake ni uspelo",
   "tag.manageTags": "Upravljanje oznak",
   "tag.nameRequired": "Vnesite ime oznake.",
+  "tag.nameTooLong": "Ime oznake lahko vsebuje največ {{max}} znakov.",
   "tag.noTag": "Brez oznak",
   "tag.noTagsYet": "Oznak še ni.",
   "tag.noTagsYetCreateHint": "Oznak še ni. Vnesite ime, da ustvarite novo oznako.",

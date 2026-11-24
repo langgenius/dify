@@ -323,6 +323,7 @@
   "tag.failed": "Crearea etichetei a eșuat",
   "tag.manageTags": "Gestionați etichete",
   "tag.nameRequired": "Introduceți un nume pentru etichetă.",
+  "tag.nameTooLong": "Numele etichetei poate avea cel mult {{max}} de caractere.",
   "tag.noTag": "Nicio etichetă",
   "tag.noTagsYet": "Nu există încă etichete.",
   "tag.noTagsYetCreateHint": "Nu există încă etichete. Introduceți un nume pentru a crea o etichetă.",

@@ -1,5 +1,7 @@
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isTagNameTooLong, MAX_TAG_NAME_LENGTH } from './tag-name-length'
+import { getTagNameValidationMessage } from './tag-name-validation'
 
 type TagNameFormProps = {
   initialName?: string
@@ -37,6 +39,10 @@ export function TagNameForm({
       setError(t(($) => $['tag.nameRequired']))
       return
     }
+    if (isTagNameTooLong(name)) {
+      setError(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
+      return
+    }
     if (name === initialName) {
       onFinish?.()
       return
@@ -46,7 +52,13 @@ export function TagNameForm({
       setDraft('')
       onFinish?.()
     } catch (cause) {
-      onSaveError(cause)
+      const message = getTagNameValidationMessage(
+        cause,
+        t,
+        initialName === undefined ? 'create' : 'rename',
+      )
+      if (message) setError(message)
+      else onSaveError(cause)
     }
   }
 

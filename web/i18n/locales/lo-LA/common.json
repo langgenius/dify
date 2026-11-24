@@ -323,6 +323,7 @@
   "tag.failed": "ສ້າງແທັກບໍ່ສຳເລັດ",
   "tag.manageTags": "ຈັດການແທັກ",
   "tag.nameRequired": "ປ້ອນຊື່ແທັກ.",
+  "tag.nameTooLong": "ຊື່ແທັກຕ້ອງບໍ່ເກີນ {{max}} ຕົວອັກສອນ.",
   "tag.noTag": "ບໍ່ມີແທັກ",
   "tag.noTagsYet": "ຍັງບໍ່ມີແທັກ.",
   "tag.noTagsYetCreateHint": "ຍັງບໍ່ມີແທັກ. ພິມຊື່ເພື່ອສ້າງແທັກໃໝ່.",

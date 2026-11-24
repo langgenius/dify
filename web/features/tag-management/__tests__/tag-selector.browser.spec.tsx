@@ -191,6 +191,18 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
+it('explains the length limit before offering to create a tag from a card', async () => {
+  await renderSelector()
+  await trigger().click()
+  await search().fill('A'.repeat(51))
+  await expect.element(search()).toHaveAccessibleDescription('common.tag.nameTooLong:{"max":50}')
+  await expect
+    .element(page.getByRole('option', { name: /common\.tag\.create/ }))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(50))
+  await expect.element(page.getByRole('option', { name: /common\.tag\.create/ })).toBeVisible()
+})
+
 it.each(['agent', 'app'] as const)(
   'offers to create the first %s tag only after the workspace catalog loads',
   async (type) => {

@@ -323,6 +323,7 @@
   "tag.failed": "فشل إنشاء العلامة",
   "tag.manageTags": "إدارة العلامات",
   "tag.nameRequired": "أدخل اسمًا للعلامة.",
+  "tag.nameTooLong": "يجب ألا يتجاوز اسم العلامة {{max}} حرفًا.",
   "tag.noTag": "لا توجد علامات",
   "tag.noTagsYet": "لا توجد علامات بعد.",
   "tag.noTagsYetCreateHint": "لا توجد علامات بعد. اكتب اسمًا لإنشاء علامة جديدة.",

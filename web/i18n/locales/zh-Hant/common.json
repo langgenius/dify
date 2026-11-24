@@ -323,6 +323,7 @@
   "tag.failed": "標籤建立失敗",
   "tag.manageTags": "管理標籤",
   "tag.nameRequired": "請輸入標籤名稱。",
+  "tag.nameTooLong": "標籤名稱最多可包含 {{max}} 個字元。",
   "tag.noTag": "沒有標籤",
   "tag.noTagsYet": "目前沒有標籤。",
   "tag.noTagsYetCreateHint": "目前沒有標籤。輸入名稱即可建立標籤。",

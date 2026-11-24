@@ -89,6 +89,17 @@ it('keeps a failed draft available for correction and retry', async () => {
   })
 })
 
+it('translates a server-side name length error without displaying its JSON', async () => {
+  const message = JSON.stringify([{ loc: ['name'], type: 'string_too_long' }])
+  fake.console.tags.post.mockRejectedValueOnce(apiError({ status: 422, message }))
+  await renderModal()
+  await input().fill('Research')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameTooLong:{"max":50}')
+  await expect.element(input()).toHaveValue('Research')
+  await expect.element(page.getByText(message, { exact: true })).not.toBeInTheDocument()
+})
+
 it('rejects whitespace-only names and lets the user correct the draft', async () => {
   await renderModal()
   await input().fill('   ')
