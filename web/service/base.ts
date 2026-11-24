@@ -272,9 +272,3 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
 export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
-
-// For public API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
-}
