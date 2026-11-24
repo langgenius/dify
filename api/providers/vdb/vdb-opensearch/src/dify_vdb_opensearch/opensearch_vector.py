@@ -189,9 +189,25 @@ class OpenSearchVector(BaseVector):
 
     @override
     def text_exists(self, id: str) -> bool:
+        """Return whether an indexed chunk with ``metadata.doc_id == id`` exists.
+
+        ``add_texts`` assigns a random OpenSearch ``_id`` (or omits ``_id`` on
+        Amazon OpenSearch Serverless) and stores Dify's chunk identifier under
+        ``metadata.doc_id``. Existence checks must therefore query
+        ``metadata.doc_id`` rather than fetching by the OpenSearch document
+        ``_id``, matching ``delete_by_ids``.
+
+        Preconditions:
+            - ``id`` is a Dify chunk identifier (``doc_id``).
+        Postconditions:
+            - Returns ``True`` if at least one document in the index has
+              ``metadata.doc_id == id``.
+            - Returns ``False`` if no document matches or if the index does not
+              exist (``NotFoundError``).
+            - Other client or transport exceptions propagate unchanged.
+        """
         try:
-            self._client.get(index=self._collection_name.lower(), id=id)
-            return True
+            return bool(self.get_ids_by_metadata_field("doc_id", id))
         except NotFoundError:
             return False
 

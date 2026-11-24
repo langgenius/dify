@@ -570,13 +570,84 @@ class TestOpensearchVectorCases:
         vector.delete()
         vector._client.indices.delete.assert_called_once_with(index="collection_1", ignore_unavailable=True)
 
-        vector._client.get.return_value = {"_id": "id-1"}
+        vector._client.search.return_value = {"hits": {"hits": [{"_id": "es-id-1"}]}}
         assert vector.text_exists("id-1") is True
-        vector._client.get.side_effect = opensearch_module.NotFoundError("not found")
+        vector._client.search.assert_called_with(
+            index="collection_1",
+            body={"query": {"term": {"metadata.doc_id": "id-1"}}},
+        )
+        vector._client.search.return_value = {"hits": {"hits": []}}
         assert vector.text_exists("id-1") is False
-        vector._client.get.side_effect = ConnectionError("connection failed")
+        vector._client.search.side_effect = opensearch_module.NotFoundError("not found")
+        assert vector.text_exists("id-1") is False
+        vector._client.search.side_effect = ConnectionError("connection failed")
         with pytest.raises(ConnectionError, match="connection failed"):
             vector.text_exists("id-1")
+
+    @staticmethod
+    def test_text_exists_finds_documents_indexed_by_add_texts(opensearch_module, monkeypatch: pytest.MonkeyPatch):
+        stored_docs: list[dict[str, object]] = []
+
+        def fake_bulk(client, actions, **_kwargs):
+            _ = client
+            for index, action in enumerate(actions):
+                stored_docs.append(
+                    {
+                        "_index": action["_index"],
+                        "_id": action.get("_id", f"aoss-generated-{index}"),
+                        "_source": action["_source"],
+                    }
+                )
+            return len(actions), []
+
+        def fake_get(*, index: str, id: str):
+            for doc in stored_docs:
+                if doc["_index"] == index and doc["_id"] == id:
+                    return doc
+            raise opensearch_module.NotFoundError("not found")
+
+        def fake_search(*, index: str, body: dict[str, object]):
+            query = body.get("query")
+            term = query.get("term") if isinstance(query, dict) else None
+            if not isinstance(term, dict) or not term:
+                return {"hits": {"hits": []}}
+            field_name, expected_value = next(iter(term.items()))
+            hits = []
+            for doc in stored_docs:
+                source = doc.get("_source") if doc["_index"] == index else None
+                metadata = source.get("metadata") if isinstance(source, dict) else None
+                if (
+                    field_name == "metadata.doc_id"
+                    and isinstance(metadata, dict)
+                    and metadata.get("doc_id") == expected_value
+                ):
+                    hits.append({"_id": doc["_id"]})
+            return {"hits": {"hits": hits}}
+
+        monkeypatch.setattr(opensearch_module.helpers, "bulk", fake_bulk)
+
+        for aws_service, doc_id in (("es", "seg-standard-1"), ("aoss", "seg-aoss-1")):
+            stored_docs.clear()
+            vector = opensearch_module.OpenSearchVector(
+                "Collection_1",
+                _opensearch_vector_config(opensearch_module, aws_service=aws_service),
+            )
+            monkeypatch.setattr(vector._client, "get", fake_get)
+            monkeypatch.setattr(vector._client, "search", fake_search)
+
+            doc = Document(page_content="indexed chunk", metadata={"doc_id": doc_id, "document_id": "doc-1"})
+            vector.add_texts([doc], [[0.1, 0.2]])
+
+            assert stored_docs[0]["_id"] != doc_id
+            assert vector.text_exists(doc_id) is True
+            assert vector.text_exists("missing-doc-id") is False
+            remaining = vector._filter_duplicate_texts(
+                [
+                    doc,
+                    Document(page_content="new chunk", metadata={"doc_id": "seg-new", "document_id": "doc-1"}),
+                ]
+            )
+            assert [item.metadata["doc_id"] for item in remaining if item.metadata] == ["seg-new"]
 
     @staticmethod
     def test_search_by_vector_validates_and_builds_documents(opensearch_module):
