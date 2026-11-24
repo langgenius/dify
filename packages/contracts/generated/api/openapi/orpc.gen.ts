@@ -1912,7 +1912,8 @@ export const apps = {
 /**
  * Serve one MCP JSON-RPC message
  *
- * Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+ * Precondition: a POST to the openapi blueprint. Postcondition: 404, as for an unknown path, before
+ * anything else when ``OPENAPI_MCP_ENABLED`` is false. Otherwise 200 with a JSON-RPC reply
  * (result, or error for an unsupported protocol version or tool name); 202 with no body for
  * a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
  * any other unparsable message; 413 with a JSON-RPC error when the body is above
@@ -1928,7 +1929,7 @@ export const apps = {
 export const post23 = oc
   .route({
     description:
-      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and\nbefore any login check); a body above the cap sent without a ``Content-Length`` (chunked) is\ncut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is\nread, when an ``Origin`` header is present and is neither this server's own nor in\n``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged). ``initialize`` and ``tools/list``\nanswer as any request on this surface does, with its error body and headers: 401 for a missing\nor invalid bearer, 429 with Retry-After above the per-token limit, 403 for a broken licence, 503\nwhen bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.",
+      "Precondition: a POST to the openapi blueprint. Postcondition: 404, as for an unknown path, before\nanything else when ``OPENAPI_MCP_ENABLED`` is false. Otherwise 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and\nbefore any login check); a body above the cap sent without a ``Content-Length`` (chunked) is\ncut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is\nread, when an ``Origin`` header is present and is neither this server's own nor in\n``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged). ``initialize`` and ``tools/list``\nanswer as any request on this surface does, with its error body and headers: 401 for a missing\nor invalid bearer, 429 with Retry-After above the per-token limit, 403 for a broken licence, 503\nwhen bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMcp',
