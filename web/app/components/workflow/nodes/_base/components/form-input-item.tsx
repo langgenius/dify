@@ -17,7 +17,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -30,8 +30,8 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
+import { pluginDynamicOptionsMutationOptions } from '@/service/plugin-list-queries'
 import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import {
@@ -131,13 +131,15 @@ const FormInputItem: FC<Props> = ({
   })
 
   // Fetch dynamic options hook for tools
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '',
-    currentProvider?.name || '',
-    currentTool?.name || '',
-    variable || '',
-    providerType,
-    extraParams,
+  const { mutateAsync: fetchDynamicOptions } = useMutation(
+    pluginDynamicOptionsMutationOptions(
+      currentProvider?.plugin_id || '',
+      currentProvider?.name || '',
+      currentTool?.name || '',
+      variable || '',
+      providerType,
+      extraParams,
+    ),
   )
 
   // Fetch dynamic options hook for triggers

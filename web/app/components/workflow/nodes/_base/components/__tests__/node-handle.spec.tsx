@@ -17,11 +17,6 @@ import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
