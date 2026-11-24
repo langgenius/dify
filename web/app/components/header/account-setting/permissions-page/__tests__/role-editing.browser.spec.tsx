@@ -1,44 +1,41 @@
 import type { Role } from '@/models/access-control'
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { builtinRole, customRole, renderRolePage, rolePage } from './role-page-fixture'
 
-const api = vi.hoisted(() => ({
-  list: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.get>(),
-  create: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.post>(),
-  update: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.put>(),
-  remove: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.delete>(),
-}))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.rbac.roles.get': api.list,
-      'workspaces.current.rbac.roles.post': api.create,
-      'workspaces.current.rbac.roles.byRoleId.put': api.update,
-      'workspaces.current.rbac.roles.byRoleId.delete': api.remove,
-    }),
-  }
-})
 let roles: Role[]
+const fake = setupFakeApi(() => ({
+  console: {
+    workspaces: {
+      current: {
+        rbac: {
+          roles: {
+            get: async () => rolePage(roles),
+            post: async ({ body }) => {
+              const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
+              roles = [...roles, saved]
+              return saved
+            },
+            byRoleId: {
+              put: async ({ params, body }) => {
+                const saved = { ...customRole, ...body, id: params.role_id }
+                roles = roles.map((role) => (role.id === saved.id ? saved : role))
+                return saved
+              },
+              delete: async ({ params }) => {
+                roles = roles.filter((role) => role.id !== params.role_id)
+                return { result: 'success' }
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 beforeEach(() => {
   roles = [customRole]
-  api.list.mockReset().mockImplementation(async () => rolePage(roles))
-  api.create.mockReset().mockImplementation(async ({ body }) => {
-    const saved = { ...customRole, ...body, id: 'created-role' }
-    roles = [...roles, saved]
-    return saved
-  })
-  api.update.mockReset().mockImplementation(async ({ params, body }) => {
-    const saved = { ...customRole, ...body, id: params.role_id }
-    roles = roles.map((role) => (role.id === saved.id ? saved : role))
-    return saved
-  })
-  api.remove.mockReset()
 })
 async function setup(options?: Parameters<typeof renderRolePage>[0]) {
   const view = await renderRolePage(options)
@@ -111,10 +108,9 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
 })
 
 it('retains a failed role deletion for retry and closes before the list refresh finishes', async () => {
-  const first = createDeferred<{ result: string }>()
-  const retry = createDeferred<{ result: string }>()
-  const refresh = createDeferred<ReturnType<typeof rolePage>>()
-  api.remove.mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise)
+  const { delete: remove } = fake.console.workspaces.current.rbac.roles.byRoleId
+  const first = hold(remove)
+  const retry = hold(remove)
   const { screen, queryClient } = await renderRolePage()
   onTestFinished(() => queryClient.clear())
 
@@ -131,21 +127,23 @@ it('retains a failed role deletion for retry and closes before the list refresh 
     .toBeDisabled()
   await userEvent.keyboard('{Enter}{Escape}')
   await expect.element(dialog).toBeVisible()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith({ params: { role_id: customRole.id } })
+  expect(await first.arrived).toEqual({ params: { role_id: customRole.id } })
+  expect(remove).toHaveBeenCalledOnce()
 
-  first.reject(new Error('Delete failed'))
+  first.reject(apiError({ status: 500, message: 'Delete failed' }))
   await expect.element(confirm).not.toHaveAttribute('aria-disabled', 'true')
   await expect.element(confirm).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  expect(api.remove).toHaveBeenCalledTimes(2)
-  api.list.mockReturnValueOnce(refresh.promise)
-  retry.resolve({ result: 'success' })
+  await retry.arrived
+  expect(remove).toHaveBeenCalledTimes(2)
+  const refresh = hold(fake.console.workspaces.current.rbac.roles.get)
+  retry.release()
 
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByText(customRole.name)).not.toBeInTheDocument()
   const addRole = screen.getByRole('button', { name: 'permission.role.addRole' })
   await expect.element(addRole).toHaveFocus()
-  refresh.reject(new Error('List refresh failed'))
+  refresh.reject(apiError({ status: 500, message: 'List refresh failed' }))
   const listKey = consoleQuery.workspaces.current.rbac.roles.get.key({ type: 'infinite' })
   await expect
     .poll(() => queryClient.getQueryCache().find({ queryKey: listKey, exact: false })?.state.status)
@@ -155,12 +153,8 @@ it('retains a failed role deletion for retry and closes before the list refresh 
 })
 
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
-  const pending = createDeferred<void>()
-  const create = api.create.getMockImplementation()!
-  api.create.mockImplementationOnce(async (...args) => {
-    await pending.promise
-    return create(...args)
-  })
+  const createRole = fake.console.workspaces.current.rbac.roles.post
+  const pending = hold(createRole)
   const screen = await setup()
   const dialog = await openCreate(screen)
   await dialog.getByRole('button', { name: 'permission.permissionList.selectAll' }).click()
@@ -168,14 +162,17 @@ it('preserves trimmed role fields and permission selection across a pending fail
   await confirm.click()
   await expect.element(confirm).toBeDisabled()
   await expect.element(dialog).toBeVisible()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      name: 'New manager',
-      description: 'Support team',
-      permission_keys: ['workspace.member.manage'],
-    },
-  })
-  pending.reject(new Error('Save failed'))
+  await expect.poll(() => createRole).toHaveBeenCalledOnce()
+  expect(createRole).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      body: {
+        name: 'New manager',
+        description: 'Support team',
+        permission_keys: ['workspace.member.manage'],
+      },
+    }),
+  )
+  pending.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Save failed' }))
   await expect.element(confirm).toBeEnabled()
   await expect
     .element(dialog.getByRole('textbox', { name: 'permission.role.modal.nameLabel' }))
@@ -214,14 +211,16 @@ it('preserves hidden IP policy grants when clearing the visible permissions of a
   await expect.element(screen.getByText('Updated manager', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Updated description', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Custom manager', { exact: true })).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledWith({
-    params: { role_id: customRole.id },
-    body: {
-      name: 'Updated manager',
-      description: 'Updated description',
-      permission_keys: ['ip_policy.view'],
-    },
-  })
+  expect(fake.console.workspaces.current.rbac.roles.byRoleId.put).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { role_id: customRole.id },
+      body: {
+        name: 'Updated manager',
+        description: 'Updated description',
+        permission_keys: ['ip_policy.view'],
+      },
+    }),
+  )
 })
 
 it('offers both IP policy permissions when creating a Cloud role', async () => {

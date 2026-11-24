@@ -1,4 +1,4 @@
-from typing import Literal, Self
+from typing import Self
 from uuid import UUID
 
 from flask_restx import Resource
@@ -25,6 +25,7 @@ from services.tag_application_service import (
     CreateTagInput,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagNameConflictError,
     TagNotFoundError,
     UpdateTagInput,
@@ -69,7 +70,7 @@ class TagBindingRemovePayload(BaseModel):
 
 
 class TagListQueryParam(BaseModel):
-    type: Literal["knowledge", "app", "agent", "snippet", "skill"] = Field(description="Tag type filter")
+    type: TagType = Field(description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 
@@ -211,7 +212,7 @@ class TagListApi(Resource):
         try:
             tag = application_services().tags.create_tag(
                 request_context,
-                CreateTagInput(name=req_data.name, type=req_data.type.value),
+                CreateTagInput(name=req_data.name, type=TagKind(req_data.type.value)),
             )
         except TagNameConflictError as error:
             raise ValueError(str(error)) from None
@@ -275,7 +276,7 @@ def _create_tag_bindings(context: RequestContext, payload: TagBindingPayload) ->
             TagBindingInput(
                 tag_ids=tuple(payload.tag_ids),
                 target_id=payload.target_id,
-                type=payload.type.value,
+                type=TagKind(payload.type.value),
             ),
         )
     except TagBindingTargetNotFoundError as error:
@@ -292,7 +293,7 @@ def _remove_tag_bindings(context: RequestContext, payload: TagBindingRemovePaylo
             TagBindingInput(
                 tag_ids=tuple(payload.tag_ids),
                 target_id=payload.target_id,
-                type=payload.type.value,
+                type=TagKind(payload.type.value),
             ),
         )
     except TagBindingTargetNotFoundError as error:

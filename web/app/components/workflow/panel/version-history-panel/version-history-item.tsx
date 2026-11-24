@@ -1,5 +1,5 @@
 import type { VersionHistoryContextMenuOptions } from '../../types'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { cn } from '@langgenius/dify-ui/cn'
 import dayjs from 'dayjs'
 import * as React from 'react'
@@ -11,10 +11,10 @@ import { WorkflowVersion } from '../../types'
 import ActionMenu from './action-menu'
 
 type VersionHistoryItemProps = {
-  item: FetchWorkflowDraftResponse
-  currentVersion: FetchWorkflowDraftResponse | null
+  item: WorkflowVersionListItem
+  currentVersion: WorkflowVersionListItem | null
   latestVersionId: string
-  onClick: (item: FetchWorkflowDraftResponse) => void
+  onClick: (item: WorkflowVersionListItem) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
   canImportExportDSL: boolean
   isLast: boolean
@@ -22,7 +22,7 @@ type VersionHistoryItemProps = {
 }
 
 const formatVersion = (
-  versionHistory: FetchWorkflowDraftResponse,
+  versionHistory: WorkflowVersionListItem,
   latestVersionId: string,
 ): string => {
   const { version, id } = versionHistory
@@ -140,7 +140,7 @@ function VersionHistoryItem({
         )}
         {!isDraft && (
           <div className="truncate system-xs-regular text-text-tertiary">
-            {`${formatTime(item.created_at)} · ${item.created_by.name}`}
+            {`${formatTime(item.created_at)} · ${item.created_by?.name ?? ''}`}
           </div>
         )}
         {!isDraft && deployedEnvironments.length > 0 && (

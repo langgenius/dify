@@ -57,11 +57,6 @@
       "count": 1
     }
   },
-  "web/app/__tests__/home-banner.browser.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/app/auth/refresh/route.ts": {
     "no-restricted-globals": {
       "count": 1
@@ -3510,14 +3505,6 @@
       "count": 2
     }
   },
-  "web/service/use-workflow.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
@@ -3557,7 +3544,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/utils/clipboard.ts": {

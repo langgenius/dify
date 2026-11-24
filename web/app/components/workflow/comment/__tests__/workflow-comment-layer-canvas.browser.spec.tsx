@@ -1,5 +1,7 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { networkError, setupFakeApi } from '@/test/fake-api'
+import { ControlMode } from '../../types'
 import {
   markers,
   openThread,
@@ -11,6 +13,7 @@ import {
 import {
   api,
   avatar,
+  commentLayerApi,
   deferred,
   listItem,
   resetFakeServer,
@@ -20,21 +23,12 @@ import {
 
 // Markers, the composer, hover previews and keyboard focus on a real canvas.
 
-// boundary: relative times depend on the clock
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({ formatTimeFromNow: () => 'just now' }),
-}))
 // boundary: collaboration runs over a socket to other editors
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { consoleResponses } = await import('./comment-layer-fake-server')
-  return { ...actual, consoleQuery: withConsoleResponses(actual.consoleQuery, consoleResponses) }
-})
 
+setupFakeApi(commentLayerApi)
 beforeEach(resetFakeServer)
 
 describe('markers and the composer', () => {
@@ -77,7 +71,7 @@ describe('markers and the composer', () => {
     await userEvent.keyboard('{Tab}')
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x + 5)
 
-    move.reject(new Error('Network error'))
+    move.reject(networkError())
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)
     await expect.element(thread(screen).getByText('Written meanwhile')).toBeVisible()
@@ -88,7 +82,7 @@ describe('markers and the composer', () => {
       async ({ params, body }: { params: { comment_id: string }; body: WorkflowCommentBasic }) => {
         const saved = server.current.list.find((item) => item.id === params.comment_id)!
         Object.assign(saved, { position_x: body.position_x, position_y: body.position_y })
-        return {}
+        return { id: params.comment_id, updated_at: 200 }
       },
     )
     const screen = await renderLayer()
@@ -160,7 +154,7 @@ describe('markers and the composer', () => {
   })
 
   it('keeps a new comment’s text to send again when creating it fails', async () => {
-    api.create.mockRejectedValueOnce(new Error('Network error'))
+    api.create.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
     screen.store.getState().setPendingComment({ x: 600, y: 400 })
@@ -218,44 +212,35 @@ describe('markers and the composer', () => {
 
 describe('panning the canvas', () => {
   const canvas = () => document.getElementById('workflow-container')!.getBoundingClientRect()
-  const panLeft = (distance: number) =>
-    userEvent.dragAndDrop(
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      page.elementLocator(document.querySelector('.react-flow__pane')!),
-      {
-        sourcePosition: { x: 1000, y: 650 },
-        targetPosition: { x: 1000 - distance, y: 650 },
-        steps: 4,
-      } as Parameters<typeof userEvent.dragAndDrop>[2],
-    )
   const inCanvas = (element: Element) => {
     const box = element.getBoundingClientRect()
     const bounds = canvas()
     return box.left >= bounds.left && box.right <= bounds.right
   }
 
-  it('keeps a new comment where it was placed, and its input in use once panned out of view', async () => {
-    const screen = await renderLayer()
+  it('keeps a draft editable at its original canvas position after scrolling its marker out of view', async () => {
+    const screen = await renderLayer({ controlMode: ControlMode.Comment })
     await expect.element(markers(screen).first()).toBeVisible()
-    screen.store.getState().setPendingComment({ x: 600, y: 300 })
+    const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
+    await pane.click({ position: { x: 600, y: 300 } })
     const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
     const composer = screen.getByPlaceholder('workflowComments.comments.placeholder.add')
     await composer.fill('Placed here')
-    const start = handle.element().getBoundingClientRect()
-
-    await panLeft(800)
+    await pane.wheel({ delta: { x: 1600, y: 0 } })
 
     await expect
       .poll(() => handle.element().getBoundingClientRect().right)
       .toBeLessThan(canvas().left)
-    expect(start.left - handle.element().getBoundingClientRect().left).toBeCloseTo(800, -1)
     await expect.element(composer).toBeVisible()
     expect(inCanvas(composer.element())).toBe(true)
-    await composer.click()
+    await expect.element(composer).toHaveFocus()
+    await userEvent.keyboard(' after panning')
     await userEvent.keyboard('{Enter}')
     await expect
       .poll(() => api.create.mock.calls[0]?.[0])
-      .toMatchObject({ body: { position_x: 600, position_y: 300, content: 'Placed here' } })
+      .toMatchObject({
+        body: { position_x: 600, position_y: 300, content: 'Placed here after panning' },
+      })
   })
 
   it('keeps a new comment’s input clear of the side panel on the side it sits in right-to-left layouts', async () => {
@@ -276,7 +261,8 @@ describe('panning the canvas', () => {
     const screen = await renderLayer()
     await openThread(screen)
 
-    await panLeft(300)
+    const pane = page.elementLocator(document.querySelector('.react-flow__pane')!)
+    await pane.wheel({ delta: { x: 600, y: 0 } })
 
     await expect
       .poll(() => markers(screen).first().element().getBoundingClientRect().right)
@@ -338,8 +324,8 @@ describe('keyboard and hover', () => {
   })
 
   it('opens from the keyboard and gives focus back to its marker, which still moves with the arrow keys', async () => {
-    api.update.mockResolvedValue({})
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()
@@ -354,6 +340,7 @@ describe('keyboard and hover', () => {
 
   it('keeps focus on Next as it moves the thread, and gives focus to the comment shown last on close', async () => {
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()
@@ -373,6 +360,7 @@ describe('keyboard and hover', () => {
 
   it('closes from the keyboard after comment markers were hidden', async () => {
     const screen = await renderLayer()
+    await expect.element(markers(screen).first()).toBeVisible()
     await userEvent.tab()
     await userEvent.keyboard('{Enter}')
     await expect.element(replyBox(screen)).toHaveFocus()

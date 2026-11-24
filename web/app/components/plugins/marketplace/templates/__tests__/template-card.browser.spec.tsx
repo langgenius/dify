@@ -1,15 +1,14 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { ThemeProvider } from '@/features/theme/provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import TemplateCard from '../template-card'
 import { TemplateDetailRouteProvider } from '../template-detail-route'
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }))
-// boundary: the standalone browser page has no Next App Router.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push }) }))
 // boundary: the external iframe document stays local; URL builders and the host dialog remain real.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const { localMarketplaceFrameLinks } = await import('@/test/marketplace-frame-links')
@@ -31,6 +30,8 @@ const template: MarketplaceTemplate = {
   badges: ['partner'],
 }
 
+let navigation: TestNavigation
+
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
   const before = window.location.href
@@ -41,15 +42,19 @@ async function renderCard(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
   })
+  navigation = createTestNavigation({ url: window.location.pathname + window.location.search })
+  const { NavigationProvider } = navigation
   const card = <TemplateCard partnerText="Verified by a Dify partner" template={template} />
   return render(
-    <ConsoleProvider>
-      <ThemeProvider defaultPreference="dark">
-        <div style={{ width: 320 }}>
-          {routed ? <TemplateDetailRouteProvider>{card}</TemplateDetailRouteProvider> : card}
-        </div>
-      </ThemeProvider>
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ThemeProvider defaultPreference="dark">
+          <div style={{ width: 320 }}>
+            {routed ? <TemplateDetailRouteProvider>{card}</TemplateDetailRouteProvider> : card}
+          </div>
+        </ThemeProvider>
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -59,7 +64,7 @@ it('opens the real detail dialog before allowing its matching iframe message to 
   await card.click()
   const dialog = screen.getByRole('dialog', { name: /Campaign planner/ })
   await expect.element(dialog).toBeVisible()
-  expect(push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   const frame = screen.getByTitle('Campaign planner · plugin.detailPanel.operation.detail')
   await expect.element(frame).toBeVisible()
   const frameElement = frame.element() as HTMLIFrameElement
@@ -76,7 +81,7 @@ it('opens the real detail dialog before allowing its matching iframe message to 
       source: frameElement.contentWindow,
     }),
   )
-  expect(push).not.toHaveBeenCalled()
+  expect(navigation.router.push).not.toHaveBeenCalled()
   await expect.element(dialog).toBeVisible()
   window.dispatchEvent(
     new MessageEvent('message', {
@@ -85,7 +90,7 @@ it('opens the real detail dialog before allowing its matching iframe message to 
       source: frameElement.contentWindow,
     }),
   )
-  expect(push).toHaveBeenCalledExactlyOnceWith('/apps?template-id=template%2Fone')
+  expect(navigation.router.push).toHaveBeenCalledExactlyOnceWith('/apps?template-id=template%2Fone')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(card).toHaveFocus()
 })

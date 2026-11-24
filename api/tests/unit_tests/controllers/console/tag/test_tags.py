@@ -37,6 +37,7 @@ from services.tag_application_service import (
     TagApplicationService,
     TagBindingInput,
     TagBindingTargetNotFoundError,
+    TagKind,
     TagNameConflictError,
     TagNotFoundError,
     TagSummary,
@@ -391,7 +392,7 @@ class TestTagBindings:
 
         tags_service.create_bindings.assert_called_once_with(
             request_context,
-            TagBindingInput(("tag-1", "tag-2"), "snippet-1", "snippet"),
+            TagBindingInput(("tag-1", "tag-2"), "snippet-1", TagKind.SNIPPET),
         )
         assert (result, status) == ({"result": "success"}, 200)
 
@@ -410,14 +411,14 @@ class TestTagBindings:
 
         tags_service.create_bindings.assert_called_once_with(
             request_context,
-            TagBindingInput(("tag-1",), "skill-1", "skill"),
+            TagBindingInput(("tag-1",), "skill-1", TagKind.SKILL),
         )
         assert (result, status) == ({"result": "success"}, 200)
 
     def test_create_maps_missing_target_to_not_found(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
     ) -> None:
-        tags_service.create_bindings.side_effect = TagBindingTargetNotFoundError("app")
+        tags_service.create_bindings.side_effect = TagBindingTargetNotFoundError(TagKind.APP)
         owner = _account(TenantAccountRole.OWNER)
         payload = TagBindingPayload(tag_ids=["tag-1"], target_id="missing", type=TagType.APP)
 
@@ -463,14 +464,14 @@ class TestTagBindings:
 
         tags_service.delete_bindings.assert_called_once_with(
             request_context,
-            TagBindingInput(("tag-1",), "app-1", "app"),
+            TagBindingInput(("tag-1",), "app-1", TagKind.APP),
         )
         assert (result, status) == ({"result": "success"}, 200)
 
     def test_remove_maps_missing_target_to_not_found(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
     ) -> None:
-        tags_service.delete_bindings.side_effect = TagBindingTargetNotFoundError("knowledge")
+        tags_service.delete_bindings.side_effect = TagBindingTargetNotFoundError(TagKind.KNOWLEDGE)
         owner = _account(TenantAccountRole.OWNER)
         payload = TagBindingRemovePayload(tag_ids=["tag-1"], target_id="missing", type=TagType.KNOWLEDGE)
 
@@ -582,7 +583,7 @@ def test_agent_tag_management_honors_custom_workspace_permission(
 ) -> None:
     """A custom role's grant controls each Agent tag mutation independently of the legacy member role."""
     tags, account = agent_tag_services
-    existing = tags.create_tag(request_context, CreateTagInput("Original", "agent"))
+    existing = tags.create_tag(request_context, CreateTagInput("Original", TagKind.AGENT))
     rbac_domain.transport.response = {"allowed": allowed}
     assert account.role == TenantAccountRole.NORMAL
 
@@ -635,9 +636,9 @@ def test_agent_tag_binding_requires_target_edit_permission(
 ) -> None:
     """An Agent edit grant, rather than shared-tag management, controls binding and unbinding."""
     tags, _account_model = agent_tag_services
-    tag = tags.create_tag(request_context, CreateTagInput("Research", "agent"))
+    tag = tags.create_tag(request_context, CreateTagInput("Research", TagKind.AGENT))
     if remove:
-        tags.create_bindings(request_context, TagBindingInput((tag.id,), AGENT_TAG_TARGET_ID, "agent"))
+        tags.create_bindings(request_context, TagBindingInput((tag.id,), AGENT_TAG_TARGET_ID, TagKind.AGENT))
     rbac_domain.transport.response = {"allowed": allowed}
     resource = TagBindingRemoveApi() if remove else TagBindingCollectionApi()
     payload = (
@@ -675,7 +676,7 @@ def test_agent_tags_keep_legacy_edit_roles_when_rbac_is_disabled(
     """Only Owner, Admin and Editor can manage or bind Agent tags without RBAC."""
     tags, account = agent_tag_services
     account.role = role
-    existing = tags.create_tag(request_context, CreateTagInput("Existing", "agent"))
+    existing = tags.create_tag(request_context, CreateTagInput("Existing", TagKind.AGENT))
     allowed = role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
     with app.test_request_context("/"), config_overrides_context(RBAC_ENABLED=False):
         if allowed:

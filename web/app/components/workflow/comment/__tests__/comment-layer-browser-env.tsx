@@ -1,8 +1,11 @@
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
-import ReactFlow from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../../__tests__/workflow-browser-test-env'
+import CommentManager from '../../comment-manager'
+import { WorkflowCanvas } from '../../shortcuts/workflow-canvas'
+import { ControlMode } from '../../types'
 import { WorkflowCommentLayer } from '../workflow-comment-layer'
 import { author } from './comment-layer-fake-server'
 import { seedMentionableUsers } from './comment-query-data'
@@ -12,14 +15,16 @@ import 'reactflow/dist/style.css'
 
 export async function renderLayer({
   hideResolved = false,
+  controlMode = ControlMode.Pointer as ControlMode,
   direction = 'ltr' as 'ltr' | 'rtl',
   avatarUrl = null as string | null,
   queryClient = createConsoleQueryWrapper({
     accountProfile: { id: author.id, name: author.name, avatar_url: avatarUrl },
+    appDslVersion: '0.6.0',
   }).queryClient,
 } = {}) {
   await page.viewport(1200, 800)
-  seedMentionableUsers(queryClient, [])
+  seedMentionableUsers(queryClient, [], TEST_APP_ID)
   const screen = await render(
     <DirectionProvider direction={direction}>
       <div
@@ -28,14 +33,19 @@ export async function renderLayer({
         className="isolate"
         style={{ position: 'relative', width: 1100, height: 700 }}
       >
+        <CommentManager />
         <WorkflowCommentLayer />
-        <ReactFlow nodes={[]} />
+        <WorkflowCanvas nodes={[]} />
       </div>
     </DirectionProvider>,
     {
       queryClient,
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
-      initialStoreState: { showUserComments: true, showResolvedComments: !hideResolved },
+      resource: { kind: 'app', appId: TEST_APP_ID, mode: 'workflow', collaborationEnabled: true },
+      initialStoreState: {
+        controlMode,
+        showUserComments: true,
+        showResolvedComments: !hideResolved,
+      },
     },
   )
   return { ...screen, queryClient }

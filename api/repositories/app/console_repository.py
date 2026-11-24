@@ -1076,11 +1076,14 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         session: Session,
         stage_evaluation_cleanup: StageTargetEvaluationCleanup,
     ) -> AppDeletion:
-        """Stage App deletion, evaluation cleanup, and Agent resource retirement in the caller's transaction.
+        """Stage App deletion, evaluation cleanup and resource retirement together.
 
-        Preconditions: app was loaded within the admitted tenant's write transaction.
-        Postconditions: archived Agents retain no Agent tag bindings; independent
-        Studio tags and other Agents' bindings are unchanged. Never commits.
+        Preconditions: app belongs to the admitted tenant's write transaction
+        and the caller supplies its evaluation cleanup adapter. Postconditions:
+        archived Agents retain no Agent tag bindings, target evaluation records
+        are staged for cleanup and resources are retired in this transaction.
+        Independent Studio tags and other Agents' bindings remain unchanged.
+        Never commits or performs external effects before the caller commits.
         """
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
