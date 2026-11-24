@@ -3,6 +3,7 @@ import type { ExtraContent } from '../chat/type'
 import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,11 +28,11 @@ import {
 } from '@/service/share'
 import {
   EnvironmentConversationNotFoundError,
-  useInvalidateShareConversations,
-  useShareChatList,
-  useShareConversationName,
-  useShareConversations,
-} from '@/service/use-share'
+  shareChatListQueryOptions,
+  shareConversationNameQueryOptions,
+  shareConversationsQueryOptions,
+  shareQueryKeys,
+} from '@/service/share-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
@@ -198,21 +199,23 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useShareConversations(
-    {
-      appSourceType,
-      appId,
-      pinned: true,
-      limit: 100,
-    },
-    {
-      enabled: !!appId,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
+  const { data: appPinnedConversationData } = useQuery(
+    shareConversationsQueryOptions(
+      {
+        appSourceType,
+        appId,
+        pinned: true,
+        limit: 100,
+      },
+      {
+        enabled: !!appId,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+      },
+    ),
   )
-  const { data: appConversationData, isLoading: appConversationDataLoading } =
-    useShareConversations(
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    shareConversationsQueryOptions(
       {
         appSourceType,
         appId,
@@ -224,24 +227,30 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
       },
-    )
+    ),
+  )
   const {
     data: appChatListData,
     error: appChatListError,
     isLoading: appChatListDataLoading,
-  } = useShareChatList(
-    {
-      conversationId: chatShouldReloadKey,
-      appSourceType,
-      appId,
-    },
-    {
-      enabled: !!chatShouldReloadKey,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    },
+  } = useQuery(
+    shareChatListQueryOptions(
+      {
+        conversationId: chatShouldReloadKey,
+        appSourceType,
+        appId,
+      },
+      {
+        enabled: !!chatShouldReloadKey,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+      },
+    ),
   )
-  const invalidateShareConversations = useInvalidateShareConversations()
+  const queryClient = useQueryClient()
+  const invalidateShareConversations = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
+  }, [queryClient])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   useEffect(() => {
@@ -367,16 +376,18 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useShareConversationName(
-    {
-      conversationId: newConversationId,
-      appSourceType,
-      appId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      enabled: !!newConversationId,
-    },
+  const { data: newConversation } = useQuery(
+    shareConversationNameQueryOptions(
+      {
+        conversationId: newConversationId,
+        appSourceType,
+        appId,
+      },
+      {
+        refetchOnWindowFocus: false,
+        enabled: !!newConversationId,
+      },
+    ),
   )
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {

@@ -3,20 +3,15 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { TEST_DATASET_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import Documents from '../index'
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => '/datasets/7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f/documents',
-  useParams: () => ({ datasetId: TEST_DATASET_ID }),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
@@ -67,28 +62,34 @@ async function setup(ids: string[]) {
   })
   onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
+  const { NavigationProvider } = createTestNavigation({
+    url: `/datasets/${TEST_DATASET_ID}/documents`,
+    params: { datasetId: TEST_DATASET_ID },
+  })
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter hasMemory>
-        {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
-        <DatasetDetailContext.Provider
-          value={{
-            dataset: createDatasetFixture({
-              embedding_available: true,
-              permission_keys: [
-                DatasetACLPermission.Use,
-                DatasetACLPermission.Edit,
-                DatasetACLPermission.DeleteFile,
-              ],
-            }),
-          }}
-        >
-          <div className="isolate h-screen">
-            <Documents datasetId={TEST_DATASET_ID} />
-          </div>
-        </DatasetDetailContext.Provider>
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter hasMemory>
+          {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component. */}
+          <DatasetDetailContext.Provider
+            value={{
+              dataset: createDatasetFixture({
+                embedding_available: true,
+                permission_keys: [
+                  DatasetACLPermission.Use,
+                  DatasetACLPermission.Edit,
+                  DatasetACLPermission.DeleteFile,
+                ],
+              }),
+            }}
+          >
+            <div className="isolate h-screen">
+              <Documents datasetId={TEST_DATASET_ID} />
+            </div>
+          </DatasetDetailContext.Provider>
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
   const open = async (id: string) => {
     const link = screen.getByRole('link', { name: id, exact: true })
@@ -158,6 +159,8 @@ describe('Classic document deletion', () => {
 it.each(['pencil', 'menu'])(
   'returns focus to the selected row after cancelling rename from its %s entry',
   async (entry) => {
+    // The exit transition is where the draft must survive.
+    await emulateReducedMotion(false)
     const { screen } = await setup(['Alpha', 'Beta'])
     const row = screen.getByRole('row', { name: /Beta/ })
     await row.getByRole('link', { name: 'Beta' }).hover()

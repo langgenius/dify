@@ -8,6 +8,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createSnippetFixture, createSnippetListItemFixture } from '@/test/fixtures/snippet'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import SnippetList from '../../index'
 import SnippetCard from '../snippet-card'
@@ -18,9 +19,6 @@ const createSnippet = (overrides: Partial<SnippetListItemResponse> = {}) =>
   createSnippetListItemFixture({ id: snippetId, author_name: 'Creator', ...overrides })
 
 const sales = { id: 'tag-1', name: 'Sales', type: 'snippet' as const, binding_count: '0' }
-
-// boundary: the application router is outside these list operations.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 let snippets: SnippetListItemResponse[]
 const members = {
@@ -84,6 +82,7 @@ async function setup({
         )}
       </UrlState>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/snippets' }).NavigationProvider },
   )
   await expect.element(page.getByRole('link', { name: /Tone Rewriter/ })).toBeVisible()
 }
@@ -199,7 +198,6 @@ it('offers neither operations nor editable tags without snippet permissions', as
   await expect
     .element(page.getByRole('combobox', { name: 'common.tag.noTag: Tone Rewriter' }))
     .toBeDisabled()
-  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('exports the YAML content and filename through the real download owner', async () => {

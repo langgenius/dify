@@ -26,7 +26,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/snippets/snippet-1',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
-vi.mock('@/service/use-snippet-workflows', () => ({ fetchSnippetDraftWorkflow: fetchDraft }))
+vi.mock('@/service/snippet-queries', () => ({ fetchSnippetDraftWorkflow: fetchDraft }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
   fetchAllInspectVars: async () => [],

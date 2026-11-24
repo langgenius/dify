@@ -45,18 +45,8 @@ export const permissionState = {
   ] as KnowledgeFsProductPermission[],
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
 }
-export const navigationMock = { awaitInitialSource: null as string | null }
-export const routerMock = { push: vi.fn(), replace: vi.fn() }
-export const navigation = {
-  usePathname: () => '/datasets/new/space-1/sources',
-  useRouter: () => routerMock,
-  useSearchParams: () =>
-    new URLSearchParams(
-      navigationMock.awaitInitialSource
-        ? { awaitInitialSource: navigationMock.awaitInitialSource }
-        : {},
-    ),
-}
+/** Route inputs for the next `renderSources` call. */
+export const routeState = { awaitInitialSource: null as string | null }
 export const settingsState = { configurationState: 'active' as 'active' | 'setup-required' }
 async function track<T>(read: () => Promise<T> | T) {
   server.inflight += 1
@@ -225,7 +215,7 @@ export function resetSourceServer() {
   pluginResponses.data = []
   pluginResponses.pending = false
   pluginResponses.failed = false
-  navigationMock.awaitInitialSource = null
+  routeState.awaitInitialSource = null
   permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
   permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
   settingsState.configurationState = 'active'

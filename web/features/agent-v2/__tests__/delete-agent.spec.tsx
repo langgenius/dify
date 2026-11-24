@@ -26,6 +26,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.delete': service.deleteAgent,
+      'tags.get': () => [],
     }),
   }
 })
@@ -50,6 +51,7 @@ describe('roster agent deletion', () => {
         <h1 id="agent-roster-title">Agents</h1>
         <AgentRosterList
           aria-labelledby="agent-roster-title"
+          onOpenTagManagement={vi.fn()}
           state={{
             status: 'ready',
             agents: [agent],

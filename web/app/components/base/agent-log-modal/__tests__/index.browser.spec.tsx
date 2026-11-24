@@ -14,12 +14,6 @@ const oldAppId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
 const newAppId = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e'
 
 vi.unmock('react-i18next')
-// boundary: Monaco workers do not run in the Browser test bundle; readonly editor values stay real.
-vi.mock('@monaco-editor/react', async () => {
-  const { createMonacoEditorModuleMock } = await import('@/test/monaco-editor-mock')
-  return createMonacoEditorModuleMock()
-})
-
 const log: IChatItem = {
   id: 'msg-id',
   conversationId: 'conv-id',

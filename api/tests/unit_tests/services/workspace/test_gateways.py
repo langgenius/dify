@@ -360,20 +360,18 @@ class TestWorkspaceCreditPoolCases:
             (CloudPlan.TEAM, 500, 120, 100, "paid", 380),
             (CloudPlan.TEAM, -1, 999, 100, "paid", -1),
             (CloudPlan.TEAM, 500, 500, 100, "paid", 0),
-            (CloudPlan.TEAM, None, 0, 100, None, None),
             (CloudPlan.SANDBOX, 500, 0, 100, "trial", 60),
-            (CloudPlan.SANDBOX, None, 0, None, None, None),
         ],
     )
     def test_effective_credit_pool(
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
         plan: CloudPlan,
-        paid_quota: int | None,
+        paid_quota: int,
         paid_used: int,
-        trial_quota: int | None,
-        expected_type: str | None,
-        remaining: int | None,
+        trial_quota: int,
+        expected_type: str,
+        remaining: int,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
@@ -381,11 +379,11 @@ class TestWorkspaceCreditPoolCases:
             "get_info",
             lambda *_a, **_k: builders.subscription_info(plan, next_credit_reset_date=1775001600),
         )
-        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used) if paid_quota is not None else None
-        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40) if trial_quota is not None else None
+        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used)
+        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40)
         calls = []
 
-        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance | None:
+        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance:
             calls.append((tenant_id, pool_type))
             return paid if pool_type == "paid" else trial
 

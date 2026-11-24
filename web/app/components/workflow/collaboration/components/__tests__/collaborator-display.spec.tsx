@@ -54,5 +54,7 @@ it('shows +N in the pill only when people are folded away, around the avatars it
 it('labels a remote cursor with the collaborator name in their color', () => {
   render(<CollaboratorCursor name="Ralph Edwards" color="#0E9384" />)
 
-  expect(screen.getByText('Ralph Edwards')).toHaveStyle({ backgroundColor: '#0E9384' })
+  expect(screen.getByText('Ralph Edwards').parentElement).toHaveStyle({
+    backgroundColor: '#0E9384',
+  })
 })

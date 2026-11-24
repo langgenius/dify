@@ -1,18 +1,13 @@
+import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import ChangePasswordForm from '../page'
 
-const navigation = vi.hoisted(() => ({
-  replace: vi.fn(),
-  search: 'token=reset-token',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: navigation.replace }),
-  useSearchParams: () => new URLSearchParams(navigation.search),
-}))
+let search = 'token=reset-token'
+let navigation: TestNavigation
 
 vi.mock('@/next/link', () => ({
   default: ({ children, replace, ...props }: React.ComponentProps<'a'> & { replace?: boolean }) => (
@@ -33,10 +28,14 @@ async function renderPage(systemTitle?: string) {
       ? { systemFeatures: { branding: { enabled: true, application_title: systemTitle } } }
       : {},
   )
+  navigation = createTestNavigation({ url: `/reset-password/set-password?${search}` })
+  const { NavigationProvider } = navigation
   return render(
-    <ConsoleProvider>
-      <ChangePasswordForm />
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <ChangePasswordForm />
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -62,8 +61,7 @@ const fake = setupFakeApi(() => ({
 }))
 
 beforeEach(() => {
-  navigation.replace.mockReset()
-  navigation.search = 'token=reset-token'
+  search = 'token=reset-token'
 })
 
 afterEach(() => {
@@ -131,21 +129,21 @@ it('revalidates the confirmation field as the native password value changes', as
 it.each([
   {
     scenario: 'redirect target',
-    search: `token=reset-token&redirect_url=${encodeURIComponent(redirectUrl)}`,
+    query: `token=reset-token&redirect_url=${encodeURIComponent(redirectUrl)}`,
     href: encodedSigninUrl,
   },
   {
     scenario: 'invite activation',
-    search: `token=reset-token&invite_token=invite-token&redirect_url=${encodeURIComponent(redirectUrl)}`,
+    query: `token=reset-token&invite_token=invite-token&redirect_url=${encodeURIComponent(redirectUrl)}`,
     href: '/activate?token=invite-token',
   },
   {
     scenario: 'plain sign in',
-    search: 'token=reset-token',
+    query: 'token=reset-token',
     href: '/signin',
   },
-])('keeps the $scenario destination on the success link', async ({ search, href }) => {
-  navigation.search = search
+])('keeps the $scenario destination on the success link', async ({ query, href }) => {
+  search = query
 
   const screen = await completePasswordChange()
   const link = screen.getByRole('link', { name: /login\.passwordChanged/ })
@@ -155,7 +153,7 @@ it.each([
 })
 
 it('automatically returns to the preserved redirect after the visible countdown', async () => {
-  navigation.search = `token=reset-token&redirect_url=${encodeURIComponent(redirectUrl)}`
+  search = `token=reset-token&redirect_url=${encodeURIComponent(redirectUrl)}`
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
   const screen = await completePasswordChange()
 
@@ -164,5 +162,5 @@ it('automatically returns to the preserved redirect after the visible countdown'
     .toHaveTextContent('login.passwordChanged (5)')
   await vi.advanceTimersByTimeAsync(5000)
 
-  expect(navigation.replace).toHaveBeenCalledWith(encodedSigninUrl)
+  expect(navigation.router.replace).toHaveBeenCalledWith(encodedSigninUrl)
 })

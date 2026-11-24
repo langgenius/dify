@@ -3,10 +3,9 @@ import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Banner } from '@/features/home/banner/banner'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 const banners: BannerResponse[] = [
   {
@@ -59,7 +58,11 @@ function getSlidesContainer(carousel: Element) {
 }
 
 describe('Home banner browser interactions', () => {
-  beforeEach(() => onTestFinished(guardUnexpectedFetch()))
+  beforeEach(async () => {
+    onTestFinished(guardUnexpectedFetch())
+    // Autoplay is the contract; reduced-motion cases switch back inside the test.
+    await emulateReducedMotion(false)
+  })
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -155,23 +158,7 @@ describe('Home banner browser interactions', () => {
   })
 
   it('keeps autoplay initialized but stopped for reduced motion so Play remains safe', async () => {
-    // The real browser implementation is retained while the media-query result is emulated before Embla initializes.
-    const nativeMatchMedia = window.matchMedia.bind(window)
-    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
-      const mediaQueryList = nativeMatchMedia(query)
-      if (query !== REDUCED_MOTION_QUERY) return mediaQueryList
-
-      return {
-        matches: true,
-        media: mediaQueryList.media,
-        onchange: null,
-        addListener: mediaQueryList.addListener.bind(mediaQueryList),
-        removeListener: mediaQueryList.removeListener.bind(mediaQueryList),
-        addEventListener: mediaQueryList.addEventListener.bind(mediaQueryList),
-        removeEventListener: mediaQueryList.removeEventListener.bind(mediaQueryList),
-        dispatchEvent: mediaQueryList.dispatchEvent.bind(mediaQueryList),
-      }
-    })
+    await emulateReducedMotion(true)
 
     const screen = await renderBanner()
     const carousel = screen.getByRole('region', { name: 'explore.banner.carouselLabel' })

@@ -37,6 +37,8 @@ it('downloads the displayed generated and message files with their actual names 
       index={0}
     />,
   )
+  // Lazy Markdown moves the file cards when it appears, which can end their hover state.
+  await expect.element(page.getByText('An answer', { exact: true })).toBeVisible()
   for (const name of ['generated.pdf', 'message.pdf']) {
     const row = page.getByRole('button', { name, exact: true })
     await row.hover()

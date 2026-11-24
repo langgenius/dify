@@ -163,6 +163,7 @@ it('validates a bound API before confirmation and locks the draft while saving',
   const endpoint = screen.getByLabelText(/API Endpoint/)
   await endpoint.fill('invalid')
   await save(screen).click()
+  await expect.element(endpoint).toHaveAttribute('aria-invalid', 'true')
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   expect(
     fake.console.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch,

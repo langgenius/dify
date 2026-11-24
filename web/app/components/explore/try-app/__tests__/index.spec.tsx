@@ -36,6 +36,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'trialApps.byAppId.get': api.detail,
       'trialApps.byAppId.workflows.get': api.workflow,
+      'trialApps.byAppId.parameters.get': api.parameters,
       'workspaces.current.toolProviders.get': async () => [],
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {

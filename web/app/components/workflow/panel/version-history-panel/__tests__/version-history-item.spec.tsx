@@ -1,41 +1,37 @@
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
-const createVersionHistory = (
-  overrides: Partial<FetchWorkflowDraftResponse> = {},
-): FetchWorkflowDraftResponse => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: undefined,
-  },
-  features: {},
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1710000000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  conversation_variables: [],
-  rag_pipeline_variables: undefined,
-  version: '2024-01-01T00:00:00Z',
-  marked_name: 'Release 1',
-  marked_comment: 'Initial release',
-  ...overrides,
+const createVersionHistory = ({
+  environments,
+  ...overrides
+}: Partial<WorkflowResponse> & Pick<WorkflowVersionListItem, 'environments'> = {}) => ({
+  ...createWorkflowResponseFixture({
+    id: 'version-1',
+    created_at: 1710000000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1710000000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    version: '2024-01-01T00:00:00Z',
+    marked_name: 'Release 1',
+    marked_comment: 'Initial release',
+    ...overrides,
+  }),
+  environments,
 })
 
 describe('VersionHistoryItem', () => {

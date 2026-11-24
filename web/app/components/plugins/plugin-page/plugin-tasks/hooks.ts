@@ -1,14 +1,18 @@
 import type { PluginStatus } from '@/app/components/plugins/types'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { TaskStatus } from '@/app/components/plugins/types'
-import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
+import { usePluginTaskList } from '@/service/use-plugins'
 
 const isUnfinishedStatus = (status: PluginStatus['status']) =>
   status === TaskStatus.pending || status === TaskStatus.running
 
 export const usePluginTaskStatus = () => {
   const { pluginTasks, handleRefetch } = usePluginTaskList()
-  const { mutateAsync } = useMutationClearTaskPlugin()
+  const { mutateAsync } = useMutation(
+    consoleQuery.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post.mutationOptions(),
+  )
   const allPlugins = pluginTasks
     .map((task) =>
       task.plugins.map((plugin) => {
@@ -31,10 +35,7 @@ export const usePluginTaskStatus = () => {
 
   const handleClearErrorPlugin = useCallback(
     async (taskId: string, pluginId: string) => {
-      await mutateAsync({
-        taskId,
-        pluginId,
-      })
+      await mutateAsync({ params: { task_id: taskId, identifier: pluginId } })
       handleRefetch()
     },
     [mutateAsync, handleRefetch],

@@ -5,14 +5,20 @@ from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from services.account_email import normalize_email
+from services.account_errors import AvatarFileNotFoundError
 from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     PasswordLoginCompletion,
 )
+from tests.helpers.unit.model_factories import make_upload_file
+
+_AVATAR_ID = "550e8400-e29b-41d4-a716-446655440000"
 
 
 def _persist_account(session: Session) -> Account:
@@ -33,13 +39,22 @@ def test_update_profile_persists_multiple_fields(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     _persist_account(sqlite_session)
+    sqlite_session.add(
+        make_upload_file(
+            file_id=_AVATAR_ID,
+            name="avatar.png",
+            extension="png",
+            mime_type="image/png",
+        )
+    )
+    sqlite_session.commit()
     repository = SQLAlchemyAccountRepository(sqlite_session_factory)
 
     result = repository.update_profile(
         "account-1",
         AccountProfileChanges(
             name="Updated",
-            avatar="avatar-file",
+            avatar="{550E8400-E29B-41D4-A716-446655440000}",
             interface_language="zh-Hans",
             interface_theme="dark",
             timezone="Asia/Shanghai",
@@ -52,10 +67,83 @@ def test_update_profile_persists_multiple_fields(
     persisted = sqlite_session.get(Account, "account-1")
     assert persisted is not None
     assert persisted.name == "Updated"
-    assert persisted.avatar == "avatar-file"
+    assert persisted.avatar == _AVATAR_ID
     assert persisted.interface_language == "zh-Hans"
     assert persisted.interface_theme == "dark"
     assert persisted.timezone == "Asia/Shanghai"
+
+
+@pytest.mark.parametrize(
+    ("avatar", "upload_file"),
+    [
+        pytest.param("not-a-uuid", None, id="malformed"),
+        pytest.param(_AVATAR_ID, None, id="missing"),
+        pytest.param(
+            _AVATAR_ID,
+            make_upload_file(file_id=_AVATAR_ID, created_by="account-2"),
+            id="unowned",
+        ),
+        pytest.param(
+            _AVATAR_ID,
+            make_upload_file(file_id=_AVATAR_ID, created_by_role=CreatorUserRole.END_USER),
+            id="wrong-creator-role",
+        ),
+        pytest.param(
+            _AVATAR_ID,
+            make_upload_file(
+                file_id=_AVATAR_ID,
+                name="notes.txt",
+                extension="txt",
+                mime_type="text/plain",
+            ),
+            id="non-image",
+        ),
+        pytest.param(
+            _AVATAR_ID,
+            make_upload_file(file_id=_AVATAR_ID, name="avatar.webp", extension="webp", mime_type="image/png"),
+            id="legacy-crop",
+        ),
+    ],
+)
+def test_update_profile_rejects_invalid_avatar_without_writes(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    avatar: str,
+    upload_file: UploadFile | None,
+) -> None:
+    _persist_account(sqlite_session)
+    if upload_file is not None:
+        sqlite_session.add(upload_file)
+        sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    with pytest.raises(AvatarFileNotFoundError):
+        repository.update_profile("account-1", AccountProfileChanges(name="Should Roll Back", avatar=avatar))
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Account, "account-1")
+    assert persisted.name == "Original"
+    assert persisted.avatar is None
+
+
+@pytest.mark.parametrize(
+    "avatar",
+    ["", "http://cdn.example.com/avatar.png", "https://cdn.example.com/avatar.png"],
+)
+def test_update_profile_preserves_supported_avatar_compatibility(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    avatar: str,
+) -> None:
+    _persist_account(sqlite_session)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.update_profile("account-1", AccountProfileChanges(avatar=avatar))
+
+    assert result is not None
+    assert result.avatar == avatar
+    sqlite_session.expire_all()
+    assert sqlite_session.get_one(Account, "account-1").avatar == avatar
 
 
 def test_update_profile_rolls_back_on_error(
