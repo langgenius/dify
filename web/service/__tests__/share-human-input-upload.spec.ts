@@ -17,7 +17,7 @@ vi.mock('../base', () => ({
   request: async (
     url: string,
     _init: unknown,
-    options: { request: Request; onUploadProgress?: unknown },
+    options: { request: Request; onUploadProgress?: unknown; timeout?: false },
   ) => {
     // The HITL upload contract: record the token header, multipart or JSON fields and progress hook.
     if (url === '/human-input-forms/files') {
@@ -29,6 +29,7 @@ vi.mock('../base', () => ({
         authorization: options.request.headers.get('authorization'),
         body,
         onUploadProgress: options.onUploadProgress,
+        timeout: options.timeout,
       })
       return Response.json(result ?? {})
     }
@@ -122,6 +123,8 @@ describe('human input form upload services', () => {
       authorization: 'bearer hitl-upload-token',
       body: { file: expect.objectContaining({ name: 'test.txt', size: 7 }) },
       onUploadProgress: expect.any(Function),
+      // Uploads keep the legacy XHR's lack of a time limit.
+      timeout: false,
     })
     mockUpload.mock.calls[0]![0].onUploadProgress({ loaded: 3, total: 7 })
     expect(onProgressCallback).toHaveBeenCalledWith(42)
@@ -159,6 +162,8 @@ describe('human input form upload services', () => {
       authorization: 'bearer hitl-remote-token',
       body: { url: 'https://example.com/file.txt' },
       onUploadProgress: undefined,
+      // Remote URLs finish only after the server fetches the file, so they have no time limit.
+      timeout: false,
     })
     expect(response).toEqual(expect.objectContaining({ id: 'remote-file-1' }))
   })

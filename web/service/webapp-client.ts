@@ -13,6 +13,8 @@ type WebAppClientContext = {
   silent?: boolean
   /** The response is an event stream: no time limit on its first frame. */
   stream?: boolean
+  /** `false` lifts the time limit, e.g. for uploads the server finishes only after fetching a remote file. */
+  timeout?: false
   headers?: Record<string, string>
   /** Reports request-body upload progress; the call is sent over XHR without the default timeout. */
   onUploadProgress?: OnUploadProgress
@@ -61,7 +63,7 @@ export const webAppClient: JsonifiedClient<
         request: await withURL(input, publicURL),
         silent: context.silent,
         onUploadProgress: context.onUploadProgress,
-        timeout: context.stream ? false : undefined,
+        timeout: context.stream || context.timeout === false ? false : undefined,
       })
     },
   }),

@@ -825,6 +825,8 @@ const uploadHumanInputFormFile = async (
         silent: true,
         headers: { Authorization: `bearer ${uploadToken}` },
         onUploadProgress,
+        // The legacy XHR upload had no time limit; remote URLs finish only after the server fetches the file.
+        timeout: false,
       },
     },
   )
