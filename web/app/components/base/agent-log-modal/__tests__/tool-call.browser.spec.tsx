@@ -42,10 +42,7 @@ it('formats subsecond and minute-long tool calls', async () => {
   await expect.element(screen.getByText('1 m 5.000 s')).toBeVisible()
 })
 
-// Skipped: flaky in CI. The Monaco editor worker (`vs/base/worker/workerMain.js`) sometimes fails
-// to load, and the logged error fails the next test in this file. Re-enable once the worker loads
-// reliably.
-it.skip('reveals real readonly input and output editors and hides them when collapsed', async () => {
+it('reveals real readonly input and output editors and hides them when collapsed', async () => {
   const { screen } = await renderAgentLog(<ToolCallItem toolCall={toolCall} isLLM={false} />)
   const trigger = screen.getByText('Test Tool Label')
   const editors = screen.getByRole('textbox', { name: 'Editor content' })
@@ -60,10 +57,7 @@ it.skip('reveals real readonly input and output editors and hides them when coll
   await expect.element(editors).not.toBeInTheDocument()
 })
 
-// Skipped: flaky in CI. Expanding a tool call mounts the Monaco editor, whose worker
-// (`vs/base/worker/workerMain.js`) sometimes fails to load; the logged error fails the test.
-// Re-enable once the worker loads reliably.
-it.skip('reveals the provider error inside the expanded tool call', async () => {
+it('reveals the provider error inside the expanded tool call', async () => {
   const { screen } = await renderAgentLog(
     <ToolCallItem
       toolCall={{ ...toolCall, status: 'error', error: 'Something went wrong' }}
@@ -85,10 +79,7 @@ it.each([
   await expect.element(screen.getByText(`${formatted} tokens`)).toBeVisible()
 })
 
-// Skipped: flaky in CI. Expanding a tool call mounts the Monaco editor, whose worker
-// (`vs/base/worker/workerMain.js`) sometimes fails to load; the logged error fails the test.
-// Re-enable once the worker loads reliably.
-it.skip.each([true, false])(
+it.each([true, false])(
   'reveals the observation and correct result title for isFinal=%s',
   async (isFinal) => {
     const { screen } = await renderAgentLog(
