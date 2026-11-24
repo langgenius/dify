@@ -143,9 +143,9 @@ it('requests each server sort and keeps external and Dify filters in the URL', a
   }
 })
 
-it('queries server filters and clears them without touching Dify parameters', async () => {
+it('clears external filters while preserving sorting and Dify parameters and restoring All focus', async () => {
   const { onUrlUpdate } = await setup({
-    searchParams: '?filter=drafts&keyword=keep-dify&layout=grid',
+    searchParams: '?filter=drafts&keyword=keep-dify&layout=grid&external_sort_by=earliest_created',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
   const filtered = createDeferred<ExternalAgentListResponse>()
@@ -173,8 +173,8 @@ it('queries server filters and clears them without touching Dify parameters', as
       limit: 20,
       enabled: false,
       connected_by_me: true,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'asc',
     },
   })
   await search().fill('vendor')
@@ -189,11 +189,17 @@ it('queries server filters and clears them without touching Dify parameters', as
   expect(params?.get('external_keyword')).toBe('vendor')
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
   await expect.element(card('Contract Review Agent')).toBeVisible()
-  await expect.element(search()).toHaveFocus()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toHaveFocus()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toBeChecked()
+  await expect.element(search()).toHaveValue('')
+  await expect
+    .element(page.getByRole('combobox', { name: 'Sort by', exact: true }))
+    .toMatchTextContent('Earliest created')
   const cleared = onUrlUpdate.mock.lastCall?.[0].searchParams
   expect(cleared?.get('filter')).toBe('drafts')
   expect(cleared?.get('keyword')).toBe('keep-dify')
   expect(cleared?.get('layout')).toBe('grid')
+  expect(cleared?.get('external_sort_by')).toBe('earliest_created')
   expect(cleared?.has('external_keyword')).toBe(false)
   expect(cleared?.has('external_status')).toBe(false)
   expect(cleared?.has('external_connected_by_me')).toBe(false)

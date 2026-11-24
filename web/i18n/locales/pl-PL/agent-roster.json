@@ -97,7 +97,7 @@
   "external.editInfo": "Edytuj informacje",
   "external.empty": "Brak agentów zewnętrznych",
   "external.emptySearch": "Brak pasujących agentów",
-  "external.emptySearchDescription": "Spróbuj innego wyszukiwania lub wyczyść bieżące filtry.",
+  "external.emptySearchDescription": "Wyczyść wyszukiwanie i filtry, aby wyświetlić wszystkich agentów. Kolejność sortowania zostanie zachowana.",
   "external.enable": "Włącz agenta",
   "external.enableDialog.description": "Zezwól na nowe wywołania aplikacji i testy węzłów.",
   "external.enableDialog.title": "Włączyć agenta?",

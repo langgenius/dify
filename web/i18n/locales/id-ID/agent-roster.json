@@ -93,7 +93,7 @@
   "external.editInfo": "Edit informasi",
   "external.empty": "Belum ada agen eksternal",
   "external.emptySearch": "Tidak ada agen yang cocok",
-  "external.emptySearchDescription": "Coba pencarian lain atau hapus filter saat ini.",
+  "external.emptySearchDescription": "Hapus pencarian dan filter untuk menampilkan semua agen. Urutan pengurutan tetap sama.",
   "external.enable": "Aktifkan agen",
   "external.enableDialog.description": "Izinkan panggilan aplikasi dan pengujian node baru.",
   "external.enableDialog.title": "Aktifkan agen?",

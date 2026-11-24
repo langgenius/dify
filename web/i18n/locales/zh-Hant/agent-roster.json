@@ -93,7 +93,7 @@
   "external.editInfo": "編輯資訊",
   "external.empty": "暫無外部 Agent",
   "external.emptySearch": "沒有符合的 Agent",
-  "external.emptySearchDescription": "請嘗試其他搜尋條件或清除目前的篩選。",
+  "external.emptySearchDescription": "清除搜尋和篩選以顯示所有 Agent。排序方式將保持不變。",
   "external.enable": "啟用 Agent",
   "external.enableDialog.description": "允許新的應用程式呼叫和節點測試。",
   "external.enableDialog.title": "啟用 Agent？",

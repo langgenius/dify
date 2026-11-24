@@ -50,6 +50,7 @@ export function ExternalRoster() {
   const [actionRequest, setActionRequest] = useState<ExternalAgentActionRequest>()
   const [actionOpen, setActionOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
+  const allStatusRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagManagementOpen, setTagManagementOpen] = useState(false)
   const sortLabelId = useId()
@@ -137,6 +138,7 @@ export function ExternalRoster() {
           {statusOptions.map((option) => (
             <SegmentedControlItem
               key={option.value}
+              ref={option.value === 'all' ? allStatusRef : undefined}
               value={option.value}
               className="gap-1 data-checked:text-text-secondary"
             >
@@ -253,7 +255,7 @@ export function ExternalRoster() {
                   external_status: 'all',
                   external_connected_by_me: false,
                 })
-                searchRef.current?.focus()
+                allStatusRef.current?.focus()
               }}
               filtered={Boolean(
                 keyword ||

@@ -93,7 +93,7 @@
   "external.editInfo": "情報を編集",
   "external.empty": "外部エージェントはまだありません",
   "external.emptySearch": "一致するエージェントがありません",
-  "external.emptySearchDescription": "別の検索を試すか、現在のフィルターをクリアしてください。",
+  "external.emptySearchDescription": "検索条件とフィルターをクリアすると、すべてのエージェントが表示されます。並び順は維持されます。",
   "external.enable": "エージェントを有効化",
   "external.enableDialog.description": "新しいアプリ呼び出しとノードテストを許可します。",
   "external.enableDialog.title": "エージェントを有効にしますか？",

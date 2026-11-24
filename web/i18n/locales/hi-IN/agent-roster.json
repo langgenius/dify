@@ -93,7 +93,7 @@
   "external.editInfo": "जानकारी संपादित करें",
   "external.empty": "अभी तक कोई बाहरी एजेंट नहीं",
   "external.emptySearch": "कोई मेल खाते एजेंट नहीं",
-  "external.emptySearchDescription": "कोई अन्य खोज आज़माएँ या मौजूदा फ़िल्टर साफ़ करें।",
+  "external.emptySearchDescription": "सभी एजेंट दिखाने के लिए खोज और फ़िल्टर साफ़ करें। सॉर्ट क्रम नहीं बदलेगा।",
   "external.enable": "एजेंट सक्षम करें",
   "external.enableDialog.description": "नए ऐप कॉल और नोड परीक्षण की अनुमति दें।",
   "external.enableDialog.title": "एजेंट सक्षम करें?",

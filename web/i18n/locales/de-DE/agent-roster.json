@@ -93,7 +93,7 @@
   "external.editInfo": "Informationen bearbeiten",
   "external.empty": "Noch keine externen Agenten",
   "external.emptySearch": "Keine passenden Agenten",
-  "external.emptySearchDescription": "Versuchen Sie eine andere Suche oder löschen Sie die aktuellen Filter.",
+  "external.emptySearchDescription": "Löschen Sie die Suche und die Filter, um alle Agenten anzuzeigen. Die Sortierreihenfolge bleibt erhalten.",
   "external.enable": "Agenten aktivieren",
   "external.enableDialog.description": "Neue App-Aufrufe und Knotentests zulassen.",
   "external.enableDialog.title": "Agenten aktivieren?",

@@ -101,7 +101,7 @@
   "external.editInfo": "تعديل المعلومات",
   "external.empty": "لا يوجد وكلاء خارجيون بعد",
   "external.emptySearch": "لا يوجد وكلاء مطابقون",
-  "external.emptySearchDescription": "جرّب بحثًا آخر أو امسح عوامل التصفية الحالية.",
+  "external.emptySearchDescription": "امسح البحث وعوامل التصفية لعرض جميع الوكلاء. سيبقى ترتيب الفرز كما هو.",
   "external.enable": "تفعيل الوكيل",
   "external.enableDialog.description": "السماح باستدعاءات التطبيقات واختبارات العقد الجديدة.",
   "external.enableDialog.title": "تفعيل الوكيل؟",

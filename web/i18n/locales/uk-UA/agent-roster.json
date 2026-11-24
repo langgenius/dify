@@ -97,7 +97,7 @@
   "external.editInfo": "Змінити інформацію",
   "external.empty": "Зовнішніх агентів поки немає",
   "external.emptySearch": "Немає відповідних агентів",
-  "external.emptySearchDescription": "Спробуйте інший пошук або очистіть поточні фільтри.",
+  "external.emptySearchDescription": "Очистьте пошук і фільтри, щоб показати всіх агентів. Порядок сортування збережеться.",
   "external.enable": "Увімкнути агента",
   "external.enableDialog.description": "Дозволити нові виклики застосунків і тести вузлів.",
   "external.enableDialog.title": "Увімкнути агента?",

@@ -93,7 +93,7 @@
   "external.editInfo": "Chỉnh sửa thông tin",
   "external.empty": "Chưa có tác nhân bên ngoài nào",
   "external.emptySearch": "Không có tác nhân phù hợp",
-  "external.emptySearchDescription": "Hãy thử tìm kiếm khác hoặc xóa các bộ lọc hiện tại.",
+  "external.emptySearchDescription": "Xóa nội dung tìm kiếm và bộ lọc để hiển thị tất cả tác nhân. Thứ tự sắp xếp sẽ được giữ nguyên.",
   "external.enable": "Bật tác nhân",
   "external.enableDialog.description": "Cho phép các lệnh gọi ứng dụng và kiểm thử nút mới.",
   "external.enableDialog.title": "Bật tác nhân?",

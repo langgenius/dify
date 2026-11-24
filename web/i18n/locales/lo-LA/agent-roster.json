@@ -93,7 +93,7 @@
   "external.editInfo": "ແກ້ໄຂຂໍ້ມູນ",
   "external.empty": "ຍັງບໍ່ມີຕົວແທນພາຍນອກ",
   "external.emptySearch": "ບໍ່ພົບຕົວແທນທີ່ກົງກັນ",
-  "external.emptySearchDescription": "ລອງຄົ້ນຫາອີກຄັ້ງ ຫຼື ລ້າງຕົວກັ່ນຕອງປັດຈຸບັນ.",
+  "external.emptySearchDescription": "ລ້າງຄຳຄົ້ນຫາ ແລະ ຕົວກັ່ນຕອງເພື່ອສະແດງເອເຈນທັງໝົດ. ລຳດັບການຈັດຮຽງຈະຍັງຄົງເດີມ.",
   "external.enable": "ເປີດໃຊ້ງານຕົວແທນ",
   "external.enableDialog.description": "ອະນຸຍາດການເອີ້ນໃຊ້ແອັບ ແລະການທົດສອບໂນດໃໝ່.",
   "external.enableDialog.title": "ເປີດໃຊ້ງານຕົວແທນບໍ?",

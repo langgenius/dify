@@ -93,7 +93,7 @@
   "external.editInfo": "Məlumatı redaktə et",
   "external.empty": "Hələ xarici agent yoxdur",
   "external.emptySearch": "Uyğun agent yoxdur",
-  "external.emptySearchDescription": "Başqa axtarışı sınayın və ya cari süzgəcləri təmizləyin.",
+  "external.emptySearchDescription": "Bütün agentləri göstərmək üçün axtarışı və süzgəcləri təmizləyin. Sıralama qaydası saxlanılacaq.",
   "external.enable": "Agenti aktivləşdir",
   "external.enableDialog.description": "Yeni tətbiq çağırışlarına və qovşaq testlərinə icazə verin.",
   "external.enableDialog.title": "Agent aktivləşdirilsin?",

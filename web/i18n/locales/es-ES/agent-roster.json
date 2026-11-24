@@ -95,7 +95,7 @@
   "external.editInfo": "Editar información",
   "external.empty": "Aún no hay agentes externos",
   "external.emptySearch": "No hay agentes coincidentes",
-  "external.emptySearchDescription": "Prueba otra búsqueda o borra los filtros actuales.",
+  "external.emptySearchDescription": "Borra la búsqueda y los filtros para mostrar todos los agentes. Se mantendrá el orden.",
   "external.enable": "Habilitar agente",
   "external.enableDialog.description": "Permitir nuevas llamadas de aplicaciones y pruebas de nodos.",
   "external.enableDialog.title": "¿Habilitar agente?",

@@ -95,7 +95,7 @@
   "external.editInfo": "Editează informațiile",
   "external.empty": "Încă nu există agenți externi",
   "external.emptySearch": "Niciun agent corespunzător",
-  "external.emptySearchDescription": "Încercați o altă căutare sau ștergeți filtrele curente.",
+  "external.emptySearchDescription": "Ștergeți căutarea și filtrele pentru a afișa toți agenții. Ordinea de sortare va fi păstrată.",
   "external.enable": "Activează agentul",
   "external.enableDialog.description": "Permite apeluri noi din aplicații și teste ale nodurilor.",
   "external.enableDialog.title": "Activezi agentul?",

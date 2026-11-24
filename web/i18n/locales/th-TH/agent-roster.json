@@ -93,7 +93,7 @@
   "external.editInfo": "แก้ไขข้อมูล",
   "external.empty": "ยังไม่มีตัวแทนภายนอก",
   "external.emptySearch": "ไม่มีตัวแทนที่ตรงกัน",
-  "external.emptySearchDescription": "ลองค้นหาอีกครั้งหรือล้างตัวกรองปัจจุบัน",
+  "external.emptySearchDescription": "ล้างคำค้นหาและตัวกรองเพื่อแสดงเอเจนต์ทั้งหมด โดยคงลำดับการจัดเรียงเดิมไว้",
   "external.enable": "เปิดใช้งานตัวแทน",
   "external.enableDialog.description": "อนุญาตการเรียกใช้แอปและการทดสอบโหนดใหม่",
   "external.enableDialog.title": "เปิดใช้งานตัวแทนหรือไม่?",

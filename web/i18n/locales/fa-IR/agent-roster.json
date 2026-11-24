@@ -93,7 +93,7 @@
   "external.editInfo": "ویرایش اطلاعات",
   "external.empty": "هنوز عامل خارجی وجود ندارد",
   "external.emptySearch": "هیچ عامل مطابقی نیست",
-  "external.emptySearchDescription": "جست‌وجوی دیگری را امتحان کنید یا فیلترهای فعلی را پاک کنید.",
+  "external.emptySearchDescription": "برای نمایش همه عامل‌ها، جست‌وجو و فیلترها را پاک کنید. ترتیب مرتب‌سازی حفظ می‌شود.",
   "external.enable": "فعال‌سازی عامل",
   "external.enableDialog.description": "فراخوانی‌های جدید برنامه و آزمایش گره‌ها مجاز شوند.",
   "external.enableDialog.title": "عامل فعال شود؟",
