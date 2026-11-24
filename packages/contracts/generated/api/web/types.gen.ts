@@ -1847,6 +1847,11 @@ export type WebFormRateLimitExceededError = ErrorResponse & {
   status: 429
 }
 
+export type WebLoginExchangePayload = {
+  code_verifier: string
+  login_code: string
+}
+
 export type WebLoginUnavailableError = ErrorResponse & {
   code: 'web_login_unavailable'
   status: 503
@@ -2219,6 +2224,28 @@ export type PatchAccountProfileResponses = {
 
 export type PatchAccountProfileResponse =
   PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
+
+export type PostAccountSessionData = {
+  body: WebLoginExchangePayload
+  path?: never
+  query?: never
+  url: '/account/session'
+}
+
+export type PostAccountSessionErrors = {
+  401: EndUserLoginRequiredError | ErrorResponse
+  503: WebLoginUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAccountSessionError = PostAccountSessionErrors[keyof PostAccountSessionErrors]
+
+export type PostAccountSessionResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAccountSessionResponse =
+  PostAccountSessionResponses[keyof PostAccountSessionResponses]
 
 export type PostAudioToTextData = {
   body?: never

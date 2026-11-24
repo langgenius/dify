@@ -4,6 +4,7 @@ import urllib.parse
 from flask import redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from werkzeug.exceptions import UnprocessableEntity
 from werkzeug.wrappers import Response
 
 from configs import dify_config
@@ -56,7 +57,12 @@ from services.entities.account_oauth_entities import (
     OAuthCallbackResult,
     OAuthInvitationResult,
 )
-from services.web_login_redirect import resolve_console_login_redirect, resolve_personal_login_redirect
+from services.web_login_handoff import S256_CHALLENGE_PATTERN
+from services.web_login_redirect import (
+    resolve_console_login_redirect,
+    resolve_personal_login_redirect,
+    resolve_web_portal_login_redirect,
+)
 
 
 class OAuthLoginQuery(BaseModel):
@@ -69,8 +75,12 @@ class OAuthLoginQuery(BaseModel):
     redirect_url: str | None = Field(
         default=None,
         description="Console page to resume after login; End User mode accepts personal portal URLs, "
-        "defaults to /my-apps and can resume "
-        "/signin to complete an App handoff",
+        "defaults to /my-apps and can resume /signin to complete a PKCE handoff",
+    )
+    code_challenge: str | None = Field(
+        default=None,
+        pattern=S256_CHALLENGE_PATTERN,
+        description="Web-origin S256 challenge for an End User personal portal return; omit for /signin resume URLs.",
     )
 
 
@@ -138,8 +148,30 @@ def _personal_portal_redirect(redirect_url: str | None) -> str | None:
     )
 
 
+def _portal_pkce_signin_target(redirect_url: str | None, code_challenge: str) -> str:
+    """Bind a portal target and its S256 challenge to the ordinary Console sign-in resume flow.
+
+    Reject non-WebApp destinations before starting OAuth. Only the challenge travels
+    through the provider's signed state; the verifier stays in the initiating Web tab.
+    """
+    webapp_url = dify_config.APP_WEB_URL or dify_config.CONSOLE_WEB_URL
+    target = resolve_web_portal_login_redirect(redirect_url, webapp_url=webapp_url)
+    if target is None:
+        raise UnprocessableEntity("Invalid personal portal login target.")
+    portal = urllib.parse.urlsplit(target)
+    route = portal.path.removeprefix(urllib.parse.urlsplit(webapp_url).path.rstrip("/"))
+    params = urllib.parse.urlencode(
+        {
+            "is_end_user": "1",
+            "redirect_url": urllib.parse.urlunsplit(("", "", route, portal.query, portal.fragment)),
+            "code_challenge": code_challenge,
+        }
+    )
+    return f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin?{params}"
+
+
 def _end_user_signin_target(redirect_url: str) -> str | None:
-    """Allow the Console sign-in route to resume an App handoff after OAuth."""
+    """Allow the Console sign-in route to resume an App or portal handoff after OAuth."""
     target = resolve_console_login_redirect(redirect_url, console_web_url=dify_config.CONSOLE_WEB_URL)
     if target is not None:
         console_path = urllib.parse.urlsplit(dify_config.CONSOLE_WEB_URL).path.rstrip("/")
@@ -186,9 +218,14 @@ class OAuthLogin(Resource):
     @social_oauth_login_enabled
     @model_validate(OAuthLoginQuery)
     def get(self, req_data: OAuthLoginQuery, provider: str):
+        """Start provider login with a browser-bound return target; reject ambiguous PKCE context."""
         require_login_mode(req_data.mode, invite_token=req_data.invite_token)
         redirect_url = req_data.redirect_url or None
-        if req_data.mode == LoginMode.END_USER:
+        if req_data.code_challenge is not None:
+            if req_data.mode != LoginMode.END_USER:
+                raise UnprocessableEntity("A portal login challenge requires End User mode.")
+            redirect_url = _portal_pkce_signin_target(redirect_url, req_data.code_challenge)
+        elif req_data.mode == LoginMode.END_USER:
             redirect_url = _end_user_return_target(redirect_url)
         nonce = secrets.token_urlsafe(32)
         context = {}
@@ -326,7 +363,7 @@ class OAuthCallback(Resource):
         response = _redirect_with_console_session(result.tokens, target_url)
         if end_user_target is not None and _personal_portal_redirect(end_user_target) is not None:
             session = application_services().web_login_handoff.personal_session(result.tokens.access_token)
-            set_webapp_access_token_to_cookie(response, session.access_token, expires_at=session.expires_at)
+            set_webapp_access_token_to_cookie(request, response, session.access_token, expires_at=session.expires_at)
         if state_cookie is not None:
             response.delete_cookie(state_cookie)
         return response
