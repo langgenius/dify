@@ -269,3 +269,4 @@ web/.vitest-reports/
 dify-agent-runtime/bin/
 dify-agent-runtime/.integration-state
 config.bat
+.env
