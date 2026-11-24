@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import posixpath
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Final
@@ -201,13 +201,15 @@ class FileTransferService:
         """
         return self._opened(transfer_id, token, TransferDirection.OUT, self._limits.download_link_life)
 
-    def download(self, transfer_id: str, token: str) -> tuple[Transfer, bytes]:
-        """Postcondition: the outgoing transfer the token opens and its bytes, while its download link works.
+    def download(self, transfer_id: str, token: str) -> tuple[Transfer, Iterator[bytes]]:
+        """Postcondition: the outgoing transfer the token opens and its bytes as chunks read from storage while
+        they are consumed, while its download link works; the bytes exist when this returns.
 
         Raises ``TransferNotFoundError`` or ``TransferLinkExpiredError``.
         """
         transfer = self.open_for_download(transfer_id, token)
-        return transfer, self._stored_bytes(transfer_id)
+        key = self._existing_key(transfer_id)
+        return transfer, self._blobs.load_stream(key)
 
     def purge_expired(self, *, limit: int) -> int:
         """Postcondition: up to ``limit`` expired transfers, oldest first, are gone with their bytes.
@@ -256,11 +258,15 @@ class FileTransferService:
             raise TransferTooLargeError(limit=self._limits.max_bytes)
 
     def _stored_bytes(self, transfer_id: str) -> bytes:
+        return self._blobs.load_once(self._existing_key(transfer_id))
+
+    def _existing_key(self, transfer_id: str) -> str:
+        """Postcondition: the storage key of the transfer's bytes, which exist; ``TransferNotFoundError`` when not."""
         key = _storage_key(transfer_id)
         # Storage backends raise different errors for a missing object, so ask first.
         if not self._blobs.exists(key):
             raise TransferNotFoundError(transfer_id)
-        return self._blobs.load_once(key)
+        return key
 
     def _unpacked(self, content: bytes) -> tuple[TransferFile, ...]:
         limits = ArchiveLimits(max_entries=self._limits.max_unpacked_files, max_bytes=self._limits.max_unpacked_bytes)

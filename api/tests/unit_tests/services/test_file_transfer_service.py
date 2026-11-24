@@ -142,7 +142,7 @@ def test_the_upload_link_ends_before_the_id_does() -> None:
 def test_the_download_link_ends_before_the_id_does() -> None:
     service, _, _, clock = _service()
     ticket = service.park("owner", name="out.zip", mime_type="application/zip", content=b"pkg")
-    assert service.download(ticket.transfer.id, ticket.token)[1] == b"pkg"
+    assert b"".join(service.download(ticket.transfer.id, ticket.token)[1]) == b"pkg"
     clock.advance(_LIMITS.download_link_life)
 
     with pytest.raises(TransferLinkExpiredError) as error:

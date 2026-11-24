@@ -204,6 +204,17 @@ def test_a_parked_file_downloads_as_an_attachment(world: TransferWorld) -> None:
     assert response.headers["Content-Type"] == "application/octet-stream"
     assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''a%20b.txt"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Content-Length"] == str(len(b"hello"))
+
+
+def test_a_download_streams_from_storage_and_holds_its_slot_until_closed(world: TransferWorld) -> None:
+    response = world.caller.client.get(world.link(world.park()), base_url=_HOST)
+
+    assert response.is_streamed
+    assert response.data == b"hello"
+    assert world.service.take_slot() is (_LIMITS.max_active > 1)
+    response.close()
+    assert world.service.take_slot() is True
 
 
 def test_unknown_id_wrong_token_and_wrong_direction_all_answer_the_same_404(world: TransferWorld) -> None:

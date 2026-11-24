@@ -140,6 +140,11 @@ class InMemoryBlobs:
     def load_once(self, filename: str) -> bytes:
         return self.files[filename]
 
+    def load_stream(self, filename: str) -> Iterator[bytes]:
+        """Yields the stored bytes one at a time, so a reader that joins them proves it consumed a stream."""
+        content = self.files[filename]
+        return (content[index : index + 1] for index in range(len(content)))
+
     def delete(self, filename: str) -> None:
         if self._fail_next_delete:
             self._fail_next_delete = False

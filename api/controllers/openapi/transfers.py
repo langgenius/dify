@@ -140,8 +140,9 @@ class TransferBytesApi(Resource):
         ).model_dump(mode="json"), HTTPStatus.OK
 
     def get(self, transfer_id: str):
-        """Precondition: ``token`` in the query string. Postcondition: 200 with the parked file as an attachment
-        while its download link works; the token is checked before a slot is taken. Refusals: 404 unknown,
+        """Precondition: ``token`` in the query string. Postcondition: 200 with the parked file as an attachment,
+        streamed from storage with its stored size as ``Content-Length``, while its download link works; the token
+        is checked before a slot is taken, and the slot is held until the response closes. Refusals: 404 unknown,
         wrong token or an upload, 410 link expired, 429 when every slot is taken, 503 while file transfers are off.
         """
         require_file_transfers()
@@ -153,17 +154,18 @@ class TransferBytesApi(Resource):
             raise refusal_of(error) from None
         hold_slot()
         try:
-            transfer, content = transfers.download(transfer_id, token)
+            transfer, chunks = transfers.download(transfer_id, token)
         except FileTransferError as error:
             raise refusal_of(error) from None
         file = transfer.file
         assert file is not None, "an outgoing transfer always holds its file"
         _log(DOWNLOAD_EVENT, transfer, file)
         return Response(
-            content,
+            chunks,
             mimetype=DEFAULT_MIME_TYPE,
             headers={
                 CONTENT_DISPOSITION_HEADER: f"attachment; filename*=UTF-8''{quote(file.name)}",
+                "Content-Length": str(file.size),
                 "X-Content-Type-Options": "nosniff",
             },
         )
