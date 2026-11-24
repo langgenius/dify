@@ -46,8 +46,11 @@ def _is_masked(config: AliyunConfig) -> bool:
 
 
 def _is_success_ack(response: EgressResponse) -> bool:
-    """The observed acknowledgment of Aliyun's HTTP collector; never normalize other bodies into it."""
-    return response.status_code == 200 and response.content == b'"success"'
+    """Success acknowledgments: Aliyun's literal body, or the empty body of a standard OTLP success response.
+
+    No other body counts; never normalize anything else into a success.
+    """
+    return response.status_code == 200 and response.content in (b'"success"', b"")
 
 
 class AliyunProvider(TraceProvider[AliyunConfig]):
@@ -57,11 +60,10 @@ class AliyunProvider(TraceProvider[AliyunConfig]):
 
     @override
     def verify(self, config: AliyunConfig) -> AliyunConfig:
-        """Post one resource with zero spans and require the collector's literal acknowledgment.
+        """Post one resource with zero spans and require a success acknowledgment.
 
         The collector distinguishes valid from invalid license keys for this
-        request, whereas an empty OTLP acknowledgment proves nothing. Success
-        does not establish that business spans are retained.
+        request. Success does not establish that business spans are retained.
         """
         if _is_masked(config):
             raise VerificationError("invalid_license_key")

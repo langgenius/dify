@@ -89,8 +89,8 @@ def _rendered(error: Exception) -> str:
     return str(error) + repr(error) + "".join(traceback.format_exception(error))
 
 
-@pytest.mark.parametrize("ack", [SUCCESS_ACK, response(200, "success")])
-def test_verify_posts_one_resource_without_spans_and_accepts_the_literal_ack(ack: EgressResponse) -> None:
+@pytest.mark.parametrize("ack", [SUCCESS_ACK, response(200, "success"), response(200, b"")])
+def test_verify_posts_one_resource_without_spans_and_accepts_success_acks(ack: EgressResponse) -> None:
     provider, egress = _provider(ack)
     assert provider.verify(CONFIG) == CONFIG
 
@@ -105,7 +105,6 @@ def test_verify_posts_one_resource_without_spans_and_accepts_the_literal_ack(ack
 @pytest.mark.parametrize(
     "outcome",
     [
-        response(200, b""),
         response(200, b"{}"),
         response(200, b"success"),
         response(200, b'"success"\n'),
