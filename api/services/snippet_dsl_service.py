@@ -559,8 +559,8 @@ class SnippetDslService:
         workflow_dict["environment_variables"] = []
         workflow_dict["conversation_variables"] = []
 
-        for node in workflow_dict.get("graph", {}).get("nodes", []):
-            node_data = node.get("data", {})
+        for node in graph["nodes"]:
+            node_data = node["data"]
             if not node_data:
                 continue
             data_type = node_data.get("type", "")

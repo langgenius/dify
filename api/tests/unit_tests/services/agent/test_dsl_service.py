@@ -441,7 +441,7 @@ def test_export_workflow_packages_rejects_incomplete_binding(sqlite_session: Ses
 def test_workflow_package_roundtrip_preserves_mode_with_a_destination_generation(sqlite_session: Session) -> None:
     source_generation = str(uuid4())
     source = _workflow()
-    graph = {"nodes": [_agent_node("session-node")], "edges": list[dict[str, object]]()}
+    graph: AgentNodeGraphDict = {"nodes": [_agent_node("session-node")], "edges": []}
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
         app_id="app-1",

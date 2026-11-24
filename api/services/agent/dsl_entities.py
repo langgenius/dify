@@ -59,11 +59,19 @@ class AgentNodeGraphNodeDict(TypedDict):
 
 
 @with_config(ConfigDict(extra="allow"))
+class AgentNodeGraphEdgeDict(TypedDict, total=False):
+    """One workflow graph edge shared by every node type."""
+
+    source: str
+    target: str
+
+
+@with_config(ConfigDict(extra="allow"))
 class AgentNodeGraphDict(TypedDict):
     """The workflow graph envelope the portable-package helpers read Agent nodes from."""
 
     nodes: list[AgentNodeGraphNodeDict]
-    edges: list[dict[str, object]]
+    edges: list[AgentNodeGraphEdgeDict]
 
 
 _AGENT_NODE_GRAPH_ADAPTER = TypeAdapter(AgentNodeGraphDict)
