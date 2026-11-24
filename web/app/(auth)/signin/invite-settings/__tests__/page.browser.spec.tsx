@@ -1,4 +1,3 @@
-import type { PostActivateData } from '@dify/contracts/api/console/activate/types.gen'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -9,40 +8,23 @@ import common from '@/i18n/locales/zh-Hans/common.json'
 import login from '@/i18n/locales/zh-Hans/login.json'
 import { getInitOptions } from '@/i18n/settings'
 import { consoleQuery } from '@/service/console'
+import { emulateTimezone } from '@/test/browser-media-emulation'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import InviteSettingsPage from '../page'
 
 vi.unmock('react-i18next')
 
-const mocks = vi.hoisted(() => ({
-  activate: vi.fn<(input: Pick<PostActivateData, 'body'>) => Promise<{ result: string }>>(),
-  replace: vi.fn(),
-}))
-
 // boundary: the browser fixture owns its locale and skips persisting a locale cookie.
 vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ replace: mocks.replace }),
-  useSearchParams: () => new URLSearchParams('invite_token=invite-token'),
-}))
-vi.mock('@/service/console/browser', () => ({
-  consoleBrowserLink: {
-    call: (path: readonly string[], input: Pick<PostActivateData, 'body'>) => {
-      if (path.join('.') === 'activate.post') return mocks.activate(input)
-      throw new Error(`Unexpected console request: ${path.join('.')}`)
-    },
-  },
-}))
-vi.mock('@/utils/timezone', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/utils/timezone')>()),
-  getBrowserTimezone: () => 'Asia/Taipei',
-}))
 
 const workspaceName = "invitee@example.com's Workspace"
 
 async function renderInvitation() {
-  mocks.activate.mockResolvedValue({ result: 'success' })
+  // Pin the browser's own timezone so the default invitation timezone is deterministic.
+  await emulateTimezone('Asia/Taipei')
   const i18n = createInstance()
   await i18n.init({
     ...getInitOptions(['accountSettings', 'common', 'login']),
@@ -66,22 +48,34 @@ async function renderInvitation() {
       },
     },
   )
+  const fake = installFakeApi({
+    console: {
+      activate: { post: () => ({ result: 'success' }) },
+    },
+  })
+  onTestFinished(fake)
+  const navigation = createTestNavigation({
+    url: '/signin/invite-settings?invite_token=invite-token',
+  })
+  const { NavigationProvider } = navigation
   const screen = await render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <AuthLayout>
-          <InviteSettingsPage />
-        </AuthLayout>
-      </I18nextProvider>
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <AuthLayout>
+            <InviteSettingsPage />
+          </AuthLayout>
+        </I18nextProvider>
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 
-  return { screen, queryClient }
+  return { screen, queryClient, activate: fake.console.activate.post, navigation }
 }
 
 it('selects highlighted options with Enter and submits the confirmed preferences', async () => {
   await page.viewport(620, 740)
-  const { screen, queryClient } = await renderInvitation()
+  const { screen, queryClient, activate, navigation } = await renderInvitation()
   try {
     const name = screen.getByRole('textbox', { name: login.name })
     const language = screen.getByRole('combobox', { name: login.interfaceLanguage })
@@ -125,7 +119,7 @@ it('selects highlighted options with Enter and submits the confirmed preferences
       .toHaveFocus()
     await userEvent.keyboard('{Enter}')
     await expect.element(language).toHaveTextContent('English (United States)')
-    expect(mocks.activate).not.toHaveBeenCalled()
+    expect(activate).not.toHaveBeenCalled()
 
     await timezone.click()
     const timezoneSearch = screen
@@ -142,19 +136,21 @@ it('selects highlighted options with Enter and submits the confirmed preferences
     await userEvent.keyboard('{Enter}')
     await expect.element(timezone).toHaveTextContent(niueLabel)
     await expect.element(timezone).toHaveFocus()
-    expect(mocks.activate).not.toHaveBeenCalled()
+    expect(activate).not.toHaveBeenCalled()
 
     await page.viewport(320, 740)
     await submit.click()
-    await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
-    expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
-      body: {
-        token: 'invite-token',
-        name: '邀请测试',
-        interface_language: 'en-US',
-        timezone: 'Pacific/Niue',
-      },
-    })
+    await expect.poll(() => navigation.router.replace.mock.calls.length).toBe(1)
+    expect(activate).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: {
+          token: 'invite-token',
+          name: '邀请测试',
+          interface_language: 'en-US',
+          timezone: 'Pacific/Niue',
+        },
+      }),
+    )
   } finally {
     await screen.unmount()
     queryClient.clear()
@@ -162,7 +158,7 @@ it('selects highlighted options with Enter and submits the confirmed preferences
 })
 
 it('keeps Enter in the timezone search until focus returns to the form', async () => {
-  const { screen, queryClient } = await renderInvitation()
+  const { screen, queryClient, activate, navigation } = await renderInvitation()
   try {
     const name = screen.getByRole('textbox', { name: login.name })
     await name.fill('邀请测试')
@@ -183,21 +179,23 @@ it('keeps Enter in the timezone search until focus returns to the form', async (
 
     await userEvent.keyboard('{Enter}')
     await expect.element(search).toHaveFocus()
-    expect(mocks.activate).not.toHaveBeenCalled()
+    expect(activate).not.toHaveBeenCalled()
     await userEvent.keyboard('{Escape}')
     await expect.element(timezone).toHaveFocus()
 
     await name.fill('邀请测试')
     await userEvent.keyboard('{Enter}')
-    await expect.poll(() => mocks.replace.mock.calls.length).toBe(1)
-    expect(mocks.activate).toHaveBeenCalledExactlyOnceWith({
-      body: {
-        token: 'invite-token',
-        name: '邀请测试',
-        interface_language: 'zh-Hans',
-        timezone: 'Asia/Taipei',
-      },
-    })
+    await expect.poll(() => navigation.router.replace.mock.calls.length).toBe(1)
+    expect(activate).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        body: {
+          token: 'invite-token',
+          name: '邀请测试',
+          interface_language: 'zh-Hans',
+          timezone: 'Asia/Taipei',
+        },
+      }),
+    )
   } finally {
     await screen.unmount()
     queryClient.clear()

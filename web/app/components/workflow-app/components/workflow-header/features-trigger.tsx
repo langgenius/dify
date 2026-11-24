@@ -19,6 +19,7 @@ import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
+  editorResourceAtom,
   isChatflowAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
@@ -36,7 +37,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateAppWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { appWorkflowQueryOptions, workflowVersionHistoryKey } from '@/service/workflow-queries'
 
 type PublishWorkflowError = ErrorFromErrorMap<
   InferContractRouterErrorMap<typeof contract.apps.byAppId.workflows.publish.post>
@@ -136,7 +137,11 @@ const FeaturesTrigger = () => {
   // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
   const hasTriggerNode = useMemo(() => nodes.some((node) => isTriggerNode(node.data.type)), [nodes])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const resource = useAtomValue(editorResourceAtom)
+  const resetWorkflowVersionHistory = useCallback(
+    () => queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) }),
+    [queryClient, resource],
+  )
 
   const handleShowFeatures = useCallback(() => {
     const { showFeaturesPanel, isRestoring, setShowFeaturesPanel } = workflowStore.getState()
@@ -158,7 +163,13 @@ const FeaturesTrigger = () => {
   const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } = useMutation(
     consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions(),
   )
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const invalidateAppWorkflow = useCallback(
+    (workflowAppId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
+      }),
+    [queryClient],
+  )
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
 

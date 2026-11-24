@@ -9,7 +9,7 @@ import type {
   Variable,
 } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -58,8 +58,8 @@ import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ssePost } from '@/service/base'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useWorkflow } from '../../../hooks/use-workflow'
@@ -306,7 +306,11 @@ const useOneStepRun = <T>({
     },
     [workflowStore, store],
   )
-  const invalidLastRun = useInvalidateLastRun(resource, id)
+  const queryClient = useQueryClient()
+  const invalidLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, id) }),
+    [queryClient, id, resource],
+  )
   const [runResult, doSetRunResult] = useState<NodeTracing | null>(null)
   const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
     useInspectVarsCrud()

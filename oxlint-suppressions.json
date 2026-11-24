@@ -52,11 +52,6 @@
       "count": 1
     }
   },
-  "web/app/__tests__/home-banner.browser.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
   "web/app/auth/refresh/route.ts": {
     "no-restricted-globals": {
       "count": 1
@@ -2206,11 +2201,6 @@
       "count": 5
     }
   },
-  "web/app/components/workflow/nodes/_base/components/workflow-panel/__tests__/index.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 4
@@ -3422,7 +3412,7 @@
       "count": 2
     },
     "typescript/no-deprecated": {
-      "count": 22
+      "count": 11
     },
     "typescript/no-explicit-any": {
       "count": 1
@@ -3452,64 +3442,19 @@
       "count": 1
     }
   },
-  "web/service/use-plugins-auth.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/service/use-plugins.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 10
+      "count": 3
     },
     "dify/require-disable-directive-description": {
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
-    }
-  },
-  "web/service/use-share.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 8
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/use-snippet-workflows.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
-  "web/service/use-snippets.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
-  "web/service/use-triggers.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 6
-    },
-    "typescript/no-deprecated": {
-      "count": 1
+      "count": 3
     }
   },
   "web/service/use-try-app.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
-  "web/service/use-workflow.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 4
-    },
-    "typescript/no-deprecated": {
       "count": 2
     }
   },
@@ -3552,7 +3497,7 @@
   },
   "web/types/workflow.ts": {
     "typescript/no-explicit-any": {
-      "count": 15
+      "count": 14
     }
   },
   "web/utils/clipboard.ts": {

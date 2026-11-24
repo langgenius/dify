@@ -844,10 +844,10 @@ export class CollaborationManager {
     if (this.currentAppId !== appId || !socket?.connected) return {}
 
     const sid = socket.id
-    const avatars = (await socket
-      .timeout(5000)
-      .emitWithAck('get_online_user_avatars')
-      .catch(() => ({}))) as Record<string, string>
+    const avatars = (await socket.timeout(5000).emitWithAck('get_online_user_avatars')) as Record<
+      string,
+      string
+    >
     return this.getActiveSocket() === socket && socket.id === sid ? avatars : {}
   }
 

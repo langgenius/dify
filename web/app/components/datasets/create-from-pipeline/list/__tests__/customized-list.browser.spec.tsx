@@ -3,15 +3,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-import { createDeferred } from '@/test/deferred'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import List from '..'
 import Header from '../../header'
-
-const { getTemplates, deleteTemplate } = vi.hoisted(() => ({
-  getTemplates: vi.fn(),
-  deleteTemplate: vi.fn(),
-}))
 
 vi.mock('@/next/link', () => ({
   default: ({
@@ -20,21 +18,6 @@ vi.mock('@/next/link', () => ({
     ...props
   }: React.ComponentProps<'a'> & { replace?: boolean }) => <a {...props}>{children}</a>,
 }))
-// boundary: Marketplace availability is deployment-specific and unrelated to customized templates.
-vi.mock('@/features/marketplace/client', () => ({ useMarketplace: () => null }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'rag.pipeline.templates.get': getTemplates,
-      'rag.pipeline.customized.templates.byTemplateId.delete': deleteTemplate,
-    }),
-  }
-})
-
 const original = {
   id: 'template-1',
   name: 'Legal documents',
@@ -43,6 +26,31 @@ const original = {
   position: 1,
   icon: { icon_type: 'emoji', icon: '📚', icon_background: '#FFF4ED' },
 } satisfies PipelineTemplateListResponse['pipeline_templates'][number]
+const other = { ...original, id: 'template-2', name: 'Invoices' }
+let templates: (typeof original)[]
+// Marketplace availability is deployment-specific and unrelated to customized templates.
+const systemFeatures = createSystemFeaturesFixture({ enable_marketplace: false })
+const fake = setupFakeApi({
+  console: {
+    systemFeatures: { get: () => systemFeatures },
+    rag: {
+      pipeline: {
+        templates: { get: () => ({ pipeline_templates: templates }) },
+        customized: {
+          templates: {
+            byTemplateId: {
+              delete: ({ params }) => {
+                templates = templates.filter((template) => template.id !== params.template_id)
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+})
+const listTemplates = () => fake.console.rag.pipeline.templates.get
+const deleteTemplate = () => fake.console.rag.pipeline.customized.templates.byTemplateId.delete
 
 function Fixture({ client }: { client: QueryClient }) {
   const fallbackFocusRef = useRef<HTMLAnchorElement>(null)
@@ -62,10 +70,18 @@ async function setup() {
       queries: { refetchOnWindowFocus: false, retry: false },
     },
   })
-  return { client, screen: await render(<Fixture client={client} />) }
+  client.setQueryData(systemFeaturesQueryOptions().queryKey, systemFeatures)
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/create-from-pipeline' })
+  return {
+    client,
+    screen: await render(<Fixture client={client} />, { wrapper: NavigationProvider }),
+  }
 }
 
 async function openDeletion(screen: Awaited<ReturnType<typeof render>>) {
+  const more = screen.getByRole('button', { name: 'common.operation.more' })
+  // The template list arrives over the network; tab through it only once it has rendered.
+  await expect.element(more).toBeInTheDocument()
   await userEvent.tab()
   await expect
     .element(screen.getByRole('link', { name: 'datasetPipeline.creation.backToKnowledge' }))
@@ -73,7 +89,6 @@ async function openDeletion(screen: Awaited<ReturnType<typeof render>>) {
   await userEvent.tab()
   await userEvent.tab()
   await userEvent.tab()
-  const more = screen.getByRole('button', { name: 'common.operation.more' })
   await expect.element(more).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await userEvent.keyboard('{End}')
@@ -86,37 +101,30 @@ async function openDeletion(screen: Awaited<ReturnType<typeof render>>) {
 }
 
 beforeEach(() => {
-  getTemplates.mockReset().mockResolvedValue({ pipeline_templates: [original] })
-  deleteTemplate.mockReset()
+  templates = [original]
 })
 
 it('keeps the chosen deletion target when a background refresh reorders the list', async () => {
   const { client, screen } = await setup()
   const dialog = await openDeletion(screen)
-  const other = { ...original, id: 'template-2', name: 'Invoices' }
-  getTemplates.mockResolvedValueOnce({ pipeline_templates: [other, original] })
+  templates = [other, original]
   await client.invalidateQueries({
     queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
       input: { query: { type: 'customized' } },
     }),
   })
   await expect.element(screen.getByText('Invoices')).toBeVisible()
-  getTemplates.mockResolvedValue({ pipeline_templates: [other] })
-  deleteTemplate.mockResolvedValue({ result: 'success' })
-
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
 
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(deleteTemplate).toHaveBeenCalledExactlyOnceWith({ params: { template_id: original.id } })
+  expect(deleteTemplate()).toHaveBeenCalledExactlyOnceWith({ params: { template_id: original.id } })
   await expect.element(screen.getByText('Invoices')).toBeVisible()
   await expect.element(screen.getByText(original.name)).not.toBeInTheDocument()
 })
 
 it('protects the request, supports an in-place retry, and closes before the refresh', async () => {
-  const request = createDeferred()
-  const retry = createDeferred<{ result: string }>()
-  const refresh = createDeferred<PipelineTemplateListResponse>()
-  deleteTemplate.mockReturnValueOnce(request.promise).mockReturnValueOnce(retry.promise)
+  const request = hold(deleteTemplate())
+  const retry = hold(deleteTemplate())
   const { screen } = await setup()
   const dialog = await openDeletion(screen)
   const cancel = dialog.getByRole('button', { name: 'common.operation.cancel' })
@@ -132,45 +140,43 @@ it('protects the request, supports an in-place retry, and closes before the refr
   await expect.element(confirm).toHaveFocus()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
-  expect(deleteTemplate).toHaveBeenCalledTimes(1)
+  await request.arrived
+  expect(deleteTemplate()).toHaveBeenCalledTimes(1)
 
-  request.reject(new Error('Request failed'))
+  request.reject(apiError({ status: 500, message: 'Request failed' }))
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Request failed')
   await expect.element(cancel).toBeEnabled()
-  getTemplates.mockReturnValue(refresh.promise)
   await userEvent.keyboard('{Enter}')
   await expect.element(cancel).toBeDisabled()
-  retry.resolve({ result: 'success' })
+  await retry.arrived
+  const refresh = hold(listTemplates())
+  retry.release()
 
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByText(original.name)).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('link', { name: 'datasetPipeline.creation.backToKnowledge' }))
     .toHaveFocus()
-  expect(deleteTemplate).toHaveBeenCalledTimes(2)
-  refresh.resolve({ pipeline_templates: [] })
+  expect(deleteTemplate()).toHaveBeenCalledTimes(2)
+  refresh.release()
 })
 
 it('allows Escape without deleting while an ordinary list refresh is in flight', async () => {
-  const refresh = createDeferred<PipelineTemplateListResponse>()
   const { client, screen } = await setup()
   const dialog = await openDeletion(screen)
-  getTemplates.mockReturnValue(refresh.promise)
+  const refresh = hold(listTemplates())
   const fetching = client.invalidateQueries()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'common.operation.more' })).toHaveFocus()
-  expect(deleteTemplate).not.toHaveBeenCalled()
-  refresh.resolve({ pipeline_templates: [original] })
+  expect(deleteTemplate()).not.toHaveBeenCalled()
+  refresh.release()
   await fetching
 })
 
 it('lets a reopened page delete a different template while the previous request finishes', async () => {
-  const firstRequest = createDeferred<{ result: string }>()
-  const secondRequest = createDeferred<{ result: string }>()
-  deleteTemplate
-    .mockReturnValueOnce(firstRequest.promise)
-    .mockReturnValueOnce(secondRequest.promise)
+  const firstRequest = hold(deleteTemplate())
+  const secondRequest = hold(deleteTemplate())
   const { client, screen } = await setup()
   const dialog = await openDeletion(screen)
   const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
@@ -178,8 +184,8 @@ it('lets a reopened page delete a different template while the previous request 
   await confirm.click()
   await expect.element(cancel).toBeDisabled()
 
-  const other = { ...original, id: 'template-2', name: 'Invoices' }
-  getTemplates.mockResolvedValue({ pipeline_templates: [other] })
+  await firstRequest.arrived
+  templates = [other]
   await client.invalidateQueries()
   await screen.rerender(<Fixture key="reopened" client={client} />)
   await expect.element(screen.getByText(other.name)).toBeVisible()
@@ -187,10 +193,10 @@ it('lets a reopened page delete a different template while the previous request 
   await expect.element(cancel).toBeEnabled()
   await confirm.click()
   await expect.element(cancel).toBeDisabled()
-  expect(deleteTemplate).toHaveBeenNthCalledWith(2, { params: { template_id: other.id } })
+  expect(await secondRequest.arrived).toEqual({ params: { template_id: other.id } })
+  expect(deleteTemplate()).toHaveBeenCalledTimes(2)
 
-  getTemplates.mockResolvedValue({ pipeline_templates: [] })
-  secondRequest.resolve({ result: 'success' })
+  secondRequest.release()
   await expect.element(dialog).not.toBeInTheDocument()
-  firstRequest.resolve({ result: 'success' })
+  firstRequest.release()
 })
