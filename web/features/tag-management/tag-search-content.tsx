@@ -13,7 +13,6 @@ import {
   ComboboxSeparator,
 } from '@langgenius/dify-ui/combobox'
 import { useAtomValue } from 'jotai'
-import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
@@ -22,7 +21,7 @@ import { isCreateTagOption } from './tag-option'
 
 type TagSearchContentProps = {
   type: TagType
-  nameError?: string
+  nameTooLong?: boolean
   isTagCatalogEmpty?: boolean
   onOpenTagManagement?: () => void
   onClose?: () => void
@@ -38,7 +37,7 @@ type TagSearchContentViewProps = TagSearchContentProps & {
 
 export const TagSearchContentView = ({
   type,
-  nameError,
+  nameTooLong = false,
   isTagCatalogEmpty = false,
   onOpenTagManagement,
   onClose,
@@ -49,7 +48,6 @@ export const TagSearchContentView = ({
   canManageTags,
 }: TagSearchContentViewProps) => {
   const { t } = useTranslation(['common'])
-  const errorId = useId()
   const canChangeBindings = requiresTargetEditPermission
     ? canBindOrUnbindTags
     : canBindOrUnbindTags || canManageTags
@@ -71,17 +69,11 @@ export const TagSearchContentView = ({
         <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
         <ComboboxInput
           aria-label={placeholder}
-          aria-invalid={nameError ? true : undefined}
-          aria-describedby={nameError ? errorId : undefined}
+          aria-invalid={nameTooLong || undefined}
           name={`tag-search-${type}`}
           placeholder={placeholder}
         />
       </ComboboxInputGroup>
-      {nameError && (
-        <p id={errorId} role="alert" className="px-2 py-1 system-xs-regular text-text-destructive">
-          {nameError}
-        </p>
-      )}
       <ComboboxList<TagComboboxItem> className="max-h-58">
         {(tag) => {
           if (isCreateTagOption(tag)) {
@@ -110,7 +102,7 @@ export const TagSearchContentView = ({
           )
         }}
       </ComboboxList>
-      {!nameError && (
+      {!nameTooLong && (
         <ComboboxEmpty className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
             <span

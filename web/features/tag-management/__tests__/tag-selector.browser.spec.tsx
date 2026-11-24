@@ -191,11 +191,18 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
-it('explains the length limit before offering to create a tag from a card', async () => {
+it('shows one error toast when a new tag name crosses the length limit', async () => {
   await renderSelector()
   await trigger().click()
   await search().fill('A'.repeat(51))
-  await expect.element(search()).toHaveAccessibleDescription('common.tag.nameTooLong:{"max":50}')
+  const message = 'common.tag.nameTooLong:{"max":50}'
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect.element(notifications.getByRole('dialog', { name: message })).toBeVisible()
+  await expect
+    .element(page.getByRole('dialog', { name: 'Frontend: Test App' }).getByText(message))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(52))
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
   await expect
     .element(page.getByRole('option', { name: /common\.tag\.create/ }))
     .not.toBeInTheDocument()

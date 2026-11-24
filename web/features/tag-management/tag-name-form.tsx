@@ -1,6 +1,7 @@
 import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { isTagNameTooLong, MAX_TAG_NAME_LENGTH } from './tag-name-length'
 import { getTagNameValidationMessage } from './tag-name-validation'
 
@@ -32,19 +33,23 @@ export function TagNameForm({
   const { t } = useTranslation(['common'])
   const initialName = tag?.name
   const [draft, setDraft] = useState(initialName ?? '')
-  const [error, setError] = useState('')
-  const errorId = useId()
+  const [invalid, setInvalid] = useState(false)
+
+  const showValidationError = (message: string) => {
+    setInvalid(true)
+    toast.error(message)
+  }
 
   const submit = async (onBlur: boolean) => {
     if (pending) return
-    if (onBlur && (error || (initialName === undefined && !draft))) return
+    if (onBlur && (invalid || (initialName === undefined && !draft))) return
     const name = draft.trim()
     if (!name) {
-      setError(t(($) => $['tag.nameRequired']))
+      showValidationError(t(($) => $['tag.nameRequired']))
       return
     }
     if (isTagNameTooLong(name)) {
-      setError(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
+      showValidationError(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
       return
     }
     if (name === initialName) {
@@ -52,12 +57,13 @@ export function TagNameForm({
       return
     }
     if (tags.some((other) => other.id !== tag?.id && other.name.trim() === name)) {
-      setError(t(($) => $['tag.nameAlreadyExists']))
+      showValidationError(t(($) => $['tag.nameAlreadyExists']))
       return
     }
     try {
       await onSave(name)
       setDraft('')
+      setInvalid(false)
       onFinish?.()
     } catch (cause) {
       const message = getTagNameValidationMessage(
@@ -65,7 +71,7 @@ export function TagNameForm({
         t,
         initialName === undefined ? 'create' : 'rename',
       )
-      if (message) setError(message)
+      if (message) showValidationError(message)
       else onSaveError(cause)
     }
   }
@@ -80,8 +86,7 @@ export function TagNameForm({
     >
       <input
         aria-label={label}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
+        aria-invalid={invalid || undefined}
         ref={initialName !== undefined ? focusRenameInput : undefined}
         className={inputClassName}
         placeholder={initialName === undefined ? label : undefined}
@@ -89,18 +94,13 @@ export function TagNameForm({
         readOnly={pending}
         onChange={(event) => {
           setDraft(event.target.value)
-          setError('')
+          setInvalid(false)
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && event.nativeEvent.isComposing) event.preventDefault()
         }}
         onBlur={() => void submit(true)}
       />
-      {error && (
-        <p id={errorId} role="alert" className="mt-1 system-xs-regular text-text-destructive">
-          {error}
-        </p>
-      )}
     </form>
   )
 }

@@ -294,7 +294,11 @@ export const TagSelector = ({
       value={draftTagIds}
       onValueChange={handleValueChange}
       inputValue={closingPopup?.inputValue ?? inputValue}
-      onInputValueChange={setInputValue}
+      onInputValueChange={(nextValue) => {
+        if (canManageTags && !nameTooLong && isTagNameTooLong(nextValue))
+          toast.error(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
+        setInputValue(nextValue)
+      }}
       filter={TAG_COMBOBOX_FILTER}
     >
       <ComboboxTrigger
@@ -324,11 +328,7 @@ export const TagSelector = ({
           >
             <TagSearchContent
               type={type}
-              nameError={
-                nameTooLong
-                  ? t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH })
-                  : undefined
-              }
+              nameTooLong={nameTooLong}
               isTagCatalogEmpty={isTagCatalogEmpty}
               canBindOrUnbindTags={canBindOrUnbindTags}
               requiresTargetEditPermission={requiresTargetEditPermission}

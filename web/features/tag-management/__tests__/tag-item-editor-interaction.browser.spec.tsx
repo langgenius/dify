@@ -77,7 +77,7 @@ it.each([
     expected: 'A tag with this name already exists.',
   },
 ] as const)(
-  'explains a $action conflict inline in $language and accepts a correction',
+  'shows one $language error notification for a $action conflict and accepts a correction',
   async ({ language, action, expected }) => {
     const error = duplicateNameError()
     const common = locales[language]
@@ -92,13 +92,12 @@ it.each([
     }
     await input.fill('Finance')
     await userEvent.keyboard('{Enter}')
-    await expect.element(dialog.getByRole('alert')).toHaveTextContent(expected)
-    await expect.element(input).toHaveAccessibleDescription(expected)
+    const notifications = page.getByRole('region', { name: 'Notifications' })
+    await expect.element(notifications.getByRole('dialog', { name: expected })).toBeVisible()
+    await expect.element(dialog.getByText(expected, { exact: true })).not.toBeInTheDocument()
     await expect.element(input).toHaveAttribute('aria-invalid', 'true')
     await expect.element(input).toHaveValue('Finance')
-    await expect
-      .element(page.getByRole('region', { name: 'Notifications' }).getByRole('dialog'))
-      .not.toBeInTheDocument()
+    expect(notifications.getByRole('dialog').all()).toHaveLength(1)
 
     await input.fill('Corrected')
     await userEvent.keyboard('{Enter}')

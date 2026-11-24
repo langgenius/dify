@@ -27,6 +27,7 @@ function renderModal(
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
+const notifications = () => page.getByRole('region', { name: 'Notifications' })
 const fake = setupFakeApi(() => ({
   console: {
     tags: {
@@ -96,7 +97,9 @@ it('translates a server-side name length error without displaying its JSON', asy
   await renderModal()
   await input().fill('Research')
   await userEvent.keyboard('{Enter}')
-  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameTooLong:{"max":50}')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameTooLong:{"max":50}' }))
+    .toBeVisible()
   await expect.element(input()).toHaveValue('Research')
   await expect.element(page.getByText(message, { exact: true })).not.toBeInTheDocument()
 })
@@ -105,8 +108,11 @@ it('rejects whitespace-only names and lets the user correct the draft', async ()
   await renderModal()
   await input().fill('   ')
   await userEvent.keyboard('{Enter}')
-  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameRequired')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameRequired' }))
+    .toBeVisible()
   await userEvent.tab()
+  expect(notifications().getByRole('dialog').all()).toHaveLength(1)
   expect(fake.console.tags.post).not.toHaveBeenCalled()
   // The next real submission goes through the same path, so an empty request would precede it.
   await input().fill('NextTag')
@@ -131,14 +137,16 @@ it('checks normalized names against other loaded Agent tags on create and rename
   ])
   await input().fill('Research')
   await userEvent.keyboard('{Enter}')
-  await expect.element(input()).toHaveAccessibleDescription('common.tag.nameAlreadyExists')
+  const conflicts = notifications().getByRole('dialog', { name: 'common.tag.nameAlreadyExists' })
+  await expect.element(conflicts).toBeVisible()
   expect(fake.console.tags.post).not.toHaveBeenCalled()
 
   await dialog().getByRole('button', { name: 'common.operation.edit Finance' }).click()
   const rename = dialog().getByRole('textbox', { name: 'common.operation.rename Finance' })
   await rename.fill(' Research ')
   await userEvent.keyboard('{Enter}')
-  await expect.element(rename).toHaveAccessibleDescription('common.tag.nameAlreadyExists')
+  await expect.element(rename).toHaveAttribute('aria-invalid', 'true')
+  expect(conflicts.all()).toHaveLength(2)
   expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
 
   await dialog().getByRole('button', { name: 'common.operation.edit Research' }).click()
