@@ -142,11 +142,21 @@ const payloadEvents = {
 
 type PayloadEvents = typeof payloadEvents
 
-/** The request options a stream call must forward to the generated client. */
+/**
+ * The request options a stream call must forward to the generated client. `stream` lifts the
+ * request layer's time limit on the response headers: a stream sends them with its first frame,
+ * which can come minutes later (planning, long LLM or tool runs, queued workflows), so streams
+ * end only through the signal, as with the legacy SSE helpers.
+ */
 export type StreamRequestOptions = {
   signal: AbortSignal
-  context: { silent: true }
+  context: { silent: true; stream: true }
 }
+
+const streamRequestOptions = (signal: AbortSignal): StreamRequestOptions => ({
+  signal,
+  context: { silent: true, stream: true },
+})
 
 /**
  * Sends the request through a generated client, e.g.
@@ -374,7 +384,7 @@ const consumeFrames = async (
 export function streamEvents(request: StreamRequest, callbacks: StreamCallbacks): void {
   const abortController = new AbortController()
   callbacks.getAbortController?.(abortController)
-  request({ signal: abortController.signal, context: { silent: true } }).then(
+  request(streamRequestOptions(abortController.signal)).then(
     (output) => consumeFrames(toFrames(output), callbacks),
     (error: unknown) => handleRequestError(error, callbacks),
   )
@@ -416,7 +426,7 @@ export function streamGeneratorEvents<TPlan, TResult>(
   const run = async () => {
     let output: unknown
     try {
-      output = await request({ signal: abortController.signal, context: { silent: true } })
+      output = await request(streamRequestOptions(abortController.signal))
     } catch (error) {
       if (error instanceof ORPCError && typeof error.status === 'number') {
         onError?.(error.status === 401 ? 'Unauthorized' : getErrorBody(error).message)
