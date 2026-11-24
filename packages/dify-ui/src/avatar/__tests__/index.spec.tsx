@@ -35,7 +35,7 @@ it('shares the group size through wrappers and keeps explicit avatar sizes', asy
   ).toBe(24)
 })
 
-it.each(['ltr', 'rtl'])('keeps earlier items on top after reordering in %s', async (dir) => {
+it.each(['ltr', 'rtl'])('lays out and stacks items from the inline start in %s', async (dir) => {
   const alice = (
     <button key="alice" type="button" aria-label="Open Alice">
       <Avatar aria-hidden="true">
@@ -61,6 +61,7 @@ it.each(['ltr', 'rtl'])('keeps earlier items on top after reordering in %s', asy
   function expectOverlapWinner(front: Element, back: Element) {
     const frontRect = front.getBoundingClientRect()
     const backRect = back.getBoundingClientRect()
+    expect(Math.sign(backRect.left - frontRect.left)).toBe(dir === 'ltr' ? 1 : -1)
     const left = Math.max(frontRect.left, backRect.left)
     const right = Math.min(frontRect.right, backRect.right)
     expect(right - left).toBeCloseTo(4)
