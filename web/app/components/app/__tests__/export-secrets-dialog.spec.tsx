@@ -1,6 +1,7 @@
+import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AppExportConfirmModal from '@/app/components/app/export-confirm-modal'
+import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { expectLoadingButton } from '@/test/button'
 
 const envList = [
@@ -13,63 +14,55 @@ const envList = [
   },
 ]
 
-describe('AppExportConfirmModal', () => {
-  it('should render environment rows and close when cancel is clicked', async () => {
-    const user = userEvent.setup()
-    const onConfirm = vi.fn().mockResolvedValue(true)
-    const onClose = vi.fn()
+function renderDialog({ isExporting = false } = {}) {
+  const onConfirm = vi.fn()
+  const onOpenChange = vi.fn()
 
-    render(
-      <AppExportConfirmModal
-        isExporting={false}
+  render(
+    <AlertDialog
+      open
+      onOpenChange={(open, details) => {
+        if (!open && isExporting) details.cancel()
+        else onOpenChange(open)
+      }}
+    >
+      <ExportSecretsDialogContent
         envList={envList}
+        isExporting={isExporting}
         onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+      />
+    </AlertDialog>,
+  )
+
+  return { onConfirm, onOpenChange }
+}
+
+describe('ExportSecretsDialogContent', () => {
+  it('renders environment rows and closes through the cancel button', async () => {
+    const user = userEvent.setup()
+    const { onConfirm, onOpenChange } = renderDialog()
 
     expect(screen.getByText('SECRET_TOKEN')).toBeInTheDocument()
     expect(screen.getByText('masked-value')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(onConfirm).not.toHaveBeenCalled()
   })
 
-  it('should confirm with exportSecrets=false by default', async () => {
+  it('confirms without secrets by default', async () => {
     const user = userEvent.setup()
-    const onConfirm = vi.fn().mockResolvedValue(true)
-    const onClose = vi.fn()
-
-    render(
-      <AppExportConfirmModal
-        isExporting={false}
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    const { onConfirm } = renderDialog()
 
     await user.click(screen.getByRole('button', { name: 'app.exportApp' }))
 
     expect(onConfirm).toHaveBeenCalledWith(false)
-    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('should confirm with exportSecrets=true after toggling the checkbox', async () => {
+  it('confirms with secrets after toggling the checkbox', async () => {
     const user = userEvent.setup()
-    const onConfirm = vi.fn().mockResolvedValue(true)
-    const onClose = vi.fn()
-
-    render(
-      <AppExportConfirmModal
-        isExporting={false}
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-      />,
-    )
+    const { onConfirm } = renderDialog()
 
     expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
       'app.exportSecret.description',
@@ -78,22 +71,11 @@ describe('AppExportConfirmModal', () => {
     await user.click(screen.getByRole('button', { name: 'app.exportSecret.title' }))
 
     expect(onConfirm).toHaveBeenCalledWith(true)
-    expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('blocks confirmation and dismissal while the export request is pending', async () => {
-    const onConfirm = vi.fn().mockResolvedValue(true)
-    const onClose = vi.fn()
+  it('blocks confirmation while the export request is pending', async () => {
     const user = userEvent.setup()
-
-    render(
-      <AppExportConfirmModal
-        envList={envList}
-        onConfirm={onConfirm}
-        onClose={onClose}
-        isExporting
-      />,
-    )
+    const { onConfirm, onOpenChange } = renderDialog({ isExporting: true })
 
     const confirmButton = screen.getByRole('button', { name: 'common.operation.exporting' })
     expectLoadingButton(confirmButton)
@@ -102,6 +84,6 @@ describe('AppExportConfirmModal', () => {
     await user.click(confirmButton)
     await user.keyboard('{Escape}')
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(onClose).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })

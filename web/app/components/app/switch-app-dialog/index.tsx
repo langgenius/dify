@@ -4,6 +4,7 @@ import type {
   AppPartial,
   ConvertToWorkflowPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { RefObject } from 'react'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -14,11 +15,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
-  Dialog,
   DialogBody,
   DialogClose,
   DialogContent,
@@ -32,7 +33,7 @@ import { Field, FieldError } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -43,90 +44,35 @@ import {
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
-import { toast } from '@/app/notifications'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getRedirection } from '@/utils/app-redirection'
-import { getErrorMessage } from '@/utils/error-message'
 
-type SwitchAppModalProps = {
-  open: boolean
-  onClose: () => void
-  sourceApp: Pick<
-    AppPartial,
-    'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
-  >
+export type SwitchAppSource = Pick<
+  AppPartial,
+  'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
+>
+
+type SwitchAppDialogContentProps = {
+  sourceApp: SwitchAppSource
+  isPending: boolean
+  onSubmit: (body: ConvertToWorkflowPayload, removeOriginal: boolean) => void
 }
 
-const SwitchAppModal = ({ open, sourceApp, onClose }: SwitchAppModalProps) => {
+export function SwitchAppDialogContent({
+  sourceApp,
+  isPending,
+  onSubmit,
+}: SwitchAppDialogContentProps) {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation(['app'])
-  const { push, replace } = useRouter()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const conversion = useMutation(
-    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
-  )
-  const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
-  )
-  const isPending = conversion.isPending || deletion.isPending
-  const submit = (body: ConvertToWorkflowPayload, removeOriginal: boolean) => {
-    if (isPending) return
-    conversion.mutate(
-      { params: { app_id: sourceApp.id }, body },
-      {
-        onError: (error) =>
-          toast.error(
-            getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
-          ),
-        onSuccess: ({ new_app_id, permission_keys }) => {
-          const finish = (removed: boolean) => {
-            onClose()
-            getRedirection(
-              {
-                id: new_app_id,
-                mode: sourceApp.mode === 'completion' ? 'workflow' : 'advanced-chat',
-                permission_keys,
-              },
-              removed ? replace : push,
-              { isRbacEnabled: systemFeatures.rbac_enabled },
-            )
-          }
-          if (removeOriginal) {
-            deletion.mutate(
-              { params: { app_id: sourceApp.id } },
-              {
-                onSuccess: () => finish(true),
-                onError: (error) => {
-                  toast.error(getErrorMessage(error) ?? t(($) => $.appDeleteFailed, { ns: 'app' }))
-                  finish(false)
-                },
-              },
-            )
-          } else finish(false)
-        },
-      },
-    )
-  }
+
   return (
-    <Dialog
-      open={open}
-      disablePointerDismissal
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending) details.cancel()
-        else if (!nextOpen) onClose()
-      }}
-    >
-      <DialogContent initialFocus={nameInputRef} className="w-150">
-        <SwitchAppSession
-          nameInputRef={nameInputRef}
-          sourceApp={sourceApp}
-          onSubmit={submit}
-          isPending={isPending}
-        />
-      </DialogContent>
-    </Dialog>
+    <DialogContent initialFocus={nameInputRef} className="w-150">
+      <SwitchAppSession
+        nameInputRef={nameInputRef}
+        sourceApp={sourceApp}
+        onSubmit={onSubmit}
+        isPending={isPending}
+      />
+    </DialogContent>
   )
 }
 
@@ -135,10 +81,8 @@ function SwitchAppSession({
   sourceApp,
   onSubmit,
   isPending,
-}: Pick<SwitchAppModalProps, 'sourceApp'> & {
-  nameInputRef: React.RefObject<HTMLInputElement | null>
-  onSubmit: (body: ConvertToWorkflowPayload, removeOriginal: boolean) => void
-  isPending: boolean
+}: SwitchAppDialogContentProps & {
+  nameInputRef: RefObject<HTMLInputElement | null>
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const { t } = useTranslation(['app', 'common', 'explore'])
@@ -162,7 +106,7 @@ function SwitchAppSession({
   )
 
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmRemoveDialog] = useState(() => createAlertDialogHandle())
   const submit = (name: string) => {
     if (isPending || isAppQuotaUnavailable || isAppsFull || !name.trim()) return
     onSubmit(
@@ -174,13 +118,6 @@ function SwitchAppSession({
       },
       removeOriginal,
     )
-  }
-
-  const handleConfirmDeleteOpenChange = (open: boolean) => {
-    if (open) return
-
-    setShowConfirmDelete(false)
-    setRemoveOriginal(false)
   }
 
   return (
@@ -260,7 +197,7 @@ function SwitchAppSession({
                 checked={removeOriginal}
                 onCheckedChange={(checked) => {
                   setRemoveOriginal(checked)
-                  if (checked) setShowConfirmDelete(true)
+                  if (checked) confirmRemoveDialog.open(null)
                 }}
               />
               <span className="ms-2 text-start text-sm/5 text-text-secondary">
@@ -283,7 +220,12 @@ function SwitchAppSession({
           </Button>
         </DialogFooter>
       </Form>
-      <AlertDialog open={showConfirmDelete} onOpenChange={handleConfirmDeleteOpenChange}>
+      <AlertDialog
+        handle={confirmRemoveDialog}
+        onOpenChange={(open, details) => {
+          if (!open && details.reason !== 'imperative-action') setRemoveOriginal(false)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t(($) => $.deleteAppConfirmTitle, { ns: 'app' })}</AlertDialogTitle>
@@ -295,7 +237,7 @@ function SwitchAppSession({
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={() => setShowConfirmDelete(false)}>
+            <AlertDialogConfirmButton onClick={() => confirmRemoveDialog.close()}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
@@ -304,5 +246,3 @@ function SwitchAppSession({
     </>
   )
 }
-
-export default SwitchAppModal
