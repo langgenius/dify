@@ -171,12 +171,15 @@ def test_search_by_vector_applies_score_threshold_and_sorting(chroma_module: Mod
     assert docs[0].metadata["score"] == 0.9
 
 
-def test_search_by_vector_converts_legacy_l2_distance(chroma_module: ModuleType) -> None:
+@pytest.mark.parametrize("metadata", [None, {"hnsw:space": "l2"}])
+def test_search_by_vector_converts_legacy_l2_distance(
+    chroma_module: ModuleType, metadata: dict[str, str] | None
+) -> None:
     vector = chroma_module.ChromaVector(
         collection_name="collection_1",
         config=chroma_module.ChromaConfig(host="localhost", port=8000, tenant="t", database="d"),
     )
-    vector._client.collection.metadata = {"hnsw:space": "l2"}
+    vector._client.collection.metadata = metadata
     vector._client.collection.query.return_value = {
         "ids": [["id-1", "id-2"]],
         "documents": [["doc high", "doc low"]],

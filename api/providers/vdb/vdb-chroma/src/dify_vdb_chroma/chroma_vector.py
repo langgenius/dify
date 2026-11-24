@@ -65,13 +65,15 @@ class ChromaVector(BaseVector):
         """Convert a Chroma distance to a similarity score using the collection's space.
 
         Preconditions:
-            ``collection.metadata`` contains the Chroma distance space when known.
+            ``collection.metadata`` contains the Chroma distance space when explicitly
+            configured.
         Postconditions:
-            L2 distances are converted under Dify's unit-normalized embedding contract;
-            cosine and inner-product distances use ``1 - distance``.
+            Missing metadata is treated as Chroma's historical L2 default. L2 distances
+            are converted under Dify's unit-normalized embedding contract; cosine and
+            inner-product distances use ``1 - distance``.
         """
         metadata = collection.metadata or {}
-        if metadata.get("hnsw:space") == "l2":
+        if metadata.get("hnsw:space", "l2") == "l2":
             return 1 - distance / 2
         return 1 - distance
 
