@@ -58,6 +58,10 @@ from services.agent.dsl_entities import (
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
 from services.agent.roster_service import AgentRosterService
+from services.agent.session_policy import (
+    apply_workflow_agent_session_policy_to_node_data,
+    merge_workflow_agent_session_policy,
+)
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -139,7 +143,13 @@ class AgentDslService:
         graph: Mapping[str, Any],
         resource_exporter: AgentPackageResourceExporter | None = None,
     ) -> tuple[dict[str, Any], dict[str, AgentPackage]]:
-        """Replace persisted bindings with portable packages, optionally collecting their assets."""
+        """Replace owned bindings with portable packages and their saved node policies.
+
+        Preconditions: workflow and graph belong to the admitted export owner.
+        Postconditions: exported modes match persisted jobs; the source graph and
+        its live session resources remain unchanged. Missing bindings fail before
+        a portable package can be returned.
+        """
 
         portable_graph = project_external_bindings(
             session=self.session, workflow=workflow, graph=copy.deepcopy(dict(graph)), portable=True
@@ -200,9 +210,9 @@ class AgentDslService:
                 "binding_type": binding.binding_type.value,
                 AGENT_PACKAGE_REF_KEY: package_ref,
             }
-            node_data[AGENT_NODE_JOB_DSL_KEY] = WorkflowNodeJobConfig.model_validate(
-                binding.node_job_config_dict
-            ).model_dump(mode="json")
+            node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            node_data[AGENT_NODE_JOB_DSL_KEY] = node_job.model_dump(mode="json")
+            apply_workflow_agent_session_policy_to_node_data(node_data=node_data, node_job=node_job)
 
         return portable_graph, packages
 
@@ -296,7 +306,14 @@ class AgentDslService:
         raw_packages: Mapping[str, Any],
         account: Account,
     ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
-        """Materialize every packaged Agent as a node-owned inline Agent."""
+        """Materialize packaged Agents and destination-owned session policies.
+
+        Preconditions: workflow is the admitted destination draft in the caller's
+        transaction; portable packages pass their schema validation. Postconditions:
+        every imported node keeps its saved mode with a new server generation,
+        graph and binding agree, and source live session resources are untouched.
+        Invalid package references raise ValueError before the caller commits.
+        """
 
         graph = copy.deepcopy(dict(portable_graph))
         packages = {key: AgentPackage.model_validate(value) for key, value in raw_packages.items()}
@@ -344,6 +361,12 @@ class AgentDslService:
             )
 
             node_job = WorkflowNodeJobConfig.model_validate(node_data.get(AGENT_NODE_JOB_DSL_KEY) or {})
+            node_job = merge_workflow_agent_session_policy(
+                previous=None,
+                node_job=node_job,
+                requested_enabled=node_job.continue_agent_session,
+            )
+            apply_workflow_agent_session_policy_to_node_data(node_data=node_data, node_job=node_job)
             self.session.add(
                 WorkflowAgentNodeBinding(
                     tenant_id=workflow.tenant_id,

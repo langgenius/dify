@@ -3180,11 +3180,6 @@
       "count": 4
     }
   },
-  "web/features/tag-management/tag-item-editor.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/hooks/use-metadata.ts": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -3316,14 +3311,6 @@
       "count": 2
     }
   },
-  "web/service/common.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 7
-    }
-  },
   "web/service/console/browser.ts": {
     "typescript/no-deprecated": {
       "count": 1
@@ -3436,33 +3423,6 @@
       "count": 4
     }
   },
-  "web/service/use-common.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 1
-    },
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/use-plugins.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 3
-    }
-  },
-  "web/service/use-try-app.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
@@ -3476,14 +3436,6 @@
   },
   "web/service/workflow-generator.ts": {
     "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
-  "web/service/workflow.ts": {
-    "no-restricted-imports": {
       "count": 1
     },
     "typescript/no-deprecated": {

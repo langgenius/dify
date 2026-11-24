@@ -21,6 +21,7 @@ import { isCreateTagOption } from './tag-option'
 
 type TagSearchContentProps = {
   type: TagType
+  nameTooLong?: boolean
   isTagCatalogEmpty?: boolean
   onOpenTagManagement?: () => void
   onClose?: () => void
@@ -36,6 +37,7 @@ type TagSearchContentViewProps = TagSearchContentProps & {
 
 export const TagSearchContentView = ({
   type,
+  nameTooLong = false,
   isTagCatalogEmpty = false,
   onOpenTagManagement,
   onClose,
@@ -67,6 +69,7 @@ export const TagSearchContentView = ({
         <span aria-hidden="true" className="i-ri-search-line size-4 shrink-0 text-text-tertiary" />
         <ComboboxInput
           aria-label={placeholder}
+          aria-invalid={nameTooLong || undefined}
           name={`tag-search-${type}`}
           placeholder={placeholder}
         />
@@ -99,22 +102,24 @@ export const TagSearchContentView = ({
           )
         }}
       </ComboboxList>
-      <ComboboxEmpty className="p-1">
-        <div className="flex flex-col items-center gap-y-1 p-3">
-          <span
-            className={cn(
-              'size-6 text-text-quaternary',
-              showEmptyCatalog
-                ? 'i-ri-price-tag-3-line'
-                : 'i-custom-vender-line-financeAndECommerce-tag-01',
-            )}
-            aria-hidden="true"
-          />
-          <p className="text-center system-xs-regular wrap-break-word text-text-tertiary">
-            {emptyMessage}
-          </p>
-        </div>
-      </ComboboxEmpty>
+      {!nameTooLong && (
+        <ComboboxEmpty className="p-1">
+          <div className="flex flex-col items-center gap-y-1 p-3">
+            <span
+              className={cn(
+                'size-6 text-text-quaternary',
+                showEmptyCatalog
+                  ? 'i-ri-price-tag-3-line'
+                  : 'i-custom-vender-line-financeAndECommerce-tag-01',
+              )}
+              aria-hidden="true"
+            />
+            <p className="text-center system-xs-regular wrap-break-word text-text-tertiary">
+              {emptyMessage}
+            </p>
+          </div>
+        </ComboboxEmpty>
+      )}
       {canManageTags && showTagManagement && (
         <>
           <ComboboxSeparator />

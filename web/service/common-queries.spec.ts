@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -8,7 +8,7 @@ import {
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
 import { clearPageLeaveGuards } from '@/utils/page-leave-guard'
-import { useLogout } from './use-common'
+import { logoutMutationOptions } from './common-queries'
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   },
 }))
 
-describe('useLogout', () => {
+describe('logoutMutationOptions', () => {
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client: new QueryClient() }, children)
 
@@ -62,7 +62,7 @@ describe('useLogout', () => {
           finishLogout = resolve
         }),
       )
-      const { result } = renderHook(() => useLogout(), { wrapper })
+      const { result } = renderHook(() => useMutation(logoutMutationOptions()), { wrapper })
       let logout!: Promise<unknown>
       await act(async () => {
         logout = result.current.mutateAsync()
@@ -90,7 +90,9 @@ describe('useLogout', () => {
     )
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
     const redirectTo = `/signin?redirect_url=${encodeURIComponent('/console/account/oauth/authorize?client_id=app&state=value')}`
-    const { result } = renderHook(() => useLogout({ redirectTo }), { wrapper })
+    const { result } = renderHook(() => useMutation(logoutMutationOptions({ redirectTo })), {
+      wrapper,
+    })
     await act(async () => {
       await result.current.mutateAsync()
     })
@@ -101,7 +103,7 @@ describe('useLogout', () => {
     mocks.request.mockRejectedValue(new Error('Logout failed'))
     window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
     const replace = vi.spyOn(window.location, 'replace').mockImplementation(() => {})
-    const { result } = renderHook(() => useLogout(), { wrapper })
+    const { result } = renderHook(() => useMutation(logoutMutationOptions()), { wrapper })
     await act(async () => {
       await expect(result.current.mutateAsync()).rejects.toThrow('Logout failed')
     })

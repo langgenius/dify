@@ -44,7 +44,7 @@ const api = vi.hoisted(() => ({
   exportDSL: vi.fn(),
   importDSL: vi.fn(),
   webhook: vi.fn(),
-  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchWorkflowDraft>(),
+  fetchDraft: vi.fn<typeof import('@/service/workflow').fetchAppWorkflowDraft>(),
   saveDraft:
     vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
 }))
@@ -62,7 +62,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/workflow', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/workflow')>()),
-  fetchWorkflowDraft: api.fetchDraft,
+  fetchAppWorkflowDraft: api.fetchDraft,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()

@@ -1,4 +1,5 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import { QueryObserver } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -130,4 +131,33 @@ it('refreshes Agent tags, lists and the edited detail after both writes settle o
   })
   for (const key of affected) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
   for (const key of unaffected) expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false)
+})
+
+it('refreshes the binding count without waiting for a catalog read started before unbinding', async () => {
+  const { queryClient, result } = renderMutation()
+  const boundTag = { id: 'tag-1', name: 'Research', type: 'agent', binding_count: '1' }
+  const unboundTag = { ...boundTag, binding_count: '0' }
+  const staleRead = createDeferred<(typeof boundTag)[]>()
+  onTestFinished(() => staleRead.resolve([boundTag]))
+  const readCatalog = vi.fn().mockReturnValueOnce(staleRead.promise).mockResolvedValue([unboundTag])
+  const observer = new QueryObserver(queryClient, {
+    queryKey: tagKey('agent'),
+    queryFn: readCatalog,
+  })
+  onTestFinished(observer.subscribe(() => {}))
+  expect(readCatalog).toHaveBeenCalledOnce()
+
+  await act(async () => {
+    const save = result.current.mutateAsync({
+      currentTagIds: [boundTag.id],
+      nextTagIds: [],
+      targetId: 'agent-1',
+      type: 'agent',
+    })
+    await waitFor(() => expect(readCatalog).toHaveBeenCalledTimes(2))
+    await save
+  })
+  staleRead.resolve([boundTag])
+  await staleRead.promise
+  expect(observer.getCurrentResult().data).toEqual([unboundTag])
 })

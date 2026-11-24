@@ -17,12 +17,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
+import { TagNameForm } from './tag-name-form'
 
 type TagItemEditorProps = {
   tag: Tag
+  tags: readonly Tag[]
   onTagsChange?: () => void
 }
-export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
+export const TagItemEditor = ({ tag, tags, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation(['common'])
   const updateTagMutation = useMutation(
     consoleQuery.tags.byTagId.patch.mutationOptions({ context: { silent: true } }),
@@ -31,41 +33,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
     consoleQuery.tags.byTagId.delete.mutationOptions({ context: { silent: true } }),
   )
   const [isEditing, setIsEditing] = useState(false)
-  const editTag = (tagId: string, name: string) => {
-    if (name === tag.name) {
-      setIsEditing(false)
-      return
-    }
-    if (!name) {
-      toast.error('tag name is empty')
-      setIsEditing(false)
-      return
-    }
-
-    updateTagMutation.mutate(
-      {
-        params: {
-          tag_id: tagId,
-        },
-        body: {
-          name,
-        },
-      },
-      {
-        onSuccess: () => {
-          setIsEditing(false)
-          onTagsChange?.()
-        },
-        onError: (error) => {
-          toast.error(
-            getErrorMessage(error) ??
-              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-          )
-          setIsEditing(false)
-        },
-      },
-    )
-  }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
   const removeTag = (tagId: string) => {
     if (deleteTagMutation.isPending) return
@@ -100,7 +67,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       <div className="flex max-w-full items-center gap-0.5 rounded-lg border border-components-panel-border py-1 ps-2 pe-1 text-sm/5 text-text-secondary">
         {!isEditing && (
           <>
-            <div className="truncate">{tag.name}</div>
+            <div className="min-w-0 wrap-anywhere">{tag.name}</div>
             <Tooltip>
               <TooltipTrigger>
                 <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">
@@ -137,18 +104,23 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
           </>
         )}
         {isEditing && (
-          <input
-            aria-label={`${t(($) => $['operation.rename'], { ns: 'common' })} ${tag.name}`}
-            className="min-w-0 appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary"
-            autoFocus
-            defaultValue={tag.name}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
-
-              e.preventDefault()
-              e.currentTarget.blur()
+          <TagNameForm
+            tag={tag}
+            tags={tags}
+            label={`${t(($) => $['operation.rename'])} ${tag.name}`}
+            inputClassName="min-w-0 max-w-full appearance-none caret-primary-600 outline-hidden placeholder:text-text-quaternary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            pending={updateTagMutation.isPending}
+            onSave={(name) =>
+              updateTagMutation.mutateAsync(
+                { params: { tag_id: tag.id }, body: { name } },
+                { onSuccess: onTagsChange },
+              )
+            }
+            onFinish={() => setIsEditing(false)}
+            onSaveError={(error) => {
+              toast.error(getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully']))
+              setIsEditing(false)
             }}
-            onBlur={(e) => editTag(tag.id, e.currentTarget.value)}
           />
         )}
       </div>

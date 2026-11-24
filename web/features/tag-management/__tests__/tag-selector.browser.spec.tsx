@@ -3,8 +3,9 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createDeferred } from '@/test/deferred'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
+import { TagFilter } from '../tag-filter'
 import { TagSelector } from '../tag-selector'
 
 let serverTags: Tag[] = []
@@ -191,11 +192,30 @@ it('creates a knowledge tag without binding it implicitly', async () => {
   expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
+it('shows one error toast when a new tag name crosses the length limit', async () => {
+  await renderSelector()
+  await trigger().click()
+  await search().fill('A'.repeat(51))
+  const message = 'common.tag.nameTooLong:{"max":50}'
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect.element(notifications.getByRole('dialog', { name: message })).toBeVisible()
+  await expect
+    .element(page.getByRole('dialog', { name: 'Frontend: Test App' }).getByText(message))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(52))
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
+  await expect
+    .element(page.getByRole('option', { name: /common\.tag\.create/ }))
+    .not.toBeInTheDocument()
+  await search().fill('A'.repeat(50))
+  await expect.element(page.getByRole('option', { name: /common\.tag\.create/ })).toBeVisible()
+})
+
 it.each(['agent', 'app'] as const)(
   'offers to create the first %s tag only after the workspace catalog loads',
   async (type) => {
     const catalog = createDeferred<Tag[]>()
-    fake.console.tags.get.mockReturnValueOnce(catalog.promise)
+    fake.console.tags.get.mockImplementation(() => catalog.promise)
     await renderWithTags(
       <TagSelector type={type} targetId="card-1" value={[]} canBindOrUnbindTags />,
       undefined,
@@ -231,8 +251,8 @@ it('shows an empty tag catalog without inviting a binding-only editor to create 
 })
 
 it('does not offer to create the first tag when the Studio App catalog request fails', async () => {
-  fake.console.tags.get.mockRejectedValueOnce(
-    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Tag catalog unavailable' }),
+  fake.console.tags.get.mockRejectedValue(
+    apiError({ status: 503, message: 'Tag catalog unavailable' }),
   )
   const { queryClient } = await renderWithTags(
     <TagSelector type="app" targetId="app-1" value={[]} canBindOrUnbindTags />,
@@ -254,18 +274,19 @@ it.each(['before', 'after'] as const)(
     const agentTag = { id: 'existing', name: 'Existing', type: 'agent' }
     const newTag = { id: 'created', name: 'Research', type: 'agent' }
     serverTags = [agentTag]
-    const creation = createDeferred<Tag>()
-    const binding = createDeferred<{ result: 'success' }>()
-    fake.console.tags.post.mockReturnValueOnce(creation.promise)
-    fake.console.tagBindings.post.mockReturnValueOnce(binding.promise)
+    const creation = hold(fake.console.tags.post)
+    const binding = hold(fake.console.tagBindings.post)
     await renderWithTags(
-      <TagSelector
-        type="agent"
-        targetId="agent-1"
-        value={[]}
-        requiresTargetEditPermission
-        canBindOrUnbindTags
-      />,
+      <>
+        <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+        <TagSelector
+          type="agent"
+          targetId="agent-1"
+          value={[]}
+          requiresTargetEditPermission
+          canBindOrUnbindTags
+        />
+      </>,
       serverTags,
       ['agent.tag.manage'],
     )
@@ -274,9 +295,10 @@ it.each(['before', 'after'] as const)(
     await page.getByRole('option', { name: 'Existing' }).click()
     await search().fill('Research')
     await page.getByRole('option', { name: /common\.tag\.create/ }).click()
-    await expect
-      .poll(() => fake.console.tags.post.mock.calls)
-      .toEqual([[{ body: { name: 'Research', type: 'agent' } }]])
+    await creation.arrived
+    expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+      body: { name: 'Research', type: 'agent' },
+    })
     if (close === 'before') {
       await userEvent.keyboard('{Escape}')
       await expect.element(search()).not.toBeInTheDocument()
@@ -285,6 +307,7 @@ it.each(['before', 'after'] as const)(
       await userEvent.keyboard('{Enter}')
       await expect.element(search()).not.toBeInTheDocument()
     }
+    const catalogRefresh = hold(fake.console.tags.get)
     serverTags = [newTag, agentTag]
     creation.resolve(newTag)
     if (close === 'after') {
@@ -299,17 +322,52 @@ it.each(['before', 'after'] as const)(
       .toEqual([
         [{ body: { tag_ids: ['existing', 'created'], target_id: 'agent-1', type: 'agent' } }],
       ])
+    expect(fake.console.tags.get).not.toHaveBeenCalled()
     await expect.element(addTags).toHaveFocus()
     await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
     await userEvent.keyboard('{Enter}')
     await expect.element(search()).not.toBeInTheDocument()
-    binding.resolve({ result: 'success' })
+    serverTags = serverTags.map((tag) => ({ ...tag, binding_count: '1' }))
+    binding.release()
+    await catalogRefresh.arrived
+    catalogRefresh.release()
     await expect.element(addTags).not.toHaveAttribute('aria-disabled')
+    expect(fake.console.tags.get).toHaveBeenCalledExactlyOnceWith({ query: { type: 'agent' } })
     await expect.element(addTags).toHaveFocus()
     await userEvent.keyboard('{Enter}')
     await expect.element(search()).toBeVisible()
   },
 )
+
+it('refreshes the Agent tag catalog when the new tag is deselected before saving', async () => {
+  const newTag = { id: 'created', name: 'Research', type: 'agent' }
+  serverTags = []
+  fake.console.tags.post.mockImplementationOnce(() => {
+    serverTags = [newTag]
+    return newTag
+  })
+  await renderWithTags(
+    <>
+      <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+      <TagSelector type="agent" targetId="agent-1" value={[]} canBindOrUnbindTags />
+    </>,
+    serverTags,
+    ['agent.tag.manage'],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await search().fill('Research')
+  await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+  const option = page.getByRole('option', { name: 'Research' })
+  await expect.element(option).toHaveAttribute('aria-selected', 'true')
+  expect(fake.console.tags.get).not.toHaveBeenCalled()
+  await option.click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(search()).not.toBeInTheDocument()
+  await expect
+    .poll(() => fake.console.tags.get.mock.calls)
+    .toEqual([[{ query: { type: 'agent' } }]])
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
+})
 
 it('blocks opening without management permission or binding capability', async () => {
   await renderSelector([])

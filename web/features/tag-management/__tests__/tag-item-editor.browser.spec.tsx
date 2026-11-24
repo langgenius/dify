@@ -10,10 +10,10 @@ let serverTags: Tag[] = []
 const frontendId = '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60'
 const backendId = '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071'
 const baseTag: Tag = { id: frontendId, name: 'Frontend', type: 'app', binding_count: '3' }
-function renderEditor(bindingCount = '3', name = baseTag.name) {
+function renderEditor(bindingCount = '3', [name, otherName] = [baseTag.name, 'Backend']) {
   serverTags = [
     { ...baseTag, name, binding_count: bindingCount },
-    { ...baseTag, id: backendId, name: 'Backend', binding_count: '' },
+    { ...baseTag, id: backendId, name: otherName, binding_count: '' },
   ]
   return renderWithTags(<TagManagementDialog type="app" show onClose={() => {}} />, serverTags)
 }
@@ -51,27 +51,31 @@ it('explains the binding count without naming a particular resource type', async
   await expect.element(page.getByText('common.tag.boundItems', { exact: true })).toBeVisible()
 })
 
-it.each([
-  { width: 1512, name: '長い日本語のタグ名'.repeat(5) },
-  { width: 320, name: 'W'.repeat(50) },
-])(
-  'keeps actions reachable and the full tag name editable at $width px',
-  async ({ width, name }) => {
+it.each([1512, 320])(
+  'shows distinct full-length tag names and keeps their actions reachable at %i px',
+  async (width) => {
     await page.viewport(width, 800)
-    await renderEditor('3', name)
+    const prefix = 'W'.repeat(49)
+    const firstName = `${prefix}A`
+    const secondName = `${prefix}B`
+    await renderEditor('0', [firstName, secondName])
     const dialog = page.getByRole('dialog', { name: 'common.tag.manageTags' })
-    const removeButton = dialog.getByRole('button', { name: `common.operation.remove ${name}` })
-    await expect.element(removeButton).toBeVisible()
-    const { x, y, width: buttonWidth, height } = removeButton.element().getBoundingClientRect()
-    expect(
-      removeButton
-        .element()
-        .contains(document.elementFromPoint(x + buttonWidth / 2, y + height / 2)),
-    ).toBe(true)
-    await dialog.getByRole('button', { name: `common.operation.edit ${name}` }).click()
+    for (const name of [firstName, secondName]) {
+      const label = dialog.getByText(name, { exact: true })
+      await expect.element(label).toBeVisible()
+      const element = label.element()
+      expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth)
+    }
+
+    await dialog.getByRole('button', { name: `common.operation.remove ${secondName}` }).click()
+    await expect.element(dialog.getByText(secondName, { exact: true })).not.toBeInTheDocument()
+    expect(fake.console.tags.byTagId.delete).toHaveBeenCalledExactlyOnceWith({
+      params: { tag_id: backendId },
+    })
+    await dialog.getByRole('button', { name: `common.operation.edit ${firstName}` }).click()
     await expect
-      .element(dialog.getByRole('textbox', { name: `common.operation.rename ${name}` }))
-      .toHaveValue(name)
+      .element(dialog.getByRole('textbox', { name: `common.operation.rename ${firstName}` }))
+      .toHaveValue(firstName)
   },
 )
 
@@ -79,7 +83,7 @@ it('renames a tag through the real management list and exits editing', async () 
   await renderEditor()
   await edit().click()
   await expect.element(input()).toHaveFocus()
-  await input().fill('Frontend V2')
+  await input().fill('  Frontend V2  ')
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByText('Frontend V2', { exact: true })).toBeVisible()
   await expect.element(input()).not.toBeInTheDocument()
@@ -97,10 +101,19 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
   await expect.element(input()).not.toBeInTheDocument()
   expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
   await edit().click()
-  await input().fill('')
+  await input().fill('   ')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByRole('dialog', { name: 'common.tag.nameRequired' })).toBeVisible()
+  await expect.element(input()).toHaveValue('   ')
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+})
+
+it('preserves an existing padded tag name when the user leaves without editing', async () => {
+  const name = '  Frontend  '
+  await renderEditor('3', [name, 'Backend'])
+  await edit().click()
+  await expect.element(input()).toHaveValue(name)
   await userEvent.tab()
-  await expect.element(page.getByText('tag name is empty', { exact: true })).toBeVisible()
-  await expect.element(input()).not.toBeInTheDocument()
   await expect.element(edit()).toBeVisible()
   expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
 })
@@ -117,6 +130,25 @@ it('shows a rename failure and restores the original name for editing again', as
   await expect.element(input()).not.toBeInTheDocument()
   await edit().click()
   await expect.element(input()).toHaveValue('Frontend')
+})
+
+it('rejects 51 code points before saving and accepts a 50-character replacement', async () => {
+  const validName = '🔖'.repeat(50)
+  await renderEditor()
+  await edit().click()
+  await input().fill(`${validName}x`)
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(page.getByRole('dialog', { name: 'common.tag.nameTooLong:{"max":50}' }))
+    .toBeVisible()
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+  await input().fill(validName)
+  await userEvent.keyboard('{Enter}')
+  await expect.element(page.getByText(validName, { exact: true })).toBeVisible()
+  expect(fake.console.tags.byTagId.patch).toHaveBeenCalledExactlyOnceWith({
+    params: { tag_id: frontendId },
+    body: { name: validName },
+  })
 })
 
 it('removes an unbound tag from the real list without a success notification', async () => {
