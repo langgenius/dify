@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "ເຄື່ອງມືຊ່ວຍໃຫ້ຕົວແທນສາມາດປະຕິບັດການໄດ້ ເຊັ່ນ: ການຄົ້ນຫາເວັບ ຫຼື ການເອີ້ນໃຊ້ແອັບຯຂອງທ່ານ",
   "agentDetail.configure.tools.empty.title": "ຍັງບໍ່ມີເຄື່ອງມືເທື່ອ",
   "agentDetail.configure.tools.label": "ເຄື່ອງມື (Tools)",
-  "agentDetail.configure.tools.moreActions": "ການດຳເນີນການເພີ່ມເຕີມສຳລັບ {{name}}",
   "agentDetail.configure.tools.removeAction": "ລຶບ {{name}} ອອກ",
   "agentDetail.configure.tools.removeProvider": "ລຶບເຄື່ອງມືທັງໝົດ",
   "agentDetail.configure.tools.richTip": "ເພີ່ມເຄື່ອງມື Dify ຈາກພື້ນທີ່ເຮັດວຽກຂອງທ່ານ. <docLink>ຮຽນຮູ້ເພີ່ມເຕີມ</docLink>\n\nເຄື່ອງມືທີ່ຕົວແທນຕິດຕັ້ງໃນແຊນບ໋ອກຊ໌ຈະບໍ່ປາກົດຢູ່ນີ້ ແຕ່ຍັງສາມາດໃຊ້ງານໄດ້.",

@@ -508,7 +508,6 @@ export default interface Resources {
     'agentDetail.configure.tools.empty.description': 'Tools let the agent act, like searching the web or calling your apps'
     'agentDetail.configure.tools.empty.title': 'No tools yet'
     'agentDetail.configure.tools.label': 'Tools'
-    'agentDetail.configure.tools.moreActions': 'More actions for {{name}}'
     'agentDetail.configure.tools.removeAction': 'Remove {{name}}'
     'agentDetail.configure.tools.removeProvider': 'Remove all tools'
     'agentDetail.configure.tools.richTip': "Add Dify tools from your workspace. <docLink>Learn more</docLink>\n\nTools the agent installs in its sandbox won't appear here but stay available to it."

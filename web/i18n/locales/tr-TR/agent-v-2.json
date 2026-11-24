@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "Araçlar, ajanın web aramak veya uygulamalarınızı çağırmak gibi eylemler gerçekleştirmesini sağlar",
   "agentDetail.configure.tools.empty.title": "Henüz araç yok",
   "agentDetail.configure.tools.label": "Araçlar",
-  "agentDetail.configure.tools.moreActions": "{{name}} için daha fazla eylem",
   "agentDetail.configure.tools.removeAction": "{{name}} kaldır",
   "agentDetail.configure.tools.removeProvider": "Tüm araçları kaldır",
   "agentDetail.configure.tools.richTip": "Workspace'inizden Dify araçları ekleyin. <docLink>Daha fazla bilgi</docLink>\n\nAgent'ın sandbox içinde yüklediği araçlar burada görünmez, ancak kullanıma açık kalır.",

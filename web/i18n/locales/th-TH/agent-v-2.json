@@ -272,7 +272,6 @@
   "agentDetail.configure.tools.empty.description": "เครื่องมือช่วยให้ตัวแทนสามารถดำเนินการได้ เช่น ค้นหาเว็บหรือเรียกใช้แอปของคุณ",
   "agentDetail.configure.tools.empty.title": "ยังไม่มีเครื่องมือ",
   "agentDetail.configure.tools.label": "เครื่องมือ",
-  "agentDetail.configure.tools.moreActions": "การกระทำเพิ่มเติมสำหรับ {{name}}",
   "agentDetail.configure.tools.removeAction": "ลบ {{name}}",
   "agentDetail.configure.tools.removeProvider": "ลบเครื่องมือทั้งหมด",
   "agentDetail.configure.tools.richTip": "เพิ่มเครื่องมือ Dify จาก workspace ของคุณ <docLink>เรียนรู้เพิ่มเติม</docLink>\n\nเครื่องมือที่ agent ติดตั้งใน sandbox จะไม่แสดงที่นี่ แต่ยังคงพร้อมใช้งานสำหรับ agent",
