@@ -142,6 +142,7 @@ async function base<T>(
     fetchCompat = false,
     request,
     onUploadProgress,
+    timeout,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -190,8 +191,8 @@ async function base<T>(
     retry: {
       methods: [],
     },
-    // Uploads with progress keep the XHR behavior of having no client-side timeout.
-    ...(onUploadProgress ? { timeout: false as const } : {}),
+    // Event streams and uploads with progress (as the legacy XHR) have no client-side timeout.
+    ...(timeout === false || onUploadProgress ? { timeout: false as const } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
     async fetch(resource: RequestInfo | URL, options?: RequestInit) {
