@@ -88,6 +88,7 @@ describe('MyApps account API integration', () => {
     setup('?sort=name')
     await waitFor(() => expect(requests).toHaveLength(2))
     expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    expect(screen.getByRole('list', { busy: true })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: zebra.name })).not.toBeInTheDocument()
     await act(async () => {
       finishSecondPage(Response.json(page([alpha])))
@@ -102,6 +103,7 @@ describe('MyApps account API integration', () => {
       '/workflow/zebra-app',
     )
     expect(appNames()).toEqual([alpha.name, zebra.name])
+    expect(screen.queryByRole('list', { busy: true })).not.toBeInTheDocument()
     expect(requests[0]?.pathname).toMatch(/\/me\/apps$/)
     expect(requests[0]?.searchParams.get('view')).toBe('recent')
     expect(requests[1]?.searchParams.get('cursor')).toBe('next-page')
