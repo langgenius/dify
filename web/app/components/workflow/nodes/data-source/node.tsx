@@ -15,7 +15,7 @@ const Node: FC<NodeProps<DataSourceNodeType>> = ({ data }) => {
 
   return (
     <div className="relative mb-1 px-3 py-1">
-      <div className="pointer-events-auto absolute -top-8 right-3 z-40">
+      <div className="pointer-events-auto absolute inset-e-3 -top-8 z-40">
         <InstallPluginButton
           size="small"
           extraIdentifiers={[data.plugin_id, data.provider_name].filter(Boolean) as string[]}

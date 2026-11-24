@@ -25,7 +25,7 @@ export function DocumentDetailDrawer({
       panelClassName={cn(
         fullScreen
           ? 'w-full data-[swipe-direction=left]:w-full data-[swipe-direction=right]:w-full'
-          : 'w-142 pt-16 pr-2 pb-2 data-[swipe-direction=left]:w-142 data-[swipe-direction=right]:w-142',
+          : 'w-142 pe-2 pt-16 pb-2 data-[swipe-direction=left]:w-142 data-[swipe-direction=right]:w-142',
       )}
       panelContentClassName={cn(
         'bg-components-panel-bg',

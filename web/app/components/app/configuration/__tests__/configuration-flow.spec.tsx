@@ -89,15 +89,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.defaultModel.get': async () => ({ data: null }),
       'workspaces.current.modelProviders.byProvider.models.parameterRules.get': (input) =>
         api.rules(input),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'ruleGenerate.post': (input) => api.generate(input),
+      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: PermissionType.everyone,
         debug_permission: PermissionType.everyone,
       }),
-      'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.install.marketplace.post': (input) => api.install(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'ruleGenerate.post': (input) => api.generate(input),
       'apps.byAppId.get': (input) => api.app(input),
       'apps.byAppId.modelConfig.post': (input) => api.publish(input),
       'workspaces.current.toolProviders.get': (input) => api.tools(input),

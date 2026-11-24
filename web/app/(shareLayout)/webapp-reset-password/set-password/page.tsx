@@ -71,12 +71,9 @@ const ChangePasswordForm = () => {
     if (!valid()) return
     try {
       await changeWebAppPasswordWithToken({
-        url: '/forgot-password/resets',
-        body: {
-          token,
-          new_password: password,
-          password_confirm: confirmPassword,
-        },
+        token,
+        new_password: password,
+        password_confirm: confirmPassword,
       })
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)

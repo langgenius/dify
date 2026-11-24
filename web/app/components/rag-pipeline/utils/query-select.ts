@@ -15,9 +15,7 @@ import type {
   WorkflowAppBlockingResponse,
   WorkflowRunNodeExecutionResponse,
 } from '@dify/contracts/api/console/rag/types.gen'
-import type { Viewport } from 'reactflow'
 import type { Dependency } from '@/app/components/plugins/types'
-import type { Edge, Node } from '@/app/components/workflow/types'
 import type { IconInfo } from '@/models/datasets'
 import type {
   PipelineExecutionLogResponse,
@@ -28,12 +26,16 @@ import type {
 import type { AppIconType } from '@/types/app'
 import type { NodeTracing } from '@/types/workflow'
 import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import {
+  isOneOf,
+  isRecord,
+  toGraphEdges,
+  toPlacedGraphNodes,
+  toViewport,
+} from '@/app/components/workflow/utils/published-workflow'
 import { ChunkingMode } from '@/models/datasets'
 import { DatasourceType, PipelineInputVarType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 const getString = (record: Record<string, unknown>, key: string) => {
   const value = record[key]
@@ -44,9 +46,6 @@ const getNumber = (record: Record<string, unknown>, key: string) => {
   const value = record[key]
   return typeof value === 'number' ? value : undefined
 }
-
-const isOneOf = <T extends string>(values: Record<string, T>, value: unknown): value is T =>
-  typeof value === 'string' && Object.values<string>(values).includes(value)
 
 const APP_ICON_TYPES = { image: 'image', emoji: 'emoji', link: 'link' } satisfies Record<
   AppIconType,
@@ -66,31 +65,6 @@ const toIconInfo = (icon: Record<string, unknown>): IconInfo => {
 // Templates exported before a chunk structure was recorded default to general text chunks.
 const toChunkingMode = (chunkStructure: string) =>
   isOneOf(ChunkingMode, chunkStructure) ? chunkStructure : ChunkingMode.text
-
-// The workflow graph is stored as free-form JSON; keep the nodes and edges React Flow can place.
-const isGraphNode = (value: unknown): value is Node =>
-  isRecord(value) &&
-  typeof value.id === 'string' &&
-  isRecord(value.data) &&
-  isRecord(value.position)
-
-const isGraphEdge = (value: unknown): value is Edge =>
-  isRecord(value) && typeof value.source === 'string' && typeof value.target === 'string'
-
-const toGraphNodes = (graph: Record<string, unknown>) =>
-  Array.isArray(graph.nodes) ? graph.nodes.filter(isGraphNode) : []
-
-const toGraphEdges = (graph: Record<string, unknown>) =>
-  Array.isArray(graph.edges) ? graph.edges.filter(isGraphEdge) : []
-
-const toViewport = (graph: Record<string, unknown>): Viewport => {
-  const viewport = isRecord(graph.viewport) ? graph.viewport : {}
-  return {
-    x: getNumber(viewport, 'x') ?? 0,
-    y: getNumber(viewport, 'y') ?? 0,
-    zoom: getNumber(viewport, 'zoom') ?? 1,
-  }
-}
 
 export const selectPipelineTemplateList = (data: PipelineTemplateListContract) => ({
   pipeline_templates: data.pipeline_templates.map((template): PipelineTemplate => ({
@@ -114,14 +88,14 @@ export const selectPipelineTemplate = (
   icon_info: toIconInfo(template.icon_info),
   chunk_structure: toChunkingMode(template.chunk_structure),
   graph: {
-    nodes: toGraphNodes(template.graph),
+    nodes: toPlacedGraphNodes(template.graph),
     edges: toGraphEdges(template.graph),
     viewport: toViewport(template.graph),
   },
 })
 
 export const selectPublishedPipelineNodes = (workflow: RagPipelinePublishedWorkflowResponse) =>
-  workflow ? toGraphNodes(workflow.graph) : []
+  workflow ? toPlacedGraphNodes(workflow.graph) : []
 
 const toDefaultValue = (value: unknown) =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -153,6 +127,9 @@ const toPipelineVariable = (variable: PipelineVariableResponse): RAGPipelineVari
     },
   ]
 }
+
+export const toPipelineVariables = (variables: PipelineVariableResponse[]) =>
+  variables.flatMap(toPipelineVariable)
 
 // Variables of a type the input forms cannot render are left out.
 export const selectPipelineStepParameters = (data: RagPipelineStepParametersResponse) => ({

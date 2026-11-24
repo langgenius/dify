@@ -4,6 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { DatasetACLPermission } from '@/utils/permission'
@@ -61,7 +62,7 @@ function setup(
 it('exposes the document entry as a named link reachable by keyboard', async () => {
   const { user, dataset } = setup()
   const link = screen.getByRole('link', { name: dataset.name })
-  expect(link).toHaveAttribute('href', '/datasets/dataset-1/documents')
+  expect(link).toHaveAttribute('href', `/datasets/${TEST_DATASET_ID}/documents`)
   await user.tab()
   expect(link).toHaveFocus()
 })
@@ -90,7 +91,7 @@ it.each([
   setup(dataset)
   expect(screen.getByRole('link', { name: 'Test Dataset' })).toHaveAttribute(
     'href',
-    `/datasets/dataset-1/${destination}`,
+    `/datasets/${TEST_DATASET_ID}/${destination}`,
   )
 })
 
@@ -126,7 +127,7 @@ it.each([
     await waitFor(() =>
       expect(api.bindTags).toHaveBeenCalledExactlyOnceWith(
         {
-          body: { tag_ids: ['tag-1'], target_id: 'dataset-1', type: 'knowledge' },
+          body: { tag_ids: ['tag-1'], target_id: TEST_DATASET_ID, type: 'knowledge' },
         },
         { context: { silent: true } },
       ),
@@ -152,5 +153,5 @@ it('opens access configuration from the real card menu', async () => {
   await user.click(
     await screen.findByRole('menuitem', { name: 'navigation.settings.resourceAccess' }),
   )
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/datasets/dataset-1/access-config')
+  expect(api.push).toHaveBeenCalledExactlyOnceWith(`/datasets/${TEST_DATASET_ID}/access-config`)
 })

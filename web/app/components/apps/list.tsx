@@ -6,6 +6,7 @@ import type { AppListCreationDialog } from './app-list-creation-modals'
 import type { AppListUrlQuery } from './query-params'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
+import dynamic from 'next/dynamic'
 import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -14,11 +15,18 @@ import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
 import { AppListCreationModals } from './app-list-creation-modals'
 import { AppListHeader } from './app-list-header'
-import { AppListTagManagementModal } from './app-list-tag-management-modal'
 import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { StudioListNavigation } from './list-navigation'
 import { appCreationQueryParsers, appListQueryParsers, serializeAppListQuery } from './query-params'
+
+const TagManagementDialog = dynamic(
+  () =>
+    import('@/features/tag-management/tag-management-dialog').then(
+      (mod) => mod.TagManagementDialog,
+    ),
+  { ssr: false },
+)
 
 // Marks a creation history entry that the list pushed over its own entry, so closing can
 // go back to it. It lives in history.state because Back and Forward restore it with the entry.
@@ -45,7 +53,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [creationQuery, setCreationQuery] = useQueryStates(appCreationQueryParsers)
   // DSL import has no URL; it holds the file dropped on the list, if any.
   const [dslImport, setDSLImport] = useState<{ droppedFile?: File } | null>(null)
@@ -147,7 +155,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const openCreateFromDSLModal = useCallback(() => {
     if (canCreateApp) setDSLImport({})
   }, [canCreateApp])
-  const openTagManagement = useCallback(() => setShowTagManagementModal(true), [])
+  const openTagManagement = useCallback(() => setShowTagManagementDialog(true), [])
 
   return (
     <StudioListNavigation
@@ -204,9 +212,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
         </div>
 
         <CheckResultToast />
-        <AppListTagManagementModal
-          show={showTagManagementModal}
-          onClose={() => setShowTagManagementModal(false)}
+        <TagManagementDialog
+          type="app"
+          show={showTagManagementDialog}
+          onClose={() => setShowTagManagementDialog(false)}
         />
       </div>
 

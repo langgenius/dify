@@ -7,19 +7,12 @@ import {
 } from '@/app/components/base/chat/constants'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType } from '@/service/share'
-import { shareQueryKeys } from '@/service/use-share'
+import { shareQueryKeys } from '@/service/share-queries'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWithHistory from '../index'
-
-// boundary: Browser Mode has no Next App Router; the real chat owner consumes its route contract.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  usePathname: () => '/agent/test',
-  useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams(),
-}))
 
 const conversation = {
   id: 'saved',
@@ -60,13 +53,16 @@ async function renderChatOwner() {
     useWebAppStore.setState({ appInfo: undefined, appParams: undefined, appMeta: undefined })
   })
   onTestFinished(guardUnexpectedFetch())
+  const { NavigationProvider } = createTestNavigation({ url: '/agent/test' })
   return render(
-    <QueryClientProvider client={client}>
-      <section aria-label="Chat preview" className="h-150 w-240">
-        <button type="button">Before chat</button>
-        <ChatWithHistory />
-      </section>
-    </QueryClientProvider>,
+    <NavigationProvider>
+      <QueryClientProvider client={client}>
+        <section aria-label="Chat preview" className="h-150 w-240">
+          <button type="button">Before chat</button>
+          <ChatWithHistory />
+        </section>
+      </QueryClientProvider>
+    </NavigationProvider>,
   )
 }
 

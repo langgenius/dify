@@ -1,19 +1,16 @@
 import type { HumanInputFieldValue } from '../field-renderer'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FakeApiHandle, FakeRoute } from '@/test/fake-api'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { TransferMethod } from '@/types/app'
 import HumanInputFieldRenderer from '../field-renderer'
-
-// oxlint-disable-next-line typescript/no-deprecated -- The production file picker still uses the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', () => ({ upload }))
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const fileField = {
   output_variable_name: 'attachments',
@@ -57,18 +54,28 @@ function Field({
 
 async function renderField(field: FormInputItem, initialValue?: HumanInputFieldValue) {
   const { wrapper: Query } = createConsoleQueryWrapper()
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
   await render(
-    <Query>
-      <Field field={field} initialValue={initialValue} />
-    </Query>,
+    <NavigationProvider>
+      <Query>
+        <Field field={field} initialValue={initialValue} />
+      </Query>
+    </NavigationProvider>,
   )
 }
 
+const uploadedFile = (body: unknown) => (body as FormData).get('file') as File
+let fake: FakeApiHandle<{ routes: FakeRoute[] }>
+
 beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  upload.mockReset().mockImplementation(async ({ data }) => ({
-    id: `uploaded-${(data.get('file') as File).name}`,
-  }))
+  fake = installFakeApi({
+    routes: [
+      route('POST', 'console', '/files/upload', ({ body }) => ({
+        id: `uploaded-${uploadedFile(body).name}`,
+      })),
+    ],
+  })
+  onTestFinished(fake)
 })
 
 it('retains the complete paragraph value in its controlled owner', async () => {
@@ -119,7 +126,11 @@ it('publishes one uploaded file as a scalar, enforces its limit, and clears it t
     .element(page.getByRole('status', { name: 'attachments saved value' }))
     .toHaveTextContent('report.pdf:uploaded-report.pdf:100')
   await expect.element(uploadButton).toBeDisabled()
-  expect((upload.mock.calls[0]![0].data.get('file') as File).name).toBe('report.pdf')
+  expect(
+    fake
+      .route('POST', 'console', '/files/upload')
+      .mock.calls.map(([{ body }]) => uploadedFile(body).name),
+  ).toEqual(['report.pdf'])
 
   await page.getByRole('button', { name: 'common.operation.remove report.pdf' }).click()
   await expect.element(page.getByText('report.pdf')).not.toBeInTheDocument()

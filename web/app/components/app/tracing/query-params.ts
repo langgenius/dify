@@ -1,5 +1,7 @@
-import { parseAsStringLiteral } from 'nuqs'
+import { createSerializer, parseAsStringLiteral } from 'nuqs'
 
-export const tracingQueryParamName = 'tracing'
+export const tracingSearchParams = {
+  tracing: parseAsStringLiteral(['configure']),
+}
 
-export const tracingQueryParser = parseAsStringLiteral(['configure'])
+export const serializeTracingSearchParams = createSerializer(tracingSearchParams)

@@ -1,21 +1,25 @@
-import type { KnowledgeFsSettingsResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type {
+  KnowledgeFsSettingsResponse,
+  KnowledgeFsSourceWorkflowResponse,
+} from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { SyncPolicyValue } from '../../setup/sync-policy-field'
 import type { Source, SourceWorkflowRun } from '../../source-models'
+import type { TestNavigation } from '@/test/next-navigation'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
-const clientMock = vi.hoisted(() => ({ asyncImport: vi.fn() }))
-const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
-const settingsState = vi.hoisted(() => ({
+let navigation: TestNavigation
+const settingsState = {
   configurationState: 'active' as 'active' | 'setup-required',
-}))
+}
 
-const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
+const workflowApiResponse = (workflow: SourceWorkflowRun) => ({
   canceled_at: workflow.canceledAt ?? null,
   checkpoint: workflow.checkpoint,
   completed_at: workflow.completedAt ?? null,
@@ -25,7 +29,8 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
   id: workflow.id,
   knowledge_space_id: workflow.knowledgeSpaceId,
   kind: workflow.kind,
-  last_error_code: workflow.lastErrorCode ?? null,
+  last_error_code: (workflow.lastErrorCode ??
+    null) as KnowledgeFsSourceWorkflowResponse['last_error_code'],
   max_execution_attempts: workflow.maxExecutionAttempts,
   progress_completed: workflow.progressCompleted,
   progress_failed: workflow.progressFailed,
@@ -34,9 +39,9 @@ const workflowApiResponse = vi.hoisted(() => (workflow: SourceWorkflowRun) => ({
   source_id: workflow.sourceId ?? null,
   state: workflow.state,
   updated_at: workflow.updatedAt,
-}))
+})
 
-const settingsResponse = vi.hoisted(() => (): KnowledgeFsSettingsResponse => {
+const settingsResponse = (): KnowledgeFsSettingsResponse => {
   const active = settingsState.configurationState === 'active'
   return {
     active_profile_available: active,
@@ -55,29 +60,7 @@ const settingsResponse = vi.hoisted(() => (): KnowledgeFsSettingsResponse => {
     retrieval: null,
     revision: 1,
   }
-})
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/datasets/new/space-1/sources/new/website',
-  useRouter: () => routerMock,
-}))
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post': async (
-        input: never,
-      ) => workflowApiResponse(await clientMock.asyncImport(input)),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'knowledgeFs.spaces.byControlSpaceId.settings.get': async () => settingsResponse(),
-    }),
-  }
-})
+}
 
 const source: Source = {
   connectionId: 'connection-1',
@@ -109,6 +92,26 @@ const run: SourceWorkflowRun = {
   state: 'succeeded',
   updatedAt: '2026-07-20T10:01:00Z',
 }
+
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        byControlSpaceId: {
+          settings: { get: () => settingsResponse() },
+          sources: {
+            bySourceId: {
+              asyncImport: {
+                post: async () =>
+                  workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }),
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
 
 const pages = [
   {
@@ -185,10 +188,14 @@ async function renderSelectionForm({
     )
   }
   const { wrapper: QueryProvider } = createConsoleQueryWrapper()
+  navigation = createTestNavigation({ url: '/datasets/new/space-1/sources/new/website' })
+  const { NavigationProvider } = navigation
   return render(
-    <QueryProvider>
-      <SourceSetup />
-    </QueryProvider>,
+    <NavigationProvider>
+      <QueryProvider>
+        <SourceSetup />
+      </QueryProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -205,8 +212,6 @@ async function selectSyncPolicy(user: typeof userEvent, mode: 'custom' | 'interv
 describe('CrawlSelectionForm', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(guardUnexpectedFetch())
-    clientMock.asyncImport.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
     settingsState.configurationState = 'active'
   })
 
@@ -221,11 +226,15 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    expect(clientMock.asyncImport).not.toHaveBeenCalled()
-    await user.click(
-      page.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
-    )
-    expect(routerMock.push).toHaveBeenCalledWith(
+    const configure = page.getByRole('button', {
+      name: 'modelProvider.modelProvider.selector.configure',
+    })
+    await expect.element(configure).toBeVisible()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+    ).not.toHaveBeenCalled()
+    await user.click(configure)
+    expect(navigation.router.push).toHaveBeenCalledWith(
       '/datasets/new/space-1/settings?returnTo=%2Fdatasets%2Fnew%2Fspace-1%2Fsources%2Fnew%2Fwebsite&capability=ingest',
     )
   })
@@ -290,8 +299,15 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].body.pageIds).toHaveLength(200)
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledOnce(),
+    )
+    const [{ body }] =
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]!
+    expect('pageIds' in body && body.pageIds).toHaveLength(200)
   })
 
   it('submits custom policy in one request and navigates on acceptance', async () => {
@@ -311,23 +327,27 @@ describe('CrawlSelectionForm', () => {
     await expect.element(dialog).not.toBeInTheDocument()
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
-    )
-    expect(clientMock.asyncImport).toHaveBeenCalledWith({
-      body: {
-        kind: 'crawl-preview-selection',
-        pageIds: ['page-1'],
-        previewWorkflowId: 'run-1',
-        syncPolicy: {
-          customIntervalSeconds: 21600,
-          enabled: true,
-          mode: 'custom',
+    await expect
+      .poll(
+        () => fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      )
+      .toHaveBeenCalledWith({
+        body: {
+          kind: 'crawl-preview-selection',
+          pageIds: ['page-1'],
+          previewWorkflowId: 'run-1',
+          syncPolicy: {
+            customIntervalSeconds: 21600,
+            enabled: true,
+            mode: 'custom',
+          },
         },
-      },
-      headers: { 'Idempotency-Key': expect.any(String) },
-      params: { control_space_id: 'space-1', source_id: 'source-1' },
-    })
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { control_space_id: 'space-1', source_id: 'source-1' },
+      })
+    await vi.waitFor(() =>
+      expect(navigation.router.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
       .toHaveTextContent('run-1: queued')
@@ -343,13 +363,22 @@ describe('CrawlSelectionForm', () => {
     await selectSyncPolicy(user, mode)
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].body.syncPolicy).toEqual({ enabled, mode })
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledOnce(),
+    )
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]?.[0].body.syncPolicy,
+    ).toEqual({ enabled, mode })
   })
 
   it('keeps the form locked only until the async submission is accepted', async () => {
-    const request = createDeferred<SourceWorkflowRun>()
-    clientMock.asyncImport.mockReturnValue(request.promise)
+    const request = createDeferred<ReturnType<typeof workflowApiResponse>>()
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mockReturnValue(
+      request.promise,
+    )
     const user = userEvent
     await renderSelectionForm()
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
@@ -362,7 +391,7 @@ describe('CrawlSelectionForm', () => {
     await expect
       .element(page.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' }))
       .toBeDisabled()
-    request.resolve({ ...run, checkpoint: 'import', state: 'queued' })
+    request.resolve(workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }))
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
       .toHaveTextContent('run-1: queued')
@@ -373,9 +402,11 @@ describe('CrawlSelectionForm', () => {
   })
 
   it('reuses the idempotency key when an async import response is lost', async () => {
-    clientMock.asyncImport
-      .mockRejectedValueOnce(new Error('response lost'))
-      .mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'queued' })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
+      .mockResolvedValueOnce(workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }))
     const user = userEvent
     await renderSelectionForm()
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
@@ -393,12 +424,20 @@ describe('CrawlSelectionForm', () => {
       .toBeDisabled()
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledTimes(2))
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].headers).toEqual(
-      clientMock.asyncImport.mock.calls[1]?.[0].headers,
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledTimes(2),
+    )
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]?.[0].headers,
+    ).toEqual(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[1]?.[0].headers,
     )
     await vi.waitFor(() =>
-      expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+      expect(navigation.router.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
