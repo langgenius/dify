@@ -402,15 +402,10 @@ class TestDeprecatedEndpointUpdateApi:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
-            "endpoint_id": "e1",
-            "name": "new-name",
-            "settings": {"x": 1},
-        }
-        req_data = LegacyEndpointUpdatePayload(**payload)
+        req_data = LegacyEndpointUpdatePayload(endpoint_id="e1", name="new-name", settings={"x": 1})
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=req_data.model_dump()),
             patch("controllers.console.workspace.endpoint.EndpointService.update_endpoint", return_value=True),
         ):
             result = method(api, req_data, "t1", "u1")
@@ -421,27 +416,20 @@ class TestDeprecatedEndpointUpdateApi:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload: dict[str, object] = {"endpoint_id": "e1", "settings": {}}
-
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json={"endpoint_id": "e1", "settings": {}}),
         ):
             with pytest.raises(ValueError, match="1 validation error for LegacyEndpointUpdatePayload\\\nname"):
-                method(api, LegacyEndpointUpdatePayload.model_validate(payload), "t1", "u1")
+                method(api, LegacyEndpointUpdatePayload.model_validate(request.get_json(silent=True) or {}), "t1", "u1")
 
     def test_update_service_failure(self, app: Flask) -> None:
         api = DeprecatedEndpointUpdateApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
-            "endpoint_id": "e1",
-            "name": "n",
-            "settings": {},
-        }
-        req_data = LegacyEndpointUpdatePayload(**payload)
+        req_data = LegacyEndpointUpdatePayload(endpoint_id="e1", name="n", settings={})
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=req_data.model_dump()),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.update_endpoint",
                 side_effect=PluginDaemonInternalServerError("failed"),
