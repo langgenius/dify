@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Las aplicaciones vinculadas ya no podrán usar esta conexión. No se eliminarán tu historial de chats ni los datos de terceros.",
   "endUser.disconnectConnectionTitle": "¿Desconectar esta conexión?",
   "endUser.emptyApps": "Aún no hay aplicaciones",
-  "endUser.emptyAppsDescription": "Abre un enlace de aplicación para empezar. Las aplicaciones que visites aparecerán aquí.",
+  "endUser.emptyAppsDescription": "Abre el enlace de una aplicación para empezar. La aplicación aparecerá aquí después de que la ejecutes por primera vez.",
   "endUser.emptyStarredApps": "Aún no hay aplicaciones favoritas",
   "endUser.emptyStarredAppsDescription": "Haz clic en la estrella junto a una aplicación para guardarla aquí.",
   "endUser.lastUsed": "Último uso",

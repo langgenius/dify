@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Các ứng dụng được liên kết sẽ không thể sử dụng kết nối này nữa. Lịch sử trò chuyện và dữ liệu của bên thứ ba sẽ không bị xóa.",
   "endUser.disconnectConnectionTitle": "Ngắt kết nối này?",
   "endUser.emptyApps": "Chưa có ứng dụng",
-  "endUser.emptyAppsDescription": "Mở liên kết ứng dụng để bắt đầu. Các ứng dụng bạn truy cập sẽ xuất hiện ở đây.",
+  "endUser.emptyAppsDescription": "Mở liên kết ứng dụng để bắt đầu. Ứng dụng sẽ xuất hiện ở đây sau lần chạy đầu tiên.",
   "endUser.emptyStarredApps": "Chưa có ứng dụng được gắn sao",
   "endUser.emptyStarredAppsDescription": "Nhấp vào ngôi sao bên cạnh ứng dụng để lưu ứng dụng tại đây.",
   "endUser.lastUsed": "Lần sử dụng gần nhất",

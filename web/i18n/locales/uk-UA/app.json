@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Пов’язані застосунки більше не зможуть використовувати це підключення. Вашу історію чатів і дані сторонніх сервісів не буде видалено.",
   "endUser.disconnectConnectionTitle": "Відключити це підключення?",
   "endUser.emptyApps": "Застосунків ще немає",
-  "endUser.emptyAppsDescription": "Відкрийте посилання на застосунок, щоб почати. Відвідані застосунки з’являться тут.",
+  "endUser.emptyAppsDescription": "Відкрийте посилання на застосунок, щоб почати. Після першого запуску застосунок з’явиться тут.",
   "endUser.emptyStarredApps": "Обраних застосунків ще немає",
   "endUser.emptyStarredAppsDescription": "Натисніть зірочку поруч із застосунком, щоб зберегти його тут.",
   "endUser.lastUsed": "Останнє використання",

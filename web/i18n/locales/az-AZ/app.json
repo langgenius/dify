@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Əlaqəli tətbiqlər artıq bu bağlantıdan istifadə edə bilməyəcək. Söhbət tarixçəniz və üçüncü tərəf məlumatları silinməyəcək.",
   "endUser.disconnectConnectionTitle": "Bu bağlantı kəsilsin?",
   "endUser.emptyApps": "Hələ tətbiq yoxdur",
-  "endUser.emptyAppsDescription": "Başlamaq üçün tətbiq keçidini açın. Ziyarət etdiyiniz tətbiqlər burada görünəcək.",
+  "endUser.emptyAppsDescription": "Başlamaq üçün tətbiq keçidini açın. Tətbiq ilk dəfə işə salındıqdan sonra burada görünəcək.",
   "endUser.emptyStarredApps": "Hələ ulduzlanmış tətbiq yoxdur",
   "endUser.emptyStarredAppsDescription": "Tətbiqi burada saxlamaq üçün yanındakı ulduza klikləyin.",
   "endUser.lastUsed": "Son istifadə",

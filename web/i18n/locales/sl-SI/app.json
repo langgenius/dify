@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Povezane aplikacije ne bodo več mogle uporabljati te povezave. Vaša zgodovina klepetov in podatki tretjih oseb ne bodo izbrisani.",
   "endUser.disconnectConnectionTitle": "Prekinem to povezavo?",
   "endUser.emptyApps": "Aplikacij še ni",
-  "endUser.emptyAppsDescription": "Za začetek odprite povezavo do aplikacije. Obiskane aplikacije bodo prikazane tukaj.",
+  "endUser.emptyAppsDescription": "Za začetek odprite povezavo do aplikacije. Aplikacija bo tukaj prikazana po prvem zagonu.",
   "endUser.emptyStarredApps": "Priljubljenih aplikacij še ni",
   "endUser.emptyStarredAppsDescription": "Kliknite zvezdico ob aplikaciji, da jo shranite sem.",
   "endUser.lastUsed": "Nazadnje uporabljeno",

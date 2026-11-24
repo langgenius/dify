@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "जुड़े हुए ऐप अब इस कनेक्शन का उपयोग नहीं कर पाएँगे। आपका चैट इतिहास और तृतीय-पक्ष डेटा नहीं मिटाया जाएगा।",
   "endUser.disconnectConnectionTitle": "यह कनेक्शन डिस्कनेक्ट करें?",
   "endUser.emptyApps": "अभी कोई ऐप नहीं है",
-  "endUser.emptyAppsDescription": "शुरू करने के लिए किसी ऐप का लिंक खोलें। आप जिन ऐप पर जाएँगे, वे यहाँ दिखाई देंगे।",
+  "endUser.emptyAppsDescription": "शुरू करने के लिए किसी ऐप का लिंक खोलें। पहली बार चलाने के बाद वह ऐप यहाँ दिखाई देगा।",
   "endUser.emptyStarredApps": "अभी कोई तारांकित ऐप नहीं है",
   "endUser.emptyStarredAppsDescription": "किसी ऐप को यहाँ सहेजने के लिए उसके बगल में दिए गए तारे पर क्लिक करें।",
   "endUser.lastUsed": "पिछली बार उपयोग",

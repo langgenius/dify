@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Aplicațiile asociate nu vor mai putea folosi această conexiune. Istoricul conversațiilor și datele terților nu vor fi șterse.",
   "endUser.disconnectConnectionTitle": "Deconectezi această conexiune?",
   "endUser.emptyApps": "Nu există încă aplicații",
-  "endUser.emptyAppsDescription": "Deschide un link către o aplicație pentru a începe. Aplicațiile pe care le vizitezi vor apărea aici.",
+  "endUser.emptyAppsDescription": "Deschide un link către o aplicație pentru a începe. Aplicația va apărea aici după prima rulare.",
   "endUser.emptyStarredApps": "Nu există încă aplicații favorite",
   "endUser.emptyStarredAppsDescription": "Apasă pe steaua de lângă o aplicație pentru a o salva aici.",
   "endUser.lastUsed": "Ultima utilizare",

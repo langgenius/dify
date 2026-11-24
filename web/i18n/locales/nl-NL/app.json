@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "Gekoppelde apps kunnen deze verbinding niet meer gebruiken. Je chatgeschiedenis en gegevens van derden worden niet verwijderd.",
   "endUser.disconnectConnectionTitle": "Deze verbinding verbreken?",
   "endUser.emptyApps": "Nog geen apps",
-  "endUser.emptyAppsDescription": "Open een app-link om te beginnen. Apps die je bezoekt, verschijnen hier.",
+  "endUser.emptyAppsDescription": "Open een app-link om te beginnen. De app verschijnt hier nadat je die voor het eerst hebt uitgevoerd.",
   "endUser.emptyStarredApps": "Nog geen favoriete apps",
   "endUser.emptyStarredAppsDescription": "Klik op de ster naast een app om deze hier op te slaan.",
   "endUser.lastUsed": "Laatst gebruikt",

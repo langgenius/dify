@@ -57,7 +57,7 @@
   "endUser.disconnectConnectionDescription": "ແອັບທີ່ເຊື່ອມໂຍງຈະບໍ່ສາມາດໃຊ້ການເຊື່ອມຕໍ່ນີ້ໄດ້ອີກ. ປະຫວັດການສົນທະນາ ແລະ ຂໍ້ມູນຂອງບຸກຄົນທີສາມຂອງທ່ານຈະບໍ່ຖືກລຶບ.",
   "endUser.disconnectConnectionTitle": "ຕັດການເຊື່ອມຕໍ່ນີ້ບໍ?",
   "endUser.emptyApps": "ຍັງບໍ່ມີແອັບ",
-  "endUser.emptyAppsDescription": "ເປີດລິ້ງແອັບເພື່ອເລີ່ມຕົ້ນ. ແອັບທີ່ທ່ານເຂົ້າຊົມຈະປາກົດຢູ່ທີ່ນີ້.",
+  "endUser.emptyAppsDescription": "ເປີດລິ້ງແອັບເພື່ອເລີ່ມຕົ້ນ. ແອັບຈະປາກົດຢູ່ທີ່ນີ້ຫຼັງຈາກທ່ານລັນແອັບເປັນຄັ້ງທຳອິດ.",
   "endUser.emptyStarredApps": "ຍັງບໍ່ມີແອັບທີ່ຕິດດາວ",
   "endUser.emptyStarredAppsDescription": "ຄລິກຮູບດາວຂ້າງແອັບເພື່ອບັນທຶກໄວ້ທີ່ນີ້.",
   "endUser.lastUsed": "ໃຊ້ຄັ້ງຫຼ້າສຸດ",
