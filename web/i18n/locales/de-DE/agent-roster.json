@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Filter löschen",
   "roster.createAgent": "Agent erstellen",
   "roster.createDialog.description": "Erstellen Sie einen wiederverwendbaren Agent in diesem Workspace.",
   "roster.createDialog.title": "Agent erstellen",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Info bearbeiten",
   "roster.empty": "Noch kein Agent",
   "roster.emptySearch": "Keine passenden Agenten",
+  "roster.emptySearchDescription": "Versuchen Sie eine andere Suche oder löschen Sie die aktuellen Filter.",
   "roster.filters.all": "Alle",
   "roster.filters.createdByMe": "Von mir erstellt",
   "roster.filters.drafts": "Entwürfe",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Inline-Agent konnte nicht erstellt werden. Bitte aktualisieren und erneut versuchen.",
   "roster.nodeSelector.dialogLabel": "Agent auswählen",
   "roster.nodeSelector.manageInAgentConsole": "In Agents verwalten",
-  "roster.nodeSelector.searchPlaceholder": "Suchen…",
+  "roster.nodeSelector.searchPlaceholder": "Agenten suchen…",
   "roster.nodeSelector.startFromScratch": "Von Grund auf starten",
   "roster.references.label": "Workflows, die {{name}} verwenden",
   "roster.references.trigger": "Workflows, die {{name}} verwenden",

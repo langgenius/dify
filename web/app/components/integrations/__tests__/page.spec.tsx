@@ -65,17 +65,17 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.toolProviders.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': api.permission,
-      'workspaces.current.plugin.permission.change.post': api.savePermission,
-      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
-      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
       'workspaces.current.plugin.debuggingKey.get': api.debug,
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: { ...createPluginEntity().declaration, category: PluginCategoryEnum.trigger },
       }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': api.permission,
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.permission.change.post': api.savePermission,
+      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
     }),
   }
 })

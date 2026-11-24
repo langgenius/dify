@@ -27,8 +27,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   const emptyPolicies = async () => ({
     items: [],
     pagination: { current_page: 1, total_pages: 1, total_count: 0, per_page: 20 },
@@ -59,8 +58,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'resourceAccessTokens.get': async () => ({ data: [], total: 0, page: 1, limit: 20 }),
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.permission.fetch.get': async () => ({
         install_permission: 'everyone',
         debug_permission: 'everyone',

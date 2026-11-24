@@ -1,6 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiHistoryLine } from '@remixicon/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +13,10 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import {
-  useInvalidateAllLastRun,
-  useResetWorkflowVersionHistory,
-  useRestoreWorkflow,
-} from '@/service/use-workflow'
+  lastRunQueryKey,
+  restoreWorkflowMutationOptions,
+  workflowVersionHistoryKey,
+} from '@/service/workflow-queries'
 import { useWorkflowRefreshDraft } from '../hooks/use-workflow-refresh-draft'
 import { useWorkflowRun } from '../hooks/use-workflow-run'
 import { useStore, useWorkflowStore } from '../store'
@@ -43,15 +43,22 @@ const HeaderInRestoring = ({ onRestoreSettled }: HeaderInRestoringProps) => {
   })
   const resource = useAtomValue(editorResourceAtom)
   const resourceId = getEditorResourceId(resource)
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
   const { deleteAllInspectVars } = workflowStore.getState()
   const currentVersion = useStore((s) => s.currentVersion)
   const setShowWorkflowVersionHistoryPanel = useStore((s) => s.setShowWorkflowVersionHistoryPanel)
 
   const { handleLoadBackupDraft } = useWorkflowRun()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow(resource)
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
+  const { mutateAsync: restoreWorkflow } = useMutation(restoreWorkflowMutationOptions(resource))
+  const resetWorkflowVersionHistory = useCallback(
+    () => queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) }),
+    [queryClient, resource],
+  )
   const canRestore =
     !!currentVersion?.id && !!resourceId && currentVersion.version !== WorkflowVersion.Draft
   const isPlanUnavailable = deploymentEdition === 'CLOUD' && plan === undefined

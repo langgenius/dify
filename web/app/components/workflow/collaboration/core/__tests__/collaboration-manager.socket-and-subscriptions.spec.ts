@@ -76,6 +76,40 @@ it('resolves avatar URLs over the active room socket without sending file or acc
   expect(emit).toHaveBeenCalledTimes(1)
 })
 
+it('resolves a successful empty avatar acknowledgement without treating it as a failure', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(null, {})
+  await expect(pending).resolves.toEqual({})
+})
+
+it('rejects an avatar request when the active socket acknowledgement fails', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(new Error('avatar acknowledgement timed out'))
+  await expect(pending).rejects.toThrow('avatar acknowledgement timed out')
+})
+
+it('drops an avatar acknowledgement that completes after the active room switches', async () => {
+  const { manager, store, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  const next = createSocket('socket-other-editor')
+  transports.set('other-editor', next)
+  await connect(manager, 'other-editor', store)
+  ack(null, { 'old-room-sid': 'https://example.com/old-room-avatar.png' })
+
+  await expect(pending).resolves.toEqual({})
+})
+
 it('handles a status and join acknowledgement delivered synchronously', async () => {
   const { manager, receive, emit, socket } = await createSession({
     connected: false,

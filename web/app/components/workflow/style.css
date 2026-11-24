@@ -6,6 +6,10 @@
   transition: transform 0.2s ease-in-out;
 }
 
+.react-flow__pane.selection:not(.dragging) {
+  cursor: default;
+}
+
 #workflow-container .react-flow__node:focus-visible,
 #workflow-container .react-flow__nodesselection-rect:focus-visible {
   outline: 2px solid var(--color-state-accent-solid);

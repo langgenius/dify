@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from sqlite3 import Connection
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, event, func
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.shared import AccountId, ContactId, TenantId
@@ -17,6 +18,8 @@ from models.human_input_v2 import (
     HumanInputExternalContactProfile,
     HumanInputPlatformContactWorkspaceEntry,
 )
+from repositories.account.avatar import validated_account_avatar
+from repositories.human_input_v2 import sqlalchemy_contact_repository
 from repositories.human_input_v2.contact import (
     ContactError,
     ContactErrorCode,
@@ -28,6 +31,7 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import (
     SQLAlchemyContactIMBindingRepository,
     SQLAlchemyContactRepository,
 )
+from tests.helpers.unit.model_factories import make_upload_file
 
 _NOW = datetime(2026, 8, 30, 8)
 _TENANT_A = TenantId("00000000-0000-0000-0000-000000000101")
@@ -568,6 +572,126 @@ def test_membership_takes_precedence_over_platform_visibility(
     assert beta.type is beta_type
 
 
+def test_account_contact_avatar_projection_rejects_unowned_or_unsafe_legacy_values(
+    contact_repository_context: _RepositoryContext,
+) -> None:
+    account_ids = {
+        "workspace": AccountId("00000000-0000-0000-0000-000000000201"),
+        "platform": AccountId("00000000-0000-0000-0000-000000000202"),
+        "wrong_owner": AccountId("00000000-0000-0000-0000-000000000204"),
+        "unsafe_format": AccountId("00000000-0000-0000-0000-000000000205"),
+        "candidate": AccountId("00000000-0000-0000-0000-000000000208"),
+        "blank_candidate": AccountId("00000000-0000-0000-0000-000000000209"),
+    }
+    avatar_ids = {
+        "owned": "10000000-0000-0000-0000-000000000001",
+        "wrong_owner": "10000000-0000-0000-0000-000000000002",
+        "unsafe_format": "10000000-0000-0000-0000-000000000003",
+        "candidate": "10000000-0000-0000-0000-000000000004",
+        "external": "10000000-0000-0000-0000-000000000005",
+    }
+    external_url = "https://avatars.example.com/platform.png"
+
+    with contact_repository_context.sessions.begin() as session:
+        workspace = session.get(Account, str(account_ids["workspace"]))
+        platform = session.get(Account, str(account_ids["platform"]))
+        wrong_owner = session.get(Account, str(account_ids["wrong_owner"]))
+        unsafe_format = session.get(Account, str(account_ids["unsafe_format"]))
+        candidate = session.get(Account, str(account_ids["candidate"]))
+        blank_candidate = session.get(Account, str(account_ids["blank_candidate"]))
+        assert workspace is not None
+        assert platform is not None
+        assert wrong_owner is not None
+        assert unsafe_format is not None
+        assert candidate is not None
+        assert blank_candidate is not None
+        workspace.avatar = avatar_ids["owned"]
+        platform.avatar = external_url
+        wrong_owner.avatar = avatar_ids["wrong_owner"]
+        unsafe_format.avatar = avatar_ids["unsafe_format"]
+        candidate.avatar = avatar_ids["candidate"]
+        blank_candidate.avatar = ""
+        session.add_all(
+            [
+                make_upload_file(
+                    file_id=avatar_ids["owned"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["workspace"]),
+                    extension="png",
+                    mime_type="image/png",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["wrong_owner"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["workspace"]),
+                    extension="jpg",
+                    mime_type="image/jpeg",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["unsafe_format"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["unsafe_format"]),
+                    extension="svg",
+                    mime_type="image/svg+xml",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["candidate"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(account_ids["candidate"]),
+                    name="avatar.webp",
+                    extension="webp",
+                    mime_type="image/png",
+                    created_at=_NOW,
+                ),
+                make_upload_file(
+                    file_id=avatar_ids["external"],
+                    tenant_id=str(_TENANT_A),
+                    created_by=str(_ADMIN_ACCOUNT),
+                    extension="gif",
+                    mime_type="image/gif",
+                    created_at=_NOW,
+                ),
+            ]
+        )
+        session.flush()
+        repository = SQLAlchemyContactRepository(session)
+        current_external = repository.get_contacts_by_id(
+            _TENANT_A,
+            contact_repository_context.contact_ids.external_shared,
+        )
+        assert current_external is not None
+        assert current_external.email is not None
+        repository.save_external_contact(
+            _TENANT_A,
+            ExternalContact(
+                current_external.id,
+                current_external.name,
+                current_external.email,
+                avatar_ids["external"],
+                current_external.created_at,
+            ),
+        )
+
+    with contact_repository_context.sessions() as session:
+        repository = SQLAlchemyContactRepository(session)
+        contacts = {contact.id: contact for contact in repository.list_contact(_TENANT_A, page=1, limit=100).items}
+        candidates = {
+            candidate.id: candidate for candidate in repository.list_organization_candidates(page=1, limit=100)
+        }
+
+    ids = contact_repository_context.contact_ids
+    assert contacts[ids.workspace_shared].avatar_file_id == avatar_ids["owned"]
+    assert contacts[ids.platform_beta].avatar_file_id == external_url
+    assert contacts[ids.workspace_delta].avatar_file_id is None
+    assert contacts[ids.platform_echo].avatar_file_id is None
+    assert contacts[ids.external_shared].avatar_file_id == avatar_ids["external"]
+    assert candidates[ids.unavailable].avatar_file_id == avatar_ids["candidate"]
+    assert candidates[ids.foreign_platform].avatar_file_id is None
+
+
 def test_organization_candidate_count_list_keyword_and_pagination_share_one_candidate_set(
     contact_repository_context: _RepositoryContext,
 ) -> None:
@@ -589,6 +713,48 @@ def test_organization_candidate_count_list_keyword_and_pagination_share_one_cand
     assert out_of_range == ()
     assert keyword_count == len(keyword_page) == 1
     assert {candidate.id for candidate in keyword_page} == {contact_repository_context.contact_ids.unavailable}
+
+
+def test_organization_candidate_pagination_validates_only_returned_avatars(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    evaluated_avatars: list[str | None] = []
+
+    def record_avatar_validation(avatar: str | None) -> str | None:
+        evaluated_avatars.append(avatar)
+        return avatar
+
+    monkeypatch.setattr(
+        sqlalchemy_contact_repository,
+        "validated_account_avatar",
+        lambda: func.record_avatar_validation(validated_account_avatar()),
+    )
+    with Session(sqlite_engine) as session:
+        # Reverse the creation order so the sort replaces candidates while scanning the records.
+        for position in range(10):
+            account_id = AccountId(f"00000000-0000-0000-1000-{position:012d}")
+            contact_id = ContactId(f"00000000-0000-0000-2000-{position:012d}")
+            created_at = _NOW - timedelta(seconds=position)
+            account = _account(
+                account_id,
+                name=f"Candidate {position}",
+                email=f"{position}@example.com",
+                created_at=created_at,
+            )
+            account.avatar = f"https://example.com/{position}.png"
+            session.add_all([account, _account_identity(account_id, contact_id, created_at)])
+        session.flush()
+        connection = session.connection().connection.driver_connection
+        assert isinstance(connection, Connection)
+        connection.create_function("record_avatar_validation", 1, record_avatar_validation)
+
+        candidates = SQLAlchemyContactRepository(session).list_organization_candidates(page=2, limit=2)
+
+    expected_avatars = ["https://example.com/7.png", "https://example.com/6.png"]
+    assert [candidate.avatar_file_id for candidate in candidates] == expected_avatars
+    assert len(evaluated_avatars) == len(expected_avatars)
+    assert set(evaluated_avatars) == set(expected_avatars)
 
 
 def test_candidate_contact_id_round_trips_through_platform_entry_creation(

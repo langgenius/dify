@@ -1,5 +1,6 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxPortalProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
+import type { PopoverPortalProps } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -14,6 +15,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { CompactTagFilterTrigger } from './compact-tag-filter-trigger'
+import { TagFilterPopover } from './tag-filter-popover'
 import { TagSearchContent } from './tag-search-content'
 
 const tagFilterComboboxFilter: NonNullable<ComboboxProps<Tag['id'], true, Tag>['filter']> = (
@@ -32,6 +35,59 @@ type TagFilterProps = {
   showLeadingIcon?: boolean
   triggerClassName?: string
 }
+function useWorkspaceTags(type: TagType) {
+  return useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: {
+        query: {
+          type,
+        },
+      },
+    }),
+  )
+}
+
+export function CompactTagFilter({
+  type,
+  value,
+  onChange,
+  container,
+}: Pick<TagFilterProps, 'type' | 'value' | 'onChange'> & {
+  container?: PopoverPortalProps['container']
+}) {
+  const { t } = useTranslation(['common'])
+  const { data: tagList = [] } = useWorkspaceTags(type)
+  const options = tagList
+    .filter((tag) => tag.type === type)
+    .map((tag) => ({ name: tag.id, label: tag.name }))
+  const names = new Map(options.map(({ name, label }) => [name, label]))
+  const selectedLabels = value.flatMap((id) => names.get(id) ?? [])
+  const placeholder = t(($) => $['tag.placeholder'], { ns: 'common' })
+  const label =
+    value.length && selectedLabels.length !== value.length
+      ? t(($) => $['dynamicSelect.selected'], { ns: 'common', count: value.length })
+      : selectedLabels.join(', ') || placeholder
+  return (
+    <TagFilterPopover
+      options={options}
+      value={value}
+      onValueChange={onChange}
+      label={placeholder}
+      searchLabel={t(($) => $['tag.searchTags'], { ns: 'common' })}
+      emptyText={t(($) => $['tag.noTag'], { ns: 'common' })}
+      container={container}
+    >
+      <CompactTagFilterTrigger
+        selectedLabels={selectedLabels}
+        selectedCount={value.length}
+        label={label}
+        clearLabel={t(($) => $['operation.clear'], { ns: 'common' })}
+        onClear={() => onChange([])}
+      />
+    </TagFilterPopover>
+  )
+}
+
 export const TagFilter = ({
   iconOnly = false,
   type,
@@ -47,15 +103,7 @@ export const TagFilter = ({
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useQuery(
-    consoleQuery.tags.get.queryOptions({
-      input: {
-        query: {
-          type,
-        },
-      },
-    }),
-  )
+  const { data: tagList = [] } = useWorkspaceTags(type)
 
   const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
   const tagOptions = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
@@ -172,6 +220,7 @@ export const TagFilter = ({
               <TagSearchContent
                 type={type}
                 canBindOrUnbindTags
+                allowCreate={false}
                 onOpenTagManagement={onOpenTagManagement}
                 showTagManagement={showTagManagement}
                 onClose={() => setOpen(false)}

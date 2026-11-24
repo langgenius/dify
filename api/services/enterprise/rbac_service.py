@@ -4,8 +4,6 @@ import logging
 from collections.abc import Sequence
 from typing import Any, override
 
-from sqlalchemy.orm import Session
-
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.rbac.entities import RBACPermission
@@ -1248,13 +1246,11 @@ class RBACService:
             tenant_id: str,
             account_id: str | None,
             control_space_ids: list[str],
-            *,
-            session: Session,
         ) -> dict[str, list[str]]:
+            """Return RBAC keys for the supplied IDs, using Enterprise only when RBAC is enabled."""
             if not control_space_ids:
                 return {}
             if not dify_config.RBAC_ENABLED:
-                _ = session
                 # KnowledgeFS reuses the legacy knowledge base permission points; without
                 # RBAC every caller holds all of them.
                 permissions = [
