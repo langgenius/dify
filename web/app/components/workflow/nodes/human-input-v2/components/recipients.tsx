@@ -425,7 +425,7 @@ const RecipientsContent = ({
                           className="flex size-4 shrink-0 items-center justify-center rounded-full bg-util-colors-indigo-indigo-500 text-text-primary-on-surface"
                           aria-hidden
                         >
-                          <span className="i-ri-user-follow-line size-3" />
+                          <span className="i-ri-account-circle-line size-3" />
                         </span>
                       )}
                       {recipient.type === 'onetime_email' && !invalid && (
@@ -448,7 +448,11 @@ const RecipientsContent = ({
                       )}
                       {recipient.type === 'all_workspace_contacts' && workspace.name && (
                         <span aria-hidden>
-                          <WorkspaceAvatar name={workspace.name} size="xs" />
+                          <WorkspaceAvatar
+                            name={workspace.name}
+                            size="xs"
+                            className="size-4 rounded-sm"
+                          />
                         </span>
                       )}
                       {recipient.type === 'dynamic_email' ? (
