@@ -23,6 +23,8 @@ class UploadFileDeliveryRecord(NamedTuple):
 class UploadFileDeliveryQuery(Protocol):
     def get_by_id(self, *, file_id: str) -> UploadFileDeliveryRecord | None: ...
 
+    def get_current_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDeliveryRecord | None: ...
+
     def get_workspace_logo(self, *, workspace_id: str) -> UploadFileDeliveryRecord | None: ...
 
 
@@ -102,6 +104,20 @@ class UploadFileDeliveryService:
             content=self._storage.load_once(file.key),
             file=file,
         )
+
+    def get_current_account_avatar(self, *, file_id: str, account_id: str) -> UploadFileDelivery:
+        """For an admitted Console viewer, stream only the account's currently assigned avatar.
+
+        Missing or ineligible files raise before storage is read. The stream opens only when consumed.
+        """
+        file = self._files.get_current_account_avatar(file_id=file_id, account_id=account_id)
+        if file is None:
+            raise UploadFileDeliveryNotFoundError("Avatar file not found")
+
+        return UploadFileDelivery(content=self._stream_file(file.key), file=file)
+
+    def _stream_file(self, key: str) -> Iterator[bytes]:
+        yield from self._storage.load_stream(key)
 
     def _get_file(self, *, file_id: str) -> UploadFileDeliveryRecord:
         file = self._files.get_by_id(file_id=file_id)

@@ -18,7 +18,8 @@ const requests = vi.hoisted(() => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   const prefix = 'workspaces.current.triggerProvider.byProvider.subscriptions.builder'
   return {
     ...actual,
@@ -27,6 +28,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${prefix}.verifyAndUpdate.bySubscriptionBuilderId.post`]: requests.verify,
       [`${prefix}.build.bySubscriptionBuilderId.post`]: requests.build,
       [`${prefix}.update.bySubscriptionBuilderId.post`]: requests.update,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       [`${prefix}.logs.bySubscriptionBuilderId.get`]: async () => ({ logs: [] }),
     }),
   }

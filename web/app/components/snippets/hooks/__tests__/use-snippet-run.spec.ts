@@ -1,4 +1,4 @@
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { QueryClient } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { useNodes } from 'reactflow'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
@@ -7,7 +7,10 @@ import {
   renderWorkflowCanvasHook,
 } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { lastRunQueryOptions, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { createDeferred } from '@/test/deferred'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
+import { createTestQueryClient } from '@/test/query-client'
 import { useSnippetRun } from '../use-snippet-run'
 
 // Draft persistence, canvas replacement and run-event reducers all have their own suites.
@@ -57,22 +60,35 @@ vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => mockStopWorkflowRun(...args),
 }))
 
-const mockInvalidAllLastRun = vi.fn()
-const mockInvalidateRunHistory = vi.fn()
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
-  useInvalidateWorkflowRunHistory: () => mockInvalidateRunHistory,
-}))
-
 type SnippetRun = ReturnType<typeof useSnippetRun>
 type RunOptions = NonNullable<Parameters<SnippetRun['handleRun']>[1]>
 type RunPayload = Parameters<SnippetRun['handleRun']>[0]
 
 const RUN_PAYLOAD = { inputs: { query: 'test' } } as RunPayload
 
+const resource = { kind: 'snippet', snippetId: 'snippet-1' } as const
+const runHistoryKey = workflowRunHistoryQueryOptions(resource).queryKey
+const lastRunKey = lastRunQueryOptions(resource, 'llm').queryKey
+const otherSnippetLastRunKey = lastRunQueryOptions(
+  { kind: 'snippet', snippetId: 'snippet-2' },
+  'llm',
+).queryKey
+
+let queryClient: QueryClient
+
+const seedRunQueries = () => {
+  queryClient.setQueryData(runHistoryKey, { data: [], has_more: false, limit: 20 })
+  queryClient.setQueryData(lastRunKey, { id: 'execution-1', node_id: 'llm' })
+  queryClient.setQueryData(otherSnippetLastRunKey, { id: 'execution-2', node_id: 'llm' })
+}
+
+const isInvalidated = (queryKey: readonly unknown[]) =>
+  queryClient.getQueryState(queryKey)?.isInvalidated
+
 const renderSnippetRun = (initialStoreState: Record<string, unknown> = {}) =>
   renderWorkflowCanvasHook(() => ({ run: useSnippetRun(), nodes: useNodes() }), {
-    resource: { kind: 'snippet', snippetId: 'snippet-1' },
+    resource,
+    queryClient,
     nodes: [
       createNode({
         id: 'start',
@@ -99,6 +115,7 @@ const startRun = async (run: SnippetRun, callback?: RunOptions) => {
 describe('useSnippetRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = createTestQueryClient()
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     const container = document.createElement('div')
     container.id = 'workflow-container'
@@ -160,13 +177,15 @@ describe('useSnippetRun', () => {
     const { result } = renderSnippetRun()
 
     act(() =>
-      result.current.run.handleRestoreFromPublishedWorkflow({
-        graph: {
-          nodes: [createNode({ id: 'pub-node', selected: true, data: { selected: true } })],
-          edges: [],
-          viewport: { x: 50, y: 50, zoom: 1 },
-        },
-      } as unknown as FetchWorkflowDraftResponse),
+      result.current.run.handleRestoreFromPublishedWorkflow(
+        createWorkflowResponseFixture({
+          graph: {
+            nodes: [createNode({ id: 'pub-node', selected: true, data: { selected: true } })],
+            edges: [],
+            viewport: { x: 50, y: 50, zoom: 1 },
+          },
+        }),
+      ),
     )
 
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledExactlyOnceWith({
@@ -273,16 +292,23 @@ describe('useSnippetRun', () => {
       const { result } = renderSnippetRun()
       const stream = await startRun(result.current.run)
 
+      seedRunQueries()
       act(() => stream.onWorkflowStarted({} as never))
-      expect(mockInvalidateRunHistory).toHaveBeenLastCalledWith('/snippets/snippet-1/workflow-runs')
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(false)
       expect(mockFetchInspectVars).not.toHaveBeenCalled()
 
+      seedRunQueries()
       act(() => stream.onWorkflowFinished({} as never))
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(true)
+      expect(isInvalidated(otherSnippetLastRunKey)).toBe(false)
       expect(mockFetchInspectVars).toHaveBeenCalledExactlyOnceWith({})
-      expect(mockInvalidAllLastRun).toHaveBeenCalledOnce()
 
+      seedRunQueries()
       act(() => stream.onError({} as never))
-      expect(mockInvalidateRunHistory).toHaveBeenCalledTimes(3)
+      expect(isInvalidated(runHistoryKey)).toBe(true)
+      expect(isInvalidated(lastRunKey)).toBe(false)
     })
   })
 

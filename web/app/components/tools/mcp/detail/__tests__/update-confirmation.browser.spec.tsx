@@ -1,31 +1,11 @@
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { createMcpProviderFixture } from '@/test/fixtures/mcp'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import MCPDetailPanel from '../provider-detail'
-
-const api = vi.hoisted(() => ({
-  tools: vi.fn<typeof consoleClient.workspaces.current.toolProvider.mcp.tools.byProviderId.get>(),
-  update: vi.fn<typeof consoleClient.workspaces.current.toolProvider.mcp.update.byProviderId.get>(),
-}))
-
-// boundary: only the generated service responses are replaced; mutations and overlays stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.mcp.tools.byProviderId.get': api.tools,
-      'workspaces.current.toolProvider.mcp.update.byProviderId.get': api.update,
-    }),
-  }
-})
 
 const tools = createToolProviderFixture({
   id: 'mcp-1',
@@ -40,6 +20,22 @@ const tools = createToolProviderFixture({
     },
   ],
 })
+
+const fake = setupFakeApi({
+  console: {
+    workspaces: {
+      current: {
+        toolProvider: {
+          mcp: {
+            tools: { byProviderId: { get: () => tools } },
+            update: { byProviderId: { get: () => tools } },
+          },
+        },
+      },
+    },
+  },
+})
+const mcpApi = () => fake.console.workspaces.current.toolProvider.mcp
 
 async function setup() {
   const { wrapper: Wrapper, queryClient } = createConsoleQueryWrapper({
@@ -79,15 +75,8 @@ async function setup() {
   }
 }
 
-beforeEach(() => {
-  api.tools.mockReset().mockResolvedValue(tools)
-  api.update.mockReset().mockResolvedValue(tools)
-  onTestFinished(guardUnexpectedFetch())
-})
-
 it('protects the pending update and closes only after success', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof api.update>>>()
-  api.update.mockReturnValueOnce(pending.promise)
+  const pending = hold(mcpApi().update.byProviderId.get)
   const { dialog, onUpdate, onHide } = await setup()
   const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
   await confirm.click()
@@ -98,26 +87,32 @@ it('protects the pending update and closes only after success', async () => {
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.cancel' }))
     .toBeDisabled()
-  expect(api.update).toHaveBeenCalledExactlyOnceWith({ params: { provider_id: 'mcp-1' } })
+  expect(await pending.arrived).toEqual({ params: { provider_id: 'mcp-1' } })
+  expect(mcpApi().update.byProviderId.get).toHaveBeenCalledOnce()
   expect(onUpdate).not.toHaveBeenCalled()
   expect(onHide).not.toHaveBeenCalled()
 
   pending.resolve(tools)
   await expect.element(dialog).not.toBeInTheDocument()
   expect(onUpdate).toHaveBeenCalledOnce()
+  // Success invalidates the provider's tools, so the panel refetches them over the network and
+  // brings the update button back once they arrive.
   await expect
     .element(page.getByRole('button', { name: 'tools.mcp.update', exact: true }))
-    .toHaveFocus()
+    .toBeVisible()
+  expect(mcpApi().tools.byProviderId.get).toHaveBeenCalledExactlyOnceWith({
+    params: { provider_id: 'mcp-1' },
+  })
 })
 
 it('closes on success while tools refetch and returns focus to the stable drawer close button', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof api.tools>>>()
-  api.tools.mockReturnValueOnce(pending.promise)
+  const pending = hold(mcpApi().tools.byProviderId.get)
   const { dialog } = await setup()
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(page.getByRole('button', { name: 'common.operation.close' })).toHaveFocus()
-  expect(api.tools).toHaveBeenCalledOnce()
+  await pending.arrived
+  expect(mcpApi().tools.byProviderId.get).toHaveBeenCalledOnce()
   pending.resolve(tools)
   await expect
     .element(page.getByRole('button', { name: 'tools.mcp.update', exact: true }))
@@ -125,24 +120,22 @@ it('closes on success while tools refetch and returns focus to the stable drawer
 })
 
 it('keeps a rejected update open for retry without an unhandled rejection', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof api.update>>>()
-  api.update.mockReturnValueOnce(pending.promise)
+  const pending = hold(mcpApi().update.byProviderId.get)
   const { dialog, onUpdate } = await setup()
   const confirm = dialog.getByRole('button', { name: 'common.operation.confirm' })
   await confirm.click()
-  pending.reject(new Error('Update failed'))
+  pending.reject(apiError({ status: 500, message: 'Update failed' }))
   await expect.element(dialog).toBeVisible()
   await expect.element(confirm).not.toHaveAttribute('aria-disabled', 'true')
   expect(onUpdate).not.toHaveBeenCalled()
   await confirm.click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledTimes(2)
+  expect(mcpApi().update.byProviderId.get).toHaveBeenCalledTimes(2)
   expect(onUpdate).toHaveBeenCalledOnce()
 })
 
 it('refreshes the provider that completed updating when the parent selects another provider', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof api.update>>>()
-  api.update.mockReturnValueOnce(pending.promise)
+  const pending = hold(mcpApi().update.byProviderId.get)
   const { dialog, queryClient, rerender } = await setup()
   const key = (id: string) =>
     consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey({

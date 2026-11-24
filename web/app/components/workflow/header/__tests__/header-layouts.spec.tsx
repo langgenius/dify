@@ -59,33 +59,25 @@ const createBackupDraft = (): NonNullable<Shape['backupDraft']> => ({
   environmentVariables: [],
 })
 
-const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: { x: 0, y: 0, zoom: 1 },
-  },
-  created_at: 0,
-  created_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 0,
-  updated_by: {
-    id: 'user-1',
-    name: 'Tester',
-    email: 'tester@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  version: WorkflowVersion.Latest,
-  version_number: 5,
-  marked_name: '',
-  marked_comment: '',
-})
+const createCurrentVersion = () =>
+  createWorkflowResponseFixture({
+    id: 'version-1',
+    created_at: 0,
+    created_by: {
+      id: 'user-1',
+      name: 'Tester',
+      email: 'tester@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 0,
+    updated_by: {
+      id: 'user-1',
+      name: 'Tester',
+      email: 'tester@example.com',
+    },
+    version: WorkflowVersion.Latest,
+    version_number: 5,
+  })
 
 describe('Header layout components', () => {
   beforeEach(() => {
@@ -373,17 +365,14 @@ describe('Header layout components', () => {
   describe('HeaderInHistory', () => {
     it('exits run history and restores the backup draft', async () => {
       const user = userEvent.setup()
-      const { store } = renderWorkflowComponent(
-        <HeaderInHistory viewHistoryProps={{ historyUrl: '/history' }} />,
-        {
-          initialStoreState: {
-            historyWorkflowData: {
-              id: 'history-1',
-              status: 'succeeded',
-            },
+      const { store } = renderWorkflowComponent(<HeaderInHistory />, {
+        initialStoreState: {
+          historyWorkflowData: {
+            id: 'history-1',
+            status: 'succeeded',
           },
         },
-      )
+      })
 
       expect(screen.getByText('workflow.common.viewOnly')).toBeVisible()
       expect(screen.getByRole('button', { name: 'workflow.common.showRunHistory' })).toBeVisible()

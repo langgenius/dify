@@ -1,6 +1,6 @@
 import json
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from pydantic import ValidationError
@@ -24,7 +24,12 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
+from models.agent_config_entities import (
+    AgentConfigFileRefConfig,
+    AgentConfigSkillRefConfig,
+    AgentSoulConfig,
+    WorkflowNodeJobConfig,
+)
 from models.dataset import Dataset
 from models.enums import AppStatus
 from models.model import App, AppMode, IconType
@@ -431,6 +436,53 @@ def test_export_workflow_packages_rejects_incomplete_binding(sqlite_session: Ses
             workflow=_workflow(),
             graph={"nodes": [_agent_node("node-1")], "edges": []},
         )
+
+
+def test_workflow_package_roundtrip_preserves_mode_with_a_destination_generation(sqlite_session: Session) -> None:
+    source_generation = str(uuid4())
+    source = _workflow()
+    graph = {"nodes": [_agent_node("session-node")], "edges": list[dict[str, object]]()}
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id=source.id,
+        workflow_version="draft",
+        node_id="session-node",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="snapshot-1",
+        node_job_config=WorkflowNodeJobConfig(
+            workflow_prompt="Classify one message", continue_agent_session=False, session_generation=source_generation
+        ),
+    )
+    account = _account()
+    sqlite_session.add_all([_app(mode=AppMode.ADVANCED_CHAT), account, _agent(), _snapshot(), binding])
+    sqlite_session.commit()
+    service = AgentDslService(sqlite_session)
+    portable_graph, packages = service.export_workflow_packages(workflow=source, graph=graph)
+    portable_node = portable_graph["nodes"][0]["data"]
+    assert portable_node["continue_agent_session"] is False
+    assert portable_node[AGENT_NODE_JOB_DSL_KEY]["continue_agent_session"] is False
+
+    destination = _workflow(workflow_id="destination-workflow")
+    imported_graph, warnings, _ = service.import_workflow_packages(
+        workflow=destination,
+        portable_graph=portable_graph,
+        raw_packages={key: package.model_dump(mode="json") for key, package in packages.items()},
+        account=account,
+    )
+    sqlite_session.flush()
+    imported = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == destination.id)
+    )
+    assert imported is not None
+    assert warnings == []
+    assert imported.node_job_config.continue_agent_session is False
+    assert imported.node_job_config.workflow_prompt == "Classify one message"
+    assert str(UUID(imported.node_job_config.session_generation)) == imported.node_job_config.session_generation
+    assert imported.node_job_config.session_generation != source_generation
+    assert imported_graph["nodes"][0]["data"]["agent_session_generation"] == imported.node_job_config.session_generation
+    assert binding.node_job_config.session_generation == source_generation
 
 
 def test_graph_without_package_bindings_removes_portable_fields() -> None:
