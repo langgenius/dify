@@ -1,65 +1,62 @@
 import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { consoleClient } from '@/service/console'
-import { zAgentInviteOptionsResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { seedTags } from '@/test/console/tags'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { setupFakeApi } from '@/test/fake-api'
 import {
   AgentSelectorMenu,
   AgentSelectorMenuContent,
   AgentSelectorMenuTrigger,
 } from '../agent-selector'
 
-const listAgents = vi.hoisted(() => vi.fn<typeof consoleClient.agent.inviteOptions.get>())
 const longTagName = 'FinanceAndAccountingForInternationalOperations'
+const research = { id: '00000000-0000-4000-8000-000000000011', name: 'Research', type: 'agent' }
+const finance = { id: '00000000-0000-4000-8000-000000000012', name: 'Finance', type: 'agent' }
+const support = { id: '00000000-0000-4000-8000-000000000013', name: 'Support', type: 'agent' }
+const international = {
+  id: '00000000-0000-4000-8000-000000000014',
+  name: longTagName,
+  type: 'agent',
+}
 
-// boundary: the console service supplies the selectable agents for each filter and page.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.inviteOptions.get': listAgents,
-    }),
-  }
+const fake = setupFakeApi({
+  console: {
+    agent: {
+      inviteOptions: {
+        get: () => ({ data: [], page: 1, limit: 8, total: 0, has_more: false }),
+      },
+    },
+    tags: { get: () => [research, finance, support, international] },
+  },
 })
 
-function agent(name: string): AgentInviteOptionResponse {
+function agent(name: string, sequence = 1): AgentInviteOptionResponse {
   return {
-    id: name,
+    id: `00000000-0000-4000-8000-${String(sequence).padStart(12, '0')}`,
     name,
     description: '',
     agent_kind: 'dify_agent',
     scope: 'roster',
     source: 'roster',
     status: 'active',
-    active_config_snapshot_id: 'snapshot',
+    active_config_snapshot_id: '00000000-0000-4000-8000-000000000021',
     icon_type: 'emoji',
     icon: '🦊',
   }
 }
 
 async function openAgentSelector() {
-  onTestFinished(guardUnexpectedFetch())
-  const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['agent.tag.manage'],
   })
-  seedTags(queryClient, [
-    { id: 'research', name: 'Research', type: 'agent', binding_count: '2' },
-    { id: 'finance', name: 'Finance', type: 'agent', binding_count: '1' },
-    { id: 'support', name: 'Support', type: 'agent', binding_count: '1' },
-    { id: 'international', name: longTagName, type: 'agent', binding_count: '1' },
-  ])
   await render(
     <Wrapper>
       <EditorResourceScope
         resource={{
           kind: 'app',
-          appId: 'workflow-1',
+          appId: TEST_APP_ID,
           mode: 'workflow',
           collaborationEnabled: false,
         }}
@@ -80,15 +77,13 @@ it('keeps the tag popup above the Agent avatar and both footer action icons', as
   const { innerWidth, innerHeight } = window
   await page.viewport(248, 700)
   onTestFinished(() => page.viewport(innerWidth, innerHeight))
-  listAgents.mockResolvedValue(
-    zAgentInviteOptionsResponse.parse({
-      data: [agent('Fox')],
-      page: 1,
-      limit: 8,
-      total: 1,
-      has_more: false,
-    }),
-  )
+  fake.console.agent.inviteOptions.get.mockResolvedValue({
+    data: [agent('Fox')],
+    page: 1,
+    limit: 8,
+    total: 1,
+    has_more: false,
+  })
   await openAgentSelector()
 
   const footerActionNames = [/startFromScratch/, /manageInAgentConsole/]
@@ -113,21 +108,22 @@ it('keeps the tag popup above the Agent avatar and both footer action icons', as
 })
 
 it('combines the workflow search and tags, pages through matching candidates and clears only tags', async () => {
-  listAgents.mockImplementation(async (input) => {
+  const listAgents = fake.console.agent.inviteOptions.get
+  listAgents.mockImplementation((input) => {
     const { page = 1, limit = 8, keyword, tag_ids = [] } = input?.query ?? {}
     const candidates =
       tag_ids.length > 1
         ? []
         : tag_ids.length
-          ? [agent(`Research ${page}`)]
+          ? [agent(`Research ${page}`, page)]
           : [agent(keyword ? 'Company agent' : 'All agents')]
-    return zAgentInviteOptionsResponse.parse({
+    return {
       data: candidates,
       page,
       limit,
       total: tag_ids.length === 1 ? 2 : candidates.length,
       has_more: tag_ids.length === 1 && page === 1,
-    })
+    }
   })
 
   await openAgentSelector()
@@ -164,7 +160,7 @@ it('combines the workflow search and tags, pages through matching candidates and
   await expect.element(page.getByRole('menuitem', { name: 'Research 2' })).toBeVisible()
   await expect.element(page.getByRole('menuitem', { name: 'Research 1' })).toBeVisible()
   expect(listAgents).toHaveBeenLastCalledWith({
-    query: { app_id: 'workflow-1', keyword: 'Company', limit: 8, page: 2, tag_ids: ['research'] },
+    query: { app_id: TEST_APP_ID, keyword: 'Company', limit: 8, page: 2, tag_ids: [research.id] },
   })
 
   const selectedTag = page.getByRole('button', { name: 'Research', exact: true })
@@ -176,11 +172,11 @@ it('combines the workflow search and tags, pages through matching candidates and
   await expect.element(page.getByRole('status')).toHaveTextContent('agentRoster.roster.emptySearch')
   expect(listAgents).toHaveBeenLastCalledWith({
     query: {
-      app_id: 'workflow-1',
+      app_id: TEST_APP_ID,
       keyword: 'Company',
       limit: 8,
       page: 1,
-      tag_ids: ['research', 'finance'],
+      tag_ids: [research.id, finance.id],
     },
   })
 
@@ -201,9 +197,6 @@ it('combines the workflow search and tags, pages through matching candidates and
 })
 
 it('bounds long tag summaries and keeps the additional count and clear button visible', async () => {
-  listAgents.mockResolvedValue(
-    zAgentInviteOptionsResponse.parse({ data: [], page: 1, limit: 8, total: 0, has_more: false }),
-  )
   await openAgentSelector()
   await page.getByRole('button', { name: 'common.tag.placeholder' }).click()
   for (const name of [longTagName, 'Research', 'Support']) {

@@ -3217,20 +3217,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       tags: {
         post: {
           mutationOptions: {
-            onSuccess: (tag, variables, _onMutateResult, context) => {
-              context.client.setQueryData(
-                consoleQuery.tags.get.queryKey({
-                  input: {
-                    query: {
-                      type: variables.body.type,
-                    },
-                  },
-                }),
+            onSuccess: async (tag, { body: { type } }, _result, { client, meta }) => {
+              const queryKey = consoleQuery.tags.get.queryKey({ input: { query: { type } } })
+              if (type === 'agent') await client.cancelQueries({ queryKey })
+
+              client.setQueryData(
+                queryKey,
                 (oldTags: Tag[] | undefined) =>
                   oldTags && [tag, ...oldTags.filter((item) => item.id !== tag.id)],
               )
-              if (variables.body.type === 'agent')
-                return refreshAgentTagCatalogs(consoleQuery, context.client)
+
+              if (type === 'agent') {
+                // Card edits refresh the catalog after applying the new bindings.
+                const refetchType = meta?.deferAgentTagCatalogRefresh ? 'none' : 'active'
+                return client.invalidateQueries({ queryKey, refetchType })
+              }
             },
           },
         },
@@ -3584,7 +3585,10 @@ function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
 }
 
-async function refreshAgentTagCatalogs(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+export async function refreshAgentTagCatalogs(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
   const filters = { queryKey: query.tags.get.queryKey({ input: { query: { type: 'agent' } } }) }
   // Invalidation alone can reuse an initial GET that started before the write.
   await client.cancelQueries(filters)

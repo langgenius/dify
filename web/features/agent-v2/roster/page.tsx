@@ -64,17 +64,25 @@ export default function RosterPage() {
   const trimmedKeyword = keyword.trim()
   const delayedKeyword = useDebounce(trimmedKeyword, { wait: 300 })
   const debouncedKeyword = trimmedKeyword ? delayedKeyword : ''
+  const firstUnfilteredPage = { page: 1, limit: ROSTER_PAGE_SIZE, sort_by: sortBy }
   const rosterQueryInput = (page: number, selectedTagIds: string[]) => ({
     query: {
+      ...firstUnfilteredPage,
       page,
-      limit: ROSTER_PAGE_SIZE,
-      sort_by: sortBy,
       ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
       ...(selectedTagIds.length ? { tag_ids: selectedTagIds } : {}),
       ...(createdByMe ? { is_created_by_me: true } : {}),
       ...(rosterFilter !== 'all' ? { publication_status: rosterFilter } : {}),
     },
   })
+  const resetRosterPagination = (input: ReturnType<typeof rosterQueryInput>) => {
+    queryClient.removeQueries({
+      queryKey: consoleQuery.agent.get.key({ type: 'infinite', input }),
+      exact: true,
+      type: 'inactive',
+    })
+    scrollViewportRef.current?.scrollTo({ top: 0 })
+  }
 
   const {
     data: rosterPages,
@@ -112,6 +120,7 @@ export default function RosterPage() {
               ? {
                   type: 'filtered',
                   onClearFilters: () => {
+                    resetRosterPagination({ query: firstUnfilteredPage })
                     void setFilters(null)
                     searchRef.current?.focus()
                   },
@@ -169,15 +178,7 @@ export default function RosterPage() {
             publicationCounts={publicationCounts}
             tagIds={tagIds}
             onTagIdsChange={(nextIds) => {
-              queryClient.removeQueries({
-                queryKey: consoleQuery.agent.get.key({
-                  type: 'infinite',
-                  input: rosterQueryInput(1, nextIds),
-                }),
-                exact: true,
-                type: 'inactive',
-              })
-              scrollViewportRef.current?.scrollTo({ top: 0 })
+              resetRosterPagination(rosterQueryInput(1, nextIds))
               void setFilters({ tag_ids: nextIds })
             }}
             onOpenTagManagement={openTagManagement}

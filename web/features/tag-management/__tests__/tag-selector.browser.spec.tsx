@@ -5,6 +5,7 @@ import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createDeferred } from '@/test/deferred'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
+import { TagFilter } from '../tag-filter'
 import { TagSelector } from '../tag-selector'
 
 let serverTags: Tag[] = []
@@ -276,13 +277,16 @@ it.each(['before', 'after'] as const)(
     const creation = hold(fake.console.tags.post)
     const binding = hold(fake.console.tagBindings.post)
     await renderWithTags(
-      <TagSelector
-        type="agent"
-        targetId="agent-1"
-        value={[]}
-        requiresTargetEditPermission
-        canBindOrUnbindTags
-      />,
+      <>
+        <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+        <TagSelector
+          type="agent"
+          targetId="agent-1"
+          value={[]}
+          requiresTargetEditPermission
+          canBindOrUnbindTags
+        />
+      </>,
       serverTags,
       ['agent.tag.manage'],
     )
@@ -303,6 +307,7 @@ it.each(['before', 'after'] as const)(
       await userEvent.keyboard('{Enter}')
       await expect.element(search()).not.toBeInTheDocument()
     }
+    const catalogRefresh = hold(fake.console.tags.get)
     serverTags = [newTag, agentTag]
     creation.resolve(newTag)
     if (close === 'after') {
@@ -317,17 +322,52 @@ it.each(['before', 'after'] as const)(
       .toEqual([
         [{ body: { tag_ids: ['existing', 'created'], target_id: 'agent-1', type: 'agent' } }],
       ])
+    expect(fake.console.tags.get).not.toHaveBeenCalled()
     await expect.element(addTags).toHaveFocus()
     await expect.element(addTags).toHaveAttribute('aria-disabled', 'true')
     await userEvent.keyboard('{Enter}')
     await expect.element(search()).not.toBeInTheDocument()
+    serverTags = serverTags.map((tag) => ({ ...tag, binding_count: '1' }))
     binding.release()
+    await catalogRefresh.arrived
+    catalogRefresh.release()
     await expect.element(addTags).not.toHaveAttribute('aria-disabled')
+    expect(fake.console.tags.get).toHaveBeenCalledExactlyOnceWith({ query: { type: 'agent' } })
     await expect.element(addTags).toHaveFocus()
     await userEvent.keyboard('{Enter}')
     await expect.element(search()).toBeVisible()
   },
 )
+
+it('refreshes the Agent tag catalog when the new tag is deselected before saving', async () => {
+  const newTag = { id: 'created', name: 'Research', type: 'agent' }
+  serverTags = []
+  fake.console.tags.post.mockImplementationOnce(() => {
+    serverTags = [newTag]
+    return newTag
+  })
+  await renderWithTags(
+    <>
+      <TagFilter type="agent" value={[]} onChange={vi.fn()} />
+      <TagSelector type="agent" targetId="agent-1" value={[]} canBindOrUnbindTags />
+    </>,
+    serverTags,
+    ['agent.tag.manage'],
+  )
+  await page.getByRole('combobox', { name: 'common.tag.addTag' }).click()
+  await search().fill('Research')
+  await page.getByRole('option', { name: /common\.tag\.create/ }).click()
+  const option = page.getByRole('option', { name: 'Research' })
+  await expect.element(option).toHaveAttribute('aria-selected', 'true')
+  expect(fake.console.tags.get).not.toHaveBeenCalled()
+  await option.click()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(search()).not.toBeInTheDocument()
+  await expect
+    .poll(() => fake.console.tags.get.mock.calls)
+    .toEqual([[{ query: { type: 'agent' } }]])
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
+})
 
 it('blocks opening without management permission or binding capability', async () => {
   await renderSelector([])
