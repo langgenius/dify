@@ -624,9 +624,9 @@ export const Workflow: FC<WorkflowProps> = memo(
           <div className="@container/variable-inspect min-w-100 [grid-area:bottom]">
             <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
           </div>
-          {sidePanel && (
+          {sidePanel ? (
             <div className="mt-14 mb-1 flex min-h-0 [grid-area:side-panel]">{sidePanel}</div>
-          )}
+          ) : null}
         </div>
         {children}
         <AlertDialog
