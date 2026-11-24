@@ -9,21 +9,11 @@ import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { createDeferred } from '@/test/deferred'
-import { setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import CollaborationDemoPage from '../page'
 
 let navigation: TestNavigation
-
-const appPage = (app?: { id: string; name: string; updated_at: number }) => ({
-  data: app ? [{ ...app, mode: 'workflow' as const, icon_url: null }] : [],
-  has_more: false,
-  limit: 1,
-  page: 1,
-  total: app ? 1 : 0,
-})
 
 async function renderDemo(
   role: TenantAccountRole,
@@ -57,16 +47,6 @@ async function renderDemo(
 beforeEach(() => {
   vi.clearAllMocks()
 })
-const fake = setupFakeApi(() => ({
-  console: {
-    apps: {
-      get: (input) =>
-        input?.query?.mode === 'workflow'
-          ? appPage({ id: 'workflow-1', name: 'Older workflow', updated_at: 10 })
-          : appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }),
-    },
-  },
-}))
 
 async function startPlayback(screen: Awaited<ReturnType<typeof renderDemo>>) {
   await expect
@@ -118,16 +98,9 @@ it('walks the guide, playback and end panel from the keyboard', async () => {
   await expect
     .element(endPanel.getByRole('heading', { name: 'collaborationDemo.end.enabled.title' }))
     .toHaveFocus()
-  await expect
-    .element(endPanel.getByText(/collaborationDemo\.end\.enabled\.latestApp/))
-    .toMatchTextContent(/Refund assistant/)
-  await expect
-    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
-    .toHaveAttribute('href', '/app/chatflow-1/workflow')
-
   await userEvent.keyboard('{Tab}')
   await expect
-    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
+    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.goToStudio' }))
     .toHaveFocus()
   await userEvent.keyboard('{Tab}')
   await expect
@@ -146,26 +119,16 @@ it('walks the guide, playback and end panel from the keyboard', async () => {
     .toHaveFocus()
 })
 
-it('explains read-only access without looking up apps', async () => {
+it('offers an enabled workspace member the Studio entry without choosing an app', async () => {
   const screen = await renderDemo('normal')
-
-  await expect
-    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
-    .toHaveFocus()
-  await userEvent.keyboard('{Tab}{Tab}{Enter}')
-  await expect
-    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.comment\.title/ }))
-    .toHaveFocus()
-  await userEvent.keyboard('{Tab}{Tab}{Enter}')
-  await expect
-    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
-    .toHaveFocus()
+  await startPlayback(screen)
   await userEvent.keyboard('{Tab}{Enter}')
 
   const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
-  await expect.element(endPanel.getByText('collaborationDemo.end.readOnly.normal')).toBeVisible()
-  await expect.element(endPanel.getByRole('link')).not.toBeInTheDocument()
-  expect(fake.console.apps.get).not.toHaveBeenCalled()
+  const studioLink = endPanel.getByRole('link', { name: 'collaborationDemo.end.goToStudio' })
+  await expect.element(studioLink).toHaveAttribute('href', '/apps')
+  await userEvent.keyboard('{Tab}')
+  await expect.element(studioLink).toHaveFocus()
 })
 
 it('announces messages through a region that exists before the first message', async () => {
@@ -179,25 +142,6 @@ it('announces messages through a region that exists before the first message', a
   await expect.element(log).toHaveAttribute('aria-live', 'off')
   await userEvent.keyboard('{Tab}{Enter}')
   await expect.element(log).toMatchTextContent(/"author":"Sam".*"author":"Alex"/)
-})
-
-it('keeps focus on the primary action when Try it now becomes ready', async () => {
-  const apps = createDeferred<ReturnType<typeof appPage>>()
-  fake.console.apps.get.mockReturnValue(apps.promise)
-  const screen = await renderDemo('owner')
-  await startPlayback(screen)
-  await userEvent.keyboard('{Tab}{Enter}')
-
-  const endPanel = screen.getByRole('region', { name: 'collaborationDemo.end.enabled.title' })
-  await expect.element(endPanel.getByRole('heading')).toHaveFocus()
-  await userEvent.keyboard('{Tab}')
-  await expect
-    .element(endPanel.getByRole('button', { name: 'collaborationDemo.end.enabled.action' }))
-    .toHaveFocus()
-  apps.resolve(appPage({ id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }))
-  await expect
-    .element(endPanel.getByRole('link', { name: 'collaborationDemo.end.enabled.action' }))
-    .toHaveFocus()
 })
 
 it('makes the comment marker reopen the thread once playback has finished', async () => {
