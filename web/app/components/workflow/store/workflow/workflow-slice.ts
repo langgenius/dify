@@ -1,3 +1,4 @@
+import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { StateCreator } from 'zustand'
 import type {
   Edge,
@@ -5,7 +6,6 @@ import type {
   TriggerNodeType,
   WorkflowRunningData,
 } from '@/app/components/workflow/types'
-import type { FileUploadConfigResponse } from '@/models/common'
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -17,13 +17,6 @@ type PreviewRunningData = WorkflowRunningData & {
   reasoningFinished?: boolean
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, unknown>
-}
-
-type MousePosition = {
-  pageX: number
-  pageY: number
-  elementX: number
-  elementY: number
 }
 
 export type WorkflowSliceShape = {
@@ -52,7 +45,8 @@ export type WorkflowSliceShape = {
   setBundleNodeSize: (bundleNodeSize: WorkflowSliceShape['bundleNodeSize']) => void
   controlMode: 'pointer' | 'hand' | 'comment'
   setControlMode: (controlMode: WorkflowSliceShape['controlMode']) => void
-  pendingComment: MousePosition | null
+  /** A new comment's place on the canvas, in flow coordinates, while it is written. */
+  pendingComment: { x: number; y: number } | null
   setPendingComment: (pendingComment: WorkflowSliceShape['pendingComment']) => void
   isCommentPlacing: boolean
   setCommentPlacing: (isCommentPlacing: boolean) => void
@@ -62,14 +56,14 @@ export type WorkflowSliceShape = {
   setCommentPreviewHovering: (hovering: boolean) => void
   mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
   setMousePosition: (mousePosition: WorkflowSliceShape['mousePosition']) => void
-  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void; onCancel?: () => void }
   setShowConfirm: (showConfirm: WorkflowSliceShape['showConfirm']) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
-  fileUploadConfig?: FileUploadConfigResponse
-  setFileUploadConfig: (fileUploadConfig: FileUploadConfigResponse) => void
+  fileUploadConfig?: UploadConfig
+  setFileUploadConfig: (fileUploadConfig: UploadConfig) => void
 }
 
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
@@ -102,11 +96,25 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   bundleNodeSize: null,
   setBundleNodeSize: (bundleNodeSize) => set(() => ({ bundleNodeSize })),
   controlMode: 'pointer',
-  setControlMode: (controlMode) => set(() => ({ controlMode })),
+  // A draft comment belongs to comment mode, unless a quick add started it.
+  setControlMode: (controlMode) =>
+    set((state) => ({
+      controlMode,
+      ...(controlMode !== 'comment' && !state.isCommentQuickAdd && { pendingComment: null }),
+    })),
   pendingComment: null,
-  setPendingComment: (pendingComment) => set(() => ({ pendingComment })),
+  // A quick add ends with its draft, unless it is still placing one.
+  setPendingComment: (pendingComment) =>
+    set((state) => ({
+      pendingComment,
+      ...(!pendingComment && !state.isCommentPlacing && { isCommentQuickAdd: false }),
+    })),
   isCommentPlacing: false,
-  setCommentPlacing: (isCommentPlacing) => set(() => ({ isCommentPlacing })),
+  setCommentPlacing: (isCommentPlacing) =>
+    set((state) => ({
+      isCommentPlacing,
+      ...(!isCommentPlacing && !state.pendingComment && { isCommentQuickAdd: false }),
+    })),
   isCommentQuickAdd: false,
   setCommentQuickAdd: (isCommentQuickAdd) => set(() => ({ isCommentQuickAdd })),
   mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },

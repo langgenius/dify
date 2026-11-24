@@ -1,105 +1,81 @@
-import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
-import { createElement } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import {
-  OAUTH_REGISTRATION_GA_SENT_KEY,
-  REGISTRATION_SUCCESS_STORAGE_KEY,
-} from '@/app/components/base/amplitude/registration-session-state'
-import { emailLoginWithCode, sendEMailLoginCode } from './common'
-import { useLogout } from './use-common'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
+import { webAppLoginStatus, webAppLogout } from './common'
+import { getWebAppPassport, setWebAppAccessToken, setWebAppPassport } from './webapp-auth'
 
-const mocks = vi.hoisted(() => ({
-  post: vi.fn(),
+const webAppClientMock = vi.hoisted(() => ({
+  login: { status: { get: vi.fn() } },
+  logout: { post: vi.fn() },
 }))
 
-vi.mock('./base', () => ({
-  del: vi.fn(),
-  get: vi.fn(),
-  patch: vi.fn(),
-  post: mocks.post,
-}))
+vi.mock('./webapp-client', () => ({ webAppClient: webAppClientMock }))
 
-describe('sendEMailLoginCode', () => {
+describe('webAppLoginStatus', () => {
+  const originalUrl = window.location.href
   beforeEach(() => {
-    vi.clearAllMocks()
+    webAppClientMock.login.status.get.mockReset()
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: true })
+  })
+  afterEach(() => {
+    window.history.replaceState({}, '', originalUrl)
   })
 
-  it('includes the Turnstile token when provided', async () => {
-    await sendEMailLoginCode('user@example.com', 'en-US', 'turnstile-token')
+  it('does not add an app code query to environment login status', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
 
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login', {
-      body: {
-        email: 'user@example.com',
-        language: 'en-US',
-        turnstile_token: 'turnstile-token',
-      },
+    await webAppLoginStatus('workflow-app', 'user-1')
+
+    expect(webAppClientMock.login.status.get).toHaveBeenCalledWith({
+      query: { user_id: 'user-1' },
     })
   })
 
-  it('omits the Turnstile token when it is not provided', async () => {
-    await sendEMailLoginCode('user@example.com', 'en-US')
+  it('uses the authoritative environment login state', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: false, app_logged_in: false })
 
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login', {
-      body: {
-        email: 'user@example.com',
-        language: 'en-US',
-      },
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
+      userLoggedIn: false,
+      appLoggedIn: false,
+    })
+  })
+
+  it('trusts the remote login state for an sso verified environment', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+    webAppClientMock.login.status.get.mockResolvedValue({ logged_in: true, app_logged_in: false })
+
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+  })
+
+  it('keeps the app code for ordinary webapps', async () => {
+    window.history.replaceState({}, '', '/workflow/workflow-app')
+
+    await webAppLoginStatus('workflow-app')
+
+    expect(webAppClientMock.login.status.get).toHaveBeenCalledWith({
+      query: { app_code: 'workflow-app' },
     })
   })
 })
 
-describe('emailLoginWithCode', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+describe('webAppLogout', () => {
+  afterEach(() => {
+    localStorage.clear()
   })
 
-  it('includes the verification-specific Turnstile token when provided', async () => {
-    await emailLoginWithCode({
-      code: 'encrypted-code',
-      email: 'user@example.com',
-      language: 'en-US',
-      timezone: 'Asia/Singapore',
-      token: 'email-login-token',
-      turnstile_token: 'verify-turnstile-token',
-    })
+  it('clears the stored credentials before logging out remotely', async () => {
+    const address = { kind: 'default' as const, code: 'workflow-app' }
+    setWebAppAccessToken('access-token')
+    setWebAppPassport(address, 'passport')
+    webAppClientMock.logout.post.mockResolvedValue({ result: 'success' })
 
-    expect(mocks.post).toHaveBeenCalledWith('/email-code-login/validity', {
-      body: {
-        code: 'encrypted-code',
-        email: 'user@example.com',
-        language: 'en-US',
-        timezone: 'Asia/Singapore',
-        token: 'email-login-token',
-        turnstile_token: 'verify-turnstile-token',
-      },
-    })
-  })
-})
+    await webAppLogout(address)
 
-describe('useLogout', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    window.sessionStorage.clear()
-  })
-
-  it('discards registration delivery state after a successful logout', async () => {
-    const queryClient = new QueryClient()
-    queryClient.setQueryData(['account-profile'], { id: 'previous-user' })
-    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'pending-marker')
-    window.sessionStorage.setItem(OAUTH_REGISTRATION_GA_SENT_KEY, 'true')
-    mocks.post.mockResolvedValueOnce({ result: 'success' })
-    const wrapper = ({ children }: { children: ReactNode }) =>
-      createElement(QueryClientProvider, { client: queryClient }, children)
-    const { result } = renderHook(() => useLogout(), { wrapper })
-
-    await act(async () => {
-      await result.current.mutateAsync()
-    })
-
-    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBeNull()
-    expect(window.sessionStorage.getItem(OAUTH_REGISTRATION_GA_SENT_KEY)).toBeNull()
-    expect(queryClient.getQueryData(['account-profile'])).toBeUndefined()
+    expect(localStorage.getItem(ACCESS_TOKEN_LOCAL_STORAGE_NAME)).toBeNull()
+    expect(getWebAppPassport(address)).toBe('')
+    expect(webAppClientMock.logout.post).toHaveBeenCalledOnce()
   })
 })

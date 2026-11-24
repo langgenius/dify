@@ -2,22 +2,20 @@
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { WorkflowOnlineUser } from '@/models/app'
-import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { uniqBy } from 'es-toolkit'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useId, useMemo } from 'react'
+import { memo, useCallback, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
+import { CollaboratorAvatarStack } from '@/app/components/workflow/collaboration/components/collaborator-avatar'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
-import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
+import { TagSelector } from '@/features/tag-management/tag-selector'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import {
   getAppACLCapabilities,
@@ -25,12 +23,14 @@ import {
   hasPermission,
 } from '@/utils/permission'
 import { formatTime } from '@/utils/time'
+import { StudioListLink } from '../list-navigation'
 import { AppCardInteractions } from './interactions'
 
 const EMPTY_ONLINE_USERS: WorkflowOnlineUser[] = []
 
 type AppCardProps = {
   app: AppPartial
+  onDelete: (item: HTMLLIElement | null) => void
   onlineUsers?: WorkflowOnlineUser[]
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuOpen?: boolean
@@ -42,6 +42,7 @@ type AppCardProps = {
 export const AppCard = memo(
   ({
     app,
+    onDelete,
     onlineUsers = EMPTY_ONLINE_USERS,
     onOpenTagManagement,
     stepByStepTourActionMenuOpen = false,
@@ -49,6 +50,7 @@ export const AppCard = memo(
     stepByStepTourCardHighlightPart,
     stepByStepTourActionMenuHighlightPart,
   }: AppCardProps) => {
+    const itemRef = useRef<HTMLLIElement>(null)
     const { t } = useTranslation(['app', 'common', 'time'])
     const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
     const { data: currentUserId } = useSuspenseQuery({
@@ -87,37 +89,36 @@ export const AppCard = memo(
 
     const appModeLabel = useMemo(() => {
       switch (app.mode) {
-        case AppModeEnum.CHAT:
+        case 'chat':
           return t(($) => $['types.chatbot'], { ns: 'app' })
-        case AppModeEnum.ADVANCED_CHAT:
+        case 'advanced-chat':
           return t(($) => $['types.advanced'], { ns: 'app' })
-        case AppModeEnum.AGENT_CHAT:
+        case 'agent-chat':
           return t(($) => $['types.agent'], { ns: 'app' })
-        case AppModeEnum.COMPLETION:
+        case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
-        case AppModeEnum.WORKFLOW:
-          return t(($) => $['types.workflow'], { ns: 'app' })
+        case 'workflow':
+          return app.workflow_kind === 'evaluation'
+            ? t(($) => $['types.evaluationWorkflow'], { ns: 'app' })
+            : t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode
       }
-    }, [app.mode, t])
+    }, [app.mode, app.workflow_kind, t])
 
     const onlinePresenceUsers = useMemo(() => {
-      return onlineUsers
-        .map((user, index) => {
-          const id = user.user_id || user.sid || `${app.id}-online-${index}`
-          const name = user.username || user.user_id || user.sid || `${index + 1}`
-          return {
-            id,
-            name,
-            avatar_url: user.avatar || null,
-          }
-        })
-        .filter((user) => Boolean(user.id))
+      return uniqBy(
+        onlineUsers.map((user, index) => ({
+          id: user.user_id || user.sid || `${app.id}-online-${index}`,
+          name: user.username || user.user_id || user.sid || `${index + 1}`,
+          avatarUrl: user.avatar || null,
+        })),
+        (user) => user.id,
+      )
     }, [app.id, onlineUsers])
     const appNameId = useId()
     const appDescriptionId = useId()
-    const appIconType = zIconType.safeParse(app.icon_type).data ?? null
+
     const appHref = getRedirectionPath(app, maintainerPermissionOptions)
     const appCardClassName = cn(
       'inline-flex h-full w-full touch-manipulation flex-col rounded-xl outline-hidden',
@@ -128,16 +129,9 @@ export const AppCard = memo(
     }, [t])
     const appCardContent = (
       <>
-        <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
+        <div className="flex shrink-0 items-center gap-3 ps-4 pe-4 pt-4 pb-2">
           <div className="relative shrink-0">
-            <AppIcon
-              size="large"
-              iconType={appIconType}
-              icon={app.icon ?? undefined}
-              background={app.icon_background}
-              imageUrl={app.icon_url}
-              decorative
-            />
+            <AppIcon size="large" icon={app} />
             <AppTypeIcon
               type={app.mode}
               wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
@@ -155,12 +149,11 @@ export const AppCard = memo(
             </div>
           </div>
           {onlinePresenceUsers.length > 0 && (
-            <div className="ml-3 flex shrink-0 items-start">
-              <UserAvatarList
-                users={onlinePresenceUsers}
+            <div className="ms-3 flex shrink-0 items-start">
+              <CollaboratorAvatarStack
+                collaborators={onlinePresenceUsers}
                 size="xxs"
                 maxVisible={3}
-                className="justify-end"
               />
             </div>
           )}
@@ -170,7 +163,7 @@ export const AppCard = memo(
             {app.description}
           </div>
         </div>
-        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden ps-4 pe-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
@@ -186,6 +179,7 @@ export const AppCard = memo(
 
     return (
       <li
+        ref={itemRef}
         className={cn(
           "group relative isolate col-span-1 h-41.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:content-[''] focus-within:bg-components-card-bg-alt focus-within:[--color-tag-selector-mask-bg:var(--color-tag-selector-mask-hover-bg)] has-[>a:focus-visible]:after:inset-ring-2 has-[>a:focus-visible]:after:inset-ring-state-accent-solid has-[>button:focus-visible]:after:inset-ring-2 has-[>button:focus-visible]:after:inset-ring-state-accent-solid motion-reduce:transition-none",
           !isPreviewOnly &&
@@ -199,7 +193,7 @@ export const AppCard = memo(
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={cn(appCardClassName, 'text-left')}
+            className={cn(appCardClassName, 'text-start')}
             onClick={showPreviewOnlyAccessWarning}
           >
             {appCardContent}
@@ -207,10 +201,11 @@ export const AppCard = memo(
         ) : (
           <AppCardInteractions
             app={app}
+            onDelete={() => onDelete(itemRef.current)}
             stepByStepTourActionMenuOpen={stepByStepTourActionMenuOpen}
             stepByStepTourActionMenuHighlightPart={stepByStepTourActionMenuHighlightPart}
           >
-            <Link
+            <StudioListLink
               href={appHref}
               aria-labelledby={appNameId}
               aria-describedby={app.description ? appDescriptionId : undefined}
@@ -219,14 +214,15 @@ export const AppCard = memo(
               className={appCardClassName}
             >
               {appCardContent}
-            </Link>
+            </StudioListLink>
           </AppCardInteractions>
         )}
-        <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
-          <AppCardTags
-            appId={app.id}
-            appName={app.name}
-            tags={app.tags ?? []}
+        <div className="absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
+          <TagSelector
+            type="app"
+            targetId={app.id}
+            contextLabel={app.name}
+            value={app.tags ?? []}
             canBindOrUnbindTags={canBindOrUnbindTags}
             onOpenTagManagement={onOpenTagManagement}
           />

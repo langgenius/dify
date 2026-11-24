@@ -1,39 +1,32 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import DeleteConfirmModal from '../delete-confirm-modal'
 
-const createVersionInfo = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  features: {},
-  hash: 'hash-1',
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  updated_at: 1710000000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  conversation_variables: [],
-  version: '1',
-  marked_name: 'Release 1',
-  marked_comment: '',
-  ...overrides,
-})
+const createVersionInfo = (overrides: Partial<WorkflowResponse> = {}) =>
+  createWorkflowResponseFixture({
+    id: 'version-1',
+    hash: 'hash-1',
+    created_at: 1710000000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    updated_at: 1710000000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    version: '1',
+    marked_name: 'Release 1',
+    ...overrides,
+  })
 
 describe('DeleteConfirmModal', () => {
-  it('renders the version name and triggers delete and close actions', async () => {
+  it('deletes the named version after confirmation', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
     const onDelete = vi.fn()
@@ -49,25 +42,29 @@ describe('DeleteConfirmModal', () => {
 
     expect(screen.getByText('common.operation.delete Release 1')).toBeInTheDocument()
 
-    await user.click(screen.getByText('common.operation.cancel'))
-    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    expect(onClose).toHaveBeenCalled()
     expect(onDelete).toHaveBeenCalledWith('version-1', expect.anything())
   })
 
-  it('renders the default name for a legacy version without a version number', () => {
+  it('cancels deleting a legacy version identified by its default name', async () => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const onDelete = vi.fn()
     render(
       <DeleteConfirmModal
         isOpen
         versionInfo={createVersionInfo({ marked_name: '', version_number: null })}
-        onClose={vi.fn()}
-        onDelete={vi.fn()}
+        onClose={onClose}
+        onDelete={onDelete}
       />,
     )
 
     expect(
       screen.getByText('common.operation.delete workflowHistory.versionHistory.defaultName'),
     ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onClose).toHaveBeenCalled()
+    expect(onDelete).not.toHaveBeenCalled()
   })
 })

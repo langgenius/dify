@@ -1,4 +1,3 @@
-import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -14,7 +13,7 @@ import { PreviewType, ViewMode } from './types'
 
 type DisplayContentProps = {
   previewType: PreviewType
-  varType: VarType
+  varType: string
   schemaType?: string
   mdString?: string
   jsonString?: string
@@ -69,8 +68,7 @@ export function DisplayContent(props: DisplayContentProps) {
     <div
       className={cn(
         'flex h-full flex-col rounded-[10px] bg-components-input-bg-normal',
-        isFocused &&
-          'bg-components-input-bg-active outline-1 outline-components-input-border-active outline-solid',
+        isFocused && 'bg-components-input-bg-active ring-2 ring-state-accent-solid ring-inset',
         className,
       )}
     >
@@ -96,15 +94,15 @@ export function DisplayContent(props: DisplayContentProps) {
             <SegmentedControlItem
               key={value}
               value={value}
-              className="h-5.5 gap-0.75 rounded-md p-px pr-0.5 pl-1.5 text-text-tertiary data-checked:text-text-accent-light-mode-only"
+              className="h-5.5 gap-0.75 rounded-md p-px ps-1.5 pe-0.5 text-text-tertiary"
             >
               <i className={cn('size-4 shrink-0', iconClassName)} aria-hidden="true" />
-              <span className="p-0.5 pr-1">{label}</span>
+              <span className="p-0.5 pe-1">{label}</span>
             </SegmentedControlItem>
           ))}
         </SegmentedControl>
       </div>
-      <div className="flex flex-1 overflow-auto rounded-b-[10px] pr-1 pl-3">
+      <div className="flex flex-1 overflow-auto rounded-b-[10px] ps-3 pe-1">
         {selectedViewMode === ViewMode.Code &&
           (previewType === PreviewType.Markdown ? (
             <Textarea
@@ -113,7 +111,8 @@ export function DisplayContent(props: DisplayContentProps) {
               })}
               readOnly={readonly}
               disabled={readonly}
-              className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:shadow-none"
+              // oxlint-disable-next-line shadcn/no-restyle -- The enclosing editor surface paints the focus ring around the content and view controls.
+              className="h-full border-none bg-transparent p-0 text-text-secondary hover:bg-transparent focus:bg-transparent focus:ring-0"
               value={mdString}
               onValueChange={(value) => handleTextChange?.(value)}
               onFocus={() => setIsFocused(true)}

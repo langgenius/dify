@@ -1,12 +1,9 @@
 'use client'
 
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC, MouseEventHandler } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type {
-  ParentMode,
-  PreProcessingRule,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { ParentMode, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -200,7 +197,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             {rules.map((rule) => (
               <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
                 <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
-                <span className="ml-2 system-sm-regular text-text-secondary">
+                <span className="ms-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </span>
               </label>

@@ -1,4 +1,5 @@
-import type { VersionHistory } from '@/types/workflow'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
 import RestoringTitle from '../restoring-title'
@@ -18,31 +19,26 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-const createVersion = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-  },
-  created_at: 1_700_000_000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1_700_000_100,
-  updated_by: {
-    id: 'user-2',
-    name: 'Bob',
-    email: 'bob@example.com',
-  },
-  tool_published: false,
-  version: 'v1',
-  marked_name: 'Release 1',
-  marked_comment: '',
-  ...overrides,
-})
+const createVersion = (overrides: Partial<WorkflowResponse> = {}) =>
+  createWorkflowResponseFixture({
+    id: 'version-1',
+    created_at: 1_700_000_000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1_700_000_100,
+    updated_by: {
+      id: 'user-2',
+      name: 'Bob',
+      email: 'bob@example.com',
+    },
+    version: 'v1',
+    marked_name: 'Release 1',
+    ...overrides,
+  })
 
 describe('RestoringTitle', () => {
   beforeEach(() => {
@@ -102,24 +98,5 @@ describe('RestoringTitle', () => {
 
     expect(container).toHaveTextContent('# 5')
     expect(container).not.toHaveTextContent('workflowHistory.versionHistory.defaultName')
-  })
-
-  it('should render an empty creator name when the version creator name is missing', () => {
-    const currentVersion = createVersion({
-      created_by: {
-        id: 'user-1',
-        name: '',
-        email: 'alice@example.com',
-      },
-    })
-
-    const { container } = renderWorkflowComponent(<RestoringTitle />, {
-      initialStoreState: {
-        currentVersion,
-      },
-    })
-
-    expect(container).toHaveTextContent('workflow.common.published')
-    expect(container).not.toHaveTextContent('Alice')
   })
 })

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -5,7 +6,7 @@ import pytest
 from libs.file_utils import search_file_upwards
 
 
-def test_search_file_upwards_found_in_parent(tmp_path: Path):
+def test_search_file_upwards_found_in_parent(tmp_path: Path) -> None:
     base = tmp_path / "a" / "b" / "c"
     base.mkdir(parents=True)
 
@@ -16,7 +17,7 @@ def test_search_file_upwards_found_in_parent(tmp_path: Path):
     assert found == target
 
 
-def test_search_file_upwards_found_in_current(tmp_path: Path):
+def test_search_file_upwards_found_in_current(tmp_path: Path) -> None:
     base = tmp_path / "x"
     base.mkdir()
     target = base / "here.txt"
@@ -26,10 +27,15 @@ def test_search_file_upwards_found_in_current(tmp_path: Path):
     assert found == target
 
 
-def test_search_file_upwards_not_found_raises(tmp_path: Path):
+def test_search_file_upwards_not_found_raises(tmp_path: Path) -> None:
     base = tmp_path / "m" / "n"
     base.mkdir(parents=True)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"File 'missing.txt' not found in the directory '{base}' or its parent directories in depth of 3."
+        ),
+    ) as exc:
         search_file_upwards(base, "missing.txt", max_search_parent_depth=3)
     # error message should contain file name and base path
     msg = str(exc.value)
@@ -37,13 +43,19 @@ def test_search_file_upwards_not_found_raises(tmp_path: Path):
     assert str(base) in msg
 
 
-def test_search_file_upwards_root_breaks_and_raises():
+def test_search_file_upwards_root_breaks_and_raises() -> None:
     # Using filesystem root triggers the 'break' branch (parent == current)
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "File '__definitely_not_exists__\\.txt' not found in the directory '/' "
+            "or its parent directories in depth of 1\\."
+        ),
+    ):
         search_file_upwards(Path("/"), "__definitely_not_exists__.txt", max_search_parent_depth=1)
 
 
-def test_search_file_upwards_depth_limit_raises(tmp_path: Path):
+def test_search_file_upwards_depth_limit_raises(tmp_path: Path) -> None:
     base = tmp_path / "a" / "b" / "c"
     base.mkdir(parents=True)
     target = tmp_path / "a" / "target.txt"
@@ -51,5 +63,10 @@ def test_search_file_upwards_depth_limit_raises(tmp_path: Path):
     # The file is 2 levels up from `c` (in `a`), but search depth is only 2.
     # The search path is `c` (depth 1) -> `b` (depth 2). The file is in `a` (would need depth 3).
     # So, this should not find the file and should raise an error.
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"File 'target.txt' not found in the directory '{base}' or its parent directories in depth of 2."
+        ),
+    ):
         search_file_upwards(base, "target.txt", max_search_parent_depth=2)

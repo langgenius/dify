@@ -57,7 +57,9 @@ export class KnowledgeBaseClient extends DifyClient {
   async listDatasets(options?: DatasetListOptions): Promise<DifyResponse<KnowledgeBaseResponse>> {
     ensureOptionalInt(options?.page, 'page')
     ensureOptionalInt(options?.limit, 'limit')
-    ensureOptionalString(options?.keyword, 'keyword')
+    if (options?.keyword !== '') {
+      ensureOptionalString(options?.keyword, 'keyword')
+    }
     ensureOptionalBoolean(options?.includeAll, 'includeAll')
 
     const query: QueryParams = {
@@ -207,11 +209,12 @@ export class KnowledgeBaseClient extends DifyClient {
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
     ensureNonEmptyString(datasetId, 'datasetId')
     ensureNonEmptyString(request.name, 'name')
-    ensureNonEmptyString(request.text, 'text')
+    ensureNonEmptyString(request.text, 'text', Infinity)
     return this.http.request({
       method: 'POST',
       path: `/datasets/${datasetId}/document/create_by_text`,
       data: request,
+      unboundedBodyStringFields: ['text'],
     })
   }
 
@@ -229,6 +232,7 @@ export class KnowledgeBaseClient extends DifyClient {
       method: 'POST',
       path: `/datasets/${datasetId}/documents/${documentId}/update_by_text`,
       data: request,
+      unboundedBodyStringFields: ['text'],
     })
   }
 
@@ -267,7 +271,9 @@ export class KnowledgeBaseClient extends DifyClient {
     ensureNonEmptyString(datasetId, 'datasetId')
     ensureOptionalInt(options?.page, 'page')
     ensureOptionalInt(options?.limit, 'limit')
-    ensureOptionalString(options?.keyword, 'keyword')
+    if (options?.keyword !== '') {
+      ensureOptionalString(options?.keyword, 'keyword')
+    }
     ensureOptionalString(options?.status, 'status')
 
     return this.http.request({
@@ -352,7 +358,9 @@ export class KnowledgeBaseClient extends DifyClient {
     ensureNonEmptyString(documentId, 'documentId')
     ensureOptionalInt(options?.page, 'page')
     ensureOptionalInt(options?.limit, 'limit')
-    ensureOptionalString(options?.keyword, 'keyword')
+    if (options?.keyword !== '') {
+      ensureOptionalString(options?.keyword, 'keyword')
+    }
     if (options?.status && options.status.length > 0) {
       ensureStringArray(options.status, 'status')
     }
@@ -445,7 +453,9 @@ export class KnowledgeBaseClient extends DifyClient {
     ensureNonEmptyString(segmentId, 'segmentId')
     ensureOptionalInt(options?.page, 'page')
     ensureOptionalInt(options?.limit, 'limit')
-    ensureOptionalString(options?.keyword, 'keyword')
+    if (options?.keyword !== '') {
+      ensureOptionalString(options?.keyword, 'keyword')
+    }
 
     return this.http.request({
       method: 'GET',
@@ -580,11 +590,12 @@ export class KnowledgeBaseClient extends DifyClient {
     request: HitTestingRequest,
   ): Promise<DifyResponse<KnowledgeBaseResponse>> {
     ensureNonEmptyString(datasetId, 'datasetId')
-    if (request.query !== undefined && request.query !== null) {
-      ensureOptionalString(request.query, 'query')
-    }
-    if (request.attachment_ids && request.attachment_ids.length > 0) {
+    const hasAttachments = Boolean(request.attachment_ids?.length)
+    if (hasAttachments) {
       ensureStringArray(request.attachment_ids, 'attachment_ids')
+    }
+    if (request.query !== '' || !hasAttachments) {
+      ensureOptionalString(request.query, 'query')
     }
     return this.http.request({
       method: 'POST',

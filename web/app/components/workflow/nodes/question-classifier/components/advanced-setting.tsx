@@ -53,7 +53,7 @@ const AdvancedSetting: FC<Props> = ({
               {t(($) => $[`${i18nPrefix}.instruction`], { ns: 'workflowModels' })}
             </span>
             <Infotip>
-              <InfotipTrigger aria-labelledby={instructionLabelId} className="ml-0.5 size-3.5" />
+              <InfotipTrigger aria-labelledby={instructionLabelId} className="ms-0.5" />
               <InfotipContent aria-labelledby={instructionLabelId} className="w-30">
                 {t(($) => $[`${i18nPrefix}.instructionTip`], { ns: 'workflowModels' })}
               </InfotipContent>
@@ -73,7 +73,7 @@ const AdvancedSetting: FC<Props> = ({
       {!hideMemorySetting && (
         <MemoryConfig
           className="mt-4"
-          readonly={false}
+          readonly={!!readonly}
           config={{ data: memory }}
           onChange={onMemoryChange}
           canSetRoleName={false}

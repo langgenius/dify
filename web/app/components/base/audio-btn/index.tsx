@@ -56,12 +56,12 @@ export function AudioBtn({ id, voice, value, className, isAudition }: AudioBtnPr
   }
   const handleToggle = () => {
     if (audioState === 'playing' || audioState === 'loading') {
-      setTimeout(() => setAudioState('paused'), 1)
+      setAudioState('paused')
       AudioPlayerManager.getInstance()
         .getAudioPlayer(url, isPublic, id, value, voice, handleAudioEvent)
         .pauseAudio()
     } else {
-      setTimeout(() => setAudioState('loading'), 1)
+      setAudioState('loading')
       AudioPlayerManager.getInstance()
         .getAudioPlayer(url, isPublic, id, value, voice, handleAudioEvent)
         .playAudio()
@@ -80,7 +80,7 @@ export function AudioBtn({ id, voice, value, className, isAudition }: AudioBtnPr
     <div
       className={cn(
         'inline-flex items-center justify-center',
-        audioState === 'loading' || audioState === 'playing' ? 'mr-1' : className,
+        audioState === 'loading' || audioState === 'playing' ? 'me-1' : className,
       )}
     >
       <Tooltip>

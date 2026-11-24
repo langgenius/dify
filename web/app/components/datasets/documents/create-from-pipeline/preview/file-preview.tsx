@@ -1,10 +1,11 @@
 'use client'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFilePreview } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
 import DocumentFileIcon from '../../../common/document-file-icon'
 import Loading from './loading'
@@ -16,7 +17,11 @@ type FilePreviewProps = {
 
 const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
   const { t } = useTranslation(['datasetPipeline'])
-  const { data: fileData, isFetching } = useFilePreview(file.id || '')
+  const { data: fileData, isFetching } = useQuery(
+    consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: file.id ? { params: { file_id: file.id } } : skipToken,
+    }),
+  )
 
   const fileName = useMemo(() => {
     if (!file) return ''
@@ -25,8 +30,8 @@ const FilePreview = ({ file, hidePreview }: FilePreviewProps) => {
   }, [file])
 
   return (
-    <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
-      <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
+    <div className="flex size-full flex-col rounded-t-xl border-s border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
+      <div className="flex gap-x-2 border-b border-divider-subtle ps-6 pe-4 pt-4 pb-3">
         <div className="flex grow flex-col gap-y-1">
           <div className="system-2xs-semibold-uppercase text-text-accent">
             {t(($) => $['addDocuments.stepOne.preview'], { ns: 'datasetPipeline' })}

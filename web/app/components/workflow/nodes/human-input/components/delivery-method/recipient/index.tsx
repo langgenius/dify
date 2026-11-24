@@ -2,14 +2,14 @@ import type { RecipientData, Recipient as RecipientItem } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 
@@ -28,7 +28,9 @@ const Recipient = ({ data, onChange }: Props) => {
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { data: members } = useMembers()
+  const { data: members } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const accounts = members?.accounts || []
 
   const handleMemberSelect = (id: string) => {
@@ -67,7 +69,7 @@ const Recipient = ({ data, onChange }: Props) => {
   return (
     <div className="space-y-1">
       <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs">
-        <div className="flex h-10 items-center justify-between pr-1 pl-3">
+        <div className="flex h-10 items-center justify-between ps-3 pe-1">
           <div className="flex grow items-center gap-2">
             <RiGroupLine className="size-4 text-text-secondary" />
             <div className="system-sm-medium text-text-secondary">
@@ -94,7 +96,7 @@ const Recipient = ({ data, onChange }: Props) => {
           onAdd={handleEmailAdd}
         />
       </div>
-      <div className="flex h-10 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs">
+      <div className="flex h-10 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg ps-2.5 pe-3 shadow-xs">
         <div className="flex h-5 w-5 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[14px]">
           <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
             {currentWorkspace?.name[0]?.toLocaleUpperCase()}
@@ -102,7 +104,7 @@ const Recipient = ({ data, onChange }: Props) => {
         </div>
         <label
           htmlFor={wholeWorkspaceId}
-          className={cn('grow system-sm-medium text-text-secondary')}
+          className={cn('grow cursor-pointer system-sm-medium text-text-secondary')}
         >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),

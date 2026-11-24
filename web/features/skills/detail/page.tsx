@@ -1,13 +1,14 @@
 'use client'
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { SkillFileMutationCoordinator } from './shared'
+import type { SkillDraftMutationCoordinator } from './mutations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -17,21 +18,17 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useSkillPermissions } from '../permissions'
-import { SkillBuilderPanel } from './builder-panel'
-import { FileEditor } from './file-editor'
-import { FileTree } from './file-tree'
-import {
-  deriveSkillDetailFromDraftFiles,
-  findFileByPath,
-  getFirstTextFile,
-  getSkillVersionTitle,
-  isDirectory,
-  setSkillDetailCache,
-  showSkillErrorToast,
-} from './shared'
-import { DetailSkeleton } from './shell'
-import { RestoreVersionDialog, VersionPanel } from './version-panel'
+import { SkillBuilderPanel } from './builder/panel'
+import { setSkillDetailCache } from './cache'
+import { deriveSkillDetailFromDraftFiles } from './draft'
+import { SkillFileEditor } from './files/editor'
+import { isDirectory } from './files/file-format'
+import { SkillFileTree } from './files/tree'
+import { findFileByPath, getFirstTextFile } from './files/tree-model'
+import { SkillDetailSkeleton } from './skeleton'
+import { SkillVersionPanel } from './versions/panel'
 
 export function SkillDetailPage({ skillId }: { skillId: string }) {
   const { t } = useTranslation(['skill'])
@@ -43,7 +40,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const [rightPanelMode, setRightPanelMode] = useState<'builder' | 'hidden' | 'versions'>('builder')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>()
-  const [restoreVersionConfirmOpen, setRestoreVersionConfirmOpen] = useState(false)
   const [draftDetailOverride, setDraftDetailOverride] = useState<SkillDetailResponse>()
   const [hasLocalUnpublishedChanges, setHasLocalUnpublishedChanges] = useState(false)
   const [saveConflictConfirm, setSaveConflictConfirm] = useState<
@@ -55,7 +51,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     publishedAt: number
     versionNumber: number
   } | null>(null)
-  const fileMutationCoordinator = useMemo<SkillFileMutationCoordinator>(
+  const draftMutationCoordinator = useMemo<SkillDraftMutationCoordinator>(
     () => ({
       latestDetail: undefined,
       queue: Promise.resolve(),
@@ -72,14 +68,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       },
     },
   )
-  const skillDetailQueryKey = consoleQuery.workspaces.current.skills.bySkillId.get.key({
-    type: 'query',
-    input: {
-      params: {
-        skill_id: skillId,
-      },
-    },
-  })
   const detailQuery = useQuery(skillDetailQueryOptions)
   const versionsQuery = useQuery(
     consoleQuery.workspaces.current.skills.bySkillId.versions.get.queryOptions({
@@ -112,9 +100,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
       context: { silent: true },
     }),
   )
-  const restoreMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions(),
-  )
   const queriedDetail = detailQuery.data
   const baseDetail = draftDetailOverride ?? queriedDetail
   const detail = useMemo<SkillDetailResponse | undefined>(() => {
@@ -129,10 +114,10 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   }, [baseDetail, publishedOverride])
   if (
     detail &&
-    (!fileMutationCoordinator.latestDetail ||
-      detail.updated_at > fileMutationCoordinator.latestDetail.updated_at)
+    (!draftMutationCoordinator.latestDetail ||
+      detail.updated_at > draftMutationCoordinator.latestDetail.updated_at)
   )
-    fileMutationCoordinator.latestDetail = detail
+    draftMutationCoordinator.latestDetail = detail
   const draftFiles = detail?.files ?? []
   const readonlyFiles = versionDetailQuery.data?.files ?? []
   const activeFiles = activeVersionId ? readonlyFiles : draftFiles
@@ -269,59 +254,17 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           })
         },
         onError: (error) => {
-          showSkillErrorToast(
-            error,
-            t(($) => $['skillManagement.detail.publishFailed']),
-          )
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.detail.publishFailed']))
         },
       },
     )
   }
-  const restoreSelectedVersion = async () => {
-    if (!selectedVersion || restoreMutation.isPending) return
-
-    try {
-      await restoreMutation.mutateAsync({
-        params: {
-          skill_id: skillId,
-        },
-        body: {
-          version_id: selectedVersion.id,
-          version_name: selectedVersion.version_name,
-        },
-      })
-      await queryClient.invalidateQueries({ queryKey: skillDetailQueryKey })
-      await queryClient.refetchQueries({ queryKey: skillDetailQueryKey, type: 'active' })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
-          type: 'query',
-          input: {
-            params: {
-              skill_id: skillId,
-            },
-          },
-        }),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-      })
-      toast.success(t(($) => $['skillManagement.detail.restoreVersionSuccess']))
-      setSelectedVersionId(null)
-      setRightPanelMode('builder')
-      setSelectedPath(undefined)
-      setOpenFilePaths([])
-      setPreviewFilePath(undefined)
-    } catch {
-      toast.error(t(($) => $['skillManagement.detail.restoreVersionFailed']))
-    }
-  }
-
-  const handleRestoreSelectedVersion = () => {
-    if (!selectedVersion || restoreMutation.isPending) return
-    setRestoreVersionConfirmOpen(true)
+  const handleVersionRestored = () => {
+    setSelectedVersionId(null)
+    setRightPanelMode('builder')
+    setSelectedPath(undefined)
+    setOpenFilePaths([])
+    setPreviewFilePath(undefined)
   }
 
   const handleExitVersion = () => {
@@ -340,7 +283,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     setPreviewFilePath(undefined)
   }
 
-  if (detailQuery.isPending) return <DetailSkeleton />
+  if (detailQuery.isPending) return <SkillDetailSkeleton />
 
   if (detailQuery.isError || !detail) {
     return (
@@ -364,12 +307,12 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   return (
     <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
       <div className="flex min-h-0 min-w-0 flex-1">
-        <FileTree
+        <SkillFileTree
           canDelete={canDelete}
           canEdit={canEdit}
           collapsed={sidebarCollapsed}
           detail={detail}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           files={activeFiles}
           onCollapsedChange={setSidebarCollapsed}
           onSelect={handleOpenFile}
@@ -377,12 +320,12 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           selectedPath={activeSelectedPath}
           skillId={skillId}
         />
-        <FileEditor
+        <SkillFileEditor
           canPublish={canPublish}
           key={`${activeVersionId ?? 'draft'}:${activeSelectedPath ?? 'empty'}`}
           detail={detail}
           file={selectedFile}
-          fileMutationCoordinator={fileMutationCoordinator}
+          draftMutationCoordinator={draftMutationCoordinator}
           hasLocalUnpublishedChanges={hasLocalUnpublishedChanges}
           onCloseFile={handleCloseFile}
           onDraftDetailChange={handleDraftDetailChange}
@@ -396,12 +339,12 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           }
           onOpenVersions={handleOpenVersions}
           onPublish={handlePublish}
-          onRestoreVersion={handleRestoreSelectedVersion}
+          onVersionRestored={handleVersionRestored}
           onExitVersion={handleExitVersion}
           onSelectFile={handleOpenFile}
           openFiles={openFiles}
           previewFilePath={previewFilePath}
-          publishing={activeVersionId ? restoreMutation.isPending : publishMutation.isPending}
+          publishing={publishMutation.isPending}
           readonly={!!activeVersionId || !canEdit}
           selectedPath={activeSelectedPath}
           selectedVersion={selectedVersion}
@@ -409,14 +352,16 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           skillId={skillId}
         />
         <AlertDialog open={!!saveConflictConfirm}>
-          <AlertDialogContent className="p-6">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="mt-2 system-md-regular text-text-tertiary">
-              {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
-            </AlertDialogDescription>
-            <AlertDialogActions className="p-0 pt-6">
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t(($) => $['skillManagement.detail.saveConflictConfirmTitle'])}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t(($) => $['skillManagement.detail.saveConflictConfirmDescription'])}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
               <AlertDialogConfirmButton
                 loading={saveConflictReloading}
                 tone="default"
@@ -434,7 +379,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               >
                 {t(($) => $['skillManagement.detail.saveConflictReload'])}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {canEdit && rightPanelMode === 'builder' && (
@@ -447,7 +392,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
           />
         )}
         {rightPanelMode === 'versions' && (
-          <VersionPanel
+          <SkillVersionPanel
             skillId={skillId}
             versions={versions}
             selectedVersionId={activeVersionId}
@@ -456,17 +401,6 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
               setSelectedVersionId(versionId)
               setSelectedPath(undefined)
               setOpenFilePaths([])
-            }}
-          />
-        )}
-        {selectedVersion && (
-          <RestoreVersionDialog
-            open={restoreVersionConfirmOpen}
-            loading={restoreMutation.isPending}
-            versionTitle={getSkillVersionTitle(selectedVersion)}
-            onOpenChange={setRestoreVersionConfirmOpen}
-            onConfirm={() => {
-              void restoreSelectedVersion()
             }}
           />
         )}

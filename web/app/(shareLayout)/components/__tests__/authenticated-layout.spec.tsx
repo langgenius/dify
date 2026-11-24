@@ -2,7 +2,8 @@ import type { AppData, AppMeta } from '@/models/share'
 import type { WebAppAddress } from '@/service/webapp-address'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { webAppLogout } from '@/service/webapp-auth'
+import { useWebAppStore } from '@/context/web-app-context'
+import { webAppLogout } from '@/service/common'
 import AuthenticatedLayout from '../authenticated-layout'
 
 type QueryState<TData> = {
@@ -16,20 +17,8 @@ type UserCanAccessApp = {
   result: boolean
 }
 
-const updateAppInfo = vi.fn()
-const updateAppParams = vi.fn()
-const updateWebAppMeta = vi.fn()
-const updateUserCanAccessApp = vi.fn()
 const replace = vi.fn()
 const webAppAddress: WebAppAddress = { kind: 'default', code: 'share-code' }
-
-const mockWebAppState = {
-  shareCode: 'share-code',
-  updateAppInfo,
-  updateAppParams,
-  updateWebAppMeta,
-  updateUserCanAccessApp,
-}
 
 const appInfoQueryState: QueryState<AppData> = {
   data: {
@@ -71,11 +60,6 @@ const userCanAccessAppQueryState: QueryState<UserCanAccessApp> = {
   isFetching: false,
 }
 
-vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
-    selector(mockWebAppState),
-}))
-
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/workflow/share-code',
   useRouter: () => ({
@@ -84,17 +68,28 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-vi.mock('@/service/use-share', () => ({
-  useGetWebAppInfo: () => appInfoQueryState,
-  useGetWebAppParams: () => appParamsQueryState,
-  useGetWebAppMeta: () => appMetaQueryState,
+const webAppQueryStates: Record<string, QueryState<unknown>> = {
+  appInfo: appInfoQueryState,
+  appParams: appParamsQueryState,
+  appMeta: appMetaQueryState,
+}
+
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: (options: { queryKey: readonly string[] }) => webAppQueryStates[options.queryKey[0]!],
+}))
+
+vi.mock('@/service/share-queries', () => ({
+  webAppInfoQueryOptions: () => ({ queryKey: ['appInfo'] }),
+  webAppParamsQueryOptions: () => ({ queryKey: ['appParams'] }),
+  webAppMetaQueryOptions: () => ({ queryKey: ['appMeta'] }),
 }))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => userCanAccessAppQueryState,
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/common', () => ({
   webAppLogout: vi.fn(),
 }))
 
@@ -136,28 +131,35 @@ const resetQueryStates = () => {
   userCanAccessAppQueryState.isFetching = false
 }
 
-const renderLayout = () =>
-  render(
-    <AuthenticatedLayout>
-      <div>Workflow form content</div>
-    </AuthenticatedLayout>,
-  )
+const layout = (
+  <AuthenticatedLayout>
+    <input aria-label="Workflow draft" defaultValue="" />
+  </AuthenticatedLayout>
+)
+const renderLayout = () => render(layout)
 
 describe('AuthenticatedLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     resetQueryStates()
+    useWebAppStore.setState({ shareCode: 'share-code' })
   })
 
   describe('Loading State', () => {
-    it('should keep children mounted when existing app config is background refetching', () => {
+    it('should keep children mounted when existing app config is background refetching', async () => {
+      const user = userEvent.setup()
+      const { rerender } = renderLayout()
+      await user.type(screen.getByRole('textbox', { name: 'Workflow draft' }), 'Unsaved draft')
       appInfoQueryState.isFetching = true
       appParamsQueryState.isFetching = true
       appMetaQueryState.isFetching = true
 
-      renderLayout()
-
-      expect(screen.getByText('Workflow form content')).toBeInTheDocument()
+      rerender(
+        <AuthenticatedLayout>
+          <input aria-label="Workflow draft" defaultValue="" />
+        </AuthenticatedLayout>,
+      )
+      expect(screen.getByRole('textbox', { name: 'Workflow draft' })).toHaveValue('Unsaved draft')
     })
 
     it('should hide children while initial app config is loading', () => {
@@ -167,7 +169,7 @@ describe('AuthenticatedLayout', () => {
 
       renderLayout()
 
-      expect(screen.queryByText('Workflow form content')).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: 'Workflow draft' })).not.toBeInTheDocument()
     })
   })
 

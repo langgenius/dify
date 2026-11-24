@@ -1,18 +1,21 @@
 import {
   AlertDialog,
-  AlertDialogActions,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useDeleteTriggerSubscription } from '@/service/use-triggers'
+import { deleteTriggerSubscriptionMutationOptions } from '@/service/trigger-queries'
 import { useSubscriptionList } from './use-subscription-list'
 
 type Props = Readonly<{
@@ -28,7 +31,11 @@ const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
-  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription()
+  const { mutate: deleteSubscription, isPending: isDeleting } = useMutation(
+    deleteTriggerSubscriptionMutationOptions({
+      silent: true,
+    }),
+  )
   const { t } = useTranslation(['common', 'pluginTrigger'])
   const [inputName, setInputName] = useState('')
 
@@ -47,7 +54,6 @@ export const DeleteConfirm = (props: Props) => {
     }
     deleteSubscription(currentId, {
       onSuccess: () => {
-        toast.success(t(($) => $[`${tPrefix}.success`], { ns: 'pluginTrigger', name: currentName }))
         refetch?.()
         onClose(true)
       },
@@ -65,16 +71,17 @@ export const DeleteConfirm = (props: Props) => {
     <AlertDialog open={isShow} onOpenChange={handleOpenChange}>
       <AlertDialogContent backdropProps={{ forceRender: true }}>
         <form
+          className="contents"
           onSubmit={(event) => {
             event.preventDefault()
             onConfirm()
           }}
         >
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $[`${tPrefix}.title`], { ns: 'pluginTrigger', name: currentName })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {workflowsInUse > 0
                 ? t(($) => $[`${tPrefix}.contentWithApps`], {
                     ns: 'pluginTrigger',
@@ -82,8 +89,10 @@ export const DeleteConfirm = (props: Props) => {
                   })
                 : t(($) => $[`${tPrefix}.content`], { ns: 'pluginTrigger' })}
             </AlertDialogDescription>
-            {workflowsInUse > 0 && (
-              <Field className="mt-6" name="confirmation">
+          </AlertDialogHeader>
+          {workflowsInUse > 0 && (
+            <AlertDialogBody>
+              <Field name="confirmation">
                 <FieldLabel>
                   {t(($) => $[`${tPrefix}.confirmInputTip`], {
                     ns: 'pluginTrigger',
@@ -99,16 +108,16 @@ export const DeleteConfirm = (props: Props) => {
                   })}
                 />
               </Field>
-            )}
-          </div>
-          <AlertDialogActions>
+            </AlertDialogBody>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton type="submit" loading={isDeleting}>
               {t(($) => $[`${tPrefix}.confirm`], { ns: 'pluginTrigger' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </form>
       </AlertDialogContent>
     </AlertDialog>

@@ -1,31 +1,36 @@
 'use client'
 
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
-import type { VersionHistory } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VersionInfoModal from '@/app/components/app/app-publisher/version-info-modal'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { useDeleteWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
 import {
-  useDeleteWorkflow,
-  useInvalidAllLastRun,
-  useInvalidateAppWorkflow,
-  useResetWorkflowVersionHistory,
-  useRestoreWorkflow,
-  useUpdateWorkflow,
-  useWorkflowVersionHistory,
-} from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
+  appWorkflowQueryOptions,
+  lastRunQueryKey,
+  restoreWorkflowMutationOptions,
+  workflowVersionHistoryInfiniteOptions,
+  workflowVersionHistoryKey,
+} from '@/service/workflow-queries'
+import { getErrorMessage } from '@/utils/error-message'
 import { useHooksStore } from '../../hooks-store'
 import { useDSL } from '../../hooks/use-DSL'
 import { useWorkflowRefreshDraft } from '../../hooks/use-workflow-refresh-draft'
@@ -44,30 +49,17 @@ import RestoreConfirmModal from './restore-confirm-modal'
 import VersionHistoryItem from './version-history-item'
 
 const HISTORY_PER_PAGE = 10
-const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
-  appMode?: AppMode
-  getVersionListUrl?: string
-  deleteVersionUrl?: (versionId: string) => string
-  restoreVersionUrl: (versionId: string) => string
-  updateVersionUrl?: (versionId: string) => string
   latestVersionId?: string
 }
 
-export const VersionHistoryPanel = ({
-  appMode,
-  getVersionListUrl,
-  deleteVersionUrl,
-  restoreVersionUrl,
-  updateVersionUrl,
-  latestVersionId,
-}: VersionHistoryPanelProps) => {
+export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProps) => {
   const [filterValue, setFilterValue] = useState<WorkflowVersionFilterOptions>(
     WorkflowVersionFilterOptions.all,
   )
   const [isOnlyShowNamedVersions, setIsOnlyShowNamedVersions] = useState(false)
-  const [operatedItem, setOperatedItem] = useState<VersionHistory>()
+  const [operatedItem, setOperatedItem] = useState<WorkflowVersionListItem>()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
@@ -91,10 +83,18 @@ export const VersionHistoryPanel = ({
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
-  const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
+  const invalidateAppWorkflow = useCallback(
+    (appId: string) =>
+      queryClient.invalidateQueries({ queryKey: appWorkflowQueryOptions(appId).queryKey }),
+    [queryClient],
+  )
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
 
@@ -103,28 +103,36 @@ export const VersionHistoryPanel = ({
     fetchNextPage,
     hasNextPage,
     isFetching,
-  } = useWorkflowVersionHistory({
-    url: getVersionListUrl || '',
-    initialPage: INITIAL_PAGE,
-    limit: HISTORY_PER_PAGE,
-    userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
-    namedOnly: isOnlyShowNamedVersions,
-  })
+  } = useInfiniteQuery(
+    workflowVersionHistoryInfiniteOptions(resource, {
+      limit: HISTORY_PER_PAGE,
+      userId: filterValue === WorkflowVersionFilterOptions.onlyYours ? userProfile.id : '',
+      namedOnly: isOnlyShowNamedVersions,
+    }),
+  )
+
+  // Showing the draft inside the history session loads the backup but keeps it, so the draft can be
+  // shown again after previewing or deleting another version. Leaving history clears it.
+  const showBackupDraft = useCallback(() => {
+    const { backupDraft } = workflowStore.getState()
+    handleLoadBackupDraft()
+    if (backupDraft) workflowStore.setState({ backupDraft })
+  }, [workflowStore, handleLoadBackupDraft])
+
+  // The draft is selected when the panel opens. Remember it for the session, since the list
+  // filters (named versions only, only yours) can leave it out of the list later.
+  const draftVersionRef = useRef<WorkflowVersionListItem | null>(null)
 
   const handleVersionClick = useCallback(
-    (item: VersionHistory) => {
+    (item: WorkflowVersionListItem) => {
+      if (item.version === WorkflowVersion.Draft) draftVersionRef.current = item
       if (item.id !== currentVersion?.id) {
         setCurrentVersion(item)
-        if (item.version === WorkflowVersion.Draft) handleLoadBackupDraft()
+        if (item.version === WorkflowVersion.Draft) showBackupDraft()
         else handleRestoreFromPublishedWorkflow(item)
       }
     },
-    [
-      currentVersion?.id,
-      setCurrentVersion,
-      handleLoadBackupDraft,
-      handleRestoreFromPublishedWorkflow,
-    ],
+    [currentVersion?.id, setCurrentVersion, showBackupDraft, handleRestoreFromPublishedWorkflow],
   )
 
   const handleNextPage = () => {
@@ -151,7 +159,7 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const handleClickActionMenuItem = useCallback(
-    (item: VersionHistory, operation: VersionHistoryContextMenuOptions) => {
+    (item: WorkflowVersionListItem, operation: VersionHistoryContextMenuOptions) => {
       if (operation === VersionHistoryContextMenuOptions.delete && item.environments?.length) {
         toast.error(
           t(($) => $['versionHistory.action.deleteDeployedVersionError'], {
@@ -212,7 +220,7 @@ export const VersionHistoryPanel = ({
   }, [])
 
   const emitRestoreIntent = useCallback(
-    async (item: VersionHistory) => {
+    async (item: WorkflowVersionListItem) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -233,7 +241,7 @@ export const VersionHistoryPanel = ({
   )
 
   const emitRestoreComplete = useCallback(
-    async (item: VersionHistory, success: boolean, errorMessage?: string) => {
+    async (item: WorkflowVersionListItem, success: boolean, errorMessage?: string) => {
       try {
         const { collaborationManager } =
           await import('../../collaboration/core/collaboration-manager')
@@ -251,8 +259,8 @@ export const VersionHistoryPanel = ({
 
   const emitWorkflowUpdate = useCallback(async () => {
     try {
-      const appId = configsMap?.flowId
-      if (!appId) return
+      if (resource.kind !== 'app') return
+      const { appId } = resource
 
       const { collaborationManager } =
         await import('../../collaboration/core/collaboration-manager')
@@ -260,18 +268,21 @@ export const VersionHistoryPanel = ({
     } catch (error) {
       console.error('Failed to emit workflow update:', error)
     }
-  }, [configsMap?.flowId])
+  }, [resource])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
+  const resetWorkflowVersionHistory = useCallback(
+    () => queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) }),
+    [queryClient, resource],
+  )
+  const { mutateAsync: restoreWorkflow } = useMutation(restoreWorkflowMutationOptions(resource))
 
   const handleRestore = useCallback(
-    async (item: VersionHistory) => {
+    async (item: WorkflowVersionListItem) => {
       setShowWorkflowVersionHistoryPanel(false)
       await emitRestoreIntent(item)
 
       try {
-        await restoreWorkflow(restoreVersionUrl(item.id))
+        await restoreWorkflow(item.id)
         setCurrentVersion(item)
         workflowStore.setState({ isRestoring: false })
         workflowStore.setState({ backupDraft: undefined })
@@ -283,8 +294,11 @@ export const VersionHistoryPanel = ({
         invalidAllLastRun()
         await emitRestoreComplete(item, true)
         await emitWorkflowUpdate()
-      } catch {
-        toast.error(t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }))
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['versionHistory.action.restoreFailure'], { ns: 'workflowHistory' }),
+        )
         await emitRestoreComplete(item, false, 'restore failed')
       } finally {
         resetWorkflowVersionHistory()
@@ -294,7 +308,6 @@ export const VersionHistoryPanel = ({
       setShowWorkflowVersionHistoryPanel,
       emitRestoreIntent,
       restoreWorkflow,
-      restoreVersionUrl,
       setCurrentVersion,
       workflowStore,
       handleRefreshWorkflowDraft,
@@ -307,89 +320,56 @@ export const VersionHistoryPanel = ({
     ],
   )
 
-  const { mutateAsync: deleteWorkflow } = useDeleteWorkflow()
+  const deleteWorkflow = useDeleteWorkflow(resource, { silent: true })
 
   const handleDelete = useCallback(
     async (id: string) => {
-      await deleteWorkflow(deleteVersionUrl?.(id) || '', {
-        onSuccess: () => {
-          setDeleteConfirmOpen(false)
-          toast.success(
-            t(($) => $['versionHistory.action.deleteSuccess'], { ns: 'workflowHistory' }),
-          )
-          resetWorkflowVersionHistory()
-          deleteAllInspectVars()
-          invalidAllLastRun()
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }))
-        },
-        onSettled: () => {
-          setDeleteConfirmOpen(false)
-        },
-      })
+      try {
+        // The generated delete mutation resets the version list.
+        await deleteWorkflow(id)
+        // A deleted version can no longer be previewed or restored: go back to the draft. Read the
+        // selection now, since it can change while the delete request is in flight.
+        if (workflowStore.getState().currentVersion?.id === id) {
+          workflowStore.setState({ currentVersion: draftVersionRef.current })
+          showBackupDraft()
+        }
+        deleteAllInspectVars()
+        invalidAllLastRun()
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['versionHistory.action.deleteFailure'], { ns: 'workflowHistory' }),
+        )
+      } finally {
+        setDeleteConfirmOpen(false)
+      }
     },
-    [
-      deleteWorkflow,
-      t,
-      resetWorkflowVersionHistory,
-      deleteAllInspectVars,
-      invalidAllLastRun,
-      deleteVersionUrl,
-    ],
+    [deleteWorkflow, t, deleteAllInspectVars, invalidAllLastRun, workflowStore, showBackupDraft],
   )
 
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
 
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {
       const { id, ...rest } = params
-      await updateWorkflow(
-        {
-          ...(configsMap?.flowType === FlowType.appFlow && configsMap.flowId
-            ? { appId: configsMap.flowId, appMode }
-            : {}),
-          url: updateVersionUrl?.(id || '') || '',
-          ...rest,
-        },
-        {
-          onSuccess: () => {
-            setEditModalOpen(false)
-            toast.success(
-              t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
-            )
-            if (
-              id === latestVersionId &&
-              configsMap?.flowType === FlowType.appFlow &&
-              configsMap.flowId
-            )
-              invalidateAppWorkflow(configsMap.flowId)
-          },
-          onError: () => {
-            toast.error(
-              t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
-            )
-          },
-          onSettled: () => {
-            setEditModalOpen(false)
-          },
-        },
-      )
+      if (!id) return
+      try {
+        await updateWorkflow({ resource, versionId: id, ...rest })
+        if (id === latestVersionId && resource.kind === 'app') invalidateAppWorkflow(resource.appId)
+      } catch (error) {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+        )
+      } finally {
+        setEditModalOpen(false)
+      }
     },
-    [
-      appMode,
-      configsMap?.flowId,
-      configsMap?.flowType,
-      invalidateAppWorkflow,
-      latestVersionId,
-      t,
-      updateWorkflow,
-      updateVersionUrl,
-    ],
+    [resource, invalidateAppWorkflow, latestVersionId, t, updateWorkflow],
   )
 
   return (
-    <div className="flex h-full w-67 flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
+    <div className="flex h-full w-67 flex-col rounded-s-2xl border-y-[0.5px] border-s-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
         <div className="flex-1 py-1 system-xl-semibold text-text-primary">
           {t(($) => $['versionHistory.title'], { ns: 'workflowHistory' })}

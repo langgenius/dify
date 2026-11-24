@@ -1,5 +1,5 @@
 import type { PluginCategoryEnum } from '../types'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,13 +14,12 @@ import {
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { consoleQuery } from '@/service/console'
 import {
-  useInvalidateReferenceSettings,
   useMutationPluginPermissionSettings,
   useMutationReferenceSettings,
-  usePluginAutoUpgradeSettings,
-  usePluginPermissionSettings,
 } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
 import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
@@ -43,7 +42,6 @@ const useCanSetPluginSettings = () => {
 }
 
 export const usePluginSettingsAccess = () => {
-  const { t } = useTranslation(['common'])
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
@@ -58,14 +56,12 @@ export const usePluginSettingsAccess = () => {
     select: (data) => data.meta.currentVersion ?? '',
   })
   const { canSetPermissions, canSetPluginPreferences } = useCanSetPluginSettings()
-  const permissionQuery = usePluginPermissionSettings()
+  const permissionQuery = useQuery(
+    consoleQuery.workspaces.current.plugin.permission.fetch.get.queryOptions(),
+  )
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } =
-    useMutationPluginPermissionSettings({
-      onSuccess: () => {
-        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-      },
-    })
+    useMutationPluginPermissionSettings()
   const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
     isAdminOrOwner,
@@ -112,7 +108,11 @@ export const usePluginSettingsAccess = () => {
 const useReferenceSetting = (category: PluginCategoryEnum) => {
   const { t } = useTranslation(['common'])
   const permissionAccess = usePluginSettingsAccess()
-  const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
+  const autoUpgradeQuery = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
   const data =
     permissionAccess.permission && autoUpgradeQuery.data?.auto_upgrade
       ? {
@@ -120,13 +120,18 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
           auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
         }
       : undefined
-  const invalidateReferenceSettings = useInvalidateReferenceSettings()
+  const queryClient = useQueryClient()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } =
     useMutationReferenceSettings({
       category,
       currentReferenceSetting: data,
       onSuccess: () => {
-        invalidateReferenceSettings()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.permission.fetch.get.key(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.key(),
+        })
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
     })
@@ -153,12 +158,14 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
 
 export const useCanInstallPluginFromMarketplace = () => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const marketplaceAccess = systemFeatures.enable_marketplace
+  const marketplaceAccess = useMarketplace() !== null
   const rbacEnabled = systemFeatures.rbac_enabled
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const permissionQuery = usePluginPermissionSettings()
+  const permissionQuery = useQuery(
+    consoleQuery.workspaces.current.plugin.permission.fetch.get.queryOptions(),
+  )
   const { data: permissions } = permissionQuery
   const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
     isAdminOrOwner: isCurrentWorkspaceManager || isCurrentWorkspaceOwner,

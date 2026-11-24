@@ -1,44 +1,37 @@
-import type { VersionHistory } from '@/types/workflow'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderEditor as render } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../types'
 import VersionHistoryItem from '../version-history-item'
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { pipelineId?: string }) => unknown) =>
-    selector({ pipelineId: undefined }),
-}))
-
-const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
-  id: 'version-1',
-  graph: {
-    nodes: [],
-    edges: [],
-    viewport: undefined,
-  },
-  features: {},
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  hash: 'hash-1',
-  updated_at: 1710000000,
-  updated_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  tool_published: false,
-  environment_variables: [],
-  conversation_variables: [],
-  rag_pipeline_variables: undefined,
-  version: '2024-01-01T00:00:00Z',
-  marked_name: 'Release 1',
-  marked_comment: 'Initial release',
-  ...overrides,
+const createVersionHistory = ({
+  environments,
+  ...overrides
+}: Partial<WorkflowResponse> & Pick<WorkflowVersionListItem, 'environments'> = {}) => ({
+  ...createWorkflowResponseFixture({
+    id: 'version-1',
+    created_at: 1710000000,
+    created_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    hash: 'hash-1',
+    updated_at: 1710000000,
+    updated_by: {
+      id: 'user-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+    },
+    version: '2024-01-01T00:00:00Z',
+    marked_name: 'Release 1',
+    marked_comment: 'Initial release',
+    ...overrides,
+  }),
+  environments,
 })
 
 describe('VersionHistoryItem', () => {
@@ -143,7 +136,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
+      await user.hover(screen.getByRole('button', { name: 'Release 1' }))
 
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)
@@ -158,14 +151,10 @@ describe('VersionHistoryItem', () => {
       expect(screen.getByText('version-1')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
-      const restoreItem = screen.getByText('workflow.common.restore').closest('.cursor-pointer')
-      if (!restoreItem) throw new Error('Expected restore menu item')
-
-      fireEvent.click(restoreItem)
+      await user.click(screen.getByRole('menuitem', { name: 'workflow.common.restore' }))
 
       expect(handleClickActionMenuItem).toHaveBeenCalledTimes(1)
       expect(handleClickActionMenuItem).toHaveBeenCalledWith(
-        VersionHistoryContextMenuOptions.restore,
         VersionHistoryContextMenuOptions.restore,
       )
     })
@@ -185,7 +174,7 @@ describe('VersionHistoryItem', () => {
         />,
       )
 
-      fireEvent.mouseEnter(screen.getByRole('button', { name: 'Release 1' }))
+      await user.hover(screen.getByRole('button', { name: 'Release 1' }))
 
       const triggerButton = await screen.findByRole('button', { name: 'common.operation.more' })
       await user.click(triggerButton)

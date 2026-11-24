@@ -1,34 +1,34 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import { useDebugKey } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
 import KeyValueItem from '../base/key-value-item'
 import { PluginSidecarPanel } from './plugin-sidecar-panel'
 
 const i18nPrefix = 'debugInfo'
 
 type DebugInfoProps = {
-  popupPlacement?: PopoverContentProps['placement']
   triggerClassName?: string
   triggerContent?: ReactNode
   triggerVariant?: ButtonProps['variant']
 }
 
 function DebugInfo({
-  popupPlacement = 'bottom',
   triggerClassName,
   triggerContent,
   triggerVariant = 'secondary',
 }: DebugInfoProps) {
   const { t } = useTranslation(['plugin'])
   const docLink = useDocLink()
-  const { data: info, isLoading } = useDebugKey()
+  const { data: info, isLoading } = useQuery(
+    consoleQuery.workspaces.current.plugin.debuggingKey.get.queryOptions(),
+  )
   const title = t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })
   const trigger = triggerContent ?? <span aria-hidden className="i-ri-bug-line size-4" />
   const triggerClassNames = cn(
@@ -58,10 +58,7 @@ function DebugInfo({
           </Button>
         }
       />
-      <PopoverContent
-        placement={popupPlacement}
-        className="border-0 bg-transparent p-0 shadow-none"
-      >
+      <PopoverContent side="top" align="start" className="border-0 bg-transparent p-0 shadow-none">
         <PluginSidecarPanel
           title={title}
           footer={

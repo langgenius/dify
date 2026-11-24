@@ -1,11 +1,23 @@
+import type {
+  MessageFeedbackPayload,
+  SimpleConversation,
+} from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
-import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { HumanInputFormData as WorkflowHumanInputFormData } from '@/types/workflow'
+import { zWebAppHumanInputV2SubmitPayload } from '@dify/contracts/api/web/zod.gen'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
 import { consoleClient } from '@/service/console'
+import { selectAppParameters } from '@/service/console/app-parameters-select'
 import {
   del as consoleDel,
   get as consoleGet,
@@ -20,6 +32,7 @@ import {
 } from './base'
 import { resolveWebAppAddress } from './webapp-address'
 import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
+import { webAppClient } from './webapp-client'
 
 export const AppSourceType = {
   webApp: 'webApp',
@@ -65,15 +78,30 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
-  return getAction(
-    'post',
-    appSourceType,
-  )(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId))
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  if (appSourceType === AppSourceType.tryApp)
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return webAppClient.chatMessages.byTaskId.stop.post(
+    { params: { task_id: taskId } },
+    { context: options },
+  )
 }
 
 export const sendCompletionMessage = async (
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   {
     onData,
     onCompleted,
@@ -110,7 +138,7 @@ export const sendCompletionMessage = async (
 }
 
 export const sendWorkflowMessage = async (
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   otherOptions: IOtherOptions,
   appSourceType: AppSourceType,
   appId = '',
@@ -135,17 +163,39 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: Pick<IOtherOptions, 'silent'>,
 ) => {
   if (!taskId) return
-  return getAction(
-    'post',
-    appSourceType,
-  )(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId))
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { installed_app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  if (appSourceType === AppSourceType.tryApp)
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
+      {
+        params: { app_id: installedAppId, task_id: taskId },
+      },
+      { context: options },
+    )
+  return webAppClient.workflows.tasks.byTaskId.stop.post(
+    { params: { task_id: taskId } },
+    { context: options },
+  )
 }
 
 export const fetchAppInfo = async () => {
-  return get('/site') as Promise<AppData>
+  return webAppClient.site.get() as Promise<AppData>
 }
+
+const selectConversation = (conversation: SimpleConversation): ConversationItem => ({
+  id: conversation.id,
+  name: conversation.name,
+  inputs: conversation.inputs,
+  introduction: conversation.introduction ?? '',
+})
 
 export const fetchConversations = async (
   appSourceType: AppSourceType,
@@ -154,6 +204,25 @@ export const fetchConversations = async (
   pinned?: boolean,
   limit?: number,
 ) => {
+  if (appSourceType === AppSourceType.installedApp) {
+    const response = await consoleClient.installedApps.byInstalledAppId.conversations.get({
+      params: { installed_app_id: installedAppId },
+      query: {
+        limit: limit || 20,
+        ...(last_id ? { last_id } : {}),
+        ...(pinned !== undefined ? { pinned } : {}),
+      },
+    })
+    return { ...response, data: response.data.map(selectConversation) }
+  }
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.get({
+      query: {
+        limit: limit || 20,
+        ...(last_id ? { last_id } : {}),
+        ...(pinned !== undefined ? { pinned } : {}),
+      },
+    }) as Promise<AppConversationData>
   return getAction('get', appSourceType)(getUrl('conversations', appSourceType, installedAppId), {
     params: {
       limit: limit || 20,
@@ -168,6 +237,12 @@ export const pinConversation = async (
   installedAppId = '',
   id: string,
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.pin.patch({ params: { c_id: id } })
   return getAction(
     'patch',
     appSourceType,
@@ -179,6 +254,12 @@ export const unpinConversation = async (
   installedAppId = '',
   id: string,
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.unpin.patch({ params: { c_id: id } })
   return getAction(
     'patch',
     appSourceType,
@@ -190,6 +271,12 @@ export const delConversation = async (
   installedAppId = '',
   id: string,
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.delete({ params: { c_id: id } })
   return getAction(
     'del',
     appSourceType,
@@ -202,6 +289,13 @@ export const renameConversation = async (
   id: string,
   name: string,
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post({
+      params: { installed_app_id: installedAppId, c_id: id },
+      body: { name },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.name.post({ params: { c_id: id }, body: { name } })
   return getAction('post', appSourceType)(
     getUrl(`conversations/${id}/name`, appSourceType, installedAppId),
     { body: { name } },
@@ -213,6 +307,19 @@ export const generationConversationName = async (
   installedAppId = '',
   id: string,
 ) => {
+  if (appSourceType === AppSourceType.installedApp) {
+    const response =
+      await consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post({
+        params: { installed_app_id: installedAppId, c_id: id },
+        body: { auto_generate: true },
+      })
+    return selectConversation(response)
+  }
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.name.post({
+      params: { c_id: id },
+      body: { auto_generate: true },
+    }) as Promise<ConversationItem>
   return getAction('post', appSourceType)(
     getUrl(`conversations/${id}/name`, appSourceType, installedAppId),
     { body: { auto_generate: true } },
@@ -224,6 +331,13 @@ export const fetchChatList = async (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.messages.get({
+      params: { installed_app_id: installedAppId },
+      query: { conversation_id: conversationId, limit: 20 },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.get({ query: { conversation_id: conversationId, limit: 20 } })
   return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), {
     params: { conversation_id: conversationId, limit: 20, last_id: '' },
   }) as any
@@ -236,10 +350,16 @@ export const fetchChatList = async (
 
 // init value. wait for server update
 export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') => {
-  return getAction(
-    'get',
-    appSourceType,
-  )(getUrl('parameters', appSourceType, appId)) as Promise<ChatConfig>
+  if (appSourceType !== AppSourceType.webApp) {
+    const parameters =
+      appSourceType === AppSourceType.installedApp
+        ? await consoleClient.installedApps.byInstalledAppId.parameters.get({
+            params: { installed_app_id: appId },
+          })
+        : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
+    return selectAppParameters(parameters)
+  }
+  return webAppClient.parameters.get() as Promise<ChatConfig>
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
@@ -315,6 +435,13 @@ export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: str
 }
 
 export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId = '') => {
+  if (appSourceType === AppSourceType.installedApp) {
+    const response = await consoleClient.installedApps.byInstalledAppId.meta.get({
+      params: { installed_app_id: installedAppId },
+    })
+    return { tool_icons: response.tool_icons ?? {} }
+  }
+  if (appSourceType === AppSourceType.webApp) return webAppClient.meta.get() as Promise<AppMeta>
   return getAction(
     'get',
     appSourceType,
@@ -322,11 +449,24 @@ export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId 
 }
 
 export const updateFeedback = async (
-  { url, body }: { url: string; body: FeedbackType },
+  { messageId, body }: { messageId: string; body: MessageFeedbackPayload },
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
-  return getAction('post', appSourceType)(getUrl(url, appSourceType, installedAppId), { body })
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.feedbacks.post({
+      params: { installed_app_id: installedAppId, message_id: messageId },
+      body,
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.byMessageId.feedbacks.post({
+      params: { message_id: messageId },
+      body,
+    })
+  return getAction('post', appSourceType)(
+    getUrl(`/messages/${messageId}/feedbacks`, appSourceType, installedAppId),
+    { body },
+  )
 }
 
 export const fetchMoreLikeThis = async (
@@ -334,6 +474,16 @@ export const fetchMoreLikeThis = async (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.moreLikeThis.get({
+      params: { installed_app_id: installedAppId, message_id: messageId },
+      query: { response_mode: 'blocking' },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.byMessageId.moreLikeThis.get({
+      params: { message_id: messageId },
+      query: { response_mode: 'blocking' },
+    })
   return getAction('get', appSourceType)(
     getUrl(`/messages/${messageId}/more-like-this`, appSourceType, installedAppId),
     {
@@ -349,6 +499,11 @@ export const saveMessage = (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.post({
+      params: { installed_app_id: installedAppId },
+      body: { message_id: messageId },
+    })
   return getAction('post', appSourceType)(
     getUrl('/saved-messages', appSourceType, installedAppId),
     { body: { message_id: messageId } },
@@ -356,6 +511,15 @@ export const saveMessage = (
 }
 
 export const fetchSavedMessage = async (appSourceType: AppSourceType, installedAppId = '') => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.get(
+      {
+        params: { installed_app_id: installedAppId },
+      },
+      { context: { silent: true } },
+    )
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.savedMessages.get(undefined, { context: { silent: true } })
   return getAction('get', appSourceType)(
     getUrl('/saved-messages', appSourceType, installedAppId),
     {},
@@ -370,21 +534,36 @@ export const removeMessage = (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete({
+      params: { installed_app_id: installedAppId, message_id: messageId },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.savedMessages.byMessageId.delete({ params: { message_id: messageId } })
   return getAction(
     'del',
     appSourceType,
   )(getUrl(`/saved-messages/${messageId}`, appSourceType, installedAppId))
 }
 
-export const fetchSuggestedQuestions = (
+export const fetchSuggestedQuestions = async (
   messageId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
-  return getAction(
-    'get',
-    appSourceType,
-  )(getUrl(`/messages/${messageId}/suggested-questions`, appSourceType, installedAppId))
+  if (appSourceType === AppSourceType.installedApp)
+    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.suggestedQuestions.get(
+      {
+        params: { installed_app_id: installedAppId, message_id: messageId },
+      },
+    )
+  if (appSourceType === AppSourceType.tryApp)
+    return consoleClient.trialApps.byAppId.messages.byMessageId.suggestedQuestions.get({
+      params: { app_id: installedAppId, message_id: messageId },
+    })
+  return webAppClient.messages.byMessageId.suggestedQuestions.get({
+    params: { message_id: messageId },
+  })
 }
 
 export const audioToText = (
@@ -432,15 +611,20 @@ type AccessTokenResponse = { access_token: string }
 
 const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>>()
 
-const requestAccessToken = ({ userId, appCode }: { userId?: string; appCode: string }) => {
-  const headers = new Headers()
-  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
+const requestAccessToken = ({
+  userId,
+  appCode,
+}: {
+  userId?: string
+  appCode: string
+}): Promise<AccessTokenResponse> => {
+  const headers: Record<string, string> = { [WEB_APP_SHARE_CODE_HEADER_NAME]: appCode }
   const accessToken = getWebAppAccessToken()
-  if (accessToken) headers.append('Authorization', `Bearer ${accessToken}`)
-  const params = new URLSearchParams()
-  if (userId) params.append('user_id', userId)
-  const url = `/passport?${params.toString()}`
-  return get<AccessTokenResponse>(url, { headers }) as Promise<AccessTokenResponse>
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+  return webAppClient.passport.get(
+    { query: userId ? { user_id: userId } : {} },
+    { context: { headers } },
+  )
 }
 
 export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
@@ -465,19 +649,25 @@ export const fetchAccessToken = (params: { userId?: string; appCode: string }) =
   return request
 }
 
-export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
+export const getUserCanAccess = async (appId: string, isInstalledApp: boolean) => {
   if (isInstalledApp)
-    return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+    return consoleClient.enterprise.webAppAuth.isUserAllowedToAccessWebApp({
+      query: { appId },
+    })
 
-  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
+  return webAppClient.webapp.permission.get({ query: { appId } })
 }
 
 export const getAppAccessModeByAppCode = (appCode: string) => {
-  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
+  return webAppClient.webapp.accessMode.get({ query: { appCode } }) as Promise<{
+    accessMode: AccessMode
+  }>
 }
 
 export const getHumanInputForm = (token: string) => {
-  return get<HumanInputFormData>(`/form/human_input/${token}`)
+  return webAppClient.form.humanInput.byFormToken.get({
+    params: { form_token: token },
+  }) as Promise<HumanInputFormData>
 }
 
 type HumanInputFormUploadTokenResponse = {
@@ -526,9 +716,10 @@ const getHumanInputFormUploadToken = async (formToken: string) => {
   if (cachedToken && cachedToken.expires_at > now + UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS)
     return cachedToken.upload_token
 
-  const tokenResponse = await post<HumanInputFormUploadTokenResponse>(
-    `/form/human_input/${formToken}/upload-token`,
-  )
+  const tokenResponse: HumanInputFormUploadTokenResponse =
+    await webAppClient.form.humanInput.byFormToken.uploadToken.post({
+      params: { form_token: formToken },
+    })
   humanInputFormUploadTokenCache.set(formToken, tokenResponse)
   return tokenResponse.upload_token
 }
@@ -538,7 +729,21 @@ const uploadHumanInputFormFile = async (
   formData: FormData,
   onProgress?: (e: ProgressEvent) => void,
 ) => {
-  const uploadToken = await getHumanInputFormUploadToken(formToken)
+  const scope = captureAppAccessScope()
+  const ensureCanUpload = () => {
+    if (!isAppAccessScopeCurrent(scope) || hasAppAccessError(scope))
+      throw new DOMException('The form upload is no longer active.', 'AbortError')
+  }
+  ensureCanUpload()
+
+  let uploadToken: string
+  try {
+    uploadToken = await getHumanInputFormUploadToken(formToken)
+  } catch (error) {
+    if (!isAppAccessError(error)) ensureCanUpload()
+    throw error
+  }
+  ensureCanUpload()
 
   return upload(
     {
@@ -603,6 +808,16 @@ export const submitHumanInputForm = (
     inputs: Record<string, unknown>
     action: string
   },
+  formVersion?: WorkflowHumanInputFormData['form_version'],
 ) => {
-  return post(`/form/human_input/${token}`, { body: data })
+  if (formVersion === '2') {
+    return webAppClient.form.humanInput.v2.byFormToken.post({
+      params: { form_token: token },
+      body: zWebAppHumanInputV2SubmitPayload.parse(data),
+    })
+  }
+  return webAppClient.form.humanInput.byFormToken.post({
+    params: { form_token: token },
+    body: { inputs: data.inputs, action: data.action },
+  })
 }

@@ -45,7 +45,7 @@ function RadioCard<Value = string>(props: Props<Value>) {
           className,
         )}
       >
-        <div className="flex w-full gap-x-2 text-left">
+        <div className="flex w-full gap-x-2 text-start">
           <div
             className={cn(
               iconBgClassName,
@@ -54,7 +54,7 @@ function RadioCard<Value = string>(props: Props<Value>) {
           >
             {icon}
           </div>
-          <div className="min-w-0 grow pr-8">
+          <div className="min-w-0 grow pe-8">
             <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
             <div className="system-xs-regular text-text-tertiary">{description}</div>
           </div>
@@ -91,14 +91,14 @@ function RadioCard<Value = string>(props: Props<Value>) {
       >
         {icon}
       </div>
-      <div className="min-w-0 grow pr-8">
+      <div className="min-w-0 grow pe-8">
         <div className="mb-1 system-sm-semibold text-text-secondary">{title}</div>
         <div className="system-xs-regular text-text-tertiary">{description}</div>
       </div>
     </>
   )
   const rootClassName = cn(
-    'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3 transition-colors',
+    'group/radio-card relative rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
     'has-data-checked:border-[1.5px] has-data-checked:bg-components-option-card-option-selected-bg',
     className,
   )
@@ -115,10 +115,10 @@ function RadioCard<Value = string>(props: Props<Value>) {
         {...radioRootProps}
         nativeButton
         render={<button type="button" />}
-        className="flex w-full cursor-pointer gap-x-2 border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+        className="flex w-full cursor-pointer gap-x-2 border-none bg-transparent p-0 text-start outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
       >
         {content}
-        <RadioControl className="absolute top-3 right-3" aria-hidden="true" />
+        <RadioControl className="absolute inset-e-3 top-3" aria-hidden="true" />
       </RadioItem>
       {config}
     </div>

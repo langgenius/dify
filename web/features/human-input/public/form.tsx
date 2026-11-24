@@ -1,0 +1,180 @@
+'use client'
+import type { HumanInputV2ErrorCategory, HumanInputV2FormTransport } from './types'
+import { Button } from '@langgenius/dify-ui/button'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  FileUploadContext,
+  useFileUploadContext,
+} from '@/app/components/base/file-uploader/upload-context'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import FormStatusCard from '@/features/human-input/form/form-status-card'
+import LoadedFormContent from '@/features/human-input/form/loaded-form-content'
+import useDocumentTitle from '@/hooks/use-document-title'
+import OtpVerification from './otp-verification'
+import { realHumanInputV2FormTransport } from './real-transport'
+import { createHumanInputV2UploadStrategy } from './upload'
+import { useHumanInputV2FormSession } from './use-form-session'
+
+type HumanInputV2FormProps = {
+  token: string
+  transport?: HumanInputV2FormTransport
+  now?: () => number
+}
+
+const getBrandingOptions = (
+  definition: ReturnType<typeof useHumanInputV2FormSession>['state']['definition'],
+) => {
+  const customConfig = definition?.branding?.customConfig
+  return {
+    removeWebappBrand: customConfig?.remove_webapp_brand === true,
+    replaceWebappLogo:
+      typeof customConfig?.replace_webapp_logo === 'string'
+        ? customConfig.replace_webapp_logo
+        : null,
+  }
+}
+
+const HumanInputV2Form = ({ token, transport: injectedTransport, now }: HumanInputV2FormProps) => {
+  const { t } = useTranslation(['share'])
+  const transport = injectedTransport ?? realHumanInputV2FormTransport
+  const inheritedUploadContext = useFileUploadContext()
+  const uploadContext = useMemo(
+    () => ({
+      ...inheritedUploadContext,
+      uploadStrategy: createHumanInputV2UploadStrategy(token, transport),
+    }),
+    [inheritedUploadContext, token, transport],
+  )
+  const session = useHumanInputV2FormSession({
+    token,
+    transport,
+    now,
+  })
+  const { state } = session
+  const [retryError, setRetryError] = useState<HumanInputV2ErrorCategory>()
+  const retryingForm = state.phase === 'loading-form' && retryError !== undefined
+  const errorCopy = (category?: HumanInputV2ErrorCategory) => {
+    switch (category) {
+      case 'not-found':
+        return t(($) => $['humanInputV2.formNotFound'], { ns: 'share' })
+      case 'form-expired':
+        return t(($) => $['humanInputV2.formExpired'], { ns: 'share' })
+      case 'already-submitted':
+        return t(($) => $['humanInputV2.alreadySubmitted'], { ns: 'share' })
+      case 'form-rate-limit':
+        return t(($) => $['humanInputV2.formRateLimited'], { ns: 'share' })
+      case 'access-rate-limit':
+        return t(($) => $['humanInputV2.accessRateLimited'], { ns: 'share' })
+      case 'access-delivery-failed':
+        return t(($) => $['humanInputV2.deliveryFailed'], { ns: 'share' })
+      case 'invalid-otp':
+        return t(($) => $['humanInputV2.invalidOtp'], { ns: 'share' })
+      case 'challenge-expired':
+        return t(($) => $['humanInputV2.challengeExpired'], { ns: 'share' })
+      case 'challenge-stale':
+        return t(($) => $['humanInputV2.challengeStale'], { ns: 'share' })
+      case 'upload-failed':
+        return t(($) => $['humanInputV2.uploadFailed'], { ns: 'share' })
+      case 'network':
+        return t(($) => $['humanInputV2.networkError'], { ns: 'share' })
+      case 'unavailable':
+        return t(($) => $['humanInputV2.unavailable'], { ns: 'share' })
+      default:
+        return t(($) => $['humanInputV2.unknownError'], { ns: 'share' })
+    }
+  }
+
+  useDocumentTitle(
+    state.phase === 'success'
+      ? t(($) => $['humanInput.thanks'], { ns: 'share' })
+      : state.phase === 'terminal' || state.phase === 'form-error' || retryingForm
+        ? errorCopy(state.error ?? retryError)
+        : t(($) => $['humanInputV2.otpLabel'], { ns: 'share' }),
+  )
+
+  if (state.phase === 'loading-form' && !retryingForm)
+    return <LoadingPlaceholder className="h-full" />
+
+  if (state.phase === 'success') {
+    return (
+      <FormStatusCard
+        iconClassName="i-ri-checkbox-circle-fill text-text-success"
+        title={t(($) => $['humanInput.thanks'], { ns: 'share' })}
+        subtitle={t(($) => $['humanInput.recorded'], { ns: 'share' })}
+        submissionID={token}
+        {...getBrandingOptions(state.definition)}
+      />
+    )
+  }
+
+  if (state.phase === 'terminal' || state.phase === 'form-error' || retryingForm) {
+    const isResolvedRequest = state.error === 'form-expired' || state.error === 'already-submitted'
+
+    return (
+      <FormStatusCard
+        iconClassName={
+          isResolvedRequest
+            ? 'i-ri-information-2-fill text-text-accent'
+            : 'i-ri-error-warning-fill text-text-destructive'
+        }
+        title={
+          isResolvedRequest
+            ? t(($) => $['humanInput.sorry'], { ns: 'share' })
+            : errorCopy(state.error ?? retryError)
+        }
+        subtitle={
+          isResolvedRequest ? (
+            errorCopy(state.error)
+          ) : state.phase === 'form-error' || retryingForm ? (
+            <Button
+              size="small"
+              loading={retryingForm}
+              onClick={() => {
+                setRetryError(state.error)
+                session.retryForm()
+              }}
+            >
+              {t(($) => $['humanInputV2.retry'], { ns: 'share' })}
+            </Button>
+          ) : undefined
+        }
+        submissionID={isResolvedRequest ? token : undefined}
+        {...getBrandingOptions(state.definition)}
+      />
+    )
+  }
+
+  if (!state.definition) return <LoadingPlaceholder className="h-full" />
+
+  const verificationError = state.error
+    ? { category: state.error, message: errorCopy(state.error) }
+    : undefined
+
+  return (
+    <FileUploadContext value={uploadContext}>
+      <LoadedFormContent
+        key={token}
+        definition={state.definition}
+        isSubmitting={state.phase === 'submitting'}
+        onSubmit={session.submit}
+        verificationContent={
+          <OtpVerification
+            focusOnMount={retryError !== undefined}
+            otpCode={state.otpCode}
+            requesting={state.phase === 'requesting-otp'}
+            error={verificationError}
+            challenge={state.challenge}
+            submitting={state.phase === 'submitting'}
+            now={now}
+            onOtpChange={session.setOtpCode}
+            onRetry={session.retryAccess}
+            onResend={session.resendAccess}
+          />
+        }
+      />
+    </FileUploadContext>
+  )
+}
+
+export default HumanInputV2Form

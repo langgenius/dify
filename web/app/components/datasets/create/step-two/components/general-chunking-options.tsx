@@ -1,15 +1,14 @@
 'use client'
 
+import type { PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC, MouseEventHandler } from 'react'
-import type {
-  PreProcessingRule,
-  SummaryIndexSetting as SummaryIndexSettingType,
-} from '@/models/datasets'
+import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { RiAlertFill, RiSearchEyeLine } from '@remixicon/react'
+import { RiSearchEyeLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -153,7 +152,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
             {rules.map((rule) => (
               <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
                 <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
-                <span className="ml-2 system-sm-regular text-text-secondary">
+                <span className="ms-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </span>
               </label>
@@ -183,7 +182,7 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                         else onDocFormChange(ChunkingMode.qa)
                       }}
                     />
-                    <span id={qaLabelId} className="ml-2 system-sm-regular text-text-secondary">
+                    <span id={qaLabelId} className="ms-2 system-sm-regular text-text-secondary">
                       {t(($) => $['stepTwo.useQALanguage'], { ns: 'datasetCreation' })}
                     </span>
                   </label>
@@ -193,25 +192,18 @@ export const GeneralChunkingOptions: FC<GeneralChunkingOptionsProps> = ({
                     disabled={currentDocForm !== ChunkingMode.qa}
                   />
                   <Infotip>
-                    <InfotipTrigger aria-labelledby={qaLabelId} className="size-3.5" />
+                    <InfotipTrigger aria-labelledby={qaLabelId} />
                     <InfotipContent aria-labelledby={qaLabelId}>
                       {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
                     </InfotipContent>
                   </Infotip>
                 </div>
                 {currentDocForm === ChunkingMode.qa && (
-                  <div
-                    style={{
-                      background:
-                        'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
-                    }}
-                    className="mt-2 flex min-h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
-                  >
-                    <RiAlertFill className="size-4 text-text-warning-secondary" />
-                    <span className="system-xs-medium text-text-primary">
+                  <Alert type="warning" className="mt-2">
+                    <AlertTitle>
                       {t(($) => $['stepTwo.QATip'], { ns: 'datasetCreation' })}
-                    </span>
-                  </div>
+                    </AlertTitle>
+                  </Alert>
                 )}
               </>
             )}

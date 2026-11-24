@@ -1,12 +1,19 @@
 import type { FC, MouseEvent } from 'react'
 import type { Resources } from './index'
+import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Fragment } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
+import { toast } from '@/app/notifications'
+import { newKnowledgeDocumentDetailPath } from '@/features/new-rag/routes'
 import Link from '@/next/link'
-import { useDocumentDownload } from '@/service/knowledge/use-document'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
 import { downloadUrl } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import ProgressTooltip from './progress-tooltip'
 import Tooltip from './tooltip'
 
@@ -15,12 +22,100 @@ type PopupProps = {
   showHitInfo?: boolean
 }
 
+const sourceActionClassName =
+  'hidden h-4.5 items-center rounded-none bg-transparent p-0 text-xs text-text-accent group-hover:flex hover:bg-transparent'
+
+function LegacyKnowledgeFSOpenAction({ source }: { source: Resources['sources'][number] }) {
+  const { t } = useTranslation(['knowledgeCitation', 'common'])
+  const router = useRouter()
+  const [isResolving, setIsResolving] = useState(false)
+
+  const handleOpen = async () => {
+    if (isResolving) return
+    setIsResolving(true)
+    try {
+      const citation = await resolveLogicalDocumentCitation({
+        documentAssetId: source.document_asset_id ?? source.document_id,
+        documentVersion: source.document_version ?? undefined,
+        knowledgeSpaceId: source.dataset_id,
+      })
+      if (!citation) {
+        toast.error(t(($) => $.documentNotFoundDescription, { ns: 'knowledgeCitation' }))
+        return
+      }
+      router.push(
+        newKnowledgeDocumentDetailPath(source.dataset_id, citation.documentId, {
+          chunkId: source.segment_id,
+          revision: citation.revision,
+        }),
+      )
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $.documentLoadErrorDescription, { ns: 'knowledgeCitation' }),
+      )
+    } finally {
+      setIsResolving(false)
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost-accent"
+      size="small"
+      className={sourceActionClassName}
+      loading={isResolving}
+      onClick={handleOpen}
+    >
+      {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
+      {!isResolving && (
+        <i className="i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+      )}
+    </Button>
+  )
+}
+
+function SourceOpenAction({ source }: { source: Resources['sources'][number] }) {
+  const { t } = useTranslation(['common'])
+  const label = t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })
+
+  if (source.data_source_type !== 'knowledge_fs') {
+    return (
+      <Link
+        href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
+        className={sourceActionClassName}
+      >
+        {label}
+        <i className="ms-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+      </Link>
+    )
+  }
+
+  if (typeof source.document_revision !== 'number')
+    return <LegacyKnowledgeFSOpenAction source={source} />
+
+  return (
+    <Link
+      href={newKnowledgeDocumentDetailPath(source.dataset_id, source.document_id, {
+        chunkId: source.segment_id,
+        revision: source.document_revision,
+      })}
+      className={sourceActionClassName}
+    >
+      {label}
+      <i className="ms-1 i-custom-vender-line-arrows-arrow-up-right size-3" aria-hidden />
+    </Link>
+  )
+}
+
 const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
   const { t } = useTranslation(['common'])
   const fileType =
     data.dataSourceType !== 'notion' ? /\.([^.]*)$/.exec(data.documentName)?.[1] || '' : 'notion'
 
-  const { mutateAsync: downloadDocument, isPending: isDownloading } = useDocumentDownload()
+  const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.download.get.mutationOptions(),
+  )
 
   const handleDownloadUploadFile = async (e: MouseEvent<HTMLElement>) => {
     e.preventDefault()
@@ -31,8 +126,15 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
     const documentId = data.documentId || data.sources?.[0]?.document_id
     if (!isUploadFile || !datasetId || !documentId || isDownloading) return
 
-    const res = await downloadDocument({ datasetId, documentId })
-    if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    try {
+      // Finish the requested download even if the citation unmounts while fetching its URL.
+      const res = await downloadDocument({
+        params: { dataset_id: datasetId, document_id: documentId },
+      })
+      if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
+    } catch {
+      // The request layer reports the error; allow retry without an unhandled rejection.
+    }
   }
 
   return (
@@ -44,14 +146,14 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
             data-testid="popup-trigger"
             className="flex h-7 max-w-60 items-center rounded-lg bg-components-button-secondary-bg px-2"
           >
-            <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
+            <FileIcon type={fileType} className="me-1 size-4 shrink-0" />
             <div className="truncate text-xs text-text-tertiary">{data.documentName}</div>
           </div>
         }
       />
       <PopoverContent
-        placement="top-start"
-        sideOffset={8}
+        side="top"
+        align="start"
         alignOffset={-2}
         className="border-none bg-transparent shadow-none"
       >
@@ -61,13 +163,14 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         >
           <div className="px-4 pt-3 pb-2">
             <div className="flex h-4.5 items-center">
-              <FileIcon type={fileType} className="mr-1 size-4 shrink-0" />
+              <FileIcon type={fileType} className="me-1 size-4 shrink-0" />
               <div className="truncate system-xs-medium text-text-tertiary">
                 {(data.dataSourceType === 'upload_file' || data.dataSourceType === 'file') &&
-                !!data.sources?.[0]?.dataset_id ? (
+                !!data.sources?.[0]?.dataset_id &&
+                !!(data.documentId || data.sources?.[0]?.document_id) ? (
                   <button
                     type="button"
-                    className="cursor-pointer truncate border-none bg-transparent p-0 text-left text-text-tertiary hover:underline"
+                    className="cursor-pointer truncate border-none bg-transparent p-0 text-start text-text-tertiary hover:underline"
                     onClick={handleDownloadUploadFile}
                     disabled={isDownloading}
                   >
@@ -85,7 +188,6 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                 const itemKey = source.document_id
                   ? `${source.document_id}-${source.segment_position ?? index}`
                   : (source.index_node_hash ?? `${data.documentId ?? 'doc'}-${index}`)
-
                 return (
                   <Fragment key={itemKey}>
                     <div data-testid="popup-source-item" className="group py-3">
@@ -93,7 +195,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                         <div className="flex h-5 items-center rounded-md border border-divider-subtle px-1.5">
                           {/* replaced svg component with tailwind icon class per lint rule */}
                           <i
-                            className="mr-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary"
+                            className="me-0.5 i-custom-vender-line-general-hash-02 size-3 text-text-quaternary"
                             aria-hidden
                           />
                           <div
@@ -103,18 +205,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             {source.segment_position || index + 1}
                           </div>
                         </div>
-                        {showHitInfo && (
-                          <Link
-                            href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
-                            className="hidden h-4.5 items-center text-xs text-text-accent group-hover:flex"
-                          >
-                            {t(($) => $['chat.citation.linkToDataset'], { ns: 'common' })}
-                            <i
-                              className="ml-1 i-custom-vender-line-arrows-arrow-up-right size-3"
-                              aria-hidden
-                            />
-                          </Link>
-                        )}
+                        {showHitInfo && <SourceOpenAction source={source} />}
                       </div>
                       <div
                         data-testid="popup-source-content"
@@ -132,7 +223,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.word_count}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-editor-type-square size-3"
+                                className="me-1 i-custom-vender-line-editor-type-square size-3"
                                 aria-hidden
                               />
                             }
@@ -142,7 +233,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.hit_count}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-general-target-04 size-3"
+                                className="me-1 i-custom-vender-line-general-target-04 size-3"
                                 aria-hidden
                               />
                             }
@@ -152,7 +243,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
                             data={source.index_node_hash?.substring(0, 7)}
                             icon={
                               <i
-                                className="mr-1 i-custom-vender-line-editor-bezier-curve-03 size-3"
+                                className="me-1 i-custom-vender-line-editor-bezier-curve-03 size-3"
                                 aria-hidden
                               />
                             }

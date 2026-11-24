@@ -1,82 +1,40 @@
-import type { StartNodeType } from '../../../nodes/start/types'
-import { fireEvent, screen } from '@testing-library/react'
-import { renderWorkflowComponent } from '../../../__tests__/workflow-test-env'
-import { BlockEnum, InputVarType } from '../../../types'
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createStartNode } from '../../../__tests__/fixtures'
+import { renderWorkflowFlowComponent } from '../../../__tests__/workflow-test-env'
+import { InputVarType } from '../../../types'
 import UserInput from '../user-input'
 
-const runtimeNodes = vi.hoisted(() => [] as Array<{ data: StartNodeType }>)
-
-vi.mock('reactflow', () => ({
-  useNodes: () => runtimeNodes,
-}))
-
-const createStartNodeData = (variables: StartNodeType['variables']): StartNodeType => ({
-  title: 'Start',
-  desc: '',
-  type: BlockEnum.Start,
-  variables,
-})
-
-describe('debug-and-preview UserInput', () => {
-  beforeEach(() => {
-    runtimeNodes.length = 0
+it('reveals hidden start inputs in debug mode and preserves input values when leaving it', async () => {
+  const user = userEvent.setup()
+  const { store } = renderWorkflowFlowComponent(<UserInput />, {
+    nodes: [
+      createStartNode({
+        data: {
+          variables: [
+            { type: InputVarType.textInput, label: 'Query', variable: 'query', required: true },
+            {
+              type: InputVarType.textInput,
+              label: 'Hidden field',
+              variable: 'hidden_field',
+              required: false,
+              hide: true,
+            },
+          ],
+        },
+      }),
+    ],
+    initialStoreState: { showDebugAndPreviewPanel: false, inputs: {} },
   })
 
-  it('returns null when no visible variables remain', () => {
-    runtimeNodes.push({
-      data: createStartNodeData([
-        {
-          type: InputVarType.textInput,
-          label: 'Hidden field',
-          variable: 'hidden_field',
-          required: false,
-          hide: true,
-        },
-      ]),
-    })
+  expect(screen.queryByPlaceholderText('Hidden field')).not.toBeInTheDocument()
+  await user.type(screen.getByPlaceholderText('Query'), 'hello')
+  act(() => store.getState().setShowDebugAndPreviewPanel(true))
+  await user.type(screen.getByPlaceholderText('Hidden field'), 'debug value')
+  expect(store.getState().inputs).toEqual({ query: 'hello', hidden_field: 'debug value' })
 
-    const { container } = renderWorkflowComponent(<UserInput />, {
-      initialStoreState: {
-        showDebugAndPreviewPanel: false,
-      },
-      hooksStoreProps: {},
-    })
-
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('renders start variables and writes updates back to the workflow store', () => {
-    runtimeNodes.push({
-      data: createStartNodeData([
-        {
-          type: InputVarType.textInput,
-          label: 'Query',
-          variable: 'query',
-          required: true,
-        },
-        {
-          type: InputVarType.textInput,
-          label: 'Hidden field',
-          variable: 'hidden_field',
-          required: false,
-          hide: true,
-        },
-      ]),
-    })
-
-    const { store } = renderWorkflowComponent(<UserInput />, {
-      initialStoreState: {
-        showDebugAndPreviewPanel: true,
-        inputs: {},
-      },
-      hooksStoreProps: {},
-    })
-
-    fireEvent.change(screen.getByPlaceholderText('Query'), { target: { value: 'hello' } })
-
-    expect(screen.getByPlaceholderText('Hidden field')).toBeInTheDocument()
-    expect(store.getState().inputs).toEqual({
-      query: 'hello',
-    })
-  })
+  act(() => store.getState().setShowDebugAndPreviewPanel(false))
+  expect(screen.queryByPlaceholderText('Hidden field')).not.toBeInTheDocument()
+  expect(screen.getByPlaceholderText('Query')).toHaveValue('hello')
+  expect(store.getState().inputs).toEqual({ query: 'hello', hidden_field: 'debug value' })
 })

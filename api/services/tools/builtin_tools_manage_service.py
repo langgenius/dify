@@ -26,7 +26,7 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.encryption import create_provider_encrypter
+from core.tools.utils.encryption import ProviderConfigCache, create_provider_encrypter
 from core.tools.utils.system_encryption import decrypt_system_params
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -34,6 +34,8 @@ from models.account import Account
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
+from services.credentials.query import CredentialQuery, ToolCredentialRecord
+from services.plugin.dispatch_identity import PluginOAuthClientConfig
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -155,6 +157,7 @@ class BuiltinToolManageService:
         """
         update builtin tool provider
         """
+        cache: ProviderConfigCache | None = None
         with sessionmaker(bind=db.engine).begin() as session:
             # get if the provider exists
             db_provider = session.scalar(
@@ -190,8 +193,6 @@ class BuiltinToolManageService:
                     # encrypt credentials
                     db_provider.encrypted_credentials = json.dumps(encrypter.encrypt(new_credentials))
 
-                    cache.delete()
-
                 # update name if provided
                 if name and name != db_provider.name:
                     # check if the name is already used
@@ -212,7 +213,9 @@ class BuiltinToolManageService:
                 # create a new credential. partial-member access is handled by RBAC.
 
             except Exception as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
+        if cache is not None:
+            cache.delete()
         return {"result": "success"}
 
     @staticmethod
@@ -229,14 +232,21 @@ class BuiltinToolManageService:
         """
         add builtin tool provider
         """
-        with sessionmaker(bind=db.engine).begin() as session:
-            try:
-                lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
-                with redis_client.lock(lock, timeout=20):
-                    provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
-                    if not provider_controller.need_credentials:
-                        raise ValueError(f"provider {provider} does not need credentials")
+        try:
+            provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+            if not provider_controller.need_credentials:
+                raise ValueError(f"provider {provider} does not need credentials")
 
+            # Validation may call external services, so it runs before the lock is taken
+            # to keep its duration independent of the lock timeout.
+            if CredentialType.of(api_type).is_validate_allowed():
+                provider_controller.validate_credentials(user_id, credentials)
+
+            lock = f"builtin_tool_provider_create_lock:{tenant_id}_{provider}"
+            # The transaction commits before the lock is released, so concurrent requests
+            # see this credential when they check the count limit and the name.
+            with redis_client.lock(lock, timeout=20):
+                with sessionmaker(bind=db.engine).begin() as session:
                     provider_count = (
                         session.scalar(
                             select(func.count(BuiltinToolProvider.id)).where(
@@ -250,10 +260,6 @@ class BuiltinToolManageService:
                     # check if the provider count is reached the limit
                     if provider_count >= BuiltinToolManageService.__MAX_BUILTIN_TOOL_PROVIDER_COUNT__:
                         raise ValueError(f"you have reached the maximum number of providers for {provider}")
-
-                    # validate credentials if allowed
-                    if CredentialType.of(api_type).is_validate_allowed():
-                        provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided
                     if name is None or name == "":
@@ -302,15 +308,16 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.flush()
-            except Exception as e:
-                raise ValueError(str(e))
+                    credential_id = db_provider.id
+        except Exception as e:
+            raise ValueError(str(e)) from e
 
-        return {"result": "success"}
+        return {"result": "success", "id": credential_id}
 
     @staticmethod
     def create_tool_encrypter(
         tenant_id: str,
-        db_provider: BuiltinToolProvider,
+        db_provider: BuiltinToolProvider | ToolCredentialRecord,
         provider: str,
         provider_controller: BuiltinToolProviderController,
     ):
@@ -346,9 +353,10 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
-        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
+        *,
+        credential_query: CredentialQuery,
     ) -> list[ToolProviderCredentialApiEntity]:
         """
         get builtin tool provider credentials, filtered by visibility.
@@ -364,84 +372,45 @@ class BuiltinToolManageService:
         rows are marked with ``from_other_member=True`` so the UI can render them as
         borrowed-from-teammate (selectable but not editable).
         """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        with session.no_autoflush:
-            base_filter = (
-                BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider_name,
+        providers = credential_query.list_tools(
+            workspace_id=tenant_id,
+            provider=provider_name,
+            actor_id=user.id if user else None,
+            include_credential_ids=include_credential_ids or (),
+        )
+        if not providers:
+            return []
+        provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
+        credentials: list[ToolProviderCredentialApiEntity] = []
+        for provider in providers:
+            encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
+                tenant_id, provider, provider.provider, provider_controller
             )
-            order = (BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
-            visible_query = select(BuiltinToolProvider).where(*base_filter).order_by(*order)
-            if user is not None:
-                visible_query = CredentialPermissionService.apply_visibility_filter(
-                    visible_query,
-                    model_id_column=BuiltinToolProvider.id,
-                    model_user_id_column=BuiltinToolProvider.user_id,
-                    model_visibility_column=BuiltinToolProvider.visibility,
-                    credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
-                    user=user,
+            decrypted = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
+            credentials.append(
+                ToolProviderCredentialApiEntity(
+                    id=provider.id,
+                    name=provider.name,
+                    provider=provider.provider,
+                    credential_type=provider.credential_type,
+                    is_default=provider.is_default,
+                    credentials=dict(decrypted),
+                    visibility=provider.visibility,
+                    created_by=provider.created_by,
+                    partial_member_list=list(provider.partial_member_ids),
+                    from_other_member=provider.from_other_member,
                 )
-            visible_providers = list(session.scalars(visible_query).all())
-
-            # Fetch any explicitly-included IDs that the visibility filter excluded.
-            borrowed_ids: set[str] = set()
-            borrowed_providers: list[BuiltinToolProvider] = []
-            if include_credential_ids:
-                visible_id_set = {p.id for p in visible_providers}
-                wanted_ids = [cid for cid in include_credential_ids if cid and cid not in visible_id_set]
-                if wanted_ids:
-                    borrowed_query = (
-                        select(BuiltinToolProvider)
-                        .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
-                        .order_by(*order)
-                    )
-                    borrowed_providers = list(session.scalars(borrowed_query).all())
-                    borrowed_ids = {p.id for p in borrowed_providers}
-
-            providers = visible_providers + borrowed_providers
-            if not providers:
-                return []
-
-            # Only the first visible row should be flagged is_default in the response.
-            if visible_providers:
-                visible_providers[0].is_default = True
-            provider_controller = ToolManager.get_builtin_provider(providers[0].provider, tenant_id)
-
-            credentials: list[ToolProviderCredentialApiEntity] = []
-            for provider in providers:
-                encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
-                    tenant_id, provider, provider.provider, provider_controller
-                )
-                decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
-                credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
-                    provider=provider,
-                    credentials=dict(decrypt_credential),
-                )
-                # Attach visibility, creator, and partial member list to the response entity
-                vis = getattr(provider, "visibility", "all_team_members")
-                vis_str = vis.value if hasattr(vis, "value") else str(vis)
-                credential_entity.visibility = vis_str
-                credential_entity.created_by = getattr(provider, "user_id", "") or ""
-                if vis_str == "partial_members":
-                    credential_entity.partial_member_list = list(
-                        CredentialPermissionService.get_partial_member_list(
-                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER, session=session
-                        )
-                    )
-                if provider.id in borrowed_ids:
-                    credential_entity.from_other_member = True
-                credentials.append(credential_entity)
-            return credentials
+            )
+        return credentials
 
     @staticmethod
     def get_builtin_tool_provider_credential_info(
         tenant_id: str,
         provider: str,
-        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
+        *,
+        credential_query: CredentialQuery,
     ) -> ToolProviderCredentialInfoApiEntity:
         """
         get builtin tool provider credential info
@@ -451,9 +420,9 @@ class BuiltinToolManageService:
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
             provider,
-            session=session,
             user=user,
             include_credential_ids=include_credential_ids,
+            credential_query=credential_query,
         )
         credential_info = ToolProviderCredentialInfoApiEntity(
             supported_credential_types=supported_credential_types,
@@ -561,12 +530,16 @@ class BuiltinToolManageService:
             return user_client is not None and user_client.enabled
 
     @staticmethod
-    def get_oauth_client(tenant_id: str, provider: str) -> Mapping[str, Any] | None:
+    def get_oauth_client(
+        tenant_id: str, provider: str, *, provider_controller: PluginToolProviderController | None = None
+    ) -> PluginOAuthClientConfig | None:
         """
         get builtin tool provider
         """
         tool_provider = ToolProviderID(provider)
-        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        if provider_controller is None:
+            provider_controller = ToolManager.get_plugin_provider(provider, tenant_id)
+        plugin_unique_identifier = provider_controller.plugin_unique_identifier
         encrypter, _ = create_provider_encrypter(
             tenant_id=tenant_id,
             config=[x.to_basic_provider_config() for x in provider_controller.get_oauth_client_schema()],
@@ -586,14 +559,12 @@ class BuiltinToolManageService:
             oauth_params: Mapping[str, Any] | None = None
             if user_client:
                 oauth_params = encrypter.decrypt(user_client.oauth_params)
-                return oauth_params
+                return PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
 
             # only verified provider can use official oauth client
-            is_verified = not isinstance(
-                provider_controller, PluginToolProviderController
-            ) or PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
+            is_verified = PluginService.is_plugin_verified(tenant_id, plugin_unique_identifier)
             if not is_verified:
-                return oauth_params
+                return None
 
             system_client = session.scalar(
                 select(ToolOAuthSystemClient)
@@ -607,9 +578,13 @@ class BuiltinToolManageService:
                 try:
                     oauth_params = decrypt_system_params(system_client.encrypted_oauth_params)
                 except Exception as e:
-                    raise ValueError(f"Error decrypting system oauth params: {e}")
+                    raise ValueError(f"Error decrypting system oauth params: {e}") from e
 
-            return oauth_params
+            return (
+                PluginOAuthClientConfig(plugin_unique_identifier, dict(oauth_params))
+                if oauth_params is not None
+                else None
+            )
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):

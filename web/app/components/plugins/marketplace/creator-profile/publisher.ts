@@ -1,9 +1,12 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { CreatorCreation, CreatorSortField, CreatorSortOrder } from './model'
 import type { Plugin } from '@/app/components/plugins/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  getMarketplacePluginIconUrl,
+  getMarketplaceTemplateIconUrl,
+} from '@/features/marketplace/api'
 import { marketplaceClient } from '@/service/marketplace'
-import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
+import { getPluginIconInMarketplace, toPluginCard } from '../plugin-card-adapter'
 import { adaptCreations, toPublisherSortQuery } from './model'
 
 const CREATOR_PAGE_SIZE = 40
@@ -18,13 +21,11 @@ const publisherPageHasMore = (page: number, itemCount: number, total?: number) =
   typeof total === 'number' ? page * CREATOR_PAGE_SIZE < total : itemCount === CREATOR_PAGE_SIZE
 
 export const getTemplateIcon = (template: MarketplaceTemplate) =>
-  template.icon_file_key
-    ? `${MARKETPLACE_API_PREFIX}/templates/${encodeURIComponent(template.id)}/icon`
-    : ''
+  template.icon_file_key ? getMarketplaceTemplateIconUrl(template.id) : ''
 
 export const getDependencyIcon = (pluginId: string) => {
   if (!pluginId.includes('/')) return ''
-  return `${MARKETPLACE_API_PREFIX}/plugins/${pluginId.split('/').map(encodeURIComponent).join('/')}/icon`
+  return getMarketplacePluginIconUrl(pluginId)
 }
 
 export async function fetchPublisherPluginPage({
@@ -91,10 +92,7 @@ export const toCreatorRecords = ({
     resolveDependencyIcon: getDependencyIcon,
   }),
   pluginsByCreationId: Object.fromEntries(
-    plugins.map((plugin) => [
-      `${plugin.type}:${plugin.org}/${plugin.name}`,
-      getFormattedPlugin(plugin),
-    ]),
+    plugins.map((plugin) => [`${plugin.type}:${plugin.org}/${plugin.name}`, toPluginCard(plugin)]),
   ),
   templatesByCreationId: Object.fromEntries(
     templates.map((template) => [`template:${template.id}`, template]),

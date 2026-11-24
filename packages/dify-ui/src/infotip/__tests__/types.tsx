@@ -1,5 +1,7 @@
-import type * as React from 'react'
+import type { InfotipActions, InfotipProps } from '@langgenius/dify-ui/infotip'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import * as React from 'react'
+import { expectTypeOf } from 'vite-plus/test'
 
 export function infotipTypeContracts(
   triggerRef: React.Ref<HTMLButtonElement>,
@@ -8,27 +10,28 @@ export function infotipTypeContracts(
   const composition = (
     <Infotip<{ title: string }>>
       {({ payload }) => (
-        <>
+        <React.Fragment>
           <InfotipTrigger
             aria-label="Details"
             ref={triggerRef}
             payload={{ title: 'Details' }}
             iconVariant="information"
-            iconSize="small"
+            size="sm"
             className={(state) => (state.open ? 'text-text-accent' : undefined)}
             style={(state) => ({ opacity: state.disabled ? 0.5 : 1 })}
           />
           <InfotipContent
             ref={popupRef}
             aria-label="Details"
-            placement="bottom-start"
+            side="bottom"
+            align="start"
             sideOffset={({ side }) => (side === 'top' ? 4 : 8)}
             className={(state) => (state.open ? 'w-60' : undefined)}
             style={(state) => ({ opacity: state.open ? 1 : 0 })}
           >
             {payload?.title}
           </InfotipContent>
-        </>
+        </React.Fragment>
       )}
     </Infotip>
   )
@@ -39,9 +42,30 @@ export function infotipTypeContracts(
   const children = <InfotipTrigger aria-label="Details">Custom trigger</InfotipTrigger>
   // @ts-expect-error InfotipTrigger always renders a native button.
   const render = <InfotipTrigger aria-label="Details" render={<div />} />
+  // @ts-expect-error Size selects the icon and its box together.
+  const legacySize = <InfotipTrigger aria-label="Details" iconSize="small" />
+  // @ts-expect-error Only the defined size steps are available.
+  const customSize = <InfotipTrigger aria-label="Details" size="xl" />
   const state = (
     // @ts-expect-error Popup state is separate from trigger state.
     <InfotipContent className={(state) => String(state.disabled)}>Details</InfotipContent>
   )
-  return { composition, labelledTrigger, unnamed, children, render, state }
+  return {
+    composition,
+    labelledTrigger,
+    unnamed,
+    children,
+    render,
+    legacySize,
+    customSize,
+    state,
+  }
+}
+
+export function infotipActionsTypeContract() {
+  const actionsRef = React.createRef<InfotipActions>()
+  expectTypeOf(actionsRef.current).toEqualTypeOf<
+    NonNullable<InfotipProps['actionsRef']>['current']
+  >()
+  return <Infotip actionsRef={actionsRef} />
 }

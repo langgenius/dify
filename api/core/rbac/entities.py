@@ -10,6 +10,7 @@ class RBACResourceScope(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+    KNOWLEDGE_FS = "knowledge_space"
     AGENT = "agent"
     WORKSPACE = "workspace"
 
@@ -43,6 +44,7 @@ class RBACPermission(StrEnum):
     APP_ACCESS_CONFIG = "app_access_config"
 
     AGENT_CREATE = "agent_create"
+    AGENT_TAG_MANAGE = "agent_tag_manage"
     AGENT_PREVIEW = "agent_preview"
     AGENT_EDIT = "agent_edit"
     AGENT_TEST_AND_RUN = "agent_test_and_run"
@@ -71,6 +73,14 @@ class RBACPermission(StrEnum):
     DATASET_EXTERNAL_CONNECT = "dataset_external_connect"
     DATASET_IMPORT_EXPORT_DSL = "dataset_import_export_dsl"
 
+    KNOWLEDGE_FS_READ = "knowledge_space_read"
+    KNOWLEDGE_FS_CREATE = "knowledge_space_create"
+    KNOWLEDGE_FS_EDIT = "knowledge_space_edit"
+    KNOWLEDGE_FS_DELETE = "knowledge_space_delete"
+    KNOWLEDGE_FS_ACCESS_CONFIG = "knowledge_space_access_config"
+    KNOWLEDGE_FS_DOCUMENT_WRITE = "knowledge_space_document_write"
+    KNOWLEDGE_FS_QUERY = "knowledge_space_query"
+
     WORKSPACE_MEMBER_MANAGE = "workspace_member_manage"
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
     API_EXTENSION_MANAGE = "api_extension_manage"
@@ -97,6 +107,9 @@ class RBACPermission(StrEnum):
     TOOL_MANAGE = "tool_manage"
     MCP_MANAGE = "mcp_manage"
 
+    IP_POLICY_VIEW = "ip_policy_view"
+    IP_POLICY_MANAGE = "ip_policy_manage"
+
     @property
     def scope(self) -> RBACResourceScope:
         if self in _FUNCTION_SCOPED_RESOURCE_SCENES:
@@ -116,5 +129,6 @@ _FUNCTION_SCOPED_RESOURCE_SCENES: frozenset[RBACPermission] = frozenset(
         RBACPermission.APP_CREATE_AND_MANAGEMENT,
         RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
         RBACPermission.AGENT_CREATE,
+        RBACPermission.AGENT_TAG_MANAGE,
     }
 )

@@ -4,17 +4,27 @@ import type { MouseEventHandler } from 'react'
 import type { SnippetDSLImportResponse } from '@/types/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,10 +32,7 @@ import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
-import {
-  useConfirmSnippetImportMutation,
-  useImportSnippetDSLMutation,
-} from '@/service/use-snippets'
+import { consoleQuery } from '@/service/console'
 import { canCreateAndModifySnippets } from './utils/permission'
 
 type ImportSnippetDSLDialogProps = {
@@ -70,15 +77,12 @@ function SnippetDSLConfirmDialog({
         if (!open) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 overflow-hidden! border-none text-left align-middle shadow-xl">
-        <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
-          <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
             {t(($) => $.dslVersionMismatchTitle, { ns: 'snippet' })}
           </AlertDialogTitle>
-          <AlertDialogDescription
-            render={<div />}
-            className="flex grow flex-col system-md-regular text-text-secondary"
-          >
+          <AlertDialogDescription render={<div />}>
             <div>{t(($) => $.dslVersionMismatchDescription, { ns: 'snippet' })}</div>
             <div>{t(($) => $.dslVersionMismatchQuestion, { ns: 'snippet' })}</div>
             <br />
@@ -91,15 +95,15 @@ function SnippetDSLConfirmDialog({
               <span className="system-md-medium">{versions.systemVersion}</span>
             </div>
           </AlertDialogDescription>
-        </div>
-        <AlertDialogActions>
-          <AlertDialogCancelButton variant="secondary">
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancelButton>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton onClick={onConfirm} disabled={confirmDisabled}>
+          <AlertDialogConfirmButton tone="default" onClick={onConfirm} disabled={confirmDisabled}>
             {t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -111,8 +115,16 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const { push } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
-  const importSnippetMutation = useImportSnippetDSLMutation()
-  const confirmSnippetImportMutation = useConfirmSnippetImportMutation()
+  const { mutateAsync: importSnippet, isPending: isImporting } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.imports.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: confirmSnippetImport, isPending: isConfirmingImport } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.imports.byImportId.confirm.post.mutationOptions(
+      { context: { silent: true } },
+    ),
+  )
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(
     ImportSnippetDSLDialogTab.FromFile,
   )
@@ -145,11 +157,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const snippetId = getImportedSnippetId(response)
 
       onClose()
-      toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
       if (snippetId) push(`/snippets/${snippetId}/orchestrate`)
     },
-    [onClose, push, t],
+    [onClose, push],
   )
 
   const handleImportResponse = useCallback(
@@ -181,35 +192,44 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
     if (!canCreateAndModifySnippet) return
 
     try {
-      const response = await importSnippetMutation.mutateAsync({
-        mode: currentTab === ImportSnippetDSLDialogTab.FromFile ? 'yaml-content' : 'yaml-url',
-        yamlContent: currentTab === ImportSnippetDSLDialogTab.FromFile ? fileContent : undefined,
-        yamlUrl: currentTab === ImportSnippetDSLDialogTab.FromUrl ? dslUrl : undefined,
+      const response = await importSnippet({
+        body: {
+          mode: currentTab === ImportSnippetDSLDialogTab.FromFile ? 'yaml-content' : 'yaml-url',
+          yaml_content: currentTab === ImportSnippetDSLDialogTab.FromFile ? fileContent : undefined,
+          yaml_url: currentTab === ImportSnippetDSLDialogTab.FromUrl ? dslUrl : undefined,
+        },
       })
 
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
   }, [
+    t,
     canCreateAndModifySnippet,
     currentTab,
     dslUrl,
     fileContent,
     handleImportResponse,
-    importSnippetMutation,
+    importSnippet,
   ])
 
   const handleConfirmImport: MouseEventHandler = useCallback(async () => {
     if (!canCreateAndModifySnippet || !importId) return
 
     try {
-      const response = await confirmSnippetImportMutation.mutateAsync({ importId })
+      const response = await confirmSnippetImport({
+        params: { import_id: importId },
+      })
       handleImportResponse(response)
     } catch (error) {
-      if (error instanceof Error && error.message) toast.error(error.message)
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
+      )
     }
-  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
+  }, [canCreateAndModifySnippet, confirmSnippetImport, handleImportResponse, importId, t])
 
   const handleTabChange = (value: string | number) => {
     if (value === ImportSnippetDSLDialogTab.FromFile)
@@ -218,7 +238,7 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       setCurrentTab(ImportSnippetDSLDialogTab.FromUrl)
   }
 
-  const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
+  const isSubmitting = isImporting || isConfirmingImport
   const importDisabled =
     !canCreateAndModifySnippet ||
     (currentTab === ImportSnippetDSLDialogTab.FromFile && !currentFile) ||
@@ -227,53 +247,53 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !showConfirmModal && onClose()}>
-        <DialogContent className="w-full max-w-120! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
-            <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $.importDialogTitle, { ns: 'snippet' })}
-            </DialogTitle>
-            <button
-              type="button"
+        <DialogContent className="w-120">
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.importDialogTitle, { ns: 'snippet' })}</DialogTitle>
+            <DialogHeaderCloseButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover"
-              onClick={onClose}
-            >
-              <span className="i-ri-close-line size-5" />
-            </button>
-          </div>
-          <Tabs value={currentTab} onValueChange={handleTabChange}>
-            <TabsList
-              aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
-              className="h-9 gap-6 border-b border-divider-subtle px-6"
-            >
-              <TabsTab
+            />
+          </DialogHeader>
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (importDisabled || isSubmitting) return
+              void handleImport()
+            }}
+          >
+            <Tabs className="contents" value={currentTab} onValueChange={handleTabChange}>
+              <TabsList
+                aria-label={t(($) => $.importDialogTitle, { ns: 'snippet' })}
+                className="h-9 shrink-0 gap-6 border-b border-divider-subtle px-6"
+              >
+                <TabsTab
+                  value={ImportSnippetDSLDialogTab.FromFile}
+                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  disabled={isSubmitting}
+                >
+                  {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
+                </TabsTab>
+                <TabsTab
+                  value={ImportSnippetDSLDialogTab.FromUrl}
+                  className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
+                  disabled={isSubmitting}
+                >
+                  {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
+                </TabsTab>
+              </TabsList>
+              <TabsPanel
                 value={ImportSnippetDSLDialogTab.FromFile}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
+                tabIndex={-1}
+                render={<DialogBody />}
               >
-                {t(($) => $.importFromDSLFile, { ns: 'snippet' })}
-              </TabsTab>
-              <TabsTab
+                <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
+              </TabsPanel>
+              <TabsPanel
                 value={ImportSnippetDSLDialogTab.FromUrl}
-                className="h-full pt-0 pb-0 data-active:border-util-colors-blue-brand-blue-brand-600!"
-                disabled={isSubmitting}
+                tabIndex={-1}
+                render={<DialogBody />}
               >
-                {t(($) => $.importFromDSLUrl, { ns: 'snippet' })}
-              </TabsTab>
-            </TabsList>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromFile}
-              tabIndex={-1}
-              className="px-6 py-4"
-            >
-              <Uploader className="mt-0" file={currentFile} updateFile={handleFileChange} />
-            </TabsPanel>
-            <TabsPanel
-              value={ImportSnippetDSLDialogTab.FromUrl}
-              tabIndex={-1}
-              className="px-6 py-4"
-            >
-              <div>
                 <label
                   htmlFor={dslUrlInputId}
                   className="mb-1 block system-md-semibold text-text-secondary"
@@ -282,32 +302,32 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
                 </label>
                 <Input
                   id={dslUrlInputId}
-                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' }) || ''}
+                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'snippet' })}
                   value={dslUrl}
                   onChange={(event) => setDslUrl(event.target.value)}
                 />
-              </div>
-            </TabsPanel>
-          </Tabs>
-          <div className="flex justify-end px-6 py-5">
-            <Button className="mr-2" disabled={isSubmitting} onClick={onClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button
-              disabled={importDisabled}
-              loading={isSubmitting}
-              variant="primary"
-              onClick={handleImport}
-            >
-              {t(($) => $['operation.create'], { ns: 'common' })}
-            </Button>
-          </div>
+              </TabsPanel>
+            </Tabs>
+            <DialogFooter>
+              <Button disabled={isSubmitting} onClick={onClose}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+              <Button
+                disabled={importDisabled}
+                loading={isSubmitting}
+                type="submit"
+                variant="primary"
+              >
+                {t(($) => $['operation.create'], { ns: 'common' })}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
       {showConfirmModal && (
         <SnippetDSLConfirmDialog
           versions={versions}
-          confirmDisabled={confirmSnippetImportMutation.isPending || !canCreateAndModifySnippet}
+          confirmDisabled={isConfirmingImport || !canCreateAndModifySnippet}
           onCancel={() => setShowConfirmModal(false)}
           onConfirm={handleConfirmImport}
         />

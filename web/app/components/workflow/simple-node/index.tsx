@@ -14,9 +14,7 @@ import { NodeTargetHandle } from '@/app/components/workflow/nodes/_base/componen
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 
-type SimpleNodeProps = NodeProps
-
-const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
+const SimpleNode: FC<NodeProps> = ({ id, data }) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
@@ -71,10 +69,10 @@ const SimpleNode: FC<SimpleNodeProps> = ({ id, data }) => {
           <NodeControl id={id} data={data} />
         )}
         <div className={cn('flex items-center rounded-t-2xl px-3 pt-3 pb-2')}>
-          <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" />
+          <BlockIcon className="me-2 shrink-0" type={data.type} size="md" />
           <div
             title={data.title}
-            className="mr-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
+            className="me-1 flex grow items-center truncate system-sm-semibold-uppercase text-text-primary"
           >
             <div>{data.title}</div>
           </div>

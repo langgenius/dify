@@ -10,7 +10,6 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { basePath } from '@/utils/var'
 
@@ -46,8 +45,7 @@ const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
   const isRbacEnabled = systemFeatures.rbac_enabled
 
   const getWebAppType = (appType: AppDetailWithSite['mode']) => {
-    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
-      return AppModeEnum.CHAT
+    if (appType !== 'completion' && appType !== 'workflow') return 'chat'
     return appType
   }
 
@@ -56,7 +54,7 @@ const EmptyElement: FC<{ appDetail: AppDetailWithSite }> = ({ appDetail }) => {
       <div className="box-border h-fit w-140 rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t(($) => $['table.empty.element.title'], { ns: 'appLog' })}
-          <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />
+          <ThreeDotsIcon className="relative -inset-s-1.5 -top-3 inline text-text-secondary" />
         </span>
         <div className="mt-2 system-sm-regular text-text-tertiary">
           <Trans

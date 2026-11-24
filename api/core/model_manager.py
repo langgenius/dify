@@ -1,7 +1,20 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from contextlib import contextmanager
 from copy import deepcopy
-from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    Optional,
+    ParamSpec,
+    Protocol,
+    TypeVar,
+    cast,
+    overload,
+    override,
+)
 from uuid import UUID
 
 from configs import dify_config
@@ -16,10 +29,10 @@ from core.credit_usage import (
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_entities import ModelLoadBalancingConfiguration
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
+from core.entities.provider_entities import ModelLoadBalancingConfiguration, ProviderQuotaType
+from core.errors.error import InsufficientHostedCreditsError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.callbacks.base_callback import Callback
@@ -37,14 +50,39 @@ from graphon.model_runtime.model_providers.base.text_embedding_model import Text
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from models.provider import ProviderType
 
+if TYPE_CHECKING:
+    from core.app.llm.quota import ModelQuotaReservation
+
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
 
+class LLMModerationPolicy(Protocol):
+    """Tenant-bound checks injected during model assembly, never overridden by an invocation."""
+
+    @property
+    def tenant_id(self) -> str: ...
+
+    def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        """Approve model inputs or raise before provider invocation and quota reservation."""
+        ...
+
+    def check_result(self, result: LLMResult) -> None:
+        """Approve a completed result or raise without modifying it or refunding settled quota."""
+        ...
+
+    def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
+        """Return approved results or a guarded stream; unavailable checks must fail closed."""
+        ...
+
+
 class ModelInstance:
     """
-    Model instance class.
+    A model instance with an assembly-bound, tenant-scoped moderation boundary.
+
+    Subclasses extend _invoke_llm for execution and accounting rather than
+    replacing the public invocation boundary that enforces the bound policy.
     """
 
     def __init__(
@@ -53,7 +91,23 @@ class ModelInstance:
         model: str,
         credentials: dict | None = None,
         request_metadata: Mapping[str, object] | None = None,
+        *,
+        moderation: LLMModerationPolicy | None = None,
     ) -> None:
+        """Assemble a model with an optional tenant-matched LLM policy.
+
+        None selects automatic platform moderation where enabled and
+        leaves other instances unmoderated. Explicit policies supplement rather
+        than replace enabled automatic platform moderation. A bound policy is immutable
+        through the public invocation API and cannot be bound across tenants or
+        to non-LLM capabilities. Invalid bindings fail before credential lookup.
+        """
+        if moderation is not None:
+            if provider_model_bundle.model_type_instance.model_type != ModelType.LLM:
+                raise ValueError("Moderation policies can only be bound to LLM instances.")
+            if moderation.tenant_id != provider_model_bundle.configuration.tenant_id:
+                raise ValueError("Moderation policy tenant does not match the model tenant.")
+        self._moderation = bind_model_moderation_policy(provider_model_bundle, moderation)
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -71,6 +125,11 @@ class ModelInstance:
             model=model,
             credentials=self.credentials,
         )
+
+    @property
+    def moderation(self) -> LLMModerationPolicy | None:
+        """Return the assembly-bound policy; None means this instance has no moderation policy."""
+        return self._moderation
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
         bound_request_metadata = self._request_metadata
@@ -176,7 +235,7 @@ class ModelInstance:
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]: ...
+    ) -> LLMResult | Generator: ...
 
     def invoke_llm(
         self,
@@ -187,7 +246,7 @@ class ModelInstance:
         stream: bool = True,
         callbacks: list[Callback] | None = None,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]:
+    ) -> LLMResult | Generator:
         """
         Invoke large language model
 
@@ -199,12 +258,44 @@ class ModelInstance:
         :param callbacks: callbacks
         :param request_metadata: optional request metadata
         :return: full response or stream response chunk generator result
+
+        Requires an LLM instance. An assembly-bound policy checks inputs before
+        any provider or quota effects and outputs after accounting, before caller
+        delivery. Rejection and unavailable checks propagate without model retry.
+        """
+        if self._moderation is not None:
+            self._moderation.check_inputs(prompt_messages)
+        response = self._invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            callbacks=callbacks,
+            request_metadata=request_metadata,
+        )
+        return self._moderation.check_output(response) if self._moderation is not None else response
+
+    def _invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, Any] | None,
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: bool,
+        callbacks: list[Callback] | None,
+        request_metadata: Mapping[str, object] | None,
+    ) -> LLMResult | Generator:
+        """Execute already-admitted LLM inputs; subclasses own accounting before results return.
+
+        Called only by the public guarded invocation path. Provider and load
+        balancing failures propagate; this step performs no moderation itself.
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
         request_metadata = self._resolve_request_metadata(request_metadata)
         return cast(
-            Union[LLMResult, Generator],
+            LLMResult | Generator,
             self._round_robin_invoke(
                 self.model_type_instance.invoke,
                 model=self.model_name,
@@ -247,7 +338,7 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
-        Invoke large language model
+        Invoke text embedding model
 
         :param texts: texts to embed
         :param input_type: input type
@@ -272,7 +363,7 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
         """
-        Invoke large language model
+        Invoke multimodal embedding model
 
         :param multimodel_documents: multimodel documents to embed
         :param input_type: input type
@@ -386,7 +477,7 @@ class ModelInstance:
 
     def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
         """
-        Invoke large language model
+        Invoke speech-to-text model
 
         :param file: audio file
         :return: text for given audio file
@@ -409,15 +500,15 @@ class ModelInstance:
         request_metadata: Mapping[str, object] | None = None,
     ) -> Iterable[bytes]:
         """
-        Invoke large language tts model
+        Invoke a text-to-speech model.
 
         :param content_text: text content to be translated
         :param voice: model timbre
-        :return: text for given audio file
+        :return: audio byte stream
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-        return self._round_robin_invoke(
+        chunks = self._round_robin_invoke(
             self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
@@ -425,6 +516,7 @@ class ModelInstance:
             voice=voice,
             request_metadata=self._resolve_request_metadata(request_metadata),
         )
+        return (chunk.data for chunk in chunks)
 
     def _round_robin_invoke(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """
@@ -437,7 +529,7 @@ class ModelInstance:
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
-        last_exception: Union[InvokeRateLimitError, InvokeAuthorizationError, InvokeConnectionError, None] = None
+        last_exception: InvokeRateLimitError | InvokeAuthorizationError | InvokeConnectionError | None = None
         while True:
             lb_config = self.load_balancing_manager.fetch_next()
             if not lb_config:
@@ -494,7 +586,7 @@ class ModelInstance:
 
 
 class QuotaManagedModelInstance(ModelInstance):
-    """A system-hosted model instance that owns quota settlement per invocation."""
+    """Reserve and settle hosted quota before delivering model results."""
 
     def reserve_quota(
         self,
@@ -502,13 +594,24 @@ class QuotaManagedModelInstance(ModelInstance):
         request_id: str | None = None,
         app_type: CreditUsageAppTypeInput = None,
         created_by: CreditUsageCreatedByInput = None,
-    ):
-        from core.app.llm.quota import reserve_model_quota_for_model
-
+    ) -> "ModelQuotaReservation":
+        """Reserve this model's quota, using bound metadata for omitted accounting tags."""
         if app_type is None:
             app_type = self._get_reservation_app_type(self._request_metadata)
         if created_by is None:
             created_by = self._get_reservation_created_by(self._request_metadata)
+
+        return self._reserve_model_quota(request_id=request_id, app_type=app_type, created_by=created_by)
+
+    def _reserve_model_quota(
+        self,
+        *,
+        request_id: str | None,
+        app_type: CreditUsageAppTypeInput,
+        created_by: CreditUsageCreatedByInput,
+    ) -> "ModelQuotaReservation":
+        """Reserve using the current workspace provider configuration; propagate reservation errors."""
+        from core.app.llm.quota import reserve_model_quota_for_model
 
         return reserve_model_quota_for_model(
             tenant_id=self.provider_model_bundle.configuration.tenant_id,
@@ -548,7 +651,7 @@ class QuotaManagedModelInstance(ModelInstance):
             return None
         return normalize_credit_usage_app_type(app_type)
 
-    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
+    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None) -> "ModelQuotaReservation":
         request_id = self._get_reservation_request_id(request_metadata)
         app_type = self._get_reservation_app_type(request_metadata)
         created_by = self._get_reservation_created_by(request_metadata)
@@ -564,6 +667,24 @@ class QuotaManagedModelInstance(ModelInstance):
             reservation_kwargs["created_by"] = created_by
         return self.reserve_quota(**reservation_kwargs)
 
+    def _prepare_invocation(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "ModelQuotaReservation | ModelInstance":
+        """Reserve hosted quota before inference; a subclass may return an unmetered executor instead."""
+        return self._reserve_quota_for_request(request_metadata)
+
+    @contextmanager
+    def _admitted_invocation(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "Generator[ModelQuotaReservation | ModelInstance]":
+        """Release any unsettled reservation when the hosted invocation ends."""
+        admission = self._prepare_invocation(request_metadata)
+        try:
+            yield admission
+        finally:
+            if not isinstance(admission, ModelInstance):
+                self.release_quota_safely(admission)
+
     @staticmethod
     def release_quota_safely(reservation) -> None:
         try:
@@ -571,68 +692,45 @@ class QuotaManagedModelInstance(ModelInstance):
         except Exception:
             logger.exception("Failed to release model quota reservation")
 
-    def _invoke_with_quota(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    def _invoke_with_quota(
+        self,
+        function: Callable[P, R],
+        fallback_method: Callable[[ModelInstance], Callable[P, R]],
+        /,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> R:
+        """Call the hosted method or its unmetered counterpart once, settling only hosted work."""
         request_metadata = kwargs.get("request_metadata")
         effective_request_metadata = self._resolve_request_metadata(
             request_metadata if isinstance(request_metadata, Mapping) else None
         )
         if effective_request_metadata is not None:
             kwargs["request_metadata"] = effective_request_metadata
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
-        try:
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            if isinstance(admission, ModelInstance):
+                return fallback_method(admission)(*args, **kwargs)
             response = function(*args, **kwargs)
-            reservation.commit()
+            admission.commit()
             return response
-        finally:
-            self.release_quota_safely(reservation)
-
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: Literal[True] = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator: ...
-
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: Literal[False] = False,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult: ...
-
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: bool = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]: ...
 
     @override
-    def invoke_llm(
+    def _invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: Sequence[str] | None = None,
-        stream: bool = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> Union[LLMResult, Generator]:
+        model_parameters: dict[str, Any] | None,
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: bool,
+        callbacks: list[Callback] | None,
+        request_metadata: Mapping[str, object] | None,
+    ) -> LLMResult | Generator:
+        """Execute admitted inputs within quota accounting before output moderation.
+
+        The public invocation has already checked input. Successful model usage
+        is committed before returning or yielding, and outstanding reservations
+        are released on failure. Output checks belong to the inherited boundary.
+        """
         normalized_prompt_messages = list(prompt_messages)
         normalized_stop = list(stop) if stop else None
         if stream:
@@ -646,9 +744,9 @@ class QuotaManagedModelInstance(ModelInstance):
             )
 
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
-        try:
-            response = super().invoke_llm(
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission._invoke_llm if isinstance(admission, ModelInstance) else super()._invoke_llm
+            response = invoke(
                 prompt_messages=normalized_prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -659,10 +757,9 @@ class QuotaManagedModelInstance(ModelInstance):
             )
             if isinstance(response, Generator):
                 raise TypeError("Non-streaming LLM invocation returned a generator.")
-            reservation.commit(response.usage)
+            if not isinstance(admission, ModelInstance):
+                admission.commit(response.usage)
             return response
-        finally:
-            self.release_quota_safely(reservation)
 
     def _invoke_llm_stream(
         self,
@@ -675,10 +772,9 @@ class QuotaManagedModelInstance(ModelInstance):
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
-        usage: LLMUsage | None = None
-        try:
-            response = super().invoke_llm(
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission._invoke_llm if isinstance(admission, ModelInstance) else super()._invoke_llm
+            response = invoke(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -690,12 +786,17 @@ class QuotaManagedModelInstance(ModelInstance):
             if not isinstance(response, Generator):
                 raise TypeError("Streaming LLM invocation did not return a generator.")
 
-            if reservation.commit_before_delivery:
+            if isinstance(admission, ModelInstance):
+                yield from response
+                return
+
+            usage: LLMUsage | None = None
+            if admission.commit_before_delivery:
                 for chunk in response:
                     chunk_usage = chunk.delta.usage
                     if chunk_usage is not None:
                         usage = chunk_usage
-                    reservation.commit(usage)
+                    admission.commit(usage)
                     yield chunk
                 return
 
@@ -706,10 +807,8 @@ class QuotaManagedModelInstance(ModelInstance):
                     usage = chunk_usage
                 buffered_chunks.append(chunk)
 
-            reservation.commit(usage)
+            admission.commit(usage)
             yield from buffered_chunks
-        finally:
-            self.release_quota_safely(reservation)
 
     @override
     def invoke_text_embedding(
@@ -721,6 +820,7 @@ class QuotaManagedModelInstance(ModelInstance):
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
             super().invoke_text_embedding,
+            lambda fallback: fallback.invoke_text_embedding,
             texts=texts,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -736,6 +836,7 @@ class QuotaManagedModelInstance(ModelInstance):
     ) -> EmbeddingResult:
         return self._invoke_with_quota(
             super().invoke_multimodal_embedding,
+            lambda fallback: fallback.invoke_multimodal_embedding,
             multimodel_documents=multimodel_documents,
             input_type=input_type,
             request_metadata=request_metadata,
@@ -753,6 +854,7 @@ class QuotaManagedModelInstance(ModelInstance):
     ) -> RerankResult:
         return self._invoke_with_quota(
             super().invoke_rerank,
+            lambda fallback: fallback.invoke_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -772,6 +874,7 @@ class QuotaManagedModelInstance(ModelInstance):
     ) -> RerankResult:
         return self._invoke_with_quota(
             super().invoke_multimodal_rerank,
+            lambda fallback: fallback.invoke_multimodal_rerank,
             query=query,
             docs=docs,
             score_threshold=score_threshold,
@@ -781,11 +884,21 @@ class QuotaManagedModelInstance(ModelInstance):
 
     @override
     def invoke_moderation(self, text: str, *, request_metadata: Mapping[str, object] | None = None) -> bool:
-        return self._invoke_with_quota(super().invoke_moderation, text=text, request_metadata=request_metadata)
+        return self._invoke_with_quota(
+            super().invoke_moderation,
+            lambda fallback: fallback.invoke_moderation,
+            text=text,
+            request_metadata=request_metadata,
+        )
 
     @override
     def invoke_speech2text(self, file: IO[bytes], *, request_metadata: Mapping[str, object] | None = None) -> str:
-        return self._invoke_with_quota(super().invoke_speech2text, file=file, request_metadata=request_metadata)
+        return self._invoke_with_quota(
+            super().invoke_speech2text,
+            lambda fallback: fallback.invoke_speech2text,
+            file=file,
+            request_metadata=request_metadata,
+        )
 
     @override
     def invoke_tts(
@@ -803,27 +916,92 @@ class QuotaManagedModelInstance(ModelInstance):
         content_text: str,
         voice: str,
         request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator[bytes, None, None]:
+    ) -> Generator[bytes]:
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
-        reservation = self._reserve_quota_for_request(effective_request_metadata)
-        try:
-            response = super().invoke_tts(
-                content_text=content_text,
-                voice=voice,
-                request_metadata=effective_request_metadata,
-            )
+        with self._admitted_invocation(effective_request_metadata) as admission:
+            invoke = admission.invoke_tts if isinstance(admission, ModelInstance) else super().invoke_tts
+            response = invoke(content_text=content_text, voice=voice, request_metadata=effective_request_metadata)
+            if isinstance(admission, ModelInstance):
+                yield from response
+                return
+
             for chunk in response:
-                reservation.commit()
+                admission.commit()
                 yield chunk
-        finally:
-            self.release_quota_safely(reservation)
+
+
+class HostedCreditFallbackModelInstance(QuotaManagedModelInstance):
+    """Replace only an invocation that Cloud Billing declined before inference starts."""
+
+    @override
+    def _reserve_model_quota(
+        self,
+        *,
+        request_id: str | None,
+        app_type: CreditUsageAppTypeInput,
+        created_by: CreditUsageCreatedByInput,
+    ) -> "ModelQuotaReservation":
+        """Reserve against the already selected System route so it cannot drift from its credentials."""
+        from core.app.llm.quota import reserve_model_quota_for_configuration
+
+        return reserve_model_quota_for_configuration(
+            self.provider_model_bundle.configuration,
+            model_type=self.model_type_instance.model_type,
+            model=self.model_name,
+            request_id=request_id,
+            app_type=app_type,
+            created_by=created_by,
+        )
+
+    @override
+    def _prepare_invocation(
+        self, request_metadata: Mapping[str, object] | None
+    ) -> "ModelQuotaReservation | ModelInstance":
+        """Prefer hosted admission; keep its error if the same model cannot run on Custom."""
+        try:
+            return super()._prepare_invocation(request_metadata)
+        except InsufficientHostedCreditsError:
+            custom = self._resolve_custom_model(request_metadata)
+            if custom is None:
+                raise
+            return custom
+
+    def _resolve_custom_model(self, request_metadata: Mapping[str, object] | None) -> ModelInstance | None:
+        """Resolve workspace credentials for the same model without invoking or changing the hosted instance.
+
+        Call only after a definitive reservation denial. Return None for missing or inactive
+        configuration; credential policy failures propagate without running either model.
+        """
+        configuration = self.provider_model_bundle.configuration
+        custom = configuration.custom_configuration
+        if not (custom.provider or custom.models):
+            return None
+
+        custom_provider_configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
+        model_type = self.model_type_instance.model_type
+        if custom_provider_configuration.get_provider_model(model_type, self.model_name, only_active=True) is None:
+            return None
+        credentials = custom_provider_configuration.get_current_credentials(model_type, self.model_name)
+        if not credentials:
+            return None
+
+        bundle = ProviderModelBundle(
+            configuration=custom_provider_configuration, model_type_instance=self.model_type_instance
+        )
+        logger.info(
+            "Using custom credentials after hosted credit reservation denial: tenant_id=%s provider=%s model=%s",
+            configuration.tenant_id,
+            self.provider,
+            self.model_name,
+        )
+        return ModelInstance(bundle, self.model_name, credentials, request_metadata, moderation=self.moderation)
 
 
 class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
     When ``enable_credentials_cache`` is ``True``, resolved credentials for each
-    ``(tenant_id, provider, model_type, model)`` are stored in
+    ``(tenant_id, provider, model_type, model, provider_type)`` are stored in
     ``_credentials_cache`` and reused. That can return **stale** credentials after
     API keys or provider settings change, so a manager constructed with
     ``enable_credentials_cache=True`` should not be kept for the lifetime of a
@@ -841,9 +1019,17 @@ class ModelManager:
         *,
         enable_credentials_cache: bool = False,
         request_metadata: Mapping[str, object] | None = None,
+        moderation: LLMModerationPolicy | None = None,
     ) -> None:
+        """Bind dependencies and an optional LLM policy for every model assembled by this manager.
+
+        None delegates to deployment policy selection during model construction.
+        Explicit policy tenant validation occurs when an LLM is constructed;
+        non-LLM models never inherit this policy.
+        """
         self._provider_manager = provider_manager
-        self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
+        self._moderation = moderation
+        self._credentials_cache: dict[tuple[str, str, str, str, ProviderType], Any] = {}
         self._enable_credentials_cache = enable_credentials_cache
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
@@ -854,12 +1040,22 @@ class ModelManager:
         user_id: str | None = None,
         *,
         request_metadata: Mapping[str, object] | None = None,
+        moderation: LLMModerationPolicy | None = None,
     ) -> "ModelManager":
+        """Construct a tenant runtime with an optional assembly-bound LLM policy.
+
+        A policy from another tenant is rejected before runtime construction.
+        None permits automatic platform moderation during model assembly.
+        Credit metadata behavior is unchanged.
+        """
+        if moderation is not None and moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         if request_metadata is None:
             request_metadata = get_credit_usage_metadata()
         return cls(
             provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id),
             request_metadata=request_metadata,
+            moderation=moderation,
         )
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
@@ -898,10 +1094,14 @@ class ModelManager:
         raise ModelCurrentlyNotSupportError(f"System model {model_type.value}/{model} is not allowed.")
 
     @staticmethod
-    def _model_instance_class(provider_model_bundle: ProviderModelBundle, model_type: ModelType) -> type[ModelInstance]:
-        if provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM:
-            return QuotaManagedModelInstance
-        return ModelInstance
+    def _model_instance_class(provider_model_bundle: ProviderModelBundle) -> type[ModelInstance]:
+        """Compose the fallback layer only around a System model using a hosted credit bucket."""
+        configuration = provider_model_bundle.configuration
+        if configuration.using_provider_type != ProviderType.SYSTEM:
+            return ModelInstance
+        if configuration.system_configuration.current_quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+            return HostedCreditFallbackModelInstance
+        return QuotaManagedModelInstance
 
     def get_model_instance(
         self,
@@ -911,26 +1111,38 @@ class ModelManager:
         model: str,
         *,
         request_metadata: Mapping[str, object] | None = None,
+        require_custom_credentials: bool = False,
     ) -> ModelInstance:
+        """Resolve a model with its normal provider selection and the admitted LLM policy.
+
+        Tenant-only callers must name a provider and set ``require_custom_credentials``.
+        They resolve only workspace-owned credentials even if the provider prefers
+        system hosting, without mutating the provider or consulting its hosted
+        credential cache. Missing custom credentials do not fall back to hosting.
+        A bound LLM policy must match tenant_id before provider lookup.
         """
-        Get model instance
-        :param tenant_id: tenant id
-        :param provider: provider name
-        :param model_type: model type
-        :param model: model name
-        :return:
-        """
+        if model_type == ModelType.LLM and self._moderation is not None and self._moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         if not provider:
+            if require_custom_credentials:
+                raise ValueError("An explicit provider is required for custom model credentials.")
             return self.get_default_model_instance(tenant_id, model_type)
 
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
+        configuration = provider_model_bundle.configuration
+        if require_custom_credentials and configuration.using_provider_type != ProviderType.CUSTOM:
+            configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
+            provider_model_bundle = ProviderModelBundle(
+                configuration=configuration, model_type_instance=provider_model_bundle.model_type_instance
+            )
         self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
-        model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
+        model_instance_class = self._model_instance_class(provider_model_bundle)
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
+        moderation = self._moderation if model_type == ModelType.LLM else None
 
-        cred_cache_key = (tenant_id, provider, model_type.value, model)
+        cred_cache_key = (tenant_id, provider, model_type.value, model, configuration.using_provider_type)
 
         if cred_cache_key in self._credentials_cache:
             return model_instance_class(
@@ -938,9 +1150,12 @@ class ModelManager:
                 model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
                 effective_request_metadata,
+                moderation=moderation,
             )
 
-        ret = model_instance_class(provider_model_bundle, model, request_metadata=effective_request_metadata)
+        ret = model_instance_class(
+            provider_model_bundle, model, request_metadata=effective_request_metadata, moderation=moderation
+        )
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
         return ret
@@ -995,9 +1210,7 @@ class ModelManager:
         model_schema = model_type_instance.get_model_schema(model, model_instance.credentials)
         if not model_schema:
             return False
-        if model_schema.features and ModelFeature.VISION in model_schema.features:
-            return True
-        return False
+        return bool(model_schema.features and ModelFeature.VISION in model_schema.features)
 
 
 class LBModelManager:
@@ -1039,9 +1252,7 @@ class LBModelManager:
         Strategy: Round Robin
         :return:
         """
-        cache_key = "model_lb_index:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model
-        )
+        cache_key = f"model_lb_index:{self._tenant_id}:{self._provider}:{self._model_type.value}:{self._model}"
 
         cooldown_load_balancing_configs = []
         max_index = len(self._load_balancing_configs)
@@ -1115,8 +1326,9 @@ model: %s""",
         :param expire: cooldown time
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         redis_client.setex(cooldown_cache_key, expire, "true")
@@ -1127,8 +1339,9 @@ model: %s""",
         :param config: model load balancing config
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
+        cooldown_cache_key = (
+            f"model_lb_index:cooldown:{self._tenant_id}:{self._provider}:"
+            f"{self._model_type.value}:{self._model}:{config.id}"
         )
 
         res: bool = redis_client.exists(cooldown_cache_key)
@@ -1147,9 +1360,7 @@ model: %s""",
         :param config_id: model load balancing config id
         :return:
         """
-        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            tenant_id, provider, model_type.value, model, config_id
-        )
+        cooldown_cache_key = f"model_lb_index:cooldown:{tenant_id}:{provider}:{model_type.value}:{model}:{config_id}"
 
         ttl = redis_client.ttl(cooldown_cache_key)
         if ttl == -2:

@@ -25,12 +25,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   const appBasicInfo = item.app
   const appName = appBasicInfo?.name ?? ''
   const appMode = appBasicInfo?.mode ?? ''
-  const appIconType =
-    appBasicInfo?.icon_type === 'image' ||
-    appBasicInfo?.icon_type === 'emoji' ||
-    appBasicInfo?.icon_type === 'link'
-      ? appBasicInfo.icon_type
-      : null
+
   const canViewApp = deploymentEdition === 'CLOUD'
   const canShowCreate = canCreate && !!onCreate
   const isClickable = canViewApp || canShowCreate
@@ -57,7 +52,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
   return (
     <article
       className={cn(
-        'relative flex min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 text-left shadow-xs',
+        'relative flex min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 text-start shadow-xs',
         isClickable && 'cursor-pointer',
       )}
     >
@@ -71,14 +66,7 @@ const LearnDifyItem = ({ canCreate, item, onCreate, onTry }: LearnDifyItemProps)
         />
       )}
       <div className="flex flex-col items-start gap-2 pb-1">
-        <AppIcon
-          decorative
-          size="large"
-          iconType={appIconType}
-          icon={appBasicInfo?.icon ?? ''}
-          background={appBasicInfo?.icon_background ?? ''}
-          imageUrl={appBasicInfo?.icon_url ?? ''}
-        />
+        <AppIcon size="large" icon={appBasicInfo} />
         <h3 id={appNameId} className="w-full truncate system-md-semibold text-text-secondary">
           {appName}
         </h3>

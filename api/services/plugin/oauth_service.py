@@ -1,5 +1,7 @@
 import json
 import uuid
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 
 from core.plugin.impl.base import BasePluginClient
@@ -12,12 +14,22 @@ class OAuthProxyService(BasePluginClient):
     __KEY_PREFIX__ = "oauth_proxy_context:"
 
     @staticmethod
+    def validate_plugin_context(
+        context: Mapping[str, Any], *, plugin_id: str, provider: str, plugin_unique_identifier: str
+    ) -> None:
+        if context.get("plugin_id") != plugin_id or context.get("provider") != provider:
+            raise ValueError("OAuth context belongs to another provider")
+        expected_identifier = context.get("plugin_unique_identifier")
+        if expected_identifier is not None and expected_identifier != plugin_unique_identifier:
+            raise ValueError("Plugin changed during OAuth authorization; restart authorization")
+
+    @staticmethod
     def create_proxy_context(
         user_id: str,
         tenant_id: str,
         plugin_id: str,
         provider: str,
-        extra_data: dict[str, Any] = {},
+        extra_data: Mapping[str, Any] = MappingProxyType({}),
         credential_id: str | None = None,
     ):
         """
@@ -57,10 +69,8 @@ class OAuthProxyService(BasePluginClient):
         """
         if not context_id:
             raise ValueError("context_id is required")
-        # get data from redis
         key = f"{OAuthProxyService.__KEY_PREFIX__}{context_id}"
-        data = redis_client.get(key)
+        data = redis_client.getdel(key)
         if not data:
             raise ValueError("context_id is invalid")
-        redis_client.delete(key)
         return json.loads(data)

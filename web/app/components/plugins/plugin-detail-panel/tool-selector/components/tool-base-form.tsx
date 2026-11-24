@@ -59,7 +59,8 @@ export function ToolBaseForm({
           )}
         </div>
         <ToolPicker
-          placement="bottom"
+          side="bottom"
+          align="center"
           sideOffset={4}
           trigger={
             <ToolTrigger

@@ -2,7 +2,7 @@
 
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { InputVar as WorkflowInputVar } from '@/app/components/workflow/types'
-import type { SnippetInputField } from '@/models/snippet'
+import type { InputVar } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
@@ -28,7 +28,7 @@ import { toast } from '@/app/notifications'
 import { PipelineInputVarType } from '@/models/pipeline'
 
 type SnippetRunPanelProps = {
-  fields: SnippetInputField[]
+  fields: InputVar[]
 }
 
 type SnippetRunField = WorkflowInputVar & InputForm
@@ -43,7 +43,7 @@ const PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE: Record<PipelineInputVarType, InputVar
   [PipelineInputVarType.checkbox]: InputVarType.checkbox,
 }
 
-const buildPreviewFields = (fields: SnippetInputField[]): SnippetRunField[] => {
+const buildPreviewFields = (fields: InputVar[]): SnippetRunField[] => {
   return fields.map((field) => ({
     type: PIPELINE_TO_WORKFLOW_INPUT_VAR_TYPE[field.type],
     label: field.label,
@@ -166,7 +166,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
   return (
     <div
       id={panelId}
-      className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
     >
       <ResizeHandle
@@ -177,7 +177,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
         controls={panelId}
         label={t(($) => $['singleRun.testRun'], { ns: 'workflow' })}
         onResize={setPreviewPanelWidth}
-        className="absolute top-1/2 bottom-0 left-0.75 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
+        className="absolute inset-s-0.75 top-1/2 bottom-0 z-50 h-6 w-0.75 cursor-col-resize bg-state-base-handle"
         onMouseDown={startResizing}
       />
       <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
@@ -273,7 +273,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
                 workflowRunningData?.resultText &&
                 typeof workflowRunningData.resultText === 'string' && (
                   <Button
-                    className="mb-4 ml-4"
+                    className="ms-4 mb-4"
                     onClick={() => {
                       copy(workflowRunningData?.resultText || '')
                       toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))

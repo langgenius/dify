@@ -1,11 +1,12 @@
-from contextlib import nullcontext
 from dataclasses import replace
 from datetime import datetime
 from typing import cast
-from unittest.mock import MagicMock, Mock
+from unittest.mock import DEFAULT, Mock
 
 import pytest
-from sqlalchemy.exc import IntegrityError, OperationalError
+from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.onboarding import AccountStepByStepTourState
@@ -93,14 +94,31 @@ def test_sequential_mutations_replay_against_latest_state(
     assert result.completed_task_ids == ("home", "studio")
 
 
-def test_mutate_replays_after_concurrent_create_conflict() -> None:
+def test_mutate_replays_after_concurrent_create_conflict(
+    sqlite_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+) -> None:
     concurrent_state = AccountStepByStepTourState(account_id="account-1")
     concurrent_state.completed_task_ids = ["home"]
     concurrent_state.updated_at = datetime(2026, 8, 13)
-    session = MagicMock(spec=Session)
-    session.execute.return_value.scalar_one_or_none.side_effect = [None, concurrent_state]
-    session.flush.side_effect = IntegrityError("insert", {}, Exception("duplicate"))
-    factory = cast(sessionmaker[Session], Mock(return_value=nullcontext(session)))
+    with sqlite_session_factory.begin() as seed_session:
+        seed_session.add(concurrent_state)
+    session = sqlite_session_factory()
+    empty_probe = session.execute(
+        select(AccountStepByStepTourState).where(AccountStepByStepTourState.account_id == "missing")
+    )
+    probes = 0
+
+    def simulate_stale_probe(*_args: object, **_kwargs: object) -> object:
+        nonlocal probes
+        probes += 1
+        # Hide the committed winner from the initial probe. The real INSERT then
+        # violates the unique key and exercises SQLAlchemy's failed transaction.
+        return empty_probe if probes == 1 else DEFAULT
+
+    statements = mocker.patch.object(session, "execute", wraps=session.execute, side_effect=simulate_stale_probe)
+    rollback = mocker.spy(session, "rollback")
+    factory = cast(sessionmaker[Session], Mock(return_value=session))
     repository = SQLAlchemyStepByStepTourStateRepository(factory)
 
     result = repository.mutate(
@@ -109,29 +127,42 @@ def test_mutate_replays_after_concurrent_create_conflict() -> None:
     )
 
     assert result.completed_task_ids == ("home", "studio")
-    session.rollback.assert_called_once_with()
-    initial_probe = session.execute.call_args_list[0].args[0]
-    replay_statement = session.execute.call_args_list[1].args[0]
+    rollback.assert_called_once_with()
+    initial_probe = statements.call_args_list[0].args[0]
+    replay_statement = statements.call_args_list[1].args[0]
     assert initial_probe._for_update_arg is None
     assert replay_statement._for_update_arg is not None
+    assert repository.get("account-1") == result
 
 
-def test_mutate_retries_mysql_deadlock_with_fresh_session() -> None:
+def test_mutate_retries_mysql_deadlock_with_fresh_session(
+    sqlite_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+) -> None:
     concurrent_state = AccountStepByStepTourState(account_id="account-1")
     concurrent_state.completed_task_ids = ["home"]
     concurrent_state.updated_at = datetime(2026, 8, 13)
 
-    deadlocked_session = MagicMock(spec=Session)
-    deadlocked_session.execute.return_value.scalar_one_or_none.return_value = None
-    deadlocked_session.flush.side_effect = OperationalError(
-        "INSERT",
-        {},
-        Exception(1213, "Deadlock found when trying to get lock"),
+    with sqlite_session_factory.begin() as seed_session:
+        seed_session.add(concurrent_state)
+    deadlocked_session = sqlite_session_factory()
+    empty_probe = deadlocked_session.execute(
+        select(AccountStepByStepTourState).where(AccountStepByStepTourState.account_id == "missing")
     )
-
-    retry_session = MagicMock(spec=Session)
-    retry_session.execute.return_value.scalar_one_or_none.side_effect = [concurrent_state, concurrent_state]
-    factory = Mock(side_effect=[nullcontext(deadlocked_session), nullcontext(retry_session)])
+    mocker.patch.object(deadlocked_session, "execute", return_value=empty_probe)
+    mocker.patch.object(
+        deadlocked_session,
+        "flush",
+        side_effect=OperationalError(
+            "INSERT",
+            {},
+            Exception(1213, "Deadlock found when trying to get lock"),
+        ),
+    )
+    close = mocker.spy(deadlocked_session, "close")
+    retry_session = sqlite_session_factory()
+    statements = mocker.spy(retry_session, "execute")
+    factory = Mock(side_effect=[deadlocked_session, retry_session])
     repository = SQLAlchemyStepByStepTourStateRepository(cast(sessionmaker[Session], factory))
 
     result = repository.mutate(
@@ -141,8 +172,10 @@ def test_mutate_retries_mysql_deadlock_with_fresh_session() -> None:
 
     assert result.completed_task_ids == ("home", "studio")
     assert factory.call_count == 2
-    retry_lock_statement = retry_session.execute.call_args_list[1].args[0]
+    close.assert_called_once_with()
+    retry_lock_statement = statements.call_args_list[1].args[0]
     assert retry_lock_statement._for_update_arg is not None
+    assert SQLAlchemyStepByStepTourStateRepository(sqlite_session_factory).get("account-1") == result
 
 
 @pytest.mark.parametrize(

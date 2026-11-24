@@ -8,414 +8,109 @@ vi.mock('reactflow', async () =>
   (await import('../../__tests__/reactflow-mock-state')).createReactFlowModuleMock(),
 )
 
-function makeNode(overrides: Record<string, unknown> & { id: string }): Node {
-  return {
-    position: { x: 0, y: 0 },
-    width: 240,
-    height: 100,
-    data: { type: BlockEnum.LLM, title: '', desc: '' },
-    ...overrides,
-  } as unknown as Node
-}
+const makeNode = (id: string, x: number, y: number, overrides: Partial<Node> = {}): Node => ({
+  id,
+  position: { x, y },
+  width: 240,
+  height: 100,
+  data: { type: BlockEnum.LLM, title: id, desc: '' },
+  ...overrides,
+})
 
 describe('useHelpline', () => {
-  beforeEach(() => {
-    resetReactFlowMockState()
-  })
+  beforeEach(resetReactFlowMockState)
 
-  it('should return empty arrays for nodes in iteration', () => {
+  it('aligns within the threshold, excluding the dragged node and nested nodes', () => {
+    const dragging = makeNode('dragging', 100, 100)
     rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 0, y: 0 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 0, y: 0 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
+      dragging,
+      makeNode('horizontal', 300, 104),
+      makeNode('vertical', 96, 300),
+      makeNode('horizontal-boundary', 600, 105),
+      makeNode('vertical-boundary', 95, 600),
+      makeNode('iteration-child', 100, 100, { data: { ...dragging.data, isInIteration: true } }),
+      makeNode('loop-child', 100, 100, { data: { ...dragging.data, isInLoop: true } }),
     ]
-
     const { result } = renderWorkflowHook(() => useHelpline())
 
-    const draggingNode = makeNode({ id: 'n1', data: { type: BlockEnum.LLM, isInIteration: true } })
-    const output = result.current.handleSetHelpline(draggingNode)
+    const aligned = result.current.handleSetHelpline(dragging)
 
-    expect(output.showHorizontalHelpLineNodes).toEqual([])
-    expect(output.showVerticalHelpLineNodes).toEqual([])
+    expect(aligned.showHorizontalHelpLineNodes.map((node) => node.id)).toEqual(['horizontal'])
+    expect(aligned.showVerticalHelpLineNodes.map((node) => node.id)).toEqual(['vertical'])
   })
 
-  it('should return empty arrays for nodes in loop', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 0, y: 0 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
+  it.each([BlockEnum.Start, BlockEnum.TriggerWebhook])(
+    'aligns the inner content of %s entry nodes',
+    (type) => {
+      const entry = makeNode('entry', 100, 100)
+      entry.data.type = type
+      rfState.nodes = [entry, makeNode('aligned', 400, 121), makeNode('wrapper', 700, 100)]
+      const { result, store } = renderWorkflowHook(() => useHelpline())
 
-    const { result } = renderWorkflowHook(() => useHelpline())
+      const aligned = result.current.handleSetHelpline(entry)
 
-    const draggingNode = makeNode({ id: 'n1', data: { type: BlockEnum.LLM, isInLoop: true } })
-    const output = result.current.handleSetHelpline(draggingNode)
+      expect(aligned.showHorizontalHelpLineNodes.map((node) => node.id)).toEqual(['aligned'])
+      expect(store.getState().helpLineHorizontal).toEqual({ top: 121, left: 100, width: 540 })
+    },
+  )
 
-    expect(output.showHorizontalHelpLineNodes).toEqual([])
-    expect(output.showVerticalHelpLineNodes).toEqual([])
-  })
-
-  it('should detect horizontally aligned nodes (same y ±5px)', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 0, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 103 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n3',
-        position: { x: 600, y: 500 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({ id: 'n1', position: { x: 0, y: 100 } })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    const horizontalIds = output.showHorizontalHelpLineNodes.map((n: { id: string }) => n.id)
-    expect(horizontalIds).toContain('n2')
-    expect(horizontalIds).not.toContain('n3')
-  })
-
-  it('should detect vertically aligned nodes (same x ±5px)', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 100, y: 0 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 102, y: 200 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n3',
-        position: { x: 500, y: 400 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({ id: 'n1', position: { x: 100, y: 0 } })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    const verticalIds = output.showVerticalHelpLineNodes.map((n: { id: string }) => n.id)
-    expect(verticalIds).toContain('n2')
-    expect(verticalIds).not.toContain('n3')
-  })
-
-  it('should apply entry node offset for Start nodes', () => {
-    const ENTRY_OFFSET_Y = 21
-
-    rfState.nodes = [
-      {
-        id: 'start',
-        position: { x: 100, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.Start },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 100 + ENTRY_OFFSET_Y },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'far',
-        position: { x: 300, y: 500 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({
-      id: 'start',
-      position: { x: 100, y: 100 },
-      width: 240,
-      height: 100,
-      data: { type: BlockEnum.Start },
-    })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    const horizontalIds = output.showHorizontalHelpLineNodes.map((n: { id: string }) => n.id)
-    expect(horizontalIds).toContain('n2')
-    expect(horizontalIds).not.toContain('far')
-  })
-
-  it('should apply entry node offset for Trigger nodes', () => {
-    const ENTRY_OFFSET_Y = 21
-
-    rfState.nodes = [
-      {
-        id: 'trigger',
-        position: { x: 100, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.TriggerWebhook },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 100 + ENTRY_OFFSET_Y },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({
-      id: 'trigger',
-      position: { x: 100, y: 100 },
-      width: 240,
-      height: 100,
-      data: { type: BlockEnum.TriggerWebhook },
-    })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    const horizontalIds = output.showHorizontalHelpLineNodes.map((n: { id: string }) => n.id)
-    expect(horizontalIds).toContain('n2')
-  })
-
-  it('should not detect alignment when positions differ by more than 5px', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 100, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 106 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n3',
-        position: { x: 106, y: 300 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({ id: 'n1', position: { x: 100, y: 100 } })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    expect(output.showHorizontalHelpLineNodes).toHaveLength(0)
-    expect(output.showVerticalHelpLineNodes).toHaveLength(0)
-  })
-
-  it('should exclude child nodes in iteration', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 100, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'child',
-        position: { x: 300, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM, isInIteration: true },
-      },
-    ]
-
-    const { result } = renderWorkflowHook(() => useHelpline())
-
-    const draggingNode = makeNode({ id: 'n1', position: { x: 100, y: 100 } })
-    const output = result.current.handleSetHelpline(draggingNode)
-
-    const horizontalIds = output.showHorizontalHelpLineNodes.map((n: { id: string }) => n.id)
-    expect(horizontalIds).not.toContain('child')
-  })
-
-  it('should set helpLineHorizontal in store when aligned nodes found', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 0, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
+  it.each([
+    { x: 100, left: 100, width: 1000 },
+    { x: 900, left: 300, width: 840 },
+  ])('spans every aligned node when dragging to x=$x', ({ x, left, width }) => {
+    rfState.nodes = [makeNode('wide', 300, 100, { width: 800 }), makeNode('far', 600, 100)]
     const { result, store } = renderWorkflowHook(() => useHelpline())
 
-    const draggingNode = makeNode({ id: 'n1', position: { x: 0, y: 100 } })
-    result.current.handleSetHelpline(draggingNode)
+    result.current.handleSetHelpline(makeNode('dragging', x, 100))
 
-    expect(store.getState().helpLineHorizontal).toBeDefined()
+    expect(store.getState().helpLineHorizontal).toEqual({ top: 100, left, width })
   })
 
-  it('should clear helpLineHorizontal when no aligned nodes', () => {
-    rfState.nodes = [
-      {
-        id: 'n1',
-        position: { x: 0, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'n2',
-        position: { x: 300, y: 500 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
+  it.each([
+    { y: 0, top: 0, height: 600 },
+    { y: 700, top: 100, height: 700 },
+  ])(
+    'spans vertical nodes regardless of input order when dragging to y=$y',
+    ({ y, top, height }) => {
+      rfState.nodes = [makeNode('lower', 120, 300), makeNode('tall', 120, 100, { height: 500 })]
+      const { result, store } = renderWorkflowHook(() => useHelpline())
 
+      const aligned = result.current.handleSetHelpline(makeNode('dragging', 120, y))
+
+      expect(aligned.showVerticalHelpLineNodes.map((node) => node.id)).toEqual(['tall', 'lower'])
+      expect(store.getState().helpLineVertical).toEqual({ top, left: 120, height })
+    },
+  )
+
+  it('excludes the entry wrapper from the vertical line extent', () => {
+    const entry = makeNode('entry', 120, 400)
+    entry.data.type = BlockEnum.Start
+    rfState.nodes = [makeNode('aligned', 120, 100)]
     const { result, store } = renderWorkflowHook(() => useHelpline())
 
-    const draggingNode = makeNode({ id: 'n1', position: { x: 0, y: 100 } })
-    result.current.handleSetHelpline(draggingNode)
+    result.current.handleSetHelpline(entry)
 
-    expect(store.getState().helpLineHorizontal).toBeUndefined()
+    expect(store.getState().helpLineVertical).toEqual({ top: 100, left: 120, height: 400 })
   })
 
-  it('should extend horizontal helpline when dragging node is before the first aligned node', () => {
-    rfState.nodes = [
-      {
-        id: 'a',
-        position: { x: 300, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'b',
-        position: { x: 600, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
+  it.each(['outside', 'iteration', 'loop'] as const)(
+    'clears existing lines when dragging %s',
+    (destination) => {
+      const dragging = makeNode('dragging', 100, 100)
+      rfState.nodes = [makeNode('aligned', 100, 100)]
+      const { result, store } = renderWorkflowHook(() => useHelpline())
+      result.current.handleSetHelpline(dragging)
+      expect(store.getState().helpLineHorizontal).toEqual({ top: 100, left: 100, width: 240 })
+      expect(store.getState().helpLineVertical).toEqual({ top: 100, left: 100, height: 100 })
 
-    const { result, store } = renderWorkflowHook(() => useHelpline())
+      if (destination === 'outside') dragging.position = { x: 500, y: 500 }
+      else if (destination === 'iteration') dragging.data.isInIteration = true
+      else dragging.data.isInLoop = true
+      const aligned = result.current.handleSetHelpline(dragging)
 
-    result.current.handleSetHelpline(makeNode({ id: 'dragging', position: { x: 100, y: 100 } }))
-
-    expect(store.getState().helpLineHorizontal).toEqual({
-      top: 100,
-      left: 100,
-      width: 440,
-    })
-  })
-
-  it('should extend vertical helpline when dragging node is below the aligned nodes', () => {
-    rfState.nodes = [
-      {
-        id: 'a',
-        position: { x: 120, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-      {
-        id: 'b',
-        position: { x: 120, y: 260 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result, store } = renderWorkflowHook(() => useHelpline())
-
-    result.current.handleSetHelpline(makeNode({ id: 'dragging', position: { x: 120, y: 420 } }))
-
-    expect(store.getState().helpLineVertical).toEqual({
-      top: 100,
-      left: 120,
-      height: 420,
-    })
-  })
-
-  it('should extend horizontal helpline using entry node width when a start node is after the aligned nodes', () => {
-    rfState.nodes = [
-      {
-        id: 'aligned',
-        position: { x: 100, y: 100 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.LLM },
-      },
-    ]
-
-    const { result, store } = renderWorkflowHook(() => useHelpline())
-
-    result.current.handleSetHelpline(
-      makeNode({
-        id: 'start-node',
-        position: { x: 500, y: 79 },
-        width: 240,
-        height: 100,
-        data: { type: BlockEnum.Start },
-      }),
-    )
-
-    expect(store.getState().helpLineHorizontal).toEqual({
-      top: 100,
-      left: 100,
-      width: 640,
-    })
-  })
+      expect(aligned).toEqual({ showHorizontalHelpLineNodes: [], showVerticalHelpLineNodes: [] })
+      expect(store.getState().helpLineHorizontal).toBeUndefined()
+      expect(store.getState().helpLineVertical).toBeUndefined()
+    },
+  )
 })

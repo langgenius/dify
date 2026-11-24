@@ -2,6 +2,7 @@ import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n'
 import type { AppData, ConversationItem } from '@/models/share'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,14 +13,15 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n/client'
+import { consoleQuery } from '@/service/console'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
-  useInvalidateShareConversations,
-  useShareChatList,
-  useShareConversationName,
-  useShareConversations,
-} from '@/service/use-share'
-import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
+  shareChatListQueryOptions,
+  shareConversationNameQueryOptions,
+  shareConversationsQueryOptions,
+  shareQueryKeys,
+} from '@/service/share-queries'
+import { tryAppParamsQueryOptions } from '@/service/try-app-queries'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
@@ -69,11 +71,15 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: string) => {
   const isInstalledApp = false // just can be webapp and try app
   const isTryApp = appSourceType === AppSourceType.tryApp
-  const { data: tryAppInfo } = useGetTryAppInfo(isTryApp ? tryAppId! : '')
+  const { data: tryAppInfo } = useQuery(
+    consoleQuery.trialApps.byAppId.get.queryOptions({
+      input: isTryApp && tryAppId ? { params: { app_id: tryAppId } } : skipToken,
+    }),
+  )
   const webAppInfo = useWebAppStore((s) => s.appInfo)
   const appInfo = isTryApp ? tryAppInfo : webAppInfo
   const appMeta = useWebAppStore((s) => s.appMeta)
-  const { data: tryAppParams } = useGetTryAppParams(isTryApp ? tryAppId! : '')
+  const { data: tryAppParams } = useQuery(tryAppParamsQueryOptions(isTryApp ? tryAppId! : ''))
   const webAppParams = useWebAppStore((s) => s.appParams)
   const appParams = isTryApp ? tryAppParams : webAppParams
   const appId = useMemo(() => {
@@ -89,7 +95,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setUserId(user_id)
       setConversationId(conversation_id)
     })
-  }, [])
+  }, [isTryApp])
   useEffect(() => {
     setUserId(embeddedUserId || undefined)
   }, [embeddedUserId])
@@ -111,13 +117,13 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       } else if (localeFromSysVar) {
         // If locale is set as a system variable, use that
         await changeLanguage(localeFromSysVar)
-      } else if ((appInfo as unknown as AppData)?.site?.default_language) {
+      } else if ((appInfo as AppData)?.site?.default_language) {
         // Otherwise use the default from app config
-        await changeLanguage((appInfo as unknown as AppData).site?.default_language)
+        await changeLanguage((appInfo as AppData).site?.default_language)
       }
     }
     setLanguageFromParams()
-  }, [appInfo])
+  }, [appInfo, isTryApp])
   const allowResetChat = !conversationId
   const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const endUserId = (appInfo as AppData | undefined)?.end_user_id
@@ -132,25 +138,33 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (currentConversationId === newConversationId) return ''
     return currentConversationId
   }, [currentConversationId, newConversationId])
-  const { data: appPinnedConversationData } = useShareConversations({
-    appSourceType,
-    appId,
-    pinned: true,
-    limit: 100,
-  })
-  const { data: appConversationData, isLoading: appConversationDataLoading } =
-    useShareConversations({
+  const { data: appPinnedConversationData } = useQuery(
+    shareConversationsQueryOptions({
+      appSourceType,
+      appId,
+      pinned: true,
+      limit: 100,
+    }),
+  )
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    shareConversationsQueryOptions({
       appSourceType,
       appId,
       pinned: false,
       limit: 100,
-    })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
-    conversationId: chatShouldReloadKey,
-    appSourceType,
-    appId,
-  })
-  const invalidateShareConversations = useInvalidateShareConversations()
+    }),
+  )
+  const { data: appChatListData, isLoading: appChatListDataLoading } = useQuery(
+    shareChatListQueryOptions({
+      conversationId: chatShouldReloadKey,
+      appSourceType,
+      appId,
+    }),
+  )
+  const queryClient = useQueryClient()
+  const invalidateShareConversations = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations })
+  }, [queryClient])
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
   const appPrevChatList = useMemo(
@@ -171,7 +185,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
-    // oxlint-disable-next-line eslint-react/set-state-in-effect
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -189,10 +202,16 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           }
         }
         if (item.number) {
-          const convertedNumber = Number(initInputs[item.number.variable])
+          const rawNumber = initInputs[item.number.variable]
+          const convertedNumber =
+            rawNumber === undefined || rawNumber === null || rawNumber === ''
+              ? Number.NaN
+              : Number(rawNumber)
           return {
             ...item.number,
-            default: convertedNumber || item.default || item.number.default,
+            default: Number.isNaN(convertedNumber)
+              ? (item.default ?? item.number.default)
+              : convertedNumber,
             type: 'number',
           }
         }
@@ -254,24 +273,27 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setInitInputs(inputs)
       setInitUserVariables(userVariables)
     })()
-  }, [])
+  }, [isTryApp])
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useShareConversationName(
-    {
-      conversationId: newConversationId,
-      appSourceType,
-      appId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      enabled: !isTryApp,
-    },
+  const { data: newConversation } = useQuery(
+    shareConversationNameQueryOptions(
+      {
+        conversationId: newConversationId,
+        appSourceType,
+        appId,
+      },
+      {
+        refetchOnWindowFocus: false,
+        enabled: !isTryApp,
+      },
+    ),
   )
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
@@ -320,7 +342,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (currentConversationItem && !isTryApp)
       // oxlint-disable-next-line eslint-react/set-state-in-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
-  }, [currentConversationItem, currentConversationLatestInputs])
+  }, [currentConversationItem, currentConversationLatestInputs, isTryApp])
   const checkInputsRequired = useCallback(
     (silent?: boolean) => {
       if (allInputsHidden) return true
@@ -333,7 +355,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          const inputValue = newConversationInputsRef.current[variable]
+          if (
+            (inputValue === undefined ||
+              inputValue === null ||
+              inputValue === '' ||
+              (Array.isArray(inputValue) && inputValue.length === 0)) &&
+            !silent
+          )
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -386,21 +415,27 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     },
     [handleConversationIdInfoChange, setClearChatList],
   )
-  const handleNewConversation = useCallback(async () => {
+  const handleNewConversation = useCallback(() => {
     if (isTryApp) {
       setClearChatList(true)
       return
     }
     currentChatInstanceRef.current.handleStop()
+    const conversationInputs: Record<string, InputValueTypes> = {}
+    inputsForms.forEach((item) => {
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
+    })
+    handleNewConversationInputsChange(conversationInputs)
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
   }, [
     isTryApp,
     setShowNewConversationItemInList,
+    handleChangeConversation,
     handleNewConversationInputsChange,
     setClearChatList,
+    inputsForms,
   ])
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {
@@ -415,15 +450,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     async (messageId, feedback) => {
       await updateFeedback(
         {
-          url: `/messages/${messageId}/feedbacks`,
+          messageId,
           body: { rating: feedback.rating, content: feedback.content },
         },
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     appSourceType,

@@ -1,99 +1,55 @@
 import type { FileUpload } from '@/app/components/base/features/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 import { FileContextProvider } from '../../store'
 import FileUploaderInChatInput from '../index'
 
-vi.mock('@/types/app', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/types/app')>()
-  return {
-    ...actual,
-    TransferMethod: {
-      local_file: 'local_file',
-      remote_url: 'remote_url',
-    },
-  }
-})
-
+// Loading files belongs to the upload hook; this owner chooses the permitted sources.
 vi.mock('../../hooks', () => ({
-  useFile: () => ({
-    handleLoadFileFromLink: vi.fn(),
-  }),
+  useFile: () => ({ handleLoadFileFromLink: vi.fn(), handleLocalFileUpload: vi.fn() }),
 }))
 
-function renderWithProvider(ui: React.ReactElement) {
-  return render(<FileContextProvider>{ui}</FileContextProvider>)
-}
+const config = (methods: TransferMethod[]): FileUpload => ({
+  enabled: true,
+  allowed_file_types: [SupportUploadFileTypes.image],
+  allowed_file_upload_methods: methods,
+  allowed_file_extensions: [],
+  number_limits: 5,
+})
 
-const createFileConfig = (overrides: Partial<FileUpload> = {}): FileUpload =>
-  ({
-    enabled: true,
-    allowed_file_types: ['image'],
-    allowed_file_upload_methods: ['local_file', 'remote_url'],
-    allowed_file_extensions: [],
-    number_limits: 5,
-    ...overrides,
-  }) as unknown as FileUpload
+it.each([
+  { methods: [TransferMethod.local_file], local: true, remote: false },
+  { methods: [TransferMethod.remote_url], local: false, remote: true },
+  { methods: [TransferMethod.local_file, TransferMethod.remote_url], local: true, remote: true },
+])('offers only configured upload sources: $methods', async ({ methods, local, remote }) => {
+  const user = userEvent.setup()
+  render(
+    <FileContextProvider>
+      <FileUploaderInChatInput fileConfig={config(methods)} />
+    </FileContextProvider>,
+  )
+  await user.click(screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ }))
+  const popup = await screen.findByRole('dialog')
+  expect(
+    within(popup).queryByRole('button', { name: /fileUploader\.uploadFromComputer/ }) !== null,
+  ).toBe(local)
+  expect(within(popup).queryByRole('textbox') !== null).toBe(remote)
+})
 
-describe('FileUploaderInChatInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('should render a named attachment trigger', () => {
-    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
-
-    expect(
-      screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ }),
-    ).toBeInTheDocument()
-  })
-
-  it('should render FileFromLinkOrLocal when not readonly', () => {
-    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
-
-    const button = screen.getByRole('button')
-    expect(button).toBeInTheDocument()
-    expect(button).not.toBeDisabled()
-  })
-
-  it('should render only the trigger button when readonly', () => {
-    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} readonly />)
-
-    const button = screen.getByRole('button')
-    expect(button).toBeDisabled()
-  })
-
-  it('should render button with attachment icon for local_file upload method', () => {
-    renderWithProvider(
+it('prevents opening upload controls in readonly mode', async () => {
+  const user = userEvent.setup()
+  render(
+    <FileContextProvider>
       <FileUploaderInChatInput
-        fileConfig={createFileConfig({
-          allowed_file_upload_methods: ['local_file'],
-        } as unknown as Partial<FileUpload>)}
-      />,
-    )
-
-    const button = screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ })
-    expect(button).toBeInTheDocument()
-  })
-
-  it('should render button with attachment icon for remote_url upload method', () => {
-    renderWithProvider(
-      <FileUploaderInChatInput
-        fileConfig={createFileConfig({
-          allowed_file_upload_methods: ['remote_url'],
-        } as unknown as Partial<FileUpload>)}
-      />,
-    )
-
-    const button = screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ })
-    expect(button).toBeInTheDocument()
-  })
-
-  it('should keep stable focus and open-state styling on the trigger', () => {
-    renderWithProvider(<FileUploaderInChatInput fileConfig={createFileConfig()} />)
-
-    const button = screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ })
-    fireEvent.click(button)
-
-    expect(button).toHaveAttribute('data-popup-open')
-  })
+        fileConfig={config([TransferMethod.local_file, TransferMethod.remote_url])}
+        readonly
+      />
+    </FileContextProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: /fileUploader\.uploadFromComputer/ })
+  expect(trigger).toBeDisabled()
+  await user.click(trigger)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

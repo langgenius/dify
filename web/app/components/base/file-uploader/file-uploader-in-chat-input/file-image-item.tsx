@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { downloadUrl } from '@/utils/download'
 import FileImageRender from '../file-image-render'
-import { fileIsUploaded } from '../utils'
+import { fileIsUploaded, getFileDownloadUrl } from '../utils'
 
 type FileImageItemProps = {
   file: FileEntity
@@ -27,7 +27,7 @@ const FileImageItem = ({
   const { t } = useTranslation(['common', 'custom'])
   const { id, progress, base64Url, url, name } = file
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
-  const download_url = url ? `${url}&as_attachment=true` : base64Url
+  const download_url = url ? getFileDownloadUrl(url) : base64Url
   const image = (
     <FileImageRender
       className="h-17 w-17 shadow-md"
@@ -56,7 +56,7 @@ const FileImageItem = ({
             aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
             variant="secondary"
             size="sm"
-            className="pointer-events-none absolute -top-1.5 -right-1.5 z-11 rounded-full opacity-0 group-focus-within/file-image:pointer-events-auto group-focus-within/file-image:opacity-100 group-hover/file-image:pointer-events-auto group-hover/file-image:opacity-100"
+            className="pointer-events-none absolute -inset-e-1.5 -top-1.5 z-11 rounded-full opacity-0 group-focus-within/file-image:pointer-events-auto group-focus-within/file-image:opacity-100 group-hover/file-image:pointer-events-auto group-hover/file-image:opacity-100"
             onClick={() => onRemove?.(id)}
           >
             <span
@@ -91,7 +91,7 @@ const FileImageItem = ({
             <IconButton
               size="md"
               aria-label={t(($) => $['operation.download'], { ns: 'common' })}
-              className="pointer-events-none absolute right-0.5 bottom-0.5 rounded-lg bg-components-actionbar-bg shadow-md group-focus-within/file-image:pointer-events-auto group-hover/file-image:pointer-events-auto hover:bg-components-actionbar-bg"
+              className="pointer-events-none absolute inset-e-0.5 bottom-0.5 rounded-lg bg-components-actionbar-bg shadow-md group-focus-within/file-image:pointer-events-auto group-hover/file-image:pointer-events-auto hover:bg-components-actionbar-bg"
               onClick={() => {
                 downloadUrl({ url: download_url || '', fileName: name, target: '_blank' })
               }}

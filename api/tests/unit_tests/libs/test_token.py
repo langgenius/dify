@@ -1,8 +1,11 @@
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Request
+from flask import Flask, Request
+from flask import request as flask_request
 from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 
@@ -10,22 +13,21 @@ from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from libs import token
 from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
 
+CURRENT_AVATAR_PATH = (
+    "/console/api/accounts/11111111-1111-1111-1111-111111111111/avatars/22222222-2222-2222-2222-222222222222"
+)
 
+
+@dataclass(eq=False, repr=False)
 class MockRequest:
-    def __init__(
-        self,
-        headers: dict[str, str],
-        cookies: dict[str, str],
-        args: dict[str, str],
-        path: str = "/console/api/test",
-    ):
-        self.headers: dict[str, str] = headers
-        self.cookies: dict[str, str] = cookies
-        self.args: dict[str, str] = args
-        self.path = path
+    headers: dict[str, str]
+    cookies: dict[str, str]
+    args: dict[str, str]
+    path: str = "/console/api/test"
+    method: str = "GET"
 
 
-def test_extract_access_token():
+def test_extract_access_token() -> None:
     def _mock_request(headers: dict[str, str], cookies: dict[str, str], args: dict[str, str]) -> Request:
         return cast(Request, MockRequest(headers, cookies, args))
 
@@ -41,7 +43,7 @@ def test_extract_access_token():
         assert extract_webapp_access_token(request) == expected_webapp
 
 
-def test_real_cookie_name_uses_host_prefix_without_domain(config_overrides):
+def test_real_cookie_name_uses_host_prefix_without_domain(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         CONSOLE_WEB_URL="https://console.example.com",
         CONSOLE_API_URL="https://api.example.com",
@@ -51,7 +53,7 @@ def test_real_cookie_name_uses_host_prefix_without_domain(config_overrides):
     assert token._real_cookie_name("csrf_token") == "__Host-csrf_token"
 
 
-def test_real_cookie_name_without_host_prefix_when_domain_present(config_overrides):
+def test_real_cookie_name_without_host_prefix_when_domain_present(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         CONSOLE_WEB_URL="https://console.example.com",
         CONSOLE_API_URL="https://api.example.com",
@@ -61,7 +63,7 @@ def test_real_cookie_name_without_host_prefix_when_domain_present(config_overrid
     assert token._real_cookie_name("csrf_token") == "csrf_token"
 
 
-def test_set_csrf_cookie_includes_domain_when_configured(config_overrides):
+def test_set_csrf_cookie_includes_domain_when_configured(config_overrides: Callable[..., None]) -> None:
     config_overrides(
         CONSOLE_WEB_URL="https://console.example.com",
         CONSOLE_API_URL="https://api.example.com",
@@ -79,7 +81,7 @@ def test_set_csrf_cookie_includes_domain_when_configured(config_overrides):
     assert all("__Host-" not in c for c in cookies)
 
 
-def test_workflow_run_archive_download_file_bypasses_csrf():
+def test_workflow_run_archive_download_file_bypasses_csrf() -> None:
     request = cast(
         Request,
         MockRequest(
@@ -93,14 +95,25 @@ def test_workflow_run_archive_download_file_bypasses_csrf():
     token.check_csrf_token(request, "account-1")
 
 
-def test_non_whitelisted_path_requires_csrf():
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_current_account_avatar_read_bypasses_csrf(method: str) -> None:
+    with Flask(__name__).test_request_context(CURRENT_AVATAR_PATH, method=method):
+        token.check_csrf_token(flask_request, "account-1")
+
+
+def test_current_account_avatar_post_requires_csrf() -> None:
+    with Flask(__name__).test_request_context(CURRENT_AVATAR_PATH, method="POST"), pytest.raises(Unauthorized):
+        token.check_csrf_token(flask_request, "account-1")
+
+
+def test_non_whitelisted_path_requires_csrf() -> None:
     request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path="/console/api/test"))
 
     with pytest.raises(Unauthorized):
         token.check_csrf_token(request, "account-1")
 
 
-def test_exact_workflow_draft_path_bypasses_csrf():
+def test_exact_workflow_draft_path_bypasses_csrf() -> None:
     request = cast(
         Request,
         MockRequest(
@@ -125,14 +138,16 @@ def test_exact_workflow_draft_path_bypasses_csrf():
         "/console/api/workflow-run-archives/downloads/5923ce20291444af45f0580fb49f1cc9/file/extra",
     ],
 )
-def test_whitelist_prefix_paths_still_require_csrf(path: str):
+def test_whitelist_prefix_paths_still_require_csrf(path: str) -> None:
     request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path=path))
 
     with pytest.raises(Unauthorized):
         token.check_csrf_token(request, "account-1")
 
 
-def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(config_overrides):
+def test_admin_api_key_header_bypasses_csrf_when_console_cookie_is_present(
+    config_overrides: Callable[..., None],
+) -> None:
     config_overrides(
         ADMIN_API_KEY_ENABLE=True,
         ADMIN_API_KEY="admin-key",

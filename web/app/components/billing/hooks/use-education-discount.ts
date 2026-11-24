@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
+import { billingErrorMessageKey } from '../billing-error'
 
 export function useEducationDiscount() {
   const { t } = useTranslation(['billing'])
@@ -21,10 +22,13 @@ export function useEducationDiscount() {
 
     setIsEducationDiscountLoading(true)
     try {
-      const { url } = await consoleClient.billing.subscription.get({
-        query: { plan: 'professional', interval: 'year' },
-      })
+      const { url } = await consoleClient.billing.subscription.get(
+        { query: { plan: 'professional', interval: 'year' } },
+        { context: { silent: true } },
+      )
       window.location.href = url
+    } catch (error) {
+      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
     } finally {
       setIsEducationDiscountLoading(false)
     }

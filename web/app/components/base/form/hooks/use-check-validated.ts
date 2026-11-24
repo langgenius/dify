@@ -25,7 +25,7 @@ export const useCheckValidated = (
             acc[condition.variable] = values[condition.variable]
             return acc
           },
-          {} as Record<string, any>,
+          {} as Record<string, unknown>,
         )
         const show = show_on?.every((condition) => {
           const conditionValue = showOnValues[condition.variable]

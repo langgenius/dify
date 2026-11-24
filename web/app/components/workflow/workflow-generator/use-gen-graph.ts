@@ -1,4 +1,4 @@
-import type { GenerateWorkflowResponse } from './types'
+import type { WorkflowGenerateResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import { useSessionStorageState } from 'ahooks'
 import { useCallback, useEffect, useRef } from 'react'
 
@@ -22,7 +22,7 @@ type Params = {
  * version selector) matches the existing Prompt Generator.
  */
 const useGenGraph = ({ storageKey }: Params) => {
-  const [versions, setVersions] = useSessionStorageState<GenerateWorkflowResponse[]>(
+  const [versions, setVersions] = useSessionStorageState<WorkflowGenerateResponse[]>(
     `${KEY_PREFIX}${storageKey}-versions`,
     { defaultValue: [] },
   )
@@ -47,7 +47,7 @@ const useGenGraph = ({ storageKey }: Params) => {
   }, [versions])
 
   const addVersion = useCallback(
-    (version: GenerateWorkflowResponse) => {
+    (version: WorkflowGenerateResponse) => {
       const nextCount = Math.min(versionCountRef.current + 1, MAX_VERSIONS)
       versionCountRef.current = nextCount
       // Functional update so batched adds append instead of clobbering each

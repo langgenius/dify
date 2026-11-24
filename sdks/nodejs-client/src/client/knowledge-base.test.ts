@@ -1,12 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createHttpClientWithSpies } from '../../tests/test-utils'
+import { createHttpClient, createHttpClientWithSpies } from '../../tests/test-utils'
 import { FileUploadError, ValidationError } from '../errors/dify-error'
+import { HttpClient } from '../http/client'
 import { KnowledgeBaseClient } from './knowledge-base'
 
 describe('KnowledgeBaseClient', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
+
+  it.each([10000, 10001, 50000])(
+    'sends document text of %i characters through HTTP',
+    async (length) => {
+      const fetchMock = vi.fn<typeof fetch>().mockImplementation(() =>
+        Promise.resolve(
+          new Response('{}', {
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      try {
+        const kb = new KnowledgeBaseClient(new HttpClient({ apiKey: 'test' }))
+        const payload = { name: 'report', text: 'x'.repeat(length) }
+        await kb.createDocumentByText('ds', payload)
+        await kb.updateDocumentByText('ds', 'doc', payload)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+        expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+          'https://api.dify.ai/v1/datasets/ds/document/create_by_text',
+          'https://api.dify.ai/v1/datasets/ds/documents/doc/update_by_text',
+        ])
+        for (const call of fetchMock.mock.calls) {
+          const init = call[1] as RequestInit
+          expect(init.method).toBe('POST')
+          expect(JSON.parse(init.body as string)).toEqual(payload)
+        }
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    },
+  )
 
   it('handles dataset and tag operations', async () => {
     const { client, request } = createHttpClientWithSpies()
@@ -66,6 +99,18 @@ describe('KnowledgeBaseClient', () => {
     })
   })
 
+  it.each(['', '   ', 123, null])('rejects invalid document text %s before HTTP', async (text) => {
+    const { client, fetchMock } = createHttpClientWithSpies()
+    const kb = new KnowledgeBaseClient(client)
+    await expect(
+      kb.createDocumentByText('ds', {
+        name: 'report',
+        text: text as string,
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('handles document operations', async () => {
     const { client, request } = createHttpClientWithSpies()
     const kb = new KnowledgeBaseClient(client)
@@ -84,11 +129,13 @@ describe('KnowledgeBaseClient', () => {
       method: 'POST',
       path: '/datasets/ds/document/create_by_text',
       data: { name: 'doc', text: 'text' },
+      unboundedBodyStringFields: ['text'],
     })
     expect(request).toHaveBeenCalledWith({
       method: 'POST',
       path: '/datasets/ds/documents/doc/update_by_text',
       data: { name: 'doc2' },
+      unboundedBodyStringFields: ['text'],
     })
     expect(request).toHaveBeenCalledWith({
       method: 'POST',
@@ -242,6 +289,58 @@ describe('KnowledgeBaseClient', () => {
       path: '/datasets/pipeline/file-upload',
       data: form,
     })
+  })
+
+  it('sends an empty query with image attachments for hit testing', async () => {
+    const { client, fetchMock } = createHttpClient()
+    fetchMock.mockResolvedValue(new Response('{"records":[]}', { status: 200 }))
+    const kb = new KnowledgeBaseClient(client)
+    const payload = { query: '', attachment_ids: ['image-id'] }
+
+    await kb.hitTesting('ds', payload)
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(new URL(fetchMock.mock.calls[0]![0] as string).pathname).toBe(
+      '/v1/datasets/ds/hit-testing',
+    )
+    const init = fetchMock.mock.calls[0]![1] as RequestInit
+    expect(JSON.parse(init.body as string)).toEqual(payload)
+  })
+
+  it.each([undefined, []])(
+    'still rejects an empty query without attachments (%j)',
+    async (attachmentIds) => {
+      const { client, fetchMock } = createHttpClient()
+      await expect(
+        new KnowledgeBaseClient(client).hitTesting('ds', {
+          query: '',
+          attachment_ids: attachmentIds,
+        }),
+      ).rejects.toBeInstanceOf(ValidationError)
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects invalid attachment IDs even with an empty query', async () => {
+    const { client, fetchMock } = createHttpClient()
+    await expect(
+      new KnowledgeBaseClient(client).hitTesting('ds', {
+        query: '',
+        attachment_ids: [''],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('still rejects whitespace-only query text with attachments', async () => {
+    const { client, fetchMock } = createHttpClient()
+    await expect(
+      new KnowledgeBaseClient(client).hitTesting('ds', {
+        query: ' ',
+        attachment_ids: ['image-id'],
+      }),
+    ).rejects.toBeInstanceOf(ValidationError)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('validates form-data and optional array filters', async () => {

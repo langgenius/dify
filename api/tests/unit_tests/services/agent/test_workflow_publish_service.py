@@ -1,8 +1,8 @@
-from types import SimpleNamespace
 from unittest.mock import ANY, Mock
+from uuid import UUID
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from models.agent import (
@@ -14,13 +14,137 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
-from tests.unit_tests.model_factories import make_workflow
+from tests.helpers.unit.model_factories import make_workflow
+
+
+def test_graph_session_policy_is_server_owned_and_frozen_on_publish(sqlite_session: Session) -> None:
+    import json
+
+    workflow = _workflow()
+    agent = _inline_agent(agent_id="session-agent", workflow_id=workflow.id, node_id="session-node")
+    snapshot = _snapshot(snapshot_id="session-snapshot", agent_id=agent.id)
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "agent_node_kind": "dify_agent",
+        "continue_agent_session": False,
+        "agent_session_generation": "client-controlled-generation",
+        "agent_binding": {
+            "binding_type": "inline_agent",
+            "agent_id": agent.id,
+            "current_snapshot_id": snapshot.id,
+        },
+    }
+    workflow.graph = json.dumps({"nodes": [{"id": "session-node", "data": node_data}], "edges": []})
+    sqlite_session.add_all([agent, snapshot])
+    sqlite_session.flush()
+
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    saved = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == workflow.id)
+    )
+    assert saved is not None
+    first_generation = saved.node_job_config.session_generation
+    assert str(UUID(first_generation)) == first_generation
+    assert WorkflowNodeJobConfig.model_validate(saved.node_job_config_dict).continue_agent_session is False
+    assert workflow.graph_dict["nodes"][0]["data"]["agent_session_generation"] == first_generation
+
+    published = _workflow(workflow_id="published-sessions", version="published-sessions")
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        session=sqlite_session, draft_workflow=workflow, published_workflow=published
+    )
+    sqlite_session.flush()
+    frozen = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == published.id)
+    )
+    assert frozen is not None
+
+    # A task-only graph save from an older client must retain the disabled mode.
+    graph = workflow.graph_dict
+    graph["nodes"][0]["data"].pop("continue_agent_session")
+    graph["nodes"][0]["data"]["agent_session_generation"] = "echoed-stale-value"
+    graph["nodes"][0]["data"]["agent_task"] = "Updated task"
+    workflow.graph = json.dumps(graph)
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    assert WorkflowNodeJobConfig.model_validate(saved.node_job_config_dict).continue_agent_session is False
+    assert saved.node_job_config.session_generation == first_generation
+    assert workflow.graph_dict["nodes"][0]["data"]["continue_agent_session"] is False
+
+    graph = workflow.graph_dict
+    graph["nodes"][0]["data"]["continue_agent_session"] = True
+    workflow.graph = json.dumps(graph)
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    assert saved.node_job_config.session_generation != first_generation
+    assert frozen.node_job_config_dict["continue_agent_session"] is False
+    assert frozen.node_job_config.session_generation == first_generation
+
+
+@pytest.mark.parametrize("invalid_mode", [None, "false", 0, 1])
+def test_graph_session_policy_rejects_non_boolean_modes(invalid_mode: object) -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        WorkflowAgentPublishService._node_job_config_from_node_data(
+            existing_binding=None, node_data={"continue_agent_session": invalid_mode}
+        )
+
+
+def test_graph_sync_refreshes_cached_binding_policy_before_merging(sqlite_session: Session) -> None:
+    import json
+
+    workflow = _workflow()
+    agent = _inline_agent(agent_id="fresh-agent", workflow_id=workflow.id, node_id="fresh-node")
+    snapshot = _snapshot(snapshot_id="fresh-snapshot", agent_id=agent.id)
+    binding = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id=workflow.id,
+        workflow_version="draft",
+        node_id="fresh-node",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id=agent.id,
+        current_snapshot_id=snapshot.id,
+        node_job_config=WorkflowNodeJobConfig(),
+    )
+    node_data = {
+        "type": "agent",
+        "version": "2",
+        "agent_node_kind": "dify_agent",
+        "agent_binding": {"binding_type": "inline_agent", "agent_id": agent.id, "current_snapshot_id": snapshot.id},
+    }
+    workflow.graph = json.dumps({"nodes": [{"id": "fresh-node", "data": node_data}], "edges": []})
+    sqlite_session.add_all([agent, snapshot, binding])
+    sqlite_session.commit()
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is True
+    saved_generation = "00000000-0000-4000-8000-000000000003"
+    sqlite_session.execute(
+        update(WorkflowAgentNodeBinding)
+        .where(WorkflowAgentNodeBinding.id == binding.id)
+        .values(
+            node_job_config=WorkflowNodeJobConfig(continue_agent_session=False, session_generation=saved_generation)
+        )
+        .execution_options(synchronize_session=False)
+    )
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is True
+
+    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session, draft_workflow=workflow, account_id="account-1"
+    )
+    assert WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict).continue_agent_session is False
+    assert binding.node_job_config.session_generation == saved_generation
+    assert workflow.graph_dict["nodes"][0]["data"]["agent_session_generation"] == saved_generation
 
 
 def _workflow(*, workflow_id: str = "workflow-1", version: str = Workflow.VERSION_DRAFT) -> Workflow:
@@ -92,7 +216,7 @@ def test_inline_binding_from_another_node_is_cloned(monkeypatch: pytest.MonkeyPa
     assert binding.node_job_config.workflow_prompt == "Summarize the input"
 
 
-def test_draft_sync_resolves_roster_agents() -> None:
+def test_draft_sync_resolves_roster_agents(sqlite_session: Session) -> None:
     draft_workflow = _workflow()
     draft_workflow.graph = (
         '{"nodes":['
@@ -102,26 +226,46 @@ def test_draft_sync_resolves_roster_agents() -> None:
         '"agent_binding":{"binding_type":"roster_agent","agent_id":"agent-a"}}}'
         '],"edges":[]}'
     )
-    session = Mock()
-    session.scalars.return_value = SimpleNamespace(all=lambda: [])
-    agents = {
-        agent_id: SimpleNamespace(
-            id=agent_id,
-            scope=AgentScope.ROSTER,
-            active_config_snapshot_id=f"{agent_id}-snapshot",
+    roster_agents: list[Agent] = []
+    roster_snapshots: list[AgentConfigSnapshot] = []
+    for agent_id in ("agent-a", "agent-b"):
+        roster_agents.append(
+            Agent(
+                id=agent_id,
+                tenant_id="tenant-1",
+                name=f"Roster {agent_id}",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.ROSTER,
+                status=AgentStatus.ACTIVE,
+                active_config_snapshot_id=f"{agent_id}-snapshot",
+            )
         )
-        for agent_id in ("agent-a", "agent-b")
-    }
-    session.scalar.side_effect = [agents["agent-b"], agents["agent-a"]]
+        roster_snapshots.append(_snapshot(snapshot_id=f"{agent_id}-snapshot", agent_id=agent_id))
+    sqlite_session.add_all([*roster_agents, *roster_snapshots])
+    sqlite_session.commit()
 
-    WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-        session=session,
+    retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        session=sqlite_session,
         draft_workflow=draft_workflow,
         account_id="account-1",
     )
 
-    assert session.scalar.call_count == 2
-    assert {call.args[0].agent_id for call in session.add.call_args_list} == {"agent-a", "agent-b"}
+    assert retirement_candidates == set()
+    bindings = {
+        binding.node_id: binding
+        for binding in sqlite_session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+            )
+        ).all()
+    }
+    assert set(bindings) == {"node-a", "node-b"}
+    for node_id, agent_id in (("node-a", "agent-a"), ("node-b", "agent-b")):
+        assert bindings[node_id].binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert bindings[node_id].agent_id == agent_id
+        assert bindings[node_id].current_snapshot_id == f"{agent_id}-snapshot"
+        assert bindings[node_id].created_by == "account-1"
 
 
 def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(sqlite_session: Session) -> None:
@@ -199,7 +343,7 @@ def test_restore_replaces_bindings_and_returns_only_replaced_inline_agent(sqlite
     assert retirement_candidates == {"old-inline-agent"}
 
 
-def test_publish_copy_uses_current_roster_snapshot() -> None:
+def test_publish_copy_uses_current_roster_snapshot(sqlite_session: Session) -> None:
     draft_workflow = _workflow()
     draft_workflow.graph = (
         '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2",'
@@ -218,25 +362,39 @@ def test_publish_copy_uses_current_roster_snapshot() -> None:
         node_job_config={},
         created_by="account-1",
     )
-    session = Mock()
-    active_agent = SimpleNamespace(
+    roster_agent = Agent(
         id="roster-agent",
+        tenant_id="tenant-1",
+        name="Roster Agent",
         scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        status=AgentStatus.ACTIVE,
         active_config_snapshot_id="active-snapshot",
     )
-    session.scalar.return_value = active_agent
-    session.scalars.return_value = SimpleNamespace(all=lambda: [binding])
+    sqlite_session.add_all([binding, roster_agent, _snapshot(snapshot_id="active-snapshot", agent_id="roster-agent")])
+    sqlite_session.commit()
 
-    has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
-        session=session,
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        session=sqlite_session,
         draft_workflow=draft_workflow,
         published_workflow=published_workflow,
     )
+    sqlite_session.flush()
 
-    assert has_inline_agent is False
-    copied = session.add.call_args.args[0]
+    copied = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.workflow_id == "published",
+            WorkflowAgentNodeBinding.workflow_version == "published",
+        )
+    )
+    assert copied is not None
     assert copied.agent_id == "roster-agent"
     assert copied.current_snapshot_id == "active-snapshot"
+    assert copied.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+    # Publishing freezes the copied row only; the draft binding keeps its own snapshot.
+    draft_binding = sqlite_session.get(WorkflowAgentNodeBinding, binding.id)
+    assert draft_binding is not None
+    assert draft_binding.current_snapshot_id == "old-snapshot"
 
 
 @pytest.mark.parametrize(
@@ -307,14 +465,13 @@ def test_publish_binding_copy_keeps_previous_published_owner(
     )
     sqlite_session.add_all([app, previous_inline_binding, previous_roster_binding, draft_binding])
     sqlite_session.commit()
-    result = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
         session=sqlite_session,
         draft_workflow=draft_workflow,
         published_workflow=published_workflow,
     )
     sqlite_session.flush()
 
-    assert result is True
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_inline_binding.id) is previous_inline_binding
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_roster_binding.id) is previous_roster_binding
     copied = sqlite_session.scalar(
@@ -526,10 +683,8 @@ def test_restore_clones_inline_binding_owned_by_published_workflow(
     assert restored.current_snapshot_id == "draft-snapshot"
 
 
-def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite_session: Session):
+def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite_session: Session) -> None:
     import json
-
-    from models.agent_config_entities import WorkflowNodeJobConfig
 
     agent = _inline_agent(agent_id="route-agent", workflow_id="workflow-1", node_id="route-node")
     snapshot = _snapshot(snapshot_id="route-snapshot", agent_id=agent.id)
@@ -566,6 +721,7 @@ def test_output_routes_round_trip_through_sync_projection_and_publication(sqlite
     frozen = sqlite_session.scalar(
         select(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.workflow_id == published.id)
     )
+    assert frozen is not None
     assert WorkflowNodeJobConfig.model_validate(frozen.node_job_config_dict).output_routes.model_dump() == routes
     node_data["agent_output_routes"] = {"enabled": False, "routes": routes["routes"]}
     workflow.graph = json.dumps({"nodes": [{"id": "route-node", "data": node_data}], "edges": []})

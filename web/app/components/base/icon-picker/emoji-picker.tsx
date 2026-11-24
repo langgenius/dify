@@ -199,14 +199,13 @@ export const EmojiPicker = memo(({ value, onValueChange, className, ref }: Emoji
         <div className="shrink-0 border-b border-divider-subtle px-3 pb-2">
           <AutocompleteInputGroup>
             <span
-              className="ms-2 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
               aria-hidden="true"
             />
             <AutocompleteInput
               ref={ref}
               aria-label={t(($) => $['iconPicker.search'], { ns: 'app' })}
               placeholder={t(($) => $['iconPicker.search'], { ns: 'app' })}
-              className="ps-1.5"
             />
             <AutocompleteClear aria-label={t(($) => $['iconPicker.clearSearch'], { ns: 'app' })} />
           </AutocompleteInputGroup>

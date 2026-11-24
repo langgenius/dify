@@ -1,19 +1,22 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
 import { RiLoader2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
+import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import { useLastRun } from '@/service/use-workflow'
-import { FlowType } from '@/types/common'
+import { isNotFoundError } from '@/service/http-error'
+import { lastRunQueryOptions } from '@/service/workflow-queries'
 import NoData from './no-data'
 
 type Props = Readonly<{
-  appId: string
   nodeId: string
   canSingleRun: boolean
   isRunAfterSingleRun: boolean
@@ -27,7 +30,6 @@ type Props = Readonly<{
   Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
-  appId: _appId,
   nodeId,
   canSingleRun,
   isRunAfterSingleRun,
@@ -48,7 +50,7 @@ const LastRun: FC<Props> = ({
     NodeRunningStatus.NotStart,
   ]
 
-  const configsMap = useHooksStore((s) => s.configsMap)
+  const resource = useAtomValue(editorResourceAtom)
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
   // hide page and return to page would lost the oneStepRunRunningStatus
@@ -67,12 +69,10 @@ const LastRun: FC<Props> = ({
     data: lastRunResult,
     isFetching,
     error,
-  } = useLastRun(
-    configsMap?.flowType || FlowType.appFlow,
-    configsMap?.flowId || '',
-    nodeId,
-    canRunLastRun,
-  )
+  } = useQuery({
+    ...lastRunQueryOptions(resource, nodeId),
+    enabled: canRunLastRun,
+  })
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
   const isRunning =
     !isPaused &&
@@ -80,8 +80,13 @@ const LastRun: FC<Props> = ({
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = (error as any)?.status === 404
+  const noLastRun = isNotFoundError(error)
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
+  const lastRunNode = runResult as Partial<NodeTracing>
+  const externalTrace =
+    resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
+      ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
+      : undefined
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status
   if (isPaused || oneStepRunRunningStatus === NodeRunningStatus.Stopped)
@@ -165,6 +170,7 @@ const LastRun: FC<Props> = ({
         }
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
+        externalTrace={externalTrace}
       />
     </div>
   )

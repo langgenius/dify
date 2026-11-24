@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal, override
 
 from configs import dify_config
 from core.app.file_access import DatabaseFileAccessController, FileAccessControllerProtocol
+from core.app.file_access.controller import require_scoped_upload_file_access
 from core.db.session_factory import session_factory
 from core.file import remote_fetcher
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
@@ -18,10 +19,10 @@ from core.workflow.file_reference import parse_file_reference
 from extensions.ext_storage import storage
 from graphon.file import FileTransferMethod
 from graphon.file.protocols import WorkflowFileRuntimeProtocol
-from graphon.file.runtime import set_workflow_file_runtime
 from graphon.http.protocols import HttpResponseProtocol
 
 if TYPE_CHECKING:
+    from dify_app import DifyApp
     from graphon.file import File
 
 
@@ -197,13 +198,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
             return tool_file.file_key
 
     def _assert_upload_file_access(self, *, upload_file_id: str) -> None:
-        if self._file_access_controller.current_scope() is None:
-            return
-
-        with session_factory.create_session() as session:
-            upload_file = self._file_access_controller.get_upload_file(session=session, file_id=upload_file_id)
-            if upload_file is None:
-                raise ValueError(f"Upload file {upload_file_id} not found")
+        require_scoped_upload_file_access(upload_file_id, self._file_access_controller)
 
     def _assert_tool_file_access(self, *, tool_file_id: str) -> None:
         if self._file_access_controller.current_scope() is None:
@@ -215,5 +210,10 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
                 raise ValueError(f"Tool file {tool_file_id} not found")
 
 
-def bind_dify_workflow_file_runtime() -> None:
-    set_workflow_file_runtime(DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController()))
+def create_dify_workflow_file_runtime() -> DifyWorkflowFileRuntime:
+    return DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
+
+
+def init_app(app: DifyApp) -> None:
+    """Bind host-side file rendering for each Flask request, task, and CLI context."""
+    app.extensions["workflow_file_runtime"] = create_dify_workflow_file_runtime()

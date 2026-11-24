@@ -5,12 +5,16 @@ const MAX_STRING_LENGTH = 10000
 const MAX_LIST_LENGTH = 1000
 const MAX_DICT_LENGTH = 100
 
-export function ensureNonEmptyString(value: unknown, name: string): asserts value is string {
+export function ensureNonEmptyString(
+  value: unknown,
+  name: string,
+  maxLength = MAX_STRING_LENGTH,
+): asserts value is string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new ValidationError(`${name} must be a non-empty string`)
   }
-  if (value.length > MAX_STRING_LENGTH) {
-    throw new ValidationError(`${name} exceeds maximum length of ${MAX_STRING_LENGTH} characters`)
+  if (value.length > maxLength) {
+    throw new ValidationError(`${name} exceeds maximum length of ${maxLength} characters`)
   }
 }
 
@@ -81,7 +85,10 @@ export function ensureRating(value: unknown): void {
   }
 }
 
-export function validateParams(params: Record<string, unknown>): void {
+export function validateParams(
+  params: Record<string, unknown>,
+  unboundedStringFields: readonly string[] = [],
+): void {
   Object.entries(params).forEach(([key, value]) => {
     if (value === undefined || value === null) {
       return
@@ -90,7 +97,7 @@ export function validateParams(params: Record<string, unknown>): void {
     // Only check max length for strings; empty strings are allowed for optional params
     // Required fields are validated at method level via ensureNonEmptyString
     if (typeof value === 'string') {
-      if (value.length > MAX_STRING_LENGTH) {
+      if (value.length > MAX_STRING_LENGTH && !unboundedStringFields.includes(key)) {
         throw new ValidationError(
           `Parameter '${key}' exceeds maximum length of ${MAX_STRING_LENGTH} characters`,
         )

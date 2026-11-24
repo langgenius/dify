@@ -5,16 +5,16 @@ import type { ListRef } from './marketplace-plugin/list'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
-import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useMarketplace } from '@/features/marketplace/client'
 import Link from '@/next/link'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
-import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { consoleQuery } from '@/service/console'
+import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum as BlockEnumValue } from '../types'
 import { ENTRY_NODE_TYPES } from './constants'
@@ -67,10 +67,7 @@ function AllStartBlocks({
   const { t } = useTranslation(['plugin', 'workflow'])
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
-  const { data: enable_marketplace } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_marketplace,
-  })
+  const marketplace = useMarketplace()
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
@@ -78,7 +75,9 @@ function AllStartBlocks({
     return availableBlocksTypes?.length ? availableBlocksTypes : [...ENTRY_NODE_TYPES]
   }, [availableBlocksTypes])
   const enableTriggerPlugin = entryNodeTypes.includes(BlockEnumValue.TriggerPlugin)
-  const { data: triggerProviders = [] } = useAllTriggerPlugins(enableTriggerPlugin)
+  const { data: triggerProviders = [] } = useQuery(
+    allTriggerPluginsQueryOptions(enableTriggerPlugin),
+  )
   const providerMap = useMemo(() => {
     const map = new Map<string, TriggerWithProvider>()
     triggerProviders.forEach((provider) => {
@@ -91,7 +90,12 @@ function AllStartBlocks({
     })
     return map
   }, [triggerProviders])
-  const invalidateTriggers = useInvalidateAllTriggerPlugins()
+  const queryClient = useQueryClient()
+  const invalidateTriggers = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
+    })
+  }, [queryClient])
   const trimmedSearchText = searchText.trim()
   const hasSearchText = trimmedSearchText.length > 0
   const hasFilter = hasSearchText || tags.length > 0
@@ -101,9 +105,13 @@ function AllStartBlocks({
   )
   const debouncedMarketplaceFilters = useDebounce(marketplaceFilters, { wait: 500 })
   const isMarketplaceFilterSettled = debouncedMarketplaceFilters === marketplaceFilters
-  const isMarketplaceSearchEnabled = enableTriggerPlugin && enable_marketplace && hasFilter
-  const { plugins: featuredPlugins = [], isLoading: featuredLoading } =
-    useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasFilter)
+  const isMarketplaceSearchEnabled = enableTriggerPlugin && marketplace !== null && hasFilter
+  const { data: featuredPlugins = [], isLoading: featuredLoading } = useQuery(
+    marketplaceCollectionPluginsQueryOptions({
+      collection: '__recommended-plugins-triggers',
+      enabled: enableTriggerPlugin && marketplace !== null && !hasFilter,
+    }),
+  )
   const marketplaceSearchParams = useMemo(
     () =>
       isMarketplaceSearchEnabled && isMarketplaceFilterSettled
@@ -117,13 +125,15 @@ function AllStartBlocks({
   )
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
-  const marketplacePlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+  const notInstalledPlugins = useMemo(
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !providerMap.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, providerMap],
   )
 
-  const shouldShowFeatured = enableTriggerPlugin && enable_marketplace && !hasFilter
-  const shouldShowMarketplaceFooter = enable_marketplace
+  const shouldShowFeatured = enableTriggerPlugin && marketplace !== null && !hasFilter
   const isPanelVariant = variant === 'panel'
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
@@ -136,7 +146,7 @@ function AllStartBlocks({
 
   const hasInstalledPluginContent = enableTriggerPlugin && hasPluginContent
   const hasMarketplaceContent =
-    enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+    enableTriggerPlugin && marketplace !== null && notInstalledPlugins.length > 0
   const hasAnyContent =
     hasStartBlocksContent ||
     hasInstalledPluginContent ||
@@ -149,7 +159,7 @@ function AllStartBlocks({
     isPanelVariant && hasStartBlocksContent && hasInstalledPluginContent
   const shouldShowMarketplaceSectionDivider =
     enableTriggerPlugin &&
-    enable_marketplace &&
+    marketplace !== null &&
     (hasStartBlocksContent || hasInstalledPluginContent) &&
     (shouldShowFeatured || hasMarketplaceContent)
 
@@ -193,7 +203,7 @@ function AllStartBlocks({
               <StartBlocks
                 searchText={trimmedSearchText}
                 onSelect={onSelect as OnSelectBlock}
-                availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+                availableBlocksTypes={entryNodeTypes}
                 hideUserInput={!allowUserInputSelection && !hasTriggerNode}
                 showMostCommonBadge
                 showUserInputAdded={hasUserInputNode}
@@ -216,8 +226,9 @@ function AllStartBlocks({
 
               {shouldShowMarketplaceSectionDivider && <SectionDivider />}
 
-              {shouldShowFeatured && (
+              {marketplace && shouldShowFeatured && (
                 <FeaturedTriggers
+                  marketplace={marketplace}
                   plugins={featuredPlugins}
                   providerMap={providerMap}
                   onSelect={onSelect}
@@ -227,11 +238,12 @@ function AllStartBlocks({
                   }}
                 />
               )}
-              {enableTriggerPlugin && enable_marketplace && (
+              {enableTriggerPlugin && marketplace && (
                 <PluginList
+                  marketplace={marketplace}
                   ref={pluginRef}
                   wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-                  list={marketplacePlugins}
+                  list={notInstalledPlugins}
                   searchText={trimmedSearchText}
                   category={PluginCategoryEnum.trigger}
                   tags={tags}
@@ -262,7 +274,7 @@ function AllStartBlocks({
           )}
         </div>
 
-        {shouldShowMarketplaceFooter && (
+        {marketplace && (
           <footer
             className={
               isPanelVariant ? panelMarketplaceFooterClassName : popoverMarketplaceFooterClassName
@@ -276,7 +288,7 @@ function AllStartBlocks({
                   ? 'gap-1 text-text-tertiary hover:text-text-secondary'
                   : 'text-text-accent-light-mode-only',
               )}
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)}
+              href={marketplace.category(PluginCategoryEnum.trigger)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -295,7 +307,7 @@ function AllStartBlocks({
               ) : (
                 <>
                   <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-                  <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+                  <span aria-hidden className="ms-0.5 i-ri-arrow-right-up-line size-3" />
                 </>
               )}
             </Link>

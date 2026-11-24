@@ -8,19 +8,12 @@ describe('useGenData', () => {
     sessionStorage.clear()
   })
 
-  it('should start with an empty version list', () => {
-    const { result } = renderHook(() => useGenData({ storageKey: 'prompt' }))
+  it('selects new versions and restores the chosen version per generator', () => {
+    const versionOne = { modified: 'first version' } satisfies GenRes
+    const versionTwo = { modified: 'second version' } satisfies GenRes
+    const { result, unmount } = renderHook(() => useGenData({ storageKey: 'prompt' }))
 
     expect(result.current.versions).toEqual([])
-    expect(result.current.currentVersionIndex).toBe(0)
-    expect(result.current.current).toBeUndefined()
-  })
-
-  it('should append versions and keep the latest one selected', () => {
-    const versionOne = { modified: 'first version' } as GenRes
-    const versionTwo = { modified: 'second version' } as GenRes
-    const { result } = renderHook(() => useGenData({ storageKey: 'prompt' }))
-
     act(() => {
       result.current.addVersion(versionOne)
     })
@@ -35,5 +28,13 @@ describe('useGenData', () => {
     expect(result.current.versions).toEqual([versionOne, versionTwo])
     expect(result.current.currentVersionIndex).toBe(1)
     expect(result.current.current).toEqual(versionTwo)
+    act(() => result.current.setCurrentVersionIndex(0))
+    expect(result.current.current).toEqual(versionOne)
+    unmount()
+    const reopened = renderHook(() => useGenData({ storageKey: 'prompt' }))
+    expect(reopened.result.current.versions).toEqual([versionOne, versionTwo])
+    expect(reopened.result.current.current).toEqual(versionOne)
+    const otherGenerator = renderHook(() => useGenData({ storageKey: 'code' }))
+    expect(otherGenerator.result.current.versions).toEqual([])
   })
 })

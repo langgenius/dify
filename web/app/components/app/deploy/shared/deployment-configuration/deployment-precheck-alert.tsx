@@ -2,6 +2,7 @@
 
 import type { UnsupportedNode, WorkflowPath } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { Emoji } from '@/app/components/tools/types'
+import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -119,24 +120,12 @@ export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] })
   const nodeGroups = useMemo(() => groupUnsupportedNodes(nodes), [nodes])
 
   return (
-    <div
-      role="alert"
-      className="relative flex flex-col gap-2 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-xs backdrop-blur-[5px]"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-components-badge-status-light-warning-halo to-background-gradient-mask-transparent opacity-40" />
-      <span
-        aria-hidden
-        className="relative i-ri-alert-fill size-5 shrink-0 text-text-warning-secondary"
-      />
-      <div className="relative flex min-w-0 flex-col gap-1">
-        <p className="system-sm-medium text-text-primary">{t(($) => $['studio.precheck.title'])}</p>
-        <p className="system-xs-regular text-text-secondary">
-          {t(($) => $['studio.precheck.description'])}
-        </p>
-      </div>
-      <ul className="relative flex flex-col gap-1.5 border-y border-divider-regular py-3">
+    <Alert type="warning" role="alert">
+      <AlertTitle>{t(($) => $['studio.precheck.title'])}</AlertTitle>
+      <AlertDescription>{t(($) => $['studio.precheck.description'])}</AlertDescription>
+      <ul className="my-1.5 flex flex-col gap-1.5 border-y border-divider-regular py-3">
         {nodeGroups.map(({ key, node, paths }) => (
-          <li key={key} className="flex items-center gap-2 pr-1">
+          <li key={key} className="flex items-center gap-2 pe-1">
             <UnsupportedNodeIcon node={node} icon={getProviderIcon(node)} />
             <span className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
               {node.title}
@@ -145,9 +134,7 @@ export function DeploymentPrecheckAlert({ nodes }: { nodes: UnsupportedNode[] })
           </li>
         ))}
       </ul>
-      <p className="relative system-xs-regular text-text-secondary">
-        {t(($) => $['studio.precheck.supportMessage'])}
-      </p>
-    </div>
+      <AlertDescription>{t(($) => $['studio.precheck.supportMessage'])}</AlertDescription>
+    </Alert>
   )
 }

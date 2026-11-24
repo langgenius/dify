@@ -1,91 +1,90 @@
 import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { ModelProvider } from '../../../declarations'
 import { renderHook } from '@testing-library/react'
+import { createProviderResponseFixture } from '@/test/console/model-provider'
+import { modelProviderDetailsQueryOptions } from '../../../utils'
 import { useCredentialStatus } from '../use-credential-status'
 
-describe('useCredentialStatus', () => {
-  it('computes authorized and authRemoved status correctly', () => {
-    // Authorized case
-    const authProvider = {
+const credentials = [{ credential_id: '123', credential_name: 'Key' }]
+const detail = (configuration: Parameters<typeof createProviderResponseFixture>[0] = {}) =>
+  modelProviderDetailsQueryOptions().select!({
+    data: [createProviderResponseFixture(configuration)],
+  }).data[0]!
+
+it('tracks selection, removal and credential restrictions from provider details', () => {
+  const { result, rerender } = renderHook(({ provider }) => useCredentialStatus(provider), {
+    initialProps: {
+      provider: detail({
+        custom_configuration: {
+          current_credential_id: '123',
+          current_credential_name: 'Key',
+          available_credentials: credentials,
+        },
+      }),
+    },
+  })
+  expect(result.current).toMatchObject({
+    hasCredential: true,
+    authorized: true,
+    authRemoved: false,
+  })
+  rerender({ provider: detail({ custom_configuration: { available_credentials: credentials } }) })
+  expect(result.current).toMatchObject({
+    hasCredential: true,
+    authorized: false,
+    authRemoved: true,
+  })
+  rerender({
+    provider: {
+      ...detail(),
       custom_configuration: {
+        ...detail().custom_configuration,
         current_credential_id: '123',
         current_credential_name: 'Key',
-        available_credentials: [{ credential_id: '123', credential_name: 'Key' }],
+        available_credentials: [{ ...credentials[0]!, not_allowed_to_use: true }],
       },
-    } as unknown as ModelProvider
-    const { result: authRes } = renderHook(() => useCredentialStatus(authProvider))
-    expect(authRes.current.authorized).toBeTruthy()
-    expect(authRes.current.authRemoved).toBe(false)
-
-    // AuthRemoved case (found but not selected)
-    const removedProvider = {
-      custom_configuration: {
-        current_credential_id: '',
-        current_credential_name: '',
-        available_credentials: [{ credential_id: '123' }],
-      },
-    } as unknown as ModelProvider
-    const { result: removedRes } = renderHook(() => useCredentialStatus(removedProvider))
-    expect(removedRes.current.authRemoved).toBe(true)
-    expect(removedRes.current.authorized).toBeFalsy()
+    },
   })
-
-  it('handles empty or restricted credentials', () => {
-    // Empty case
-    const emptyProvider = {
-      custom_configuration: { available_credentials: [] },
-    } as unknown as ModelProvider
-    const { result: emptyRes } = renderHook(() => useCredentialStatus(emptyProvider))
-    expect(emptyRes.current.hasCredential).toBe(false)
-
-    // Restricted case
-    const restrictedProvider = {
-      custom_configuration: {
-        current_credential_id: '123',
-        available_credentials: [{ credential_id: '123', not_allowed_to_use: true }],
-      },
-    } as unknown as ModelProvider
-    const { result: restrictedRes } = renderHook(() => useCredentialStatus(restrictedProvider))
-    expect(restrictedRes.current.notAllowedToUse).toBe(true)
+  expect(result.current).toMatchObject({ authorized: false, notAllowedToUse: true })
+  rerender({ provider: detail({ custom_configuration: { available_credentials: [] } }) })
+  expect(result.current).toMatchObject({
+    hasCredential: false,
+    authorized: false,
+    authRemoved: false,
   })
+})
 
-  it('uses the summary credential usability flag', () => {
-    const provider = {
-      custom_configuration: {
-        current_credential_id: '123',
-        current_credential_name: 'Key',
-        current_credential_usable: false,
-        available_credentials: [
-          {
-            credential_id: '123',
-            credential_name: 'Key',
-          },
-        ],
-      },
-    } as unknown as ModelProviderSummaryResponse
-
-    const { result } = renderHook(() => useCredentialStatus(provider))
-
-    expect(result.current.hasCredential).toBe(true)
-    expect(result.current.authorized).toBe(false)
-    expect(result.current.notAllowedToUse).toBe(true)
+it('gives the summary usability flag precedence over credential selection', () => {
+  const provider: ModelProviderSummaryResponse = {
+    provider: 'openai',
+    plugin_id: 'openai',
+    label: { en_US: 'OpenAI' },
+    supported_model_types: ['llm'],
+    configurate_methods: ['predefined-model'],
+    preferred_provider_type: 'custom',
+    is_configured: true,
+    system_configuration: { enabled: false },
+    custom_configuration: {
+      status: 'active',
+      has_custom_models: false,
+      current_credential_id: '123',
+      current_credential_name: 'Key',
+      current_credential_usable: false,
+      available_credentials: credentials,
+    },
+  }
+  const { result } = renderHook(() => useCredentialStatus(provider))
+  expect(result.current).toMatchObject({
+    hasCredential: true,
+    authorized: false,
+    notAllowedToUse: true,
   })
+})
 
-  it('handles undefined custom configuration gracefully', () => {
-    const { result } = renderHook(() =>
-      useCredentialStatus({ custom_configuration: {} } as ModelProvider),
-    )
-    expect(result.current.hasCredential).toBe(false)
-    expect(result.current.available_credentials).toBeUndefined()
-  })
-
-  it('handles undefined provider gracefully', () => {
-    const { result } = renderHook(() => useCredentialStatus(undefined))
-    expect(result.current.hasCredential).toBe(false)
-    expect(result.current.authorized).toBeFalsy()
-    expect(result.current.authRemoved).toBe(false)
-    expect(result.current.available_credentials).toBeUndefined()
-    expect(result.current.current_credential_id).toBeUndefined()
-    expect(result.current.current_credential_name).toBeUndefined()
+it('reports no authorization before a provider is available', () => {
+  const { result } = renderHook(() => useCredentialStatus(undefined))
+  expect(result.current).toMatchObject({
+    hasCredential: false,
+    authorized: false,
+    authRemoved: false,
   })
 })

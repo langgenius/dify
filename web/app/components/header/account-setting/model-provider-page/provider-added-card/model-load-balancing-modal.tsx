@@ -1,6 +1,7 @@
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
+  ModelCredential,
   ModelItem,
   ModelLoadBalancingConfig,
   ModelLoadBalancingConfigEntry,
@@ -8,21 +9,31 @@ import type {
 } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react'
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { toast } from '@/app/notifications'
-import { useGetModelCredential, useUpdateModelLoadBalancingConfig } from '@/service/use-models'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum, FormTypeEnum } from '../declarations'
 import { useRefreshModel } from '../hooks'
 import { useAuth } from '../model-auth/hooks/use-auth'
@@ -58,17 +69,48 @@ const ModelLoadBalancingModal = ({
       isModelCredential: true,
     })
   const [loading, setLoading] = useState(false)
+  const [pendingDraftSyncs, setPendingDraftSyncs] = useState(0)
+  const [removedCredentialIds, setRemovedCredentialIds] = useState<string[]>([])
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const configFrom = providerFormSchemaPredefined ? 'predefined-model' : 'custom-model'
-  const { isLoading, data, refetch } = useGetModelCredential(
-    true,
-    provider.provider,
-    credential?.credential_id,
-    model.model,
-    model.model_type,
-    configFrom,
+  const { data, refetch } = useQuery({
+    ...consoleQuery.workspaces.current.modelProviders.byProvider.models.credentials.get.queryOptions(
+      {
+        input: {
+          params: { provider: provider.provider },
+          query: {
+            model: model.model,
+            model_type: model.model_type,
+            config_from: configFrom,
+            credential_id: credential?.credential_id,
+          },
+        },
+      },
+    ),
+    staleTime: 0,
+    gcTime: 0,
+  })
+  const modelCredential = useMemo<ModelCredential | undefined>(
+    () =>
+      data && {
+        ...data,
+        available_credentials: data.available_credentials.filter(
+          (credential) => !removedCredentialIds.includes(credential.credential_id),
+        ),
+        current_credential_id: data.current_credential_id ?? undefined,
+        current_credential_name: data.current_credential_name ?? undefined,
+        load_balancing: {
+          enabled: data.load_balancing.enabled,
+          configs: data.load_balancing.configs.map((config) => ({
+            ...config,
+            credential_id: config.credential_id ?? undefined,
+            // Credential values are untyped JSON form values in the console API response.
+            credentials: config.credentials as ModelLoadBalancingConfigEntry['credentials'],
+          })),
+        },
+      },
+    [data, removedCredentialIds],
   )
-  const modelCredential = data
   const { load_balancing, current_credential_id, available_credentials, current_credential_name } =
     modelCredential ?? {}
   const originalConfig = load_balancing
@@ -83,9 +125,21 @@ const ModelLoadBalancingModal = ({
       {} as Record<string, ModelLoadBalancingConfigEntry>,
     )
   }, [originalConfig])
+  const draftIdentity = JSON.stringify([
+    provider.provider,
+    model.model,
+    model.model_type,
+    configFrom,
+    credential?.credential_id,
+    open,
+  ])
+  const previousDraftIdentity = useRef(draftIdentity)
   useEffect(() => {
-    if (originalConfig) setDraftConfig(originalConfig)
-  }, [originalConfig])
+    const changed = previousDraftIdentity.current !== draftIdentity
+    previousDraftIdentity.current = draftIdentity
+    // Credential edits refetch the server configuration, but must preserve local edits.
+    setDraftConfig((previous) => (changed ? originalConfig : (previous ?? originalConfig)))
+  }, [originalConfig, draftIdentity])
   const toggleModalBalancing = useCallback(
     (enabled: boolean) => {
       if (draftConfig) {
@@ -117,7 +171,7 @@ const ModelLoadBalancingModal = ({
   ])
   const encodeConfigEntrySecretValues = useCallback(
     (entry: ModelLoadBalancingConfigEntry) => {
-      const result = { ...entry }
+      const result = { ...entry, credentials: { ...entry.credentials } }
       extendedSecretFormSchemas.forEach(({ variable }) => {
         if (
           entry.id &&
@@ -129,8 +183,10 @@ const ModelLoadBalancingModal = ({
     },
     [extendedSecretFormSchemas, originalConfigMap],
   )
-  const { mutateAsync: updateModelLoadBalancingConfig } = useUpdateModelLoadBalancingConfig(
-    provider.provider,
+  const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const initialCustomModelCredential = useMemo(() => {
     if (!current_credential_id) return undefined
@@ -142,19 +198,29 @@ const ModelLoadBalancingModal = ({
   const [customModelCredential, setCustomModelCredential] = useState<Credential | undefined>(
     initialCustomModelCredential,
   )
+  const credentialIdToSave = customModelCredential?.credential_id || current_credential_id
+  const saveBlockedByCredentialChange =
+    doingAction ||
+    pendingDraftSyncs > 0 ||
+    (!providerFormSchemaPredefined && !credentialIdToSave) ||
+    Boolean(credentialIdToSave && removedCredentialIds.includes(credentialIdToSave))
   const { handleRefreshModel } = useRefreshModel()
   const handleSave = async () => {
+    if (saveBlockedByCredentialChange || loading || !draftConfig) return
     try {
       setLoading(true)
       const res = await updateModelLoadBalancingConfig({
-        credential_id: customModelCredential?.credential_id || current_credential_id,
-        config_from: configFrom,
-        model: model.model,
-        model_type: model.model_type,
-        load_balancing: {
-          ...draftConfig,
-          configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
-          enabled: Boolean(draftConfig?.enabled),
+        params: { provider: provider.provider },
+        body: {
+          credential_id: credentialIdToSave,
+          config_from: configFrom,
+          model: model.model,
+          model_type: model.model_type,
+          load_balancing: {
+            ...draftConfig,
+            configs: draftConfig.configs.map(encodeConfigEntrySecretValues),
+            enabled: Boolean(draftConfig?.enabled),
+          },
         },
       })
       if (res.result === 'success') {
@@ -185,106 +251,138 @@ const ModelLoadBalancingModal = ({
     await handleConfirmDelete()
     onClose?.()
   }, [handleConfirmDelete, onClose])
+  const syncCredentialDraft = useCallback(async (sync: () => Promise<void>) => {
+    setPendingDraftSyncs((count) => count + 1)
+    try {
+      await sync()
+    } finally {
+      setPendingDraftSyncs((count) => count - 1)
+    }
+  }, [])
   const handleUpdate = useCallback(
-    async (payload?: any, formValues?: Record<string, any>) => {
-      const result = await refetch()
-      const available_credentials = result.data?.available_credentials || []
-      const credentialName = formValues?.__authorization_name__
-      const modelCredential = payload?.credential
-      if (!available_credentials.length) {
-        onClose?.()
-        return
-      }
-      if (!modelCredential) {
-        const currentCredential = available_credentials.find(
-          (c) => c.credential_name === credentialName,
-        )
-        if (currentCredential) {
-          setDraftConfig((prev: any) => {
+    (modelCredential?: Credential, formValues?: Record<string, unknown>) =>
+      syncCredentialDraft(async () => {
+        const result = await refetch()
+        const available_credentials = result.data?.available_credentials || []
+        const credentialName = formValues?.__authorization_name__
+        if (!available_credentials.length) {
+          onClose?.()
+          return
+        }
+        if (!modelCredential) {
+          const currentCredential = available_credentials.find(
+            (c) => c.credential_name === credentialName,
+          )
+          if (currentCredential) {
+            setDraftConfig((prev: any) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                configs: [
+                  ...prev.configs,
+                  {
+                    credential_id: currentCredential.credential_id,
+                    enabled: true,
+                    name: currentCredential.credential_name,
+                  },
+                ],
+              }
+            })
+          }
+        } else {
+          setDraftConfig((prev) => {
             if (!prev) return prev
+            const newConfigs = [...prev.configs]
+            const prevIndex = newConfigs.findIndex(
+              (item) =>
+                item.credential_id === modelCredential.credential_id && item.name !== '__inherit__',
+            )
+            const newIndex = available_credentials.findIndex(
+              (c) => c.credential_id === modelCredential.credential_id,
+            )
+            if (newIndex > -1 && prevIndex > -1) {
+              newConfigs[prevIndex] = {
+                ...newConfigs[prevIndex]!,
+                name: available_credentials[newIndex]!.credential_name || '',
+              }
+            }
             return {
               ...prev,
-              configs: [
-                ...prev.configs,
-                {
-                  credential_id: currentCredential.credential_id,
-                  enabled: true,
-                  name: currentCredential.credential_name,
-                },
-              ],
+              configs: newConfigs,
             }
           })
         }
-      } else {
-        setDraftConfig((prev) => {
-          if (!prev) return prev
-          const newConfigs = [...prev.configs]
-          const prevIndex = newConfigs.findIndex(
-            (item) =>
-              item.credential_id === modelCredential.credential_id && item.name !== '__inherit__',
-          )
-          const newIndex = available_credentials.findIndex(
-            (c) => c.credential_id === modelCredential.credential_id,
-          )
-          if (newIndex > -1 && prevIndex > -1)
-            newConfigs[prevIndex]!.name = available_credentials[newIndex]!.credential_name || ''
-          return {
-            ...prev,
-            configs: newConfigs,
-          }
-        })
-      }
-    },
-    [refetch, onClose],
+      }),
+    [refetch, onClose, syncCredentialDraft],
   )
   const handleUpdateWhenSwitchCredential = useCallback(async () => {
     const result = await refetch()
     const available_credentials = result.data?.available_credentials || []
     if (!available_credentials.length) onClose?.()
   }, [refetch, onClose])
+  const handleRemoveCredential = useCallback(
+    (credentialId: string) => {
+      setRemovedCredentialIds((previous) => [...previous, credentialId])
+      setDraftConfig(
+        (previous) =>
+          previous && {
+            ...previous,
+            configs: previous.configs.filter((config) => config.credential_id !== credentialId),
+          },
+      )
+      setCustomModelCredential((previous) =>
+        previous?.credential_id === credentialId ? undefined : previous,
+      )
+      return syncCredentialDraft(handleUpdateWhenSwitchCredential)
+    },
+    [handleUpdateWhenSwitchCredential, syncCredentialDraft],
+  )
   return (
     <>
       <Dialog
         open={Boolean(model) && open}
-        onOpenChange={(open) => {
-          if (!open) onClose?.()
+        disablePointerDismissal
+        onOpenChange={(open, eventDetails) => {
+          if (open) return
+          if (loading) {
+            eventDetails.cancel()
+            return
+          }
+          onClose?.()
         }}
       >
-        <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
-          <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            <div className="pb-3 font-semibold">
-              <div className="h-7.5">
-                {draftConfig?.enabled
-                  ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
-                  : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+        <DialogContent className="w-160">
+          <DialogHeader>
+            <DialogTitle>
+              {draftConfig?.enabled
+                ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'modelProvider' })
+                : t(($) => $['modelProvider.auth.configModel'], { ns: 'modelProvider' })}
+            </DialogTitle>
+            {Boolean(model) && (
+              <div className="flex h-5 items-center">
+                <ModelIcon className="me-2 shrink-0" provider={provider} modelName={model!.model} />
+                <ModelName
+                  className="grow system-md-regular text-text-secondary"
+                  modelItem={model!}
+                  showModelType
+                  showMode
+                  showContextSize
+                />
               </div>
-              {Boolean(model) && (
-                <div className="flex h-5 items-center">
-                  <ModelIcon
-                    className="mr-2 shrink-0"
-                    provider={provider}
-                    modelName={model!.model}
-                  />
-                  <ModelName
-                    className="grow system-md-regular text-text-secondary"
-                    modelItem={model!}
-                    showModelType
-                    showMode
-                    showContextSize
-                  />
-                </div>
-              )}
-            </div>
-          </DialogTitle>
+            )}
+          </DialogHeader>
 
           {!draftConfig ? (
-            <LoadingPlaceholder />
+            <DialogBody>
+              <LoadingPlaceholder />
+            </DialogBody>
           ) : (
             <>
-              <div className="py-2">
+              <DialogBody inert={loading}>
                 <div
                   className={cn(
                     'relative min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+                    loading && 'opacity-60',
                     draftConfig.enabled
                       ? 'border-components-panel-border'
                       : 'cursor-default border-util-colors-blue-blue-600',
@@ -339,7 +437,7 @@ const ModelLoadBalancingModal = ({
                           model={model}
                           credentials={available_credentials}
                           onUpdate={handleUpdateWhenSwitchCredential}
-                          onRemove={handleUpdateWhenSwitchCredential}
+                          onRemove={handleRemoveCredential}
                         />
                       </div>
                     )}
@@ -356,10 +454,10 @@ const ModelLoadBalancingModal = ({
                         __model_type: model.model_type,
                       },
                       configurationMethod: model.fetch_from,
-                      className: 'mt-2',
+                      className: cn('mt-2', loading && 'opacity-60'),
                       modelCredential,
                       onUpdate: handleUpdate,
-                      onRemove: handleUpdateWhenSwitchCredential,
+                      onRemove: handleRemoveCredential,
                       model: {
                         model: model.model,
                         model_type: model.model_type,
@@ -367,60 +465,56 @@ const ModelLoadBalancingModal = ({
                     }}
                   />
                 )}
-              </div>
+              </DialogBody>
 
-              <div className="mt-6 flex items-center justify-between gap-2">
-                <div>
-                  {!providerFormSchemaPredefined && (
-                    <Button
-                      onClick={() =>
-                        openConfirmDelete(undefined, {
-                          model: model.model,
-                          model_type: model.model_type,
-                        })
-                      }
-                      className="text-components-button-destructive-secondary-text"
-                    >
-                      {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
-                    </Button>
-                  )}
-                </div>
-                <div className="space-x-2">
-                  <Button onClick={onClose}>
-                    {t(($) => $['operation.cancel'], { ns: 'common' })}
-                  </Button>
+              <DialogFooter>
+                {!providerFormSchemaPredefined && (
                   <Button
-                    variant="primary"
-                    onClick={handleSave}
-                    disabled={
-                      loading ||
-                      (draftConfig?.enabled &&
-                        (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) <
-                          2) ||
-                      isLoading
+                    disabled={loading}
+                    onClick={() =>
+                      openConfirmDelete(undefined, {
+                        model: model.model,
+                        model_type: model.model_type,
+                      })
                     }
+                    className="me-auto text-components-button-destructive-secondary-text"
                   >
-                    {t(($) => $['operation.save'], { ns: 'common' })}
+                    {t(($) => $['modelProvider.auth.removeModel'], { ns: 'modelProvider' })}
                   </Button>
-                </div>
-              </div>
+                )}
+                <DialogClose render={<Button />} disabled={loading}>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </DialogClose>
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  loading={loading}
+                  disabled={
+                    (draftConfig?.enabled &&
+                      (draftConfig?.configs.filter((config) => config.enabled).length ?? 0) < 2) ||
+                    saveBlockedByCredentialChange
+                  }
+                >
+                  {t(($) => $['operation.save'], { ns: 'common' })}
+                </Button>
+              </DialogFooter>
             </>
           )}
           <AlertDialog open={!!deleteModel} onOpenChange={(open) => !open && closeConfirmDelete()}>
             <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
                 </AlertDialogTitle>
-              </div>
-              <AlertDialogActions>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
                 <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteModel}>
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </DialogContent>

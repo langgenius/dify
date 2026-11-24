@@ -1,30 +1,37 @@
-from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
-from flask import has_app_context
 from sqlalchemy import Engine, event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 
 from core import provider_manager as provider_manager_module
-from core.entities.model_entities import DefaultModelSetting
+from core.entities.model_entities import (
+    DefaultModelSetting,
+    ModelStatus,
+    ModelWithProviderEntity,
+    SimpleModelProviderEntity,
+)
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
     ModelSettings,
     ProviderQuotaType,
+    SystemConfiguration,
 )
-from core.hosting_configuration import HostingProvider, TrialHostingQuota
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
+from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
-from models.base import TypeBase
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -37,7 +44,8 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from tests.unit_tests.config_override import config_overrides_context
+from services.credit_pool_service import CreditPoolBalance
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -63,28 +71,6 @@ def _persist_model_configuration(
     return settings, configs
 
 
-@pytest.fixture
-def provider_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind request-owned and provider-owned sessions to one isolated SQLite database."""
-    models = (
-        Provider,
-        ProviderCredential,
-        ProviderModel,
-        ProviderModelCredential,
-        ProviderModelSetting,
-        LoadBalancingModelConfig,
-        TenantDefaultModel,
-        TenantPreferredModelProvider,
-    )
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    with owned_session_factory() as request_session:
-        monkeypatch.setattr(provider_manager_module.db, "session", request_session)
-        monkeypatch.setattr(provider_manager_module.session_factory, "create_session", owned_session_factory)
-        yield request_session
-
-
 def _build_plugin_provider_declaration(
     installation_source: PluginInstallationSource | None,
 ) -> PluginModelProviderDeclaration:
@@ -106,12 +92,20 @@ def _build_hosting_provider() -> HostingProvider:
     )
 
 
+def _build_dual_pool_hosting_provider() -> HostingProvider:
+    return HostingProvider(
+        enabled=True,
+        credentials={"api_key": "system-secret"},
+        quotas=[TrialHostingQuota(quota_limit=100), PaidHostingQuota()],
+    )
+
+
 def _build_trial_provider_record() -> Provider:
     return Provider(
         tenant_id="tenant-id",
         provider_name="openai",
         provider_type=ProviderType.SYSTEM,
-        quota_type=ProviderQuotaType.TRIAL,
+        quota_type=ModelProviderQuotaType.TRIAL,
         quota_limit=100,
         quota_used=0,
         is_valid=True,
@@ -163,7 +157,7 @@ def mock_provider_entity():
     return mock_entity
 
 
-def test__to_model_settings(mock_provider_entity, provider_db: Session):
+def test__to_model_settings(mock_provider_entity, sqlite_session: Session):
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -200,7 +194,7 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     load_balancing_model_configs[0].id = "id1"
     load_balancing_model_configs[1].id = "id2"
     provider_model_settings, load_balancing_model_configs = _persist_model_configuration(
-        provider_db, ps, load_balancing_model_configs
+        sqlite_session, ps, load_balancing_model_configs
     )
 
     with patch(
@@ -227,6 +221,67 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     assert result[0].load_balancing_configs[1].name == "first"
 
 
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) -> None:
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.return_value = None
+        credentials = manager._get_and_decrypt_credentials(
+            tenant_id="tenant-id",
+            record_id="credential-id",
+            encrypted_config=encrypted_config,
+            secret_variables=["api_key"],
+            cache_type=ProviderCredentialsCacheType.MODEL,
+        )
+
+    assert credentials == {}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_load_balancing_credentials_preserve_valid_configs(
+    mock_provider_entity: Mock, sqlite_session: Session, encrypted_config: str
+) -> None:
+    setting = ProviderModelSetting(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="llm",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    configs = [
+        LoadBalancingModelConfig(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name=name,
+            encrypted_config=credentials,
+            enabled=True,
+        )
+        for name, credentials in [("__inherit__", None), ("invalid", encrypted_config), ("valid", "{}")]
+    ]
+    settings, configs = _persist_model_configuration(sqlite_session, setting, configs)
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.side_effect = [None, {"api_key": "cached-secret"}]
+        result = manager._to_model_settings(mock_provider_entity, settings, configs)
+
+    assert len(result) == 1
+    assert [config.name for config in result[0].load_balancing_configs] == ["__inherit__", "valid"]
+    assert result[0].load_balancing_configs[1].credentials == {"api_key": "cached-secret"}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "installation_source",
     [
@@ -243,7 +298,6 @@ def test_to_system_configuration_rejects_non_marketplace_provider(
     manager = _build_provider_manager()
 
     with (
-        patch.object(manager, "_choice_current_using_quota_type") as choose_quota,
         patch(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
             {provider_entity.provider: _build_hosting_provider()},
@@ -253,7 +307,6 @@ def test_to_system_configuration_rejects_non_marketplace_provider(
 
     assert configuration.enabled is False
     assert configuration.credentials is None
-    choose_quota.assert_not_called()
 
 
 def test_to_system_configuration_rejects_unverified_marketplace_provider() -> None:
@@ -261,7 +314,6 @@ def test_to_system_configuration_rejects_unverified_marketplace_provider() -> No
     manager = _build_provider_manager()
 
     with (
-        patch.object(manager, "_choice_current_using_quota_type") as choose_quota,
         patch(
             "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
             {provider_entity.provider: _build_hosting_provider()},
@@ -276,7 +328,6 @@ def test_to_system_configuration_rejects_unverified_marketplace_provider() -> No
     assert configuration.enabled is False
     assert configuration.credentials is None
     is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
-    choose_quota.assert_not_called()
 
 
 def test_to_system_configuration_never_returns_hosting_credentials_for_package_with_valid_quota() -> None:
@@ -297,11 +348,145 @@ def test_to_system_configuration_never_returns_hosting_credentials_for_package_w
     assert configuration.credentials is None
 
 
-def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> None:
+@pytest.mark.parametrize(
+    ("plan", "pool_type", "pool_quota_used", "pool_quota_limit", "expected_valid"),
+    [
+        (CloudPlan.SANDBOX, ProviderQuotaType.TRIAL, 40, 100, True),
+        (CloudPlan.TEAM, ProviderQuotaType.PAID, 1200, 5000, True),
+        (CloudPlan.SANDBOX, ProviderQuotaType.TRIAL, 100, 100, False),
+    ],
+)
+def test_to_system_configuration_offers_only_the_plan_credit_pool(
+    plan: CloudPlan,
+    pool_type: ProviderQuotaType,
+    pool_quota_used: int,
+    pool_quota_limit: int,
+    expected_valid: bool,
+) -> None:
     provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
     manager = _build_provider_manager()
-    trial_pool = SimpleNamespace(quota_used=0, quota_limit=100)
-    paid_pool = SimpleNamespace(quota_used=0, quota_limit=0)
+    # The legacy provider row carries a stale balance that must never win over the pool.
+    legacy_record = _build_trial_provider_record()
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_dual_pool_hosting_provider()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=plan),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            return_value=CreditPoolBalance(
+                tenant_id="tenant-id",
+                pool_type=pool_type.value,
+                quota_limit=pool_quota_limit,
+                quota_used=pool_quota_used,
+            ),
+        ) as get_pool,
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [legacy_record])
+
+    assert configuration.enabled is True
+    assert configuration.current_quota_type == pool_type
+    assert [
+        (quota.quota_type, quota.quota_used, quota.quota_limit, quota.is_valid)
+        for quota in configuration.quota_configurations
+    ] == [(pool_type, pool_quota_used, pool_quota_limit, expected_valid)]
+    get_pool.assert_called_once_with(tenant_id="tenant-id", pool_type=pool_type)
+
+
+def test_to_system_configuration_rejects_paid_only_hosting_for_sandbox() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    hosting = HostingProvider(enabled=True, credentials={"api_key": "system-secret"}, quotas=[PaidHostingQuota()])
+    legacy_record = _build_trial_provider_record()
+    legacy_record.quota_type = ModelProviderQuotaType.PAID
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: hosting},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            return_value=CreditPoolBalance("tenant-id", "trial", 100, 0),
+        ),
+    ):
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, [legacy_record])
+
+    assert not configuration.enabled
+    assert configuration.credentials is None
+    assert not configuration.quota_configurations
+
+
+@pytest.mark.parametrize(
+    ("has_record", "quota_used", "quota_limit", "expected", "error"),
+    [
+        (False, None, None, (0, 0, False), None),
+        (True, 2, 10, (2, 10, True), None),
+        (True, 10, 10, (10, 10, False), None),
+        (True, 10, -1, (10, -1, True), None),
+        (True, None, 10, None, "quota_used is None"),
+        (True, 2, None, None, "quota_limit is None"),
+    ],
+)
+def test_to_system_configuration_reads_free_quota_from_provider_record(
+    has_record: bool,
+    quota_used: int | None,
+    quota_limit: int | None,
+    expected: tuple[int, int, bool] | None,
+    error: str | None,
+) -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+    hosting = HostingProvider(enabled=True, quotas=[FreeHostingQuota()])
+    records = (
+        [
+            Provider(
+                tenant_id="tenant-id",
+                provider_name="openai",
+                provider_type=ProviderType.SYSTEM,
+                quota_type=ModelProviderQuotaType.FREE,
+                quota_limit=quota_limit,
+                quota_used=quota_used,
+            )
+        ]
+        if has_record
+        else []
+    )
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: hosting},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
+        patch(
+            "services.credit_pool_service.CreditPoolService.get_pool",
+            return_value=CreditPoolBalance("tenant-id", "trial", 100, 40),
+        ),
+    ):
+        if error is not None:
+            with pytest.raises(ValueError, match=error):
+                manager._to_system_configuration("tenant-id", provider_entity, records)
+            return
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, records)
+
+    [quota] = configuration.quota_configurations
+    assert quota.quota_type == ProviderQuotaType.FREE
+    assert (quota.quota_used, quota.quota_limit, quota.is_valid) == expected
+
+
+def test_to_system_configuration_preserves_marketplace_behavior() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
 
     with (
         config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
@@ -312,44 +497,17 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
         patch(
             "core.plugin.plugin_service.PluginService.is_plugin_verified",
             return_value=True,
-        ),
+        ) as is_plugin_verified,
+        patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
-            side_effect=[trial_pool, paid_pool],
-        ) as get_pool,
-    ):
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            assert executor.submit(has_app_context).result() is False
-            configuration = executor.submit(
-                manager._to_system_configuration,
-                "tenant-id",
-                provider_entity,
-                [_build_trial_provider_record()],
-            ).result()
-
-    assert configuration.enabled is True
-    assert [call.kwargs["pool_type"] for call in get_pool.call_args_list] == [
-        ProviderQuotaType.TRIAL,
-        ProviderQuotaType.PAID,
-    ]
-    owned_sessions = [call.kwargs["session"] for call in get_pool.call_args_list]
-    assert all(isinstance(session, Session) for session in owned_sessions)
-    assert owned_sessions[0] is owned_sessions[1]
-
-
-def test_to_system_configuration_preserves_marketplace_behavior() -> None:
-    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
-    manager = _build_provider_manager()
-
-    with (
-        patch(
-            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-            {provider_entity.provider: _build_hosting_provider()},
+            return_value=CreditPoolBalance(
+                tenant_id="tenant-id",
+                pool_type=ProviderQuotaType.TRIAL.value,
+                quota_limit=100,
+                quota_used=0,
+            ),
         ),
-        patch(
-            "core.plugin.plugin_service.PluginService.is_plugin_verified",
-            return_value=True,
-        ) as is_plugin_verified,
     ):
         configuration = manager._to_system_configuration(
             "tenant-id",
@@ -363,6 +521,28 @@ def test_to_system_configuration_preserves_marketplace_behavior() -> None:
     is_plugin_verified.assert_called_once_with("tenant-id", provider_entity.plugin_unique_identifier)
 
 
+def test_to_system_configuration_disables_hosting_without_a_credit_pool() -> None:
+    provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
+    manager = _build_provider_manager()
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY),
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {provider_entity.provider: _build_dual_pool_hosting_provider()},
+        ),
+        patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True),
+    ):
+        configuration = manager._to_system_configuration(
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        )
+
+    assert configuration.enabled is False
+    assert configuration.quota_configurations == []
+
+
 def test_package_provider_keeps_custom_configuration() -> None:
     provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Package)
     manager = _build_provider_manager()
@@ -374,11 +554,6 @@ def test_package_provider_keeps_custom_configuration() -> None:
 
     with (
         patch.object(manager, "_get_all_providers", return_value={provider_entity.provider: []}),
-        patch.object(
-            manager,
-            "_init_trial_provider_records",
-            return_value={provider_entity.provider: []},
-        ),
         patch.object(manager, "_get_all_provider_models", return_value={}),
         patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -401,7 +576,7 @@ def test_package_provider_keeps_custom_configuration() -> None:
     assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
 
 
-def test__to_model_settings_only_one_lb(mock_provider_entity, provider_db: Session):
+def test__to_model_settings_only_one_lb(mock_provider_entity, sqlite_session: Session):
     # Mocking the inputs
 
     ps = ProviderModelSetting(
@@ -427,7 +602,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity, provider_db: Sessi
     ]
     load_balancing_model_configs[0].id = "id1"
     provider_model_settings, load_balancing_model_configs = _persist_model_configuration(
-        provider_db, ps, load_balancing_model_configs
+        sqlite_session, ps, load_balancing_model_configs
     )
 
     with patch(
@@ -452,7 +627,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity, provider_db: Sessi
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Session):
+def test__to_model_settings_lb_disabled(mock_provider_entity, sqlite_session: Session):
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -487,7 +662,7 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Sessi
     load_balancing_model_configs[0].id = "id1"
     load_balancing_model_configs[1].id = "id2"
     provider_model_settings, load_balancing_model_configs = _persist_model_configuration(
-        provider_db, ps, load_balancing_model_configs
+        sqlite_session, ps, load_balancing_model_configs
     )
 
     with patch(
@@ -512,89 +687,15 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Sessi
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test_get_default_model_uses_first_available_active_model(provider_db: Session):
-    other_tenant_default = TenantDefaultModel(
-        tenant_id="other-tenant",
-        provider_name="anthropic",
-        model_name="claude",
-        model_type=ModelType.LLM,
-    )
-    provider_db.add(other_tenant_default)
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-3.5-turbo", provider=Mock(provider="openai")),
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-    ]
-
-    manager = _build_provider_manager()
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        mock_factory_cls.return_value.get_provider_schema.return_value = Mock(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
-            icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-            supported_model_types=[ModelType.LLM],
-        )
-
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-        assert result is not None
-        assert result.model == "gpt-3.5-turbo"
-        assert result.provider.provider == "openai"
-        provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-        saved_default_model = provider_db.scalar(
-            select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")
-        )
-        assert saved_default_model is not None
-        assert saved_default_model.model_name == "gpt-3.5-turbo"
-        assert saved_default_model.provider_name == "openai"
-        assert (
-            provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant"))
-            is other_tenant_default
-        )
-
-
-def test_get_default_model_returns_none_when_no_default_or_active_models(provider_db: Session):
-    provider_db.add(
-        TenantDefaultModel(
-            tenant_id="other-tenant",
-            provider_name="anthropic",
-            model_name="claude",
-            model_type=ModelType.LLM,
-        )
-    )
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
-    manager = _build_provider_manager()
-
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-    assert result is None
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-    mock_factory_cls.assert_not_called()
-    assert provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")) is None
-    assert (
-        provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant")) is not None
-    )
-
-
-def test_get_default_model_uses_injected_runtime_for_existing_default_record(provider_db: Session):
+def test_get_default_model_uses_injected_runtime_for_existing_default_record(sqlite_session: Session):
     existing_default_model = TenantDefaultModel(
         tenant_id="tenant-id",
         provider_name="openai",
         model_name="gpt-4",
         model_type=ModelType.LLM,
     )
-    provider_db.add(existing_default_model)
-    provider_db.commit()
+    sqlite_session.add(existing_default_model)
+    sqlite_session.commit()
     manager = _build_provider_manager()
 
     with (
@@ -615,7 +716,7 @@ def test_get_default_model_uses_injected_runtime_for_existing_default_record(pro
     assert result.provider.provider == "openai"
 
 
-def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(provider_db: Session):
+def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(sqlite_session: Session):
     manager = _build_provider_manager()
     provider = Provider(
         tenant_id="tenant-id",
@@ -635,8 +736,8 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(prov
         provider_name="openai",
         preferred_provider_type=ProviderType.SYSTEM,
     )
-    provider_db.add_all([provider, provider_model, preferred_provider])
-    provider_db.commit()
+    sqlite_session.add_all([provider, provider_model, preferred_provider])
+    sqlite_session.commit()
     with patch("core.provider_manager.redis_client", _FakeRedis()):
         provider_model_records = ProviderManager._get_all_provider_models("tenant-id")
         preferred_provider_records = ProviderManager._get_all_preferred_model_providers("tenant-id")
@@ -644,7 +745,6 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(prov
 
     with (
         patch.object(manager, "_get_all_providers", return_value=provider_records),
-        patch.object(manager, "_init_trial_provider_records", return_value=provider_records),
         patch.object(manager, "_get_all_provider_models", return_value=provider_model_records),
         patch.object(manager, "_get_all_preferred_model_providers", return_value=preferred_provider_records),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -695,7 +795,6 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}),
-        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
         patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
         patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -749,7 +848,6 @@ def test_get_configurations_resolves_system_preference_with_quota_and_custom_fal
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}),
-        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
         patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
         patch.object(manager, "_get_all_preferred_model_providers", return_value=preferred_provider_records),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -780,7 +878,6 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_e
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
-        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
         patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
         patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -817,7 +914,6 @@ def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_enti
 
     with (
         patch.object(manager, "_get_all_providers", return_value={"openai": []}) as mock_get_all_providers,
-        patch.object(manager, "_init_trial_provider_records", return_value={"openai": []}),
         patch.object(manager, "_get_all_provider_models", return_value={"openai": []}),
         patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
@@ -865,30 +961,100 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance():
     assert result is expected_bundle
 
 
-def test_get_first_provider_first_model_returns_none_when_no_models():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
+def _fallback_provider_configuration(
+    *, provider: str, models: list[str], configured: bool, disabled_models: tuple[str, ...] = ()
+) -> ProviderConfiguration:
+    """Build a real local provider catalog; predefined schemas require no plugin requests."""
+    return ProviderConfiguration(
+        tenant_id="tenant-id",
+        provider=ProviderEntity(
+            provider=provider,
+            label=I18nObject(en_US=provider),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            models=[
+                AIModelEntity(
+                    model=model,
+                    label=I18nObject(en_US=model),
+                    model_type=ModelType.LLM,
+                    fetch_from=FetchFrom.PREDEFINED_MODEL,
+                    model_properties={},
+                )
+                for model in models
+            ],
+        ),
+        preferred_provider_type=ProviderType.CUSTOM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "synthetic"}) if configured else None
+        ),
+        model_settings=[
+            ModelSettings(model=model, model_type=ModelType.LLM, enabled=False) for model in disabled_models
+        ],
+    )
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
 
-    assert result == (None, None)
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=False)
+def _fallback_provider_manager(*configurations: ProviderConfiguration) -> ProviderManager:
+    """Use the real request cache and catalog filtering without DB or plugin I/O."""
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    catalog = ProviderConfigurations(tenant_id="tenant-id")
+    for configuration in configurations:
+        catalog[configuration.provider.provider] = configuration
+    manager._configurations_cache["tenant-id"] = catalog
+    return manager
 
 
-def test_get_first_provider_first_model_returns_first_model_and_provider():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-        Mock(model="gpt-4o", provider=Mock(provider="openai")),
-    ]
+def test_get_first_provider_first_model_returns_none_when_no_models() -> None:
+    manager = _fallback_provider_manager()
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
 
-    assert result == ("openai", "gpt-4")
+
+@pytest.mark.parametrize(("configured", "disabled"), [(False, ()), (True, ("unavailable",))])
+def test_get_first_provider_first_model_returns_none_when_no_active_models(
+    configured: bool, disabled: tuple[str, ...]
+) -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["unavailable"],
+            configured=configured,
+            disabled_models=disabled,
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
+
+
+def test_get_first_provider_first_model_skips_unconfigured_provider() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="langgenius/x/x", models=["unconfigured-first"], configured=False),
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai", models=["active-second"], configured=True
+        ),
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
+
+
+def test_get_first_provider_first_model_skips_disabled_model() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["disabled-first", "active-second", "active-third"],
+            configured=True,
+            disabled_models=("disabled-first",),
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
 
 
 def test_update_default_model_record_raises_for_unknown_provider():
@@ -912,7 +1078,7 @@ def test_update_default_model_record_raises_for_unknown_model():
     provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
 
 
-def test_update_default_model_record_updates_existing_record(provider_db: Session):
+def test_update_default_model_record_updates_existing_record(sqlite_session: Session):
     manager = _build_provider_manager()
     provider_configurations = MagicMock()
     provider_configurations.__contains__.return_value = True
@@ -929,31 +1095,31 @@ def test_update_default_model_record_updates_existing_record(provider_db: Sessio
         model_name="command-r",
         model_type=ModelType.LLM,
     )
-    provider_db.add_all([existing_default_model, other_tenant_default])
-    provider_db.commit()
+    sqlite_session.add_all([existing_default_model, other_tenant_default])
+    sqlite_session.commit()
 
     with patch.object(manager, "get_configurations", return_value=provider_configurations):
         result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
-    assert result is existing_default_model
-    assert existing_default_model.provider_name == "openai"
-    assert existing_default_model.model_name == "gpt-3.5-turbo"
-    provider_db.expire_all()
-    persisted_default = provider_db.get(TenantDefaultModel, existing_default_model.id)
+    assert result.id == existing_default_model.id
+    assert result.provider_name == "openai"
+    assert result.model_name == "gpt-3.5-turbo"
+    sqlite_session.expire_all()
+    persisted_default = sqlite_session.get(TenantDefaultModel, existing_default_model.id)
     assert persisted_default is not None
     assert persisted_default.provider_name == "openai"
-    persisted_other_default = provider_db.get(TenantDefaultModel, other_tenant_default.id)
+    persisted_other_default = sqlite_session.get(TenantDefaultModel, other_tenant_default.id)
     assert persisted_other_default is not None
     assert persisted_other_default.provider_name == "cohere"
     assert persisted_other_default.model_name == "command-r"
 
 
-def test_update_default_model_record_creates_record_with_origin_model_type(provider_db: Session):
+def test_update_default_model_record_creates_record_with_origin_model_type(sqlite_session: Session):
     manager = _build_provider_manager()
     provider_configurations = MagicMock()
     provider_configurations.__contains__.return_value = True
     provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
-    provider_db.add(
+    sqlite_session.add(
         TenantDefaultModel(
             tenant_id="other-tenant",
             provider_name="anthropic",
@@ -961,7 +1127,7 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
             model_type=ModelType.LLM,
         )
     )
-    provider_db.commit()
+    sqlite_session.commit()
 
     with patch.object(manager, "get_configurations", return_value=provider_configurations):
         result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
@@ -970,13 +1136,57 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
     assert result.provider_name == "openai"
     assert result.model_name == "gpt-4"
     assert result.model_type == ModelType.LLM
-    persisted_defaults = list(provider_db.scalars(select(TenantDefaultModel)).all())
+    persisted_defaults = list(sqlite_session.scalars(select(TenantDefaultModel)).all())
     assert {record.tenant_id for record in persisted_defaults} == {"tenant-id", "other-tenant"}
+
+
+def test_get_default_model_leaves_no_connection_checked_out(sqlite_session: Session, sqlite_engine: Engine) -> None:
+    sqlite_session.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type=ModelType.LLM,
+        )
+    )
+    sqlite_session.commit()
+
+    result = _build_provider_manager().get_default_model("tenant-id", ModelType.LLM)
+
+    assert result is None
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
+
+
+def test_update_default_model_record_does_not_commit_the_callers_pending_work(sqlite_session: Session) -> None:
+    manager = _build_provider_manager()
+    sqlite_session.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="anthropic",
+            model_name="claude",
+            model_type=ModelType.LLM,
+        )
+    )
+
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        patch.object(manager, "_validate_default_model"),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+
+    sqlite_session.rollback()
+    persisted = {
+        (record.tenant_id, record.provider_name, record.model_name)
+        for record in sqlite_session.scalars(select(TenantDefaultModel))
+    }
+    assert persisted == {("tenant-id", "openai", "gpt-4")}
 
 
 @pytest.mark.parametrize("clear_all", [False, True])
 def test_replace_default_model_records_removes_omitted_types_only_for_current_tenant(
-    provider_db: Session, clear_all: bool
+    sqlite_session: Session, clear_all: bool
 ) -> None:
     manager = _build_provider_manager()
     existing_default = TenantDefaultModel(
@@ -997,13 +1207,25 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
         model_name="text-embedding-3-small",
         model_type=ModelType.TEXT_EMBEDDING,
     )
-    provider_db.add_all([existing_default, omitted_default, other_tenant_default])
-    provider_db.commit()
+    sqlite_session.add_all([existing_default, omitted_default, other_tenant_default])
+    sqlite_session.commit()
+    embedding_provider = _build_plugin_provider_declaration(None)
+    embedding_provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
+    available_embedding_model = ModelWithProviderEntity(
+        model="text-embedding-3-small",
+        label=I18nObject(en_US="text-embedding-3-small"),
+        model_type=ModelType.TEXT_EMBEDDING,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(embedding_provider),
+    )
     configurations = MagicMock()
     configurations.__contains__.return_value = True
     configurations.get_models.side_effect = lambda model_type, **_kwargs: {
         ModelType.LLM: [Mock(model="gpt-4")],
         ModelType.RERANK: [Mock(model="rerank-v3")],
+        ModelType.TEXT_EMBEDDING: [available_embedding_model],
     }[model_type]
     settings = (
         []
@@ -1014,11 +1236,19 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
         ]
     )
 
-    with patch.object(manager, "get_configurations", return_value=configurations) as get_configurations:
+    with (
+        patch.object(manager, "get_configurations", return_value=configurations) as get_configurations,
+        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
+    ):
         manager.replace_default_model_records("tenant-id", settings)
+        sqlite_session.expire_all()
+        for _ in range(2):
+            assert manager.get_default_model("tenant-id", ModelType.TEXT_EMBEDDING) is None
 
-    provider_db.expire_all()
-    defaults = list(provider_db.scalars(select(TenantDefaultModel)))
+    mock_factory_cls.assert_not_called()
+
+    sqlite_session.expire_all()
+    defaults = list(sqlite_session.scalars(select(TenantDefaultModel)))
     expected_defaults = {("other-tenant", ModelType.TEXT_EMBEDDING, "openai", "text-embedding-3-small")}
     expected_defaults.update(("tenant-id", setting.model_type, setting.provider, setting.model) for setting in settings)
     assert {
@@ -1027,7 +1257,7 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     if clear_all:
         get_configurations.assert_not_called()
     else:
-        persisted_default = provider_db.get(TenantDefaultModel, existing_default.id)
+        persisted_default = sqlite_session.get(TenantDefaultModel, existing_default.id)
         assert persisted_default is not None
         assert persisted_default.model_name == "gpt-4"
 
@@ -1040,7 +1270,7 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     ],
 )
 def test_replace_default_model_records_preserves_defaults_when_validation_fails(
-    provider_db: Session, provider: str, model: str, error: str
+    sqlite_session: Session, provider: str, model: str, error: str
 ) -> None:
     manager = _build_provider_manager()
     existing_defaults = [
@@ -1051,8 +1281,8 @@ def test_replace_default_model_records_preserves_defaults_when_validation_fails(
             tenant_id="tenant-id", provider_name="cohere", model_name="rerank-v3", model_type=ModelType.RERANK
         ),
     ]
-    provider_db.add_all(existing_defaults)
-    provider_db.commit()
+    sqlite_session.add_all(existing_defaults)
+    sqlite_session.commit()
     original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
     configurations = MagicMock()
     configurations.__contains__.side_effect = lambda name: name == "openai"
@@ -1073,14 +1303,14 @@ def test_replace_default_model_records_preserves_defaults_when_validation_fails(
             ],
         )
 
-    provider_db.expire_all()
+    sqlite_session.expire_all()
     assert {
         (record.id, record.provider_name, record.model_name)
-        for record in provider_db.scalars(select(TenantDefaultModel))
+        for record in sqlite_session.scalars(select(TenantDefaultModel))
     } == original_defaults
 
 
-def test_replace_default_model_records_rolls_back_when_persistence_fails(provider_db: Session) -> None:
+def test_replace_default_model_records_rolls_back_when_persistence_fails(sqlite_session: Session) -> None:
     manager = _build_provider_manager()
     existing_defaults = [
         TenantDefaultModel(
@@ -1090,8 +1320,8 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(provide
             tenant_id="tenant-id", provider_name="cohere", model_name="rerank-v3", model_type=ModelType.RERANK
         ),
     ]
-    provider_db.add_all(existing_defaults)
-    provider_db.commit()
+    sqlite_session.add_all(existing_defaults)
+    sqlite_session.commit()
     original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
     configurations = MagicMock()
     configurations.__contains__.return_value = True
@@ -1100,7 +1330,7 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(provide
     def fail_after_flush(_session: Session, _flush_context: object) -> None:
         raise RuntimeError("Persistence failed")
 
-    with Session(bind=provider_db.get_bind()) as write_session:
+    with Session(bind=sqlite_session.get_bind()) as write_session:
         event.listen(write_session, "after_flush", fail_after_flush)
         with (
             patch.object(manager, "get_configurations", return_value=configurations),
@@ -1117,14 +1347,14 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(provide
                 ],
             )
 
-    provider_db.expire_all()
+    sqlite_session.expire_all()
     assert {
         (record.id, record.provider_name, record.model_name)
-        for record in provider_db.scalars(select(TenantDefaultModel))
+        for record in sqlite_session.scalars(select(TenantDefaultModel))
     } == original_defaults
 
 
-def test_get_all_providers_normalizes_provider_names_with_model_provider_id(provider_db: Session) -> None:
+def test_get_all_providers_normalizes_provider_names_with_model_provider_id(sqlite_session: Session) -> None:
     openai_provider = Provider(
         tenant_id="tenant-id",
         provider_name="openai",
@@ -1143,8 +1373,8 @@ def test_get_all_providers_normalizes_provider_names_with_model_provider_id(prov
         provider_type=ProviderType.CUSTOM,
         is_valid=True,
     )
-    provider_db.add_all([openai_provider, gemini_provider, other_tenant_provider])
-    provider_db.commit()
+    sqlite_session.add_all([openai_provider, gemini_provider, other_tenant_provider])
+    sqlite_session.commit()
 
     result = ProviderManager._get_all_providers("tenant-id")
 
@@ -1153,7 +1383,7 @@ def test_get_all_providers_normalizes_provider_names_with_model_provider_id(prov
     assert str(ModelProviderID("anthropic")) not in result
 
 
-def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> None:
+def test_get_all_providers_attaches_active_credentials(sqlite_session: Session) -> None:
     provider = Provider(
         tenant_id="tenant-id",
         provider_name="openai",
@@ -1168,7 +1398,7 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
         encrypted_config='{"api_key": "secret"}',
     )
     credential.id = "credential-id"
-    provider_db.add_all(
+    sqlite_session.add_all(
         [
             provider,
             credential,
@@ -1180,7 +1410,7 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
             ),
         ]
     )
-    provider_db.commit()
+    sqlite_session.commit()
 
     result = ProviderManager._get_all_providers("tenant-id")
 
@@ -1207,7 +1437,7 @@ def test_invalidate_configurations_cache_bumps_selected_source_version() -> None
     assert "provider_configurations:tenant:tenant-id:source:provider_models:version" not in fake_redis.store
 
 
-def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Session, sqlite_engine: Engine) -> None:
+def test_provider_model_credentials_cache_returns_cache_entries(sqlite_session: Session, sqlite_engine: Engine) -> None:
     fake_redis = _FakeRedis()
     credential_record = ProviderModelCredential(
         tenant_id="tenant-id",
@@ -1218,7 +1448,7 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
         encrypted_config='{"api_key": "secret"}',
     )
     credential_record.id = "credential-id"
-    provider_db.add_all(
+    sqlite_session.add_all(
         [
             credential_record,
             ProviderModelCredential(
@@ -1231,7 +1461,7 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
             ),
         ]
     )
-    provider_db.commit()
+    sqlite_session.commit()
 
     credential_query_count = 0
 
@@ -1258,8 +1488,52 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
     assert "anthropic" not in second
 
 
+def test_provider_model_cache_entries_resolve_credentials_through_owned_session(sqlite_session: Session) -> None:
+    credential = ProviderModelCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+
+    def build_model(model_name: str, credential_id: str | None) -> ProviderModel:
+        return ProviderModel(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name=model_name,
+            model_type=ModelType.LLM,
+            credential_id=credential_id,
+            is_valid=True,
+        )
+
+    sqlite_session.add_all(
+        [
+            credential,
+            build_model("active", "credential-id"),
+            build_model("dangling", "deleted-credential-id"),
+            build_model("unset", None),
+        ]
+    )
+    sqlite_session.commit()
+
+    entries = {
+        entry.model_name: entry for entry in provider_manager_module._load_provider_model_cache_entries("tenant-id")
+    }
+
+    assert (entries["active"].credential_name, entries["active"].encrypted_config) == (
+        "primary",
+        '{"api_key": "secret"}',
+    )
+    assert entries["dangling"].credential_id == "deleted-credential-id"
+    assert (entries["dangling"].credential_name, entries["dangling"].encrypted_config) == (None, None)
+    assert (entries["unset"].credential_name, entries["unset"].encrypted_config) == (None, None)
+
+
 def test_provider_configuration_cache_skips_write_when_version_changes_during_load(
-    provider_db: Session, sqlite_engine: Engine
+    sqlite_session: Session, sqlite_engine: Engine
 ) -> None:
     fake_redis = _FakeRedis()
     version_key = "provider_configurations:tenant:tenant-id:source:provider_model_credentials:version"
@@ -1272,8 +1546,8 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
         encrypted_config='{"api_key": "secret"}',
     )
     credential_record.id = "credential-id"
-    provider_db.add(credential_record)
-    provider_db.commit()
+    sqlite_session.add(credential_record)
+    sqlite_session.commit()
     version_bumped = False
 
     def bump_version_on_credential_query(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
@@ -1309,7 +1583,7 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
         "_get_all_provider_credentials",
     ],
 )
-def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str, provider_db: Session) -> None:
+def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str, sqlite_session: Session) -> None:
     def build_record(provider_name: str, index: int, *, tenant_id: str = "tenant-id"):
         match method_name:
             case "_get_all_provider_models":
@@ -1355,8 +1629,8 @@ def test_provider_grouping_helpers_group_records_by_provider_name(method_name: s
     openai_secondary = build_record("openai", 2)
     anthropic_record = build_record("anthropic", 3)
     other_tenant_record = build_record("other-provider", 4, tenant_id="other-tenant")
-    provider_db.add_all([openai_primary, openai_secondary, anthropic_record, other_tenant_record])
-    provider_db.commit()
+    sqlite_session.add_all([openai_primary, openai_secondary, anthropic_record, other_tenant_record])
+    sqlite_session.commit()
 
     with patch("core.provider_manager.redis_client", _FakeRedis()):
         result = getattr(ProviderManager, method_name)("tenant-id")
@@ -1366,14 +1640,14 @@ def test_provider_grouping_helpers_group_records_by_provider_name(method_name: s
     assert "other-provider" not in result
 
 
-def test_get_all_preferred_model_providers_returns_mapping_by_provider_name(provider_db: Session) -> None:
+def test_get_all_preferred_model_providers_returns_mapping_by_provider_name(sqlite_session: Session) -> None:
     openai_preference = TenantPreferredModelProvider(
         tenant_id="tenant-id", provider_name="openai", preferred_provider_type=ProviderType.SYSTEM
     )
     anthropic_preference = TenantPreferredModelProvider(
         tenant_id="tenant-id", provider_name="anthropic", preferred_provider_type=ProviderType.CUSTOM
     )
-    provider_db.add_all(
+    sqlite_session.add_all(
         [
             openai_preference,
             anthropic_preference,
@@ -1384,7 +1658,7 @@ def test_get_all_preferred_model_providers_returns_mapping_by_provider_name(prov
             ),
         ]
     )
-    provider_db.commit()
+    sqlite_session.commit()
 
     with patch("core.provider_manager.redis_client", _FakeRedis()):
         result = ProviderManager._get_all_preferred_model_providers("tenant-id")
@@ -1394,7 +1668,7 @@ def test_get_all_preferred_model_providers_returns_mapping_by_provider_name(prov
     assert "other-provider" not in result
 
 
-@pytest.mark.usefixtures("provider_db")
+@pytest.mark.usefixtures("sqlite_session")
 def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_is_disabled(
     sqlite_engine: Engine,
 ) -> None:
@@ -1418,7 +1692,7 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
     assert statements == []
 
 
-def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs(provider_db: Session) -> None:
+def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs(sqlite_session: Session) -> None:
     openai_config = LoadBalancingModelConfig(
         tenant_id="tenant-id",
         provider_name="openai",
@@ -1454,8 +1728,8 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
         credential_source_type=None,
         enabled=True,
     )
-    provider_db.add_all([openai_config, anthropic_config, other_tenant_config])
-    provider_db.commit()
+    sqlite_session.add_all([openai_config, anthropic_config, other_tenant_config])
+    sqlite_session.commit()
 
     with (
         patch("core.provider_manager.redis_client.get", return_value=None),

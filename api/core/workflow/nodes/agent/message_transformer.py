@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -9,14 +9,14 @@ from sqlalchemy.orm import Session
 from core.app.file_access import DatabaseFileAccessController
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from extensions.ext_database import db
+from core.workflow.agent_log_events import AgentLogEvent
 from factories import file_factory
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, get_file_type_by_mime_type
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.node_events import (
-    NodeEventBase,
+    NodeEventPayload,
     NodeRunResult,
     StreamChunkEvent,
     StreamCompletedEvent,
@@ -25,7 +25,6 @@ from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-from .events import AgentLogEvent
 from .exceptions import AgentNodeError, AgentVariableTypeError, ToolFileNotFoundError
 from .think_tags import ThinkStreamState
 
@@ -33,10 +32,13 @@ _file_access_controller = DatabaseFileAccessController()
 
 
 class AgentMessageTransformer:
+    def __init__(self, session_factory: Callable[[], Session]) -> None:
+        self._session_factory = session_factory
+
     def transform(
         self,
         *,
-        messages: Generator[ToolInvokeMessage, None, None],
+        messages: Generator[ToolInvokeMessage],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
         user_id: str,
@@ -45,7 +47,7 @@ class AgentMessageTransformer:
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
-    ) -> Generator[NodeEventBase, None, None]:
+    ) -> Generator[NodeEventPayload]:
         from core.plugin.impl.plugin import PluginInstaller
 
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
@@ -82,7 +84,7 @@ class AgentMessageTransformer:
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
 
-                with Session(db.engine) as session:
+                with self._session_factory() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -107,7 +109,7 @@ class AgentMessageTransformer:
                 tool_file_id = message.meta.get("tool_file_id")
                 if not isinstance(tool_file_id, str) or not tool_file_id:
                     raise ToolFileNotFoundError("missing tool_file_id metadata")
-                with Session(db.engine) as session:
+                with self._session_factory() as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
@@ -311,7 +313,7 @@ class AgentMessageTransformer:
         )
 
     @staticmethod
-    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent, None, None]:
+    def _close_open_think(*, think_state: ThinkStreamState, node_id: str) -> Generator[StreamChunkEvent]:
         closed = think_state.close_if_open()
         if closed is None:
             return
@@ -321,8 +323,7 @@ class AgentMessageTransformer:
             is_final=False,
         )
 
-    @staticmethod
-    def _file_from_link_message(*, message: ToolInvokeMessage, tenant_id: str) -> File | None:
+    def _file_from_link_message(self, *, message: ToolInvokeMessage, tenant_id: str) -> File | None:
         if not isinstance(message.message, ToolInvokeMessage.TextMessage):
             return None
         meta = message.meta
@@ -335,7 +336,7 @@ class AgentMessageTransformer:
 
         tool_file_id = meta.get("tool_file_id")
         if isinstance(tool_file_id, str) and tool_file_id:
-            with Session(db.engine) as session:
+            with self._session_factory() as session:
                 tool_file = session.scalar(
                     select(ToolFile).where(ToolFile.id == tool_file_id, ToolFile.tenant_id == tenant_id)
                 )

@@ -1,0 +1,133 @@
+import type {
+  MemberInviteAlreadyMemberResponse,
+  MemberInviteFailedResponse,
+  MemberInviteResponse,
+  MemberInviteSuccessResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  DialogBody,
+  DialogClose,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InvitationLink } from './invitation-link'
+
+type IInvitationResultsContentProps = {
+  invitationResults: MemberInviteResponse['invitation_results']
+}
+export const InvitationResultsContent = ({ invitationResults }: IInvitationResultsContentProps) => {
+  const { t } = useTranslation(['common', 'workspaceMembers'])
+  const failedEmailId = useId()
+
+  const successInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteSuccessResponse => item.status === 'success',
+  )
+  const alreadyMemberInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteAlreadyMemberResponse => item.status === 'already_member',
+  )
+  const failedInvitationResults = invitationResults.filter(
+    (item): item is MemberInviteFailedResponse => item.status === 'failed',
+  )
+
+  return (
+    <>
+      <DialogHeader>
+        <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
+          <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
+        </div>
+        <DialogTitle>
+          {t(($) => $['members.invitationSent'], { ns: 'workspaceMembers' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody className="space-y-5">
+        <div className="text-sm text-text-tertiary">
+          {t(($) => $['members.invitationSentTip'], { ns: 'workspaceMembers' })}
+        </div>
+        <div className="flex flex-col gap-2">
+          {!!successInvitationResults.length && (
+            <>
+              <div className="py-2 text-sm font-medium text-text-primary">
+                {t(($) => $['members.invitationLink'], { ns: 'workspaceMembers' })}
+              </div>
+              {successInvitationResults.map((item) => (
+                <InvitationLink key={item.email} value={item} />
+              ))}
+            </>
+          )}
+          {!!alreadyMemberInvitationResults.length && (
+            <>
+              <div className="py-2 text-sm font-medium text-text-primary">
+                {t(($) => $['members.alreadyInTeam'], { ns: 'workspaceMembers' })}
+              </div>
+              <div className="text-sm text-text-tertiary">
+                {t(($) => $['members.alreadyInTeamTip'], { ns: 'workspaceMembers' })}
+              </div>
+              <div className="flex flex-wrap justify-between gap-y-1">
+                {alreadyMemberInvitationResults.map((item) => (
+                  <div
+                    key={item.email}
+                    className="flex justify-center rounded-md border border-components-panel-border bg-background-section-burn px-1 text-sm text-text-secondary"
+                  >
+                    <span dir="ltr">{item.email}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {!!failedInvitationResults.length && (
+            <>
+              <div className="py-2 text-sm font-medium text-text-primary">
+                {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
+              </div>
+              <ul className="flex flex-wrap justify-between gap-x-2 gap-y-1">
+                {failedInvitationResults.map((item, index) => (
+                  <li
+                    key={item.email}
+                    className="flex max-w-full min-w-0 rounded-md border border-red-300 bg-orange-50 px-1"
+                  >
+                    <Popover>
+                      <PopoverTrigger
+                        type="button"
+                        openOnHover
+                        delay={300}
+                        closeDelay={200}
+                        className="flex min-h-6 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-sm text-start text-sm"
+                      >
+                        <span id={`${failedEmailId}-${index}`} className="min-w-0 wrap-anywhere">
+                          <span dir="ltr">{item.email}</span>
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="i-ri-question-line size-4 shrink-0 text-red-300"
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent
+                        side="top"
+                        aria-labelledby={`${failedEmailId}-${index}`}
+                        className="max-w-75 p-2 system-xs-medium wrap-break-word text-text-secondary"
+                      >
+                        {item.message}
+                      </PopoverContent>
+                    </Popover>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      </DialogBody>
+      <DialogFooter>
+        <DialogClose render={<Button className="w-24" variant="primary" />}>
+          {t(($) => $['members.ok'], { ns: 'workspaceMembers' })}
+        </DialogClose>
+      </DialogFooter>
+    </>
+  )
+}

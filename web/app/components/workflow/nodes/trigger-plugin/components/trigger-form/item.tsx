@@ -1,42 +1,38 @@
 'use client'
-import type { FC } from 'react'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import { Button } from '@langgenius/dify-ui/button'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal'
+import { SchemaDialog } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-dialog'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
 type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
-  value: PluginTriggerVarInputs
-  onChange: (value: PluginTriggerVarInputs) => void
-  inPanel?: boolean
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, unknown>
   disableVariableInsertion?: boolean
 }>
 
-const TriggerFormItem: FC<Props> = ({
+export function TriggerFormItem({
   readOnly,
   nodeId,
   schema,
   value,
   onChange,
-  inPanel,
   currentEvent,
   currentProvider,
   extraParams,
   disableVariableInsertion = false,
-}) => {
+}: Props) {
   const language = useLanguage()
   const labelId = useId()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -47,7 +43,6 @@ const TriggerFormItem: FC<Props> = ({
     type === FormTypeEnum.secretInput ||
     type === FormTypeEnum.date ||
     type === FormTypeEnum.dateRange
-  const [isShowSchema, setIsShowSchema] = useState(false)
   return (
     <div className="space-y-0.5 py-1">
       <div>
@@ -56,11 +51,11 @@ const TriggerFormItem: FC<Props> = ({
             {label[language] || label.en_US}
           </div>
           {required && (
-            <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
+            <div className="ms-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="ml-1" />
+              <InfotipTrigger aria-labelledby={labelId} className="ms-1" />
               <InfotipContent aria-labelledby={labelId} className="w-50">
                 {tooltip[language] || tooltip.en_US}
               </InfotipContent>
@@ -68,16 +63,8 @@ const TriggerFormItem: FC<Props> = ({
           )}
           {showSchemaButton && (
             <>
-              <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
-              <Button
-                variant="ghost"
-                size="small"
-                onClick={() => setIsShowSchema(true)}
-                className="px-1 system-xs-regular text-text-tertiary"
-              >
-                <span aria-hidden className="i-ri-braces-line size-3.5" />
-                <span>JSON Schema</span>
-              </Button>
+              <div className="ms-1 me-0.5 system-xs-regular text-text-quaternary">·</div>
+              <SchemaDialog schema={input_schema} rootName={name} />
             </>
           )}
         </div>
@@ -94,23 +81,12 @@ const TriggerFormItem: FC<Props> = ({
         schema={schema}
         value={value}
         onChange={onChange}
-        inPanel={inPanel}
         currentTool={currentEvent}
         currentProvider={currentProvider}
         providerType="trigger"
         extraParams={extraParams}
         disableVariableInsertion={disableVariableInsertion}
       />
-
-      {isShowSchema && (
-        <SchemaModal
-          isShow
-          onClose={() => setIsShowSchema(false)}
-          rootName={name}
-          schema={input_schema!}
-        />
-      )}
     </div>
   )
 }
-export default TriggerFormItem

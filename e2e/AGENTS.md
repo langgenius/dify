@@ -20,8 +20,23 @@ Run commands from the repository root. Install dependencies and browsers once wi
 - Build the production Web artifact without starting services: `pnpm -C e2e e2e:web:build`
 - Middleware lifecycle: `pnpm -C e2e e2e:middleware:up` and `pnpm -C e2e e2e:middleware:down`
 - Scoped static checks: `vp check e2e`
+- Validate Gherkin and step bindings without starting services: `pnpm -C e2e check:scenarios`
+
+## Coverage Planning
+
+New scenarios must identify their CI lane and required services; a capability tag such as `@core` does not itself schedule a scenario. Do not count fixture creation, page readiness, or skipped scenarios as coverage of a user operation.
+
+Prioritize Community Edition journeys across browser actions, persistence, and execution: Agent configuration lifecycle, Workflow editing and publication, app packages, authentication, and published Web Apps. Treat deployment edition and runtime dependencies as separate dimensions. Feature-flagged Agent coverage is not proof of the default Community installation. Cloud-only capabilities need a separate runtime and must not be enabled through development overrides to make the Community gate pass.
+
+For persistence, reload and assert restored user-visible state. For publication, distinguish the mutable draft from the published version consumed by a separate visitor. For execution, assert concrete outputs in addition to a successful status. Use scenario-owned resources whenever the behavior mutates state; do not publish or edit a shared seed merely for convenience.
+
+Make dependent UI transitions explicit: after opening a dialog or menu, assert the intended surface is visible before interacting within it. Before refreshing or leaving after an edit, wait for the owned saved state; before submitting, wait for the control to be enabled when readiness depends on prior work. Use locator assertions or authoritative persistence polling, never fixed sleeps. Playwright actionability complements these business-readiness assertions rather than replacing them.
+
+When validation is CI-only, do not start local browsers, services, seed, builds, or E2E runners. Perform scoped static checks, then use CI reports as the runtime evidence. Cucumber dry-run validates bindings only; it does not prove browser behavior. Keep deferred designs in the PR description rather than adding placeholder or permanently skipped scenarios.
 
 The runner reuses `web/.next/BUILD_ID` when present. Set `E2E_FORCE_WEB_BUILD=1` to force a frontend rebuild. Use `E2E_BROWSER=webkit` for focused cross-browser runs and `E2E_SLOW_MO=500` with a headed command for local action debugging.
+
+Core CI runs add `--download-web-build` before the Cucumber `--` separator. The runner downloads the current workflow's shared Web artifact while starting middleware and backend services, then joins before starting the frontend. This mode requires GitHub Actions run metadata, `GH_TOKEN` with Actions read access, and the `gh` CLI; ordinary local runs do not use it.
 
 ## Runtime Ownership
 

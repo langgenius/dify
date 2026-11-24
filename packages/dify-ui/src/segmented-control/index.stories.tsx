@@ -30,14 +30,18 @@ type SegmentedControlProps = {
   noPadding?: boolean
 }
 
-const Icon = () => <i className="i-ri-information-line size-4 shrink-0" aria-hidden="true" />
+function Icon() {
+  return <i className="i-ri-information-line size-4 shrink-0" aria-hidden="true" />
+}
 
-const Item = () => (
-  <React.Fragment>
-    <Icon />
-    <span className="px-0.5">Item</span>
-  </React.Fragment>
-)
+function Item() {
+  return (
+    <React.Fragment>
+      <Icon />
+      <span className="px-0.5">Item</span>
+    </React.Fragment>
+  )
+}
 
 function SegmentedControlExample({
   defaultValue,
@@ -62,7 +66,7 @@ function SegmentedControlExample({
           </SegmentedControlItem>
           {index === 1 && (
             <span
-              className="pointer-events-none absolute top-0 -right-px flex h-full items-center"
+              className="pointer-events-none absolute -inset-e-px top-0 flex h-full items-center"
               aria-hidden="true"
             >
               <SegmentedControlDivider />

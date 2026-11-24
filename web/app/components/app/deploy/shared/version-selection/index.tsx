@@ -1,4 +1,5 @@
 'use client'
+import type { RefObject } from 'react'
 import type { DeploymentDialogRequest } from '../../types'
 import type { DeploymentVersion } from '../../utils/version'
 import { Button } from '@langgenius/dify-ui/button'
@@ -13,10 +14,12 @@ function versionSelectionTitle(request: DeploymentDialogRequest, deployTo: strin
 
 export function VersionSelection({
   appId,
+  titleRef,
   request,
   onSelect,
 }: {
   appId: string
+  titleRef: RefObject<HTMLHeadingElement | null>
   request: DeploymentDialogRequest
   onSelect: (version: DeploymentVersion) => void
 }) {
@@ -35,18 +38,20 @@ export function VersionSelection({
           <IconButton
             aria-label={tCommon(($) => $['operation.close'])}
             size="lg"
-            className="absolute top-5 right-5"
+            className="absolute inset-e-5 top-5"
             type="button"
           >
             <span aria-hidden className="i-ri-close-line size-4" />
           </IconButton>
         }
       />
-      <header className="shrink-0 px-6 pt-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['studio.chooseVersionToDeploy'])}
-        </DialogDescription>
+      <header className="shrink-0 px-6 pe-14 pt-6 pb-3">
+        <DialogTitle ref={titleRef} tabIndex={-1}>
+          {title}
+        </DialogTitle>
+        <div className="mt-1">
+          <DialogDescription>{t(($) => $['studio.chooseVersionToDeploy'])}</DialogDescription>
+        </div>
       </header>
       <VersionList
         className="px-4 pt-2 pb-4"
@@ -85,7 +90,7 @@ export function EmbeddedVersionSelection({
           type="button"
           size="small"
           variant="ghost-accent"
-          className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+          className="-ms-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
           onClick={onBack}
         >
           <span aria-hidden className="i-ri-arrow-left-line size-4" />

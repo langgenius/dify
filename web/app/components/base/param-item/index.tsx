@@ -64,7 +64,7 @@ const ParamItem: FC<Props> = ({
             <Switch
               aria-labelledby={labelId}
               size="md"
-              className="mr-2"
+              className="me-2"
               checked={enable}
               disabled={disabled}
               onCheckedChange={async (val) => {
@@ -72,7 +72,7 @@ const ParamItem: FC<Props> = ({
               }}
             />
           )}
-          <span id={labelId} className="mr-1 system-sm-semibold text-text-secondary">
+          <span id={labelId} className="me-1 system-sm-semibold text-text-secondary">
             {name}
           </span>
           {!noTooltip && tip && (
@@ -93,7 +93,9 @@ const ParamItem: FC<Props> = ({
             max={max}
             step={step}
             value={value}
-            onValueChange={(nextValue) => onChange(id, nextValue ?? min)}
+            onValueChange={(nextValue) => {
+              if (nextValue !== null) onChange(id, nextValue)
+            }}
           >
             <NumberFieldGroup>
               <NumberFieldInput aria-label={name} className="w-18" />

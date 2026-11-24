@@ -1,5 +1,6 @@
 export {
   notFound,
+  ReadonlyURLSearchParams,
   redirect,
   useParams,
   usePathname,
@@ -9,4 +10,3 @@ export {
   useSelectedLayoutSegment,
   useSelectedLayoutSegments,
 } from 'next/navigation'
-export type { ReadonlyURLSearchParams } from 'next/navigation'

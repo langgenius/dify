@@ -1,4 +1,8 @@
 {
+  "callback.error": "Otorisasi gagal",
+  "callback.errorHint": "Kembali ke halaman sebelumnya dan coba lagi.",
+  "callback.success": "Otorisasi selesai",
+  "callback.successHint": "Anda sekarang dapat menutup tab ini dan kembali ke halaman sebelumnya.",
   "connect": "Hubungkan",
   "continue": "Lanjut",
   "error.authAppInfoFetchFailed": "Gagal mengambil info aplikasi untuk otorisasi",

@@ -1,11 +1,15 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Protocol
 
 from flask import Request
 from pydantic import TypeAdapter
 
 from core.plugin.utils.http_parser import deserialize_request, serialize_request
-from extensions.ext_storage import storage
+
+
+class TriggerRequestStorage(Protocol):
+    def save(self, filename: str, data: bytes) -> None: ...
+    def load_once(self, filename: str) -> bytes: ...
 
 
 class TriggerHttpRequestCachingService:
@@ -15,8 +19,14 @@ class TriggerHttpRequestCachingService:
 
     _TRIGGER_STORAGE_PATH = "triggers"
 
-    @classmethod
-    def get_request(cls, request_id: str) -> Request:
+    def __init__(self, *, storage: TriggerRequestStorage) -> None:
+        self._storage = storage
+
+    def get_raw_request(self, request_id: str) -> bytes:
+        """Return the persisted HTTP request bytes for an existing request ID."""
+        return self._storage.load_once(f"{self._TRIGGER_STORAGE_PATH}/{request_id}.raw")
+
+    def get_request(self, request_id: str) -> Request:
         """
         Get the request object from the storage.
 
@@ -26,10 +36,9 @@ class TriggerHttpRequestCachingService:
         Returns:
             The request object.
         """
-        return deserialize_request(storage.load_once(f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.raw"))
+        return deserialize_request(self.get_raw_request(request_id))
 
-    @classmethod
-    def get_payload(cls, request_id: str) -> Mapping[str, Any]:
+    def get_payload(self, request_id: str) -> Mapping[str, Any]:
         """
         Get the payload from the storage.
 
@@ -40,11 +49,10 @@ class TriggerHttpRequestCachingService:
             The payload.
         """
         return TypeAdapter(Mapping[str, Any]).validate_json(
-            storage.load_once(f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.payload")
+            self._storage.load_once(f"{self._TRIGGER_STORAGE_PATH}/{request_id}.payload")
         )
 
-    @classmethod
-    def persist_request(cls, request_id: str, request: Request) -> None:
+    def persist_request(self, request_id: str, request: Request) -> None:
         """
         Persist the request in the storage.
 
@@ -52,14 +60,13 @@ class TriggerHttpRequestCachingService:
             request_id: The ID of the request.
             request: The request object.
         """
-        storage.save(f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.raw", serialize_request(request))
+        self._storage.save(f"{self._TRIGGER_STORAGE_PATH}/{request_id}.raw", serialize_request(request))
 
-    @classmethod
-    def persist_payload(cls, request_id: str, payload: Mapping[str, Any]) -> None:
+    def persist_payload(self, request_id: str, payload: Mapping[str, Any]) -> None:
         """
         Persist the payload in the storage.
         """
-        storage.save(
-            f"{cls._TRIGGER_STORAGE_PATH}/{request_id}.payload",
-            TypeAdapter(Mapping[str, Any]).dump_json(payload),  # type: ignore
+        self._storage.save(
+            f"{self._TRIGGER_STORAGE_PATH}/{request_id}.payload",
+            TypeAdapter(Mapping[str, Any]).dump_json(payload),
         )

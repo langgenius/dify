@@ -1,8 +1,11 @@
-import type { AppMode, WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import { useState } from 'react'
+import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useInvalidateAppWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
+import { useUpdateWorkflow } from '@/service/use-workflow'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfoUpdate = {
   id?: string
@@ -12,19 +15,24 @@ type VersionInfoUpdate = {
 
 export function useVersionInfo({
   appId,
-  appMode,
   publishedWorkflow,
   onClosePublisher,
 }: {
   appId?: string
-  appMode?: AppMode
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutate: updateWorkflow } = useUpdateWorkflow()
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
+  const queryClient = useQueryClient()
+  const invalidateAppWorkflow = useCallback(
+    (workflowAppId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
+      }),
+    [queryClient],
+  )
 
   function openEditor() {
     if (!publishedWorkflow) return
@@ -33,32 +41,26 @@ export function useVersionInfo({
     setIsOpen(true)
   }
 
-  function updateVersionInfo(params: VersionInfoUpdate) {
+  async function updateVersionInfo(params: VersionInfoUpdate) {
     if (!appId || !params.id) return
 
-    updateWorkflow(
-      {
-        appId,
-        appMode,
-        url: `/apps/${appId}/workflows/${params.id}`,
+    try {
+      await updateWorkflow({
+        resource: { kind: 'app', appId },
+        versionId: params.id,
         title: params.title,
         releaseNotes: params.releaseNotes,
-      },
-      {
-        onSuccess: () => {
-          toast.success(
-            t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
-          )
-          invalidateAppWorkflow(appId)
-        },
-        onError: () => {
-          toast.error(t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }))
-        },
-        onSettled: () => {
-          setIsOpen(false)
-        },
-      },
-    )
+      })
+      toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }))
+      invalidateAppWorkflow(appId)
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['versionHistory.action.updateFailure'], { ns: 'workflowHistory' }),
+      )
+    } finally {
+      setIsOpen(false)
+    }
   }
 
   return {

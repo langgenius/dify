@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import AllStartBlocks from './all-start-blocks'
 import Blocks from './blocks'
 import DataSources from './data-sources'
@@ -66,7 +66,7 @@ function TabHeaderItem({
       value={tab.key}
       disabled={tab.disabled}
       className={cn(
-        'z-10 mr-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
+        'z-10 me-0.5 h-8 rounded-t-lg border-b-0 px-3 py-0 system-sm-medium text-text-tertiary',
         'data-active:cursor-default data-active:border-transparent data-active:text-text-accent',
         'data-disabled:text-text-disabled data-disabled:opacity-60',
       )}
@@ -80,7 +80,7 @@ function TabHeaderItem({
   return (
     <Tooltip>
       <TooltipTrigger render={tabElement} />
-      <TooltipContent placement="top" className="max-w-57.5">
+      <TooltipContent className="max-w-57.5">
         {tab.disabledTip || fallbackDisabledTip}
       </TooltipContent>
     </Tooltip>
@@ -127,28 +127,26 @@ function BlockSelectorPanels({
     const filter = (() => {
       if (tab === TabType.Start) {
         return (
-          <SearchBox
+          <PluginSearchInput
             ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
+            value={searchText}
+            onValueChange={(value) => setSearchText(tab, value)}
             tags={tags}
             onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $['tabs.searchTrigger'], { ns: 'workflow' })}
-            inputClassName="grow"
           />
         )
       }
 
       if (tab === TabType.Tools) {
         return (
-          <SearchBox
+          <PluginSearchInput
             ref={inputRef}
-            search={searchText}
-            onSearchChange={(value) => setSearchText(tab, value)}
+            value={searchText}
+            onValueChange={(value) => setSearchText(tab, value)}
             tags={tags}
             onTagsChange={(value) => setTags(tab, value)}
             placeholder={t(($) => $.searchTools, { ns: 'plugin' })!}
-            inputClassName="grow"
           />
         )
       }
@@ -268,13 +266,13 @@ function BlockSelectorPanels({
     <Tabs defaultValue={defaultTab} className="w-full min-w-0">
       <TabsList
         aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-        className="relative w-full min-w-0 gap-0 bg-background-section-burn pt-1 pl-1"
+        className="relative w-full min-w-0 gap-0 bg-background-section-burn ps-1 pt-1"
       >
         {tabs.map((tab) => (
           <TabHeaderItem key={tab.key} tab={tab} fallbackDisabledTip={fallbackDisabledTip} />
         ))}
         <TabsIndicator
-          className="pointer-events-none absolute left-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+          className="pointer-events-none absolute inset-s-0 rounded-t-lg bg-components-panel-bg transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
           style={{
             top: 'var(--active-tab-top)',
             translate: 'var(--active-tab-left)',

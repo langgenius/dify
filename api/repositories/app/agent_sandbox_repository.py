@@ -5,6 +5,11 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.workflow.node_execution_process_data import (
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+    read_workflow_agent_session_branch,
+    read_workflow_agent_session_policy,
+)
 from core.workflow.nodes.agent_v2.session_store import resolve_workflow_agent_workspace_owner_scope
 from machinery.context import RequestContext
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentWorkspaceBinding, AgentWorkspaceOwnerType
@@ -13,14 +18,14 @@ from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
-from services.app.agent_app_contracts import (
+from services.agent.sandbox_contracts import (
     AgentSandboxBinding,
     AgentSandboxBindingNotFoundError,
     AgentSandboxCaller,
     SandboxCaller,
     WorkflowSandboxAppNotFoundError,
 )
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 
 class AgentSandboxRepository:
@@ -140,6 +145,13 @@ class AgentSandboxRepository:
         node_execution_id: str,
         session: Session,
     ) -> AgentSandboxBinding:
+        """Resolve only the workspace permitted by the execution's frozen policy.
+
+        Pre: the application owner was admitted and the execution IDs are
+        caller-scoped. Post: disabled Chatflow runs and session generations are
+        checked against their original owner; malformed policy fails closed.
+        This read never changes the participant or its lifecycle.
+        """
         execution = session.scalar(
             select(WorkflowNodeExecutionModel).where(
                 WorkflowNodeExecutionModel.id == node_execution_id,
@@ -151,10 +163,12 @@ class AgentSandboxRepository:
         )
         process_data = execution.process_data_dict if execution is not None else None
         workflow_agent_binding_id = process_data.get("workflow_agent_binding_id") if process_data is not None else None
+        invocation_id = process_data.get(WORKFLOW_TOOL_INVOCATION_ID_KEY) if process_data is not None else None
         if (
             execution is None
             or execution.agent_workspace_binding_id is None
             or not isinstance(workflow_agent_binding_id, str)
+            or (invocation_id is not None and not isinstance(invocation_id, str))
         ):
             raise AgentSandboxBindingNotFoundError(
                 "this Workflow Agent node execution has no active Workspace Binding",
@@ -167,6 +181,13 @@ class AgentSandboxRepository:
             )
             .limit(1)
         )
+        try:
+            continue_agent_session, session_generation = read_workflow_agent_session_policy(process_data)
+            session_branch = read_workflow_agent_session_branch(process_data)
+        except ValueError as error:
+            raise AgentSandboxBindingNotFoundError(
+                "this Workflow Agent node execution has invalid session policy"
+            ) from error
         binding = AgentWorkspaceService.get_active_binding(
             session=session,
             tenant_id=tenant_id,
@@ -179,6 +200,10 @@ class AgentSandboxRepository:
                 node_id=node_id,
                 workflow_agent_binding_id=workflow_agent_binding_id,
                 node_execution_id=node_execution_id,
+                workflow_tool_invocation_id=invocation_id,
+                continue_agent_session=continue_agent_session,
+                session_generation=session_generation,
+                session_branch=session_branch,
             ),
         )
         if binding is None or binding.app_id != app_id:

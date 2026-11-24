@@ -2,11 +2,11 @@
 
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
 import { useAtomValue } from 'jotai'
-import { useTheme } from 'next-themes'
 import { useSyncExternalStore } from 'react'
 import { useLocale } from '#i18n'
+import { marketplaceLinks } from '@/features/marketplace/links'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { getPluginDetailLinkInMarketplace, getTemplateDetailLinkInMarketplace } from './utils'
+import { useResolvedTheme } from '@/features/theme/hooks'
 
 const subscribe = () => () => {}
 const getOrigin = () => window.location.origin
@@ -23,23 +23,19 @@ type TemplateDetail = Pick<
 export function useMarketplaceDetailNavigation() {
   const edition = useAtomValue(deploymentEditionAtom)
   const language = useLocale()
-  const { resolvedTheme } = useTheme()
+  const theme = useResolvedTheme()
   const source = useSyncExternalStore(subscribe, getOrigin, getServerOrigin)
   const opensExternally = edition === 'COMMUNITY' || edition === 'ENTERPRISE'
 
-  const officialUrl = (path: string) => {
-    const url = new URL(path, 'https://marketplace.dify.ai')
-    if (source) url.searchParams.set('source', source)
-    url.searchParams.set('language', language)
-    if (resolvedTheme) url.searchParams.set('theme', resolvedTheme)
-    return url.toString()
-  }
+  const detailParams = { language, theme }
   const pluginHref = (plugin: PluginDetail) =>
     opensExternally && plugin.type !== 'bundle'
-      ? officialUrl(getPluginDetailLinkInMarketplace(plugin))
+      ? marketplaceLinks.officialPluginDetail(plugin, detailParams, source)
       : undefined
   const templateHref = (template: TemplateDetail) =>
-    opensExternally ? officialUrl(getTemplateDetailLinkInMarketplace(template)) : undefined
+    opensExternally
+      ? marketplaceLinks.officialTemplateDetail(template, detailParams, source)
+      : undefined
 
   // Search selections are commands, so open synchronously within the gesture.
   // Ordinary cards use the href directly to retain native link behavior.

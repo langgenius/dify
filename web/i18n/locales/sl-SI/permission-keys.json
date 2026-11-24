@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Objavi in upravljaj različice agenta",
   "agent.acl.test_and_run": "Preizkusi in zaženi agenta",
   "agent.create": "Ustvarjanje agentov",
+  "agent.tag.manage": "Upravljanje oznak agentov",
   "api_extension.manage": "Upravljanje konfiguracije razširitve API",
   "app.access_config": "Konfiguracija dovoljenj za dostop do aplikacije",
   "app.acl.access_config": "Ogled in upravljanje dovoljenj za dostop",

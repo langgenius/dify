@@ -56,11 +56,6 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         }
         server_only_dependency_names = server_dependency_names - default_dependency_names
 
-        agenton_layers = importlib.import_module("agenton.layers")
-        agenton_compositor = importlib.import_module("agenton.compositor")
-        agenton_collections = importlib.import_module("agenton_collections")
-        plain_layers = importlib.import_module("agenton_collections.layers.plain")
-        pydantic_ai_layers = importlib.import_module("agenton_collections.layers.pydantic_ai")
         dify_agent = importlib.import_module("dify_agent")
         client_module = importlib.import_module("dify_agent.client")
         protocol_module = importlib.import_module("dify_agent.protocol")
@@ -70,16 +65,9 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         shell_module = importlib.import_module("dify_agent.layers.shell")
         execution_context_module = importlib.import_module("dify_agent.layers.execution_context")
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
-        ask_human_module = importlib.import_module("dify_agent.layers.ask_human")
         output_module = importlib.import_module("dify_agent.layers.output")
         user_prompt_module = importlib.import_module("dify_agent.layers.user_prompt")
 
-        assert agenton_layers.ExitIntent is not None
-        assert agenton_layers.LayerConfig is not None
-        assert agenton_compositor.CompositorSessionSnapshot is not None
-        assert agenton_collections.PromptLayer is plain_layers.PromptLayer
-        assert plain_layers.PromptLayerConfig is not None
-        assert pydantic_ai_layers.PydanticAIHistoryLayer is not None
         assert dify_agent.Client is client_module.Client
         assert protocol_module.CreateRunRequest is not None
         assert protocol_module.RunComposition is not None
@@ -91,8 +79,16 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert agent_stub_shell_env_module.build_shell_agent_stub_env is not None
         assert shell_module.DifyShellLayerConfig is not None
         assert execution_context_module.DifyExecutionContextLayerConfig is not None
+        tracing = execution_context_module.ApplicationTracingContext(
+            run_id="11111111-1111-4111-8111-111111111111",
+            invocation_id="22222222-2222-4222-8222-222222222222",
+            trace_id="1" * 32,
+            parent_span_id="2" * 16,
+            session_id="client-session",
+            capture_content=False,
+        )
+        assert execution_context_module.ApplicationTracingContext.model_validate_json(tracing.model_dump_json()) == tracing
         assert plugin_module.DifyPluginLLMLayerConfig is not None
-        assert ask_human_module.DifyAskHumanLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
         assert user_prompt_module.DifyUserPromptLayerConfig is not None
         assert user_prompt_module.DifyUserPromptFileConfig is not None

@@ -2,19 +2,17 @@ import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toFeaturesData, toGraphNodes } from '@/app/components/workflow/utils/published-workflow'
 import { toast } from '@/app/notifications'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
-import { AppModeEnum } from '@/types/app'
 
-type HandleRunMode = TriggerType
 export type HandleRunOptions = {
-  mode?: HandleRunMode
+  mode?: TriggerType
   scheduleNodeId?: string
   webhookNodeId?: string
   pluginNodeId?: string
@@ -74,7 +72,7 @@ const debugLabelMap: Record<DebuggableTriggerType, string> = {
   [TriggerType.Schedule]: 'Schedule',
 }
 
-export const createRunningWorkflowState = () => {
+const createRunningWorkflowState = () => {
   return {
     result: {
       status: WorkflowRunningStatus.Running,
@@ -89,7 +87,7 @@ export const createRunningWorkflowState = () => {
   }
 }
 
-export const createStoppedWorkflowState = () => {
+const createStoppedWorkflowState = () => {
   return {
     result: {
       status: WorkflowRunningStatus.Stopped,
@@ -102,7 +100,7 @@ export const createStoppedWorkflowState = () => {
   }
 }
 
-export const createFailedWorkflowState = (error: string) => {
+const createFailedWorkflowState = (error: string) => {
   return {
     result: {
       status: WorkflowRunningStatus.Failed,
@@ -115,15 +113,9 @@ export const createFailedWorkflowState = (error: string) => {
   }
 }
 
-export const buildRunHistoryUrl = (appDetail?: AppDetailLike) => {
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
-    ? `/apps/${appDetail.id}/advanced-chat/workflow-runs`
-    : `/apps/${appDetail?.id}/workflow-runs`
-}
-
 export const resolveWorkflowRunUrl = (
   appDetail: AppDetailLike | undefined,
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   isInWorkflowDebug: boolean,
 ) => {
   if (
@@ -148,7 +140,7 @@ export const resolveWorkflowRunUrl = (
     return `/apps/${appDetail.id}/workflows/draft/trigger/run-all`
   }
 
-  if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT)
+  if (appDetail?.mode === 'advanced-chat')
     return `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
 
   if (isInWorkflowDebug && appDetail?.id) return `/apps/${appDetail.id}/workflows/draft/run`
@@ -157,7 +149,7 @@ export const resolveWorkflowRunUrl = (
 }
 
 export const buildWorkflowRunRequestBody = (
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   resolvedParams: Record<string, unknown>,
   options?: HandleRunOptions,
 ) => {
@@ -172,7 +164,7 @@ export const buildWorkflowRunRequestBody = (
   return resolvedParams
 }
 
-export const validateWorkflowRunRequest = (runMode: HandleRunMode, options?: HandleRunOptions) => {
+export const validateWorkflowRunRequest = (runMode: TriggerType, options?: HandleRunOptions) => {
   if (runMode === TriggerType.Schedule && !options?.scheduleNodeId)
     return 'handleRun: schedule trigger run requires node id'
 
@@ -188,9 +180,7 @@ export const validateWorkflowRunRequest = (runMode: HandleRunMode, options?: Han
   return ''
 }
 
-export const isDebuggableTriggerType = (
-  runMode: HandleRunMode,
-): runMode is DebuggableTriggerType => {
+export const isDebuggableTriggerType = (runMode: TriggerType): runMode is DebuggableTriggerType => {
   return (
     runMode === TriggerType.Schedule ||
     runMode === TriggerType.Webhook ||
@@ -199,7 +189,7 @@ export const isDebuggableTriggerType = (
   )
 }
 
-export const buildListeningTriggerNodeIds = (
+const buildListeningTriggerNodeIds = (
   runMode: DebuggableTriggerType,
   options?: HandleRunOptions,
 ) => {
@@ -216,7 +206,7 @@ export const buildListeningTriggerNodeIds = (
 
 export const applyRunningStateForMode = (
   actions: ListeningStateActions,
-  runMode: HandleRunMode,
+  runMode: TriggerType,
   options?: HandleRunOptions,
 ) => {
   if (isDebuggableTriggerType(runMode)) {
@@ -296,26 +286,15 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
   }
 }
 
-export const mapPublishedWorkflowFeatures = (publishedWorkflow: VersionHistory): FeaturesData => {
-  return {
-    opening: {
-      enabled:
-        !!publishedWorkflow.features.opening_statement ||
-        !!publishedWorkflow.features.suggested_questions.length,
-      opening_statement: publishedWorkflow.features.opening_statement,
-      suggested_questions: publishedWorkflow.features.suggested_questions,
-    },
-    suggested: publishedWorkflow.features.suggested_questions_after_answer,
-    text2speech: publishedWorkflow.features.text_to_speech,
-    speech2text: publishedWorkflow.features.speech_to_text,
-    citation: publishedWorkflow.features.retriever_resource,
-    moderation: publishedWorkflow.features.sensitive_word_avoidance,
-    file: publishedWorkflow.features.file_upload,
-  }
-}
+// Published versions store features and graph as free-form JSON; narrow them for the editor.
+export const mapPublishedWorkflowFeatures = (publishedWorkflow: {
+  features: Record<string, unknown>
+}): FeaturesData => toFeaturesData(publishedWorkflow.features)
 
-export const normalizePublishedWorkflowNodes = (publishedWorkflow: VersionHistory) => {
-  return publishedWorkflow.graph.nodes.map((node) => ({
+export const normalizePublishedWorkflowNodes = (publishedWorkflow: {
+  graph: Record<string, unknown>
+}) => {
+  return toGraphNodes(publishedWorkflow.graph).map((node) => ({
     ...node,
     selected: false,
     data: {
@@ -367,6 +346,7 @@ export const runTriggerDebug = async ({
         },
         {
           needAllResponseContent: true,
+          silent: true,
         },
       )
 
@@ -453,9 +433,8 @@ export const runTriggerDebug = async ({
     } catch (error) {
       if (controller.signal.aborted) return
 
-      if (error instanceof Response) {
-        const data = (await error.clone().json()) as Record<string, unknown>
-        const errorMessage = typeof data?.error === 'string' ? data.error : ''
+      if (error instanceof Error) {
+        const errorMessage = error.message
         toast.error(errorMessage)
         clearAbortController()
         setWorkflowRunningData(createFailedWorkflowState(errorMessage))

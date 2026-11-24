@@ -183,7 +183,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                     render={
                       <button
                         type="button"
-                        className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 text-left outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                        className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 text-start outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                         style={{ width: '368px', height: '38px' }}
                         onClick={() => {
                           copyDebugUrl(inputs.webhook_debug_url || '')
@@ -212,7 +212,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                       </button>
                     }
                   />
-                  <TooltipContent placement="bottom" sideOffset={4}>
+                  <TooltipContent side="bottom" sideOffset={4}>
                     {debugUrlCopied
                       ? t(($) => $[`${i18nPrefix}.debugUrlCopied`], { ns: 'workflowIntegrations' })
                       : t(($) => $[`${i18nPrefix}.debugUrlCopy`], { ns: 'workflowIntegrations' })}

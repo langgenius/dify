@@ -1,7 +1,9 @@
 """Framework-independent notification contracts."""
 
 from collections.abc import Mapping
-from typing import NamedTuple
+from typing import Literal, NamedTuple
+
+type NotificationFrequency = Literal["once", "every_page_load"]
 
 
 class NotificationContent(NamedTuple):
@@ -13,8 +15,8 @@ class NotificationContent(NamedTuple):
 
 
 class AccountNotification(NamedTuple):
-    notification_id: str | None
-    frequency: str | None
+    notification_id: str
+    frequency: NotificationFrequency
     contents: Mapping[str, NotificationContent]
 
 
@@ -24,8 +26,8 @@ class AccountNotificationBatch(NamedTuple):
 
 
 class NotificationItem(NamedTuple):
-    notification_id: str | None
-    frequency: str | None
+    notification_id: str
+    frequency: NotificationFrequency
     lang: str
     title: str
     subtitle: str

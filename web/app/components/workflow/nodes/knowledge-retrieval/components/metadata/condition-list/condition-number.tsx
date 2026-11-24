@@ -42,9 +42,9 @@ const ConditionNumber = ({
   )
 
   return (
-    <div className="flex h-8 items-center pr-2 pl-1">
+    <div className="flex h-8 items-center ps-1 pe-2">
       <ConditionValueMethod valueMethod={valueMethod} onValueMethodChange={onValueMethodChange} />
-      <div className="mr-1.5 ml-1 h-4 w-px bg-divider-regular"></div>
+      <div className="ms-1 me-1.5 h-4 w-px bg-divider-regular"></div>
       {valueMethod === 'variable' && !isCommonVariable && (
         <ConditionVariableSelector
           valueSelector={value ? (value as string).split('.') : []}
@@ -71,7 +71,6 @@ const ConditionNumber = ({
         >
           <NumberFieldGroup className="border-0 bg-transparent hover:bg-transparent">
             <NumberFieldInput
-              className="rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
               inputMode="decimal"
               aria-label={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.placeholder'], {
                 ns: 'workflowModels',

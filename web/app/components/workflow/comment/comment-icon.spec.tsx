@@ -1,62 +1,31 @@
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { CommentIcon } from './comment-icon'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
+import { CommentMarkerFixture } from './__tests__/comment-thread-fixture'
 
-type Position = { x: number; y: number }
-
-let mockUserId = 'user-1'
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: 'user-1',
-    name: 'User',
-    avatar_url: 'avatar',
-  },
-}))
-
-const mockFlowToScreenPosition = vi.fn((position: Position) => position)
-const mockScreenToFlowPosition = vi.fn((position: Position) => position)
-
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper({
-      ...mockConsoleState.userProfile,
-      id: mockUserId,
-    }),
+const render = (ui: ReactElement, userId = 'user-1') => {
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: userId, name: 'User', avatar_url: 'avatar' },
   })
+  seedMentionableUsers(queryClient, [])
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    reactFlowProps: {
+      proOptions: { hideAttribution: true },
+      fitView: false,
+      defaultViewport: { x: 50, y: 30, zoom: 2 },
+    },
+  })
+}
 
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    flowToScreenPosition: mockFlowToScreenPosition,
-    screenToFlowPosition: mockScreenToFlowPosition,
-  }),
-  useViewport: () => ({
-    x: 0,
-    y: 0,
-    zoom: 1,
-  }),
-}))
-
-vi.mock('@/app/components/base/user-avatar-list', () => ({
-  UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (
-    <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
-  ),
-}))
-
-vi.mock('./comment-preview', () => ({
-  default: ({ onClick }: { onClick?: () => void }) => (
-    <button type="button" data-testid="comment-preview" onClick={onClick}>
-      Preview
-    </button>
-  ),
-}))
-
-const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => ({
+const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 0,
   position_y: 0,
@@ -78,11 +47,6 @@ const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCo
 })
 
 describe('CommentIcon', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUserId = 'user-1'
-  })
-
   it('opens with the keyboard and moves an authored comment in canvas coordinates', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
@@ -90,10 +54,10 @@ describe('CommentIcon', () => {
     function Comment() {
       const [comment, setComment] = useState(() => createComment())
       return (
-        <CommentIcon
+        <CommentMarkerFixture
           comment={comment}
-          onClick={onClick}
-          onPositionUpdate={(position) => {
+          onOpen={onClick}
+          onPositionUpdate={(_commentId, position) => {
             onPositionUpdate(position)
             setComment((current) => ({
               ...current,
@@ -122,15 +86,15 @@ describe('CommentIcon', () => {
 
   it("allows opening another author's comment but does not move it with arrow keys", async () => {
     const user = userEvent.setup()
-    mockUserId = 'user-2'
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
     render(
-      <CommentIcon
+      <CommentMarkerFixture
         comment={createComment()}
-        onClick={onClick}
+        onOpen={onClick}
         onPositionUpdate={onPositionUpdate}
       />,
+      'user-2',
     )
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')
@@ -138,29 +102,18 @@ describe('CommentIcon', () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it('toggles preview on hover when inactive', () => {
-    const comment = createComment()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={vi.fn()} isActive={false} />,
-    )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
-    const hoverTarget = marker.firstElementChild as HTMLElement
-
-    fireEvent.mouseEnter(hoverTarget)
-    expect(screen.getByTestId('comment-preview')).toBeInTheDocument()
-
-    fireEvent.mouseLeave(hoverTarget)
-    expect(screen.queryByTestId('comment-preview')).not.toBeInTheDocument()
-  })
-
-  it('calls onPositionUpdate after dragging by author', () => {
+  it('converts pointer movement through the zoomed canvas before saving the authored position', () => {
     const comment = createComment({ position_x: 0, position_y: 0 })
     const onClick = vi.fn()
     const onPositionUpdate = vi.fn()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={onClick} onPositionUpdate={onPositionUpdate} />,
+    render(
+      <CommentMarkerFixture
+        comment={comment}
+        onOpen={onClick}
+        onPositionUpdate={onPositionUpdate}
+      />,
     )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
+    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
 
     fireEvent.pointerDown(marker, {
       pointerId: 1,
@@ -179,32 +132,42 @@ describe('CommentIcon', () => {
       clientY: 110,
     })
 
-    expect(mockScreenToFlowPosition).toHaveBeenCalledWith({ x: 10, y: 10 })
-    expect(onPositionUpdate).toHaveBeenCalledWith({ x: 10, y: 10 })
+    fireEvent.click(marker)
+
+    expect(onPositionUpdate).toHaveBeenCalledExactlyOnceWith(expect.any(String), { x: 5, y: 5 })
     expect(onClick).not.toHaveBeenCalled()
   })
 
-  it('calls onClick for non-author clicks', () => {
-    mockUserId = 'user-2'
-    const comment = createComment()
+  it('opens another author’s comment with a click', async () => {
+    const user = userEvent.setup()
     const onClick = vi.fn()
-    const { container } = render(
-      <CommentIcon comment={comment} onClick={onClick} isActive={false} />,
+    render(
+      <CommentMarkerFixture comment={createComment()} onOpen={onClick} isActive={false} />,
+      'user-2',
     )
-    const marker = container.querySelector('[data-role="comment-marker"]') as HTMLElement
 
-    fireEvent.pointerDown(marker, {
-      pointerId: 1,
-      button: 0,
-      clientX: 50,
-      clientY: 60,
-    })
-    fireEvent.pointerUp(marker, {
-      pointerId: 1,
-      clientX: 50,
-      clientY: 60,
-    })
+    await user.click(screen.getByRole('button', { name: /workflow.keyboard.openComment/ }))
 
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('still opens from the keyboard after the preview card was dragged', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    render(
+      <CommentMarkerFixture comment={createComment()} onOpen={onOpen} onPositionUpdate={vi.fn()} />,
+    )
+    const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
+    await user.hover(within(marker).getByRole('img', { name: 'Alice' }))
+    const preview = screen.getByText('Hello').closest('[data-role="comment-preview"]')!
+
+    fireEvent.pointerDown(preview, { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(preview, { pointerId: 1, clientX: 120, clientY: 120 })
+    fireEvent.pointerUp(preview, { pointerId: 1, clientX: 120, clientY: 120 })
+    expect(onOpen).not.toHaveBeenCalled()
+
+    marker.focus()
+    await user.keyboard('{Enter}')
+    expect(onOpen).toHaveBeenCalledTimes(1)
   })
 })

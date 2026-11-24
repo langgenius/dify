@@ -1,6 +1,7 @@
 import type { GetWorkspacesCurrentSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { createStore } from 'jotai'
 import { atom } from 'jotai'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
 export type ConsoleStateFixture = {
@@ -20,7 +21,6 @@ export type ConsoleStateFixture = {
   isLoadingWorkspacePermissionKeys?: boolean
   workspacePermissionKeys?: string[]
   datasetRbacEnabled?: boolean
-  knowledgeFsEnabled?: boolean
   deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   brandingEnabled?: boolean
   refreshCurrentWorkspace?: () => void
@@ -31,7 +31,7 @@ type JotaiStore = ReturnType<typeof createStore>
 type ConsoleStateOwner = 'workspace' | 'permission' | 'systemFeatures'
 
 const defaultCurrentWorkspace = {
-  id: 'workspace-1',
+  id: TEST_WORKSPACE_ID,
   name: 'Workspace',
   plan: null,
   credits: null,
@@ -86,7 +86,6 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     systemFeaturesAtom,
     createSystemFeaturesFixture({
       rbac_enabled: state.datasetRbacEnabled ?? false,
-      knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
       deployment_edition: state.deploymentEdition ?? 'COMMUNITY',
       branding: {
         enabled: state.brandingEnabled ?? false,

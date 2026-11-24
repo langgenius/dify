@@ -75,16 +75,28 @@ Dify 是一個開源的 LLM 應用程式開發平台。其直觀的界面結合�
 
 </br>
 
-啟動 Dify 伺服器最簡單的方式是透過 [docker compose](../../docker/docker-compose.yaml)。在使用以下命令運行 Dify 之前，請確保您的機器已安裝 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)：
+啟動 Dify 伺服器最簡單的方式是使用 [Docker Compose](../../docker/docker-compose.yaml)。請先安裝 [Docker](https://docs.docker.com/get-docker/) 並啟動 Docker 常駐程式，再確認已安裝 [Docker Compose](https://docs.docker.com/compose/install/) v2.35.0 或更新版本，以及 OpenSSL。
+
+首次部署時，請從儲存庫根目錄執行以下命令。如果要升級既有部署，請保留原有的 `.env` 檔案，並參閱[升級設定指南](../../docker/README.md#review-configuration-after-an-upgrade)。
 
 ```bash
-cd dify
 cd docker
 cp .env.example .env
-docker compose up -d
+openssl rand -hex 32
 ```
 
-運行後，您可以在瀏覽器中通過 [http://localhost/install](http://localhost/install) 訪問 Dify 儀表板並開始初始化過程。
+開啟 `docker/.env`，將產生的值填入 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`。使用隨附的服務時，請保留預設的 `COMPOSE_PROFILES` 值。服務會自動載入預設設定，無須新增其他設定檔。
+
+在同一個 `docker` 目錄下啟動並檢查服務：
+
+```bash
+docker compose up -d
+docker compose ps --all
+```
+
+服務啟動後，請在瀏覽器開啟 [http://localhost/install](http://localhost/install) 完成初始設定。一次性的 `init_permissions` 服務應以結束代碼 `0` 結束。
+
+如需選用設定及覆寫服務設定，請參閱 [Docker 部署指南](../../docker/README.md#configure-dify)。
 
 ### 尋求幫助
 
@@ -120,7 +132,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 ## 使用 Dify
 
 - **雲端服務 </br>**
-  我們提供 [Dify Cloud](https://dify.ai) 服務，任何人都可以零配置嘗試。它提供與自部署版本相同的所有功能，並在沙盒計劃中包含 200 次免費 GPT-4 調用。
+  我們提供 [Dify Cloud](https://cloud.dify.ai)，無需管理伺服器即可體驗 Dify。最新方案與用量額度請參閱[定價頁面](https://dify.ai/pricing)。
 
 - **自託管 Dify 社區版</br>**
   使用這份[快速指南](#%E5%BF%AB%E9%80%9F%E9%96%8B%E5%A7%8B)在您的環境中快速運行 Dify。
@@ -164,11 +176,11 @@ Dify 歡迎各種形式的貢獻：
 - [X](https://x.com/dify_ai)：追蹤版本消息與專案更新。
 ## 星星歷史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## 安全揭露
 
-為保護您的隱私，請避免在 GitHub 上發布安全性問題。請將您的問題發送至 security@dify.ai，我們將為您提供更詳細的答覆。
+請依照[安全政策](../../SECURITY.md)，透過 GitHub Security Advisories 私下回報漏洞，不要在公開議題、討論或 PR 中揭露。
 
 ## 授權條款
 

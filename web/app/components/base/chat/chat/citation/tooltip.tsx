@@ -13,12 +13,12 @@ const CitationTooltip: FC<CitationTooltipProps> = ({ data, text, icon }) => {
     <Tooltip>
       <TooltipTrigger
         data-testid="tooltip-trigger-content"
-        className="mr-6 flex items-center border-0 bg-transparent p-0 text-left"
+        className="me-6 flex items-center border-0 bg-transparent p-0 text-start"
       >
         {icon}
         {data}
       </TooltipTrigger>
-      <TooltipContent data-testid="tooltip-popup" placement="top-start">
+      <TooltipContent data-testid="tooltip-popup" align="start">
         {text} {data}
       </TooltipContent>
     </Tooltip>

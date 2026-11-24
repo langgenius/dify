@@ -1,0 +1,22 @@
+# Defaults for pgvecto-rs. Copy this file to pgvecto-rs.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+PGVECTOR_PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
+PGVECTOR_PGUSER=${PGVECTOR_PGUSER:-postgres}
+PGVECTOR_POSTGRES_DB=${PGVECTOR_POSTGRES_DB:-dify}
+PGVECTOR_POSTGRES_PASSWORD=${PGVECTOR_POSTGRES_PASSWORD:-difyai123456}
+
+# Dify vector client settings (API, workers and Beat)
+PGVECTO_RS_HOST=${PGVECTO_RS_HOST-pgvecto-rs}
+PGVECTO_RS_PORT=${PGVECTO_RS_PORT-5432}
+PGVECTO_RS_USER=${PGVECTO_RS_USER-${PGVECTOR_PGUSER:-postgres}}
+PGVECTO_RS_PASSWORD=${PGVECTO_RS_PASSWORD-${PGVECTOR_POSTGRES_PASSWORD:-difyai123456}}
+PGVECTO_RS_DATABASE=${PGVECTO_RS_DATABASE-${PGVECTOR_POSTGRES_DB:-dify}}
+
+# Container variable mappings; keep these expressions unchanged in the copy.
+PGDATA=${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
+PGUSER=${PGVECTOR_PGUSER:-postgres}
+POSTGRES_USER=${PGVECTOR_PGUSER:-postgres}
+POSTGRES_DB=${PGVECTOR_POSTGRES_DB:-dify}
+POSTGRES_PASSWORD=${PGVECTOR_POSTGRES_PASSWORD:-difyai123456}

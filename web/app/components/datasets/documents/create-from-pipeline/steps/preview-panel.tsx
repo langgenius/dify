@@ -1,13 +1,8 @@
 'use client'
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FileIndexingEstimateResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, DocumentItem, FileItem } from '@/models/datasets'
 import type { DatasourceType, OnlineDriveFile } from '@/models/pipeline'
 import { memo } from 'react'
 import ChunkPreview from '../preview/chunk-preview'
@@ -37,7 +32,7 @@ export const StepOnePreview = memo(
   }: StepOnePreviewProps) => {
     return (
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pt-2 pl-2">
+        <div className="flex h-full flex-col ps-2 pt-2">
           {currentLocalFile && (
             <FilePreview file={currentLocalFile} hidePreview={hidePreviewLocalFile} />
           )}
@@ -66,7 +61,7 @@ type StepTwoPreviewProps = {
   selectedOnlineDriveFileList: OnlineDriveFile[]
   isIdle: boolean
   isPendingPreview: boolean
-  estimateData: FileIndexingEstimateResponse | undefined
+  estimateData: IndexingEstimateResponse | undefined
   onPreview: () => void
   handlePreviewFileChange: (file: DocumentItem) => void
   handlePreviewOnlineDocumentChange: (page: NotionPage) => void
@@ -92,7 +87,7 @@ export const StepTwoPreview = memo(
   }: StepTwoPreviewProps) => {
     return (
       <div className="h-full min-w-0 flex-1">
-        <div className="flex h-full flex-col pt-2 pl-2">
+        <div className="flex h-full flex-col ps-2 pt-2">
           <ChunkPreview
             dataSourceType={datasourceType as DatasourceType}
             localFiles={localFileList.map((file) => file.file)}

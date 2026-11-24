@@ -1,11 +1,11 @@
-import type { DataSourceCredential } from '@/types/pipeline'
+import type { DatasourceCredentialResponse } from '@dify/contracts/api/console/auth/types.gen'
 import { RiCheckLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type ItemProps = {
-  credential: DataSourceCredential
+  credential: DatasourceCredentialResponse
   isSelected: boolean
   onCredentialChange: (credentialId: string) => void
 }
@@ -22,7 +22,7 @@ const Item = ({ credential, isSelected, onCredentialChange }: ItemProps) => {
       className="flex cursor-pointer items-center gap-x-2 rounded-lg p-2 hover:bg-state-base-hover"
       onClick={handleCredentialChange}
     >
-      <CredentialIcon avatarUrl={avatar_url} name={name} size={20} />
+      <CredentialIcon avatarUrl={avatar_url ?? undefined} name={name} size={20} />
       <span className="grow truncate system-sm-medium text-text-secondary">{name}</span>
       {isSelected && <RiCheckLine className="size-4 shrink-0 text-text-accent" />}
     </div>

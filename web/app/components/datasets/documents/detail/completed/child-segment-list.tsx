@@ -1,5 +1,5 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
@@ -15,13 +15,13 @@ import { useSegmentListContext } from './index'
 import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
 
 type IChildSegmentCardProps = {
-  childChunks: ChildChunkDetail[]
+  childChunks: ChildChunkResponse[]
   parentChunkId: string
   handleInputChange?: (value: string) => void
   handleAddNewChildChunk?: (parentChunkId: string) => void
   enabled: boolean
   onDelete?: (segId: string, childChunkId: string) => Promise<void>
-  onClickSlice?: (childChunk: ChildChunkDetail) => void
+  onClickSlice?: (childChunk: ChildChunkResponse) => void
   total?: number
   inputValue?: string
   onClearFilter?: () => void
@@ -104,10 +104,10 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
   const renderCollapseIcon = () => {
     if (!isParagraphMode) return null
     const Icon = collapsed ? RiArrowRightSLine : RiArrowDownSLine
-    return <Icon className={cn('mr-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
+    return <Icon className={cn('me-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
   }
 
-  const renderChildChunkItem = (childChunk: ChildChunkDetail) => {
+  const renderChildChunkItem = (childChunk: ChildChunkResponse) => {
     const isEdited = childChunk.updated_at !== childChunk.created_at
     const isFocused = currChildChunk?.childChunkInfo?.id === childChunk.id
     const label = isEdited
@@ -174,15 +174,15 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       <div
         className={cn(
           'flex items-center justify-between',
-          isFullDocMode && 'sticky -top-2 left-0 bg-background-default pt-2 pb-3',
+          isFullDocMode && 'sticky inset-s-0 -top-2 bg-background-default pt-2 pb-3',
         )}
       >
         <div
           className={cn(
-            'flex h-7 items-center rounded-lg pr-3 pl-1',
+            'flex h-7 items-center rounded-lg ps-1 pe-3',
             isParagraphMode && 'cursor-pointer',
             isParagraphMode && collapsed && 'bg-dataset-child-chunk-expand-btn-bg',
-            isFullDocMode && 'pl-0',
+            isFullDocMode && 'ps-0',
           )}
           onClick={(event) => {
             event.stopPropagation()
@@ -192,7 +192,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           {renderCollapseIcon()}
           <span className="system-sm-semibold-uppercase text-text-secondary">{totalText}</span>
           <span
-            className={cn('pl-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}
+            className={cn('ps-1.5 text-xs font-medium text-text-quaternary', hoverVisibleClass)}
           >
             ·
           </span>

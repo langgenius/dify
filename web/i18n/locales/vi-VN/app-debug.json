@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "Tạo nhiều văn bản cùng một lúc, sau đó chỉnh sửa và tiếp tục tạo ra.",
   "feature.moreLikeThis.tip": "Sử dụng tính năng này sẽ tiêu tốn thêm token.",
   "feature.moreLikeThis.title": "Thêm tương tự",
+  "feature.showThoughts.description": "Hiển thị nội dung suy nghĩ của mô hình trong cuộc trò chuyện.",
+  "feature.showThoughts.title": "Hiển thị quá trình suy nghĩ",
   "feature.speechToText.description": "Khi được bật, bạn có thể sử dụng đầu vào bằng giọng nói.",
   "feature.speechToText.title": "Chuyển đổi giọng nói thành văn bản",
   "feature.suggestedQuestionsAfterAnswer.description": "Thiết lập đề xuất câu hỏi tiếp theo có thể tạo ra cuộc trò chuyện tốt hơn cho người dùng.",

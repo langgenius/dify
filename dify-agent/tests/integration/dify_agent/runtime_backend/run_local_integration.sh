@@ -35,6 +35,6 @@ cd "$project_dir"
 NO_PROXY=127.0.0.1,localhost \
   DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT="$endpoint" \
   DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN="$token" \
-  pdm run pytest --import-mode=importlib \
-    tests/integration/dify_agent/runtime_backend/test_runtime_backend_lifecycle.py \
+  uv run --project . --extra server python -m pytest --import-mode=importlib \
+    tests/integration/dify_agent/runtime_backend/test_working_environment.py \
     -k local -q -rs "$@"

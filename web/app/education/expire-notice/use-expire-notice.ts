@@ -14,7 +14,7 @@ dayjs.extend(utc)
 dayjs.extend(timezone)
 
 const selectEducationExpireStatus = ({ allow_refresh, expire_at }: EducationStatusResponse) => ({
-  allowRefresh: allow_refresh ?? false,
+  allowRefresh: allow_refresh,
   expireAt: expire_at ?? null,
 })
 

@@ -2,10 +2,12 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
+import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import {
   findUsedVarNodes,
@@ -25,7 +27,7 @@ const ChatVariablePanel = () => {
   const varList = useStore((s) => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore((s) => s.setConversationVariables)
   const setControlPromptEditorRerenderKey = useStore((s) => s.setControlPromptEditorRerenderKey)
-  const appId = useStore((s) => s.appId) as string
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { invalidateConversationVarValues } = useInspectVarsCrud()
 
   const [showTip, setShowTip] = useState(true)
@@ -204,7 +206,7 @@ const ChatVariablePanel = () => {
       render={
         <div
           className={cn(
-            'relative flex h-full w-105 flex-col rounded-l-2xl border border-components-panel-border bg-components-panel-bg-alt',
+            'relative flex h-full w-105 flex-col rounded-s-2xl border border-components-panel-border bg-components-panel-bg-alt',
           )}
         />
       }
@@ -274,7 +276,7 @@ const ChatVariablePanel = () => {
               </div>
             </div>
           </div>
-          <div className="absolute -top-1 right-9.5 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
+          <div className="absolute inset-e-9.5 -top-1 z-10 h-3 w-3 rotate-45 bg-background-section-burn" />
         </div>
       </CollapsiblePanel>
       <div className="shrink-0 px-4 pt-2 pb-3">

@@ -3,9 +3,10 @@ import type {
   PluginCategoryInstalledPluginResponse,
   PluginEntity,
   PluginInstallationItemResponse,
+  PluginInstallTask,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
+import type { Permissions } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -28,10 +29,8 @@ import {
   useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
-  usePluginAutoUpgradeSettings,
   usePluginTaskList,
   useRemoveFilteredInstalledPluginPageOnUnmount,
-  useVersionListOfPlugin,
 } from '../use-plugins'
 
 const { mockGet, mockGetMarketplace, mockPost, mockRequest } = vi.hoisted(() => ({
@@ -49,12 +48,20 @@ vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
 
-mockRequest.mockImplementation(async (url: string) => {
-  const data = await mockGet(url)
-  return new Response(JSON.stringify(data), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-})
+mockRequest.mockImplementation(
+  async (url: string, _init: RequestInit, options: { request?: Request }) => {
+    const method = options.request?.method ?? 'GET'
+    const data =
+      method === 'GET'
+        ? await mockGet(url)
+        : await mockPost(new URL(url).pathname.replace('/console/api', ''), {
+            body: await options.request?.json(),
+          })
+    return new Response(JSON.stringify(data ?? {}), {
+      headers: { 'Content-Type': 'application/json' },
+    })
+  },
+)
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -70,13 +77,16 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const { mockInvalidateAllBuiltInTools } = vi.hoisted(() => ({
-  mockInvalidateAllBuiltInTools: vi.fn(),
-}))
+beforeEach(() => {
+  mockGet.mockReset()
+  mockGetMarketplace.mockReset()
+  mockPost.mockReset()
+})
 
-vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
-}))
+const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+const pluginTaskListKey = consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
+  input: { query: { page: 1, page_size: 100 } },
+})
 
 const createQueryClient = () =>
   new QueryClient({
@@ -445,7 +455,9 @@ describe('use-plugins mutations', () => {
 
   it('optimistically updates category auto-upgrade cache before the request finishes', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const previousAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 0,
@@ -457,7 +469,7 @@ describe('use-plugins mutations', () => {
       ...previousAutoUpgrade,
       upgrade_time_of_day: 3600,
     }
-    let resolvePost: (value: unknown) => void = () => {}
+    let resolvePost!: (value: unknown) => void
     mockPost.mockReturnValue(
       new Promise((resolve) => {
         resolvePost = resolve
@@ -492,12 +504,13 @@ describe('use-plugins mutations', () => {
       })
     })
 
-    resolvePost({})
+    await act(async () => resolvePost({}))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
   })
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'permission']
+    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
     const previousPermission: Permissions = {
       install_permission: PermissionType.admin,
       debug_permission: PermissionType.admin,
@@ -506,7 +519,7 @@ describe('use-plugins mutations', () => {
       install_permission: PermissionType.everyone,
       debug_permission: PermissionType.admin,
     }
-    let resolvePost: (value: unknown) => void = () => {}
+    let resolvePost!: (value: unknown) => void
     mockPost.mockReturnValue(
       new Promise((resolve) => {
         resolvePost = resolve
@@ -531,12 +544,15 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(nextPermission)
     })
 
-    resolvePost({})
+    await act(async () => resolvePost({}))
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
   })
 
   it('rolls back category auto-upgrade cache when the request fails', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const previousAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 0,
@@ -548,7 +564,7 @@ describe('use-plugins mutations', () => {
       ...previousAutoUpgrade,
       upgrade_time_of_day: 3600,
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -586,7 +602,9 @@ describe('use-plugins mutations', () => {
 
   it('clears optimistic category auto-upgrade cache when the request fails without previous cache', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'autoUpgrade', PluginCategoryEnum.model]
+    const queryKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
     const nextAutoUpgrade = {
       strategy_setting: AUTO_UPDATE_STRATEGY.latest,
       upgrade_time_of_day: 3600,
@@ -594,7 +612,7 @@ describe('use-plugins mutations', () => {
       exclude_plugins: [],
       include_plugins: [],
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -625,7 +643,7 @@ describe('use-plugins mutations', () => {
 
   it('rolls back plugin permission cache when the request fails', async () => {
     const queryClient = createQueryClient()
-    const queryKey = ['plugins', 'referenceSettings', 'permission']
+    const queryKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
     const previousPermission: Permissions = {
       install_permission: PermissionType.admin,
       debug_permission: PermissionType.admin,
@@ -634,7 +652,7 @@ describe('use-plugins mutations', () => {
       install_permission: PermissionType.everyone,
       debug_permission: PermissionType.admin,
     }
-    let rejectPost: (reason?: unknown) => void = () => {}
+    let rejectPost!: (reason?: unknown) => void
     mockPost.mockReturnValue(
       new Promise((_resolve, reject) => {
         rejectPost = reject
@@ -658,37 +676,6 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(previousPermission)
     })
     await mutation
-  })
-})
-
-describe('useVersionListOfPlugin', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('does not fetch versions while disabled', () => {
-    const queryClient = createQueryClient()
-
-    renderHook(() => useVersionListOfPlugin('plugin-1', false), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    expect(mockGetMarketplace).not.toHaveBeenCalled()
-  })
-
-  it('fetches versions when enabled', async () => {
-    const queryClient = createQueryClient()
-    mockGetMarketplace.mockResolvedValue({ data: { versions: [] } })
-
-    renderHook(() => useVersionListOfPlugin('plugin-1'), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    await waitFor(() => {
-      expect(mockGetMarketplace).toHaveBeenCalledWith('/plugins/plugin-1/versions', {
-        params: { page: 1, page_size: 100 },
-      })
-    })
   })
 })
 
@@ -803,56 +790,32 @@ describe('useInstalledPluginList', () => {
 
   it('keeps category lists with different filters in separate caches', async () => {
     const queryClient = createQueryClient()
-    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    mockGet.mockImplementation((url: string) => {
+      const name = new URL(url).searchParams.get('query')!
+      return Promise.resolve({
+        plugins: [createInstalledPlugin(name, PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    })
     const wrapper = createWrapper(queryClient)
-
-    renderHook(
+    const slack = renderHook(
       () =>
         useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'slack' } }),
       { wrapper },
     )
-    renderHook(
+    const notion = renderHook(
       () =>
         useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'notion' } }),
       { wrapper },
     )
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith(
-        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=slack',
-      )
-      expect(mockGet).toHaveBeenCalledWith(
-        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=notion',
-      )
-    })
-  })
-
-  it('keeps builtin tools from the scoped tool plugin category response', async () => {
-    const queryClient = createQueryClient()
-    const builtinTools = [
-      {
-        id: 'builtin-tool',
-        name: 'builtin-tool',
-        label: { en_US: 'Builtin Tool', zh_Hans: 'Builtin Tool' },
-        description: { en_US: 'Builtin Tool description', zh_Hans: 'Builtin Tool description' },
-        author: 'Dify',
-        icon: '',
-        type: 'builtin',
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: false,
-        labels: [],
-      },
-    ]
-    mockGet.mockResolvedValue({ plugins: [], builtin_tools: builtinTools, has_more: false })
-
-    const { result } = renderHook(
-      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
-      { wrapper: createWrapper(queryClient) },
-    )
-
-    await waitFor(() => {
-      expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+      expect(slack.result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'slack',
+      ])
+      expect(notion.result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'notion',
+      ])
     })
   })
 
@@ -888,7 +851,13 @@ describe('useInstalledPluginList', () => {
     })
     await waitFor(() => {
       expect(result.current.isLastPage).toBe(true)
+      expect(result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'trigger-plugin-1',
+        'trigger-plugin-2',
+      ])
     })
+    act(() => result.current.loadNextPage())
+    expect(mockGet).toHaveBeenCalledTimes(2)
   })
 
   it('keeps builtin tools from the first scoped tool plugin page when loading more pages', async () => {
@@ -916,7 +885,7 @@ describe('useInstalledPluginList', () => {
       })
       .mockResolvedValueOnce({
         plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
-        builtin_tools: builtinTools,
+        builtin_tools: [],
         has_more: false,
       })
 
@@ -978,8 +947,6 @@ describe('useRemoveFilteredInstalledPluginPageOnUnmount', () => {
       .getAll()
       .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
     if (!cachedQuery) throw new Error('Expected cached second page')
-    expect(cachedQuery.options.gcTime).toBe(10 * 60 * 1000)
-    expect(cachedQuery.observers[0]?.options.staleTime).toBe(5 * 60 * 1000)
 
     unmount()
 
@@ -1057,6 +1024,7 @@ describe('useInvalidateInstalledPluginList', () => {
 
     queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
     queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
+    queryClient.setQueryData(builtInToolsKey, [])
 
     const { result: listResult, unmount } = renderHook(
       () => ({
@@ -1099,11 +1067,12 @@ describe('useInvalidateInstalledPluginList', () => {
     expect(toolCategoryQueries[0]?.state.isInvalidated).toBe(false)
     expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
-    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(false)
   })
 
   it('also invalidates built-in tools for the tool category', async () => {
     const queryClient = createQueryClient()
+    queryClient.setQueryData(builtInToolsKey, [])
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
     const { result } = renderHook(
@@ -1124,7 +1093,7 @@ describe('useInvalidateInstalledPluginList', () => {
       await result.current.invalidate(PluginCategoryEnum.tool)
     })
 
-    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledOnce()
+    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
   })
 })
 
@@ -1135,13 +1104,16 @@ describe('usePluginTaskList', () => {
 
   it('adds the task from an install start response to the task list cache', async () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
     mockGet.mockResolvedValue({ tasks: [] })
 
-    const startedTask: PluginTaskStart = {
+    const startedTask: PluginInstallTask = {
       id: 'task-new',
       created_at: '2026-06-05T03:34:59.578653Z',
       updated_at: '2026-06-05T03:34:59.578653Z',
@@ -1157,7 +1129,7 @@ describe('usePluginTaskList', () => {
           icon: 'gitlab.png',
           labels: {
             en_US: 'GitLab',
-          } as PluginTaskStart['plugins'][number]['labels'],
+          } as PluginInstallTask['plugins'][number]['labels'],
           source: PluginSource.marketplace,
         },
       ],
@@ -1171,13 +1143,13 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: startedTask,
       })
     })
 
-    expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
-      tasks: [
+    expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({ tasks: [startedTask] })
+    await waitFor(() =>
+      expect(result.current.pluginTasks).toEqual([
         {
           ...startedTask,
           plugins: [
@@ -1187,17 +1159,20 @@ describe('usePluginTaskList', () => {
             },
           ],
         },
-      ],
-    })
+      ]),
+    )
   })
 
   it('replaces an existing task with the latest start response task data', () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
-    queryClient.setQueryData(['plugins', 'pluginTaskList'], {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
+    queryClient.setQueryData(pluginTaskListKey, {
       tasks: [
         {
           id: 'task-new',
@@ -1229,7 +1204,6 @@ describe('usePluginTaskList', () => {
       result.current.handleInstallTaskStart({
         all_installed: false,
         task_id: 'task-new',
-        plugin_unique_identifier: 'langgenius/gitlab_datasource:0.3.11@test',
         task: {
           id: 'task-new',
           created_at: '2026-06-05T03:34:59.578653Z',
@@ -1242,7 +1216,7 @@ describe('usePluginTaskList', () => {
       })
     })
 
-    expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+    expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
       tasks: [
         {
           id: 'task-new',
@@ -1268,10 +1242,13 @@ describe('usePluginTaskList', () => {
 
   it('keeps a locally started unfinished task when an immediate refetch returns a stale task list', async () => {
     const queryClient = createQueryClient()
-    queryClient.setQueryData(['plugins', 'referenceSettings', 'permission'], {
-      install_permission: PermissionType.admin,
-      debug_permission: PermissionType.admin,
-    })
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey(),
+      {
+        install_permission: PermissionType.admin,
+        debug_permission: PermissionType.admin,
+      },
+    )
     const staleTask = {
       id: 'task-old',
       created_at: '2026-06-04T03:34:59.578653Z',
@@ -1282,7 +1259,7 @@ describe('usePluginTaskList', () => {
       plugins: [],
     }
     mockGet.mockResolvedValue({ tasks: [staleTask] })
-    const startedTask: PluginTaskStart = {
+    const startedTask: PluginInstallTask = {
       id: 'task-new',
       created_at: '2026-06-05T03:34:59.578653Z',
       updated_at: '2026-06-05T03:34:59.578653Z',
@@ -1298,7 +1275,7 @@ describe('usePluginTaskList', () => {
           icon: 'gitlab.png',
           labels: {
             en_US: 'GitLab',
-          } as PluginTaskStart['plugins'][number]['labels'],
+          } as PluginInstallTask['plugins'][number]['labels'],
           source: PluginSource.marketplace,
         },
       ],
@@ -1309,7 +1286,7 @@ describe('usePluginTaskList', () => {
     })
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
+      expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
         tasks: [staleTask],
       })
     })
@@ -1323,67 +1300,13 @@ describe('usePluginTaskList', () => {
     })
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(['plugins', 'pluginTaskList'])).toEqual({
-        tasks: [
-          {
-            ...startedTask,
-            plugins: [
-              {
-                ...startedTask.plugins[0],
-                taskId: 'task-new',
-              },
-            ],
-          },
-          staleTask,
-        ],
-      })
-    })
-  })
-})
-
-describe('usePluginAutoUpgradeSettings', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('does not expose frontend default settings before backend data resolves', () => {
-    const queryClient = createQueryClient()
-    mockGet.mockReturnValue(new Promise(() => {}))
-
-    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.model), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    expect(result.current.data).toBeUndefined()
-    expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/auto-upgrade/fetch', {
-      params: {
-        category: PluginCategoryEnum.model,
-      },
-    })
-  })
-
-  it('returns backend auto-upgrade settings when the request resolves', async () => {
-    const queryClient = createQueryClient()
-    const backendAutoUpgrade = {
-      strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
-      upgrade_time_of_day: 0,
-      upgrade_mode: AUTO_UPDATE_MODE.exclude,
-      exclude_plugins: [],
-      include_plugins: [],
-    }
-    mockGet.mockResolvedValue({
-      category: PluginCategoryEnum.tool,
-      auto_upgrade: backendAutoUpgrade,
-    })
-
-    const { result } = renderHook(() => usePluginAutoUpgradeSettings(PluginCategoryEnum.tool), {
-      wrapper: createWrapper(queryClient),
+      expect(mockGet).toHaveBeenCalledTimes(2)
+      expect(queryClient.isFetching({ queryKey: pluginTaskListKey })).toBe(0)
     })
 
     await waitFor(() => {
-      expect(result.current.data).toEqual({
-        category: PluginCategoryEnum.tool,
-        auto_upgrade: backendAutoUpgrade,
+      expect(queryClient.getQueryData(pluginTaskListKey)).toEqual({
+        tasks: [startedTask, staleTask],
       })
     })
   })

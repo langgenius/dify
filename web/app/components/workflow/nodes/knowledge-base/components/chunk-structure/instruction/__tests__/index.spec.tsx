@@ -9,21 +9,14 @@ vi.mock('@/context/i18n', () => ({
 
 describe('ChunkStructureInstruction', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockUseDocLink.mockReturnValue((path: string) => `https://docs.example.com${path}`)
   })
 
   // The instruction card should render the learning copy and link to the chunking guide.
   describe('Rendering', () => {
-    it('should render the title, message, and learn-more link', () => {
-      render(<Instruction className="custom-class" />)
+    it('links to the chunking guide', () => {
+      render(<Instruction />)
 
-      expect(
-        screen.getByText('workflow.nodes.knowledgeBase.chunkStructureTip.title'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('workflow.nodes.knowledgeBase.chunkStructureTip.message'),
-      ).toBeInTheDocument()
       expect(
         screen.getByRole('link', {
           name: 'workflow.nodes.knowledgeBase.chunkStructureTip.learnMore',

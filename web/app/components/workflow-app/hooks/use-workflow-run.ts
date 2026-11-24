@@ -2,27 +2,35 @@ import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import {
+  editorResourceAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  toEnvironmentVariables,
+  toGraphEdges,
+  toStoredViewport,
+} from '@/app/components/workflow/utils/published-workflow'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
-import { useConfigsMap } from './use-configs-map'
+import { consoleQuery } from '@/service/console'
+import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -31,7 +39,6 @@ import {
 import {
   applyRunningStateForMode,
   applyStoppedState,
-  buildRunHistoryUrl,
   buildTTSConfig,
   buildWorkflowRunRequestBody,
   clearListeningState,
@@ -117,14 +124,25 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const featuresStore = useFeaturesStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
-  const configsMap = useConfigsMap()
-  const { flowId, flowType } = configsMap
-  const invalidAllLastRun = useInvalidAllLastRun(flowType, flowId)
-  const invalidateRunHistory = useInvalidateWorkflowRunHistory()
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const resource = useAtomValue(editorResourceAtom)
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
+  const invalidateRunHistory = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: workflowRunHistoryQueryOptions(resource).queryKey,
+      }),
+    [queryClient, resource],
+  )
 
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    ...configsMap,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -225,13 +243,11 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         ...restCallback
       } = callback || {}
       workflowStore.setState({ historyWorkflowData: undefined })
-      const appDetail = useAppStore.getState().appDetail
-      const runHistoryUrl = buildRunHistoryUrl(appDetail)
       const workflowContainer = document.getElementById('workflow-container')
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const isInWorkflowDebug = appDetail?.mode === AppModeEnum.WORKFLOW
+      const isInWorkflowDebug = appDetail.mode === 'workflow'
 
       const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
@@ -367,7 +383,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         const workflowDataTrackingProperties = buildWorkflowDataTrackingProperties(workflowData)
 
         trackEvent('workflow_run_failed', {
-          workflow_id: flowId,
+          workflow_id: appId,
           reason,
           node_type: nodeType,
           data: {
@@ -381,7 +397,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const baseSseOptions = createBaseWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -416,7 +431,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const finalCallbacks = createFinalWorkflowRunCallbacks({
         clientWidth,
         clientHeight,
-        runHistoryUrl,
         isInWorkflowDebug,
         fetchInspectVars,
         invalidAllLastRun,
@@ -448,8 +462,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       doSyncWorkflowDraft,
       workflowStore,
       pathname,
+      appDetail,
       handleWorkflowFailed,
-      flowId,
+      appId,
       handleWorkflowStarted,
       handleWorkflowFinished,
       fetchInspectVars,
@@ -475,6 +490,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     ],
   )
 
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.apps.byAppId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
+
   const handleStopRun = useCallback(
     (taskId: string) => {
       const setStoppedState = () => {
@@ -496,8 +515,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       }
 
       if (taskId) {
-        const appId = useAppStore.getState().appDetail?.id
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        stopRun({ params: { app_id: appId, task_id: taskId } })
         setStoppedState()
         return
       }
@@ -523,23 +541,30 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current = null
       setStoppedState()
     },
-    [workflowStore],
+    [appId, stopRun, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(
-    (publishedWorkflow: VersionHistory) => {
+    (publishedWorkflow: WorkflowVersionListItem) => {
       const nodes = normalizePublishedWorkflowNodes(publishedWorkflow)
-      const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport!
+      const edges = toGraphEdges(publishedWorkflow.graph)
+      const viewport = toStoredViewport(publishedWorkflow.graph)
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
         viewport,
       })
-      featuresStore?.setState({ features: mapPublishedWorkflowFeatures(publishedWorkflow) })
+      const features = mapPublishedWorkflowFeatures(publishedWorkflow)
+      // Upload limits come from the server's current upload config, not the saved version.
+      const { fileUploadConfig } = workflowStore.getState()
+      featuresStore?.setState({
+        features: features.file
+          ? { ...features, file: { ...features.file, fileUploadConfig } }
+          : features,
+      })
       workflowStore
         .getState()
-        .setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+        .setEnvironmentVariables(toEnvironmentVariables(publishedWorkflow.environment_variables))
     },
     [featuresStore, handleUpdateWorkflowCanvas, workflowStore],
   )

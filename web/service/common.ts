@@ -1,19 +1,7 @@
-import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
-import type {
-  PostWorkspacesInfoData,
-  PostWorkspacesInfoResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  DefaultModelResponse,
-  ModelParameterRule,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type {
-  CommonResponse,
-  InitValidateStatusResponse,
-  SetupStatusResponse,
-} from '@/models/common'
-import { del, get, patch, post } from './base'
+import type { WebAppAddress } from './webapp-address'
+import { resolveWebAppAddress } from './webapp-address'
+import { clearWebAppAccessToken, clearWebAppPassport } from './webapp-auth'
+import { webAppClient } from './webapp-client'
 
 type LoginSuccess = {
   result: 'success'
@@ -26,297 +14,62 @@ type LoginFail = {
   message: string
 }
 type LoginResponse = LoginSuccess | LoginFail
-export const login = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<LoginResponse> => {
-  return post<LoginResponse>(url, { body })
-}
-export const webAppLogin = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<LoginResponse> => {
-  return post<LoginResponse>(url, { body }, { isPublicAPI: true })
-}
 
-export const setup = ({ body }: { body: Record<string, any> }): Promise<CommonResponse> => {
-  return post<CommonResponse>('/setup', { body })
-}
-
-export const initValidate = ({ body }: { body: Record<string, any> }): Promise<CommonResponse> => {
-  return post<CommonResponse>('/init', { body })
-}
-
-export const fetchInitValidateStatus = (): Promise<InitValidateStatusResponse> => {
-  return get<InitValidateStatusResponse>('/init')
-}
-
-export const fetchSetupStatus = (): Promise<SetupStatusResponse> => {
-  return get<SetupStatusResponse>('/setup')
-}
-export const updateUserProfile = ({
-  url,
-  body,
-}: {
-  url: string
-  body: Record<string, any>
-}): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
-export const deleteMemberOrCancelInvitation = ({
-  url,
-}: {
-  url: string
-}): Promise<CommonResponse> => {
-  return del<CommonResponse>(url)
-}
-
-export const sendOwnerEmail = (body: {
-  language?: string
-}): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>(
-    '/workspaces/current/members/send-owner-transfer-confirm-email',
-    { body },
-  )
-
-export const verifyOwnerEmail = (body: {
-  code: string
-  token: string
-}): Promise<CommonResponse & { is_valid: boolean; email: string; token: string }> =>
-  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(
-    '/workspaces/current/members/owner-transfer-check',
-    { body },
-  )
-
-export const ownershipTransfer = (
-  memberID: string,
-  body: { token: string },
-): Promise<CommonResponse & { is_valid: boolean; email: string; token: string }> =>
-  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(
-    `/workspaces/current/members/${memberID}/owner-transfer`,
-    { body },
-  )
-
-export const updateWorkspaceInfo = ({
-  url,
-  body,
-}: {
-  url: PostWorkspacesInfoData['url']
-  body: PostWorkspacesInfoData['body']
-}): Promise<PostWorkspacesInfoResponse> => {
-  return post<PostWorkspacesInfoResponse>(url, { body })
-}
-
-type InvitationCheckData = {
-  workspace_name: string
+export const webAppLogin = (body: {
   email: string
-  workspace_id: string
-  account_status?: string
-  requires_setup?: boolean
-}
-
-type ActivateMemberBody = {
-  token: string
-  name?: string
-  interface_language?: string
-  timezone?: string
-}
-
-export const invitationCheck = ({
-  url,
-  params,
-}: {
-  url: string
-  params: { workspace_id?: string; email?: string; token: string }
-}): Promise<CommonResponse & { is_valid: boolean; data: InvitationCheckData }> => {
-  return get<CommonResponse & { is_valid: boolean; data: InvitationCheckData }>(url, { params })
-}
-
-export const activateMember = ({
-  url,
-  body,
-}: {
-  url: string
-  body: ActivateMemberBody
+  password: string
+  remember_me?: boolean
 }): Promise<LoginResponse> => {
-  return post<LoginResponse>(url, { body })
+  return webAppClient.login.post({ body }) as Promise<LoginResponse>
 }
 
-export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {
-  return get<{ data: DefaultModelResponse }>(url)
-}
-
-export const fetchModelParameterRules = (url: string): Promise<{ data: ModelParameterRule[] }> => {
-  return get<{ data: ModelParameterRule[] }>(url)
-}
-
-export const enableModel = (
-  url: string,
-  body: { model: string; model_type: ModelTypeEnum },
-): Promise<CommonResponse> => patch<CommonResponse>(url, { body })
-
-export const disableModel = (
-  url: string,
-  body: { model: string; model_type: ModelTypeEnum },
-): Promise<CommonResponse> => patch<CommonResponse>(url, { body })
-
-export const sendForgotPasswordEmail = ({
-  url,
-  body,
-}: {
-  url: string
-  body: { email: string }
-}): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>(url, { body })
-export const changePasswordWithToken = ({
-  url,
-  body,
-}: {
-  url: string
-  body: { token: string; new_password: string; password_confirm: string }
-}): Promise<CommonResponse> => post<CommonResponse>(url, { body })
-export const changeWebAppPasswordWithToken = ({
-  url,
-  body,
-}: {
-  url: string
-  body: { token: string; new_password: string; password_confirm: string }
-}): Promise<CommonResponse> => post<CommonResponse>(url, { body }, { isPublicAPI: true })
-
-export const uploadRemoteFileInfo = (
-  url: string,
-  isPublic?: boolean,
-  silent?: boolean,
-  uploadEndpoint?: string,
-): Promise<{ id: string; name: string; size: number; mime_type: string; url: string }> => {
-  return post<{ id: string; name: string; size: number; mime_type: string; url: string }>(
-    uploadEndpoint || '/remote-files/upload',
-    { body: { url } },
-    { isPublicAPI: isPublic, silent },
-  )
-}
-
-export const sendEMailLoginCode = (
-  email: string,
-  language = 'en-US',
-  turnstileToken?: string,
-): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/email-code-login', {
-    body: {
-      email,
-      language,
-      ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
-    },
-  })
-
-export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
-  post<LoginResponse>('/email-code-login/validity', { body: data })
-
-export const sendResetPasswordCode = (
-  email: string,
-  language = 'en-US',
-): Promise<CommonResponse & { data: string; message?: string; code?: string }> =>
-  post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', {
-    body: { email, language },
-  })
-
-export const verifyResetPasswordCode = (body: {
-  email: string
-  code: string
+export const changeWebAppPasswordWithToken = (body: {
   token: string
-}): Promise<CommonResponse & { is_valid: boolean; token: string }> =>
-  post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body })
+  new_password: string
+  password_confirm: string
+}) => webAppClient.forgotPassword.resets.post({ body })
 
-export const sendWebAppEMailLoginCode = (
-  email: string,
-  language = 'en-US',
-): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>(
-    '/email-code-login',
-    { body: { email, language } },
-    { isPublicAPI: true },
-  )
+export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
+  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options }) as Promise<{
+    id: string
+    name: string
+    size: number
+    mime_type: string
+    url: string
+  }>
+}
 
-export const webAppEmailLoginWithCode = (data: {
-  email: string
-  code: string
-  token: string
-}): Promise<LoginResponse> =>
-  post<LoginResponse>('/email-code-login/validity', { body: data }, { isPublicAPI: true })
+export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
+  webAppClient.emailCodeLogin.post({ body: { email, language } })
 
-export const sendWebAppResetPasswordCode = (
-  email: string,
-  language = 'en-US',
-): Promise<CommonResponse & { data: string; message?: string; code?: string }> =>
-  post<CommonResponse & { data: string; message?: string; code?: string }>(
-    '/forgot-password',
-    { body: { email, language } },
-    { isPublicAPI: true },
-  )
+export const webAppEmailLoginWithCode = (body: { email: string; code: string; token: string }) =>
+  webAppClient.emailCodeLogin.validity.post({ body })
+
+export const sendWebAppResetPasswordCode = (email: string, language = 'en-US') =>
+  webAppClient.forgotPassword.post({ body: { email, language } })
 
 export const verifyWebAppResetPasswordCode = (body: {
   email: string
   code: string
   token: string
-}): Promise<CommonResponse & { is_valid: boolean; token: string }> =>
-  post<CommonResponse & { is_valid: boolean; token: string }>(
-    '/forgot-password/validity',
-    { body },
-    { isPublicAPI: true },
-  )
+}) => webAppClient.forgotPassword.validity.post({ body })
 
-export const sendDeleteAccountCode = (): Promise<CommonResponse & { data: string }> =>
-  get<CommonResponse & { data: string }>('/account/delete/verify')
+export async function webAppLoginStatus(shareCode: string, userId?: string) {
+  // always need to check login to prevent passport from being outdated
+  // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
+  const address = resolveWebAppAddress()
+  const query: { app_code?: string; user_id?: string } = {}
+  if (address?.kind !== 'environment') query.app_code = shareCode
+  if (userId) query.user_id = userId
+  const { logged_in, app_logged_in } = await webAppClient.login.status.get({ query })
+  return {
+    userLoggedIn: logged_in,
+    appLoggedIn: app_logged_in,
+  }
+}
 
-export const verifyDeleteAccountCode = (body: {
-  code: string
-  token: string
-}): Promise<CommonResponse & { is_valid: boolean }> =>
-  post<CommonResponse & { is_valid: boolean }>('/account/delete', { body })
-
-export const submitDeleteAccountFeedback = (body: {
-  feedback: string
-  email: string
-}): Promise<CommonResponse> => post<CommonResponse>('/account/delete/feedback', { body })
-
-export const getDocDownloadUrl = (doc_name: string): Promise<{ url: string }> =>
-  get<{ url: string }>('/compliance/download', { params: { doc_name } }, { silent: true })
-
-export const sendVerifyCode = (body: {
-  email: string
-  phase: string
-  token?: string
-}): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/account/change-email', { body })
-
-export const verifyEmail = (body: {
-  email: string
-  code: string
-  token: string
-}): Promise<CommonResponse & { is_valid: boolean; email: string; token: string }> =>
-  post<CommonResponse & { is_valid: boolean; email: string; token: string }>(
-    '/account/change-email/validity',
-    { body },
-  )
-
-export const resetEmail = (body: { new_email: string; token: string }): Promise<CommonResponse> =>
-  post<CommonResponse>('/account/change-email/reset', { body })
-
-export const checkEmailExisted = (body: { email: string }): Promise<CommonResponse> =>
-  post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
-
-export const getAvatar = async ({
-  avatar,
-}: {
-  avatar: string
-}): Promise<{ avatar_url: string }> => {
-  const { consoleClient } = await import('@/service/console')
-  return consoleClient.account.avatar.get({ query: { avatar } })
+export async function webAppLogout(address: WebAppAddress | null) {
+  clearWebAppAccessToken()
+  clearWebAppPassport(address)
+  await webAppClient.logout.post()
 }

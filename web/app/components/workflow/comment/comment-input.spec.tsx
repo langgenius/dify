@@ -1,26 +1,15 @@
-import type { FC, ReactElement } from 'react'
-import { fireEvent, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
+import { ReactFlowProvider } from 'reactflow'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { createConsoleQueryClient } from '@/test/console/query-data'
+import { renderWorkflowComponent } from '../__tests__/workflow-test-env'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { CommentInput } from './comment-input'
 
-type MentionInputProps = {
-  value: string
-  onChange: (value: string) => void
-  onSubmit: (content: string, mentionedUserIds: string[]) => void
-  placeholder?: string
-  disabled?: boolean
-  autoFocus?: boolean
-  className?: string
-}
-
-const stableT = (key: string, options?: { ns?: string }) =>
-  options?.ns ? `${options.ns}.${key}` : key
-
-let mentionInputProps: MentionInputProps | null = null
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
@@ -29,41 +18,19 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: ReactElement) =>
-  renderWithConsoleState(ui, {
-    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(queryClient, mockConsoleState.userProfile)
+  seedMentionableUsers(queryClient, [
+    { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: '' },
+  ])
+  return renderWorkflowComponent(<ReactFlowProvider>{ui}</ReactFlowProvider>, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    queryClient,
   })
-
-vi.mock('react-i18next', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  return {
-    useTranslation: () => ({
-      t: withSelectorKey(stableT),
-    }),
-  }
-})
-
-vi.mock('./mention-input', () => ({
-  MentionInput: ((props: MentionInputProps) => {
-    mentionInputProps = props
-    return (
-      <button
-        type="button"
-        data-testid="mention-input"
-        onClick={() => props.onSubmit('Hello', ['user-2'])}
-      >
-        MentionInput
-      </button>
-    )
-  }) as FC<MentionInputProps>,
-}))
+}
 
 describe('CommentInput', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mentionInputProps = null
-  })
-
   it('moves the draft using a focused handle and finishes moving with Enter', async () => {
     const user = userEvent.setup()
     const onPositionChange = vi.fn()
@@ -76,24 +43,24 @@ describe('CommentInput', () => {
           onSubmit={vi.fn()}
           onPositionChange={(next) => {
             onPositionChange(next)
-            setPosition({ x: next.elementX, y: next.elementY })
+            setPosition(next)
           }}
         />
       )
     }
     render(<Draft />)
-    await user.tab()
     const handle = screen.getByRole('button', { name: 'workflow.keyboard.moveDraftComment' })
+    // The input takes focus as the draft opens.
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveFocus())
+    handle.focus()
     await user.keyboard('{Enter}{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
-    expect(onPositionChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ elementX: 105, elementY: 120 }),
-    )
+    expect(onPositionChange).toHaveBeenLastCalledWith({ x: 105, y: 120 })
     expect(handle).toHaveAttribute('aria-pressed', 'true')
     await user.keyboard('{Enter}{ArrowRight}')
     expect(handle).toHaveAttribute('aria-pressed', 'false')
     expect(onPositionChange).toHaveBeenCalledTimes(2)
     await user.tab()
-    expect(screen.getByTestId('mention-input')).toHaveFocus()
+    expect(screen.getByRole('textbox')).toHaveFocus()
   })
 
   it('does not offer keyboard movement while disabled', () => {
@@ -111,14 +78,6 @@ describe('CommentInput', () => {
     ).toBeDisabled()
   })
 
-  it('passes translated placeholder to mention input', () => {
-    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} />)
-
-    expect(mentionInputProps?.placeholder).toBe('workflowComments.comments.placeholder.add')
-    expect(mentionInputProps?.autoFocus).toBe(true)
-    expect(mentionInputProps?.disabled).toBe(false)
-  })
-
   it('calls onCancel when Escape is pressed', () => {
     const onCancel = vi.fn()
 
@@ -126,18 +85,45 @@ describe('CommentInput', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onCancel).not.toHaveBeenCalled()
-    fireEvent.keyDown(screen.getByTestId('mention-input'), { key: 'Escape' })
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Escape' })
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('forwards mention submit to onSubmit', () => {
+  it('submits the text with the people it mentions', async () => {
     const onSubmit = vi.fn()
+    render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
+
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox'), '@Bo')
+    await user.click(await screen.findByText('bob@example.com'))
+    await user.type(screen.getByRole('textbox'), 'Hello')
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+    expect(onSubmit).toHaveBeenCalledWith('@Bob Hello', ['user-2'])
+  })
+
+  it('keeps its text read-only while the comment is created', () => {
+    render(
+      <CommentInput position={{ x: 0, y: 0 }} onSubmit={vi.fn()} onCancel={vi.fn()} submitting />,
+    )
+
+    const textbox = screen.getByRole('textbox')
+    expect(textbox).toHaveAttribute('readonly')
+    expect(textbox).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('keeps the text to send again when creating the comment fails', async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error('Request failed'))
 
     render(<CommentInput position={{ x: 0, y: 0 }} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
-    fireEvent.click(screen.getByTestId('mention-input'))
+    const user = userEvent.setup()
+    await user.type(screen.getByRole('textbox'), 'Hello')
+    await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
 
-    expect(onSubmit).toHaveBeenCalledWith('Hello', ['user-2'])
+    const textbox = screen.getByRole('textbox')
+    expect(textbox).toHaveValue('Hello')
+    expect(textbox).not.toHaveAttribute('readonly')
   })
 })

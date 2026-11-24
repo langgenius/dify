@@ -56,19 +56,11 @@ const RagPipelinePanelOnLeft = () => {
 }
 
 const RagPipelinePanel = () => {
-  const pipelineId = useStore((s) => s.pipelineId)
   const versionHistoryPanelProps = useMemo(() => {
     return {
-      getVersionListUrl: `/rag/pipelines/${pipelineId}/workflows`,
-      deleteVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
-      restoreVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}/restore`,
-      updateVersionUrl: (versionId: string) =>
-        `/rag/pipelines/${pipelineId}/workflows/${versionId}`,
       latestVersionId: '',
     }
-  }, [pipelineId])
+  }, [])
 
   const panelProps: PanelProps = useMemo(() => {
     return {

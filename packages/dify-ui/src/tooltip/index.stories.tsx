@@ -22,7 +22,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Compound tooltip built on Base UI Tooltip. Wrap the app in `TooltipProvider` so nested tooltips share open and close delays. Each tooltip pairs a `TooltipTrigger` with `TooltipContent` and supports placement and offsets.',
+          'Compound tooltip built on Base UI Tooltip. Wrap the app in `TooltipProvider` so nested tooltips share open and close delays. Each tooltip pairs a `TooltipTrigger` with `TooltipContent`.',
       },
     },
   },
@@ -89,39 +89,43 @@ export const KeyboardShortcut: Story = {
   ),
 }
 
-type TooltipPlacement = NonNullable<TooltipContentProps['placement']>
+const POSITIONS = [
+  { side: 'top', align: 'start' },
+  { side: 'top', align: 'center' },
+  { side: 'top', align: 'end' },
+  { side: 'right', align: 'start' },
+  { side: 'right', align: 'center' },
+  { side: 'right', align: 'end' },
+  { side: 'bottom', align: 'start' },
+  { side: 'bottom', align: 'center' },
+  { side: 'bottom', align: 'end' },
+  { side: 'left', align: 'start' },
+  { side: 'left', align: 'center' },
+  { side: 'left', align: 'end' },
+  { side: 'inline-start', align: 'start' },
+  { side: 'inline-start', align: 'center' },
+  { side: 'inline-start', align: 'end' },
+  { side: 'inline-end', align: 'start' },
+  { side: 'inline-end', align: 'center' },
+  { side: 'inline-end', align: 'end' },
+] satisfies Array<Pick<TooltipContentProps, 'side' | 'align'>>
 
-const PLACEMENTS: TooltipPlacement[] = [
-  'top-start',
-  'top',
-  'top-end',
-  'right-start',
-  'right',
-  'right-end',
-  'bottom-start',
-  'bottom',
-  'bottom-end',
-  'left-start',
-  'left',
-  'left-end',
-]
-
-const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<TooltipPlacement>('top')
+function PlacementsDemo() {
+  const [position, setPosition] = React.useState(POSITIONS[1]!)
 
   return (
     <div className="flex flex-col items-center gap-4 p-24">
       <div className="grid grid-cols-3 gap-2 text-xs">
-        {PLACEMENTS.map((value) => (
+        {POSITIONS.map((value) => (
           <button
-            key={value}
+            key={`${value.side}-${value.align}`}
             type="button"
-            onClick={() => setPlacement(value)}
+            onClick={() => setPosition(value)}
             className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
-              placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
+              position === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
-            {value}
+            {value.side} / {value.align}
           </button>
         ))}
       </div>
@@ -133,7 +137,10 @@ const PlacementsDemo = () => {
             </DifyIconButton>
           }
         />
-        <TooltipContent placement={placement}>{`placement="${placement}"`}</TooltipContent>
+        <TooltipContent
+          side={position.side}
+          align={position.align}
+        >{`side="${position.side}" align="${position.align}"`}</TooltipContent>
       </Tooltip>
     </div>
   )
@@ -142,12 +149,6 @@ const PlacementsDemo = () => {
 export const Placements: Story = {
   parameters: {
     layout: 'fullscreen',
-    docs: {
-      description: {
-        story:
-          'Placement reference. `placement` accepts the 12 standard side/align combinations; Base UI flips automatically if the tooltip would overflow the viewport.',
-      },
-    },
   },
   render: () => <PlacementsDemo />,
 }
@@ -158,24 +159,26 @@ const DELAY_PRESETS: Array<{ label: string; delay: number }> = [
   { label: 'Default', delay: 600 },
 ]
 
-const DelayDemo = () => (
-  <div className="flex items-center gap-3">
-    {DELAY_PRESETS.map(({ label, delay }) => (
-      <TooltipProvider key={delay} delay={delay}>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <DifyIconButton aria-label={`${label} (${delay}ms)`} size="lg" variant="secondary">
-                <span aria-hidden className="i-ri-timer-line size-4" />
-              </DifyIconButton>
-            }
-          />
-          <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    ))}
-  </div>
-)
+function DelayDemo() {
+  return (
+    <div className="flex items-center gap-3">
+      {DELAY_PRESETS.map(({ label, delay }) => (
+        <TooltipProvider key={delay} delay={delay}>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DifyIconButton aria-label={`${label} (${delay}ms)`} size="lg" variant="secondary">
+                  <span aria-hidden className="i-ri-timer-line size-4" />
+                </DifyIconButton>
+              }
+            />
+            <TooltipContent>{`${label} (${delay}ms)`}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ))}
+    </div>
+  )
+}
 
 export const WithDelay: Story = {
   parameters: {

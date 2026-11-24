@@ -26,15 +26,16 @@ export type HumanInputFieldValue = string | FileEntity | FileEntity[] | null
 
 type Props = Readonly<{
   field: FormInputItem
+  label?: string
   value?: HumanInputFieldValue
   onChange: (value: HumanInputFieldValue) => void
 }>
 
-const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
+const HumanInputFieldRenderer = ({ field, label, value, onChange }: Props) => {
   if (isParagraphFormInput(field)) {
     return (
       <Textarea
-        aria-label={field.output_variable_name}
+        aria-label={label ?? field.output_variable_name}
         className="h-26 sm:text-xs"
         value={typeof value === 'string' ? value : ''}
         onValueChange={(nextValue) => onChange(nextValue)}
@@ -57,7 +58,11 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
           onChange(nextValue)
         }}
       >
-        <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name}>
+        <SelectTrigger
+          size="large"
+          className="w-full"
+          aria-label={label ?? field.output_variable_name}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectPortal>

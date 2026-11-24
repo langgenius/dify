@@ -21,17 +21,14 @@ const AccessControlDialog = ({ className, children, show, onClose }: DialogProps
   return (
     <Dialog open={show} disablePointerDismissal onOpenChange={(open) => !open && close()}>
       <DialogContent
-        className={cn(
-          'h-auto max-h-[calc(100dvh-2rem)] min-h-80.75 w-150 max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-all',
-          className,
-        )}
+        className={cn('min-h-[min(20.1875rem,calc(100dvh-2rem))] w-150 transition-all', className)}
       >
         <DialogClose
           render={
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
             </IconButton>

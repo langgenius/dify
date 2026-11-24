@@ -26,14 +26,14 @@ const UserInput = ({ variables = [], initialExpanded = true }: UserInputProps) =
         onClick={() => setExpanded(!expanded)}
       >
         <RiArrowDownSLine
-          className={`mr-1 size-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
+          className={`me-1 size-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
         />
         {t(($) => $['panel.userInputField'], { ns: 'workflow' }).toLocaleUpperCase()}
       </div>
       <div className="px-2 pt-1 pb-3">
         {expanded && (
           <div className="py-2 text-[13px] text-text-primary">
-            {variables.map((variable: any) => (
+            {variables.map((variable) => (
               <div key={variable.variable} className="mb-2 last-of-type:mb-0"></div>
             ))}
           </div>

@@ -10,6 +10,7 @@ from services.entities.account_access_entities import (
     AccountWorkspaceSnapshot,
 )
 from services.entities.account_entities import (
+    AccountAuthenticationSnapshot,
     AccountCredentials,
     AccountDeletionChallenge,
     AccountEmailResetResult,
@@ -34,6 +35,8 @@ class AccountRepository(Protocol):
     def activate_pending(self, account_id: str, *, initialized_at: datetime) -> None: ...
 
     def get_credentials(self, account_id: str) -> AccountCredentials | None: ...
+
+    def find_for_authentication(self, email: str) -> AccountAuthenticationSnapshot | None: ...
 
     def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None: ...
 
@@ -96,8 +99,17 @@ class AccountTokenCacheInvalidator(Protocol):
     def __call__(self, token_hash: str) -> None: ...
 
 
-class AccountAvatarFileGateway(Protocol):
-    def get_owned_signed_url(self, *, account_id: str, upload_file_id: str) -> str | None: ...
+class AccountAvatarQuery(Protocol):
+    def get_owned_avatar_file_id(self, *, account_id: str, upload_file_id: str) -> str | None:
+        """Return the canonical ID of an eligible raster upload owned by the account, if any."""
+        ...
+
+    def get_current_avatar_references(self, *, account_ids: Sequence[str]) -> dict[str, str]:
+        """Map the supplied IDs to eligible canonical upload IDs or external URLs.
+
+        Omit accounts with missing or ineligible avatars, and apply any active file access scope to uploads.
+        """
+        ...
 
 
 class AccountPasswordHasher(Protocol):

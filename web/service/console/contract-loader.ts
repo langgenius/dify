@@ -6,17 +6,13 @@ import { DynamicLink } from '@orpc/client'
 const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<AnyContractRouter>>> =
   contractLoaders
 
-async function loadConsoleContractForSegment(segment: string): Promise<AnyContractRouter> {
+export async function loadConsoleContractForSegment(segment: string): Promise<AnyContractRouter> {
   if (segment === 'enterprise') {
     const [{ contract: enterpriseContract }, { contract: appDeployContract }] = await Promise.all([
       import('@dify/contracts/enterprise/orpc.gen'),
       import('@dify/contracts/enterprise-app-deploy/orpc.gen'),
     ])
     return { enterprise: { ...enterpriseContract, appDeploy: appDeployContract } }
-  }
-  if (segment === 'knowledgeFs') {
-    const { contract } = await import('@dify/contracts/knowledge-fs/orpc.gen')
-    return { knowledgeFs: contract }
   }
   const loader = generatedConsoleContractLoaders[segment]
   if (!loader) throw new Error(`Console contract segment "${segment}" is not configured.`)

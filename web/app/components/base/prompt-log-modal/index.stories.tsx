@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { fn } from 'storybook/test'
 import PromptLogModal from '.'
 
 type PromptLogModalProps = React.ComponentProps<typeof PromptLogModal>
@@ -46,9 +47,7 @@ const meta = {
   },
   args: {
     width: 960,
-    onCancel: () => {
-      console.log('Prompt log closed')
-    },
+    onCancel: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof PromptLogPreview>

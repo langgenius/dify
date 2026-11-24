@@ -2,13 +2,14 @@ import type { FormData, InputFieldFormProps } from './types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { useAppForm } from '@/app/components/base/form'
 import { ChangeType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { useFileUploadConfig } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import HiddenFields from './hidden-fields'
 import InitialFields from './initial-fields'
 import { createInputFieldSchema } from './schema'
@@ -22,8 +23,8 @@ const InputFieldForm = ({
   isEditMode = true,
 }: InputFieldFormProps) => {
   const { t } = useTranslation(['appDebug', 'common'])
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
+  const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
+  const { maxFileUploadLimit } = getFileSizeLimit(fileUploadConfigResponse)
   const inputFieldForm = useAppForm({
     defaultValues: initialData,
     validators: {

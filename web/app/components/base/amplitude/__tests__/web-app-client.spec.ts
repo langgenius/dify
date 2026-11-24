@@ -64,13 +64,18 @@ describe('WebApp Amplitude client', () => {
   beforeEach(async () => {
     vi.resetModules()
     vi.clearAllMocks()
-    localStorage.clear()
+    localStorage.removeItem(CONSOLE_UNSENT_EVENTS_KEY)
     document.cookie = `${CONSOLE_IDENTITY_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
     mockConfig.AMPLITUDE_API_KEY = TEST_API_KEY
     mockIdentity.userId = undefined
     mockTrackedEvents.length = 0
     ;({ ensureWebAppAmplitudeInitialized, sendWebAppAmplitudeEvent, setWebAppAmplitudeOptOut } =
       await import('../web-app-client'))
+  })
+
+  afterEach(() => {
+    localStorage.removeItem(CONSOLE_UNSENT_EVENTS_KEY)
+    document.cookie = `${CONSOLE_IDENTITY_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
   })
 
   it('loads the SDK lazily and initializes one dedicated instance', async () => {
@@ -82,8 +87,7 @@ describe('WebApp Amplitude client', () => {
     expect(mockWebAppClient.init).toHaveBeenCalledTimes(1)
     expect(mockWebAppClient.init).toHaveBeenCalledWith('test-api-key', {
       autocapture: false,
-      defaultTracking: false,
-      fetchRemoteConfig: false,
+      remoteConfig: { fetchRemoteConfig: false },
       flushQueueSize: 1,
       identityStorage: 'none',
       instanceName: 'webapp',
@@ -149,8 +153,9 @@ describe('WebApp Amplitude client', () => {
 
     await storageProvider?.set(CONSOLE_UNSENT_EVENTS_KEY, [])
     await expect(storageProvider?.get(CONSOLE_UNSENT_EVENTS_KEY)).resolves.toEqual([])
-    expect(localStorage.getItem(CONSOLE_UNSENT_EVENTS_KEY)).not.toBeNull()
-    expect(localStorage).toHaveLength(1)
+    expect(JSON.parse(localStorage.getItem(CONSOLE_UNSENT_EVENTS_KEY)!)).toEqual([
+      { event_type: 'console_event', user_id: 'builder@example.com' },
+    ])
   })
 
   it('does not initialize when Amplitude is disabled', async () => {

@@ -3,20 +3,24 @@ from __future__ import annotations
 from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
+from uuid import UUID
 
-from flask import request
+from flask import Response, after_this_request, request
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import (
     AvatarUrlResponse,
+    BinaryFileResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
 )
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
@@ -28,10 +32,18 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
+from controllers.console.billing.error import (
+    BillingOperationFailedError,
+    BillingRequestInProgressError,
+    BillingUnavailableError,
+    to_billing_request_error,
+)
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EducationActivateFailedError,
     EducationActivateLimitError,
+    EducationVerifyFailedError,
     EducationVerifyLimitError,
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
@@ -50,11 +62,16 @@ from controllers.console.wraps import model_validate, setup_required
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from machinery.context import RequestContext
 from services import account_errors
 from services.account_education_service import EDUCATION_EDITIONS
 from services.entities.account_entities import AccountProfileChanges
+from services.errors.billing import BillingUpstreamError
+from services.upload_file_delivery_service import UploadFileDeliveryNotFoundError
 
 
 class AccountInitPayload(BaseModel):
@@ -73,38 +90,8 @@ class AccountInitPayload(BaseModel):
         return timezone(value)
 
 
-class AccountNamePayload(BaseModel):
-    name: str = Field(min_length=3, max_length=30)
-
-
-class AccountAvatarPayload(BaseModel):
-    avatar: str
-
-
 class AccountAvatarQuery(BaseModel):
     avatar: str = Field(..., description="Avatar file ID")
-
-
-class AccountInterfaceLanguagePayload(BaseModel):
-    interface_language: str
-
-    @field_validator("interface_language")
-    @classmethod
-    def validate_language(cls, value: str) -> str:
-        return supported_language(value)
-
-
-class AccountInterfaceThemePayload(BaseModel):
-    interface_theme: Literal["light", "dark"]
-
-
-class AccountTimezonePayload(BaseModel):
-    timezone: str
-
-    @field_validator("timezone")
-    @classmethod
-    def validate_timezone(cls, value: str) -> str:
-        return timezone(value)
 
 
 class AccountProfilePatchPayload(BaseModel):
@@ -202,12 +189,7 @@ class CheckEmailUniquePayload(BaseModel):
 register_schema_models(
     console_ns,
     AccountInitPayload,
-    AccountNamePayload,
-    AccountAvatarPayload,
     AccountAvatarQuery,
-    AccountInterfaceLanguagePayload,
-    AccountInterfaceThemePayload,
-    AccountTimezonePayload,
     AccountProfilePatchPayload,
     AccountPasswordPayload,
     AccountDeletePayload,
@@ -237,8 +219,24 @@ class AccountIntegrateListResponse(ResponseModel):
     data: list[AccountIntegrateResponse]
 
 
-class EducationVerifyResponse(ResponseModel):
-    token: str | None = None
+class EducationVerifyEligibleResponse(ResponseModel):
+    status: Literal["eligible"]
+    token: str
+
+
+class EducationVerifyNotEligibleResponse(ResponseModel):
+    status: Literal["not_eligible"]
+
+
+class EducationVerifyResponse(
+    RootModel[
+        Annotated[
+            EducationVerifyEligibleResponse | EducationVerifyNotEligibleResponse,
+            Field(discriminator="status"),
+        ]
+    ]
+):
+    """Education verification result: a token for an eligible account, none for an ineligible one."""
 
 
 class EducationActivateResponse(ResponseModel):
@@ -246,10 +244,13 @@ class EducationActivateResponse(ResponseModel):
 
 
 class EducationStatusResponse(ResponseModel):
-    result: bool | None = None
-    is_student: bool | None = None
-    expire_at: int | None = None
-    allow_refresh: bool | None = None
+    result: bool
+    is_student: bool
+    expire_at: int | None
+    allow_refresh: bool
+    can_redeem_discount: bool = Field(
+        description="Whether the account can redeem its education discount in the current verification period."
+    )
 
     @field_validator("expire_at", mode="before")
     @classmethod
@@ -258,9 +259,9 @@ class EducationStatusResponse(ResponseModel):
 
 
 class EducationAutocompleteResponse(ResponseModel):
-    data: list[str] = Field(default_factory=list)
-    curr_page: int | None = None
-    has_next: bool | None = None
+    data: list[str]
+    curr_page: int
+    has_next: bool
 
 
 register_response_schema_models(
@@ -269,6 +270,7 @@ register_response_schema_models(
     AccountIntegrateResponse,
     AccountIntegrateListResponse,
     AvatarUrlResponse,
+    BinaryFileResponse,
     EducationActivateResponse,
     EducationVerifyResponse,
     EducationStatusResponse,
@@ -279,16 +281,11 @@ register_response_schema_models(
 )
 
 
-def _update_account_profile(request_context: RequestContext, changes: AccountProfileChanges) -> dict[str, object]:
-    try:
-        account = application_services().accounts.profile.update(request_context, changes)
-    except account_errors.AccountNotFoundError as error:
-        raise AccountNotFound() from error
-    return dump_response(AccountResponse, account)
-
-
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
+    @error_responses(
+        AccountAlreadyInitedError, AccountNotFound, InvalidInvitationCodeError, MissingInvitationCodeRequestError
+    )
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_initialized=False)
@@ -315,8 +312,9 @@ class AccountInitApi(Resource):
 
 @console_ns.route("/account/profile")
 class AccountProfileApi(Resource):
+    @error_responses(AccountNotFound)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission(require_valid_enterprise_license=True)
+    @console_account_admission(require_valid_enterprise_license=True, require_active_workspace=False)
     def get(self, request_context: RequestContext):
         try:
             account = application_services().accounts.profile.get(request_context)
@@ -324,27 +322,19 @@ class AccountProfileApi(Resource):
             raise AccountNotFound() from error
         return dump_response(AccountResponse, account)
 
+    @error_responses(AccountNotFound)
     @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
     @model_validate(AccountProfilePatchPayload)
     def patch(self, args: AccountProfilePatchPayload, request_context: RequestContext):
-        return _update_account_profile(request_context, args.to_changes())
-
-
-@console_ns.route("/account/name")
-class AccountNameApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @console_ns.doc("update_account_name_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountNamePayload)
-    def post(self, args: AccountNamePayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(name=args.name))
+        try:
+            account = application_services().accounts.profile.update(request_context, args.to_changes())
+        except account_errors.AccountNotFoundError as error:
+            raise AccountNotFound() from error
+        except account_errors.AvatarFileNotFoundError as error:
+            raise InvalidArgumentError("Avatar file is invalid.") from error
+        return dump_response(AccountResponse, account)
 
 
 @console_ns.route("/account/avatar")
@@ -362,70 +352,70 @@ class AccountAvatarApi(Resource):
             raise NotFound("Avatar file not found") from error
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
-    @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
-    @console_ns.doc("update_account_avatar_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountAvatarPayload)
-    def post(self, args: AccountAvatarPayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(avatar=args.avatar))
+
+_ACCOUNT_AVATAR_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp"]
 
 
-@console_ns.route("/account/interface-language")
-class AccountInterfaceLanguageApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
+@console_ns.route("/accounts/<uuid:account_id>/avatars/<uuid:file_id>")
+class CurrentAccountAvatarFileApi(Resource):
+    @console_ns.doc(
+        "get_current_account_avatar_file",
+        produces=_ACCOUNT_AVATAR_MEDIA_TYPES,
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: _ACCOUNT_AVATAR_MEDIA_TYPES},
+    )
+    @console_ns.response(HTTPStatus.OK, "Avatar image", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(HTTPStatus.NOT_MODIFIED, "Avatar image has not changed")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "Avatar file not found")
+    @console_account_admission(require_active_workspace=False, require_initialized=False)
+    def get(self, _request_context: RequestContext, account_id: UUID, file_id: UUID) -> Response:
+        """Serve an account's assigned raster avatar to an authenticated Console account."""
+        return self._avatar_response(account_id, file_id)
 
-    @console_ns.doc("update_account_interface_language_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountInterfaceLanguagePayload)
-    def post(self, args: AccountInterfaceLanguagePayload, request_context: RequestContext):
-        return _update_account_profile(
-            request_context,
-            AccountProfileChanges(interface_language=args.interface_language),
-        )
+    @console_ns.doc(False)
+    @console_account_admission(require_active_workspace=False, require_initialized=False)
+    def head(self, _request_context: RequestContext, account_id: UUID, file_id: UUID) -> Response:
+        """Use the same account-only admission and metadata as GET."""
+        return self._avatar_response(account_id, file_id)
 
+    @staticmethod
+    def _avatar_response(account_id: UUID, file_id: UUID) -> Response:
+        """Build the conditional avatar response after account admission."""
+        file_id_str = str(file_id)
+        try:
+            delivery = application_services().upload_file_delivery.get_current_account_avatar(
+                account_id=str(account_id), file_id=file_id_str
+            )
+        except UploadFileDeliveryNotFoundError as error:
+            raise CurrentAccountAvatarFileApi._not_found() from error
 
-@console_ns.route("/account/interface-theme")
-class AccountInterfaceThemeApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
+        file = delivery.file
+        response = Response(delivery.content, mimetype=file.mime_type, direct_passthrough=True)
+        if harden_active_content_response(
+            response, mime_type=file.mime_type, filename=file.name, extension=file.extension
+        ):
+            raise CurrentAccountAvatarFileApi._not_found()
+        response.content_length = file.size
+        response.headers["Cache-Control"] = "private, max-age=300, must-revalidate"
+        response.set_etag(file_id_str)
+        response.make_conditional(request)
+        return response
 
-    @console_ns.doc("update_account_interface_theme_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountInterfaceThemePayload)
-    def post(self, args: AccountInterfaceThemePayload, request_context: RequestContext):
-        return _update_account_profile(
-            request_context,
-            AccountProfileChanges(interface_theme=args.interface_theme),
-        )
+    @staticmethod
+    def _not_found() -> NotFound:
+        """Retain the Console error response while preventing a cached miss at this stable URL."""
 
+        @after_this_request
+        def no_store(response: Response) -> Response:
+            response.cache_control.private = True
+            response.cache_control.no_store = True
+            return response
 
-@console_ns.route("/account/timezone")
-class AccountTimezoneApi(Resource):
-    """Deprecated compatibility route; use PATCH /account/profile."""
-
-    @console_ns.doc("update_account_timezone_deprecated")
-    @console_ns.doc(deprecated=True)
-    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
-    @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
-    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
-    @model_validate(AccountTimezonePayload)
-    def post(self, args: AccountTimezonePayload, request_context: RequestContext):
-        return _update_account_profile(request_context, AccountProfileChanges(timezone=args.timezone))
+        return NotFound("Avatar file not found")
 
 
 @console_ns.route("/account/password")
 class AccountPasswordApi(Resource):
+    @error_responses(AccountNotFound, CurrentPasswordIncorrectError, InvalidAccountPasswordRequestError)
     @console_ns.expect(console_ns.models[AccountPasswordPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission()
@@ -471,6 +461,7 @@ class AccountIntegrateApi(Resource):
 
 @console_ns.route("/account/delete/verify")
 class AccountDeleteVerifyApi(Resource):
+    @error_responses(AccountNotFound, EmailCodeAccountDeletionRateLimitExceededError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission()
     def get(self, request_context: RequestContext):
@@ -486,6 +477,7 @@ class AccountDeleteVerifyApi(Resource):
 
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
+    @error_responses(InvalidAccountDeletionCodeError)
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
@@ -515,8 +507,39 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
+_EDUCATION_BILLING_ERRORS = (
+    account_errors.EducationVerificationFailedError,
+    account_errors.EducationActivationFailedError,
+    account_errors.EducationRequestInProgressError,
+    BillingUpstreamError,
+)
+
+
+def _education_billing_error(
+    error: account_errors.EducationVerificationFailedError
+    | account_errors.EducationActivationFailedError
+    | account_errors.EducationRequestInProgressError
+    | BillingUpstreamError,
+) -> BaseHTTPException:
+    if isinstance(error, account_errors.EducationVerificationFailedError):
+        return EducationVerifyFailedError()
+    if isinstance(error, account_errors.EducationActivationFailedError):
+        return EducationActivateFailedError()
+    if isinstance(error, account_errors.EducationRequestInProgressError):
+        return BillingRequestInProgressError()
+    return to_billing_request_error(error)
+
+
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationVerifyFailedError,
+        EducationVerifyLimitError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
@@ -526,11 +549,21 @@ class EducationVerifyApi(Resource):
             raise AccountNotFound() from error
         except account_errors.EducationRateLimitExceededError as error:
             raise EducationVerifyLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
         return dump_response(EducationVerifyResponse, verification)
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
+    @error_responses(
+        AccountNotFound,
+        BillingOperationFailedError,
+        BillingRequestInProgressError,
+        BillingUnavailableError,
+        EducationActivateFailedError,
+        EducationActivateLimitError,
+    )
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationActivateResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
@@ -547,34 +580,46 @@ class EducationApi(Resource):
             raise AccountNotFound() from error
         except account_errors.EducationRateLimitExceededError as error:
             raise EducationActivateLimitError() from error
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
         return dump_response(EducationActivateResponse, activation)
 
+    @error_responses(BillingOperationFailedError, BillingRequestInProgressError, BillingUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     def get(self, request_context: RequestContext):
-        return dump_response(EducationStatusResponse, application_services().accounts.education.status(request_context))
+        try:
+            status = application_services().accounts.education.status(request_context)
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationStatusResponse, status)
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     @console_account_admission(editions=EDUCATION_EDITIONS)
     @model_validate(EducationAutocompleteQuery)
     def get(self, args: EducationAutocompleteQuery, request_context: RequestContext):
-        return dump_response(
-            EducationAutocompleteResponse,
-            application_services().accounts.education.autocomplete(
+        try:
+            institutions = application_services().accounts.education.autocomplete(
                 request_context,
                 keywords=args.keywords,
                 page=args.page,
                 limit=args.limit,
-            ),
-        )
+            )
+        except _EDUCATION_BILLING_ERRORS as error:
+            raise _education_billing_error(error) from error
+        return dump_response(EducationAutocompleteResponse, institutions)
 
 
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
+    @error_responses(
+        AccountNotFound, EmailChangeRateLimitExceededError, EmailSendIpLimitError, InvalidEmailError, InvalidTokenError
+    )
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
@@ -606,6 +651,7 @@ class ChangeEmailSendEmailApi(Resource):
 
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
+    @error_responses(EmailChangeLimitError, EmailCodeError, InvalidEmailError, InvalidTokenError)
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
@@ -633,6 +679,9 @@ class ChangeEmailCheckApi(Resource):
 
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
+    @error_responses(
+        AccountInFreezeError, AccountNotFound, EmailAlreadyInUseError, EmailDomainSuspendedError, InvalidTokenError
+    )
     @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @console_account_admission(require_change_email_enabled=True)
@@ -660,11 +709,12 @@ class ChangeEmailResetApi(Resource):
 
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
+    @error_responses(AccountInFreezeError, EmailAlreadyInUseError, EmailDomainSuspendedError)
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @setup_required
+    @console_account_admission()
     @model_validate(CheckEmailUniquePayload)
-    def post(self, args: CheckEmailUniquePayload):
+    def post(self, args: CheckEmailUniquePayload, request_context: RequestContext):
         try:
             application_services().accounts.change_email.ensure_available(args.email)
         except account_errors.AccountEmailDomainSuspendedError:

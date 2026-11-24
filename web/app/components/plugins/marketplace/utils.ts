@@ -1,55 +1,16 @@
 import type {
   CollectionsAndPluginsSearchParams,
-  MarketplacePlugin,
-  MarketplaceTemplate,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
 import { marketplaceClient } from '@/service/marketplace'
-import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
+import { toListPlugin, toPluginCard } from './plugin-card-adapter'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal
-}
-
-type MarketplacePluginListExtras = {
-  agent_strategy?: unknown
-  data_sources?: unknown
-  model?: unknown
-  plugins?: unknown
-  privacy_options?: unknown
-  privacy_policy?: unknown
-  readme_meta?: unknown
-  resource?: unknown
-  tool?: unknown
-  triggers?: unknown
-}
-
-export const toListPlugin = (plugin: Plugin): Plugin => {
-  const {
-    agent_strategy: _agentStrategy,
-    data_sources: _dataSources,
-    introduction: _introduction,
-    model: _model,
-    plugins: _plugins,
-    privacy_options: _privacyOptions,
-    privacy_policy: _privacyPolicy,
-    readme_meta: _readmeMeta,
-    resource: _resource,
-    tool: _tool,
-    triggers: _triggers,
-    ...listFields
-  } = plugin as Plugin & MarketplacePluginListExtras
-
-  return {
-    ...listFields,
-    introduction: '',
-    endpoint: { settings: [] },
-  }
 }
 
 export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
@@ -60,80 +21,6 @@ export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
   return pages
 }
 
-type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin['label'] })
-
-export const getPluginIconInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  if (plugin.type === 'bundle')
-    return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
-  return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
-}
-
-export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
-  const plugin = payload as unknown as Plugin
-
-  if (payload.type === 'bundle') {
-    return {
-      ...plugin,
-      icon: getPluginIconInMarketplace(payload),
-      brief: payload.description as Plugin['brief'],
-      label: (payload.labels ?? payload.label) as Plugin['label'],
-    }
-  }
-  return {
-    ...plugin,
-    icon: getPluginIconInMarketplace(payload),
-  }
-}
-
-export const getPluginLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-  params?: Record<string, string | undefined>,
-) => {
-  if (plugin.type === 'bundle')
-    return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
-  return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
-}
-
-export const getPluginDetailLinkInMarketplace = (
-  plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>,
-) => {
-  const org = encodeURIComponent(plugin.org)
-  const name = encodeURIComponent(plugin.name)
-
-  if (plugin.type === 'bundle') return `/bundles/${org}/${name}`
-  return `/plugin/${org}/${name}`
-}
-
-export const getTemplateDetailLinkInMarketplace = (
-  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
-) => {
-  const publisher = template.publisher_unique_handle || template.publisher_handle || 'template'
-
-  return `/template/${encodeURIComponent(publisher)}/${encodeURIComponent(template.id)}`
-}
-
-export const getTemplateLinkInMarketplace = (
-  template: Pick<MarketplaceTemplate, 'id' | 'publisher_handle' | 'publisher_unique_handle'>,
-  params?: Record<string, string | undefined>,
-) => {
-  const {
-    tid: _tid,
-    templateId: _templateId,
-    creationType: _creationType,
-    ...detailParams
-  } = params ?? {}
-
-  return getMarketplaceUrl(getTemplateDetailLinkInMarketplace(template), detailParams)
-}
-
-export const getMarketplaceCategoryUrl = (
-  category?: string,
-  params?: Record<string, string | undefined>,
-) => {
-  return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
-}
 // One collections response lists every catalog carousel and each needs its own
 // plugins request. Firing them all at once head-of-line blocks on the browser's
 // per-origin connection cap, so the whole catalog waits on the slowest tail
@@ -158,7 +45,7 @@ export const getMarketplacePluginsByCollectionId = async (
   )
 
   return (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
-    toListPlugin(getFormattedPlugin(plugin)),
+    toListPlugin(toPluginCard(plugin)),
   )
 }
 
@@ -253,7 +140,7 @@ export const getMarketplacePlugins = async (
   const resPlugins = res.data.bundles || res.data.plugins || []
 
   return {
-    plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
+    plugins: resPlugins.map((plugin) => toPluginCard(plugin)),
     total: res.data.total,
     page: pageParam,
     page_size,

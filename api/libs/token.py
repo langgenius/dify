@@ -25,6 +25,7 @@ CSRF_WHITE_LIST = [
     re.compile(r"/console/api/apps/[a-f0-9-]+/workflows/draft"),
     re.compile(r"/console/api/workflow-run-archives/downloads/[a-f0-9]+/file"),
 ]
+_ACCOUNT_AVATAR_FILE_PATH = re.compile(r"/console/api/accounts/[a-f0-9-]+/avatars/[a-f0-9-]+")
 
 
 # server is behind a reverse proxy, so we need to check the url
@@ -200,6 +201,10 @@ def check_csrf_token(request: Request, user_id: str):
     if is_admin_api_key_request(request):
         return
 
+    # A read-only image request carries the Console cookie but cannot set the CSRF header.
+    if request.method in {"GET", "HEAD"} and _ACCOUNT_AVATAR_FILE_PATH.fullmatch(request.path):
+        return
+
     def _unauthorized():
         raise Unauthorized("CSRF token is missing or invalid.")
 
@@ -219,7 +224,6 @@ def check_csrf_token(request: Request, user_id: str):
         verified = PassportService().verify(csrf_token)
     except Exception:
         _unauthorized()
-        raise  # unreachable, but helps the type checker see verified is always bound
 
     if verified.get("sub") != user_id:
         _unauthorized()

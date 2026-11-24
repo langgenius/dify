@@ -36,7 +36,7 @@ const ConditionVariableSelector = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        // TODO: Declare non-native button semantics for this div trigger to support keyboard activation.
+        nativeButton={false}
         render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {!!valueSelector.length && (
@@ -52,7 +52,7 @@ const ConditionVariableSelector = ({
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
                   <span
                     aria-hidden
-                    className="mr-1 i-custom-vender-solid-development-variable-02 size-4"
+                    className="me-1 i-custom-vender-solid-development-variable-02 size-4"
                   />
                   {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.select'], {
                     ns: 'workflowModels',
@@ -68,7 +68,7 @@ const ConditionVariableSelector = ({
       />
       <PopoverContent
         initialFocus={searchInputRef}
-        placement="bottom-start"
+        align="start"
         sideOffset={4}
         className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >

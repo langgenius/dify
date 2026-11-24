@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type { StateCreator } from 'zustand'
 import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
 import { debounce } from 'es-toolkit/compat'
 
 type DebouncedFunc = {
@@ -16,11 +17,14 @@ export type WorkflowDraftSliceShape = {
     viewport: Viewport
     features?: Record<string, any>
     environmentVariables: EnvironmentVariable[]
+    // Knowledge pipeline input fields; previewing a version replaces them too.
+    ragPipelineVariables?: RAGPipelineVariables
   }
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void
   debouncedSyncWorkflowDraft: DebouncedFunc
   syncWorkflowDraftHash: string
-  setSyncWorkflowDraftHash: (hash: string) => void
+  syncWorkflowDraftIsEmpty: boolean | undefined
+  setSyncWorkflowDraftHash: (hash: string, graph?: { nodes: unknown[]; edges: unknown[] }) => void
   isSyncingWorkflowDraft: boolean
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   isWorkflowDataLoaded: boolean
@@ -41,7 +45,14 @@ export const createWorkflowDraftSlice: StateCreator<WorkflowDraftSliceShape> = (
     setBackupDraft: (backupDraft) => set(() => ({ backupDraft })),
     debouncedSyncWorkflowDraft: debouncedFn,
     syncWorkflowDraftHash: '',
-    setSyncWorkflowDraftHash: (syncWorkflowDraftHash) => set(() => ({ syncWorkflowDraftHash })),
+    syncWorkflowDraftIsEmpty: undefined,
+    setSyncWorkflowDraftHash: (syncWorkflowDraftHash, graph) =>
+      set(() => ({
+        syncWorkflowDraftHash,
+        syncWorkflowDraftIsEmpty: graph
+          ? graph.nodes.length === 0 && graph.edges.length === 0
+          : undefined,
+      })),
     isSyncingWorkflowDraft: false,
     setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft) => set(() => ({ isSyncingWorkflowDraft })),
     isWorkflowDataLoaded: false,

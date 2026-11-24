@@ -65,12 +65,7 @@ const VarGroupItem: FC<Props> = ({
     (newList: ValueSelector[], changedItem?: ValueSelector) => {
       if (changedItem) {
         const chosenVariables = payload.variables
-        if (
-          chosenVariables.some(
-            (item) => item.join('.') === (changedItem as ValueSelector).join('.'),
-          )
-        )
-          return
+        if (chosenVariables.some((item) => item.join('.') === changedItem.join('.'))) return
       }
 
       const newPayload = produce(payload, (draft) => {
@@ -115,17 +110,20 @@ const VarGroupItem: FC<Props> = ({
         groupEnabled ? (
           <div className="flex items-center">
             <div className="flex items-center normal-case!">
-              <span aria-hidden className="mr-0.5 i-custom-vender-line-files-folder size-3.5" />
+              <span aria-hidden className="me-0.5 i-custom-vender-line-files-folder size-3.5" />
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
-                  onClick={() => setIsEditGroupName(true)}
+                  onClick={() => {
+                    if (!readOnly) setIsEditGroupName(true)
+                  }}
                 >
                   {payload.group_name}
                 </div>
               ) : (
                 <input
                   type="text"
+                  disabled={readOnly}
                   className="h-6 rounded-lg border border-gray-300 bg-white px-1 focus:outline-hidden"
                   // style={{
                   //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
@@ -141,7 +139,7 @@ const VarGroupItem: FC<Props> = ({
             </div>
             {canRemove && (
               <div
-                className="ml-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
+                className="ms-0.5 hidden cursor-pointer rounded-md p-1 text-text-tertiary group-hover:block hover:bg-state-destructive-hover hover:text-text-destructive"
                 onClick={onRemove}
               >
                 <RiDeleteBinLine className="size-4" />

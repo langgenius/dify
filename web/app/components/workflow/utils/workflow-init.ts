@@ -1,10 +1,16 @@
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { LLMNodeType } from '../nodes/llm/types'
 import type { LoopNodeType } from '../nodes/loop/types'
+import type { ParameterExtractorNodeType } from '../nodes/parameter-extractor/types'
 import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
+import type { StartNodeType } from '../nodes/start/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { Edge, Node } from '../types'
 import { cloneDeep } from 'es-toolkit/object'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { getConnectedEdges } from 'reactflow'
 import {
   hasAgentV2OutputRoutes,
@@ -20,62 +26,59 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
+import { LogicalOperator } from '../nodes/if-else/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '../types'
 
-const WHITE = 'WHITE'
-const GRAY = 'GRAY'
-const BLACK = 'BLACK'
-const isCyclicUtil = (
-  nodeId: string,
-  color: Record<string, string>,
-  adjList: Record<string, string[]>,
-  stack: string[],
-) => {
-  color[nodeId] = GRAY
-  stack.push(nodeId)
+const normalizeModelProvider = (provider: unknown) =>
+  typeof provider === 'string' ? correctModelProvider(provider) : ''
 
-  for (let i = 0; i < adjList[nodeId]!.length; ++i) {
-    const childId = adjList[nodeId]![i]
-
-    if (color[childId!] === GRAY) {
-      stack.push(childId!)
-      return true
-    }
-    if (color[childId!] === WHITE && isCyclicUtil(childId!, color, adjList, stack)) return true
-  }
-  color[nodeId] = BLACK
-  if (stack.length > 0 && stack[stack.length - 1] === nodeId) stack.pop()
-  return false
-}
-
+// An edge belongs to a cycle exactly when both endpoints belong to the same
+// strongly connected component. Ancestors and links between cycles must survive.
 const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
-  const adjList: Record<string, string[]> = {}
-  const color: Record<string, string> = {}
+  const adjacency = new Map(nodes.map((node) => [node.id, [] as string[]]))
+  for (const edge of edges) {
+    if (adjacency.has(edge.target)) adjacency.get(edge.source)?.push(edge.target)
+  }
+  const indices = new Map<string, number>()
+  const lowLinks = new Map<string, number>()
+  const components = new Map<string, number>()
   const stack: string[] = []
-
-  for (const node of nodes) {
-    color[node.id] = WHITE
-    adjList[node.id] = []
-  }
-
-  for (const edge of edges) adjList[edge.source]?.push(edge.target)
-
-  for (let i = 0; i < nodes.length; i++) {
-    if (color[nodes[i]!.id] === WHITE) isCyclicUtil(nodes[i]!.id, color, adjList, stack)
-  }
-
-  const cycleEdges = []
-  if (stack.length > 0) {
-    const cycleNodes = new Set(stack)
-    for (const edge of edges) {
-      if (cycleNodes.has(edge.source) && cycleNodes.has(edge.target)) cycleEdges.push(edge)
+  const onStack = new Set<string>()
+  let nextIndex = 0
+  let component = 0
+  const visit = (id: string) => {
+    indices.set(id, nextIndex)
+    lowLinks.set(id, nextIndex++)
+    stack.push(id)
+    onStack.add(id)
+    for (const target of adjacency.get(id)!) {
+      if (!indices.has(target)) {
+        visit(target)
+        lowLinks.set(id, Math.min(lowLinks.get(id)!, lowLinks.get(target)!))
+      } else if (onStack.has(target)) {
+        lowLinks.set(id, Math.min(lowLinks.get(id)!, indices.get(target)!))
+      }
+    }
+    if (lowLinks.get(id) === indices.get(id)) {
+      let member: string
+      do {
+        member = stack.pop()!
+        onStack.delete(member)
+        components.set(member, component)
+      } while (member !== id)
+      component++
     }
   }
-
-  return cycleEdges
+  for (const node of nodes) {
+    if (!indices.has(node.id)) visit(node.id)
+  }
+  return edges.filter(
+    (edge) =>
+      components.has(edge.source) && components.get(edge.source) === components.get(edge.target),
+  )
 }
 
 export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
@@ -106,7 +109,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     const currentNode = nodes[i] as Node<IterationNodeType | LoopNodeType>
 
     if (currentNode.data.type === BlockEnum.Iteration) {
-      if (currentNode.data.start_node_id) {
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
         if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_ITERATION_START_NODE)
           iterationNodesWithStartNode.push(currentNode)
       } else {
@@ -115,7 +118,7 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     }
 
     if (currentNode.data.type === BlockEnum.Loop) {
-      if (currentNode.data.start_node_id) {
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
         if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_LOOP_START_NODE)
           loopNodesWithStartNode.push(currentNode)
       } else {
@@ -234,33 +237,51 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       .filter((edge) => edge.target === node.id)
       .map((edge) => edge.targetHandle || 'target')
 
+    if (node.data.type === BlockEnum.Start) {
+      const nodeData = node.data as StartNodeType
+      if (!Array.isArray(nodeData.variables)) nodeData.variables = []
+    }
+
     if (node.data.type === BlockEnum.IfElse) {
       const nodeData = node.data as IfElseNodeType
 
-      if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
-        ;(node.data as IfElseNodeType).cases = [
+      if (!Array.isArray(nodeData.cases)) {
+        const { cases, conditions, logical_operator } = nodeData
+        // Only an explicit empty case list represents an ELSE-only node.
+        nodeData.cases = [
           {
             case_id: 'true',
-            logical_operator: nodeData.logical_operator,
-            conditions: nodeData.conditions,
+            logical_operator: logical_operator ?? LogicalOperator.and,
+            conditions: cases == null && Array.isArray(conditions) ? conditions : [],
           },
         ]
       }
-      node.data._targetBranches = branchNameCorrect([
-        ...(node.data as IfElseNodeType).cases.map((item) => ({ id: item.case_id, name: '' })),
+      nodeData._targetBranches = branchNameCorrect([
+        ...nodeData.cases.map((item) => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
-      // delete conditions and logical_operator if cases is not empty
-      if (nodeData.cases.length > 0 && nodeData.conditions && nodeData.logical_operator) {
+      if (nodeData.cases.length > 0) {
         delete nodeData.conditions
         delete nodeData.logical_operator
       }
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
-      node.data._targetBranches = (node.data as QuestionClassifierNodeType).classes.map((topic) => {
-        return topic
-      })
+      const nodeData = node.data as QuestionClassifierNodeType
+      if (!Array.isArray(nodeData.classes)) nodeData.classes = []
+      if (!Array.isArray(nodeData.query_variable_selector)) nodeData.query_variable_selector = []
+      nodeData._targetBranches = [...nodeData.classes]
+    }
+
+    if (node.data.type === BlockEnum.ParameterExtractor) {
+      const nodeData = node.data as ParameterExtractorNodeType
+      if (!Array.isArray(nodeData.query)) nodeData.query = []
+    }
+
+    if (node.data.type === BlockEnum.KnowledgeBase) {
+      const nodeData = node.data as KnowledgeBaseNodeType
+      if (!Array.isArray(nodeData.index_chunk_variable_selector))
+        nodeData.index_chunk_variable_selector = []
     }
 
     if (hasAgentV2OutputRoutes(node.data))
@@ -286,23 +307,28 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       loopNodeData.error_handle_mode = loopNodeData.error_handle_mode || ErrorHandleMode.Terminated
     }
 
-    // legacy provider handle
-    if (node.data.type === BlockEnum.LLM)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
-
     if (
-      node.data.type === BlockEnum.KnowledgeRetrieval &&
-      (node as any).data.multiple_retrieval_config?.reranking_model
-    )
-      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctModelProvider(
-        (node as any).data.multiple_retrieval_config?.reranking_model.provider,
-      )
+      node.data.type === BlockEnum.LLM ||
+      node.data.type === BlockEnum.QuestionClassifier ||
+      node.data.type === BlockEnum.ParameterExtractor
+    ) {
+      const nodeData = node.data as
+        | LLMNodeType
+        | QuestionClassifierNodeType
+        | ParameterExtractorNodeType
+      if (isPlainObject(nodeData.model)) {
+        nodeData.model.provider = normalizeModelProvider(nodeData.model.provider)
+      } else {
+        nodeData.model = { provider: '', name: '', mode: 'chat', completion_params: {} }
+      }
+    }
 
-    if (node.data.type === BlockEnum.QuestionClassifier)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
-
-    if (node.data.type === BlockEnum.ParameterExtractor)
-      (node as any).data.model.provider = correctModelProvider((node as any).data.model.provider)
+    if (node.data.type === BlockEnum.KnowledgeRetrieval) {
+      const config = (node.data as KnowledgeRetrievalNodeType).multiple_retrieval_config
+      const rerankingModel = config?.reranking_model
+      if (isPlainObject(rerankingModel))
+        rerankingModel.provider = normalizeModelProvider(rerankingModel.provider)
+    }
 
     if (node.data.type === BlockEnum.HttpRequest && !node.data.retry_config) {
       node.data.retry_config = {

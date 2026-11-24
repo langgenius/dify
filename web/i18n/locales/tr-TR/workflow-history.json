@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "Kimlik panoya kopyalandı",
   "versionHistory.action.deleteDeployedVersionError": "Bu iş akışı sürümü bir veya daha fazla ortama dağıtılmıştır ya da dağıtılmaktadır. Sürümü silmeden önce tüm ortamlardaki dağıtımı kaldırın.",
   "versionHistory.action.deleteFailure": "Versiyonu silme işlemi başarısız oldu",
-  "versionHistory.action.deleteSuccess": "Sürüm silindi",
   "versionHistory.action.restoreFailure": "Sürümü geri yüklemekte başarısız olundu",
   "versionHistory.action.restoreInProgress": "{{userName}}, {{versionName}} sürümüne geri dönüyor...",
   "versionHistory.action.restoreSuccess": "Sürüm geri yüklendi",

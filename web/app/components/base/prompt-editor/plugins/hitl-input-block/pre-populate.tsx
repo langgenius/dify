@@ -108,7 +108,7 @@ const PrePopulate: FC<Props> = ({
       <div className="relative h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
         <VarReferencePicker {...varPickerProps} isJustShowValue />
         <TypeSwitch
-          className="absolute bottom-1 left-1.5"
+          className="absolute inset-s-1.5 bottom-1"
           isVariable={isVariable}
           onIsVariableChange={handleTypeChange}
         />
@@ -119,13 +119,14 @@ const PrePopulate: FC<Props> = ({
     <div
       className={cn(
         'relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal pb-1',
-        isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+        isFocus && 'bg-components-input-bg-active ring-2 ring-state-accent-solid',
       )}
     >
       <Textarea
         aria-label={t(($) => $[`${i18nPrefix}.staticContent`], { ns: 'workflowHumanInput' })}
         value={value || ''}
-        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
+        // oxlint-disable-next-line shadcn/no-restyle -- The enclosing pre-population surface paints the focus ring around the textarea and type switch.
+        className="h-10.75 min-h-10.75 rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:ring-0"
         onValueChange={(value) => onValueChange?.(value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)
@@ -135,7 +136,7 @@ const PrePopulate: FC<Props> = ({
         autoFocus
       />
       <TypeSwitch
-        className="absolute bottom-1 left-1.5"
+        className="absolute inset-s-1.5 bottom-1"
         isVariable={isVariable}
         onIsVariableChange={handleTypeChange}
       />

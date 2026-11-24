@@ -1,6 +1,6 @@
 'use client'
+import type { DatasourceProviderAuthResponse } from '@dify/contracts/api/console/auth/types.gen'
 import type { FC } from 'react'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
@@ -32,7 +32,7 @@ type Props = Readonly<{
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
-  authedDataSourceList: DataSourceAuth[]
+  authedDataSourceList: DatasourceProviderAuthResponse[]
 }>
 
 const Website: FC<Props> = ({
@@ -97,7 +97,7 @@ const Website: FC<Props> = ({
                   : `border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
               )}
             >
-              <span className={cn(s.jinaLogo, 'mr-2')} />
+              <span className={cn(s.jinaLogo, 'me-2')} />
               <span>Jina Reader</span>
             </RadioItem>
           )}
@@ -124,7 +124,7 @@ const Website: FC<Props> = ({
                   : `border border-components-option-card-option-border bg-components-option-card-option-bg system-sm-regular text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
               )}
             >
-              <span className={cn(s.watercrawlLogo, 'mr-2')} />
+              <span className={cn(s.watercrawlLogo, 'me-2')} />
               <span>WaterCrawl</span>
             </RadioItem>
           )}

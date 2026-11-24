@@ -28,6 +28,8 @@
   "menus.plugins": "ການເຊື່ອມຕໍ່",
   "menus.status": "ເບຕ້າ",
   "menus.tools": "ເຄື່ອງມື",
+  "settings.accessToken": "ໂທເຄັນເຂົ້າເຖິງ",
+  "settings.accessTokenDescription": "ສ້າງໂທເຄັນ API ບໍລິການທີ່ໃຫ້ເຂົ້າເຖິງສະເພາະແອັບ ແລະຖານຄວາມຮູ້ທີ່ເລືອກ.",
   "settings.agentStrategy": "ກົນລະຍຸດຕົວແທນ",
   "settings.billing": "ການຊຳລະເງິນ",
   "settings.customEndpoint": "ຈຸດເຊື່ອມຕໍ່ແບບກຳນົດເອງ",

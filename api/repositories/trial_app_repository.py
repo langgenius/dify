@@ -3,10 +3,12 @@
 from collections.abc import Sequence, Set
 from typing import override
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.model import AccountTrialAppRecord, App, TrialApp
+from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
+from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentConfigSnapshot, AgentScope, AgentStatus
+from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from services.recommended_app_query_service import TrialAppQuery
 from services.trial_app_access_service import TrialAppAccessQuery, TrialAppAccessSnapshot, TrialAppRef
 from services.trial_app_usage import TrialAppUsageRecorder
@@ -21,8 +23,42 @@ class TrialAppRepository(TrialAppQuery, TrialAppAccessQuery, TrialAppUsageRecord
         if not app_ids:
             return frozenset()
 
+        runnable_agent_exists = (
+            select(Agent.id)
+            .join(
+                AgentConfigSnapshot,
+                and_(
+                    AgentConfigSnapshot.tenant_id == Agent.tenant_id,
+                    AgentConfigSnapshot.agent_id == Agent.id,
+                    AgentConfigSnapshot.id == Agent.active_config_snapshot_id,
+                ),
+            )
+            .where(
+                Agent.tenant_id == App.tenant_id,
+                Agent.status == AgentStatus.ACTIVE,
+                or_(
+                    and_(
+                        Agent.app_id == App.id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
+                    ),
+                    Agent.backing_app_id == App.id,
+                ),
+                workflow_callable_active_snapshot_filter(),
+            )
+            .correlate(App)
+            .exists()
+        )
+        query = (
+            select(TrialApp.app_id)
+            .outerjoin(App, App.id == TrialApp.app_id)
+            .where(
+                TrialApp.app_id.in_(app_ids),
+                or_(App.id.is_(None), App.mode != AppMode.AGENT, runnable_agent_exists),
+            )
+        )
         with self._session_factory() as session:
-            return frozenset(session.scalars(select(TrialApp.app_id).where(TrialApp.app_id.in_(app_ids))).all())
+            return frozenset(session.scalars(query).all())
 
     @override
     def resolve(self, *, app_id: str, account_id: str) -> TrialAppAccessSnapshot | None:

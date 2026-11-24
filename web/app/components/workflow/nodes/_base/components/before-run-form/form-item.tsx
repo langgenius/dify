@@ -57,7 +57,7 @@ const FormItem: FC<Props> = ({
   const { t } = useTranslation(['appDebug', 'common', 'workflow'])
   const labelId = React.useId()
   const { type } = payload
-  const fileSettings = useHooksStore((s) => s.configsMap?.fileSettings)
+  const fileSettings = useHooksStore((s) => s.fileSettings)
   const jsonSchemaPlaceholder = React.useMemo(() => {
     const schema = (payload as any)?.json_schema
     if (!schema) return ''
@@ -103,7 +103,7 @@ const FormItem: FC<Props> = ({
               >
                 {nodeName}
               </div>
-              <span aria-hidden className="mr-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
+              <span aria-hidden className="me-0.5 i-custom-public-common-line-3 h-3 w-1.25" />
             </div>
           )}
           <div className="flex items-center text-primary-600">
@@ -121,7 +121,7 @@ const FormItem: FC<Props> = ({
             )}
             <div
               className={cn(
-                'ml-0.5 max-w-37.5 truncate text-xs font-medium',
+                'ms-0.5 max-w-37.5 truncate text-xs font-medium',
                 isChatVar && 'text-text-secondary',
               )}
               title={variable}
@@ -366,7 +366,7 @@ const FormItem: FC<Props> = ({
                   (value as any).length > 1 ? (
                     <RiDeleteBinLine
                       onClick={handleArrayItemRemove(index)}
-                      className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
+                      className="me-1 size-3.5 cursor-pointer text-text-tertiary"
                     />
                   ) : undefined
                 }
@@ -394,7 +394,7 @@ const FormItem: FC<Props> = ({
                   (value as any).length > 1 ? (
                     <RiDeleteBinLine
                       onClick={handleArrayItemRemove(index)}
-                      className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
+                      className="me-1 size-3.5 cursor-pointer text-text-tertiary"
                     />
                   ) : undefined
                 }

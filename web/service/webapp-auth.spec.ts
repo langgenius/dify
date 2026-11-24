@@ -1,24 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-const getPublicMock = vi.hoisted(() => vi.fn())
-
-vi.mock('./base', () => ({
-  getPublic: getPublicMock,
-  postPublic: vi.fn(),
-}))
-
-const {
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import {
   beginWebAppAuthorizationRecovery,
   completeWebAppAuthorizationRecovery,
   getOrCreateWebAppSessionId,
   getWebAppPassport,
   setWebAppPassport,
-  webAppLoginStatus,
-} = await import('./webapp-auth')
+} from './webapp-auth'
 
-describe('webAppLoginStatus', () => {
+describe('webapp auth storage', () => {
   beforeEach(() => {
-    getPublicMock.mockReset()
-    getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: true })
+    localStorage.clear()
+    sessionStorage.clear()
+  })
+  afterEach(() => {
     localStorage.clear()
     sessionStorage.clear()
   })
@@ -32,14 +26,7 @@ describe('webAppLoginStatus', () => {
 
     expect(getWebAppPassport(environment)).toBe('environment-passport')
     expect(getWebAppPassport(ordinary)).toBe('ordinary-passport')
-  })
-
-  it('keeps the ordinary webapp passport storage key unchanged', () => {
-    const address = { kind: 'default' as const, code: 'workflow-app' }
-
-    setWebAppPassport(address, 'passport')
-
-    expect(localStorage.getItem('passport-workflow-app')).toBe('passport')
+    expect(localStorage.getItem('passport-workflow-app')).toBe('ordinary-passport')
   })
 
   it('keeps a stable user id for each environment', () => {
@@ -67,41 +54,5 @@ describe('webAppLoginStatus', () => {
     completeWebAppAuthorizationRecovery(address)
 
     expect(beginWebAppAuthorizationRecovery(address)).toBe(true)
-  })
-
-  it('does not add an app code query to environment login status', async () => {
-    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
-
-    await webAppLoginStatus('workflow-app', 'user-1')
-
-    expect(getPublicMock).toHaveBeenCalledWith('/login/status?user_id=user-1')
-  })
-
-  it('uses the authoritative environment login state', async () => {
-    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
-    getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
-
-    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
-      userLoggedIn: false,
-      appLoggedIn: false,
-    })
-  })
-
-  it('trusts the remote login state for an sso verified environment', async () => {
-    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
-    getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: false })
-
-    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
-      userLoggedIn: true,
-      appLoggedIn: false,
-    })
-  })
-
-  it('keeps the app code for ordinary webapps', async () => {
-    window.history.replaceState({}, '', '/workflow/workflow-app')
-
-    await webAppLoginStatus('workflow-app')
-
-    expect(getPublicMock).toHaveBeenCalledWith('/login/status?app_code=workflow-app')
   })
 })

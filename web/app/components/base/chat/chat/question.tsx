@@ -4,13 +4,12 @@ import type { ChatItem } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
-import { toast } from '@/app/notifications'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
@@ -37,7 +36,6 @@ const Question: FC<QuestionProps> = ({
   const { content, message_files } = item
 
   const { onRegenerate } = useChatContext()
-  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' })
   const editLabel = t(($) => $['operation.edit'], { ns: 'common' })
 
   const [isEditing, setIsEditing] = useState(false)
@@ -147,25 +145,17 @@ const Question: FC<QuestionProps> = ({
     <div className="mb-2 flex justify-end last:mb-0">
       <div
         className={cn(
-          'group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14',
+          'group relative me-4 flex max-w-full items-start overflow-x-hidden ps-14',
           isEditing && 'flex-1',
         )}
       >
-        <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
+        <div className={cn('me-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
             data-testid="action-container"
             className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs group-hover:flex"
             style={{ right: contentWidth + 8 }}
           >
-            <IconButton
-              aria-label={copyLabel}
-              onClick={() => {
-                copy(content)
-                toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
-              }}
-            >
-              <div className="i-ri-clipboard-line size-4" aria-hidden="true" />
-            </IconButton>
+            <CopyFeedback content={content} />
             {enableEdit && (
               <IconButton aria-label={editLabel} onClick={handleEdit}>
                 <div className="i-ri-edit-line size-4" aria-hidden="true" />
@@ -201,7 +191,7 @@ const Question: FC<QuestionProps> = ({
             <Markdown content={content} />
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pr-1">
+              <div className="max-h-39.5 overflow-x-hidden overflow-y-auto pe-1">
                 <Textarea
                   className={cn(
                     'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',

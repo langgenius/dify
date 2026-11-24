@@ -1,11 +1,21 @@
 'use client'
+
 import type { FC } from 'react'
 import type { IconPickerValue } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
@@ -13,8 +23,12 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '@/app/components/base/app-icon'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -33,14 +47,13 @@ type MCPModalConfirmPayload = {
   server_url: string
   icon_type: AppIconType
   icon: string
-  icon_background?: string | null
+  icon_background?: string
   server_identifier: string
   headers?: Record<string, string>
   is_dynamic_registration?: boolean
   authentication?: {
-    client_id?: string
+    client_id: string
     client_secret?: string
-    grant_type?: string
   }
   configuration: {
     timeout: number
@@ -142,206 +155,218 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
   return (
     <>
-      <button
-        type="button"
-        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onHide}
+      <DialogHeader>
+        <DialogTitle>
+          {!isCreate
+            ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
+            : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
+        </DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+
+      <form
+        className="contents"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (isSubmitDisabled) return
+          void submit()
+        }}
       >
-        <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-      </button>
-      <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
-        {!isCreate
-          ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
-          : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
-      </DialogTitle>
-
-      <div className="space-y-5 py-3">
-        {/* Server URL */}
-        <div>
-          <div className="mb-1 flex h-6 items-center">
-            <label htmlFor={serverUrlInputId} className="system-sm-medium text-text-secondary">
-              {t(($) => $['mcp.modal.serverUrl'], { ns: 'tools' })}
-            </label>
-          </div>
-          <Input
-            id={serverUrlInputId}
-            value={state.url}
-            onChange={(e) => actions.setUrl(e.target.value)}
-            onBlur={(e) => actions.handleUrlBlur(e.target.value.trim())}
-            placeholder={t(($) => $['mcp.modal.serverUrlPlaceholder'], { ns: 'tools' })}
-          />
-          {originalServerUrl && originalServerUrl !== state.url && (
-            <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">
-                {t(($) => $['mcp.modal.serverUrlWarning'], { ns: 'tools' })}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Name and Icon */}
-        <div className="flex space-x-3">
-          <div className="grow pb-1">
+        <DialogBody className="space-y-5">
+          {/* Server URL */}
+          <div>
             <div className="mb-1 flex h-6 items-center">
-              <label htmlFor={nameInputId} className="system-sm-medium text-text-secondary">
-                {t(($) => $['mcp.modal.name'], { ns: 'tools' })}
+              <label htmlFor={serverUrlInputId} className="system-sm-medium text-text-secondary">
+                {t(($) => $['mcp.modal.serverUrl'], { ns: 'tools' })}
               </label>
             </div>
             <Input
-              id={nameInputId}
-              value={state.name}
-              onChange={(e) => actions.setName(e.target.value)}
-              placeholder={t(($) => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
+              id={serverUrlInputId}
+              value={state.url}
+              onChange={(e) => actions.setUrl(e.target.value)}
+              onBlur={(e) => actions.handleUrlBlur(e.target.value.trim())}
+              placeholder={t(($) => $['mcp.modal.serverUrlPlaceholder'], { ns: 'tools' })}
             />
+            {originalServerUrl && originalServerUrl !== state.url && (
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">
+                  {t(($) => $['mcp.modal.serverUrlWarning'], { ns: 'tools' })}
+                </span>
+              </div>
+            )}
           </div>
-          <div className="pt-2">
-            <IconButton
-              aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
-              className="group/edit-icon size-14 rounded-2xl p-0"
-              onClick={() => actions.setShowIconPicker(true)}
-            >
-              <AppIcon
-                decorative
-                iconType={state.appIcon.type}
-                icon={state.appIcon.type === 'emoji' ? state.appIcon.icon : state.appIcon.fileId}
-                background={state.appIcon.type === 'emoji' ? state.appIcon.background : undefined}
-                imageUrl={state.appIcon.type === 'image' ? state.appIcon.url : undefined}
-                innerIcon={
-                  shouldUseMcpIconForAppIcon(
-                    state.appIcon.type,
-                    state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
-                  ) ? (
-                    <span
-                      aria-hidden
-                      className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
-                    />
-                  ) : undefined
-                }
-                size="xxl"
-                className="relative rounded-2xl"
-                showEditIcon
-              />
-            </IconButton>
-          </div>
-        </div>
 
-        {/* Server Identifier */}
-        <div>
-          <div className="flex h-6 items-center">
-            <label
-              htmlFor={serverIdentifierInputId}
-              className="system-sm-medium text-text-secondary"
-            >
-              {t(($) => $['mcp.modal.serverIdentifier'], { ns: 'tools' })}
-            </label>
-          </div>
-          <div
-            id={serverIdentifierDescriptionId}
-            className="mb-1 body-xs-regular text-text-tertiary"
-          >
-            {t(($) => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}
-          </div>
-          <Input
-            id={serverIdentifierInputId}
-            aria-describedby={serverIdentifierDescriptionId}
-            value={state.serverIdentifier}
-            onChange={(e) => actions.setServerIdentifier(e.target.value)}
-            placeholder={t(($) => $['mcp.modal.serverIdentifierPlaceholder'], { ns: 'tools' })}
-          />
-          {originalServerID && originalServerID !== state.serverIdentifier && (
-            <div className="mt-1 flex h-5 items-center">
-              <span className="body-xs-regular text-text-warning">
-                {t(($) => $['mcp.modal.serverIdentifierWarning'], { ns: 'tools' })}
-              </span>
+          {/* Name and Icon */}
+          <div className="flex space-x-3">
+            <div className="grow pb-1">
+              <div className="mb-1 flex h-6 items-center">
+                <label htmlFor={nameInputId} className="system-sm-medium text-text-secondary">
+                  {t(($) => $['mcp.modal.name'], { ns: 'tools' })}
+                </label>
+              </div>
+              <Input
+                id={nameInputId}
+                value={state.name}
+                onChange={(e) => actions.setName(e.target.value)}
+                placeholder={t(($) => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
+              />
             </div>
-          )}
-        </div>
+            <div className="pt-2">
+              <IconPicker value={state.appIcon} onValueChange={handleIconSelect}>
+                <IconPickerTrigger
+                  render={
+                    <IconButton
+                      aria-label={t(($) => $['mcp.modal.changeIcon'], { ns: 'tools' })}
+                      className="group/edit-icon relative size-14 rounded-2xl p-0"
+                    >
+                      <>
+                        {shouldUseMcpIconForAppIcon(
+                          state.appIcon.type,
+                          state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
+                        ) ? (
+                          <Avatar
+                            aria-hidden="true"
+                            className="size-14 rounded-2xl border-[0.5px] border-divider-regular"
+                          >
+                            <AvatarFallback
+                              className="text-text-primary-on-surface"
+                              style={{
+                                background:
+                                  state.appIcon.type === 'emoji'
+                                    ? state.appIcon.background || '#FFEAD5'
+                                    : '#FFEAD5',
+                              }}
+                            >
+                              <span className="i-custom-vender-other-mcp size-8" />
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <IconPickerIcon size="xxl" />
+                        )}
+                        <span
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-[inherit] bg-background-overlay-alt group-hover/edit-icon:flex group-focus-visible/edit-icon:flex"
+                        >
+                          <span className="i-ri-edit-line size-8 text-text-primary-on-surface" />
+                        </span>
+                      </>
+                    </IconButton>
+                  }
+                />
+                <IconPickerContent />
+              </IconPicker>
+            </div>
+          </div>
 
-        {isForwardIdentitySupported && (
+          {/* Server Identifier */}
           <div>
-            <div className="mb-1 flex h-6 items-center">
-              <Switch
-                className="mr-2"
-                checked={state.forwardUserIdentity}
-                onCheckedChange={actions.setForwardUserIdentity}
-                aria-labelledby="mcp-forward-user-identity-label"
-              />
-              <span
-                id="mcp-forward-user-identity-label"
+            <div className="flex h-6 items-center">
+              <label
+                htmlFor={serverIdentifierInputId}
                 className="system-sm-medium text-text-secondary"
               >
-                {t(($) => $['mcp.modal.forwardUserIdentity'], { ns: 'tools' })}
-              </span>
+                {t(($) => $['mcp.modal.serverIdentifier'], { ns: 'tools' })}
+              </label>
             </div>
-            <div className="body-xs-regular text-text-tertiary">
-              {t(($) => $['mcp.modal.forwardUserIdentityTip'], { ns: 'tools' })}
-            </div>
-          </div>
-        )}
-
-        {/* Auth Method Tabs */}
-        <SegmentedControl<MCPAuthMethod>
-          value={state.authMethod}
-          onValueChange={actions.setAuthMethod}
-          aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
-          className="w-full"
-        >
-          {authMethods.map((option) => (
-            <SegmentedControlItem<MCPAuthMethod>
-              key={option.value}
-              value={option.value}
-              className="flex-1"
+            <div
+              id={serverIdentifierDescriptionId}
+              className="mb-1 body-xs-regular text-text-tertiary"
             >
-              {option.text}
-            </SegmentedControlItem>
-          ))}
-        </SegmentedControl>
+              {t(($) => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}
+            </div>
+            <Input
+              id={serverIdentifierInputId}
+              aria-describedby={serverIdentifierDescriptionId}
+              value={state.serverIdentifier}
+              onChange={(e) => actions.setServerIdentifier(e.target.value)}
+              placeholder={t(($) => $['mcp.modal.serverIdentifierPlaceholder'], { ns: 'tools' })}
+            />
+            {originalServerID && originalServerID !== state.serverIdentifier && (
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">
+                  {t(($) => $['mcp.modal.serverIdentifierWarning'], { ns: 'tools' })}
+                </span>
+              </div>
+            )}
+          </div>
 
-        {/* Tab Content */}
-        {state.authMethod === MCPAuthMethod.authentication && (
-          <AuthenticationSection
-            isDynamicRegistration={state.isDynamicRegistration}
-            onDynamicRegistrationChange={actions.setIsDynamicRegistration}
-            clientID={state.clientID}
-            onClientIDChange={actions.setClientID}
-            credentials={state.credentials}
-            onCredentialsChange={actions.setCredentials}
-          />
-        )}
-        {state.authMethod === MCPAuthMethod.headers && (
-          <HeadersSection
-            headers={state.headers}
-            onHeadersChange={actions.setHeaders}
-            isCreate={isCreate}
-          />
-        )}
-        {state.authMethod === MCPAuthMethod.configurations && (
-          <ConfigurationsSection
-            timeout={state.timeout}
-            onTimeoutChange={actions.setTimeout}
-            sseReadTimeout={state.sseReadTimeout}
-            onSseReadTimeoutChange={actions.setSseReadTimeout}
-          />
-        )}
-      </div>
+          {isForwardIdentitySupported && (
+            <div>
+              <div className="mb-1 flex h-6 items-center">
+                <Switch
+                  className="me-2"
+                  checked={state.forwardUserIdentity}
+                  onCheckedChange={actions.setForwardUserIdentity}
+                  aria-labelledby="mcp-forward-user-identity-label"
+                />
+                <span
+                  id="mcp-forward-user-identity-label"
+                  className="system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['mcp.modal.forwardUserIdentity'], { ns: 'tools' })}
+                </span>
+              </div>
+              <div className="body-xs-regular text-text-tertiary">
+                {t(($) => $['mcp.modal.forwardUserIdentityTip'], { ns: 'tools' })}
+              </div>
+            </div>
+          )}
 
-      {/* Actions */}
-      <div className="flex flex-row-reverse pt-5">
-        <Button disabled={isSubmitDisabled} className="ml-2" variant="primary" onClick={submit}>
-          {data
-            ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
-            : t(($) => $['mcp.modal.confirm'], { ns: 'tools' })}
-        </Button>
-        <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
-      </div>
+          {/* Auth Method Tabs */}
+          <SegmentedControl<MCPAuthMethod>
+            value={state.authMethod}
+            onValueChange={actions.setAuthMethod}
+            aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
+            className="w-full"
+          >
+            {authMethods.map((option) => (
+              <SegmentedControlItem<MCPAuthMethod>
+                key={option.value}
+                value={option.value}
+                className="flex-1"
+              >
+                {option.text}
+              </SegmentedControlItem>
+            ))}
+          </SegmentedControl>
 
-      <IconPickerDialog
-        open={state.showIconPicker}
-        defaultValue={state.appIcon}
-        onOpenChange={actions.setShowIconPicker}
-        onConfirm={handleIconSelect}
-      />
+          {/* Tab Content */}
+          {state.authMethod === MCPAuthMethod.authentication && (
+            <AuthenticationSection
+              isDynamicRegistration={state.isDynamicRegistration}
+              onDynamicRegistrationChange={actions.setIsDynamicRegistration}
+              clientID={state.clientID}
+              onClientIDChange={actions.setClientID}
+              credentials={state.credentials}
+              onCredentialsChange={actions.setCredentials}
+            />
+          )}
+          {state.authMethod === MCPAuthMethod.headers && (
+            <HeadersSection
+              headers={state.headers}
+              onHeadersChange={actions.setHeaders}
+              isCreate={isCreate}
+            />
+          )}
+          {state.authMethod === MCPAuthMethod.configurations && (
+            <ConfigurationsSection
+              timeout={state.timeout}
+              onTimeoutChange={actions.setTimeout}
+              sseReadTimeout={state.sseReadTimeout}
+              onSseReadTimeoutChange={actions.setSseReadTimeout}
+            />
+          )}
+        </DialogBody>
+
+        <DialogFooter>
+          <Button onClick={onHide}>{t(($) => $['mcp.modal.cancel'], { ns: 'tools' })}</Button>
+          <Button type="submit" disabled={isSubmitDisabled} variant="primary">
+            {data
+              ? t(($) => $['mcp.modal.save'], { ns: 'tools' })
+              : t(($) => $['mcp.modal.confirm'], { ns: 'tools' })}
+          </Button>
+        </DialogFooter>
+      </form>
     </>
   )
 }
@@ -359,11 +384,12 @@ const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide })
   return (
     <Dialog
       open={show}
+      disablePointerDismissal
       onOpenChange={(open) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-130! border-none p-6 text-left align-middle">
+      <DialogContent className="w-130">
         <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
       </DialogContent>
     </Dialog>

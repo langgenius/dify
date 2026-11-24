@@ -14,7 +14,7 @@ type SettingItemProps = PropsWithChildren<{
 export const SettingItem = memo(({ label, children, status, tooltip }: SettingItemProps) => {
   const indicator: StatusDotStatus | undefined =
     status === 'error' ? 'error' : status === 'warning' ? 'warning' : undefined
-  const needTooltip = ['error', 'warning'].includes(status as any)
+  const needTooltip = status === 'error' || status === 'warning'
   return (
     <div className="relative flex items-center justify-between space-x-1 rounded-md bg-workflow-block-parma-bg px-1.5 py-1 text-xs font-normal">
       <div
@@ -29,14 +29,12 @@ export const SettingItem = memo(({ label, children, status, tooltip }: SettingIt
         <TooltipTrigger
           disabled={!needTooltip}
           render={
-            <div className="truncate text-right system-xs-medium text-text-secondary">
-              {children}
-            </div>
+            <div className="truncate text-end system-xs-medium text-text-secondary">{children}</div>
           }
         />
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
-      {indicator && <StatusDot status={indicator} className="absolute -top-0.5 -right-0.5" />}
+      {indicator && <StatusDot status={indicator} className="absolute -inset-e-0.5 -top-0.5" />}
     </div>
   )
 })

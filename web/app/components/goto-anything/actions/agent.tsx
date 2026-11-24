@@ -1,31 +1,18 @@
-import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
-import type { ActionItem, AgentSearchResult } from './types'
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
+import type { ActionItem, AgentSearchResult, SearchQueryOptions } from './types'
 import { getI18n } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import AppIcon from '../../base/app-icon'
 
 function getAgentResults(agents: AgentAppPartial[]): AgentSearchResult[] {
   return agents.map((agent) => {
-    const imageUrl =
-      agent.icon_type === 'image' || agent.icon_type === 'link' ? agent.icon : undefined
-    const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
-
     return {
       id: agent.id,
       title: agent.name,
       description: agent.description || agent.role || undefined,
       type: 'agent' as const,
       path: `/agents/${agent.id}/configure`,
-      icon: (
-        <AppIcon
-          size="large"
-          rounded
-          iconType={iconType}
-          icon={agent.icon ?? undefined}
-          background={agent.icon_background}
-          imageUrl={imageUrl}
-        />
-      ),
+      icon: <AppIcon size="large" shape="circle" icon={agent} />,
       data: agent,
     }
   })
@@ -43,7 +30,7 @@ export const agentAction: ActionItem = {
   source: 'remote',
 }
 
-export function agentSearchQueryOptions(searchTerm: string) {
+export function agentSearchQueryOptions(searchTerm: string, options: SearchQueryOptions = {}) {
   return consoleQuery.agent.get.queryOptions({
     input: {
       query: {
@@ -54,6 +41,7 @@ export function agentSearchQueryOptions(searchTerm: string) {
       },
     },
     retry: false,
+    ...options,
     select: (response) => getAgentResults(response.data),
   })
 }

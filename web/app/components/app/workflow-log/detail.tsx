@@ -3,25 +3,23 @@ import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiPlayLargeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import Run from '@/app/components/workflow/run'
 import { useRouter } from '@/next/navigation'
 
 type ILogDetail = {
+  appId: string
   runID: string
   onClose: () => void
   canReplay?: boolean
 }
 
-const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
+const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false }) => {
   const { t } = useTranslation(['appLog', 'common'])
-  const appDetail = useStore((state) => state.appDetail)
   const router = useRouter()
 
   const handleReplay = () => {
-    if (!appDetail?.id) return
-    router.push(`/app/${appDetail.id}/workflow?replayRunId=${runID}`)
+    router.push(`/app/${appId}/workflow?replayRunId=${runID}`)
   }
 
   return (
@@ -29,7 +27,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="absolute inset-e-3 top-4 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClose}
       >
         <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -44,7 +42,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
               render={
                 <button
                   type="button"
-                  className="mr-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
+                  className="me-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
                   aria-label={t(($) => $['runDetail.testWithParams'], { ns: 'appLog' })}
                   onClick={handleReplay}
                 >
@@ -60,10 +58,9 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
       </div>
       <WorkflowContextProvider>
         <Run
-          runDetailUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}` : ''}
-          tracingListUrl={
-            runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions` : ''
-          }
+          appId={appId}
+          runDetailUrl={runID ? `/apps/${appId}/workflow-runs/${runID}` : ''}
+          tracingListUrl={runID ? `/apps/${appId}/workflow-runs/${runID}/node-executions` : ''}
         />
       </WorkflowContextProvider>
     </div>

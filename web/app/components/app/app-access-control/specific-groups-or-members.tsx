@@ -1,11 +1,12 @@
 'use client'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { AccessMode } from '@/models/access-control'
+import { getAvatarInitial } from '@/utils/avatar'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
 
 export type AccessControlSubjects = {
@@ -178,7 +179,14 @@ type MemberItemProps = {
 
 function MemberItem({ member, onRemove }: MemberItemProps) {
   return (
-    <BaseItem icon={<Avatar size="xxs" avatar={null} name={member.name} />} onRemove={onRemove}>
+    <BaseItem
+      icon={
+        <Avatar size="xxs" aria-hidden="true">
+          <AvatarFallback>{getAvatarInitial(member.name)}</AvatarFallback>
+        </Avatar>
+      }
+      onRemove={onRemove}
+    >
       <p className="system-xs-regular text-text-primary">{member.name}</p>
     </BaseItem>
   )
@@ -194,7 +202,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
   const { t } = useTranslation(['common'])
 
   return (
-    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pr-1.5 shadow-xs">
+    <div className="group flex flex-row items-center gap-x-1 rounded-full border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark p-1 pe-1.5 shadow-xs">
       <div className="size-5 overflow-hidden rounded-full bg-components-icon-bg-blue-solid">
         <div className="bg-access-app-icon-mask-bg flex size-full items-center justify-center">
           {icon}

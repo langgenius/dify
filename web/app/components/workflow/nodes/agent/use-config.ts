@@ -3,16 +3,21 @@ import type { AgentNodeType } from './types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
-import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
-import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
+import {
+  installedPluginsByIdsQueryOptions,
+  marketplacePluginsByIdsQueryOptions,
+} from '@/service/plugin-list-queries'
+import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { VarType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -36,18 +41,19 @@ export const useStrategyInfo = (strategyProviderName?: string, strategyName?: st
   const strategy = strategyProvider.data?.declaration.strategies?.find(
     (str) => str.identity.name === strategyName,
   )
-  const marketplace = useFetchPluginsInMarketPlaceByIds(
-    strategyProviderName ? [strategyProviderName] : [],
-    {
-      retry: false,
-    },
+  const {
+    data: marketplaceData,
+    isLoading: isMarketplaceLoading,
+    refetch: refetchMarketplace,
+  } = useQuery(
+    marketplacePluginsByIdsQueryOptions(strategyProviderName ? [strategyProviderName] : []),
   )
   const strategyStatus: StrategyStatus | undefined = useMemo(() => {
-    if (!strategyProviderName || strategyProvider.isLoading || marketplace.isLoading)
+    if (!strategyProviderName || strategyProvider.isLoading || isMarketplaceLoading)
       return undefined
     const strategyExist = !!strategy
     const isPluginInstalled = strategyProvider.isSuccess
-    const isInMarketplace = !!marketplace.data?.data.plugins.at(0)
+    const isInMarketplace = !!marketplaceData?.data.plugins.at(0)
     return {
       plugin: {
         source: isInMarketplace ? 'marketplace' : 'external',
@@ -58,12 +64,12 @@ export const useStrategyInfo = (strategyProviderName?: string, strategyName?: st
   }, [
     strategy,
     strategyProviderName,
-    marketplace,
+    isMarketplaceLoading,
+    marketplaceData,
     strategyProvider.isSuccess,
     strategyProvider.isLoading,
   ])
   const { refetch: refetchProvider } = strategyProvider
-  const { refetch: refetchMarketplace } = marketplace
   const refetch = useCallback(() => {
     if (!strategyProviderName) return
     return Promise.all([refetchProvider(), refetchMarketplace()])
@@ -90,10 +96,12 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     strategyProvider,
   } = useStrategyInfo(inputs.agent_strategy_provider_name, inputs.agent_strategy_name)
   const pluginId = inputs.agent_strategy_provider_name?.split('/').splice(0, 2).join('/')
-  const pluginDetail = useCheckInstalled({
-    pluginIds: pluginId ? [pluginId] : [],
-    enabled: Boolean(pluginId),
-  })
+  const pluginDetail = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: pluginId ? [pluginId] : [],
+      enabled: Boolean(pluginId),
+    }),
+  )
   const formData = useMemo(() => {
     const paramNameList = (currentStrategy?.parameters || []).map((item) => item.name)
     const res = Object.fromEntries(
@@ -120,6 +128,12 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   const onFormChange = (value: Record<string, unknown>) => {
     const res: ResourceVarInputs = { ...inputs.agent_parameters }
     Object.entries(value).forEach(([key, val]) => {
+      const parameter = currentStrategy?.parameters?.find((param) => param.name === key)
+      const isEmptySelector = val === null || val === '' || (Array.isArray(val) && val.length === 0)
+      if (parameter?.type === FormTypeEnum.any && !parameter.required && isEmptySelector) {
+        delete res[key]
+        return
+      }
       res[key] = {
         type: getParamVarType(key),
         value: val,
@@ -239,7 +253,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     },
     [inputs, setInputs],
   )
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
   return {
     readOnly,
     inputs,
@@ -256,7 +270,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     availableNodesWithParent,
     outputSchema,
     handleMemoryChange,
-    isChatMode,
+    isChatflow,
   }
 }
 

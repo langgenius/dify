@@ -1,33 +1,22 @@
 import type { TriggerWithProvider } from '../../types'
 import type { Event } from '@/app/components/tools/types'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { Theme } from '@/types/app'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as render,
+} from '@/test/console/query-data'
+import {
+  createTriggerEventResponseFixture,
+  createTriggerProviderResponseFixture,
+  seedTriggerPlugins,
+} from '@/test/console/trigger-plugins'
 import TriggerPluginActionItem from '../action-item'
 import TriggerPluginItem from '../item'
 import TriggerPluginList from '../list'
-
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: vi.fn(),
-}))
-
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: vi.fn(),
-}))
-
-const mockUseGetLanguage = vi.mocked(useGetLanguage)
-const mockUseTheme = vi.mocked(useTheme)
-const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
 
 const createEvent = (name: string, label: string): Event => ({
   name,
@@ -89,11 +78,6 @@ const createTriggerProvider = (
 describe('trigger plugin selector components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseGetLanguage.mockReturnValue('en_US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<
-      typeof useAllTriggerPlugins
-    >)
   })
 
   it('should select trigger plugin action items with default params and preview details', async () => {
@@ -236,17 +220,28 @@ describe('trigger plugin selector components', () => {
 
   it('should filter trigger plugins and report whether content exists', async () => {
     const onContentStateChange = vi.fn()
-    mockUseAllTriggerPlugins.mockReturnValue({
-      data: [
-        createTriggerProvider(),
-        createTriggerProvider({
-          id: 'empty-provider',
-          name: 'empty-provider',
-          label: { en_US: 'Empty Provider', zh_Hans: 'Empty Provider' },
-          events: [],
-        }),
-      ],
-    } as ReturnType<typeof useAllTriggerPlugins>)
+    const queryClient = createConsoleQueryClient()
+    seedTriggerPlugins(queryClient, [
+      createTriggerProviderResponseFixture({
+        name: 'trigger-provider',
+        plugin_id: 'trigger-plugin-1',
+        label: { en_US: 'Trigger Provider', zh_Hans: 'Trigger Provider' },
+        events: [
+          createTriggerEventResponseFixture({
+            name: 'on_message',
+            identity: {
+              author: 'Dify',
+              name: 'on_message',
+              label: { en_US: 'On Message', zh_Hans: 'On Message' },
+            },
+          }),
+        ],
+      }),
+      createTriggerProviderResponseFixture({
+        name: 'empty-provider',
+        label: { en_US: 'Empty Provider', zh_Hans: 'Empty Provider' },
+      }),
+    ])
 
     const { rerender } = render(
       <TriggerPluginList
@@ -254,6 +249,7 @@ describe('trigger plugin selector components', () => {
         onSelect={vi.fn()}
         onContentStateChange={onContentStateChange}
       />,
+      { queryClient },
     )
 
     expect(screen.getByText('Trigger Provider')).toBeInTheDocument()

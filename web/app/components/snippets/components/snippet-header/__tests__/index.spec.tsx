@@ -1,5 +1,6 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { expectLoadingButton } from '@/test/button'
 import SnippetHeader from '..'
 
@@ -10,7 +11,6 @@ vi.mock('@/app/components/workflow/header', () => ({
         data-testid="workflow-header"
         data-show-env={String(props.normal?.controls?.showEnvButton ?? true)}
         data-show-global-variable={String(props.normal?.controls?.showGlobalVariableButton ?? true)}
-        data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
       >
         {props.normal?.components?.title}
         {props.normal?.components?.left}
@@ -30,63 +30,40 @@ describe('SnippetHeader', () => {
     vi.clearAllMocks()
   })
 
-  it('should configure workflow header slots and hide workflow-only controls', () => {
-    render(
-      <SnippetHeader
-        snippetId="snippet-1"
-        canSave
-        canEdit
-        isPublishing={false}
-        onPublish={mockPublish}
-      />,
+  it('configures snippet-specific controls and publishes only while editable', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <SnippetHeader canSave canEdit isPublishing={false} onPublish={mockPublish} />,
     )
 
     const header = screen.getByTestId('workflow-header')
     expect(header).toHaveAttribute('data-show-env', 'false')
     expect(header).toHaveAttribute('data-show-global-variable', 'false')
-    expect(header).toHaveAttribute('data-history-url', '/snippets/snippet-1/workflow-runs')
-    expect(screen.getByRole('button', { name: /snippet\.publishButton/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /snippet\.testRunButton/i })).toBeInTheDocument()
-    expect(screen.queryByText('snippet.viewOnly')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /snippet\.edit/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /snippet\.exitEditing/i })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
+    expect(mockPublish).toHaveBeenCalledOnce()
+    rerender(<SnippetHeader canSave canEdit={false} isPublishing={false} onPublish={mockPublish} />)
+    expect(
+      screen.queryByRole('button', { name: /snippet\.publishButton/i }),
+    ).not.toBeInTheDocument()
   })
 
-  it('should publish from the primary header action', () => {
-    render(
-      <SnippetHeader
-        snippetId="snippet-1"
-        canSave
-        canEdit
-        isPublishing={false}
-        onPublish={mockPublish}
-      />,
-    )
+  it('should disable publish when the current graph has no nodes', async () => {
+    const user = userEvent.setup()
+    render(<SnippetHeader canSave={false} canEdit isPublishing={false} onPublish={mockPublish} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /snippet\.publishButton/i }))
-
-    expect(mockPublish).toHaveBeenCalledTimes(1)
+    const publish = screen.getByRole('button', { name: /snippet\.publishButton/i })
+    expect(publish).toBeDisabled()
+    await user.click(publish)
+    expect(mockPublish).not.toHaveBeenCalled()
   })
 
-  it('should disable publish when the current graph has no nodes', () => {
-    render(
-      <SnippetHeader
-        snippetId="snippet-1"
-        canSave={false}
-        canEdit
-        isPublishing={false}
-        onPublish={mockPublish}
-      />,
-    )
+  it('should show publish loading state while publishing', async () => {
+    const user = userEvent.setup()
+    render(<SnippetHeader canSave canEdit isPublishing onPublish={mockPublish} />)
 
-    expect(screen.getByRole('button', { name: /snippet\.publishButton/i })).toBeDisabled()
-  })
-
-  it('should show publish loading state while publishing', () => {
-    render(
-      <SnippetHeader snippetId="snippet-1" canSave canEdit isPublishing onPublish={mockPublish} />,
-    )
-
-    expectLoadingButton(screen.getByRole('button', { name: /snippet\.publishButton/i }))
+    const publish = screen.getByRole('button', { name: /snippet\.publishButton/i })
+    expectLoadingButton(publish)
+    await user.click(publish)
+    expect(mockPublish).not.toHaveBeenCalled()
   })
 })

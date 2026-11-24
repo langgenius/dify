@@ -12,6 +12,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiDeleteBinLine, RiEqualizer2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
@@ -22,6 +23,7 @@ import { OperationButton } from '@/app/components/app/configuration/base/operati
 import AppIcon from '@/app/components/base/app-icon'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import {
   addDefaultValue,
   toolParametersToFormSchemas,
@@ -29,12 +31,7 @@ import {
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { MAX_TOOLS_NUM } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
+import { consoleQuery } from '@/service/console'
 import { writeTextToClipboard } from '@/utils/clipboard'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
@@ -48,10 +45,22 @@ const AgentTools: FC = () => {
   const { t } = useTranslation(['appDebug', 'common', 'tools'])
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
+  const { data: buildInTools } = useQuery(
+    consoleQuery.workspaces.current.tools.builtin.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: customTools } = useQuery(
+    consoleQuery.workspaces.current.tools.api.get.queryOptions({ select: selectToolsWithProvider }),
+  )
+  const { data: workflowTools } = useQuery(
+    consoleQuery.workspaces.current.tools.workflow.get.queryOptions({
+      select: selectToolsWithProvider,
+    }),
+  )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const collectionList = useMemo(() => {
     const allTools = [
       ...(buildInTools || []),
@@ -81,7 +90,7 @@ const AgentTools: FC = () => {
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = draft.agentConfig.tools.find(
-        (item: any) =>
+        (item) =>
           item.provider_id === currentTool?.provider_id &&
           item.tool_name === currentTool?.tool_name,
       )
@@ -140,7 +149,7 @@ const AgentTools: FC = () => {
     (credentialId: string) => {
       const newModelConfig = produce(modelConfig, (draft) => {
         const tool = draft.agentConfig.tools.find(
-          (item: any) =>
+          (item) =>
             item.provider_id === currentTool?.provider_id &&
             item.tool_name === currentTool?.tool_name,
         )
@@ -163,7 +172,7 @@ const AgentTools: FC = () => {
         noBodySpacing={tools.length === 0}
         title={
           <div className="flex items-center">
-            <h2 id={toolsLabelId} className="mr-1">
+            <h2 id={toolsLabelId} className="me-1">
               {t(($) => $['agent.tools.name'], { ns: 'appDebug' })}
             </h2>
             <Infotip>
@@ -183,7 +192,7 @@ const AgentTools: FC = () => {
             </div>
             {tools.length < MAX_TOOLS_NUM && !readonly && (
               <>
-                <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
+                <div className="ms-3 me-1 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
                   trigger={<OperationButton operation="add" />}
                   isShow={isShowChooseTool}
@@ -192,7 +201,7 @@ const AgentTools: FC = () => {
                   supportAddCustomTool
                   onSelect={handleSelectTool}
                   onSelectMultiple={handleSelectMultipleTool}
-                  selectedTools={tools as unknown as ToolValue[]}
+                  selectedTools={tools as ToolValue[]}
                 />
               </>
             )}
@@ -209,7 +218,7 @@ const AgentTools: FC = () => {
             <div
               key={index}
               className={cn(
-                'cursor group relative flex w-full items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                'cursor group relative flex w-full items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pe-2 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
                 isDeleting === index &&
                   'border-state-destructive-border hover:bg-state-destructive-hover',
               )}
@@ -230,19 +239,22 @@ const AgentTools: FC = () => {
                       <AppIcon
                         className="rounded-md"
                         size="xs"
-                        icon={item.icon?.content}
-                        background={item.icon?.background}
+                        icon={{
+                          icon_type: 'emoji',
+                          icon: item.icon?.content,
+                          icon_background: item.icon?.background,
+                        }}
                       />
                     )}
                   </div>
                 )}
                 <div
                   className={cn(
-                    'ml-1.5 flex w-0 grow items-center truncate system-xs-regular',
+                    'ms-1.5 flex w-0 grow items-center truncate system-xs-regular',
                     item.isDeleted || item.notAuthor || !item.enabled ? 'opacity-50' : '',
                   )}
                 >
-                  <span className="pr-1.5 system-xs-medium text-text-secondary">
+                  <span className="pe-1.5 system-xs-medium text-text-secondary">
                     {getProviderShowName(item)}
                   </span>
                   <span className="text-text-tertiary">{item.tool_label}</span>
@@ -250,7 +262,7 @@ const AgentTools: FC = () => {
                     <Infotip>
                       <InfotipTrigger
                         aria-label={item.tool_name}
-                        className="ml-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                        className="ms-0.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       />
                       <InfotipContent
                         aria-labelledby={`${toolNameLabelId}-${index}`}
@@ -264,7 +276,7 @@ const AgentTools: FC = () => {
                         </div>
                         <button
                           type="button"
-                          className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-left text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="cursor-pointer rounded-sm border-none bg-transparent p-0 text-start text-text-accent outline-hidden hover:underline focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                           onClick={() => void writeTextToClipboard(item.tool_name)}
                         >
                           {t(($) => $.copyToolName, { ns: 'tools' })}
@@ -274,9 +286,9 @@ const AgentTools: FC = () => {
                   )}
                 </div>
               </div>
-              <div className="ml-1 flex shrink-0 items-center">
+              <div className="ms-1 flex shrink-0 items-center">
                 {item.isDeleted && (
-                  <div className="mr-2 flex items-center">
+                  <div className="me-2 flex items-center">
                     <Popover>
                       <PopoverTrigger
                         openOnHover
@@ -284,7 +296,7 @@ const AgentTools: FC = () => {
                         render={
                           <button
                             type="button"
-                            className="mr-1 cursor-pointer rounded-md p-1 outline-hidden hover:bg-black/5 focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                            className="me-1 cursor-pointer rounded-md p-1 hover:bg-black/5"
                           >
                             <span
                               aria-hidden
@@ -316,7 +328,7 @@ const AgentTools: FC = () => {
                   </div>
                 )}
                 {!item.isDeleted && !readonly && (
-                  <div className="mr-2 hidden items-center gap-1 group-hover:flex">
+                  <div className="me-2 hidden items-center gap-1 group-hover:flex">
                     {!item.notAuthor && (
                       <Tooltip>
                         <TooltipTrigger
@@ -399,7 +411,6 @@ const AgentTools: FC = () => {
           toolName={currentTool?.tool_name as string}
           setting={currentTool?.tool_parameters}
           collection={currentTool?.collection as ToolWithProvider}
-          isModel={currentTool?.collection?.type === CollectionType.model}
           onSave={handleToolSettingChange}
           onHide={() => setIsShowSettingTool(false)}
           credentialId={currentTool?.credential_id}

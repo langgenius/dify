@@ -10,7 +10,6 @@ from sqlalchemy import select
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.document_task import DocumentTask
-from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums import CloudPlan, DeploymentEdition
@@ -18,6 +17,9 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
+from services.knowledge.indexing.adapters.execution import build_document_indexing_service
+from services.knowledge.indexing.errors import DocumentIsPausedError
+from services.knowledge.resource_scope import DatasetRef
 from tasks.generate_summary_index_task import generate_summary_index_task
 
 logger = logging.getLogger(__name__)
@@ -107,7 +109,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     # Phase 2: Execute indexing without holding locks from the parsing-status update.
     has_error = False
     try:
-        indexing_runner = IndexingRunner(enforce_vector_space_admission=True)
+        indexing_service = build_document_indexing_service(
+            session_factory=session_factory.get_session_maker(), enforce_vector_space_admission=True
+        )
         with session_factory.create_session() as session:
             dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
@@ -120,8 +124,9 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 ).all()
             )
 
-            indexing_runner.run(documents, session)
+            document_refs = [DatasetRef(doc.tenant_id, doc.dataset_id).document(doc.id) for doc in documents]
             session.commit()
+            indexing_service.run(document_refs)
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Processed dataset: {dataset_id} latency: {end_at - start_at}", fg="green"))
@@ -151,44 +156,45 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     )
 
                     for document in documents:
-                        if document:
+                        logger.info(
+                            "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
+                            document.id,
+                            document.indexing_status,
+                            document.doc_form,
+                            document.need_summary,
+                        )
+                        if (
+                            document.indexing_status == IndexingStatus.COMPLETED
+                            and document.doc_form != IndexStructureType.QA_INDEX
+                            and document.need_summary is True
+                        ):
+                            try:
+                                generate_summary_index_task.delay(dataset.id, document.id, None)
+                                logger.info(
+                                    "Queued summary index generation task for document %s in dataset %s "
+                                    "after indexing completed",
+                                    document.id,
+                                    dataset.id,
+                                )
+                            except Exception:
+                                logger.exception(
+                                    "Failed to queue summary index generation task for document %s",
+                                    document.id,
+                                )
+                                # Don't fail the entire indexing process if summary task queuing fails
+                        else:
                             logger.info(
-                                "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
+                                "Skipping summary generation for document %s: status=%s, doc_form=%s, need_summary=%s",
                                 document.id,
                                 document.indexing_status,
                                 document.doc_form,
                                 document.need_summary,
                             )
-                            if (
-                                document.indexing_status == IndexingStatus.COMPLETED
-                                and document.doc_form != IndexStructureType.QA_INDEX
-                                and document.need_summary is True
-                            ):
-                                try:
-                                    generate_summary_index_task.delay(dataset.id, document.id, None)
-                                    logger.info(
-                                        "Queued summary index generation task for document %s in dataset %s "
-                                        "after indexing completed",
-                                        document.id,
-                                        dataset.id,
-                                    )
-                                except Exception:
-                                    logger.exception(
-                                        "Failed to queue summary index generation task for document %s",
-                                        document.id,
-                                    )
-                                    # Don't fail the entire indexing process if summary task queuing fails
-                            else:
-                                logger.info(
-                                    "Skipping summary generation for document %s: "
-                                    "status=%s, doc_form=%s, need_summary=%s",
-                                    document.id,
-                                    document.indexing_status,
-                                    document.doc_form,
-                                    document.need_summary,
-                                )
-                        else:
-                            logger.warning("Document %s not found after indexing", document.id)
+
+                    found_ids = {document.id for document in documents}
+                    for document_id in document_ids:
+                        if document_id not in found_ids:
+                            logger.warning("Document %s not found after indexing", document_id)
             else:
                 logger.info(
                     "Summary index generation skipped for dataset %s: indexing_technique=%s (not 'high_quality')",

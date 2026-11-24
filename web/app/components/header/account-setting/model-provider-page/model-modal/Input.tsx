@@ -43,7 +43,7 @@ const Input: FC<InputProps> = ({
         id={id}
         tabIndex={0}
         // Do not set autoComplete for security - prevents browser from storing sensitive API keys
-        className={`block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-sm placeholder:text-text-tertiary hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs ${validated ? 'pr-7.5' : ''} ${className || ''} `}
+        className={`block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-sm placeholder:text-text-tertiary hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs ${validated ? 'pe-7.5' : ''} ${className || ''} `}
         placeholder={placeholder || ''}
         onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => toLimit(e.target.value)}
@@ -55,7 +55,7 @@ const Input: FC<InputProps> = ({
         max={max}
       />
       {validated && (
-        <div className="absolute top-2.5 right-2.5">
+        <div className="absolute inset-e-2.5 top-2.5">
           <span
             aria-hidden
             className="i-custom-vender-solid-general-check-circle h-4 w-4 text-[#039855]"

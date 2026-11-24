@@ -5,7 +5,8 @@ from datetime import datetime
 from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
-from libs.helper import build_avatar_url, to_timestamp
+from libs.helper import to_timestamp
+from services.account.avatar_url import build_account_avatar_url
 
 
 class SimpleAccountResponse(ResponseModel):
@@ -15,16 +16,16 @@ class SimpleAccountResponse(ResponseModel):
 
 
 class _AccountAvatarResponseMixin(ResponseModel):
+    id: str
     avatar: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return build_avatar_url(self.avatar)
+        return build_account_avatar_url(avatar=self.avatar, account_id=self.id)
 
 
 class AccountResponse(_AccountAvatarResponseMixin):
-    id: str
     name: str
     email: str
     is_password_set: bool
@@ -41,15 +42,19 @@ class AccountResponse(_AccountAvatarResponseMixin):
         return to_timestamp(value)
 
 
-class AccountWithRoleResponse(_AccountAvatarResponseMixin):
+class MemberRoleSummaryResponse(ResponseModel):
     id: str
+    name: str
+
+
+class AccountWithRoleResponse(_AccountAvatarResponseMixin):
     name: str
     email: str
     last_login_at: int | None = None
     last_active_at: int | None = None
     created_at: int | None = None
     role: str
-    roles: list[dict[str, str]] = Field(default_factory=list)
+    roles: list[MemberRoleSummaryResponse] = Field(default_factory=list)
     status: str
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")

@@ -127,7 +127,8 @@ const renderInputCell = (
       disabled={readonly}
       className={cn(
         'h-6 min-w-0 rounded-none border-0 bg-transparent p-0 shadow-none',
-        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent',
+        // oxlint-disable-next-line shadcn/no-restyle -- The table cell paints an inset focus ring around its full editable area.
+        'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:ring-0',
         'system-sm-regular text-text-secondary placeholder:text-text-quaternary',
       )}
     />
@@ -152,7 +153,7 @@ const renderSelectCell = (
       <SelectTrigger
         size="small"
         className={cn(
-          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 pr-6 pl-0 text-text-secondary',
+          'h-6 w-full min-w-0 rounded-none bg-transparent py-0 ps-0 pe-6 text-text-secondary',
           'hover:bg-transparent focus-visible:bg-transparent',
         )}
       >
@@ -284,11 +285,11 @@ const GenericTable: FC<GenericTableProps> = ({
               <div
                 key={column.key}
                 className={cn(
-                  'flex h-full items-center pl-3',
+                  'flex h-full items-center ps-3',
                   column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
                   // Add right border except for last column
-                  index < columns.length - 1 && 'border-r border-divider-regular',
+                  index < columns.length - 1 && 'border-e border-divider-regular',
                 )}
               >
                 {column.title}
@@ -317,17 +318,17 @@ const GenericTable: FC<GenericTableProps> = ({
                   <div
                     key={column.key}
                     className={cn(
-                      'shrink-0 pl-3',
+                      'shrink-0 ps-3 has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:ring-inset',
                       column.width,
                       // Add right border except for last column
-                      columnIndex < columns.length - 1 && 'border-r border-divider-regular',
+                      columnIndex < columns.length - 1 && 'border-e border-divider-regular',
                     )}
                   >
                     {renderCell(column, row, dataIndex)}
                   </div>
                 ))}
                 {!readonly && dataIndex !== null && hasContent && (
-                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                  <div className="absolute inset-e-2 top-1/2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => removeRow(dataIndex)}

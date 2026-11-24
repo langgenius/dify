@@ -2,11 +2,12 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -31,13 +32,18 @@ export default function AccessRulesBatchAction({
   const { t } = useTranslation(['common', 'permission'])
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [hasDeleteError, setHasDeleteError] = useState(false)
 
   const handleDelete = async () => {
+    if (isDeleting) return
     setIsDeleting(true)
+    setHasDeleteError(false)
 
     try {
       await onDelete()
       setIsDeleteConfirmOpen(false)
+    } catch {
+      setHasDeleteError(true)
     } finally {
       setIsDeleting(false)
     }
@@ -53,7 +59,7 @@ export default function AccessRulesBatchAction({
         })}
         className="pointer-events-auto flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5"
       >
-        <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
+        <div className="inline-flex items-center gap-2 py-1 ps-2 pe-3">
           <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
             {selectedCount}
           </span>
@@ -62,7 +68,14 @@ export default function AccessRulesBatchAction({
           </span>
         </div>
         <Separator decorative orientation="vertical" className="mx-0.5 h-3.5" />
-        <Button variant="ghost" tone="destructive" onClick={() => setIsDeleteConfirmOpen(true)}>
+        <Button
+          variant="ghost"
+          tone="destructive"
+          onClick={() => {
+            setHasDeleteError(false)
+            setIsDeleteConfirmOpen(true)
+          }}
+        >
           <span className="i-ri-delete-bin-line size-4" aria-hidden />
           <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
         </Button>
@@ -78,25 +91,28 @@ export default function AccessRulesBatchAction({
         }}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['accessRule.batchRemoveTitle'], { ns: 'permission' })}
             </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['accessRule.batchRemoveDescription'], {
                 ns: 'permission',
                 count: selectedCount,
               })}
             </AlertDialogDescription>
-          </div>
-          <AlertDialogActions>
+          </AlertDialogHeader>
+          {hasDeleteError && (
+            <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+          )}
+          <AlertDialogFooter>
             <AlertDialogCancelButton disabled={isDeleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={isDeleting} onClick={handleDelete}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

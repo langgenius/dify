@@ -1,4 +1,11 @@
-import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
+import dayjs from 'dayjs'
+import {
+  formatFileSize,
+  formatNumber,
+  formatNumberAbbreviated,
+  formatTime,
+  formatToLocalTime,
+} from './format'
 
 describe('formatNumber', () => {
   it.each([
@@ -20,6 +27,9 @@ describe('formatFileSize', () => {
   ])('formats %s bytes as %s', (input, expected) => {
     expect(formatFileSize(input)).toBe(expected)
   })
+  it('should clamp to PB instead of an undefined unit for very large sizes', () => {
+    expect(formatFileSize(1024 ** 6)).toBe('1024.00 PB')
+  })
 })
 
 describe('formatTime', () => {
@@ -29,6 +39,9 @@ describe('formatTime', () => {
     [3600, '1.00 h'],
   ])('formats %s seconds as %s', (input, expected) => {
     expect(formatTime(input)).toBe(expected)
+  })
+  it('should clamp to hours instead of an undefined unit for very large durations', () => {
+    expect(formatTime(216000)).toBe('60.00 h')
   })
 })
 
@@ -40,5 +53,15 @@ describe('formatNumberAbbreviated', () => {
     [2300000000, '2.3B'],
   ])('abbreviates %s as %s', (input, expected) => {
     expect(formatNumberAbbreviated(input)).toBe(expected)
+  })
+})
+
+describe('formatToLocalTime', () => {
+  it.each([
+    ['ar-TN', 'يناير'],
+    ['lo-LA', 'ມັງກອນ'],
+    ['en-US', 'January'],
+  ] as const)('formats month names in %s', (locale, expectedMonth) => {
+    expect(formatToLocalTime(dayjs('2026-01-15'), locale, 'MMMM')).toBe(expectedMonth)
   })
 })

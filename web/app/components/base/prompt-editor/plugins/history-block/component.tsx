@@ -23,7 +23,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
 }) => {
   const { t } = useTranslation(['common'])
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
-  const [triggerRef, open, setOpen] = useTrigger()
+  const [triggerRef, open, setOpen] = useTrigger<HTMLButtonElement>()
   const { eventEmitter } = useEventEmitterContextContext()
   const [localRoleName, setLocalRoleName] = useState<RoleName>(roleName)
 
@@ -40,31 +40,33 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
 
   return (
     <div
-      className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent pr-0.5 pl-1 text-[#DD2590] hover:bg-[#FCE7F6] ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'} ${isSelected && 'border-[#F670C7]!'} `}
+      className={`group inline-flex h-6 items-center rounded-[5px] border border-transparent ps-1 pe-0.5 text-[#DD2590] hover:bg-[#FCE7F6] ${open ? 'bg-[#FCE7F6]' : 'bg-[#FDF2FA]'} ${isSelected && 'border-[#F670C7]!'} `}
       ref={ref}
     >
       <span
         aria-hidden
-        className="mr-1 i-custom-vender-solid-general-message-clock-circle h-3.5 w-3.5"
+        className="me-1 i-custom-vender-solid-general-message-clock-circle h-3.5 w-3.5"
       />
-      <div className="mr-1 text-xs font-medium">
+      <div className="me-1 text-xs font-medium">
         {t(($) => $['promptEditor.history.item.title'], { ns: 'common' })}
       </div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          nativeButton={false}
           render={
-            <div
+            <button
+              type="button"
+              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={`flex h-4.5 w-4.5 cursor-pointer items-center justify-center rounded ${open ? 'bg-[#DD2590] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'} `}
               ref={triggerRef}
               onClick={(e) => e.preventDefault()}
             >
               <RiMoreFill className="size-3" />
-            </div>
+            </button>
           }
         />
         <PopoverContent
-          placement="top-end"
+          side="top"
+          align="end"
           sideOffset={4}
           alignOffset={-148}
           className="border-none bg-transparent shadow-none"
@@ -75,20 +77,21 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
                 {t(($) => $['promptEditor.history.modal.title'], { ns: 'common' })}
               </div>
               <div className="flex items-center text-sm text-gray-700">
-                <div className="mr-1 w-20 text-xs font-semibold">{localRoleName?.user}</div>
+                <div className="me-1 w-20 text-xs font-semibold">{localRoleName?.user}</div>
                 {t(($) => $['promptEditor.history.modal.user'], { ns: 'common' })}
               </div>
               <div className="flex items-center text-sm text-gray-700">
-                <div className="mr-1 w-20 text-xs font-semibold">{localRoleName?.assistant}</div>
+                <div className="me-1 w-20 text-xs font-semibold">{localRoleName?.assistant}</div>
                 {t(($) => $['promptEditor.history.modal.assistant'], { ns: 'common' })}
               </div>
             </div>
-            <div
-              className="cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-xs text-primary-600"
+            <button
+              type="button"
+              className="w-full cursor-pointer rounded-b-xl border-t border-black/5 px-4 py-3 text-start text-xs text-primary-600"
               onClick={onEditRole}
             >
               {t(($) => $['promptEditor.history.modal.edit'], { ns: 'common' })}
-            </div>
+            </button>
           </div>
         </PopoverContent>
       </Popover>

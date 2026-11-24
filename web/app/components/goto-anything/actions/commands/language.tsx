@@ -1,56 +1,40 @@
 import type { CommandSearchResult } from '../types'
-import type { SlashCommandHandler } from './types'
-import { getI18n } from 'react-i18next'
+import type { CommandContext, SlashCommand } from './types'
 import { languages } from '@/i18n/language'
-import { registerCommands, unregisterCommands } from './command-bus'
 
-// Language dependency types
-type LanguageDeps = {
-  setLocale?: (locale: string) => Promise<void>
-}
-
-const buildLanguageCommands = (query: string): CommandSearchResult[] => {
+const buildLanguageCommands = (query: string, context: CommandContext): CommandSearchResult[] => {
   const q = query.toLowerCase()
   const list = languages.filter(
     (item) =>
       item.supported &&
       (!q || item.name.toLowerCase().includes(q) || String(item.value).toLowerCase().includes(q)),
   )
-  const i18n = getI18n()
   return list.map((item) => ({
     id: `lang-${item.value}`,
     title: item.name,
-    description: i18n.t(($) => $['gotoAnything.actions.languageChangeDesc'], { ns: 'app' }),
+    description: context.t(($) => $['gotoAnything.actions.languageChangeDesc'], {
+      ns: 'app',
+      lng: context.locale,
+    }),
     type: 'command' as const,
-    data: { command: 'i18n.set', args: { locale: item.value } },
+    data: { command: 'language', args: { locale: item.value } },
   }))
 }
 
 /**
  * Language command handler
- * Integrates UI building, search, and registration logic
  */
-export const languageCommand: SlashCommandHandler<LanguageDeps> = {
+export const languageCommand: SlashCommand = {
   name: 'language',
   aliases: ['lang'],
   description: 'Switch between different languages',
-  mode: 'submenu', // Explicitly set submenu mode
-
-  search(args: string, _locale: string = 'en') {
-    // Return language options directly, regardless of parameters
-    return buildLanguageCommands(args)
+  mode: 'submenu',
+  async execute(args, context) {
+    const language = languages.find((item) => item.supported && item.value === args.locale)
+    if (language) await context.setLocale(language.value)
   },
 
-  register(deps: LanguageDeps) {
-    registerCommands({
-      'i18n.set': async (args) => {
-        const locale = args?.locale
-        if (locale) await deps.setLocale?.(locale)
-      },
-    })
-  },
-
-  unregister() {
-    unregisterCommands(['i18n.set'])
+  search(args: string, context) {
+    return buildLanguageCommands(args, context)
   },
 }

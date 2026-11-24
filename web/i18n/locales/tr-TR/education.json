@@ -1,4 +1,5 @@
 {
+  "activateFailed": "Eğitim indiriminiz etkinleştirilemedi. Mevcut eğitim doğrulamanız hâlâ etkin olabilir veya bu e-posta artık uygun değil.",
   "applied.activeSubscription.description": "Aktif bir aboneliğiniz var. Aboneliğinizin süresi dolduktan sonra eğitim indirimini kullanabilirsiniz. Aboneliğinizi <stripeLink>Stripe</stripeLink>'da onaylayın.",
   "applied.noPaymentPermission.description": "Bu çalışma alanında ödeme izniniz yok. Eğitim indirimini kullanmak için lütfen faturalamayı yönetebileceğiniz bir çalışma alanına geçin.",
   "applied.noPaymentPermission.returnHome": "Dify'e geri dön",
@@ -33,8 +34,8 @@
   "notice.alreadyGraduated.expired": "Tam erişim için dilediğiniz zaman ücretli özelliklere yükseltebilirsiniz.",
   "notice.alreadyGraduated.isAboutToExpire": "Mevcut aboneliğiniz hâlâ aktif kalacaktır. Bittiğinde, Sandbox planına geçeceksiniz veya isterseniz her zaman tam erişimi geri kazanmak için yükseltebilirsiniz.",
   "notice.alreadyGraduated.title": "Zaten mezun oldun mu?",
-  "notice.dateFormat": "GG/AA/YYYY",
-  "notice.expired.summary.line1": "Dify'e hala erişebilir ve kullanabilirsiniz.",
+  "notice.dateFormat": "DD/MM/YYYY",
+  "notice.expired.summary.line1": "Dify'e hala erişebilir ve kullanabilirsiniz. ",
   "notice.expired.summary.line2": "Ancak, artık yeni eğitim indirim kuponları için uygun değilsiniz.",
   "notice.expired.title": "Eğitim durumunuzun süresi dolmuştur",
   "notice.isAboutToExpire.summary": "Endişelenmeyin — bu mevcut aboneliğinizi etkilemeyecek, ancak durumunuzu tekrar doğrulamazsanız yenilendiğinde eğitim indirimi almayacaksınız.",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "özel %100 kupon",
   "toVerifiedTip.end": "Dify Profesyonel Planı için.",
   "toVerifiedTip.front": "Artık Eğitim Doğrulandı statüsüne uygun oldunuz. Lütfen süreci tamamlamak ve bir almak için eğitim bilgilerinizi aşağıya girin.",
-  "useEducationDiscount": "Eğitim indirimini kullan"
+  "tooManyAttempts": "Çok fazla deneme. Lütfen daha sonra tekrar deneyin.",
+  "useEducationDiscount": "Eğitim indirimini kullan",
+  "verifyFailed": "Eğitim durumunuz doğrulanamadı. Yakın zamanda doğrulama yaptıysanız mevcut eğitim doğrulamanız hâlâ etkin olabilir. Aksi takdirde lütfen daha sonra tekrar deneyin."
 }

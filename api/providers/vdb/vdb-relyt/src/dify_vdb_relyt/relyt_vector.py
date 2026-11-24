@@ -131,7 +131,7 @@ class RelytVector(BaseVector):
 
         chunks_table_data = []
         with self.client.connect() as conn, conn.begin():
-            for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings):
+            for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings, strict=False):
                 chunks_table_data.append(
                     {
                         "id": chunk_id,
@@ -255,9 +255,9 @@ class RelytVector(BaseVector):
         filter_condition = ""
         if filter is not None:
             conditions = [
-                f"metadata->>'{key!r}' in ({', '.join(map(repr, value))})"
+                f"metadata->>'{key}' in ({', '.join(map(repr, value))})"
                 if len(value) > 1
-                else f"metadata->>'{key!r}' = {value[0]!r}"
+                else f"metadata->>'{key}' = {value[0]!r}"
                 for key, value in filter.items()
             ]
             filter_condition = f"WHERE {' AND '.join(conditions)}"
@@ -302,7 +302,9 @@ class RelytVector(BaseVector):
 
 class RelytVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> RelytVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> RelytVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

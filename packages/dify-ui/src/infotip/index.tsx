@@ -1,13 +1,11 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { hintPopupClassName, positionerClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconClassNames = {
   question: 'i-ri-question-line',
@@ -15,14 +13,18 @@ const iconClassNames = {
   warning: 'i-ri-error-warning-line',
 } as const
 
-const iconSizeClassNames = {
-  small: 'size-3',
-  medium: 'size-3.5',
-  large: 'size-4',
+const sizeClassNames = {
+  sm: { trigger: 'size-3 before:-inset-1.5', icon: 'size-3' },
+  md: { trigger: 'size-4 before:-inset-1', icon: 'size-3.5' },
+  lg: { trigger: 'size-4 before:-inset-1', icon: 'size-4' },
 } as const
 
 const Infotip = BasePopover.Root
 const InfotipTitle = BasePopover.Title
+type InfotipActions = BasePopover.Root.Actions
+type InfotipChangeEventReason = BasePopover.Root.ChangeEventReason
+type InfotipChangeEventDetails = BasePopover.Root.ChangeEventDetails
+
 type InfotipProps<Payload = unknown> = BasePopover.Root.Props<Payload>
 type InfotipTitleProps = BasePopover.Title.Props
 
@@ -35,13 +37,13 @@ type InfotipTriggerProps<Payload = unknown> = Omit<
     | { 'aria-label'?: never; 'aria-labelledby': string }
   ) & {
     iconVariant?: keyof typeof iconClassNames
-    iconSize?: keyof typeof iconSizeClassNames
+    size?: keyof typeof sizeClassNames
   }
 
 function InfotipTrigger<Payload = unknown>({
   className,
   iconVariant = 'question',
-  iconSize = 'medium',
+  size = 'md',
   openOnHover = true,
   delay = 300,
   closeDelay = 200,
@@ -61,30 +63,30 @@ function InfotipTrigger<Payload = unknown>({
       className={(state) =>
         cn(
           iconButtonVariants({ variant: null, size: 'xs' }),
-          'shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden hover:text-text-tertiary',
+          sizeClassNames[size].trigger,
+          'relative shrink-0 border-0 bg-transparent text-text-quaternary outline-hidden before:absolute hover:text-text-tertiary',
           resolveClassName(className, state),
         )
       }
     >
-      <span aria-hidden className={cn(iconClassNames[iconVariant], iconSizeClassNames[iconSize])} />
+      <span aria-hidden className={cn(iconClassNames[iconVariant], sizeClassNames[size].icon)} />
     </BasePopover.Trigger>
   )
 }
 
 type InfotipContentProps = Omit<BasePopover.Popup.Props, 'children'> &
-  Pick<BasePopover.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BasePopover.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function InfotipContent({
-  placement = 'top',
+  side = 'top',
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: InfotipContentProps) {
-  const { side, align } = parsePlacement(placement)
   return (
     <BasePopover.Portal>
       <BasePopover.Positioner
@@ -92,7 +94,7 @@ function InfotipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BasePopover.Popup
           {...props}
@@ -106,4 +108,12 @@ function InfotipContent({
 }
 
 export { Infotip, InfotipContent, InfotipTitle, InfotipTrigger }
-export type { InfotipContentProps, InfotipProps, InfotipTitleProps, InfotipTriggerProps }
+export type {
+  InfotipActions,
+  InfotipChangeEventDetails,
+  InfotipChangeEventReason,
+  InfotipContentProps,
+  InfotipProps,
+  InfotipTitleProps,
+  InfotipTriggerProps,
+}

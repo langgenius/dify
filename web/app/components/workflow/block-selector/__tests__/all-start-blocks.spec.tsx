@@ -1,24 +1,25 @@
+import type { TriggerProviderApiEntity } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { TriggerWithProvider } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { CollectionType } from '@/app/components/tools/types'
-import { useAvailableNodesMetaData } from '@/app/components/workflow-app/hooks/use-available-nodes-meta-data'
 import { useGetLanguage } from '@/context/i18n'
-import useTheme from '@/hooks/use-theme'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
-import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
-import { Theme } from '@/types/app'
-import useNodes from '../../store/workflow/use-nodes'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import {
+  createTriggerEventResponseFixture,
+  createTriggerProviderResponseFixture,
+  seedTriggerPlugins,
+} from '@/test/console/trigger-plugins'
+import { createNode } from '../../__tests__/fixtures'
+import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import AllStartBlocks from '../all-start-blocks'
 import { createPlugin } from './factories'
 
-vi.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/context/i18n')>()),
   useGetLanguage: vi.fn(),
 }))
 
@@ -27,103 +28,79 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: vi.fn(),
 }))
 
-vi.mock('@/hooks/use-theme', () => ({
-  default: vi.fn(),
-}))
-
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: vi.fn(),
-  useInvalidateAllTriggerPlugins: vi.fn(),
-}))
-
-vi.mock('@/service/use-plugins', () => ({
-  useFeaturedTriggersRecommendations: vi.fn(),
-}))
-
-vi.mock('../../store/workflow/use-nodes', () => ({
-  default: vi.fn(),
-}))
-
-vi.mock('@/app/components/workflow-app/hooks/use-available-nodes-meta-data', () => ({
-  useAvailableNodesMetaData: vi.fn(),
-}))
-
-vi.mock('@/utils/var', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/utils/var')>()
+// Featured triggers are not under test here; keep the collection request offline.
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
+  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
+  const stubs: Record<string, unknown> = {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+  }
+  const marketplaceClient = new Proxy(actual.marketplaceClient, {
+    get: (target, key, receiver) =>
+      typeof key === 'string' && key in stubs ? stubs[key] : Reflect.get(target, key, receiver),
+  })
   return {
     ...actual,
-    getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
-      const searchParams = new URLSearchParams()
-      Object.entries(params || {}).forEach(([key, value]) => {
-        if (value) searchParams.set(key, value)
-      })
-      const query = searchParams.toString()
-      return `https://marketplace.test${path}${query ? `?${query}` : ''}`
+    marketplaceClient,
+    marketplaceQuery: createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] }),
+  }
+})
+
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_URL_PREFIX: 'https://marketplace.test',
     },
   }
 })
 
 const mockUseGetLanguage = vi.mocked(useGetLanguage)
 const mockUseLocale = vi.mocked(useLocale)
-const mockUseTheme = vi.mocked(useTheme)
 const mockUseMarketplacePlugins = vi.mocked(useMarketplacePlugins)
-const mockUseAllTriggerPlugins = vi.mocked(useAllTriggerPlugins)
-const mockUseInvalidateAllTriggerPlugins = vi.mocked(useInvalidateAllTriggerPlugins)
-const mockUseFeaturedTriggersRecommendations = vi.mocked(useFeaturedTriggersRecommendations)
-const mockUseNodes = vi.mocked(useNodes)
-const mockUseAvailableNodesMetaData = vi.mocked(useAvailableNodesMetaData)
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
-type UseAllTriggerPluginsReturn = ReturnType<typeof useAllTriggerPlugins>
-type UseFeaturedTriggersRecommendationsReturn = ReturnType<
-  typeof useFeaturedTriggersRecommendations
->
 
-const createTriggerProvider = (
-  overrides: Partial<TriggerWithProvider> = {},
-): TriggerWithProvider => ({
-  id: 'provider-1',
-  name: 'provider-one',
-  author: 'Provider Author',
-  description: { en_US: 'desc', zh_Hans: '描述' },
-  icon: 'icon',
-  icon_dark: 'icon-dark',
-  label: { en_US: 'Provider One', zh_Hans: '提供商一' },
-  type: CollectionType.trigger,
-  team_credentials: {},
-  is_team_authorization: false,
-  allow_delete: false,
-  labels: [],
-  plugin_id: 'plugin-1',
-  plugin_unique_identifier: 'plugin-1@1.0.0',
-  meta: { version: '1.0.0' },
-  credentials_schema: [],
-  subscription_constructor: null,
-  subscription_schema: [],
-  supported_creation_methods: [],
-  events: [
-    {
-      name: 'created',
-      author: 'Provider Author',
-      label: { en_US: 'Created', zh_Hans: '创建' },
-      description: { en_US: 'Created event', zh_Hans: '创建事件' },
-      parameters: [],
-      labels: [],
-      output_schema: {},
-    },
-  ],
-  ...overrides,
-})
+const createTriggerProvider = (overrides: Partial<TriggerProviderApiEntity> = {}) =>
+  createTriggerProviderResponseFixture({
+    name: 'provider-one',
+    author: 'Provider Author',
+    description: { en_US: 'desc', zh_Hans: '描述' },
+    icon: 'icon',
+    icon_dark: 'icon-dark',
+    label: { en_US: 'Provider One', zh_Hans: '提供商一' },
+    plugin_id: 'plugin-1',
+    plugin_unique_identifier: 'plugin-1@1.0.0',
+    events: [
+      createTriggerEventResponseFixture({
+        name: 'created',
+        identity: {
+          author: 'Provider Author',
+          name: 'created',
+          label: { en_US: 'Created', zh_Hans: '创建' },
+        },
+        description: { en_US: 'Created event', zh_Hans: '创建事件' },
+      }),
+    ],
+    ...overrides,
+  })
 
+let triggerProviders: ReturnType<typeof createTriggerProviderResponseFixture>[] = []
 let enableMarketplaceForRender = false
-const render = (ui: ReactElement) =>
-  renderWithConsoleQuery(ui, {
+let workflowNodes: ReturnType<typeof createNode>[] = []
+const render = (ui: ReactElement) => {
+  const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: enableMarketplaceForRender },
   })
+  seedTriggerPlugins(queryClient, triggerProviders)
+  return renderWorkflowComponent(ui, { queryClient, initialStoreState: { nodes: workflowNodes } })
+}
 
 const createMarketplacePluginsMock = (
   plugins: ReturnType<typeof createPlugin>[] = [],
@@ -137,66 +114,15 @@ const createMarketplacePluginsMock = (
       : undefined,
   }) as UseMarketplacePluginsReturn
 
-const createTriggerPluginsQueryResult = (data: TriggerWithProvider[]): UseAllTriggerPluginsReturn =>
-  ({
-    data,
-    error: null,
-    isError: false,
-    isPending: false,
-    isLoading: false,
-    isSuccess: true,
-    isFetching: false,
-    isRefetching: false,
-    isLoadingError: false,
-    isRefetchError: false,
-    isInitialLoading: false,
-    isPaused: false,
-    isEnabled: true,
-    status: 'success',
-    fetchStatus: 'idle',
-    dataUpdatedAt: Date.now(),
-    errorUpdatedAt: 0,
-    failureCount: 0,
-    failureReason: null,
-    errorUpdateCount: 0,
-    isFetched: true,
-    isFetchedAfterMount: true,
-    isPlaceholderData: false,
-    isStale: false,
-    refetch: vi.fn(),
-    promise: Promise.resolve(data),
-  }) as UseAllTriggerPluginsReturn
-
-const createFeaturedTriggersRecommendationsMock = (
-  overrides: Partial<UseFeaturedTriggersRecommendationsReturn> = {},
-): UseFeaturedTriggersRecommendationsReturn => ({
-  plugins: [],
-  isLoading: false,
-  ...overrides,
-})
-
-const createAvailableNodesMetaData = (): ReturnType<typeof useAvailableNodesMetaData> =>
-  ({
-    nodes: [],
-  }) as unknown as ReturnType<typeof useAvailableNodesMetaData>
-
 describe('AllStartBlocks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     enableMarketplaceForRender = false
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseLocale.mockReturnValue('en-US')
-    mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
     mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock())
-    mockUseAllTriggerPlugins.mockReturnValue(
-      createTriggerPluginsQueryResult([createTriggerProvider()]),
-    )
-    mockUseInvalidateAllTriggerPlugins.mockReturnValue(vi.fn())
-    mockUseFeaturedTriggersRecommendations.mockReturnValue(
-      createFeaturedTriggersRecommendationsMock(),
-    )
-    mockUseNodes.mockReturnValue([])
-    mockUseAvailableNodesMetaData.mockReturnValue(createAvailableNodesMetaData())
+    triggerProviders = [createTriggerProvider()]
+    workflowNodes = []
   })
 
   // The combined start tab should merge built-in blocks, trigger plugins, and marketplace states.
@@ -218,7 +144,6 @@ describe('AllStartBlocks', () => {
         expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       })
 
-      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
       expect(screen.getByText('Provider One')).toBeInTheDocument()
@@ -276,17 +201,16 @@ describe('AllStartBlocks', () => {
 
     it('should render searched marketplace results after built-in and installed trigger options', async () => {
       enableMarketplaceForRender = true
-      mockUseAllTriggerPlugins.mockReturnValue(
-        createTriggerPluginsQueryResult([
-          createTriggerProvider({
-            label: { en_US: 'Start Provider', zh_Hans: 'Start Provider' },
-          }),
-        ]),
-      )
+      triggerProviders = [
+        createTriggerProvider({
+          label: { en_US: 'Start Provider', zh_Hans: 'Start Provider' },
+        }),
+      ]
       mockUseMarketplacePlugins.mockReturnValue(
         createMarketplacePluginsMock([
           createPlugin({
             name: 'start-marketplace',
+            plugin_id: 'plugin-2',
             label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
           }),
         ]),
@@ -311,17 +235,32 @@ describe('AllStartBlocks', () => {
       expect(screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })).toHaveLength(1)
     })
 
+    it('shows installed triggers once and keeps other marketplace results available', async () => {
+      enableMarketplaceForRender = true
+      mockUseMarketplacePlugins.mockReturnValue(
+        createMarketplacePluginsMock([
+          createPlugin({ plugin_id: 'plugin-1', label: { en_US: 'Installed Marketplace' } }),
+          createPlugin({ plugin_id: 'plugin-2', label: { en_US: 'Available Marketplace' } }),
+        ]),
+      )
+
+      render(
+        <AllStartBlocks
+          searchText="provider"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.TriggerPlugin]}
+        />,
+      )
+
+      expect(await screen.findByText('Provider One')).toBeInTheDocument()
+      expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
+      expect(screen.getByText('Available Marketplace')).toBeInTheDocument()
+    })
+
     it('should show the user input conflict state without allowing another start selection', () => {
       const onSelect = vi.fn()
       enableMarketplaceForRender = true
-      mockUseNodes.mockReturnValue([
-        {
-          id: 'start',
-          data: {
-            type: BlockEnum.Start,
-          },
-        },
-      ] as never)
+      workflowNodes = [createNode({ id: 'start', data: { type: BlockEnum.Start } })]
 
       render(
         <AllStartBlocks
@@ -386,7 +325,7 @@ describe('AllStartBlocks', () => {
   // Empty filter states should surface the request-to-community fallback.
   describe('Filtered Empty State', () => {
     it('should show the no-results state immediately when marketplace search is unavailable', () => {
-      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
+      triggerProviders = []
 
       render(
         <AllStartBlocks
@@ -404,7 +343,7 @@ describe('AllStartBlocks', () => {
 
     it('should query marketplace and show the no-results state when filters have no matches', async () => {
       enableMarketplaceForRender = true
-      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
+      triggerProviders = []
 
       render(
         <AllStartBlocks
@@ -440,7 +379,7 @@ describe('AllStartBlocks', () => {
 
     it('should debounce marketplace requests across search and tag changes', async () => {
       enableMarketplaceForRender = true
-      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
+      triggerProviders = []
 
       const props = {
         onSelect: vi.fn(),

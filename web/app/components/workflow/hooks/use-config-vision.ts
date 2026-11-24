@@ -1,10 +1,11 @@
 import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { Resolution } from '@/types/app'
-import { useIsChatMode } from './use-workflow'
 
 type Payload = {
   enabled: boolean
@@ -29,7 +30,7 @@ const useConfigVision = (
     model: model.name,
   })
 
-  const isChatMode = useIsChatMode()
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const getIsVisionModel = useCallback(() => {
     return !!currModel?.features?.includes(ModelFeatureEnum.vision)
@@ -41,7 +42,7 @@ const useConfigVision = (
     (enabled: boolean) => {
       const newPayload = produce(payload, (draft) => {
         draft.enabled = enabled
-        if (enabled && isChatMode) {
+        if (enabled && isChatflow) {
           draft.configs = {
             detail: Resolution.high,
             variable_selector: ['sys', 'files'],
@@ -52,7 +53,7 @@ const useConfigVision = (
       })
       onChange(newPayload)
     },
-    [isChatMode, onChange, payload],
+    [isChatflow, onChange, payload],
   )
 
   const handleVisionResolutionChange = useCallback(

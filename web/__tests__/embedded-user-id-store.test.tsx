@@ -10,21 +10,21 @@ const navigationMocks = vi.hoisted(() => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-const useGetWebAppAccessModeByCodeMock = vi.hoisted(() => vi.fn())
+const webAppAccessModeQueryOptionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   usePathname: navigationMocks.usePathname,
   useSearchParams: navigationMocks.useSearchParams,
 }))
 
-vi.mock('@/service/use-share', () => ({
-  useGetWebAppAccessModeByCode: (...args: unknown[]) => useGetWebAppAccessModeByCodeMock(...args),
+vi.mock('@/service/share-queries', () => ({
+  webAppAccessModeQueryOptions: (...args: unknown[]) => webAppAccessModeQueryOptionsMock(...args),
 }))
 
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: (...args: any[]) =>
+  getProcessedSystemVariablesFromUrlParams: (...args: unknown[]) =>
     mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 
@@ -39,27 +39,7 @@ const TestConsumer = () => {
   )
 }
 
-const initialWebAppStore = (() => {
-  const snapshot = useWebAppStore.getState()
-  return {
-    shareCode: null as string | null,
-    appInfo: null,
-    appParams: null,
-    webAppAccessMode: snapshot.webAppAccessMode,
-    appMeta: null,
-    userCanAccessApp: false,
-    embeddedUserId: null,
-    embeddedConversationId: null,
-    updateShareCode: snapshot.updateShareCode,
-    updateAppInfo: snapshot.updateAppInfo,
-    updateAppParams: snapshot.updateAppParams,
-    updateWebAppAccessMode: snapshot.updateWebAppAccessMode,
-    updateWebAppMeta: snapshot.updateWebAppMeta,
-    updateUserCanAccessApp: snapshot.updateUserCanAccessApp,
-    updateEmbeddedUserId: snapshot.updateEmbeddedUserId,
-    updateEmbeddedConversationId: snapshot.updateEmbeddedConversationId,
-  }
-})()
+const initialWebAppStore = useWebAppStore.getInitialState()
 
 beforeEach(() => {
   mockGetProcessedSystemVariablesFromUrlParams.mockReset()
@@ -67,11 +47,12 @@ beforeEach(() => {
   navigationMocks.usePathname.mockReturnValue('/chatbot/sample-app')
   navigationMocks.useSearchParams.mockReset()
   navigationMocks.useSearchParams.mockReturnValue(new URLSearchParams())
-  useGetWebAppAccessModeByCodeMock.mockReset()
-  useGetWebAppAccessModeByCodeMock.mockReturnValue({
-    isLoading: false,
-    data: { accessMode: AccessMode.PUBLIC },
-  })
+  webAppAccessModeQueryOptionsMock.mockReset()
+  webAppAccessModeQueryOptionsMock.mockImplementation((code: string | null) => ({
+    queryKey: ['webapp-access-mode', code],
+    queryFn: () => ({ accessMode: AccessMode.PUBLIC }),
+    initialData: { accessMode: AccessMode.PUBLIC },
+  }))
   useWebAppStore.setState(initialWebAppStore, true)
 })
 
@@ -89,15 +70,13 @@ describe('WebAppStoreProvider embedded user id handling', () => {
     const { wrapper: Wrapper } = createConsoleQueryWrapper()
 
     try {
-      expect(() =>
-        renderToString(
-          <Wrapper>
-            <WebAppStoreProvider>
-              <div />
-            </WebAppStoreProvider>
-          </Wrapper>,
-        ),
-      ).not.toThrow()
+      renderToString(
+        <Wrapper>
+          <WebAppStoreProvider>
+            <div />
+          </WebAppStoreProvider>
+        </Wrapper>,
+      )
     } finally {
       Object.defineProperty(globalThis, 'window', {
         configurable: true,
@@ -105,7 +84,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       })
     }
 
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
+    expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith('redirected-app')
   })
 
   it('does not derive a share code from an external redirect target', () => {
@@ -121,7 +100,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       </WebAppStoreProvider>,
     )
 
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+    expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith(null)
   })
 
   it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
@@ -136,7 +115,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
         </WebAppStoreProvider>,
       )
 
-      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+      expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith(null)
     },
   )
 
@@ -156,8 +135,6 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       expect(screen.getByTestId('embedded-user-id')).toHaveTextContent('iframe-user-123')
       expect(screen.getByTestId('embedded-conversation-id')).toHaveTextContent('conversation-456')
     })
-    expect(useWebAppStore.getState().embeddedUserId).toBe('iframe-user-123')
-    expect(useWebAppStore.getState().embeddedConversationId).toBe('conversation-456')
   })
 
   it('clears embedded user id when system variable is absent', async () => {
@@ -178,7 +155,5 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       expect(screen.getByTestId('embedded-user-id')).toHaveTextContent('null')
       expect(screen.getByTestId('embedded-conversation-id')).toHaveTextContent('null')
     })
-    expect(useWebAppStore.getState().embeddedUserId).toBeNull()
-    expect(useWebAppStore.getState().embeddedConversationId).toBeNull()
   })
 })

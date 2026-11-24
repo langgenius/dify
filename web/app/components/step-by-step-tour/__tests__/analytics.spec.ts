@@ -7,10 +7,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 describe('step-by-step tour analytics', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('tracks the unified event with scalar properties only', () => {
     trackStepByStepTourEvent({
       action: 'task_completed',
@@ -32,7 +28,7 @@ describe('step-by-step tour analytics', () => {
   })
 
   it('omits undefined optional properties', () => {
-    trackStepByStepTourEvent({ action: 'tour_enabled' })
+    trackStepByStepTourEvent({ action: 'tour_enabled', task_id: undefined })
 
     expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', { action: 'tour_enabled' })
   })

@@ -1,4 +1,5 @@
 {
+  "activateFailed": "無法啟用教育優惠。您目前的教育驗證可能仍在有效期內，或此電子郵件已不符合驗證資格。",
   "applied.activeSubscription.description": "你目前有生效中的訂閱。訂閱到期後即可使用教育優惠。請前往 <stripeLink>Stripe</stripeLink> 確認你的訂閱。",
   "applied.noPaymentPermission.description": "你沒有此工作空間的付款權限。請切換到你可以管理帳單的工作空間，以使用教育優惠。",
   "applied.noPaymentPermission.returnHome": "返回 Dify",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "獨家 100% 優惠券",
   "toVerifiedTip.end": "用於 Dify 專業計劃。",
   "toVerifiedTip.front": "您現在符合教育驗證狀態的資格。請在下面輸入您的教育資訊以完成此流程並獲得一個",
-  "useEducationDiscount": "使用教育優惠"
+  "tooManyAttempts": "嘗試次數過多，請稍後再試。",
+  "useEducationDiscount": "使用教育優惠",
+  "verifyFailed": "無法驗證您的教育身分。如果您最近完成過驗證，目前的教育驗證可能仍在有效期內；否則請稍後重試。"
 }

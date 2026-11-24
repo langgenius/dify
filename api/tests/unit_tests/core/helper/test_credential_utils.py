@@ -1,4 +1,4 @@
-from typing import cast
+from typing import NoReturn, cast
 
 import pytest
 from pytest_mock import MockerFixture
@@ -172,7 +172,7 @@ def test_is_credential_exists_uses_configured_session_factory_without_flask_app_
 ) -> None:
     class RaisingDB:
         @property
-        def engine(self):
+        def engine(self) -> NoReturn:
             raise RuntimeError("Working outside of application context.")
 
     _persist_credential(sqlite_session, PluginCredentialType.MODEL)

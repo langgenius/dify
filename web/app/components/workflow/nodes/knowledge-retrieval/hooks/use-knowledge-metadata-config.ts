@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -13,12 +13,11 @@ import { useCallback } from 'react'
 import { v4 as uuid4 } from 'uuid'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
-import { AppModeEnum } from '@/types/app'
 import { ComparisonOperator, LogicalOperator, MetadataFilteringVariableType } from '../types'
 
 type Params = {
   id: string
-  inputRef: MutableRefObject<KnowledgeRetrievalNodeType>
+  inputRef: RefObject<KnowledgeRetrievalNodeType>
   setInputs: (inputs: KnowledgeRetrievalNodeType) => void
 }
 
@@ -115,7 +114,7 @@ const useKnowledgeMetadataConfig = ({ id, inputRef, setInputs }: Params) => {
         draft.metadata_model_config = {
           provider: model.provider,
           name: model.modelId,
-          mode: model.mode || AppModeEnum.CHAT,
+          mode: model.mode || 'chat',
           completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
         }
       })

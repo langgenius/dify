@@ -7,12 +7,11 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -38,7 +37,6 @@ from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import DeploymentEdition
 from extensions import ext_hosting_provider
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -64,12 +62,14 @@ from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
 
 if TYPE_CHECKING:
+    from core.hosting_configuration import HostingProvider, HostingQuota
     from graphon.model_runtime.protocols.runtime import ModelRuntime
-    from models.account import Account
+    from services.credit_pool_service import CreditPoolBalance
 
 logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_provider_configuration_cache_rows_adapter: TypeAdapter[list[Any]] = TypeAdapter(list[Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
 _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
@@ -113,8 +113,7 @@ class _ProviderModelCacheEntry:
     encrypted_config: str | None
 
     @classmethod
-    def from_record(cls, record: ProviderModel) -> _ProviderModelCacheEntry:
-        credential = record.__dict__.get("credential")
+    def from_record(cls, record: ProviderModel, credential: ProviderModelCredential | None) -> _ProviderModelCacheEntry:
         return cls(
             id=record.id,
             provider_name=record.provider_name,
@@ -357,9 +356,7 @@ class _ProviderConfigurationSourceCache:
                 return None, version
 
             cached_text = cached_records.decode("utf-8") if isinstance(cached_records, bytes) else cached_records
-            rows = json.loads(cached_text)
-            if not isinstance(rows, list):
-                return None, version
+            rows = _provider_configuration_cache_rows_adapter.validate_json(cached_text)
 
             return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)], version
         except Exception:
@@ -443,33 +440,38 @@ def _get_cached_or_load_records[T: _CacheEntry](
     return records
 
 
-def _attach_active_credentials(
-    *,
-    session: Any,
-    records: Sequence[Provider | ProviderModel],
-    credential_model_cls: type[ProviderCredential | ProviderModelCredential],
-) -> None:
-    credential_ids = [record.credential_id for record in records if getattr(record, "credential_id", None)]
-    if not credential_ids:
-        return
+def _load_provider_model_credentials(
+    *, session: Session, provider_models: Sequence[ProviderModel]
+) -> dict[str, ProviderModelCredential]:
+    """Load the credentials referenced by ``provider_models`` through the caller's session.
 
-    credentials = session.scalars(select(credential_model_cls).where(credential_model_cls.id.in_(credential_ids))).all()
-    credential_by_id = {credential.id: credential for credential in credentials}
-    for record in records:
-        if getattr(record, "credential_id", None):
-            record.__dict__["credential"] = credential_by_id.get(record.credential_id)
+    Precondition: ``session`` is open.
+    Postcondition: the result maps each credential ID that still exists to its row.
+    """
+    credential_ids = [
+        provider_model.credential_id for provider_model in provider_models if provider_model.credential_id
+    ]
+    if not credential_ids:
+        return {}
+
+    credentials = session.scalars(
+        select(ProviderModelCredential).where(ProviderModelCredential.id.in_(credential_ids))
+    ).all()
+    return {credential.id: credential for credential in credentials}
 
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
-        _attach_active_credentials(
-            session=session,
-            records=provider_models,
-            credential_model_cls=ProviderModelCredential,
-        )
-        return [_ProviderModelCacheEntry.from_record(provider_model) for provider_model in provider_models]
+        credentials = _load_provider_model_credentials(session=session, provider_models=provider_models)
+        return [
+            _ProviderModelCacheEntry.from_record(
+                provider_model,
+                credentials.get(provider_model.credential_id) if provider_model.credential_id else None,
+            )
+            for provider_model in provider_models
+        ]
 
 
 def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_TenantPreferredModelProviderCacheEntry]:
@@ -557,6 +559,58 @@ _PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSourc
 )
 
 
+def _resolve_quota_configuration(
+    *,
+    provider_quota: HostingQuota,
+    hosting_provider: HostingProvider,
+    provider_record: Provider | None,
+    credit_pool_type: ProviderQuotaType,
+    credit_pool: CreditPoolBalance,
+) -> QuotaConfiguration | None:
+    """Return the quota entry this workspace can spend, or ``None`` when the bucket is unusable.
+
+    Hosted trial and paid balances live in the billing credit pool, and the workspace plan
+    selects exactly one of those buckets. The local ``Provider`` rows are legacy mirrors that
+    carry no balance, so they must never be surfaced as a hosted quota source; only the
+    third-party free bucket still reads its own row.
+    """
+    quota_unit = hosting_provider.quota_unit or QuotaUnit.TOKENS
+    if provider_quota.quota_type == ProviderQuotaType.FREE:
+        if provider_record is None:
+            return QuotaConfiguration(
+                quota_type=provider_quota.quota_type,
+                quota_unit=quota_unit,
+                quota_used=0,
+                quota_limit=0,
+                is_valid=False,
+                restrict_models=provider_quota.restrict_models,
+            )
+        if provider_record.quota_used is None:
+            raise ValueError("quota_used is None")
+        if provider_record.quota_limit is None:
+            raise ValueError("quota_limit is None")
+        return QuotaConfiguration(
+            quota_type=provider_quota.quota_type,
+            quota_unit=quota_unit,
+            quota_used=provider_record.quota_used,
+            quota_limit=provider_record.quota_limit,
+            is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
+            restrict_models=provider_quota.restrict_models,
+        )
+
+    if provider_quota.quota_type != credit_pool_type:
+        return None
+
+    return QuotaConfiguration(
+        quota_type=provider_quota.quota_type,
+        quota_unit=quota_unit,
+        quota_used=credit_pool.quota_used,
+        quota_limit=credit_pool.quota_limit,
+        is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
+        restrict_models=provider_quota.restrict_models,
+    )
+
+
 class ProviderManager:
     """
     ProviderManager manages tenant-scoped model provider configuration.
@@ -619,8 +673,8 @@ class ProviderManager:
           (1. Whether to enable (support) hosting type, if enabled, the following information exists
           (2. List of hosting type provider configurations
               (including quota type, quota limit, current remaining quota, etc.)
-          (3. The current hosting type in use (whether there is a quota or not)
-              paid quotas > provider free quotas > hosting trial quotas
+          (3. The hosting type currently in use (whether there is a quota or not)
+              the workspace plan selects the credit pool bucket
           (4. Unified credentials for hosting providers
         3. Custom configuration information, including:
           (1. Whether to enable (support) custom type, if enabled, the following information exists
@@ -651,11 +705,6 @@ class ProviderManager:
 
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
-
-        # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self._init_trial_provider_records(
-            tenant_id, provider_name_to_provider_records_dict
-        )
 
         # append providers with langgenius/openai/openai
         provider_name_list = list(provider_name_to_provider_records_dict.keys())
@@ -849,7 +898,7 @@ class ProviderManager:
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
-        Get default model.
+        Get the configured default model, or None when no default is saved.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -859,37 +908,18 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
-
-        # If it does not exist, get the first available provider model from get_configurations
-        # and update the TenantDefaultModel record
-        if not default_model:
-            # Get provider configurations
-            provider_configurations = self.get_configurations(tenant_id)
-
-            # get available models from provider_configurations
-            available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
-
-            if available_models:
-                available_model = available_models[0]
-
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type,
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
-                db.session.add(default_model)
-                db.session.commit()
-
-        if not default_model:
-            return None
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
+            if not default_model:
+                return None
+            provider_name = default_model.provider_name
+            model_name = default_model.model_name
 
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
+        provider_schema = model_provider_factory.get_provider_schema(provider=provider_name)
 
         return DefaultModelEntity(
-            model=default_model.model_name,
+            model=model_name,
             model_type=model_type,
             provider=DefaultModelProviderEntity(
                 provider=provider_schema.provider,
@@ -900,17 +930,17 @@ class ProviderManager:
         )
 
     def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
-        """
-        Get names of first model and its provider
+        """Return the first active model of the requested type in this workspace.
 
-        :param tenant_id: workspace id
-        :param model_type: model type
-        :return: provider name, model name
+        Precondition: ``tenant_id`` identifies the workspace whose provider catalog
+        is being read. Postcondition: a returned provider/model pair is active in
+        that catalog; if none is active, return ``(None, None)``. This read does not
+        create or update the workspace's saved default model.
         """
         provider_configurations = self.get_configurations(tenant_id)
 
         # get available models from provider_configurations
-        all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+        all_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
         if not all_models:
             return None, None
@@ -935,24 +965,23 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        with session_factory.create_session() as session, session.begin():
+            default_model = session.scalar(stmt)
 
-        # create or update TenantDefaultModel record
-        if default_model:
-            # update default model
-            default_model.provider_name = provider
-            default_model.model_name = model
-            db.session.commit()
-        else:
-            # create default model
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type,
-                provider_name=provider,
-                model_name=model,
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            # create or update TenantDefaultModel record
+            if default_model:
+                # update default model
+                default_model.provider_name = provider
+                default_model.model_name = model
+            else:
+                # create default model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=provider,
+                    model_name=model,
+                )
+                session.add(default_model)
 
         return default_model
 
@@ -1004,13 +1033,12 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
-            providers = list(session.scalars(stmt))
-            _attach_active_credentials(
-                session=session,
-                records=providers,
-                credential_model_cls=ProviderCredential,
+            stmt = (
+                select(Provider)
+                .where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
+                .options(selectinload(Provider.credential))
             )
+            providers = list(session.scalars(stmt))
             for provider in providers:
                 # Use provider name with prefix after the data migration
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
@@ -1163,50 +1191,6 @@ class ProviderManager:
         return provider_names
 
     @staticmethod
-    def get_provider_available_credentials(
-        tenant_id: str,
-        provider_name: str,
-        user: Account | None = None,
-    ) -> list[CredentialConfiguration]:
-        """
-        Get provider all credentials, filtered by visibility.
-
-        :param tenant_id: workspace id
-        :param provider_name: provider name
-        :param user: current user (id + admin flag drive the visibility filter)
-        :return:
-        """
-        from models.credential_permission import CredentialType as CredPermType
-        from services.credential_permission_service import CredentialPermissionService
-
-        with session_factory.create_session() as session:
-            stmt = (
-                select(ProviderCredential)
-                .where(
-                    ProviderCredential.tenant_id == tenant_id,
-                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
-                )
-                .order_by(ProviderCredential.created_at.desc())
-            )
-
-            if user is not None:
-                stmt = CredentialPermissionService.apply_visibility_filter(
-                    stmt,
-                    model_id_column=ProviderCredential.id,
-                    model_user_id_column=ProviderCredential.user_id,
-                    model_visibility_column=ProviderCredential.visibility,
-                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
-                    user=user,
-                )
-
-            available_credentials = session.scalars(stmt).all()
-
-        return [
-            CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
-            for credential in available_credentials
-        ]
-
-    @staticmethod
     def get_provider_model_available_credentials(
         tenant_id: str, provider_name: str, model_name: str, model_type: str
     ) -> list[CredentialConfiguration]:
@@ -1237,75 +1221,6 @@ class ProviderManager:
             CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
             for credential in available_credentials
         ]
-
-    @staticmethod
-    def _init_trial_provider_records(
-        tenant_id: str, provider_name_to_provider_records_dict: dict[str, list[Provider]]
-    ) -> dict[str, list[Provider]]:
-        """
-        Initialize trial provider records if not exists.
-
-        :param tenant_id: workspace id
-        :param provider_name_to_provider_records_dict: provider name to provider records dict
-        :return:
-        """
-        # Get hosting configuration
-        hosting_configuration = ext_hosting_provider.hosting_configuration
-
-        for provider_name, configuration in hosting_configuration.provider_map.items():
-            if not configuration.enabled:
-                continue
-
-            provider_records = provider_name_to_provider_records_dict.get(provider_name)
-            if not provider_records:
-                provider_records = []
-
-            provider_quota_to_provider_record_dict = {}
-            for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM:
-                    continue
-
-                if provider_record.quota_type is not None:
-                    provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
-
-            for quota in configuration.quotas:
-                if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
-                    # Init trial provider records if not exists
-                    if quota.quota_type not in provider_quota_to_provider_record_dict:
-                        try:
-                            # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
-                            new_provider_record = Provider(
-                                tenant_id=tenant_id,
-                                # TODO: Use provider name with prefix after the data migration.
-                                provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,  # type: ignore[arg-type]
-                                quota_limit=0,  # type: ignore
-                                quota_used=0,
-                                is_valid=True,
-                            )
-                            db.session.add(new_provider_record)
-                            db.session.commit()
-                            provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
-                        except IntegrityError:
-                            db.session.rollback()
-                            stmt = select(Provider).where(
-                                Provider.tenant_id == tenant_id,
-                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == quota.quota_type,
-                            )
-                            existed_provider_record = db.session.scalar(stmt)
-                            if not existed_provider_record:
-                                continue
-
-                            if not existed_provider_record.is_valid:
-                                existed_provider_record.is_valid = True
-                                db.session.commit()
-
-                            provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
-
-        return provider_name_to_provider_records_dict
 
     def _to_custom_configuration(
         self,
@@ -1539,7 +1454,7 @@ class ProviderManager:
 
         try:
             credentials = _credentials_adapter.validate_json(encrypted_config)
-        except (ValueError, JSONDecodeError):
+        except ValueError:
             return {}
 
         # Decrypt secret variables
@@ -1563,6 +1478,10 @@ class ProviderManager:
         """
         Convert to system configuration.
 
+        Hosting is a Cloud capability, so every entry offered here is either the third-party
+        free bucket or the billing credit pool selected by the workspace plan. The other
+        hosted bucket is never offered: this workspace holds no balance in it.
+
         :param tenant_id: workspace id
         :param provider_entity: provider entity
         :param provider_records: provider records
@@ -1584,6 +1503,7 @@ class ProviderManager:
             return SystemConfiguration(enabled=False)
 
         from core.plugin.plugin_service import PluginService
+        from services.credit_pool_service import CreditPoolService
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
@@ -1596,84 +1516,30 @@ class ProviderManager:
 
             if provider_record.quota_type is not None:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
-        quota_configurations = []
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            from services.credit_pool_service import CreditPoolService
+        credit_pool_type = FeatureService.get_credit_pool_type(tenant_id)
+        if credit_pool_type is None:
+            # Hosting is a Cloud capability; a workspace without a credit pool has nothing to spend.
+            return SystemConfiguration(enabled=False)
 
-            with session_factory.create_session() as session:
-                trail_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.TRIAL,
-                    session=session,
-                )
-                paid_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.PAID,
-                    session=session,
-                )
-        else:
-            trail_pool = None
-            paid_pool = None
+        credit_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=credit_pool_type)
 
+        quota_configurations: list[QuotaConfiguration] = []
         for provider_quota in provider_hosting_configuration.quotas:
-            if provider_quota.quota_type not in quota_type_to_provider_records_dict:
-                if provider_quota.quota_type == ProviderQuotaType.FREE:
-                    quota_configuration = QuotaConfiguration(
-                        quota_type=provider_quota.quota_type,
-                        quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                        quota_used=0,
-                        quota_limit=0,
-                        is_valid=False,
-                        restrict_models=provider_quota.restrict_models,
-                    )
-                else:
-                    continue
-            else:
-                provider_record = quota_type_to_provider_records_dict[provider_quota.quota_type]
-
-                if provider_record.quota_used is None:
-                    raise ValueError("quota_used is None")
-                if provider_record.quota_limit is None:
-                    raise ValueError("quota_limit is None")
-                match provider_quota.quota_type:
-                    case ProviderQuotaType.TRIAL if trail_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=trail_pool.quota_used,
-                            quota_limit=trail_pool.quota_limit,
-                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case ProviderQuotaType.PAID if paid_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=paid_pool.quota_used,
-                            quota_limit=paid_pool.quota_limit,
-                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case _:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=provider_record.quota_used,
-                            quota_limit=provider_record.quota_limit,
-                            is_valid=provider_record.quota_limit > provider_record.quota_used
-                            or provider_record.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-            quota_configurations.append(quota_configuration)
+            quota_configuration = _resolve_quota_configuration(
+                provider_quota=provider_quota,
+                hosting_provider=provider_hosting_configuration,
+                provider_record=quota_type_to_provider_records_dict.get(provider_quota.quota_type),
+                credit_pool_type=credit_pool_type,
+                credit_pool=credit_pool,
+            )
+            if quota_configuration is not None:
+                quota_configurations.append(quota_configuration)
 
         if len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
 
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+        current_quota_type = credit_pool_type
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:
@@ -1707,13 +1573,11 @@ class ProviderManager:
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
-                            try:
+                            with contextlib.suppress(ValueError):
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
                                     decoding_context,
                                 )
-                            except ValueError:
-                                pass
 
                     current_using_credentials = provider_credentials or {}
 
@@ -1731,33 +1595,6 @@ class ProviderManager:
             quota_configurations=quota_configurations,
             credentials=current_using_credentials,
         )
-
-    @staticmethod
-    def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
-        """
-        Choice current using quota type.
-        paid quotas > provider free quotas > hosting trial quotas
-        If there is still quota for the corresponding quota type according to the sorting,
-
-        :param quota_configurations:
-        :return:
-        """
-        # convert to dict
-        quota_type_to_quota_configuration_dict = {
-            quota_configuration.quota_type: quota_configuration for quota_configuration in quota_configurations
-        }
-
-        last_quota_configuration = None
-        for quota_type in [ProviderQuotaType.PAID, ProviderQuotaType.FREE, ProviderQuotaType.TRIAL]:
-            if quota_type in quota_type_to_quota_configuration_dict:
-                last_quota_configuration = quota_type_to_quota_configuration_dict[quota_type]
-                if last_quota_configuration.is_valid:
-                    return quota_type
-
-        if last_quota_configuration:
-            return last_quota_configuration.quota_type
-
-        raise ValueError("No quota type available")
 
     @staticmethod
     def _extract_secret_variables(credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
@@ -1841,7 +1678,7 @@ class ProviderManager:
                                 provider_model_credentials = _credentials_adapter.validate_json(
                                     load_balancing_model_config.encrypted_config
                                 )
-                            except (ValueError, JSONDecodeError):
+                            except ValueError:
                                 continue
 
                             # Get decoding context for decrypting credentials
@@ -1849,13 +1686,11 @@ class ProviderManager:
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
-                                    try:
+                                    with contextlib.suppress(ValueError):
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
                                             decoding_context,
                                         )
-                                    except ValueError:
-                                        pass
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)

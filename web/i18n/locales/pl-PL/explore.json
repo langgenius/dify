@@ -34,12 +34,14 @@
   "sidebar.action.rename": "Zmień nazwę",
   "sidebar.action.unpin": "Odepnij",
   "sidebar.webApps": "Aplikacje internetowe",
+  "tryApp.agentConfiguration": "Konfiguracja agenta",
   "tryApp.category": "Kategoria",
   "tryApp.createFromSampleApp": "Utwórz z tej przykładowej aplikacji",
+  "tryApp.included": "Zawarte",
   "tryApp.loadError": "Nie udało się wczytać tego szablonu",
   "tryApp.requirements": "Wymagania",
   "tryApp.retrying": "Ponawianie próby…",
   "tryApp.tabHeader.detail": "Szczegóły orkiestracji",
   "tryApp.tabHeader.try": "Wypróbuj",
-  "tryApp.tryInfo": "To jest przykładowa aplikacja. Możesz wypróbować do 5 wiadomości. Aby nadal z niej korzystać, kliknij \"Utwórz z tej przykładowej aplikacji\" i skonfiguruj ją!"
+  "tryApp.tryInfo": "To jest przykładowa aplikacja z ograniczoną liczbą wiadomości próbnych. Aby nadal z niej korzystać, kliknij \"Utwórz z tej przykładowej aplikacji\" i skonfiguruj ją!"
 }

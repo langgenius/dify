@@ -1,19 +1,25 @@
-import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vite-plus/test'
+import { renderWorkflowComponent as render } from '../__tests__/workflow-test-env'
 import CommentPreview from './comment-preview'
 
-type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>
+const mockFetchMentionUsers = vi.hoisted(() =>
+  vi.fn<(...args: unknown[]) => Promise<{ users: unknown[] }>>(async () => ({ users: [] })),
+)
 
-const mockSetHovering = vi.fn()
-let capturedUsers: UserProfile[] = []
-
-vi.mock('@/app/components/base/user-avatar-list', () => ({
-  UserAvatarList: ({ users }: { users: UserProfile[] }) => {
-    capturedUsers = users
-    return <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflow.comments.mentionUsers.get': (...args: unknown[]) =>
+        mockFetchMentionUsers(...args),
+    }),
+  }
+})
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
   useFormatTimeFromNow: () => ({
@@ -21,13 +27,7 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
-vi.mock('../store', () => ({
-  useStore: (
-    selector: (state: { setCommentPreviewHovering: (value: boolean) => void }) => unknown,
-  ) => selector({ setCommentPreviewHovering: mockSetHovering }),
-}))
-
-const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => {
+const createComment = (overrides: Partial<WorkflowCommentBasic> = {}): WorkflowCommentBasic => {
   const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: null }
   const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }
 
@@ -43,45 +43,50 @@ const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCo
     resolved: false,
     mention_count: 0,
     reply_count: 0,
-    participants: [author, participant],
+    participants: [participant, author],
     ...overrides,
   }
 }
 
 describe('CommentPreview', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    capturedUsers = []
-  })
-
   it('orders participants with author first and formats time', () => {
     const comment = createComment()
 
     render(<CommentPreview comment={comment} />)
 
-    expect(capturedUsers.map((user) => user.id)).toEqual(['user-1', 'user-2'])
+    expect(screen.getAllByRole('img').map((avatar) => avatar.getAttribute('aria-label'))).toEqual([
+      'Alice',
+      'Bob',
+    ])
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByText('time:10000')).toBeInTheDocument()
   })
 
-  it('updates hover state on enter and leave', () => {
-    const comment = createComment()
-    const { container } = render(<CommentPreview comment={comment} />)
-    const root = container.firstElementChild as HTMLElement
+  it('loads mentionable users itself to highlight mentions, and shows the reply count', async () => {
+    mockFetchMentionUsers.mockResolvedValue({
+      users: [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }],
+    })
+    render(
+      <CommentPreview comment={createComment({ content: 'Ping @Bob please', reply_count: 3 })} />,
+      { resource: { kind: 'app', appId: 'app-1', mode: 'workflow' } },
+    )
 
-    fireEvent.mouseEnter(root)
-    fireEvent.mouseLeave(root)
-
-    expect(mockSetHovering).toHaveBeenCalledWith(true)
-    expect(mockSetHovering).toHaveBeenCalledWith(false)
+    expect(await screen.findByText('@Bob')).toHaveClass('text-text-accent')
+    expect(mockFetchMentionUsers).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('workflowComments.comments.replyCount:{"count":3}')).toBeInTheDocument()
   })
 
-  it('clears hover state on unmount', () => {
-    const comment = createComment()
-    const { unmount } = render(<CommentPreview comment={comment} />)
-
+  it('tracks hovering and releases the preview on leave or unmount', async () => {
+    const user = userEvent.setup()
+    const { store, unmount } = render(<CommentPreview comment={createComment()} />)
+    const content = screen.getByText('Hello')
+    await user.hover(content)
+    expect(store.getState().isCommentPreviewHovering).toBe(true)
+    await user.unhover(content)
+    expect(store.getState().isCommentPreviewHovering).toBe(false)
+    await user.hover(content)
+    expect(store.getState().isCommentPreviewHovering).toBe(true)
     unmount()
-
-    expect(mockSetHovering).toHaveBeenCalledWith(false)
+    expect(store.getState().isCommentPreviewHovering).toBe(false)
   })
 })

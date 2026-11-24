@@ -1,6 +1,7 @@
 import type { ChangeEvent, RefObject } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 
@@ -38,6 +39,8 @@ const UploadDropzone = ({
   allowedExtensions,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation(['datasetCreation'])
+  const browseLabelId = useId()
+  const canBrowse = allowedExtensions.length > 0
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
 
   return (
@@ -47,6 +50,10 @@ const UploadDropzone = ({
         id="fileUploader"
         className="hidden"
         type="file"
+        aria-labelledby={canBrowse ? browseLabelId : undefined}
+        aria-label={
+          canBrowse ? undefined : t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })
+        }
         multiple={supportBatchUpload}
         accept={acceptTypes.join(',')}
         onChange={onFileChange}
@@ -59,15 +66,16 @@ const UploadDropzone = ({
         )}
       >
         <div className="flex min-h-5 items-center justify-center text-sm/4 text-text-secondary">
-          <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
+          <span className="me-2 i-ri-upload-cloud-2-line size-5" />
           <span>
             {supportBatchUpload
               ? t(($) => $['stepOne.uploader.button'], { ns: 'datasetCreation' })
               : t(($) => $['stepOne.uploader.buttonSingleFile'], { ns: 'datasetCreation' })}
-            {allowedExtensions.length > 0 && (
+            {canBrowse && (
               <button
+                id={browseLabelId}
                 type="button"
-                className="font-inherit ml-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
+                className="font-inherit ms-1 inline cursor-pointer appearance-none border-0 bg-transparent p-0 text-text-accent"
                 onClick={onSelectFile}
               >
                 {t(($) => $['stepOne.uploader.browse'], { ns: 'datasetCreation' })}
@@ -91,7 +99,7 @@ const UploadDropzone = ({
                 batchCount: fileUploadConfig.batch_count_limit,
               })}
         </div>
-        {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
+        {dragging && <div ref={dragRef} className="absolute inset-s-0 top-0 size-full" />}
       </div>
     </>
   )

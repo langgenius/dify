@@ -9,7 +9,7 @@ import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/compo
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import useConfig from './use-config'
 
-const formatConfigValue = (rawValue: any): string => {
+const formatConfigValue = (rawValue: unknown): string => {
   if (rawValue === null || rawValue === undefined) return ''
 
   if (typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean')
@@ -18,7 +18,7 @@ const formatConfigValue = (rawValue: any): string => {
   if (Array.isArray(rawValue)) return rawValue.join('.')
 
   if (typeof rawValue === 'object') {
-    const { value } = rawValue as { value?: any }
+    const { value } = rawValue as { value?: unknown }
     if (value === null || value === undefined) return ''
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
       return String(value)
@@ -50,7 +50,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({ id, data }) => {
   return (
     <div className="relative mb-1 px-3 py-1">
       {showInstallButton && (
-        <div className="pointer-events-auto absolute -top-8 right-3 z-40">
+        <div className="pointer-events-auto absolute inset-e-3 -top-8 z-40">
           <InstallPluginButton
             size="small"
             extraIdentifiers={
@@ -83,7 +83,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({ id, data }) => {
               </div>
               <div
                 title={formatConfigValue(config[key])}
-                className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                className="w-0 shrink-0 grow truncate text-end text-xs font-normal text-text-secondary"
               >
                 {(() => {
                   const displayValue = formatConfigValue(config[key])

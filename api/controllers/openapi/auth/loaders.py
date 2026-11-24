@@ -7,10 +7,10 @@ from flask import request
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.openapi.auth.context import Caller, Context, RouteContractError
+from extensions.ext_application_services import application_services
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantStatus
 from models.enums import AppStatus
 from models.model import App, EndUser
-from services.account_service import TenantService
 from services.app_service import AppService
 
 
@@ -75,10 +75,10 @@ def load_workspace_role(ctx: Context) -> TenantAccountRole:
 def _path_param(ctx: Context, name: str) -> str:
     try:
         return ctx.view_args[name]
-    except KeyError:
+    except KeyError as caught_error:
         raise RouteContractError(
             f"{name} is not a path parameter of this route: the requirement asking for it does not belong here"
-        )
+        ) from caught_error
 
 
 def _fetch_app(ctx: Context) -> App:
@@ -86,8 +86,8 @@ def _fetch_app(ctx: Context) -> App:
     try:
         # Canonical dashed form, so a bare-hex path parameter names the same app.
         app_id = str(uuid.UUID(raw))
-    except ValueError:
-        raise NotFound("app not found")
+    except ValueError as caught_error:
+        raise NotFound("app not found") from caught_error
     app = AppService.get_app_by_id(app_id, ctx.session)
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
@@ -106,7 +106,7 @@ def _fetch_workspace(ctx: Context) -> Tenant:
 
 def _workspace_from_app(ctx: Context) -> Tenant:
     app = load_app(ctx)
-    tenant = TenantService.get_tenant_by_id(app.tenant_id, session=ctx.session)
+    tenant = application_services().workspaces.identity.get_workspace(str(app.tenant_id))
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     return tenant
@@ -118,9 +118,9 @@ def _workspace_from_request(ctx: Context) -> Tenant:
         raise NotFound("workspace not found")
     try:
         uuid.UUID(workspace_id)
-    except ValueError:
-        raise NotFound("workspace not found")
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=ctx.session)
+    except ValueError as caught_error:
+        raise NotFound("workspace not found") from caught_error
+    tenant = application_services().workspaces.identity.get_workspace(workspace_id)
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")
     return tenant
@@ -131,7 +131,7 @@ def _fetch_workspace_role(ctx: Context) -> TenantAccountRole:
     caller = load_caller(ctx)
     if not isinstance(caller, Account) or caller.status != AccountStatus.ACTIVE:
         raise NotFound("workspace not found")
-    role = TenantService.get_account_role_in_tenant(str(ctx.subject.account_id), workspace.id, session=ctx.session)
+    role = application_services().workspaces.members.get_role(str(workspace.id), str(ctx.subject.account_id))
     if role is None:
         raise NotFound("workspace not found")
     return role

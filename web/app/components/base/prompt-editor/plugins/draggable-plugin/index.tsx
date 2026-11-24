@@ -34,30 +34,32 @@ export default function DraggableBlockPlugin({
   const [isSupportDrag, setIsSupportDrag] = useState(false)
 
   useEffect(() => {
-    const root = editor.getRootElement()
-    if (!root) return
-
-    const onMove = (e: MouseEvent) => {
-      const isSupportDrag = checkSupportDrag(e.target as Element)
-      setIsSupportDrag(isSupportDrag)
+    const onMove = (event: MouseEvent) => {
+      setIsSupportDrag(checkSupportDrag(event.target instanceof Element ? event.target : null))
     }
-
-    root.addEventListener('mousemove', onMove)
-    return () => root.removeEventListener('mousemove', onMove)
+    const unregister = editor.registerRootListener((root, previousRoot) => {
+      previousRoot?.removeEventListener('mousemove', onMove)
+      setIsSupportDrag(false)
+      root?.addEventListener('mousemove', onMove)
+    })
+    return () => {
+      unregister()
+      editor.getRootElement()?.removeEventListener('mousemove', onMove)
+    }
   }, [editor])
 
   return (
     <DraggableBlockPlugin_EXPERIMENTAL
       anchorElem={anchorElem}
-      menuRef={menuRef as any}
-      targetLineRef={targetLineRef as any}
+      menuRef={menuRef}
+      targetLineRef={targetLineRef}
       menuComponent={
         isSupportDrag ? (
           <div
             ref={menuRef}
             className={cn(
               DRAGGABLE_BLOCK_MENU_CLASSNAME,
-              'absolute top-4 right-2.5 cursor-grab opacity-0 will-change-transform active:cursor-move',
+              'absolute inset-e-2.5 top-4 cursor-grab opacity-0 will-change-transform active:cursor-move',
             )}
             data-testid="draggable-menu"
           >
@@ -71,11 +73,11 @@ export default function DraggableBlockPlugin({
       targetLineComponent={
         <div
           ref={targetLineRef}
-          className="pointer-events-none absolute top-0 -left-5.25 opacity-0 will-change-transform"
+          className="pointer-events-none absolute -inset-s-5.25 top-0 opacity-0 will-change-transform"
           data-testid="draggable-target-line"
           // style={{ width: 500 }} // width not worked here
         >
-          <div className="absolute top-0 -right-10 left-0 h-0.5 bg-text-accent-secondary"></div>
+          <div className="absolute inset-s-0 -inset-e-10 top-0 h-0.5 bg-text-accent-secondary"></div>
         </div>
       }
       isOnMenu={isOnMenu}

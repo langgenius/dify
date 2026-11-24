@@ -1,18 +1,23 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo } from 'react'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { editorResourceAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import Header from '@/app/components/workflow/header'
 import { useStore } from '@/app/components/workflow/store'
-import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { useIsChatMode } from '../../hooks/use-is-chat-mode'
+import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
 const WorkflowHeader = () => {
-  const appDetail = useAppStore((state) => state.appDetail)
   const setMessageLogItem = useStore((state) => state.setMessageLogItem)
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
-  const isChatMode = useIsChatMode()
+  const queryClient = useQueryClient()
+  const resource = useAtomValue(editorResourceAtom)
+  const resetWorkflowVersionHistory = useCallback(
+    () => queryClient.resetQueries({ queryKey: workflowVersionHistoryKey(resource) }),
+    [queryClient, resource],
+  )
+  const isChatflow = useAtomValue(isChatflowAtom)
 
   const handleClearLogAndMessageModal = useCallback(() => {
     setMessageLogItem(undefined)
@@ -21,11 +26,8 @@ const WorkflowHeader = () => {
   const viewHistoryProps = useMemo(() => {
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
-      historyUrl: isChatMode
-        ? `/apps/${appDetail!.id}/advanced-chat/workflow-runs`
-        : `/apps/${appDetail!.id}/workflow-runs`,
     }
-  }, [appDetail, isChatMode, handleClearLogAndMessageModal])
+  }, [handleClearLogAndMessageModal])
 
   const headerProps: HeaderProps = useMemo(() => {
     return {
@@ -35,8 +37,8 @@ const WorkflowHeader = () => {
           chatVariableTrigger: <ChatVariableTrigger />,
         },
         runAndHistoryProps: {
-          showRunButton: !isChatMode,
-          showPreviewButton: isChatMode,
+          showRunButton: !isChatflow,
+          showPreviewButton: isChatflow,
           viewHistoryProps,
         },
       },
@@ -47,7 +49,7 @@ const WorkflowHeader = () => {
         onRestoreSettled: resetWorkflowVersionHistory,
       },
     }
-  }, [resetWorkflowVersionHistory, isChatMode, viewHistoryProps])
+  }, [resetWorkflowVersionHistory, isChatflow, viewHistoryProps])
   return <Header {...headerProps} />
 }
 

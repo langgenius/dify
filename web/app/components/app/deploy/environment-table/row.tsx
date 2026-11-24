@@ -1,13 +1,15 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AccessPoint } from '../utils/access-point'
+import type { OpenDeploymentDialog } from '../types'
 import type { DeploymentVersion } from '../utils/version'
-import type { UndeployHandler } from './types'
+import type { OpenUndeployDialog } from './types'
+import type { AccessPoint } from '@/models/app-access-point'
 import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { memo } from 'react'
+import { getAccessPointHref } from '@/app/components/app/access-point/routes'
+import { ACCESS_POINT_ORDER } from '@/models/app-access-point'
 import { AccessPointIcon } from '../shared/access-point-icon'
 import { RuntimeStateIndicator } from '../shared/runtime-state'
 import { VersionLabel } from '../shared/version-label'
-import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
 import { ActivityCell } from './activity-cell'
 import { EnvironmentRowActions } from './row-actions'
 
@@ -17,19 +19,15 @@ export const EnvironmentRow = memo(
     canViewAccessPoint,
     latestVersion,
     row,
-    onChangeVersion,
-    onDeployLatest,
-    onRedeploy,
-    onUndeploy,
+    onOpenDeployment,
+    onOpenUndeploy,
   }: {
     appId: string
     canViewAccessPoint: boolean
     latestVersion?: DeploymentVersion
     row: EnvironmentDeployment
-    onChangeVersion: (deployment: EnvironmentDeployment) => void
-    onDeployLatest: (deployment: EnvironmentDeployment, version: DeploymentVersion) => void
-    onRedeploy: (deployment: EnvironmentDeployment) => void
-    onUndeploy: UndeployHandler
+    onOpenDeployment: OpenDeploymentDialog
+    onOpenUndeploy: OpenUndeployDialog
   }) => {
     const runtimeState = row.deployment
       ? row.deployment.runtimeState
@@ -43,29 +41,35 @@ export const EnvironmentRow = memo(
 
     return (
       <tr className="h-14 border-b border-divider-subtle hover:bg-state-base-hover">
-        <td className="border-b border-divider-subtle pr-2 pl-3">
+        <th scope="row" className="border-b border-divider-subtle ps-3 pe-2 text-start font-normal">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex size-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg text-text-secondary">
               <span aria-hidden className="i-ri-instance-line size-3.5" />
             </span>
-            <span className="truncate system-md-medium text-text-secondary">
+            <span className="min-w-0 system-md-medium wrap-anywhere text-text-secondary">
               {row.environment.display_name}
             </span>
           </div>
-        </td>
-        <td className="border-b border-divider-subtle pr-2 pl-3">
+        </th>
+        <td className="border-b border-divider-subtle ps-3 pe-2">
           <VersionLabel
             version={row.deployment?.current_version}
             versionsBehind={row.deployment?.versions_behind}
           />
         </td>
         <td className="border-b border-divider-subtle px-2">
-          <RuntimeStateIndicator runtimeState={runtimeState} />
+          <span role="status" aria-atomic="true">
+            <span className="sr-only">{row.environment.display_name}: </span>
+            <RuntimeStateIndicator runtimeState={runtimeState} />
+          </span>
         </td>
-        <td className="border-b border-divider-subtle pr-2 pl-3">
-          <ActivityCell activity={row.deployment?.latest_operation} />
+        <td className="border-b border-divider-subtle ps-3 pe-2">
+          <ActivityCell
+            activity={row.deployment?.latest_operation}
+            environmentName={row.environment.display_name}
+          />
         </td>
-        <td className="border-b border-divider-subtle pr-2 pl-3">
+        <td className="border-b border-divider-subtle ps-3 pe-2">
           <div className="flex items-center gap-1">
             {ACCESS_POINT_ORDER.map((accessPoint) => (
               <AccessPointIcon
@@ -81,14 +85,12 @@ export const EnvironmentRow = memo(
             ))}
           </div>
         </td>
-        <td className="border-b border-divider-subtle pr-2 pl-3">
+        <td className="border-b border-divider-subtle ps-3 pe-2">
           <EnvironmentRowActions
             latestVersion={latestVersion}
             row={row}
-            onChangeVersion={onChangeVersion}
-            onDeployLatest={onDeployLatest}
-            onRedeploy={onRedeploy}
-            onUndeploy={onUndeploy}
+            onOpenDeployment={onOpenDeployment}
+            onOpenUndeploy={onOpenUndeploy}
           />
         </td>
       </tr>

@@ -1,5 +1,5 @@
 'use client'
-import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import { RiBookOpenLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,14 +9,16 @@ import EmbeddingProcess from './embedding-process'
 
 type ProcessingProps = {
   batchId: string
-  documents: InitialDocumentDetail[]
+  documents: PipelineDocument[]
 }
 
 const Processing = ({ batchId, documents }: ProcessingProps) => {
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector((s) => s.dataset?.id)
-  const indexingType = useDatasetDetailContextWithSelector((s) => s.dataset?.indexing_technique)
+  const indexingType = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.indexing_technique ?? undefined,
+  )
   const retrievalMethod = useDatasetDetailContextWithSelector(
     (s) => s.dataset?.retrieval_model_dict?.search_method,
   )
@@ -34,7 +36,7 @@ const Processing = ({ batchId, documents }: ProcessingProps) => {
           />
         </div>
       </div>
-      <div className="w-2/5 pt-22 pr-8">
+      <div className="w-2/5 pe-8 pt-22">
         <div className="flex w-82 flex-col gap-3 rounded-xl bg-background-section p-6">
           <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg shadow-shadow-shadow-5">
             <RiBookOpenLine className="size-5 text-text-accent" />

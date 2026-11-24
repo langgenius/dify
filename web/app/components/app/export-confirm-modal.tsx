@@ -2,11 +2,13 @@
 import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
+  AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -19,14 +21,16 @@ type AppExportConfirmModalProps = {
   envList: Pick<EnvironmentVariableItemResponse, 'name' | 'value'>[]
   onConfirm: (includeSecret: boolean) => Promise<boolean>
   isExporting: boolean
+  errorMessage?: string
   onClose: () => void
 }
 
-export const AppExportConfirmContent = ({
+const AppExportConfirmContent = ({
   envList,
   onConfirm,
   onClose,
   isExporting,
+  errorMessage,
 }: AppExportConfirmModalProps) => {
   const { t } = useTranslation(['app', 'workflow', 'common'])
 
@@ -40,22 +44,22 @@ export const AppExportConfirmContent = ({
   }, [exportSecrets, isExporting, onClose, onConfirm])
 
   return (
-    <AlertDialogContent className="w-120">
-      <div className="px-6 pt-6">
-        <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t(($) => $['exportSecret.title'], { ns: 'app' })}
-        </AlertDialogTitle>
-        <AlertDialogDescription className="mt-2 mb-6 system-sm-regular text-text-secondary">
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{t(($) => $['exportSecret.title'], { ns: 'app' })}</AlertDialogTitle>
+        <AlertDialogDescription>
           {t(($) => $['exportSecret.description'], { ns: 'app' })}
         </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogBody>
         <div className="relative">
           <table className="w-full border-separate border-spacing-0 rounded-lg border border-divider-regular shadow-xs">
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <th className="h-7 w-55 border-r border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
+                <th className="h-7 w-55 border-e border-b border-divider-regular ps-3 text-start font-[weight:inherit]">
                   {t(($) => $['env.export.name'], { ns: 'workflow' })}
                 </th>
-                <th className="h-7 border-b border-divider-regular pl-3 text-left font-[weight:inherit]">
+                <th className="h-7 border-b border-divider-regular ps-3 text-start font-[weight:inherit]">
                   {t(($) => $['env.export.value'], { ns: 'workflow' })}
                 </th>
               </tr>
@@ -65,7 +69,7 @@ export const AppExportConfirmContent = ({
                 <tr key={env.name}>
                   <td
                     className={cn(
-                      'h-7 border-r border-divider-regular pl-3 system-xs-medium',
+                      'h-7 border-e border-divider-regular ps-3 system-xs-medium',
                       index + 1 !== envList.length && 'border-b border-divider-regular',
                     )}
                   >
@@ -86,7 +90,7 @@ export const AppExportConfirmContent = ({
                   </td>
                   <td
                     className={cn(
-                      'h-7 pl-3',
+                      'h-7 ps-3',
                       index + 1 !== envList.length && 'border-b border-divider-regular',
                     )}
                   >
@@ -110,15 +114,20 @@ export const AppExportConfirmContent = ({
           />
           <span
             className={cn(
-              'rounded-sm text-left system-sm-medium text-text-primary outline-hidden',
+              'rounded-sm text-start system-sm-medium text-text-primary outline-hidden',
               isExporting && 'cursor-not-allowed opacity-50',
             )}
           >
             {t(($) => $['env.export.checkbox'], { ns: 'workflow' })}
           </span>
         </label>
-      </div>
-      <AlertDialogActions>
+        {errorMessage && (
+          <p role="alert" className="mt-3 system-sm-regular text-text-destructive">
+            {errorMessage}
+          </p>
+        )}
+      </AlertDialogBody>
+      <AlertDialogFooter>
         <AlertDialogCancelButton disabled={isExporting}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
@@ -136,7 +145,7 @@ export const AppExportConfirmContent = ({
                 : t(($) => $.exportApp, { ns: 'app' })}
           </span>
         </AlertDialogConfirmButton>
-      </AlertDialogActions>
+      </AlertDialogFooter>
     </AlertDialogContent>
   )
 }
