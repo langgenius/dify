@@ -7,7 +7,7 @@ from typing import override
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from flask_restx import Api
 from pytest_mock import MockerFixture
 from sqlalchemy import func, select, text
@@ -343,22 +343,14 @@ def test_email_login_translates_invalid_code(monkeypatch: pytest.MonkeyPatch, co
         )
 
 
-def test_logout_only_serializes_response_and_clears_cookie(
-    monkeypatch: pytest.MonkeyPatch,
-    app: Flask,
-    context: RequestContext,
-) -> None:
-    cleared: list[tuple[str | None, str]] = []
-
-    def clear_cookie(response: Response, *, samesite: str) -> None:
-        cleared.append((response.get_json()["result"], samesite))
-
-    monkeypatch.setattr(login, "clear_webapp_access_token_from_cookie", clear_cookie)
+def test_logout_expires_the_webapp_cookie_with_legacy_sso_same_site(app: Flask, context: RequestContext) -> None:
     with app.test_request_context("/logout", method="POST"):
         response = unwrap(LogoutApi.post)(LogoutApi(), context)
 
     assert response.get_json() == {"result": "success"}
-    assert cleared == [("success", "None")]
+    (cookie,) = response.headers.getlist("Set-Cookie")
+    assert "webapp_access_token=;" in cookie
+    assert "SameSite=None" in cookie
 
 
 @pytest.mark.parametrize("valid_login", [True, False])

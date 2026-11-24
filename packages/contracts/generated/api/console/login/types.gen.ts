@@ -6,6 +6,7 @@ export type ClientOptions = {
 
 export type WebAppAccountSessionResponse = {
   logged_in: boolean
+  login_code?: string | null
   redirect_url: string | null
 }
 

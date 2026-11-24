@@ -102,8 +102,9 @@ root-relative `redirect_url` values, such as `/my-apps?sort=recent#details`.
 `is_end_user` is a frontend navigation hint; clients select the existing
 `mode=end_user` API contract to request End User login.
 
-A successful personal portal session or App-bound login redirect records the earliest known
-End User event in `accounts.be_end_user_at`, including when an existing Account session is reused.
+Issuing a PKCE grant for an App or the personal portal records the earliest known End User event in
+`accounts.be_end_user_at`; redeeming the grant does not. Issuing a legacy direct portal session records
+that same event. This includes handoffs that reuse an existing Account session.
 An unauthenticated probe, ordinary Console sign-in, and App execution do not record onboarding.
 Previously recorded first App use is retained as a historical baseline; `NULL` means no event is known.
 
@@ -122,8 +123,32 @@ not the API request host. Relative targets can omit the deployment prefix or
 include it once, and query strings and fragments are preserved.
 
 End User admission and route restrictions still apply. App returns require a
-PKCE-bound handoff, and a personal portal session requires its cookie to reach
-the Web API. Previously allowed absolute portal URLs on Console continue to work.
+PKCE-bound handoff. Previously allowed absolute portal URLs on Console continue
+to work for legacy cookie-sharing deployments.
+
+#### Personal portal login across sites
+
+1. On the WebApp origin, keep a fresh PKCE verifier in the initiating tab and
+   send only its S256 `code_challenge` and the personal `redirect_url` to Console
+   sign-in. Do not send an `app_code`. OAuth may resume the same Console `/signin`
+   URL as a published App, or take a portal return and challenge directly.
+2. On Console, call `GET /console/api/login?mode=end_user` with the return URL
+   and challenge. With no Account session it returns `logged_in: false`. After
+   sign-in (including OAuth or silent refresh), it returns `logged_in: true`,
+   the validated WebApp portal `redirect_url`, and an opaque `login_code`.
+   Return the code to that destination, never a Console token or the verifier.
+3. From the WebApp page, match the return to the tab's pending login and POST
+   `{login_code, code_verifier}` to `/api/account/session` on the Web API. The
+   endpoint requires the WebApp Origin and returns only `{"result":"success"}`.
+   Its HttpOnly cookie authenticates `GET /api/account/profile` without App or
+   workspace scope. Discard the transaction and remove the code from the address bar.
+
+Portal and App codes are not interchangeable. Each can be redeemed once and
+expires within 60 seconds or at the Console login expiry, whichever comes first.
+A wrong verifier does not consume a valid code. Neither a broader cookie domain
+nor third-party cookies are required. If the Web API host is outside the configured
+Console `COOKIE_DOMAIN`, the Web cookie is host-only. Requests without a challenge
+retain the legacy direct-cookie behavior; do not use that flow across unrelated sites.
 
 ### Agent tracing deployment discovery exception
 

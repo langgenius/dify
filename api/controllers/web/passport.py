@@ -6,7 +6,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 from constants import HEADER_NAME_APP_CODE
 from controllers.common.end_user_connections import ConnectionLoginRequiredError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.web_login import WebLoginUnavailableHTTPError, web_login_errors
+from controllers.common.web_login import WebLoginExchangePayload, WebLoginUnavailableHTTPError, web_login_errors
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
@@ -34,9 +34,8 @@ class PassportQuery(BaseModel):
     user_id: str | None = Field(default=None, description="End user session ID")
 
 
-class PassportLoginPayload(BaseModel):
-    login_code: str = Field(min_length=1, max_length=256)
-    code_verifier: str = Field(pattern=r"^[A-Za-z0-9._~-]{43,128}$", repr=False)
+class PassportLoginPayload(WebLoginExchangePayload):
+    pass
 
 
 register_schema_models(web_ns, PassportQuery, PassportLoginPayload)
@@ -137,6 +136,8 @@ class PassportResource(Resource):
                 raise ConnectionLoginRequiredError() from exc
         # response-contract:ignore credential-bearing response
         response = make_response(dump_response(PassportAccessTokenResponse, result))
-        set_webapp_access_token_to_cookie(response, login_session.access_token, expires_at=login_session.expires_at)
+        set_webapp_access_token_to_cookie(
+            request, response, login_session.access_token, expires_at=login_session.expires_at
+        )
         response.headers["Cache-Control"] = "no-store"
         return response

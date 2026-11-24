@@ -19,16 +19,20 @@ import {
 import { zGetLoginQuery, zGetLoginResponse, zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
- * Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
+ * Resolve a trusted return target and reuse a Console account without workspace admission
+ *
+ * Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal portal requests set an HttpOnly Webapp cookie on the Console API origin; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
  */
 export const get = oc
   .route({
     description:
-      'Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.',
+      'Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. A personal portal PKCE request returns a one-use login code for /api/account/session and a validated Webapp redirect_url. Legacy personal portal requests set an HttpOnly Webapp cookie on the Console API origin; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getLogin',
     path: '/login',
+    summary:
+      'Resolve a trusted return target and reuse a Console account without workspace admission',
     tags: ['console'],
   })
   .input(z.object({ query: zGetLoginQuery.optional() }).optional())
