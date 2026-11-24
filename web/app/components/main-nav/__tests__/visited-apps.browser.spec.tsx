@@ -7,7 +7,9 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   basePath: '/dify',
 }))
-vi.mock('@/service/use-common', () => ({ useLogout: () => ({ mutate: vi.fn() }) }))
+vi.mock('@/service/common-queries', () => ({
+  logoutMutationOptions: () => ({ mutationFn: vi.fn() }),
+}))
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
 }))

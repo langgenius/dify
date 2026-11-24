@@ -5,7 +5,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
 type RefreshWorkflowDraftOptions = {
@@ -43,7 +43,7 @@ export const useWorkflowRefreshDraft = () => {
       if (wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
       const refreshSequence = ++refreshSequenceRef.current
       setIsSyncingWorkflowDraft(true)
-      return fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+      return fetchAppWorkflowDraft(appId)
         .then((response) => {
           if (options?.shouldApply && !options.shouldApply()) return false
 

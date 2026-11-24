@@ -1,33 +1,33 @@
-import type { Tag } from '../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { memo, useEffect, useRef } from 'react'
-import { useTranslation } from '#i18n'
+import { useEffect, useRef } from 'react'
 
-type CompactTriggerProps = {
-  tags: string[]
-  tagsMap: Record<string, Tag>
-  onTagsChange: (tags: string[]) => void
+type CompactTagFilterTriggerProps = {
+  selectedLabels: string[]
+  selectedCount: number
+  label: string
+  clearLabel: string
+  onClear: () => void
 }
 
-function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
-  const { t } = useTranslation(['pluginTags'])
-  const selectedTagsLength = tags.length
+export function CompactTagFilterTrigger({
+  selectedLabels,
+  selectedCount,
+  label,
+  clearLabel,
+  onClear,
+}: CompactTagFilterTriggerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const shouldRestoreFocusRef = useRef(false)
-  const selectedTagLabels = tags.map((tag) => tagsMap[tag]?.label).filter(Boolean)
-  const triggerLabel = selectedTagLabels.length
-    ? selectedTagLabels.join(', ')
-    : t(($) => $.allTags, { ns: 'pluginTags' })
 
   useEffect(() => {
-    if (selectedTagsLength || !shouldRestoreFocusRef.current) return
+    if (selectedCount || !shouldRestoreFocusRef.current) return
 
     shouldRestoreFocusRef.current = false
     triggerRef.current?.focus()
-  }, [selectedTagsLength])
+  }, [selectedCount])
 
   return (
     <div className="relative inline-flex h-7 max-w-32 shrink-0 items-center">
@@ -37,36 +37,32 @@ function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
             ref={triggerRef}
             variant="ghost"
             size="small"
-            aria-label={triggerLabel}
+            aria-label={label}
             className={cn(
               'h-7 max-w-32 justify-start text-text-tertiary focus-visible:ring-inset',
-              !selectedTagsLength && 'size-7 min-h-0 justify-center p-0',
-              !!selectedTagsLength &&
+              !selectedCount && 'size-7 min-h-0 justify-center p-0',
+              !!selectedCount &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 ps-1 pe-7 shadow-xs shadow-shadow-shadow-3',
-              !selectedTagsLength && 'data-popup-open:bg-state-base-hover',
+              !selectedCount && 'data-popup-open:bg-state-base-hover',
             )}
           >
-            <span className={cn('shrink-0', !!selectedTagsLength && 'py-0.5 ps-0.5')}>
+            <span className={cn('shrink-0', !!selectedCount && 'py-0.5 ps-0.5')}>
               <span
                 aria-hidden
                 className={cn(
                   'i-ri-price-tag-3-line block size-4',
-                  !!selectedTagsLength && 'text-text-secondary',
+                  !!selectedCount && 'text-text-secondary',
                 )}
               />
             </span>
-            {!!selectedTagsLength && (
+            {!!selectedCount && (
               <span className="flex min-w-0 items-center gap-x-0.5 py-1 system-sm-medium">
                 <span className="truncate text-text-secondary">
-                  {tags
-                    .map((tag) => tagsMap[tag]?.label)
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .join(',')}
+                  {selectedLabels.slice(0, 2).join(',') || label}
                 </span>
-                {selectedTagsLength > 2 && (
+                {selectedCount > 2 && (
                   <span className="shrink-0 system-xs-medium text-text-tertiary">
-                    +{selectedTagsLength - 2}
+                    +{selectedCount - 2}
                   </span>
                 )}
               </span>
@@ -74,18 +70,15 @@ function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
           </Button>
         }
       />
-      {!!selectedTagsLength && (
+      {!!selectedCount && (
         <IconButton
           variant="ghost"
           size="md"
-          aria-label={t(($) => $.clearSelectedTags, {
-            ns: 'pluginTags',
-            tags: triggerLabel,
-          })}
+          aria-label={clearLabel}
           className="absolute inset-e-0.5 focus-visible:ring-inset"
           onClick={() => {
             shouldRestoreFocusRef.current = true
-            onTagsChange([])
+            onClear()
           }}
         >
           <span aria-hidden className="i-ri-close-circle-fill size-4 text-text-quaternary" />
@@ -94,5 +87,3 @@ function CompactTrigger({ tags, tagsMap, onTagsChange }: CompactTriggerProps) {
     </div>
   )
 }
-
-export default memo(CompactTrigger)

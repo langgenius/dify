@@ -35,8 +35,8 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: vi.fn() }),
+vi.mock('@/service/common-queries', () => ({
+  logoutMutationOptions: () => ({ mutationFn: vi.fn() }),
 }))
 
 vi.mock('@/hooks/use-async-window-open', () => ({

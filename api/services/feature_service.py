@@ -150,6 +150,11 @@ class FeatureService:
 
         return vector_space
 
+    @staticmethod
+    def has_knowledge_subscription_limits() -> bool:
+        """Whether knowledge writes are subject to workspace subscription limits."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str) -> feature_entities.KnowledgeRateLimitModel:
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()

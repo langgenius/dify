@@ -3208,6 +3208,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.inviteOptions.get.key(),
                 })
+                return refreshAgentTagCatalogs(consoleQuery, context.client)
               },
             },
           },
@@ -3356,17 +3357,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       tags: {
         post: {
           mutationOptions: {
-            onSuccess: (tag, variables, _onMutateResult, context) => {
-              context.client.setQueryData(
-                consoleQuery.tags.get.queryKey({
-                  input: {
-                    query: {
-                      type: variables.body.type,
-                    },
-                  },
-                }),
-                (oldTags: Tag[] | undefined) => (oldTags ? [tag, ...oldTags] : oldTags),
+            onSuccess: async (tag, { body: { type } }, _result, { client, meta }) => {
+              const queryKey = consoleQuery.tags.get.queryKey({ input: { query: { type } } })
+              if (type === 'agent') await client.cancelQueries({ queryKey })
+
+              client.setQueryData(
+                queryKey,
+                (oldTags: Tag[] | undefined) =>
+                  oldTags && [tag, ...oldTags.filter((item) => item.id !== tag.id)],
               )
+
+              if (type === 'agent') {
+                // Card edits refresh the catalog after applying the new bindings.
+                const refetchType = meta?.deferAgentTagCatalogRefresh ? 'none' : 'active'
+                return client.invalidateQueries({ queryKey, refetchType })
+              }
             },
           },
         },
@@ -3378,19 +3383,19 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   {
                     queryKey: consoleQuery.tags.get.key({ type: 'query' }),
                   },
-                  (oldTags: Tag[] | undefined) =>
-                    oldTags?.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag)),
+                  (oldTags: Tag[] | undefined) => {
+                    if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
+                    return oldTags.map((tag) =>
+                      tag.id === variables.params.tag_id ? updatedTag : tag,
+                    )
+                  },
                 )
 
-                if (updatedTag.type !== 'app') return
-
-                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
+                return Promise.all([
+                  updatedTag.type === 'agent' &&
+                    refreshAgentTagCatalogs(consoleQuery, context.client),
+                  invalidateTaggedResources(consoleQuery, context.client, updatedTag.type),
+                ])
               },
             },
           },
@@ -3408,19 +3413,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   {
                     queryKey: consoleQuery.tags.get.key({ type: 'query' }),
                   },
-                  (oldTags: Tag[] | undefined) =>
-                    oldTags?.filter((tag) => tag.id !== variables.params.tag_id),
+                  (oldTags: Tag[] | undefined) => {
+                    if (!oldTags?.some((tag) => tag.id === variables.params.tag_id)) return
+                    return oldTags.filter((tag) => tag.id !== variables.params.tag_id)
+                  },
                 )
 
-                if (deletedTag?.type !== 'app') return
-
-                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
+                return Promise.all([
+                  deletedTag?.type === 'agent' &&
+                    refreshAgentTagCatalogs(consoleQuery, context.client),
+                  invalidateTaggedResources(consoleQuery, context.client, deletedTag?.type),
+                ])
               },
             },
           },
@@ -3720,6 +3723,39 @@ function setCommentResolved(
 
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
+
+export async function refreshAgentTagCatalogs(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+) {
+  const filters = { queryKey: query.tags.get.queryKey({ input: { query: { type: 'agent' } } }) }
+  // Invalidation alone can reuse an initial GET that started before the write.
+  await client.cancelQueries(filters)
+  return client.invalidateQueries(filters)
+}
+
+export function invalidateTaggedResources(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  type: Tag['type'],
+  targetId?: string,
+) {
+  if (type === 'agent') {
+    return invalidateQueryKeys(client, [
+      query.agent.get.key(),
+      query.agent.inviteOptions.get.key(),
+      query.agent.byAgentId.get.key(
+        targetId ? { input: { params: { agent_id: targetId } } } : undefined,
+      ),
+    ])
+  }
+  if (type === 'app')
+    return invalidateQueryKeys(client, [
+      query.apps.get.key(),
+      query.apps.starred.get.key(),
+      query.apps.recent.get.key(),
+    ])
 }
 
 function invalidateNetworkAccessGroupQueries(

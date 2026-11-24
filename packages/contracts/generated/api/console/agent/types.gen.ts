@@ -1062,6 +1062,7 @@ export type ComposerBindingPayload = {
 export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type WorkflowNodeJobConfig = {
+  continue_agent_session?: boolean
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
@@ -1069,6 +1070,7 @@ export type WorkflowNodeJobConfig = {
   output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
+  readonly session_generation?: string
   workflow_prompt?: string
 }
 
@@ -2706,6 +2708,24 @@ export type AgentAppDetailWithSiteWritable = {
   workflow_type?: string | null
 }
 
+export type ComposerSavePayloadWritable = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfigWritable | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
+}
+
 export type AgentAppPartialWritable = {
   access_mode?: WebAppAccessMode | null
   active_config_is_published?: boolean
@@ -2769,6 +2789,18 @@ export type AppDetailSiteResponseWritable = {
   updated_at: number
   updated_by: string | null
   use_icon_as_answer_icon: boolean
+}
+
+export type WorkflowNodeJobConfigWritable = {
+  continue_agent_session?: boolean
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
 }
 
 export type GetAgentData = {
@@ -3173,7 +3205,7 @@ export type GetAgentByAgentIdBuildDraftResponse =
   GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
 
 export type PutAgentByAgentIdBuildDraftData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3371,7 +3403,7 @@ export type GetAgentByAgentIdComposerResponse =
   GetAgentByAgentIdComposerResponses[keyof GetAgentByAgentIdComposerResponses]
 
 export type PutAgentByAgentIdComposerData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3424,7 +3456,7 @@ export type GetAgentByAgentIdComposerCandidatesResponse =
   GetAgentByAgentIdComposerCandidatesResponses[keyof GetAgentByAgentIdComposerCandidatesResponses]
 
 export type PostAgentByAgentIdComposerValidateData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }

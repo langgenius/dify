@@ -60,10 +60,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         remember_me: true,
       }
 
-      const res = await webAppLogin({
-        url: '/login',
-        body: loginData,
-      })
+      const res = await webAppLogin(loginData)
       if (res.result === 'success') {
         if (res?.data?.access_token) {
           setWebAppAccessToken(res.data.access_token)
