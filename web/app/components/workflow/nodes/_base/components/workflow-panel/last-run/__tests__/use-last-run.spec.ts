@@ -141,7 +141,10 @@ describe('useLastRun', () => {
     })
 
     expect(streamEvents).toHaveBeenCalledWith(expect.any(Function), expect.any(Object))
-    const options = { signal: new AbortController().signal, context: { silent: true } } as const
+    const options = {
+      signal: new AbortController().signal,
+      context: { silent: true, stream: true },
+    } as const
     await streamEvents.mock.lastCall![0](options)
     expect(runIteration).toHaveBeenCalledWith(
       {
