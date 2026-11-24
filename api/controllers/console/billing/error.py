@@ -21,12 +21,6 @@ class ComplianceRateLimitErrorResponse(ResponseModel):
     status: Literal[429]
 
 
-class AnnualDiscountActiveErrorResponse(ResponseModel):
-    code: Literal["annual_discount_active"]
-    message: str
-    status: Literal[409]
-
-
 class BillingOperationFailedErrorResponse(ResponseModel):
     code: Literal["billing_operation_failed"]
     message: str
@@ -61,12 +55,6 @@ class BillingRequestInProgressError(BaseHTTPException):
     error_code = "billing_request_in_progress"
     description = "A previous request is still being processed. Please try again shortly."
     code = 429
-
-
-class AnnualDiscountActiveError(BaseHTTPException):
-    error_code = "annual_discount_active"
-    description = "You can switch to annual billing after your current discount ends."
-    code = 409
 
 
 class BillingOperationFailedError(BaseHTTPException):

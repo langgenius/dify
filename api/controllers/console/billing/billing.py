@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.billing.error import (
-    AnnualDiscountActiveError,
-    AnnualDiscountActiveErrorResponse,
     BillingOperationFailedError,
     BillingOperationFailedErrorResponse,
     BillingUnavailableError,
@@ -47,7 +45,6 @@ class BillingSubscriptionResponse(ResponseModel):
 register_schema_models(console_ns, SubscriptionQuery)
 register_response_schema_models(
     console_ns,
-    AnnualDiscountActiveErrorResponse,
     BillingOperationFailedErrorResponse,
     BillingUnprocessableEntityErrorResponse,
     BillingUnavailableErrorResponse,
@@ -58,8 +55,6 @@ register_response_schema_models(
 
 def _subscription_portal_error(error: billing.BillingSubscriptionUpstreamError) -> BaseHTTPException:
     match error.reason:
-        case "ANNUAL_DISCOUNT_ACTIVE":
-            return AnnualDiscountActiveError()
         case (
             ""
             | "CODEC"
@@ -114,8 +109,7 @@ def _invoice_portal_error(error: billing.BillingInvoiceUpstreamError) -> BaseHTT
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
-    @error_responses(AnnualDiscountActiveError, BillingOperationFailedError, BillingUnavailableError)
-    @console_ns.response(409, "Active discount", console_ns.models[AnnualDiscountActiveErrorResponse.__name__])
+    @error_responses(BillingOperationFailedError, BillingUnavailableError)
     @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
     @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
     @console_ns.response(403, "Forbidden")

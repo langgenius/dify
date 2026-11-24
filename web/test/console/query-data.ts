@@ -135,7 +135,6 @@ export const seedEducationStatus = (
 ): EducationStatusResponse => {
   const data: EducationStatusResponse = {
     allow_refresh: false,
-    can_redeem_discount: false,
     expire_at: null,
     is_student: false,
     result: false,
