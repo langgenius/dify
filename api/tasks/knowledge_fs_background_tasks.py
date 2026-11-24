@@ -43,7 +43,7 @@ def execute_delivery(self, *, delivery: dict[str, object]) -> dict[str, object]:
         raise Reject("Invalid KnowledgeFS background locator", requeue=False) from error
     if str(locator.id) != self.request.id:
         raise Reject("KnowledgeFS broker delivery identity mismatch", requeue=False)
-    envelope = locator.model_dump(mode="json", exclude={"runAfter"})
+    envelope = locator.model_dump(mode="json", exclude={"run_after"})
     envelope["attempts"] = self.request.retries + 1
     logger.info("KnowledgeFS Celery delivery type=%s delivery_id=%s", locator.type, locator.id)
     try:

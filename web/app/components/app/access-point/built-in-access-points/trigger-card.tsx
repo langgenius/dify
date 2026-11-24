@@ -18,7 +18,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { canFindTool } from '@/utils'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
@@ -162,7 +162,7 @@ export function TriggerAccessPointCard({
       enabled: !!appInfo.id,
     }),
   )
-  const { data: triggerPlugins = [] } = useAllTriggerPlugins()
+  const { data: triggerPlugins = [] } = useQuery(allTriggerPluginsQueryOptions())
   const setTriggerStatuses = useTriggerStatusStore((state) => state.setTriggerStatuses)
   const triggers = useMemo(() => response?.data ?? [], [response?.data])
   const loading = availability === 'loading' || isLoading

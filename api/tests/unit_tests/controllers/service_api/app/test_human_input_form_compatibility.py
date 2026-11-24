@@ -6,10 +6,12 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 from threading import Barrier
 from typing import NoReturn
 from uuid import uuid4
 
+import httpx
 import pytest
 import sqlalchemy as sa
 from flask import Flask
@@ -26,10 +28,13 @@ from werkzeug.test import TestResponse
 
 from controllers.service_api import wraps
 from controllers.service_api.app import human_input_form as controller
+from core.file import remote_fetcher
 from core.human_input import ButtonStyle
 from core.human_input_v2.resolved_form import (
     FileInput,
     FileListInput,
+    MarkdownFragment,
+    ParagraphDefaultConfig,
     ParagraphInput,
     ResolvedForm,
     SelectInput,
@@ -37,9 +42,11 @@ from core.human_input_v2.resolved_form import (
 )
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.entities import FormDefinition
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input_v2.entities import Initiator
 from extensions.ext_application_services import ApplicationServices
+from extensions.ext_storage import Storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file.enums import FileTransferMethod, FileType
@@ -62,6 +69,7 @@ from repositories.human_input_v2.recipient_repository import EndUserRecipientSub
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from tasks.app_generate.workflow_execute_task import resume_app_execution
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
@@ -71,6 +79,17 @@ _PATH = f"/v1/form/human_input/{_TOKEN}"
 _HEADERS = {"Authorization": "Bearer test-app-key"}
 _CONTENT = "Review {{#$output.note#}}: {{#$output.choice#}}"
 _INPUTS: dict[str, JsonValue] = {"note": "Approved", "choice": "Yes"}
+
+
+def test_form_response_marks_selector_as_deprecated() -> None:
+    schema = controller.HumanInputFormDefinitionResponse.model_json_schema(mode="serialization")
+    selectors = [
+        definition["properties"]["selector"]
+        for definition in schema["$defs"].values()
+        if "selector" in definition.get("properties", {})
+    ]
+    assert selectors
+    assert all(selector.get("deprecated") is True for selector in selectors)
 
 
 @dataclass
@@ -99,6 +118,17 @@ class Approval:
             assert form is not None
             return json.loads(form.raw_submission_inputs) if form.raw_submission_inputs is not None else None
 
+    def stop(self) -> None:
+        with self.sessions.begin() as session:
+            run = session.get(WorkflowRun, self.run_id)
+            assert run is not None
+            run.task_id = self.run_id
+        stopped = DifyAPISQLAlchemyWorkflowRunRepository(self.sessions).stop_paused_workflow_task(
+            tenant_id=self.tenant_id, app_id=self.app_id, task_id=self.run_id, owner=None
+        )
+        assert stopped is not None
+        assert stopped.status == WorkflowExecutionStatus.STOPPED
+
 
 @pytest.fixture(scope="module")
 def service_app() -> Flask:
@@ -120,7 +150,11 @@ def approval(
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
     account_application_services: ApplicationServices,
+    tmp_path: Path,
 ) -> Iterator[Approval]:
+    checkpoint_storage = Storage()
+    checkpoint_storage.storage_runner = OpenDALStorage(scheme="fs", root=str(tmp_path))
+    monkeypatch.setattr("repositories.sqlalchemy_api_workflow_run_repository.storage", checkpoint_storage)
     version = request.param
     tenant = make_tenant(tenant_id=str(uuid4()))
     owner = make_account(account_id=str(uuid4()))
@@ -173,7 +207,7 @@ def approval(
                             "option_source": {"type": "constant", "value": ["Yes", "No"]},
                         },
                     ],
-                    "default_values": {"note": "Draft"},
+                    "default_values": {},
                     "expiration_time": _NOW + timedelta(hours=1),
                     "user_actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
                 }
@@ -210,8 +244,18 @@ def approval(
                         title="Review",
                         legacy_form_content=_CONTENT,
                         parts=(
-                            ParagraphInput(output_variable_name="note", default_value="Draft"),
-                            SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                            MarkdownFragment(text="Review "),
+                            ParagraphInput(
+                                output_variable_name="note",
+                                resolved_default_value="Draft",
+                                default_config=ParagraphDefaultConfig(
+                                    type=ValueSourceType.CONSTANT, selector=(), value="Draft"
+                                ),
+                            ),
+                            MarkdownFragment(text=": "),
+                            SelectInput(
+                                output_variable_name="choice", options=("Yes", "No"), resolved_default_value=None
+                            ),
                         ),
                         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
                     ),
@@ -319,7 +363,7 @@ def test_get_without_user_returns_the_existing_form_definition(
                 "option_source": {"type": "constant", "selector": [], "value": ["Yes", "No"]},
             },
         ],
-        "resolved_default_values": {"note": "Draft"},
+        "resolved_default_values": {},
         "user_actions": [{"id": "approve", "title": "Approve", "button_style": "primary"}],
         "expiration_time": int((_NOW + timedelta(hours=1)).timestamp()),
     }
@@ -335,6 +379,63 @@ def test_get_without_user_returns_the_existing_form_definition(
             assert audits[0].form_id == approval.form_id
             assert isinstance(audits[0].payload, FormViewEvent)
             assert audits[0].payload.viewer_ip_address == expected_ip
+
+
+@pytest.mark.parametrize("approval", ["2"], indirect=True)
+def test_get_preserves_frozen_effective_defaults_and_dynamic_options(approval: Approval) -> None:
+    from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
+    from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
+    from graphon.runtime import VariablePool
+    from graphon.variables.segments import ArrayStringSegment, StringSegment
+
+    data = HumanInputNodeData.model_validate(
+        {
+            "title": "Review",
+            "recipients_spec": [{"type": "initiator"}],
+            "message_template": {"subject": "Review", "body": "[Request URL]"},
+            "debug_mode": {"enabled": False, "channels": []},
+            "form_content": "{{#$output.note#}} / {{#$output.prefilled#}} / {{#$output.empty#}} / {{#$output.choice#}}",
+            "inputs": [
+                {
+                    "type": "paragraph",
+                    "output_variable_name": "note",
+                    "default": {"type": "constant", "value": "Draft"},
+                },
+                {
+                    "type": "paragraph",
+                    "output_variable_name": "prefilled",
+                    "default": {"type": "variable", "selector": ["seed", "note"]},
+                },
+                {"type": "paragraph", "output_variable_name": "empty"},
+                {
+                    "type": "select",
+                    "output_variable_name": "choice",
+                    "option_source": {"type": "variable", "selector": ["seed", "choices"]},
+                },
+            ],
+            "user_actions": [{"id": "approve", "title": "Approve"}],
+        }
+    )
+    pool = VariablePool()
+    pool.add(("seed", "note"), StringSegment(value="Runtime 默认值"))
+    pool.add(("seed", "choices"), ArrayStringSegment(value=["Yes", "No"]))
+    with approval.sessions.begin() as session:
+        form = session.get(V2Form, approval.form_id)
+        assert form is not None
+        form.resolved_form = compile_resolved_form(data, pool)
+    pool.add(("seed", "note"), StringSegment(value="Changed"))
+    pool.add(("seed", "choices"), ArrayStringSegment(value=["Changed"]))
+
+    response = approval.client.get(_PATH, headers=_HEADERS)
+
+    assert response.status_code == 200, response.json
+    assert response.json is not None
+    fields = {field["output_variable_name"]: field for field in response.json["inputs"]}
+    assert fields["note"]["default"] == {"type": "constant", "selector": [], "value": "Draft"}
+    assert fields["prefilled"]["default"] == {"type": "variable", "selector": ["seed", "note"], "value": ""}
+    assert fields["empty"]["default"] is None
+    assert fields["choice"]["option_source"]["value"] == ["Yes", "No"]
+    assert response.json["resolved_default_values"] == {"prefilled": "Runtime 默认值"}
 
 
 @pytest.mark.parametrize("method", ["GET", "POST"])
@@ -394,11 +495,12 @@ def test_preserves_paragraph_json_values_and_ignores_extra_input_fields(approval
             }
 
 
-@pytest.mark.parametrize("approval", ["1"], indirect=True)
 @pytest.mark.parametrize(
     ("note", "rendered_note"),
     [
         ("  Unchanged  ", "  Unchanged  "),
+        ("中文\nLine 2", "中文\nLine 2"),
+        ("", ""),
         (123, "123"),
         (False, "False"),
         (None, ""),
@@ -406,7 +508,7 @@ def test_preserves_paragraph_json_values_and_ignores_extra_input_fields(approval
         (["approved"], "['approved']"),
     ],
 )
-def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note: JsonValue, rendered_note: str) -> None:
+def test_paragraph_submission_resumes_the_node(approval: Approval, note: JsonValue, rendered_note: str) -> None:
     from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
     from core.workflow.nodes.human_input.callback import DifyHITLCallback
     from core.workflow.nodes.human_input.constants import OUTPUT_FIELD_RENDERED_CONTENT
@@ -420,6 +522,55 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
 
     response = approval.submit(inputs={"note": note, "choice": "Yes"})
     assert response.status_code == 200, response.json
+    if approval.version == "2":
+        from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+        from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as V2NodeData
+        from core.workflow.nodes.human_input_v2.node import HumanInputNode as V2Node
+        from core.workflow.system_variables import SystemVariableKey, system_variable_selector
+        from graphon.variables.segments import StringSegment
+        from services.human_input_v2.composition import WorkflowHumanInputRuntime
+
+        with approval.sessions() as session:
+            form = session.get(V2Form, approval.form_id)
+            run = session.get(WorkflowRun, approval.run_id)
+            assert form is not None
+            assert run is not None
+            assert form.node_execution_id is not None
+        pool = VariablePool()
+        pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), StringSegment(value=run.id))
+        node = V2Node(
+            node_id="approval",
+            data=V2NodeData.model_validate(
+                {
+                    "title": "Changed after submission",
+                    "recipients_spec": [],
+                    "message_template": {"subject": "Review", "body": "[Request URL]"},
+                    "debug_mode": {"enabled": False, "channels": []},
+                    "form_content": "Changed after submission",
+                    "user_actions": [],
+                }
+            ),
+            init_params=InitParams(workflow_id=run.workflow_id, graph_config={}, run_context={}, call_depth=0),
+            runtime_state=RuntimeState(workflow_id=run.workflow_id, variable_pool=pool, start_at=0),
+            human_input_runtime=WorkflowHumanInputRuntime(
+                DifyRunContext(
+                    tenant_id=approval.tenant_id,
+                    app_id=approval.app_id,
+                    user_id=run.created_by,
+                    user_from=UserFrom.END_USER,
+                    invoke_from=InvokeFrom.SERVICE_API,
+                )
+            ),
+        )
+        node.bind_execution_id(form.node_execution_id)
+        event = list(node.run())[-1]
+        assert isinstance(event, NodeRunSucceededEvent)
+        assert event.node_run_result.edge_source_handle == "approve"
+        assert event.node_run_result.outputs["note"].to_object() == note
+        assert (
+            event.node_run_result.outputs[OUTPUT_FIELD_RENDERED_CONTENT].to_object() == f"Review {rendered_note}: Yes"
+        )
+        return
     with approval.sessions() as session:
         form = session.get(LegacyForm, approval.form_id)
         assert form is not None
@@ -459,6 +610,7 @@ def test_v1_json_paragraph_submission_resumes_the_node(approval: Approval, note:
     [
         ("unknown", _INPUTS),
         ("approve", {"note": "Approved"}),
+        ("approve", {}),
         ("approve", {"note": "Approved", "choice": "unknown"}),
         ("approve", {"note": "Approved", "choice": 123}),
     ],
@@ -472,6 +624,10 @@ def test_invalid_form_data_does_not_submit_or_resume(
     assert response.json["code"] == "invalid_form_data"
     assert approval.submission() is None
     assert approval.published == []
+    assert approval.client.get(_PATH, headers=_HEADERS).status_code == 200
+    assert approval.submit(inputs=_INPUTS).status_code == 200
+    assert approval.submission() == _INPUTS
+    assert len(approval.published) == 1
 
 
 def test_post_requires_user(approval: Approval) -> None:
@@ -504,8 +660,13 @@ def test_accepted_submission_stays_successful_when_the_resume_broker_is_unavaila
     assert approval.submission() == _INPUTS
 
 
-def test_duplicate_submission_preserves_first_response_and_returns_412(approval: Approval) -> None:
+@pytest.mark.parametrize("stop_after_submission", [False, True])
+def test_duplicate_submission_preserves_first_response_and_returns_412(
+    approval: Approval, stop_after_submission: bool
+) -> None:
     assert approval.submit(inputs=_INPUTS).status_code == 200
+    if stop_after_submission:
+        approval.stop()
     response = approval.submit(inputs={"note": "Changed", "choice": "No"}, user="initiator")
     assert response.status_code == 412, response.json
     assert response.json is not None
@@ -582,6 +743,98 @@ def test_expired_forms_return_412_without_submission(approval: Approval, method:
 
 
 @pytest.mark.parametrize("method", ["GET", "POST"])
+def test_stopping_a_paused_run_expires_its_form(approval: Approval, method: str) -> None:
+    approval.stop()
+
+    response = approval.client.open(
+        _PATH,
+        method=method,
+        headers=_HEADERS,
+        json={"user": "reviewer", "action": "approve", "inputs": _INPUTS},
+    )
+
+    assert response.status_code == 412, response.json
+    assert response.json is not None
+    assert response.json["code"] == "human_input_form_expired"
+    assert approval.submission() is None
+    assert approval.published == []
+    with approval.sessions() as session:
+        model = session.get(LegacyForm if approval.version == "1" else V2Form, approval.form_id)
+        assert model is not None
+        assert model.status == HumanInputFormStatus.EXPIRED
+
+
+@pytest.mark.parametrize("approval", ["2"], indirect=True)
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("inputs", [_INPUTS, {}], ids=["valid-inputs", "invalid-inputs"])
+def test_already_stopped_runs_cannot_expose_or_accept_waiting_forms(
+    approval: Approval, method: str, inputs: dict[str, JsonValue]
+) -> None:
+    # A stopped run must not be overridden by a still-waiting form snapshot.
+    with approval.sessions.begin() as session:
+        run = session.get(WorkflowRun, approval.run_id)
+        assert run is not None
+        run.status = WorkflowExecutionStatus.STOPPED
+    response = approval.client.open(
+        _PATH,
+        method=method,
+        headers=_HEADERS,
+        json={"user": "reviewer", "action": "approve", "inputs": inputs},
+    )
+    assert response.status_code == 412, response.json
+    assert response.json is not None
+    assert response.json["code"] == "human_input_form_expired"
+    assert approval.submission() is None
+    assert approval.published == []
+    with approval.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+@pytest.mark.parametrize("approval", ["2"], indirect=True)
+def test_stop_during_remote_file_resolution_prevents_submission(
+    approval: Approval, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with approval.sessions.begin() as session:
+        form = session.get(V2Form, approval.form_id)
+        assert form is not None
+        attachment = FileInput(
+            output_variable_name="attachment",
+            allowed_file_types=(FileType.DOCUMENT,),
+            allowed_file_extensions=(".txt",),
+            allowed_file_upload_methods=(FileTransferMethod.REMOTE_URL,),
+        )
+        form.resolved_form = form.resolved_form.model_copy(update={"parts": (*form.resolved_form.parts, attachment)})
+
+    def fetch_file_metadata(_method: str, _url: str, **_kwargs: object) -> httpx.Response:
+        # Model a run stopped while an external file server was still responding.
+        with approval.sessions.begin() as session:
+            run = session.get(WorkflowRun, approval.run_id)
+            assert run is not None
+            run.status = WorkflowExecutionStatus.STOPPED
+        return httpx.Response(200, headers={"Content-Type": "text/plain", "Content-Length": "8"})
+
+    monkeypatch.setattr(remote_fetcher, "make_request", fetch_file_metadata)
+    response = approval.submit(
+        inputs={
+            **_INPUTS,
+            "attachment": {
+                "transfer_method": "remote_url",
+                "type": "document",
+                "url": "https://example.com/report.txt",
+            },
+        }
+    )
+
+    assert response.status_code == 412, response.json
+    assert response.json is not None
+    assert response.json["code"] == "human_input_form_expired"
+    assert approval.submission() is None
+    assert approval.published == []
+    with approval.sessions() as session:
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+
+
+@pytest.mark.parametrize("method", ["GET", "POST"])
 def test_rejects_console_recipient_tokens(approval: Approval, method: str) -> None:
     with approval.sessions.begin() as session:
         if approval.version == "1":
@@ -613,7 +866,10 @@ def test_rejects_console_recipient_tokens(approval: Approval, method: str) -> No
     assert approval.published == []
 
 
-def test_submits_existing_upload_references_for_file_and_file_list_inputs(approval: Approval) -> None:
+@pytest.mark.parametrize("invalid_case", [None, "single-shape", "list-shape", "list-item", "list-limit"])
+def test_submits_existing_upload_references_for_file_and_file_list_inputs(
+    approval: Approval, invalid_case: str | None
+) -> None:
     upload = UploadFile(
         tenant_id=approval.tenant_id,
         storage_type=StorageType.LOCAL,
@@ -675,7 +931,27 @@ def test_submits_existing_upload_references_for_file_and_file_list_inputs(approv
                 update={"parts": (*form.resolved_form.parts, *file_parts)}
             )
     mapping: dict[str, JsonValue] = {"transfer_method": "local_file", "upload_file_id": upload.id, "type": "document"}
-    response = approval.submit(inputs={**_INPUTS, "attachment": mapping, "attachments": [mapping]})
+    valid_inputs: dict[str, JsonValue] = {**_INPUTS, "attachment": mapping, "attachments": [mapping]}
+    if invalid_case is not None:
+        invalid_inputs = dict(valid_inputs)
+        match invalid_case:
+            case "single-shape":
+                invalid_inputs["attachment"] = "not-a-mapping"
+            case "list-limit":
+                invalid_inputs["attachments"] = [mapping, mapping, mapping]
+            case "list-shape":
+                invalid_inputs["attachments"] = {"bad": "shape"}
+            case _:
+                invalid_inputs["attachments"] = ["not-a-mapping"]
+        rejected = approval.submit(inputs=invalid_inputs)
+        assert rejected.status_code == 400, rejected.json
+        assert rejected.json is not None
+        assert rejected.json["code"] == "invalid_form_data"
+        assert rejected.json["status"] == 400
+        assert approval.submission() is None
+        assert approval.published == []
+        assert approval.client.get(_PATH, headers=_HEADERS).status_code == 200
+    response = approval.submit(inputs=valid_inputs)
     assert response.status_code == 200, response.json
     assert response.json == {}
     with approval.sessions() as session:

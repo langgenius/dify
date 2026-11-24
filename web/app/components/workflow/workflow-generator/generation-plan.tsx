@@ -109,7 +109,7 @@ const GenerationPlan = ({ plan }: Props) => {
               <div className="min-w-0">
                 <div className="system-sm-medium text-text-secondary">
                   {node.label}
-                  <span className="ml-1 system-xs-regular text-text-quaternary">
+                  <span className="ms-1 system-xs-regular text-text-quaternary">
                     ·{node.node_type}
                   </span>
                 </div>

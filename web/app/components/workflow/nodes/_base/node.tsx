@@ -5,10 +5,11 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { cloneElement, memo, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
+import { NodeEditorAvatars } from '@/app/components/workflow/collaboration/components/node-editors'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { getNodeEditors } from '@/app/components/workflow/collaboration/utils/node-editors'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
@@ -58,9 +59,9 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
-  const { data: userProfile } = useSuspenseQuery({
+  const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
-    select: (data) => data.profile,
+    select: (data) => data.profile.id,
   })
   const appId = useAtomValue(editorAppIdAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
@@ -70,36 +71,10 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
   )
 
-  const currentUserPresence = useMemo(() => {
-    const userId = userProfile?.id || ''
-    const username = userProfile?.name || userProfile?.email || 'User'
-    const avatar = userProfile?.avatar_url || userProfile?.avatar || null
-
-    return {
-      userId,
-      username,
-      avatar,
-    }
-  }, [
-    userProfile?.avatar,
-    userProfile?.avatar_url,
-    userProfile?.email,
-    userProfile?.id,
-    userProfile?.name,
-  ])
-
-  const viewingUsers = useMemo(() => {
-    const presence = nodePanelPresence?.[id]
-    if (!presence) return []
-
-    return Object.values(presence)
-      .filter((viewer) => viewer.userId && viewer.userId !== currentUserPresence.userId)
-      .map((viewer) => ({
-        id: viewer.userId,
-        name: viewer.username,
-        avatar_url: viewer.avatar || null,
-      }))
-  }, [currentUserPresence.userId, id, nodePanelPresence])
+  const editors = useMemo(
+    () => getNodeEditors(nodePanelPresence, id, currentUserId),
+    [currentUserId, id, nodePanelPresence],
+  )
   const {
     shouldDim: pluginDimmed,
     isChecking: pluginIsChecking,
@@ -146,7 +121,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
       return (
         <div
           className={cn(
-            'mr-2 system-xs-medium text-text-tertiary',
+            'me-2 system-xs-medium text-text-tertiary',
             data._runningStatus === NodeRunningStatus.Running && 'text-text-accent',
           )}
         >
@@ -244,15 +219,15 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
             isContainerNode(data.type) && 'bg-transparent',
           )}
         >
-          <div className="mr-1 flex min-w-0 grow items-center">
-            <BlockIcon className="mr-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
+          <div className="me-1 flex min-w-0 grow items-center">
+            <BlockIcon className="me-2 shrink-0" type={data.type} size="md" toolIcon={toolIcon} />
             <div className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary">
               <div title={data.title} className="min-w-0 grow truncate">
                 {data.title}
               </div>
-              {viewingUsers.length > 0 && (
-                <div className="ml-3 shrink-0">
-                  <UserAvatarList users={viewingUsers} maxVisible={3} size="sm" />
+              {editors.length > 0 && (
+                <div className="ms-3 flex shrink-0">
+                  <NodeEditorAvatars editors={editors} />
                 </div>
               )}
             </div>

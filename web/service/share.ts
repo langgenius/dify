@@ -1,20 +1,35 @@
 import type {
   MessageFeedbackPayload,
+  PostInstalledAppsByInstalledAppIdChatMessagesData,
+  PostInstalledAppsByInstalledAppIdCompletionMessagesData,
+  PostInstalledAppsByInstalledAppIdWorkflowsRunData,
   SimpleConversation,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
-import type { ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
+import type {
+  PostTrialAppsByAppIdChatMessagesData,
+  PostTrialAppsByAppIdCompletionMessagesData,
+  PostTrialAppsByAppIdWorkflowsRunData,
+} from '@dify/contracts/api/console/trial-apps/types.gen'
+import type {
+  PostChatMessagesData,
+  PostCompletionMessagesData,
+  PostWorkflowsRunData,
+} from '@dify/contracts/api/web/types.gen'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  StreamCallbacks,
+  StreamSender,
+} from './event-stream'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input/form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData as WorkflowHumanInputFormData } from '@/types/workflow'
-import { form as webFormContract } from '@dify/contracts/api/web/orpc.gen'
 import { zWebAppHumanInputV2SubmitPayload } from '@dify/contracts/api/web/zod.gen'
-import { createORPCClient } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
-import { PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -32,12 +47,12 @@ import {
   getPublic as get,
   patchPublic as patch,
   postPublic as post,
-  request,
-  ssePost,
   upload,
 } from './base'
-import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
+import { streamEvents } from './event-stream'
+import { resolveWebAppAddress } from './webapp-address'
 import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
+import { webAppClient } from './webapp-client'
 
 export const AppSourceType = {
   webApp: 'webApp',
@@ -71,7 +86,7 @@ function getAction(action: 'get' | 'post' | 'del' | 'patch', appSourceType: AppS
   }
 }
 
-export function getUrl(url: string, appSourceType: AppSourceType, appId: string) {
+function getUrl(url: string, appSourceType: AppSourceType, appId: string) {
   const hasPrefix = appSourceType !== AppSourceType.webApp
   return hasPrefix
     ? `${apiPrefix[appSourceType]}/${appId}/${url.startsWith('/') ? url.slice(1) : url}`
@@ -83,7 +98,7 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
+  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
     return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
@@ -99,7 +114,79 @@ export const stopChatMessageResponding = async (
       },
       { context: options },
     )
-  return post(getUrl(`chat-messages/${taskId}/stop`, appSourceType, installedAppId), {}, options)
+  return webAppClient.chatMessages.byTaskId.stop.post(
+    { params: { task_id: taskId } },
+    { context: options },
+  )
+}
+
+// The app's input form builds these bodies, so they are passed through as the contract bodies.
+
+/** Streams a chat message for a WebApp, installed app or trial app. */
+export function chatMessagesSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.chatMessages.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdChatMessagesData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.chatMessages.post(
+        { params: { app_id: appId }, body: body as PostTrialAppsByAppIdChatMessagesData['body'] },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.chatMessages.post({ body: body as PostChatMessagesData['body'] }, options)
+}
+
+function completionMessagesSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.completionMessages.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdCompletionMessagesData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.completionMessages.post(
+        {
+          params: { app_id: appId },
+          body: body as PostTrialAppsByAppIdCompletionMessagesData['body'],
+        },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.completionMessages.post(
+      { body: body as PostCompletionMessagesData['body'] },
+      options,
+    )
+}
+
+function workflowRunSender(appSourceType: AppSourceType, appId: string): StreamSender {
+  if (appSourceType === AppSourceType.installedApp)
+    return (body, options) =>
+      consoleClient.installedApps.byInstalledAppId.workflows.run.post(
+        {
+          params: { installed_app_id: appId },
+          body: body as PostInstalledAppsByInstalledAppIdWorkflowsRunData['body'],
+        },
+        options,
+      )
+  if (appSourceType === AppSourceType.tryApp)
+    return (body, options) =>
+      consoleClient.trialApps.byAppId.workflows.run.post(
+        { params: { app_id: appId }, body: body as PostTrialAppsByAppIdWorkflowsRunData['body'] },
+        options,
+      )
+  return (body, options) =>
+    webAppClient.workflows.run.post({ body: body as PostWorkflowsRunData['body'] }, options)
 }
 
 export const sendCompletionMessage = async (
@@ -120,44 +207,28 @@ export const sendCompletionMessage = async (
   appSourceType: AppSourceType,
   installedAppId = '',
 ) => {
-  return ssePost(
-    getUrl('completion-messages', appSourceType, installedAppId),
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
-    {
-      onData,
-      onCompleted,
-      isPublicAPI: getIsPublicAPI(appSourceType),
-      onError,
-      onMessageReplace,
-      getAbortController,
-    },
-  )
+  const send = completionMessagesSender(appSourceType, installedAppId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), {
+    onData,
+    onCompleted,
+    isPublicAPI: getIsPublicAPI(appSourceType),
+    onError,
+    onMessageReplace,
+    getAbortController,
+  })
 }
 
 export const sendWorkflowMessage = async (
   body: Record<string, unknown>,
-  otherOptions: IOtherOptions,
+  otherOptions: StreamCallbacks,
   appSourceType: AppSourceType,
   appId = '',
 ) => {
-  return ssePost(
-    getUrl('workflows/run', appSourceType, appId),
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
-    {
-      ...otherOptions,
-      isPublicAPI: getIsPublicAPI(appSourceType),
-    },
-  )
+  const send = workflowRunSender(appSourceType, appId)
+  return streamEvents((options) => send({ ...body, response_mode: 'streaming' }, options), {
+    ...otherOptions,
+    isPublicAPI: getIsPublicAPI(appSourceType),
+  })
 }
 
 export const stopWorkflowMessage = async (
@@ -165,7 +236,7 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<IOtherOptions, 'silent'>,
+  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
@@ -182,11 +253,14 @@ export const stopWorkflowMessage = async (
       },
       { context: options },
     )
-  return post(getUrl(`workflows/tasks/${taskId}/stop`, appSourceType, installedAppId), {}, options)
+  return webAppClient.workflows.tasks.byTaskId.stop.post(
+    { params: { task_id: taskId } },
+    { context: options },
+  )
 }
 
 export const fetchAppInfo = async () => {
-  return get('/site') as Promise<AppData>
+  return webAppClient.site.get() as Promise<AppData>
 }
 
 const selectConversation = (conversation: SimpleConversation): ConversationItem => ({
@@ -214,6 +288,14 @@ export const fetchConversations = async (
     })
     return { ...response, data: response.data.map(selectConversation) }
   }
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.get({
+      query: {
+        limit: limit || 20,
+        ...(last_id ? { last_id } : {}),
+        ...(pinned !== undefined ? { pinned } : {}),
+      },
+    }) as Promise<AppConversationData>
   return getAction('get', appSourceType)(getUrl('conversations', appSourceType, installedAppId), {
     params: {
       limit: limit || 20,
@@ -232,6 +314,8 @@ export const pinConversation = async (
     return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch({
       params: { installed_app_id: installedAppId, c_id: id },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.pin.patch({ params: { c_id: id } })
   return getAction(
     'patch',
     appSourceType,
@@ -247,6 +331,8 @@ export const unpinConversation = async (
     return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch({
       params: { installed_app_id: installedAppId, c_id: id },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.unpin.patch({ params: { c_id: id } })
   return getAction(
     'patch',
     appSourceType,
@@ -262,6 +348,8 @@ export const delConversation = async (
     return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete({
       params: { installed_app_id: installedAppId, c_id: id },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.delete({ params: { c_id: id } })
   return getAction(
     'del',
     appSourceType,
@@ -279,6 +367,8 @@ export const renameConversation = async (
       params: { installed_app_id: installedAppId, c_id: id },
       body: { name },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.name.post({ params: { c_id: id }, body: { name } })
   return getAction('post', appSourceType)(
     getUrl(`conversations/${id}/name`, appSourceType, installedAppId),
     { body: { name } },
@@ -298,6 +388,11 @@ export const generationConversationName = async (
       })
     return selectConversation(response)
   }
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.conversations.byCId.name.post({
+      params: { c_id: id },
+      body: { auto_generate: true },
+    }) as Promise<ConversationItem>
   return getAction('post', appSourceType)(
     getUrl(`conversations/${id}/name`, appSourceType, installedAppId),
     { body: { auto_generate: true } },
@@ -314,6 +409,8 @@ export const fetchChatList = async (
       params: { installed_app_id: installedAppId },
       query: { conversation_id: conversationId, limit: 20 },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.get({ query: { conversation_id: conversationId, limit: 20 } })
   return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), {
     params: { conversation_id: conversationId, limit: 20, last_id: '' },
   }) as any
@@ -335,7 +432,7 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
         : await consoleClient.trialApps.byAppId.parameters.get({ params: { app_id: appId } })
     return selectAppParameters(parameters)
   }
-  return get<ChatConfig>('parameters')
+  return webAppClient.parameters.get() as Promise<ChatConfig>
 }
 
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
@@ -417,6 +514,7 @@ export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId 
     })
     return { tool_icons: response.tool_icons ?? {} }
   }
+  if (appSourceType === AppSourceType.webApp) return webAppClient.meta.get() as Promise<AppMeta>
   return getAction(
     'get',
     appSourceType,
@@ -433,6 +531,11 @@ export const updateFeedback = async (
       params: { installed_app_id: installedAppId, message_id: messageId },
       body,
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.byMessageId.feedbacks.post({
+      params: { message_id: messageId },
+      body,
+    })
   return getAction('post', appSourceType)(
     getUrl(`/messages/${messageId}/feedbacks`, appSourceType, installedAppId),
     { body },
@@ -447,6 +550,11 @@ export const fetchMoreLikeThis = async (
   if (appSourceType === AppSourceType.installedApp)
     return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.moreLikeThis.get({
       params: { installed_app_id: installedAppId, message_id: messageId },
+      query: { response_mode: 'blocking' },
+    })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.messages.byMessageId.moreLikeThis.get({
+      params: { message_id: messageId },
       query: { response_mode: 'blocking' },
     })
   return getAction('get', appSourceType)(
@@ -483,6 +591,8 @@ export const fetchSavedMessage = async (appSourceType: AppSourceType, installedA
       },
       { context: { silent: true } },
     )
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.savedMessages.get(undefined, { context: { silent: true } })
   return getAction('get', appSourceType)(
     getUrl('/saved-messages', appSourceType, installedAppId),
     {},
@@ -501,6 +611,8 @@ export const removeMessage = (
     return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete({
       params: { installed_app_id: installedAppId, message_id: messageId },
     })
+  if (appSourceType === AppSourceType.webApp)
+    return webAppClient.savedMessages.byMessageId.delete({ params: { message_id: messageId } })
   return getAction(
     'del',
     appSourceType,
@@ -522,7 +634,9 @@ export const fetchSuggestedQuestions = async (
     return consoleClient.trialApps.byAppId.messages.byMessageId.suggestedQuestions.get({
       params: { app_id: installedAppId, message_id: messageId },
     })
-  return get(getUrl(`/messages/${messageId}/suggested-questions`, appSourceType, installedAppId))
+  return webAppClient.messages.byMessageId.suggestedQuestions.get({
+    params: { message_id: messageId },
+  })
 }
 
 export const audioToText = (
@@ -570,15 +684,20 @@ type AccessTokenResponse = { access_token: string }
 
 const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>>()
 
-const requestAccessToken = ({ userId, appCode }: { userId?: string; appCode: string }) => {
-  const headers = new Headers()
-  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
+const requestAccessToken = ({
+  userId,
+  appCode,
+}: {
+  userId?: string
+  appCode: string
+}): Promise<AccessTokenResponse> => {
+  const headers: Record<string, string> = { [WEB_APP_SHARE_CODE_HEADER_NAME]: appCode }
   const accessToken = getWebAppAccessToken()
-  if (accessToken) headers.append('Authorization', `Bearer ${accessToken}`)
-  const params = new URLSearchParams()
-  if (userId) params.append('user_id', userId)
-  const url = `/passport?${params.toString()}`
-  return get<AccessTokenResponse>(url, { headers }) as Promise<AccessTokenResponse>
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
+  return webAppClient.passport.get(
+    { query: userId ? { user_id: userId } : {} },
+    { context: { headers } },
+  )
 }
 
 export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
@@ -609,15 +728,19 @@ export const getUserCanAccess = async (appId: string, isInstalledApp: boolean) =
       query: { appId },
     })
 
-  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
+  return webAppClient.webapp.permission.get({ query: { appId } })
 }
 
 export const getAppAccessModeByAppCode = (appCode: string) => {
-  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appCode=${appCode}`)
+  return webAppClient.webapp.accessMode.get({ query: { appCode } }) as Promise<{
+    accessMode: AccessMode
+  }>
 }
 
 export const getHumanInputForm = (token: string) => {
-  return get<HumanInputFormData>(`/form/human_input/${token}`)
+  return webAppClient.form.humanInput.byFormToken.get({
+    params: { form_token: token },
+  }) as Promise<HumanInputFormData>
 }
 
 type HumanInputFormUploadTokenResponse = {
@@ -666,9 +789,10 @@ const getHumanInputFormUploadToken = async (formToken: string) => {
   if (cachedToken && cachedToken.expires_at > now + UPLOAD_TOKEN_REFRESH_BUFFER_SECONDS)
     return cachedToken.upload_token
 
-  const tokenResponse = await post<HumanInputFormUploadTokenResponse>(
-    `/form/human_input/${formToken}/upload-token`,
-  )
+  const tokenResponse: HumanInputFormUploadTokenResponse =
+    await webAppClient.form.humanInput.byFormToken.uploadToken.post({
+      params: { form_token: formToken },
+    })
   humanInputFormUploadTokenCache.set(formToken, tokenResponse)
   return tokenResponse.upload_token
 }
@@ -751,28 +875,6 @@ export const uploadHumanInputFormRemoteFileInfo = async (
   ) as Promise<HumanInputFormRemoteFileUploadResponse>
 }
 
-const webAppHumanInputFormContract = {
-  submit: webFormContract.humanInput.v2.byFormToken.post,
-}
-const webAppHumanInputFormClient: JsonifiedClient<
-  ContractRouterClient<typeof webAppHumanInputFormContract>
-> = createORPCClient(
-  new OpenAPILink(webAppHumanInputFormContract, {
-    url: () =>
-      new URL(
-        `${PUBLIC_API_PREFIX}${getWebAppPublicApiPath(resolveWebAppAddress(), '/')}`,
-        window.location.origin,
-      ),
-    fetch: (input, init) =>
-      // oxlint-disable-next-line typescript/no-deprecated -- Generated public form calls need the shared WebApp authentication and access-error transport.
-      request<Response>(input.url, init, {
-        isPublicAPI: true,
-        fetchCompat: true,
-        request: input,
-      }),
-  }),
-)
-
 export const submitHumanInputForm = (
   token: string,
   data: {
@@ -782,10 +884,13 @@ export const submitHumanInputForm = (
   formVersion?: WorkflowHumanInputFormData['form_version'],
 ) => {
   if (formVersion === '2') {
-    return webAppHumanInputFormClient.submit({
+    return webAppClient.form.humanInput.v2.byFormToken.post({
       params: { form_token: token },
       body: zWebAppHumanInputV2SubmitPayload.parse(data),
     })
   }
-  return post(`/form/human_input/${token}`, { body: { inputs: data.inputs, action: data.action } })
+  return webAppClient.form.humanInput.byFormToken.post({
+    params: { form_token: token },
+    body: { inputs: data.inputs, action: data.action },
+  })
 }

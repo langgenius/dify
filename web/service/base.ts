@@ -1,5 +1,6 @@
 import type { FetchOptionType } from './fetch'
 import type { RequestGuard } from './request-guard'
+import type { OnUploadProgress } from './xhr-fetch'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -265,6 +266,13 @@ export type IOtherOptions = {
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
   request?: Request
+  /** Sends the request over XHR to report request-body upload progress. */
+  onUploadProgress?: OnUploadProgress
+  /**
+   * `false` lifts the time limit on the response headers. Event streams send their headers with
+   * the first frame, which can take longer than the limit; abort them through their signal.
+   */
+  timeout?: false
 
   onData?: IOnData // for stream
   onReasoning?: IOnReasoning
@@ -880,283 +888,6 @@ export const ssePost = async (
     })
 }
 
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const sseGet = async (
-  url: string,
-  fetchOptions: FetchOptionType,
-  otherOptions: IOtherOptions,
-) => {
-  const {
-    isPublicAPI = false,
-    onData,
-    onReasoning,
-    onCompleted,
-    onThought,
-    onFile,
-    onMessageEnd,
-    onMessageReplace,
-    onWorkflowStarted,
-    onWorkflowFinished,
-    onNodeStarted,
-    onNodeFinished,
-    onIterationStart,
-    onIterationNext,
-    onIterationFinish,
-    onNodeRetry,
-    onParallelBranchStarted,
-    onParallelBranchFinished,
-    onTextChunk,
-    onTTSChunk,
-    onTTSEnd,
-    onTextReplace,
-    onAgentLog,
-    onError,
-    onNotifyError,
-    getAbortController,
-    onLoopStart,
-    onLoopNext,
-    onLoopFinish,
-    onHumanInputRequired,
-    onHumanInputFormFilled,
-    onHumanInputFormTimeout,
-    onWorkflowPaused,
-    onDataSourceNodeProcessing,
-    onDataSourceNodeCompleted,
-    onDataSourceNodeError,
-    onUnhandledEvent,
-    silent,
-  } = otherOptions
-  const requestGuard = captureRequestGuard(url, isPublicAPI, 'GET')
-  if (requestGuard?.isActive() === false) {
-    onCompleted?.(true, 'The request is no longer active.')
-    return
-  }
-  const abortController = new AbortController()
-
-  const baseOptions = getBaseOptions()
-  const shareCode = resolveWebAppAddress()?.code
-  const options = Object.assign(
-    {},
-    baseOptions,
-    {
-      signal: abortController.signal,
-      headers: new Headers({
-        [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
-      }),
-    } as RequestInit,
-    fetchOptions,
-  )
-  options.headers = new Headers(options.headers)
-
-  const contentType = options.headers.get('Content-Type')
-  if (!contentType) options.headers.set('Content-Type', ContentType.json)
-
-  getAbortController?.(abortController)
-
-  const urlWithPrefix = formatURL(url, isPublicAPI)
-
-  globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
-    .then(async (res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (await handleGuardedStreamResponseError(res, requestGuard, onError, onCompleted)) return
-        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
-          if (isPublicAPI) {
-            void handlePublicStreamResponseError(
-              res,
-              onError,
-              onNotifyError,
-              silent,
-              requestGuard,
-              onCompleted,
-            )
-          } else {
-            refreshAccessTokenOrReLogin(TIME_OUT)
-              .then(() => {
-                sseGet(url, fetchOptions, otherOptions)
-              })
-              .catch((err) => {
-                const errorMessage = String(err)
-                console.error(err)
-                onError?.(errorMessage)
-              })
-          }
-        } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
-          else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
-        }
-        return
-      }
-      return handleStream(
-        res,
-        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-          if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode, moreInfo)
-            // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
-              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
-              else toast.error(moreInfo.errorMessage)
-            }
-            return
-          }
-          onData?.(str, isFirstMessage, moreInfo)
-        },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
-        onHumanInputRequired,
-        onHumanInputFormFilled,
-        onHumanInputFormTimeout,
-        onWorkflowPaused,
-        onDataSourceNodeProcessing,
-        onDataSourceNodeCompleted,
-        onDataSourceNodeError,
-        onReasoning,
-        onUnhandledEvent,
-      )
-    })
-    .catch((e) => {
-      const errorMessage = String(e)
-      if (!silent && shouldNotifyStreamError(e)) {
-        if (onNotifyError) onNotifyError(errorMessage)
-        else toast.error(errorMessage)
-      }
-      onError?.(errorMessage)
-    })
-}
-
-export type GeneratorStreamCallbacks = {
-  /** Fired once when the planner stage finishes — carries the high-level plan. */
-  onPlan?: (data: Record<string, unknown>) => void
-  /** Fired once when the builder + validation finish — carries the final graph envelope. */
-  onResult?: (data: Record<string, unknown>) => void
-  onError?: (message: string) => void
-  onCompleted?: () => void
-  getAbortController?: (abortController: AbortController) => void
-}
-
-/**
- * Dedicated SSE consumer for the workflow generator's plan-first stream
- * (`/workflow-generate/stream`). Kept separate from ``ssePost`` /
- * ``handleStream`` on purpose: those are wired to the chat / workflow-run event
- * vocabulary (``message``, ``node_finished``, …) and threading two more
- * positional callbacks through that shared, high-blast-radius path isn't worth
- * it. This helper reuses the same cookie-auth + CSRF + abort setup but
- * only understands the generator's two events: ``plan`` then ``result``.
- * @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception.
- */
-export const sseGeneratorPost = (
-  url: string,
-  body: unknown,
-  { onPlan, onResult, onError, onCompleted, getAbortController }: GeneratorStreamCallbacks,
-) => {
-  const abortController = new AbortController()
-  const baseOptions = getBaseOptions()
-  const options = Object.assign({}, baseOptions, {
-    method: 'POST',
-    signal: abortController.signal,
-    headers: new Headers({
-      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-      'Content-Type': ContentType.json,
-    }),
-    body: JSON.stringify(body),
-  } as RequestInit)
-
-  getAbortController?.(abortController)
-
-  const urlWithPrefix = formatURL(url, false)
-
-  const fail = (e: unknown) => {
-    // Aborts are intentional (modal close / regenerate) — never surface them.
-    if (e instanceof Error && e.name === 'AbortError') return
-    onError?.(`${e}`)
-  }
-
-  globalThis
-    .fetch(urlWithPrefix, options)
-    .then((res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
-          refreshAccessTokenOrReLogin(TIME_OUT)
-            .then(() =>
-              sseGeneratorPost(url, body, {
-                onPlan,
-                onResult,
-                onError,
-                onCompleted,
-                getAbortController,
-              }),
-            )
-            .catch(() => onError?.('Unauthorized'))
-          return
-        }
-        res
-          .json()
-          .then((data: { message?: string }) => onError?.(data?.message || 'Server Error'))
-          .catch(() => onError?.('Server Error'))
-        return
-      }
-
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder('utf-8')
-      let buffer = ''
-      const read = () => {
-        reader
-          ?.read()
-          .then(({ done, value }) => {
-            if (done) {
-              onCompleted?.()
-              return
-            }
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            // Process every complete line; keep the trailing partial in the buffer.
-            lines.slice(0, -1).forEach((message) => {
-              if (!message.startsWith('data: ')) return
-              let obj: Record<string, unknown>
-              try {
-                obj = JSON.parse(message.slice(6))
-              } catch {
-                // A chunk boundary split the JSON — it'll re-arrive intact next read.
-                return
-              }
-              if (obj.event === 'plan') onPlan?.(obj)
-              else if (obj.event === 'result') onResult?.(obj)
-            })
-            buffer = lines[lines.length - 1] || ''
-            read()
-          })
-          .catch(fail)
-      }
-      read()
-    })
-    .catch(fail)
-}
-
 // base request
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
@@ -1272,12 +1003,6 @@ export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-// For Marketplace API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
-}
-
 /**
  * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
  * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
@@ -1286,12 +1011,6 @@ export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOth
  */
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
-}
-
-// For Marketplace API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */

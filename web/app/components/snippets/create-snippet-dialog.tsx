@@ -126,55 +126,63 @@ export function CreateSnippetDialog({
             />
           </DialogHeader>
 
-          <DialogBody className="space-y-4">
-            <div>
-              <label
-                htmlFor={nameInputId}
-                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-              >
-                {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
-              </label>
-              <Input
-                ref={nameInputRef}
-                id={nameInputId}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' })}
-                disabled={isSubmitting}
-              />
-            </div>
+          <form
+            className="contents"
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleConfirm()
+            }}
+          >
+            <DialogBody className="space-y-4">
+              <div>
+                <label
+                  htmlFor={nameInputId}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
+                </label>
+                <Input
+                  ref={nameInputRef}
+                  id={nameInputId}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' })}
+                  disabled={isSubmitting}
+                />
+              </div>
 
-            <div>
-              <label
-                htmlFor={descriptionInputId}
-                className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
-              >
-                {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
-              </label>
-              <Textarea
-                id={descriptionInputId}
-                className="resize-none"
-                value={description}
-                onValueChange={(value) => setDescription(value)}
-                placeholder={t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' })}
-                disabled={isSubmitting}
-              />
-            </div>
-          </DialogBody>
+              <div>
+                <label
+                  htmlFor={descriptionInputId}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
+                  {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
+                </label>
+                <Textarea
+                  id={descriptionInputId}
+                  className="resize-none"
+                  value={description}
+                  onValueChange={(value) => setDescription(value)}
+                  placeholder={t(($) => $['snippet.descriptionPlaceholder'], { ns: 'workflow' })}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </DialogBody>
 
-          <DialogFooter>
-            <Button disabled={isSubmitting} onClick={handleClose}>
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!name.trim()}
-              loading={isSubmitting}
-              onClick={handleConfirm}
-            >
-              {confirmText || t(($) => $['snippet.confirm'], { ns: 'workflow' })}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button disabled={isSubmitting} onClick={handleClose}>
+                {t(($) => $['operation.cancel'], { ns: 'common' })}
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!name.trim()}
+                loading={isSubmitting}
+              >
+                {confirmText || t(($) => $['snippet.confirm'], { ns: 'workflow' })}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

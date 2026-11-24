@@ -2,7 +2,7 @@
 
 ## Release rollback
 
-`NEXT_PUBLIC_ENABLE_HITL_IM` defaults to `false`. When disabled, creation uses
+`NEXT_PUBLIC_ENABLE_HITL_IM` defaults to `true`. When disabled, creation uses
 legacy V1 Human Input nodes and migration/insertion of V2 nodes is unavailable.
 Saved V2 nodes retain their version, recipients and edges, but their editors and
 contact providers do not mount and validation prevents V2 runs or publishing.

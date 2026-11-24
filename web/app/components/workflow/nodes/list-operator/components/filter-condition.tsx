@@ -188,7 +188,7 @@ const ValueInput = ({
             ? t(($) => $['nodes.http.insertVarPlaceholder'], { ns: 'workflowIntegrations' })!
             : ''
         }
-        placeholderClassName="leading-[21px]!"
+        placeholderClassName="truncate leading-[21px]!"
       />
     )
   }

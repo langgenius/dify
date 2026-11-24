@@ -22,7 +22,7 @@ const api = vi.hoisted(() => ({
   replace: vi.fn(),
   crawl: vi.fn<typeof import('@/service/datasets').createFirecrawlTask>(),
   crawlStatus: vi.fn<typeof import('@/service/datasets').checkFirecrawlTaskStatus>(),
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   sources:
     vi.fn<
       typeof import('@/service/console').consoleClient.auth.plugin.datasource.defaultList.get
@@ -36,10 +36,6 @@ const api = vi.hoisted(() => ({
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useRouter: () => ({ replace: api.replace, push: vi.fn() }),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: api.upload,
 }))
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
@@ -56,11 +52,16 @@ vi.mock('@/config', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   const { createFileUploadConfigFixture } = await import('@/test/fixtures/file-upload-config')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.vectorSpace.get': () => ({ size: 0, limit: -1 }),
       'auth.plugin.datasource.defaultList.get': api.sources,
       'notion.preImport.pages.get': async () => ({
         notion_info: [
@@ -191,7 +192,7 @@ beforeEach(() => {
   api.sources.mockReset().mockResolvedValue({ result: [] })
   api.upload
     .mockReset()
-    .mockResolvedValue({ id: 'uploaded-file', name: 'handbook.txt', extension: 'txt' })
+    .mockResolvedValue({ id: 'uploaded-file', name: 'handbook.txt', extension: 'txt', size: 14 })
   api.create.mockReset().mockResolvedValue(creation)
   api.add.mockReset().mockResolvedValue(creation)
   api.status.mockReset().mockResolvedValue({
@@ -235,8 +236,7 @@ it('keeps uploaded files when returning to the source step, then carries the cre
   api.create.mockReturnValue(pending.promise)
   const { user } = setup()
   await uploadFile(user)
-  const uploaded = api.upload.mock.calls[0]?.[0].data
-  expect(uploaded?.get('file')).toBeInstanceOf(File)
+  expect(api.upload.mock.calls[0]?.[0].body.file).toBeInstanceOf(File)
   await openConfiguration(user)
   await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.previousStep' }))
   expect(

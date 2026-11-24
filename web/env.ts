@@ -89,7 +89,7 @@ const clientSchema = {
    * Enable HITL IM, Contacts, V2 editing, migration, and approval entry points.
    * When disabled, keep legacy V1 workflows available without exposing V2 UI.
    */
-  NEXT_PUBLIC_ENABLE_HITL_IM: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_HITL_IM: coercedBoolean.default(true),
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
    * Default is false for security reasons to prevent conflicts with regular text

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
+from hashlib import sha256
 from typing import TYPE_CHECKING, Any, override
 
 from dify_agent.protocol import CancelRunRequest
@@ -29,7 +31,12 @@ from core.workflow.agent_log_events import (
     NodeRunAgentLogEvent,
     node_run_agent_log_event,
 )
-from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
+from core.workflow.node_execution_process_data import (
+    AGENT_SESSION_BRANCH_KEY,
+    AGENT_SESSION_GENERATION_KEY,
+    CONTINUE_AGENT_SESSION_KEY,
+    WORKFLOW_TOOL_INVOCATION_ID_KEY,
+)
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.engine_events import NodeEvent, NodeRunPauseRequestedEvent
 from graphon.enums import (
@@ -48,6 +55,8 @@ from graphon.node_events import (
 )
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime.container_state import IterationFrameState, IterationRunState
+from graphon.runtime.execution import ROOT_FRAME_ID, GraphExecution
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
 from services.agent.knowledge_citations import knowledge_sources_from_stream_event
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
@@ -76,7 +85,10 @@ from .tool_activity import (
 )
 
 if TYPE_CHECKING:
+    from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
     from graphon.runtime import InitParams, RuntimeState
+
+    from .tool_snapshot import AgentRuntimeToolDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +128,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
         session_store: WorkflowAgentWorkspaceStore,
+        root_runtime_state: RuntimeState | None = None,
+        root_graph_config: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -135,6 +149,55 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self._type_checker = type_checker
         self._failure_orchestrator = failure_orchestrator
         self._session_store = session_store
+        self._root_runtime_state = root_runtime_state if root_runtime_state is not None else runtime_state
+        self._root_graph_config = root_graph_config if root_graph_config is not None else init_params.graph_config
+
+    def _session_branch_id(self) -> str:
+        """Name a parallel branch from the engine's public container ledger.
+
+        Pre: the engine bound this execution ID and the factory retained the
+        run's root runtime state. Post: each parallel iteration item has its own
+        stable ancestor/index path; sequential loops do not split its session.
+        Branches never merge histories or workspaces. Missing/inconsistent child
+        lineage fails closed. Direct root/single-node execution uses empty scope.
+        """
+        execution = self.runtime_state.graph_execution
+        if not isinstance(execution, GraphExecution):
+            return ""
+        frame_id = next(
+            (
+                frame
+                for (frame, node_id), state in execution.node_executions.copy().items()
+                if node_id == self._node_id and state.execution_id == self.execution_id
+            ),
+            ROOT_FRAME_ID,
+        )
+        frames = {frame.frame_id: frame for frame in self._root_runtime_state.container_frames()}
+        runs = {run.invocation_id: run for run in self._root_runtime_state.container_runs()}
+        graph_nodes = {
+            node["id"]: node["data"]
+            for node in self._root_graph_config.get("nodes", [])
+            if isinstance(node, Mapping) and "id" in node and isinstance(node.get("data"), Mapping)
+        }
+        branches: list[tuple[str, int]] = []
+        visited: set[str] = set()
+        while frame_id != ROOT_FRAME_ID:
+            if frame_id in visited or frame_id not in frames:
+                raise ValueError("Workflow Agent container lineage is unavailable")
+            visited.add(frame_id)
+            frame = frames[frame_id]
+            run = runs.get(frame.parent_invocation_id)
+            if run is None:
+                raise ValueError("Workflow Agent container invocation is unavailable")
+            if isinstance(run, IterationRunState) and graph_nodes.get(run.node_id, {}).get("is_parallel"):
+                if not isinstance(frame, IterationFrameState):
+                    raise ValueError("Workflow Agent iteration lineage does not match")
+                branches.append((run.node_id, frame.index))
+            frame_id = run.frame_id
+        if not branches:
+            return ""
+        branch_path = json.dumps(list(reversed(branches)), separators=(",", ":"))
+        return sha256(branch_path.encode()).hexdigest()
 
     @classmethod
     @override
@@ -190,6 +253,13 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
     ) -> Generator[NodeEventPayload | NodeRunPauseRequestedEvent]:
+        """Execute using run-frozen settings or an already-pinned participant.
+
+        Pre: the graph was captured for this run and its caller row is persisted.
+        Post: policy, history, and working resources share the same scope; a
+        resumed execution retains its persisted settings despite draft edits.
+        Runtime failures follow the existing node failure path.
+        """
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         workflow_id = self.init_params.workflow_id
         workflow_run_id = get_system_text(
@@ -222,6 +292,25 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
                 snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
                 conversation_id=conversation_id if dify_ctx.workflow_tool_invocation_id is None else None,
+                workflow_run_id=workflow_run_id,
+                node_execution_id=self.execution_id,
+                continue_agent_session=(
+                    existing_scope.continue_agent_session
+                    if existing_scope is not None
+                    else self.node_data.continue_agent_session
+                ),
+                session_generation=(
+                    existing_scope.session_generation
+                    if existing_scope is not None
+                    else self.node_data.agent_session_generation
+                ),
+                session_branch=(
+                    existing_scope.session_branch
+                    if existing_scope is not None
+                    else self._session_branch_id()
+                    if conversation_id and dify_ctx.workflow_tool_invocation_id is None
+                    else ""
+                ),
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -263,7 +352,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_config_snapshot_id=bundle.snapshot.id,
             conversation_id=conversation_id,
             workflow_tool_invocation_id=dify_ctx.workflow_tool_invocation_id,
+            continue_agent_session=self.node_data.continue_agent_session,
+            session_generation=self.node_data.agent_session_generation,
+            session_branch=(
+                self._session_branch_id() if conversation_id and dify_ctx.workflow_tool_invocation_id is None else ""
+            ),
         )
+        process_data[CONTINUE_AGENT_SESSION_KEY] = session_scope.continue_agent_session
+        process_data[AGENT_SESSION_GENERATION_KEY] = session_scope.session_generation
+        process_data[AGENT_SESSION_BRANCH_KEY] = session_scope.session_branch
 
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
         node_job.output_routes.validate_for_execution()
@@ -321,6 +418,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             metadata.clear()
             metadata.update(runtime_request.metadata)
             metadata["attempt"] = attempt
+            evaluation_trace_collector = self._build_evaluation_trace_collector(
+                enabled=dify_ctx.capture_agent_evaluation_trace,
+                available_tools=runtime_request.available_tools,
+            )
 
             try:
                 create_response = self._agent_backend_client.create_run(runtime_request.request)
@@ -348,6 +449,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 stream_text=not custom_outputs
                 and not node_job.output_routes.enabled
                 and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
+                evaluation_trace_collector=evaluation_trace_collector,
             )
             if metadata.get("knowledge_fs_sources"):
                 yield RunRetrieverResourceEvent(retriever_resources=metadata["knowledge_fs_sources"], context="")
@@ -460,6 +562,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     return
                 edge_source_handle = selected
 
+            if evaluation_trace_collector is not None:
+                metadata["evaluation_trace"] = evaluation_trace_collector.build_trace_snapshot(
+                    output=success_event.output
+                ).model_dump(mode="json")
+
             yield StreamCompletedEvent(
                 node_run_result=self._output_adapter.build_success_result(
                     event=success_event,
@@ -480,6 +587,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         process_data: dict[str, Any],
         metadata: dict[str, Any],
         stream_text: bool,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent | AgentLogEvent,
         None,
@@ -528,6 +636,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             process_data=process_data,
             metadata=metadata,
             stream_text=stream_text,
+            evaluation_trace_collector=evaluation_trace_collector,
             projector=projector,
         )
         if projector is not None:
@@ -550,6 +659,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         metadata: dict[str, Any],
         stream_text: bool,
         projector: WorkflowAgentToolActivityProjector | None,
+        evaluation_trace_collector: AgentV2TraceCollector | None = None,
     ) -> Generator[
         StreamChunkEvent | AgentLogEvent,
         None,
@@ -559,6 +669,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
         ``projector=None`` disables tool-activity projection; raw backend
         event consumption and stream metadata recording remain active.
+        An evaluation trace collector observes every adapted internal event.
         """
         stream_event_count = 0
         last_event_id: str | None = None
@@ -571,6 +682,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 if public_event.id is not None:
                     last_event_id = public_event.id
                 for internal_event in self._event_adapter.adapt(public_event):
+                    if evaluation_trace_collector is not None:
+                        evaluation_trace_collector.consume(internal_event)
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
                         continue
                     if internal_event.type == AgentBackendInternalEventType.STREAM_EVENT:
@@ -647,6 +760,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             after=last_event_id,
         )
         return cancellation, None  # noqa: B901  # StopIteration.value is the generator completion result.
+
+    @staticmethod
+    def _build_evaluation_trace_collector(
+        *, enabled: bool, available_tools: Sequence[AgentRuntimeToolDefinition]
+    ) -> AgentV2TraceCollector | None:
+        if not enabled:
+            return None
+
+        from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
+        from core.evaluation.entities.evaluation_entity import AgentToolDefinition
+
+        return AgentV2TraceCollector(
+            [
+                AgentToolDefinition(
+                    tool_ref=tool.tool_ref,
+                    name=tool.name,
+                    display_name=tool.display_name,
+                    description=tool.description,
+                    input_schema=tool.input_schema,
+                    schema_available=tool.schema_available,
+                )
+                for tool in available_tools
+            ]
+        )
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""

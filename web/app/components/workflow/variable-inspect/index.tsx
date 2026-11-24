@@ -48,7 +48,7 @@ const VariableInspectPanel: FC = () => {
   if (!showVariableInspectPanel) return null
 
   return (
-    <div className={cn('relative pb-1')}>
+    <div className={cn('pointer-events-auto relative pb-1')}>
       <ResizeHandle
         ref={triggerRef}
         side="top"
@@ -58,7 +58,7 @@ const VariableInspectPanel: FC = () => {
         controls={panelId}
         label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
         onResize={(height) => handleResize(0, height)}
-        className="absolute -top-1 left-0 flex h-1 w-full cursor-row-resize items-center justify-center"
+        className="absolute inset-s-0 -top-1 flex h-1 w-full cursor-row-resize items-center justify-center"
       >
         <div className="h-0.5 w-10 rounded-xs bg-state-base-handle group-focus-visible/resize:w-full group-focus-visible/resize:bg-state-accent-solid hover:w-full hover:bg-state-accent-solid active:w-full active:bg-state-accent-solid"></div>
       </ResizeHandle>

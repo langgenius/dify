@@ -66,8 +66,8 @@ def _form() -> ResolvedForm:
         title="Approval",
         parts=(
             MarkdownFragment(text="Review the response."),
-            ParagraphInput(output_variable_name="说明📝", default_value="初始值"),
-            SelectInput(output_variable_name="选择🌐", options=("选项 α", "选项 β"), default_value="选项 β"),
+            ParagraphInput(output_variable_name="说明📝", resolved_default_value="初始值"),
+            SelectInput(output_variable_name="选择🌐", options=("选项 α", "选项 β"), resolved_default_value="选项 β"),
         ),
         actions=(UserAction(id="批准✅", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
@@ -880,17 +880,6 @@ def test_decoder_rejects_missing_wrong_or_ambiguous_callback_facts(
             json.dumps({"version": 2, "action_id": "批准✅", "correlation_token": "token"}),
             id="unsupported-version",
         ),
-        pytest.param(
-            json.dumps(
-                {
-                    "version": 1,
-                    "action_id": "批准✅",
-                    "correlation_token": "token",
-                    "unexpected": "value",
-                }
-            ),
-            id="unexpected-metadata",
-        ),
     ],
 )
 def test_decoder_rejects_invalid_button_metadata(metadata: str) -> None:
@@ -901,6 +890,22 @@ def test_decoder_rejects_invalid_button_metadata(metadata: str) -> None:
 
     with pytest.raises(IMCardEventDecodingError):
         SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+def test_callback_reads_additive_metadata_without_changing_the_event() -> None:
+    callback = _fixture(_WEBHOOK_FIXTURE)
+    expected = SlackIMProviderAdapter.card_event_decoder().decode(_event(callback))
+    actions = callback["actions"]
+    assert isinstance(actions, list)
+    metadata = json.loads(actions[0]["value"])
+    actions[0]["value"] = json.dumps(
+        {**metadata, "future_optional": None, "future_extension": {"nested": {"optional": None}}}
+    )
+    event = _event(callback)
+    original = event.payload
+
+    assert SlackIMProviderAdapter.card_event_decoder().decode(event) == expected
+    assert event.payload == original
 
 
 def test_decoder_requires_outer_and_embedded_action_identity_to_agree() -> None:

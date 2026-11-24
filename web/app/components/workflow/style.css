@@ -1,9 +1,20 @@
+.workflow-editor-controls {
+  display: grid;
+  grid-template:
+    'toolbar side-panel' minmax(0, 1fr)
+    'bottom  side-panel' auto / minmax(0, 1fr) max-content;
+}
+
 .workflow-panel-animation .react-flow__viewport {
   transition: transform 0.3s ease-in-out;
 }
 
 .workflow-node-animation .react-flow__node {
   transition: transform 0.2s ease-in-out;
+}
+
+.react-flow__pane.selection:not(.dragging) {
+  cursor: default;
 }
 
 #workflow-container .react-flow__node:focus-visible,

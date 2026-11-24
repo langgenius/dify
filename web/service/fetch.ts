@@ -15,7 +15,7 @@ import {
 } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
+import { getHttpErrorBodyMessage, httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
@@ -64,9 +64,7 @@ const afterResponseErrorCode = (
         !otherOptions.silent &&
         !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
-      const errorMessage = [errorData?.message, errorData?.error].find(
-        (value): value is string => typeof value === 'string' && !!value.trim(),
-      )
+      const errorMessage = getHttpErrorBodyMessage(errorData)
       if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
@@ -143,6 +141,8 @@ async function base<T>(
     getAbortController,
     fetchCompat = false,
     request,
+    onUploadProgress,
+    timeout,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -191,15 +191,21 @@ async function base<T>(
     retry: {
       methods: [],
     },
+    // Event streams and uploads with progress (as the legacy XHR) have no client-side timeout.
+    ...(timeout === false || onUploadProgress ? { timeout: false as const } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+    async fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
         resource.headers.forEach((value, key) => {
           mergedHeaders.append(key, value)
         })
         options.headers = mergedHeaders
+      }
+      if (onUploadProgress) {
+        const { createXhrFetch } = await import('./xhr-fetch')
+        return createXhrFetch(onUploadProgress)(resource, options)
       }
       return globalThis.fetch(resource, options)
     },

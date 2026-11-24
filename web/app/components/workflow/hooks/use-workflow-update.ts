@@ -10,7 +10,12 @@ export const useWorkflowUpdate = () => {
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleUpdateWorkflowCanvas = useCallback(
-    (payload: WorkflowDataUpdater) => {
+    // Without a viewport the canvas keeps its current pan and zoom.
+    (
+      payload: Omit<WorkflowDataUpdater, 'viewport'> & {
+        viewport?: WorkflowDataUpdater['viewport']
+      },
+    ) => {
       const { nodes, edges, viewport } = payload
 
       eventEmitter?.emit({
