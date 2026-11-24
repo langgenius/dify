@@ -1230,26 +1230,13 @@
     }
   },
   "web/app/components/header/account-setting/data-source-page-new/hooks/use-marketplace-all-plugins.ts": {
-    "typescript/no-deprecated": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/__tests__/hooks.spec.ts": {
-    "typescript/no-deprecated": {
       "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/declarations.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/header/account-setting/model-provider-page/hooks.ts": {
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/index.ts": {
@@ -1333,19 +1320,9 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/marketplace/__tests__/hooks.spec.tsx": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/plugins/marketplace/home/home-trending.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/hooks.ts": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
     }
   },
   "web/app/components/plugins/marketplace/list/carousel.tsx": {
@@ -1624,11 +1601,6 @@
       "count": 2
     }
   },
-  "web/app/components/tools/marketplace/hooks.ts": {
-    "typescript/no-deprecated": {
-      "count": 2
-    }
-  },
   "web/app/components/tools/mcp/__tests__/modal.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 1
@@ -1775,11 +1747,6 @@
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/agent-strategy-selector.tsx": {
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/components/before-run-form/form-item.tsx": {
