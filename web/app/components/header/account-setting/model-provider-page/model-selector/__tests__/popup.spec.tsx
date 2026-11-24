@@ -56,9 +56,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.modelProviders.get': api.providers,
       'workspaces.current.modelProviders.byProvider.credentials.get': api.credential,
       'workspaces.current.models.modelTypes.byModelType.get': api.catalog,
+      'workspaces.current.plugin.install.marketplace.post': api.install,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.install.marketplace.post': api.install,
       'workspaces.current.plugin.tasks.byTaskId.get': api.task,
       'workspaces.current.modelProviders.byProvider.credentials.post': api.addCredential,
       'workspaces.current.modelProviders.byProvider.credentials.put': api.editCredential,
