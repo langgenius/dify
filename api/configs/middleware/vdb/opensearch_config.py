@@ -71,9 +71,13 @@ class OpenSearchConfig(BaseSettings):
         default=10.0,
     )
 
-    OPENSEARCH_MAX_RETRIES: PositiveInt = Field(
-        description="Maximum number of retries per request (default is 3, the opensearch-py default)",
+    OPENSEARCH_MAX_RETRIES: int = Field(
+        description=(
+            "Maximum number of retries per request (default is 3, the opensearch-py default)."
+            " Set it to 0 to disable retries, which the client accepts."
+        ),
         default=3,
+        ge=0,
     )
 
     OPENSEARCH_RETRY_ON_TIMEOUT: bool = Field(
