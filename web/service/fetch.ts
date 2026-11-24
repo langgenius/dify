@@ -141,6 +141,7 @@ async function base<T>(
     getAbortController,
     fetchCompat = false,
     request,
+    timeout,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -189,6 +190,7 @@ async function base<T>(
     retry: {
       methods: [],
     },
+    ...(timeout === false ? { timeout: false } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
     fetch(resource: RequestInfo | URL, options?: RequestInit) {
