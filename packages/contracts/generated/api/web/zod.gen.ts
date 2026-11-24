@@ -2853,6 +2853,16 @@ export const zWebFormRateLimitExceededError = zErrorResponse.and(
 )
 
 /**
+ * WebLoginExchangePayload
+ *
+ * Redeem an opaque one-use grant with the original browser's S256 verifier.
+ */
+export const zWebLoginExchangePayload = z.object({
+  code_verifier: z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/),
+  login_code: z.string().min(1).max(256),
+})
+
+/**
  * WebLoginUnavailableError
  *
  * Web App login is temporarily unavailable. Please retry.
@@ -3213,6 +3223,13 @@ export const zPatchAccountProfileBody = zAccountProfilePatchPayload
  * Updated Account settings
  */
 export const zPatchAccountProfileResponse = zWebAccountResponse
+
+export const zPostAccountSessionBody = zWebLoginExchangePayload
+
+/**
+ * Account session established
+ */
+export const zPostAccountSessionResponse = zSimpleResultResponse
 
 /**
  * Success
