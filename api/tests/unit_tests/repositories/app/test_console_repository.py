@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import has_request_context
-from sqlalchemy import Engine, delete, event, func, select, text, update
+from sqlalchemy import Engine, event, func, select, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import WorkflowKind
@@ -384,55 +384,29 @@ def test_trace_settings_preserve_stored_json_validation(
 
 
 @pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED])
-def test_first_app_usage_preserves_earliest_event_across_apps_and_removal(
+def test_consumer_usage_keeps_latest_app_use(
     repository: ConsoleAppRepository, sqlite_session_factory: sessionmaker[Session], status: AccountStatus
 ) -> None:
     base = make_harness(sqlite_session_factory)
-    other = make_harness(sqlite_session_factory)
     assert base.context.account_id is not None
     identity = ConsumerIdentity(base.context.account_id)
     moment = datetime(2026, 11, 4, 10)
     with sqlite_session_factory.begin() as session:
         session.execute(update(Account).where(Account.id == identity.account_id).values(status=status))
-        session.execute(
-            update(EndUser).where(EndUser.id == other.context.end_user_id).values(account_id=identity.account_id)
-        )
-    for app, used_at, earliest in (
-        (base, moment, moment),
-        (other, moment + timedelta(hours=1), moment),
-        (other, moment - timedelta(hours=1), moment - timedelta(hours=1)),
-        (base, moment, moment - timedelta(hours=1)),
-    ):
+    for used_at in (moment, moment - timedelta(hours=1)):
         repository.record_consumer_usage(
             identity,
-            tenant_id=app.context.tenant_id,
-            app_id=app.context.app_id,
-            end_user_id=app.context.end_user_id,
+            tenant_id=base.context.tenant_id,
+            app_id=base.context.app_id,
+            end_user_id=base.context.end_user_id,
             used_at=used_at,
         )
-        with sqlite_session_factory() as session:
-            assert (
-                session.scalar(select(Account.first_app_used_at).where(Account.id == identity.account_id)) == earliest
-            )
-    repository.remove(identity, base.context.app_id)
-    with sqlite_session_factory.begin() as session:
-        session.execute(delete(AccountWebApp).where(AccountWebApp.account_id == identity.account_id))
-    repository.record_consumer_usage(
-        identity,
-        tenant_id=base.context.tenant_id,
-        app_id=base.context.app_id,
-        end_user_id=base.context.end_user_id,
-        used_at=moment + timedelta(days=1),
-    )
     with sqlite_session_factory() as session:
-        assert session.scalar(select(Account.first_app_used_at).where(Account.id == identity.account_id)) == (
-            moment - timedelta(hours=1)
-        )
-        assert session.scalar(select(Account.first_app_used_at).where(Account.id == other.context.account_id)) is None
+        assert session.scalars(select(AccountWebApp.last_used_at)).one() == moment
 
 
 @pytest.mark.parametrize("mismatch", ["account", "tenant", "app", "end_user", "type", "mode", "status", "guest"])
-def test_invalid_consumer_usage_does_not_record_first_app_time(
+def test_invalid_consumer_usage_does_not_record_app_use(
     repository: ConsoleAppRepository, sqlite_session_factory: sessionmaker[Session], mismatch: str
 ) -> None:
     base = make_harness(sqlite_session_factory)
@@ -459,7 +433,6 @@ def test_invalid_consumer_usage_does_not_record_first_app_time(
         used_at=datetime(2026, 11, 4),
     )
     with sqlite_session_factory() as session:
-        assert session.scalar(select(Account.first_app_used_at).where(Account.id == base.context.account_id)) is None
         assert session.scalar(select(func.count()).select_from(AccountWebApp)) == 0
 
 

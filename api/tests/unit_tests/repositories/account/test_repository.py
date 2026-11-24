@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import MultipleResultsFound
@@ -77,6 +77,34 @@ def test_profile_ignores_dangling_memberships(sqlite_session_factory: sessionmak
     assert profile.has_owned_tenant is False
     assert profile.has_tenant is False
     assert repository.get_profile("missing") is None
+
+
+@pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.UNINITIALIZED])
+def test_end_user_handoffs_preserve_earliest_time_for_only_the_verified_account(
+    sqlite_session_factory: sessionmaker[Session], status: AccountStatus
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", status=status)
+        other = Account(name="Other", email="other@example.com")
+        session.add_all([account, other])
+        account_id, other_id = account.id, other.id
+
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+    start = datetime(2026, 11, 24, 10, tzinfo=UTC)
+    earlier = start - timedelta(minutes=1)
+    for event, expected in (
+        (start, start),
+        (start + timedelta(minutes=1), start),
+        (earlier, earlier),
+        (earlier, earlier),
+    ):
+        repository.record_end_user_handoff(account_id, occurred_at=event)
+        with sqlite_session_factory() as session:
+            account = session.get_one(Account, account_id)
+            assert account.be_end_user_at == expected.replace(tzinfo=None)
+            assert account.status == status
+            assert account.first_workspace_created_at is None
+            assert session.get_one(Account, other_id).be_end_user_at is None
 
 
 def test_update_profile_persists_multiple_fields(

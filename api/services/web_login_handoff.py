@@ -73,11 +73,22 @@ class WebLoginGrantStore(Protocol):
     def consume(self, key: str) -> WebLoginGrantRecord | None: ...
 
 
+class EndUserOnboardingStore(Protocol):
+    def record_end_user_handoff(self, account_id: str, *, occurred_at: datetime) -> None:
+        """Keep the earliest known End User event for the verified Account in one conditional write.
+
+        A missing or ineligible Account, or an equal or earlier stored time, is a no-op.
+        This does not activate the Account or require a workspace.
+        """
+        ...
+
+
 class WebLoginHandoffService:
     def __init__(
         self,
         *,
         grants: WebLoginGrantStore,
+        onboarding: EndUserOnboardingStore,
         apps: WebPassportRepository,
         identities: WebIdentityService,
         tokens: WebPassportTokenGateway,
@@ -87,6 +98,7 @@ class WebLoginHandoffService:
         now: Callable[[], datetime],
     ) -> None:
         self._grants = grants
+        self._onboarding = onboarding
         self._apps = apps
         self._identities = identities
         self._tokens = tokens
@@ -135,11 +147,13 @@ class WebLoginHandoffService:
         )
 
     def personal_session(self, access_token: str) -> WebLoginSession:
-        """Exchange a verified Console identity for a same-origin personal portal cookie."""
+        """Issue a personal portal session for a verified Console identity, then record its handoff."""
         if not self._enabled:
             raise WebPassportAccountExchangeDisabledError()
         account_id, expires_at = self._console_identity(access_token)
-        return self._issue_login_session(account_id=account_id, expires_at=expires_at)
+        session = self._issue_login_session(account_id=account_id, expires_at=expires_at)
+        self._onboarding.record_end_user_handoff(account_id, occurred_at=self._now())
+        return session
 
     def authorize_portal(self, *, access_token: str, code_challenge: str) -> str:
         """Issue a short-lived portal grant for a verified Console session and a validated S256 challenge."""
@@ -157,9 +171,11 @@ class WebLoginHandoffService:
         )
 
     def _store_grant(self, grant: WebLoginGrantRecord) -> str:
-        """Store a short-lived grant by digest; return its opaque code only after the store accepts it."""
+        """Record the handoff and return its opaque code only after the App or portal grant is stored by digest."""
         code = secrets.token_urlsafe(32)
+        occurred_at = self._now()
         self._grants.put(self._key(code), grant)
+        self._onboarding.record_end_user_handoff(grant.account_id, occurred_at=occurred_at)
         return code
 
     def _grant_expiry(self, login_expires_at: int) -> int:

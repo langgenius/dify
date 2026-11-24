@@ -23,7 +23,10 @@ from extensions.ext_application_services import ApplicationServices
 from extensions.ext_redis import RedisClientWrapper
 from libs.oauth import decode_account_oauth_state
 from libs.passport import PassportService
+from models.account import Account, AccountStatus
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.web_passport_repository import WebPassportRepository
+from services.web_identity_service import WebIdentityService
 from services.web_login_handoff import WebLoginHandoffService, WebLoginTarget
 from services.web_login_handoff_adapters import RedisWebLoginGrantStore
 from services.web_passport_gateways import PassportTokenGateway
@@ -76,11 +79,15 @@ def handoff(
 
     commands.side_effect = execute
     services = cast(SimpleNamespace, passport.application_services())
+    with sqlite_session_factory.begin() as session:
+        session.add(make_account(account_id=ACCOUNT_ID, email="portal@example.net", status=AccountStatus.UNINITIALIZED))
+    accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
     clock = [datetime.now(UTC)]
     services.web_login_handoff = WebLoginHandoffService(
         grants=RedisWebLoginGrantStore(redis=redis),
+        onboarding=accounts,
         apps=WebPassportRepository(session_factory=sqlite_session_factory, generate_session_id=lambda: str(uuid4())),
-        identities=services.web_identity,
+        identities=WebIdentityService(accounts=accounts, allow_console_login=True, allow_webapp_login=False),
         tokens=PassportTokenGateway(passport=signer),
         enabled=True,
         app_web_url="https://apps.example.net",
@@ -100,7 +107,9 @@ def handoff(
 
 
 @pytest.mark.parametrize("return_url", [RETURN_URL, "/chatbot/app-a?input=a%26b#message"])
-def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: SimpleNamespace, return_url: str) -> None:
+def test_existing_console_session_crosses_sites_and_reuses_passport(
+    handoff: SimpleNamespace, return_url: str, sqlite_session: Session
+) -> None:
     client = handoff.app.test_client()
     client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
     response = client.get(
@@ -110,6 +119,7 @@ def test_existing_console_session_crosses_sites_and_reuses_passport(handoff: Sim
     )
     assert response.status_code == 200
     assert response.json["logged_in"] is True
+    assert sqlite_session.get_one(Account, ACCOUNT_ID).be_end_user_at == handoff.clock[0].replace(tzinfo=None)
     target = urlsplit(response.json["redirect_url"])
     assert (target.netloc, target.path) == ("apps.example.net", "/webapp-signin")
     query = parse_qs(target.query)
@@ -266,7 +276,7 @@ def test_no_console_session_reports_logged_out(handoff: SimpleNamespace) -> None
     ],
 )
 def test_personal_portal_login_reuses_console_session_without_app_handoff(
-    handoff: SimpleNamespace, target: str | None, expected: str
+    handoff: SimpleNamespace, target: str | None, expected: str, sqlite_session: Session
 ) -> None:
     client = handoff.app.test_client()
     client.set_cookie("__Host-access_token", handoff.login, domain="console.example.com", secure=True)
@@ -277,6 +287,7 @@ def test_personal_portal_login_reuses_console_session_without_app_handoff(
     )
     assert response.status_code == 200
     assert response.json == {"logged_in": True, "redirect_url": expected}
+    assert sqlite_session.get_one(Account, ACCOUNT_ID).be_end_user_at == handoff.clock[0].replace(tzinfo=None)
     assert handoff.commands.call_count == 0
     cookie = client.get_cookie("__Host-webapp_access_token", domain="console.example.com")
     assert cookie is not None
@@ -288,7 +299,9 @@ def test_personal_portal_login_reuses_console_session_without_app_handoff(
 
 
 @pytest.mark.parametrize("credential", ["missing", "tampered", "expired", "webapp-proof"])
-def test_personal_portal_login_rejects_invalid_console_identity(handoff: SimpleNamespace, credential: str) -> None:
+def test_personal_portal_login_rejects_invalid_console_identity(
+    handoff: SimpleNamespace, credential: str, sqlite_session: Session
+) -> None:
     client = handoff.app.test_client()
     if credential != "missing":
         token = {
@@ -301,13 +314,14 @@ def test_personal_portal_login_rejects_invalid_console_identity(handoff: SimpleN
     assert response.status_code == 200
     assert response.json == {"logged_in": False, "redirect_url": None}
     assert client.get_cookie("__Host-webapp_access_token", domain="console.example.com") is None
+    assert sqlite_session.get_one(Account, ACCOUNT_ID).be_end_user_at is None
 
 
 @pytest.mark.parametrize(
     ("target", "pkce"), [(None, False), ("/connections/langgenius%2Fgoogle%2Fgmail?view=apps#details", True)]
 )
 def test_personal_portal_login_refreshes_without_workspace(
-    handoff: SimpleNamespace, target: str | None, pkce: bool
+    handoff: SimpleNamespace, target: str | None, pkce: bool, sqlite_session: Session
 ) -> None:
     from unittest.mock import Mock
 
@@ -329,6 +343,7 @@ def test_personal_portal_login_refreshes_without_workspace(
     assert response.json["redirect_url"] == f"https://apps.example.net{target or '/my-apps'}"
     assert ("login_code" in response.json) is pkce
     assert (client.get_cookie("__Host-webapp_access_token", domain="console.example.com") is None) is pkce
+    assert sqlite_session.get_one(Account, ACCOUNT_ID).be_end_user_at == handoff.clock[0].replace(tzinfo=None)
     auth.refresh.assert_called_once_with("old-refresh", mode=LoginMode.END_USER)
     assert client.get_cookie("__Host-access_token", domain="console.example.com").value == handoff.login
     assert client.get_cookie("__Host-refresh_token", domain="console.example.com").value == "new-refresh"
@@ -402,13 +417,14 @@ def test_portal_handoff_writes_only_a_host_scoped_webapp_cookie(handoff: SimpleN
 
 @pytest.mark.parametrize(("failure", "status"), [("expired", 400), ("account-closed", 401)])
 def test_unusable_portal_grant_never_sets_a_cookie(
-    handoff: SimpleNamespace, identity_flow: tuple[PassportService, WebAccounts], failure: str, status: int
+    handoff: SimpleNamespace, sqlite_session: Session, failure: str, status: int
 ) -> None:
     code = handoff.services.web_login_handoff.authorize_portal(access_token=handoff.login, code_challenge=CHALLENGE)
     if failure == "expired":
         handoff.clock[0] += timedelta(seconds=60)
     else:
-        identity_flow[1].status = "closed"
+        sqlite_session.get_one(Account, ACCOUNT_ID).status = AccountStatus.CLOSED
+        sqlite_session.commit()
     response = handoff.app.test_client().post(
         "/api/account/session",
         base_url="https://apps.example.net",
@@ -625,8 +641,6 @@ def test_oauth_personal_portal_handoff_authenticates_profile_on_web_origin(
         CONSOLE_WEB_URL=f"{console_origin}/console",
         APP_WEB_URL=f"{web_origin}/web",
     )
-    with sqlite_session_factory.begin() as session:
-        session.add(make_account(account_id=ACCOUNT_ID, email="portal@example.net"))
     service = FakeOAuthService(
         callback_result=OAuthSignInResult(
             tokens=AccountSessionTokens(handoff.login, "refresh", "csrf"), oauth_new_user=False
@@ -658,6 +672,8 @@ def test_oauth_personal_portal_handoff_authenticates_profile_on_web_origin(
     assert (resume.netloc, resume.path) == ("console.example.com", "/console/signin")
     params = dict(parse_qsl(resume.query))
     assert params == {"is_end_user": "1", "redirect_url": target or "/my-apps", "code_challenge": CHALLENGE}
+    with sqlite_session_factory() as session:
+        assert session.get_one(Account, ACCOUNT_ID).be_end_user_at is None
     response = client.get(
         "/console/api/login",
         base_url=console_origin,
@@ -669,6 +685,8 @@ def test_oauth_personal_portal_handoff_authenticates_profile_on_web_origin(
     )
     assert response.status_code == 200
     assert response.json["logged_in"]
+    with sqlite_session_factory() as session:
+        assert session.get_one(Account, ACCOUNT_ID).be_end_user_at == handoff.clock[0].replace(tzinfo=None)
     assert response.json["redirect_url"] == f"{web_origin}/web{target or '/my-apps'}"
     assert not response.headers.getlist("Set-Cookie")
     assert client.get("/api/account/profile", base_url=web_origin).status_code == 401
@@ -691,10 +709,11 @@ def test_oauth_personal_portal_handoff_authenticates_profile_on_web_origin(
 
 
 @pytest.mark.parametrize("failed_command", ["SET", "GET", "GETDEL"])
-def test_handoff_storage_failure_has_documented_retryable_error(handoff: SimpleNamespace, failed_command: str) -> None:
+def test_handoff_storage_failure_has_documented_retryable_error(
+    handoff: SimpleNamespace, failed_command: str, sqlite_session: Session
+) -> None:
     service = handoff.services.web_login_handoff
     target = WebLoginTarget(app_code="app-a", redirect_url=RETURN_URL, code_challenge=CHALLENGE)
-    code = parse_qs(urlsplit(service.authorize(target, handoff.login)).query)["login_code"][0]
     execute = handoff.commands.side_effect
 
     def fail(command: str, *args: object, **kwargs: object) -> object:
@@ -712,6 +731,7 @@ def test_handoff_storage_failure_has_documented_retryable_error(handoff: SimpleN
             query_string=target.model_dump(),
         )
     else:
+        code = parse_qs(urlsplit(service.authorize(target, handoff.login)).query)["login_code"][0]
         response = client.post(
             "/api/passport",
             base_url="https://apps.example.net",
@@ -720,6 +740,8 @@ def test_handoff_storage_failure_has_documented_retryable_error(handoff: SimpleN
         )
     assert response.status_code == 503
     assert response.json["code"] == "web_login_unavailable"
+    expected = None if failed_command == "SET" else handoff.clock[0].replace(tzinfo=None)
+    assert sqlite_session.get_one(Account, ACCOUNT_ID).be_end_user_at == expected
 
 
 @pytest.mark.parametrize("modes", [("end_user", "end_user"), ("console", "end_user"), ("end_user", "console")])

@@ -189,7 +189,6 @@ def test_favorites_and_recent_are_account_scoped_and_recheck_access(
     with base.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(AppStar)) == 0
         assert session.scalar(sa.select(sa.func.count()).select_from(AccountWebApp)) == 1
-        assert session.get_one(Account, harness.identity.account_id).first_app_used_at == now - timedelta(days=1)
     harness.access.denied.add(app_id)
     for view in ("recent", "favorites", "shared"):
         assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery(view=view)).data
@@ -243,7 +242,6 @@ def test_removal_before_first_usage_preserves_ordering_for_all_webapp_modes(
         assert state is not None
         assert state.removed_at == removed_at
         assert state.last_used_at is None
-        assert session.get_one(Account, harness.identity.account_id).first_app_used_at is None
     harness.record_usage(removed_at - timedelta(seconds=1))
     assert not harness.service.list_apps(harness.identity, ConsumerAppsQuery()).data
     harness.record_usage(removed_at + timedelta(seconds=1))

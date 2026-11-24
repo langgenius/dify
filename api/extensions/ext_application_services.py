@@ -1030,6 +1030,7 @@ def build_application_services(
         web_identity=web_identity,
         web_login_handoff=WebLoginHandoffService(
             grants=RedisWebLoginGrantStore(redis=redis),
+            onboarding=accounts,
             apps=web_passport_repository,
             identities=web_identity,
             tokens=web_passport_tokens,
