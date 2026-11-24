@@ -224,7 +224,7 @@ def test_subscribe_transport_preserves_explicit_plugin_rejection(harness: _Harne
         )
 
     assert caught.value.code == 1
-    assert caught.value.message == daemon.response_message
-    assert daemon.response_message not in str(caught.value)
+    assert caught.value.message == "subscription rejected"
+    assert "subscription rejected" not in str(caught.value)
     assert len(daemon.requests) == 1
     assert daemon.requests[0].path.endswith("/dispatch/trigger/subscribe")

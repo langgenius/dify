@@ -116,6 +116,9 @@ def test_guest_connection_cleanup_schedule_and_worker_queue(
         if override_minutes is None
         else override_minutes
     )
+    module = "tasks.guest_connection_cleanup_task"
+    task_name = f"{module}.cleanup_guest_connections"
+    import_module(module)
     with (
         setup_default_app(TestApp()),
         config_overrides_context(
@@ -127,10 +130,7 @@ def test_guest_connection_cleanup_schedule_and_worker_queue(
         ),
         init_app(DifyApp(__name__)) as celery_app,
     ):
-        module = "tasks.guest_connection_cleanup_task"
-        task_name = f"{module}.cleanup_guest_connections"
         assert module in celery_app.conf.imports
-        import_module(module)
         assert celery_app.tasks[task_name].queue == "retention"
         schedule = celery_app.conf.beat_schedule
         if enabled:

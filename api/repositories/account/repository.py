@@ -62,7 +62,10 @@ def _normalized_uuid(value: str) -> str | None:
 
 
 class SQLAlchemyAccountRepository(
-    AccountRepository, ConsoleAuthAccountRepository, AccountAvatarQuery, AccountProfileStore
+    AccountRepository,
+    ConsoleAuthAccountRepository,
+    AccountProfileStore,
+    AccountAvatarQuery,
 ):
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
