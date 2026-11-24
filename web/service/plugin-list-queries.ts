@@ -2,20 +2,13 @@ import type {
   PluginInstallationsResponse,
   PluginParameterOption,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type {
-  CollectionPluginsResponse,
-  PluginInfoFromMarketPlace,
-  PluginsFromMarketplaceByInfoResponse,
-  PluginsFromMarketplaceResponse,
-} from '@dify/contracts/marketplace'
+import type { CollectionPluginsResponse } from '@dify/contracts/marketplace'
 import type { FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { mutationOptions, queryOptions, skipToken } from '@tanstack/react-query'
+import { mutationOptions, skipToken } from '@tanstack/react-query'
 import { toPluginCard } from '@/app/components/plugins/marketplace/plugin-card-adapter'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { marketplaceQuery } from '@/service/marketplace'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
-// oxlint-disable-next-line no-restricted-imports -- the marketplace contract has no batch or manifest lookup routes yet
-import { getMarketplace, postMarketplace } from './base'
 
 // Module scope keeps each projection stable so selected data is only rebuilt when the cache changes.
 const selectInstalledPlugins = (response: PluginInstallationsResponse) => ({
@@ -96,17 +89,9 @@ export function pluginDynamicOptionsMutationOptions(
   })
 }
 
-// The marketplace contract has no route for these lookups, so they keep hand-written keys.
-const MARKETPLACE_LOOKUP_KEY = 'plugins'
-
 export function marketplacePluginsByIdsQueryOptions(uniqueIdentifiers: string[]) {
-  return queryOptions({
-    queryKey: [MARKETPLACE_LOOKUP_KEY, 'fetchPluginsInMarketPlaceByIds', uniqueIdentifiers],
-    queryFn: () =>
-      // oxlint-disable-next-line typescript/no-deprecated -- no marketplace contract for this route
-      postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
-        body: { unique_identifiers: uniqueIdentifiers },
-      }),
+  return marketplaceQuery.pluginsByIdentifiers.queryOptions({
+    input: { body: { unique_identifiers: uniqueIdentifiers } },
     enabled: uniqueIdentifiers.filter((id) => !!id).length > 0,
     retry: 0,
   })
@@ -119,32 +104,31 @@ type MarketplacePluginInfoRequest = {
 }
 
 export function marketplacePluginsByInfoQueryOptions(infos: MarketplacePluginInfoRequest[]) {
-  return queryOptions({
-    queryKey: [MARKETPLACE_LOOKUP_KEY, 'fetchPluginsInMarketPlaceByInfo', infos],
-    queryFn: () =>
-      // oxlint-disable-next-line typescript/no-deprecated -- no marketplace contract for this route
-      postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
-        body: {
-          plugin_tuples: infos.map((info) => ({
-            org: info.organization,
-            name: info.plugin,
-            version: info.version,
-          })),
-        },
-      }),
+  return marketplaceQuery.pluginsByVersions.queryOptions({
+    input: {
+      body: {
+        plugin_tuples: infos.map((info) => ({
+          org: info.organization,
+          name: info.plugin,
+          version: info.version,
+        })),
+      },
+    },
     enabled: infos.filter((info) => !!info).length > 0,
     retry: 0,
   })
 }
 
+// Marketplace plugin ids are `organization/name`, which is the plugin detail route's path.
 export function marketplacePluginManifestQueryOptions(pluginUID: string) {
-  return queryOptions({
-    queryKey: [MARKETPLACE_LOOKUP_KEY, 'manifest', pluginUID],
-    queryFn: () =>
-      // oxlint-disable-next-line typescript/no-deprecated -- no marketplace contract for this route
-      getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace; version: { version: string } } }>(
-        `/plugins/${pluginUID}`,
-      ),
+  const separatorIndex = pluginUID.indexOf('/')
+  return marketplaceQuery.pluginDetail.queryOptions({
+    input: {
+      params: {
+        organization: separatorIndex === -1 ? pluginUID : pluginUID.slice(0, separatorIndex),
+        pluginName: separatorIndex === -1 ? '' : pluginUID.slice(separatorIndex + 1),
+      },
+    },
     enabled: !!pluginUID,
     retry: 0,
   })

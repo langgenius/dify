@@ -33,16 +33,18 @@ const toolProviderState = vi.hoisted(() => ({
 
 const service = vi.hoisted(() => ({
   credentialInfo: vi.fn(),
-  getMarketplace: vi.fn(),
   installPackage: vi.fn(),
-  postMarketplace: vi.fn(),
+  pluginDetail: vi.fn(),
+  pluginsByVersions: vi.fn(),
 }))
 
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  getMarketplace: service.getMarketplace,
-  postMarketplace: service.postMarketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginDetail: service.pluginDetail,
+    pluginsByVersions: service.pluginsByVersions,
+  })
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -443,27 +445,32 @@ describe('AgentTools', () => {
     fallbackMarketplacePlugin = undefined
     service.credentialInfo.mockReset().mockResolvedValue(credentialInfo())
     service.installPackage.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
-    service.postMarketplace.mockReset().mockImplementation(async (path: string) => {
-      if (path === '/plugins/versions/batch') {
-        return {
-          data: {
-            list: batchMarketplacePlugin ? [{ plugin: batchMarketplacePlugin }] : [],
-          },
-        }
-      }
-      throw new Error(`Unexpected marketplace POST: ${path}`)
-    })
-    service.getMarketplace.mockReset().mockImplementation(async (path: string) => {
-      if (path === '/plugins/langgenius/google' && fallbackMarketplacePlugin) {
-        return {
-          data: {
-            plugin: fallbackMarketplacePlugin,
-            version: { version: fallbackMarketplacePlugin.version },
-          },
-        }
-      }
-      throw new Error(`Unexpected marketplace GET: ${path}`)
-    })
+    service.pluginsByVersions.mockReset().mockImplementation(async () => ({
+      data: {
+        list: batchMarketplacePlugin ? [{ plugin: batchMarketplacePlugin }] : [],
+      },
+    }))
+    service.pluginDetail
+      .mockReset()
+      .mockImplementation(
+        async ({ params }: { params: { organization: string; pluginName: string } }) => {
+          if (
+            params.organization === 'langgenius' &&
+            params.pluginName === 'google' &&
+            fallbackMarketplacePlugin
+          ) {
+            return {
+              data: {
+                plugin: fallbackMarketplacePlugin,
+                version: { version: fallbackMarketplacePlugin.version },
+              },
+            }
+          }
+          throw new Error(
+            `Unexpected marketplace plugin lookup: ${params.organization}/${params.pluginName}`,
+          )
+        },
+      )
   })
 
   describe('User Interactions', () => {

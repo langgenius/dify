@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
 
 SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
     {
@@ -76,7 +75,7 @@ def list_configured_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[s
     ids before runtime, so this helper only flattens configured set datasets for
     metadata/diagnostic surfaces that still need a dataset-id summary.
     """
-    return list_agent_soul_knowledge_dataset_ids(agent_soul)
+    return agent_soul.knowledge.dataset_ids()
 
 
 def _get_nested(value: dict[str, Any], path: str) -> Any:

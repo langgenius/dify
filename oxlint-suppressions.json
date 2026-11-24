@@ -108,7 +108,7 @@
   },
   "web/app/components/app/configuration/__tests__/configuration-flow.spec.tsx": {
     "typescript/no-deprecated": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
@@ -1387,11 +1387,6 @@
       "count": 1
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/provider-added-card/provider-card-actions.tsx": {
-    "@tanstack/query/prefer-query-options": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/utils.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -1450,13 +1445,7 @@
   },
   "web/app/components/plugins/marketplace/hooks.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 3
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
+      "count": 2
     }
   },
   "web/app/components/plugins/marketplace/list/carousel.tsx": {
@@ -3176,7 +3165,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 14
+      "count": 12
     },
     "typescript/no-explicit-any": {
       "count": 2
@@ -3246,7 +3235,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
+      "count": 1
     }
   },
   "web/service/refresh-token.ts": {

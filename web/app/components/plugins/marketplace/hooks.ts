@@ -1,17 +1,17 @@
 import type {
+  CollectionPluginsResponse,
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
-  PluginsFromMarketplaceResponse,
   PluginsSearchParams,
 } from '@dify/contracts/marketplace'
 import type { Plugin } from '../types'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { postMarketplace } from '@/service/base'
+import { marketplaceClient, marketplaceQuery } from '@/service/marketplace'
 import { MARKETPLACE_CONTAINER_ID, SCROLL_BOTTOM_THRESHOLD } from './constants'
-import { toPluginCard } from './plugin-card-adapter'
-import { getMarketplaceCollectionsAndPlugins, getMarketplacePluginsByCollectionId } from './utils'
+import { toListPlugin, toPluginCard } from './plugin-card-adapter'
+import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 /**
  * @deprecated Use useMarketplaceCollectionsAndPlugins from query.ts instead
@@ -24,7 +24,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     useState<Record<string, Plugin[]>>()
 
   const { data, isFetching, isSuccess, isPending } = useQuery({
-    queryKey: ['marketplaceCollectionsAndPlugins', queryParams],
+    queryKey: marketplaceQuery.collections.queryKey({ input: { query: queryParams } }),
     queryFn: ({ signal }) => getMarketplaceCollectionsAndPlugins(queryParams, { signal }),
     enabled: queryParams !== undefined,
     staleTime: 1000 * 60 * 5,
@@ -52,21 +52,22 @@ export const useMarketplaceCollectionsAndPlugins = () => {
   }
 }
 
+const selectCollectionListPlugins = (response: CollectionPluginsResponse) =>
+  (response.data?.plugins || []).map((plugin) => toListPlugin(toPluginCard(plugin)))
+
 export const useMarketplacePluginsByCollectionId = (
   collectionId?: string,
   query?: CollectionsAndPluginsSearchParams,
 ) => {
-  const { data, isFetching, isSuccess, isPending } = useQuery({
-    queryKey: ['marketplaceCollectionPlugins', collectionId, query],
-    queryFn: ({ signal }) => {
-      if (!collectionId) return Promise.resolve<Plugin[]>([])
-      return getMarketplacePluginsByCollectionId(collectionId, query, { signal })
-    },
-    enabled: !!collectionId,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 10,
-    retry: false,
-  })
+  const { data, isFetching, isSuccess, isPending } = useQuery(
+    marketplaceQuery.collectionPlugins.queryOptions({
+      input: collectionId ? { params: { collectionId }, body: query ?? {} } : skipToken,
+      select: selectCollectionListPlugins,
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      retry: false,
+    }),
+  )
 
   return {
     plugins: data || [],
@@ -74,6 +75,24 @@ export const useMarketplacePluginsByCollectionId = (
     isSuccess,
   }
 }
+
+const toSearchAdvancedInput = (params: PluginsSearchParams, page: number) => {
+  const { query, sort_by, sort_order, category, tags, exclude, type, page_size } = params
+  return {
+    params: { kind: type === 'bundle' ? ('bundles' as const) : ('plugins' as const) },
+    body: {
+      page,
+      page_size,
+      query,
+      sort_by,
+      sort_order,
+      category: category !== 'all' ? category : '',
+      tags,
+      exclude,
+    },
+  }
+}
+
 /**
  * @deprecated Use useMarketplacePlugins from query.ts instead
  */
@@ -90,7 +109,11 @@ export const useMarketplacePlugins = (enabled = true) => {
   }, [])
 
   const marketplacePluginsQuery = useInfiniteQuery({
-    queryKey: ['marketplacePlugins', queryParams],
+    // Pages hold converted plugin cards rather than raw responses, so the key is untyped.
+    queryKey: marketplaceQuery.searchAdvanced.key({
+      type: 'infinite',
+      input: toSearchAdvancedInput(queryParams ?? { query: '' }, 1),
+    }),
     queryFn: async ({ pageParam = 1, signal }) => {
       if (!queryParams) {
         return {
@@ -102,26 +125,12 @@ export const useMarketplacePlugins = (enabled = true) => {
       }
 
       const params = normalizeParams(queryParams)
-      const { query, sort_by, sort_order, category, tags, exclude, type, page_size } = params
-      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      const { page_size } = params
 
       try {
-        const res = await postMarketplace<{ data: PluginsFromMarketplaceResponse }>(
-          `/${pluginOrBundle}/search/advanced`,
-          {
-            body: {
-              page: pageParam,
-              page_size,
-              query,
-              sort_by,
-              sort_order,
-              category: category !== 'all' ? category : '',
-              tags,
-              exclude,
-              type,
-            },
-            signal,
-          },
+        const res = await marketplaceClient.searchAdvanced(
+          toSearchAdvancedInput(params, pageParam),
+          { signal },
         )
         const resPlugins = res.data.bundles || res.data.plugins || []
 

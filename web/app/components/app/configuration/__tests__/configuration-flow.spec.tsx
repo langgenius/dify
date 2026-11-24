@@ -64,7 +64,7 @@ const api = vi.hoisted(() => ({
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
   stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  marketplace: vi.fn<typeof import('@/service/base').postMarketplace>(),
+  marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
   modelSummary: vi.fn<typeof consoleClient.workspaces.current.modelProviders.summary.get>(),
@@ -107,10 +107,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: api.marketplace,
-}))
 const streams = await vi.hoisted(async () => {
   const { createStreamRecorder } = await import('@/test/stream-recorder')
   return createStreamRecorder({ post: api.stream, get: vi.fn() })
@@ -131,6 +127,10 @@ vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   chatMessagesSender: streams.chatMessagesSender,
 }))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: api.marketplace })
+})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
