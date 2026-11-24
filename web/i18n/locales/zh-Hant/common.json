@@ -322,6 +322,7 @@
   "tag.deleteTip": "標籤正在使用中，是否刪除？",
   "tag.failed": "標籤建立失敗",
   "tag.manageTags": "管理標籤",
+  "tag.nameAlreadyExists": "已有相同名稱的標籤。",
   "tag.nameRequired": "請輸入標籤名稱。",
   "tag.nameTooLong": "標籤名稱最多可包含 {{max}} 個字元。",
   "tag.noTag": "沒有標籤",

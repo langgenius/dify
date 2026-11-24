@@ -322,6 +322,7 @@
   "tag.deleteTip": "태그가 사용 중입니다. 삭제하시겠습니까?",
   "tag.failed": "태그 생성에 실패했습니다",
   "tag.manageTags": "태그 관리",
+  "tag.nameAlreadyExists": "같은 이름의 태그가 이미 있습니다.",
   "tag.nameRequired": "태그 이름을 입력하세요.",
   "tag.nameTooLong": "태그 이름은 {{max}}자 이내로 입력하세요.",
   "tag.noTag": "태그 없음",

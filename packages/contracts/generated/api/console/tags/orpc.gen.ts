@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zTagNameAlreadyExistsError } from './zod.gen.ts'
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -46,6 +47,7 @@ export const patch = oc
   })
   .input(z.object({ body: zPatchTagsByTagIdBody, params: zPatchTagsByTagIdPath }))
   .output(zPatchTagsByTagIdResponse)
+  .errors({ tag_name_already_exists: { status: 400, data: zTagNameAlreadyExistsError } })
 
 export const byTagId = {
   delete: delete_,
@@ -78,6 +80,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostTagsBody }))
   .output(zPostTagsResponse)
+  .errors({ tag_name_already_exists: { status: 400, data: zTagNameAlreadyExistsError } })
 
 export const tags = {
   get,

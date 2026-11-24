@@ -322,6 +322,7 @@
   "tag.deleteTip": "แท็กกําลังถูกใช้ลบออก?",
   "tag.failed": "การสร้างแท็กล้มเหลว",
   "tag.manageTags": "จัดการแท็ก",
+  "tag.nameAlreadyExists": "มีแท็กชื่อนี้อยู่แล้ว",
   "tag.nameRequired": "ป้อนชื่อแท็ก",
   "tag.nameTooLong": "ชื่อแท็กต้องมีความยาวไม่เกิน {{max}} อักขระ",
   "tag.noTag": "ไม่มีแท็ก",

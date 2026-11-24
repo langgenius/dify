@@ -28,6 +28,11 @@ export type TagResponse = {
   type?: string | null
 }
 
+export type TagNameAlreadyExistsError = ErrorResponse & {
+  code: 'tag_name_already_exists'
+  status: 400
+}
+
 export type TagUpdateRequestPayload = {
   name: string
 }
@@ -64,6 +69,7 @@ export type PostTagsData = {
 }
 
 export type PostTagsErrors = {
+  400: TagNameAlreadyExistsError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -106,6 +112,7 @@ export type PatchTagsByTagIdData = {
 }
 
 export type PatchTagsByTagIdErrors = {
+  400: TagNameAlreadyExistsError | ErrorResponse
   default: ErrorResponse
 }
 

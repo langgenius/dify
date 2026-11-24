@@ -1,57 +1,141 @@
+import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
+import type { ReactElement } from 'react'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
-import { AppToaster } from '@/app/notifications/app-toaster'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import en from '@/i18n/locales/en-US/common.json'
+import ja from '@/i18n/locales/ja-JP/common.json'
+import zh from '@/i18n/locales/zh-Hans/common.json'
 import { apiError, setupFakeApi } from '@/test/fake-api'
-import { TagItemEditor } from '../tag-item-editor'
+import { renderWithTags } from '@/test/tag-management'
+import { TagManagementDialog } from '../tag-management-dialog'
+import { TagSelector } from '../tag-selector'
 
-// Console routes validate the tag id path param as a UUID.
-const TAG_ID = '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b'
+vi.unmock('react-i18next')
 
-const fake = setupFakeApi({
+const locales = { 'en-US': en, 'ja-JP': ja, 'zh-Hans': zh }
+const original: TagResponse = {
+  id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
+  name: 'Original',
+  type: 'agent',
+  binding_count: '2',
+}
+let saved = original
+const fake = setupFakeApi(() => ({
   console: {
     tags: {
+      get: () => [saved],
+      post: ({ body }) => ({ id: 'new-tag', ...body }),
       byTagId: {
-        patch: () => {
-          throw apiError({ status: 400, message: 'Tag name already exists' })
+        patch: ({ body }) => {
+          saved = { ...saved, ...body }
+          return saved
         },
       },
     },
   },
-})
+}))
 
+async function renderLocalized(language: keyof typeof locales, ui: ReactElement) {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: language,
+    resources: { [language]: { common: locales[language] } },
+    keySeparator: false,
+  })
+  return renderWithTags(
+    <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>,
+    [original],
+    ['agent.tag.manage'],
+  )
+}
+
+beforeEach(() => {
+  saved = original
+})
 afterEach(() => {
   toast.dismiss()
 })
 
-it('shows one business error per failed rename, including a retry through the real transport', async () => {
-  const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  await render(
-    <Wrapper>
-      <TagItemEditor tag={{ id: TAG_ID, name: 'Original', type: 'app', binding_count: '0' }} />
-      <AppToaster />
-    </Wrapper>,
-  )
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    await page.getByRole('button', { name: 'common.operation.edit Original' }).click()
-    await page.getByRole('textbox', { name: 'common.operation.rename Original' }).fill('Renamed')
-    await userEvent.tab()
-    await expect.element(page.getByRole('textbox')).not.toBeInTheDocument()
-    await expect.element(page.getByText('Tag name already exists', { exact: true })).toBeVisible()
-    await page.getByRole('dialog', { name: 'Tag name already exists' }).hover()
-    // A second transport notification would expose a second independently dismissible card.
-    await expect.element(page.getByRole('button', { name: 'Close notification' })).toBeVisible()
-    expect(page.getByRole('button', { name: 'Close notification' }).all()).toHaveLength(1)
-    expect(fake.console.tags.byTagId.patch).toHaveBeenCalledTimes(attempt)
-    expect(fake.console.tags.byTagId.patch).toHaveBeenLastCalledWith({
-      params: { tag_id: TAG_ID },
-      body: { name: 'Renamed' },
+it.each([
+  {
+    language: 'ja-JP',
+    action: 'create',
+    code: 'tag_name_already_exists',
+    expected: '同じ名前のタグがすでに存在します。',
+  },
+  {
+    language: 'zh-Hans',
+    action: 'rename',
+    code: 'tag_name_already_exists',
+    expected: '已存在同名标签。',
+  },
+  {
+    language: 'en-US',
+    action: 'rename',
+    code: 'invalid_param',
+    expected: 'A tag with this name already exists.',
+  },
+] as const)(
+  'explains a $code $action conflict inline in $language and accepts a correction',
+  async ({ language, action, code, expected }) => {
+    const error = apiError({
+      status: 400,
+      code,
+      message: code === 'invalid_param' ? 'Tag name already exists' : 'Duplicate detected',
     })
-    await page.getByRole('button', { name: 'Close notification' }).click()
+    const common = locales[language]
+    await renderLocalized(language, <TagManagementDialog type="agent" show onClose={() => {}} />)
+    const dialog = page.getByRole('dialog', { name: common['tag.manageTags'] })
+    let input = dialog.getByRole('textbox', { name: common['tag.addNew'] })
+    if (action === 'create') fake.console.tags.post.mockRejectedValueOnce(error)
+    else {
+      fake.console.tags.byTagId.patch.mockRejectedValueOnce(error)
+      await dialog.getByRole('button', { name: `${common['operation.edit']} Original` }).click()
+      input = dialog.getByRole('textbox', { name: `${common['operation.rename']} Original` })
+    }
+    await input.fill('Finance')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(dialog.getByRole('alert')).toHaveTextContent(expected)
+    await expect.element(input).toHaveAccessibleDescription(expected)
+    await expect.element(input).toHaveAttribute('aria-invalid', 'true')
+    await expect.element(input).toHaveValue('Finance')
     await expect
-      .element(page.getByText('Tag name already exists', { exact: true }))
+      .element(page.getByRole('region', { name: 'Notifications' }).getByRole('dialog'))
       .not.toBeInTheDocument()
-  }
+
+    await input.fill('Corrected')
+    await userEvent.keyboard('{Enter}')
+    if (action === 'create') {
+      await expect.element(input).toHaveValue('')
+      await expect.element(dialog.getByText('Original', { exact: true })).toBeVisible()
+      expect(fake.console.tags.post).toHaveBeenCalledTimes(2)
+    } else {
+      await expect.element(dialog.getByText('Corrected', { exact: true })).toBeVisible()
+      expect(fake.console.tags.byTagId.patch).toHaveBeenCalledTimes(2)
+    }
+    await expect.element(dialog.getByText('2', { exact: true })).toBeVisible()
+  },
+)
+
+it('shows a single Japanese notification when creating from a card races a concurrent creation', async () => {
+  fake.console.tags.post.mockRejectedValueOnce(
+    apiError({ status: 400, code: 'tag_name_already_exists', message: 'Duplicate detected' }),
+  )
+  await renderLocalized(
+    'ja-JP',
+    <TagSelector type="agent" targetId="agent-1" value={[original]} canBindOrUnbindTags />,
+  )
+  await page.getByRole('combobox', { name: 'Original' }).click()
+  await page.getByRole('combobox', { name: ja['tag.selectorPlaceholder'] }).fill('Finance')
+  await page.getByRole('option', { name: /Finance/ }).click()
+  const notifications = page.getByRole('region', { name: 'Notifications' })
+  await expect
+    .element(notifications.getByRole('dialog', { name: '同じ名前のタグがすでに存在します。' }))
+    .toBeVisible()
+  expect(notifications.getByRole('dialog').all()).toHaveLength(1)
+  expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+    body: { name: 'Finance', type: 'agent' },
+  })
 })

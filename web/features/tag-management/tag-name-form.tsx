@@ -33,7 +33,7 @@ export function TagNameForm({
 
   const submit = async (onBlur: boolean) => {
     if (pending) return
-    if (onBlur && initialName === undefined && !draft) return
+    if (onBlur && (error || (initialName === undefined && !draft))) return
     const name = draft.trim()
     if (!name) {
       setError(t(($) => $['tag.nameRequired']))

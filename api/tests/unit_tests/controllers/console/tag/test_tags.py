@@ -24,7 +24,9 @@ from controllers.console.tag.tags import (
     TagUpdateDeleteApi,
     TagUpdateRequestPayload,
 )
+from enums import DeploymentEdition
 from extensions.application_services.rbac import RBACServices
+from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models import Account
 from models.account import Tenant, TenantAccountRole
@@ -45,7 +47,7 @@ from services.tag_application_service import (
     UpdateTagInput,
 )
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_account
+from tests.helpers.unit.model_factories import make_account, make_tenant
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
@@ -218,27 +220,6 @@ class TestTagListApi:
                     request_context,
                 )
 
-    def test_post_maps_name_conflict_to_legacy_value_error(
-        self, app: Flask, request_context: RequestContext, tags_service: MagicMock
-    ) -> None:
-        tags_service.create_tag.side_effect = TagNameConflictError()
-        owner = _account(TenantAccountRole.OWNER)
-
-        with (
-            app.test_request_context("/"),
-            config_overrides_context(RBAC_ENABLED=False),
-            patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
-        ):
-            with pytest.raises(ValueError, match="Tag name already exists") as exc_info:
-                unwrap(TagListApi().post)(
-                    TagListApi(),
-                    TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
-                    request_context,
-                )
-
-        assert exc_info.value.__cause__ is None
-        assert exc_info.value.__suppress_context__ is True
-
     def test_post_does_not_coerce_unknown_application_error_to_transport_error(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
     ) -> None:
@@ -256,6 +237,37 @@ class TestTagListApi:
                     TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
                     request_context,
                 )
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("POST", "/tags", {"name": "Finance", "type": "agent"}),
+        ("PATCH", "/tags/00000000-0000-0000-0000-000000000001", {"name": "Finance"}),
+    ],
+)
+def test_duplicate_tag_name_returns_a_localizable_error(
+    app: Flask, tags_service: MagicMock, method: str, path: str, body: dict[str, str]
+) -> None:
+    """An authorized create or rename conflict reports a stable code without changing its HTTP status."""
+    api = ExternalApi(app)
+    api.add_resource(TagListApi, "/tags")
+    api.add_resource(TagUpdateDeleteApi, "/tags/<uuid:tag_id>")
+    owner = make_account(tenant=make_tenant(), role=TenantAccountRole.OWNER)
+    tags_service.create_tag.side_effect = TagNameConflictError()
+    tags_service.update_tag.side_effect = TagNameConflictError()
+    tags_service.get_tag_type.return_value = TagKind.AGENT
+
+    with (
+        config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, LOGIN_DISABLED=True, RBAC_ENABLED=False),
+        patch("libs.login._resolve_current_user", return_value=owner),
+    ):
+        response = app.test_client().open(path, method=method, json=body)
+
+    assert response.status_code == 400
+    assert response.json is not None
+    assert response.json["code"] == "tag_name_already_exists"
+    assert response.json["message"] == "Tag name already exists"
 
 
 class TestTagUpdateDeleteApi:

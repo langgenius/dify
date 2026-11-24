@@ -14056,6 +14056,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
+| 400 | Bad Request | **application/json**: [TagNameAlreadyExistsError](#tagnamealreadyexistserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
@@ -14094,6 +14095,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
+| 400 | Bad Request | **application/json**: [TagNameAlreadyExistsError](#tagnamealreadyexistserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
@@ -37234,6 +37236,14 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TagListResponse | array |  |  |
+
+#### TagNameAlreadyExistsError
+
+Tag name already exists
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TagNameAlreadyExistsError |  | Tag name already exists |  |
 
 #### TagResponse
 

@@ -322,6 +322,7 @@
   "tag.deleteTip": "Eticheta este utilizată, ștergeți-o?",
   "tag.failed": "Crearea etichetei a eșuat",
   "tag.manageTags": "Gestionați etichete",
+  "tag.nameAlreadyExists": "Există deja o etichetă cu acest nume.",
   "tag.nameRequired": "Introduceți un nume pentru etichetă.",
   "tag.nameTooLong": "Numele etichetei poate avea cel mult {{max}} de caractere.",
   "tag.noTag": "Nicio etichetă",

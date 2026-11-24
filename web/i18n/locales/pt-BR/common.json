@@ -322,6 +322,7 @@
   "tag.deleteTip": "A tag está sendo usada, excluí-la?",
   "tag.failed": "Falha na criação da tag",
   "tag.manageTags": "Gerenciar tags",
+  "tag.nameAlreadyExists": "Já existe uma tag com esse nome.",
   "tag.nameRequired": "Digite um nome para a tag.",
   "tag.nameTooLong": "O nome da tag pode ter no máximo {{max}} caracteres.",
   "tag.noTag": "Sem tags",

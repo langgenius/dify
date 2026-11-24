@@ -322,6 +322,7 @@
   "tag.deleteTip": "La etiqueta se está utilizando, ¿eliminarla?",
   "tag.failed": "Creación de etiqueta fallida",
   "tag.manageTags": "Gestionar Etiquetas",
+  "tag.nameAlreadyExists": "Ya existe una etiqueta con este nombre.",
   "tag.nameRequired": "Escribe un nombre para la etiqueta.",
   "tag.nameTooLong": "El nombre de la etiqueta puede tener hasta {{max}} caracteres.",
   "tag.noTag": "Sin etiquetas",

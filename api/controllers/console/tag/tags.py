@@ -11,12 +11,14 @@ from controllers.common.rbac import AgentId, RBACCheck, Workspace, enforce_rbac_
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
+from controllers.console.tag.error import TagNameAlreadyExistsError
 from controllers.console.wraps import (
     RBACPermission,
     model_validate,
 )
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
 from machinery.context import RequestContext
@@ -210,6 +212,7 @@ class TagListApi(Resource):
 
     @console_ns.expect(console_ns.models[TagBasePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
+    @error_responses(TagNameAlreadyExistsError)
     @console_account_admission()
     @model_validate(TagBasePayload)
     def post(self, req_data: TagBasePayload, request_context: RequestContext):
@@ -220,8 +223,8 @@ class TagListApi(Resource):
                 request_context,
                 CreateTagInput(name=req_data.name, type=TagKind(req_data.type.value)),
             )
-        except TagNameConflictError as error:
-            raise ValueError(str(error)) from None
+        except TagNameConflictError:
+            raise TagNameAlreadyExistsError() from None
 
         return dump_response(TagResponse, tag), 200
 
@@ -230,6 +233,7 @@ class TagListApi(Resource):
 class TagUpdateDeleteApi(Resource):
     @console_ns.expect(console_ns.models[TagUpdateRequestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[TagResponse.__name__])
+    @error_responses(TagNameAlreadyExistsError)
     @console_account_admission()
     @model_validate(TagUpdateRequestPayload)
     def patch(self, req_data: TagUpdateRequestPayload, request_context: RequestContext, tag_id: UUID):
@@ -242,8 +246,8 @@ class TagUpdateDeleteApi(Resource):
                 tag_id_str,
                 UpdateTagInput(name=req_data.name),
             )
-        except TagNameConflictError as error:
-            raise ValueError(str(error)) from None
+        except TagNameConflictError:
+            raise TagNameAlreadyExistsError() from None
         except TagNotFoundError as error:
             raise NotFound(str(error)) from None
 

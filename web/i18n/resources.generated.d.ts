@@ -2145,6 +2145,7 @@ export default interface Resources {
     'tag.deleteTip': 'The tag is being used, delete it?'
     'tag.failed': 'Tag creation failed'
     'tag.manageTags': 'Manage Tags'
+    'tag.nameAlreadyExists': 'A tag with this name already exists.'
     'tag.nameRequired': 'Enter a tag name.'
     'tag.nameTooLong': 'Tag names can be at most {{max}} characters.'
     'tag.noTag': 'No tags'

@@ -322,6 +322,7 @@
   "tag.deleteTip": "Etiket istifadə olunur, silinsin?",
   "tag.failed": "Etiket yaratmaq mümkün olmadı",
   "tag.manageTags": "Etiketləri idarə et",
+  "tag.nameAlreadyExists": "Bu adda etiket artıq mövcuddur.",
   "tag.nameRequired": "Etiket üçün ad daxil edin.",
   "tag.nameTooLong": "Etiketin adı ən çox {{max}} simvoldan ibarət ola bilər.",
   "tag.noTag": "Etiket yoxdur",

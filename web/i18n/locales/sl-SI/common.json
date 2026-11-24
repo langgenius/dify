@@ -322,6 +322,7 @@
   "tag.deleteTip": "Oznaka se uporablja, jo izbrišite?",
   "tag.failed": "Ustvarjanje oznake ni uspelo",
   "tag.manageTags": "Upravljanje oznak",
+  "tag.nameAlreadyExists": "Oznaka s tem imenom že obstaja.",
   "tag.nameRequired": "Vnesite ime oznake.",
   "tag.nameTooLong": "Ime oznake lahko vsebuje največ {{max}} znakov.",
   "tag.noTag": "Brez oznak",
