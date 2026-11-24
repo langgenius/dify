@@ -30,10 +30,10 @@ const {
   installedPlugins: vi.fn(),
   upgrade: vi.fn(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: marketplace })
+})
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   checkTaskStatus: checkTask,

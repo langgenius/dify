@@ -550,7 +550,7 @@ it.each([true, false])(
         name: 'plugin.installModal.installPlugin',
       })
       expect(within(dialog).getByText('Trigger Package')).toBeInTheDocument()
-      expect(api.manifest).toHaveBeenCalledWith(encodeURIComponent(packageId))
+      expect(api.manifest).toHaveBeenCalledWith(packageId)
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     } else {

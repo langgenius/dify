@@ -1272,12 +1272,6 @@ export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOpt
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-// For Marketplace API
-/** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
-export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
-}
-
 /**
  * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
  * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
