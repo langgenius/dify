@@ -42,7 +42,7 @@
     }
   },
   "scripts": {
-    "build": "node init && vp pack",
+    "build": "vp pack",
     "type-check": "tsrs --noEmit",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
