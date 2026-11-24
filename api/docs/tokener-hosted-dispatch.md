@@ -22,13 +22,20 @@ configured TRIAL/PAID model lists without creating or reading legacy credit
 pools for Tokener profiles. The selected SYSTEM credentials are represented
 by a private reference, not the vendor key. A CUSTOM selection cannot produce
 this reference. The Core adapter rechecks the tenant's ready, encrypted
-binding before asking the daemon to redirect. A missing integration, stale
-package pin, or dispatch error fails without issuing a second inference or
-falling back to legacy credits.
+binding before asking the daemon to redirect. The original package UID is
+bootstrap provenance, not a runtime version pin.
 
 The daemon receives the ordinary dispatch data plus an authenticated,
-tenant-scoped target descriptor at `dispatch/redirect/v1/{operation}`. The
-data passed to the target has the same model parameters, messages, tools,
+tenant-scoped target descriptor at `dispatch/redirect/v2/{operation}`.
+Core sends the trusted target plugin ID, not the bootstrap package UID.
+The daemon selects and verifies the tenant's currently installed package
+and uses that same exact version for this invocation. A signed in-place
+Tokener upgrade needs no new enrollment, credential binding or funding.
+A missing integration, unavailable or untrusted installation, or dispatch
+error fails without issuing a second inference or falling back to legacy
+credits. The version-pinned v1 protocol is unchanged for other clients.
+
+The data passed to the target has the same model parameters, messages, tools,
 stop values and media as normal dispatch. Only routing identity and the
 credential are substituted. Source credentials and transport-only fields
 are not passed to the target. This is not a claim that Tokener interprets
@@ -36,7 +43,8 @@ every source parameter; that behavior belongs to its plugin and API.
 
 ## Rollout and verification
 
-Deploy a compatible daemon before enabling new signup. Coordinate schema and
+Deploy a v2-compatible daemon before deploying the Core managed-redirect
+client; roll back in reverse order. Coordinate schema and
 services according to the billing rollout: Core profile tables before Billing,
 Billing bootstrap enabled only in the intended acceptance scope, no backfill.
 Use a dedicated test tenant and staging Partner for agent dev; the test
@@ -48,7 +56,10 @@ Check registration and wallet provisioning, then create a test App with
 the original Marketplace OpenAI provider in SYSTEM mode. Verify a normal
 invocation and matching Tokener usage/debit with no old reservation, the
 original App provider/model, and a legacy workspace still on its unchanged
-credits path. Check the BYOK negative case separately.
+credits path. Upgrade only the canary's signed Tokener package in place and
+repeat the same App invocation. Verify use of the new installed UID and a
+matching debit, with the original signup and credential binding unchanged.
+Check the BYOK negative case separately.
 
 Legacy migration is paused in this rollout, not coupled to new-user enrollment.
 The earlier paid-cycle admission and one-time free enrollment designs are

@@ -51,10 +51,14 @@ def _bind_tenant(session: Session) -> tuple[str, str]:
     return tenant.id, credential.id
 
 
-def test_hosted_dispatch_preserves_source_model_parameters_and_uses_only_bound_target(
-    sqlite_session: Session, mocker: MockerFixture
+@pytest.mark.parametrize("current_signup_uid", [TARGET_UID, "langgenius/tokener:0.4.5@" + "b" * 64])
+def test_hosted_dispatch_preserves_source_parameters_and_uses_bound_credential_without_version_pin(
+    sqlite_session: Session, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch, current_signup_uid: str
 ) -> None:
+    # An existing tenant keeps its original binding when the package changes.
+    # Neither that version nor the new signup default travels to the daemon.
     tenant_id, credential_id = _bind_tenant(sqlite_session)
+    monkeypatch.setattr(plugin_model.dify_config, "TOKENER_PLUGIN_UNIQUE_IDENTIFIER", current_signup_uid)
     decrypt = mocker.patch.object(plugin_model.encrypter, "decrypt_token", return_value="decrypted-test-only")
     check_policy = mocker.patch.object(plugin_model, "runtime_check_credential_policy_compliance")
     marker = TokenerHostedModelCredentials(tenant_id=tenant_id, provider=SOURCE, model_type="llm", model=MODEL)
@@ -89,7 +93,7 @@ def test_hosted_dispatch_preserves_source_model_parameters_and_uses_only_bound_t
         None,
         None,
     )
-    assert url.endswith(f"/plugin/{tenant_id}/dispatch/redirect/v1/llm/invoke")
+    assert url.endswith(f"/plugin/{tenant_id}/dispatch/redirect/v2/llm/invoke")
     assert isinstance(body, str)
     payload = json.loads(body)
     UUID(payload["redirect"].pop("route_id"))
@@ -98,10 +102,9 @@ def test_hosted_dispatch_preserves_source_model_parameters_and_uses_only_bound_t
         "app_id": "app-id",
         "data": {**original, "credentials": {}},
         "redirect": {
-            "version": 1,
+            "version": 2,
             "target": {
                 "plugin_id": "langgenius/tokener",
-                "expected_unique_identifier": TARGET_UID,
                 "provider": "tokener",
                 "model_type": "llm",
                 "model": MODEL,

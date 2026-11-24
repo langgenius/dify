@@ -54,11 +54,13 @@ class TokenerBootstrapRepository:
             return credential_id, active is not None
 
     def ready_dispatch_binding(self, tenant_id: str, provider: str) -> tuple[str, str, str] | None:
-        """Return the current installed-package pin and encrypted managed credential.
+        """Return the original bootstrap UID and encrypted managed credential.
 
         Only an active Tokener profile with a ready integration for this tenant
-        can dispatch. The user's active provider credential is deliberately not
-        consulted. No decrypted data is returned and no state is changed.
+        can dispatch. The bootstrap UID is binding provenance; it is not a read
+        of the daemon's current installation. The user's active provider
+        credential is deliberately not consulted. No decrypted data is
+        returned and no state is changed.
         """
         with self._sessions() as session:
             row = session.execute(

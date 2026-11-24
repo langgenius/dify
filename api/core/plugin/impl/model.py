@@ -39,6 +39,7 @@ from services.plugin.dispatch_identity import plugin_dispatch_headers
 _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name__,))
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 _MANAGED_MODEL_ROUTE = "_managed_model_route"
+_HOSTED_REDIRECT_VERSION = 2
 _HOSTED_REDIRECT_OPERATIONS = frozenset(
     (
         "llm/invoke",
@@ -92,20 +93,26 @@ class PluginModelClient(BasePluginClient):
 
             data = {key: value for key, value in data.items() if key != _MANAGED_MODEL_ROUTE}
             data["redirect"] = self._tokener_target(route["tenant_id"], route["model_type"], route["model"])
-            path = f"{prefix}/dispatch/redirect/v1/{operation}"
+            path = f"{prefix}/dispatch/redirect/v{_HOSTED_REDIRECT_VERSION}/{operation}"
         return super()._prepare_request(path, headers, data, params, files)
 
     @staticmethod
     def _tokener_target(tenant_id: str, model_type: str, model: str) -> dict[str, Any]:
-        """Load only the bound managed key, with no fallback and no parameter translation."""
+        """Load the tenant-owned, ready managed key and trusted plugin family.
+
+        The bootstrap UID proves the family of the original binding, not the
+        current installation. The daemon selects and verifies the tenant's
+        installed version. An invalid binding never falls back or rewrites
+        model parameters.
+        """
         try:
             provider = ModelProviderID(dify_config.TOKENER_PROVIDER_NAME)
             repository = TokenerBootstrapRepository(sessions=session_factory.create_session)
             binding = repository.ready_dispatch_binding(tenant_id, str(provider))
             if binding is None:
                 raise ValueError("No ready binding.")
-            identifier, credential_id, encrypted = binding
-            if identifier.partition(":")[0] != provider.plugin_id:
+            bootstrap_identifier, credential_id, encrypted = binding
+            if bootstrap_identifier.partition(":")[0] != provider.plugin_id:
                 raise ValueError("Invalid target package.")
             runtime_check_credential_policy_compliance(
                 credential_id=credential_id, provider=str(provider), credential_type=PluginCredentialType.MODEL
@@ -121,11 +128,10 @@ class PluginModelClient(BasePluginClient):
         except Exception:
             raise ValueError("Managed model routing is temporarily unavailable.") from None
         return {
-            "version": 1,
+            "version": _HOSTED_REDIRECT_VERSION,
             "route_id": str(uuid4()),
             "target": {
                 "plugin_id": provider.plugin_id,
-                "expected_unique_identifier": identifier,
                 "provider": provider.provider_name,
                 "model_type": model_type,
                 "model": model,
