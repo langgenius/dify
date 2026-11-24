@@ -23,6 +23,7 @@ export function createBrowserLink(contract: AnyContractRouter): ClientLink<Conso
         fetchCompat: true,
         request: normalizedRequest,
         silent: options.context.silent,
+        onUploadProgress: options.context.onUploadProgress,
         timeout: options.context.stream ? false : undefined,
       })
       options.context.onResponseHeaders?.(response.headers)

@@ -1,7 +1,5 @@
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-// oxlint-disable-next-line no-restricted-imports -- Test the existing upload transport boundary without replacing its consumers.
-import type { upload } from '@/service/base'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -24,11 +22,7 @@ import Preparation from '../index'
 
 const api = vi.hoisted(() => ({
   stream: vi.fn<typeof import('@/service/event-stream').streamEvents>(),
-  upload: vi.fn<typeof upload>(),
-}))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: api.upload,
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
 }))
 vi.mock('@/service/event-stream', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/event-stream')>()),
@@ -47,6 +41,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
       'rag.pipelines.byPipelineId.workflows.draft.datasource.nodes.byNodeId.run.post': echo,
       'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.run.post': echo,
     }),
