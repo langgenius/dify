@@ -2,7 +2,9 @@
 name = "dify-vdb-chroma"
 version = "0.0.1"
 dependencies = [
-    "chromadb==0.5.20",
+    # chromadb 0.5.x builds its settings with `pydantic.v1`, which fails on Python 3.14.
+    # Chroma stays unavailable on 3.14 until the 1.x client upgrade (#43903) lands.
+    "chromadb==0.5.20; python_version < '3.14'",
 ]
 description = "Dify vector store backend (dify-vdb-chroma)."
 

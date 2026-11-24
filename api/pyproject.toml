@@ -1,7 +1,7 @@
 [project]
 name = "dify-api"
 version = "1.20.0"
-requires-python = "~=3.13.0"
+requires-python = ">=3.13,<3.15"
 
 dependencies = [
     # Legacy: mature and widely deployed
@@ -135,6 +135,10 @@ override-dependencies = [
     # `tos` hard-pins `wrapt==1.16.0` without importing it, which blocks
     # `unstructured>=0.24.0` (requires `wrapt>=2.1.1`).
     "wrapt>=2.1.1,<3.0.0",
+    # `aliyun-log-python-sdk` (aliyun/aliyun-log-python-sdk#359) and `tablestore` cap
+    # `protobuf<6`, but Google API clients on Python 3.14 require `grpcio-status>=1.75.1`,
+    # which needs protobuf 6. Both SDKs ship builder-style gencode that protobuf 6 loads.
+    "protobuf>=6.33.5,<7.0.0",
 ]
 
 [dependency-groups]
