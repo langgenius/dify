@@ -25,7 +25,6 @@ from services.tag_application_service import (
     TagStore,
     TagSummary,
     UpdateTagInput,
-    normalize_tag_name,
 )
 
 
@@ -106,7 +105,11 @@ class TagRepository(TagStore):
         """
         with self._session_factory.begin() as session:
             self._lock_agent_tag_pool(session, workspace_id, tag.type)
-            self._require_available_name(session, workspace_id, tag.type, tag.name)
+            existing = session.scalar(
+                select(Tag.id).where(Tag.name == tag.name, Tag.tenant_id == workspace_id, Tag.type == tag.type).limit(1)
+            )
+            if existing is not None:
+                raise TagNameConflictError
 
             model = Tag(
                 name=tag.name,
@@ -136,7 +139,18 @@ class TagRepository(TagStore):
                 raise TagNotFoundError
 
             if tag.name != model.name:
-                self._require_available_name(session, workspace_id, model.type, tag.name, except_tag_id=tag_id)
+                existing = session.scalar(
+                    select(Tag.id)
+                    .where(
+                        Tag.name == tag.name,
+                        Tag.tenant_id == workspace_id,
+                        Tag.type == model.type,
+                        Tag.id != tag_id,
+                    )
+                    .limit(1)
+                )
+                if existing is not None:
+                    raise TagNameConflictError
                 model.name = tag.name
 
             binding_count = (
@@ -244,25 +258,6 @@ class TagRepository(TagStore):
                     ),
                 )
             )
-
-    @staticmethod
-    def _require_available_name(
-        session: Session, workspace_id: str, tag_type: str, name: str, *, except_tag_id: str | None = None
-    ) -> None:
-        """Check a validated name within the transaction holding the Agent pool lock.
-
-        Preserve database collation for existing names and compare legacy whitespace with the same
-        normalization used on input. A conflict raises before any tag or binding is written.
-        """
-        candidates = select(Tag.name, func.trim(Tag.name) == name).where(
-            Tag.tenant_id == workspace_id,
-            Tag.type == tag_type,
-            Tag.name.contains(name, autoescape=True),
-        )
-        if except_tag_id is not None:
-            candidates = candidates.where(Tag.id != except_tag_id)
-        if any(db_match or normalize_tag_name(stored) == name for stored, db_match in session.execute(candidates)):
-            raise TagNameConflictError
 
     @staticmethod
     def _lock_agent_tag_pool(session: Session, workspace_id: str, tag_type: str | None) -> None:

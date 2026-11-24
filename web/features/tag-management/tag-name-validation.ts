@@ -10,11 +10,9 @@ export function getTagNameValidationMessage(
 ) {
   if (
     error instanceof ORPCError &&
-    (error.code === 'tag_name_already_exists' ||
-      // Older Console versions used a generic code for this conflict.
-      (error.status === 400 &&
-        error.code === 'invalid_param' &&
-        error.message === 'Tag name already exists'))
+    error.status === 400 &&
+    error.code === 'invalid_param' &&
+    error.message === 'Tag name already exists'
   ) {
     return t(($) => $['tag.nameAlreadyExists'])
   }

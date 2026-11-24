@@ -15,6 +15,8 @@ import { TagSelector } from '../tag-selector'
 vi.unmock('react-i18next')
 
 const locales = { 'en-US': en, 'ja-JP': ja, 'zh-Hans': zh }
+const duplicateNameError = () =>
+  apiError({ status: 400, code: 'invalid_param', message: 'Tag name already exists' })
 const original: TagResponse = {
   id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
   name: 'Original',
@@ -62,29 +64,22 @@ it.each([
   {
     language: 'ja-JP',
     action: 'create',
-    code: 'tag_name_already_exists',
     expected: '同じ名前のタグがすでに存在します。',
   },
   {
     language: 'zh-Hans',
     action: 'rename',
-    code: 'tag_name_already_exists',
     expected: '已存在同名标签。',
   },
   {
     language: 'en-US',
     action: 'rename',
-    code: 'invalid_param',
     expected: 'A tag with this name already exists.',
   },
 ] as const)(
-  'explains a $code $action conflict inline in $language and accepts a correction',
-  async ({ language, action, code, expected }) => {
-    const error = apiError({
-      status: 400,
-      code,
-      message: code === 'invalid_param' ? 'Tag name already exists' : 'Duplicate detected',
-    })
+  'explains a $action conflict inline in $language and accepts a correction',
+  async ({ language, action, expected }) => {
+    const error = duplicateNameError()
     const common = locales[language]
     await renderLocalized(language, <TagManagementDialog type="agent" show onClose={() => {}} />)
     const dialog = page.getByRole('dialog', { name: common['tag.manageTags'] })
@@ -120,9 +115,7 @@ it.each([
 )
 
 it('shows a single Japanese notification when creating from a card races a concurrent creation', async () => {
-  fake.console.tags.post.mockRejectedValueOnce(
-    apiError({ status: 400, code: 'tag_name_already_exists', message: 'Duplicate detected' }),
-  )
+  fake.console.tags.post.mockRejectedValueOnce(duplicateNameError())
   await renderLocalized(
     'ja-JP',
     <TagSelector type="agent" targetId="agent-1" value={[original]} canBindOrUnbindTags />,

@@ -336,31 +336,6 @@ def test_agent_tag_names_are_unique_within_the_pool_and_workspace(
     assert {tag.name for tag in repository.list_tags("workspace-1", "agent", None)} == {"Finance", "Research"}
 
 
-@pytest.mark.usefixtures("agent_tag_workspaces")
-def test_legacy_padded_names_conflict_without_affecting_bindings(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    repository = TagRepository(sqlite_session_factory)
-    name = "QA_% Research"
-    with sqlite_session_factory.begin() as session:
-        session.add_all(
-            [
-                _tag("padded", workspace_id="workspace-1", tag_type=TagType.AGENT, name=f"\u3000{name}\t"),
-                _tag("finance", workspace_id="workspace-1", tag_type=TagType.AGENT, name="Finance"),
-                TagBinding(tenant_id="workspace-1", tag_id="padded", target_id="agent-1", created_by="account-1"),
-            ]
-        )
-
-    with pytest.raises(TagNameConflictError):
-        repository.create_tag("workspace-1", "account-1", CreateTagInput(name, TagKind.AGENT))
-    with pytest.raises(TagNameConflictError):
-        repository.update_tag("workspace-1", "finance", UpdateTagInput(name))
-
-    cleaned = repository.update_tag("workspace-1", "padded", UpdateTagInput(name))
-    assert (cleaned.id, cleaned.name, cleaned.binding_count) == ("padded", name, 1)
-    assert {tag.name for tag in repository.list_tags("workspace-1", "agent", None)} == {"Finance", name}
-
-
 def test_bulk_agent_tags_scope_both_tables_and_return_sorted_detached_values(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

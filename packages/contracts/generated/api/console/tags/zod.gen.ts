@@ -34,18 +34,6 @@ export const zTagResponse = z.object({
 export const zTagListResponse = z.array(zTagResponse)
 
 /**
- * TagNameAlreadyExistsError
- *
- * Tag name already exists
- */
-export const zTagNameAlreadyExistsError = zErrorResponse.and(
-  z.object({
-    code: z.literal('tag_name_already_exists'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * TagUpdateRequestPayload
  */
 export const zTagUpdateRequestPayload = z.object({
