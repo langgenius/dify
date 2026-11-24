@@ -1,11 +1,13 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactElement } from 'react'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
-import SwitchAppModal from '../index'
+import { SwitchAppDialogContent } from '../index'
+import { useSwitchAppMutation } from '../use-switch-app-mutation'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -107,12 +109,41 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
+type SwitchAppDialogProps = {
+  open: boolean
+  sourceApp: AppPartial
+  onClose: () => void
+}
+
+function SwitchAppDialog({ open, sourceApp, onClose }: SwitchAppDialogProps) {
+  const switching = useSwitchAppMutation()
+
+  return (
+    <Dialog
+      open={open}
+      disablePointerDismissal
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && switching.isPending) details.cancel()
+        else if (!nextOpen) onClose()
+      }}
+    >
+      <SwitchAppDialogContent
+        sourceApp={sourceApp}
+        isPending={switching.isPending}
+        onSubmit={(body, removeOriginal) =>
+          switching.mutate({ sourceApp, body, removeOriginal }, { onSuccess: onClose })
+        }
+      />
+    </Dialog>
+  )
+}
+
+const renderComponent = (overrides: Partial<SwitchAppDialogProps> = {}) => {
   const onClose = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <SwitchAppModal open sourceApp={appDetail} onClose={onClose} {...overrides} />,
+    <SwitchAppDialog open sourceApp={appDetail} onClose={onClose} {...overrides} />,
   )
 
   return {
@@ -130,7 +161,7 @@ function render(ui: ReactElement) {
   })
 }
 
-describe('SwitchAppModal', () => {
+describe('SwitchAppDialogContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockConvertToWorkflow.mockReset()
