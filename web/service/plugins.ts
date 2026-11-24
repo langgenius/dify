@@ -1,8 +1,7 @@
-import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
-import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
 import type { ConsoleClientContext } from '@/service/console'
 import { consoleClient } from '@/service/console'
-import { getMarketplace, upload } from './base'
+import { marketplaceClient } from '@/service/marketplace'
+import { upload } from './base'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -54,9 +53,9 @@ export const uploadGitHub = async (
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
-  return getMarketplace<{ data: { plugin: PluginManifestInMarket; version: { version: string } } }>(
-    `/plugins/identifier?unique_identifier=${uniqueIdentifier}`,
-  )
+  return marketplaceClient.pluginByIdentifier({
+    query: { unique_identifier: uniqueIdentifier },
+  })
 }
 
 export const fetchBundleInfoFromMarketPlace = async ({
@@ -64,15 +63,15 @@ export const fetchBundleInfoFromMarketPlace = async ({
   name,
   version,
 }: Record<string, string>) => {
-  return getMarketplace<{ data: { version: { dependencies: Dependency[] } } }>(
-    `/bundles/${org}/${name}/${version}`,
-  )
+  return marketplaceClient.bundleDetail({
+    params: { organization: org!, bundleName: name!, version: version! },
+  })
 }
 
 export const fetchPluginInfoFromMarketPlace = async ({ org, name }: Record<string, string>) => {
-  return getMarketplace<{
-    data: { plugin: PluginInfoFromMarketPlace; version: { version: string } }
-  }>(`/plugins/${org}/${name}`)
+  return marketplaceClient.pluginDetail({
+    params: { organization: org!, pluginName: name! },
+  })
 }
 
 export const checkTaskStatus = async (taskId: string) => {

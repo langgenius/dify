@@ -85,23 +85,16 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
   uploadFile: api.upload,
 }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collectionPlugins: async () => ({ data: { plugins: [] } }),
-      collections: async () => ({ data: { collections: [] } }),
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+    collections: async () => ({ data: { collections: [] } }),
+    searchAdvanced: async ({ params }) => {
+      if (params.kind === 'plugins') return { data: { plugins: [], total: 0 } }
+      throw new Error(`Unexpected marketplace search: ${params.kind}`)
     },
-  }
+  })
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: async (url: string) => {
-    if (url === '/plugins/search/advanced') return { data: { plugins: [], total: 0 } }
-    throw new Error(`Unexpected marketplace request: ${url}`)
-  },
-}))
 
 const permissions = [
   'plugin.install',
@@ -550,7 +543,7 @@ it.each([true, false])(
         name: 'plugin.installModal.installPlugin',
       })
       expect(within(dialog).getByText('Trigger Package')).toBeInTheDocument()
-      expect(api.manifest).toHaveBeenCalledWith(encodeURIComponent(packageId))
+      expect(api.manifest).toHaveBeenCalledWith(packageId)
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     } else {
