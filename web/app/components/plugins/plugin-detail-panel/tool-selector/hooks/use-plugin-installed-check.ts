@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { PluginSource } from '@/app/components/plugins/types'
-import { useCheckInstalled, usePluginManifestInfo } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
+import { usePluginManifestInfo } from '@/service/use-plugins'
 
 type UsePluginInstalledCheckOptions = {
   providerPluginId?: string | null
@@ -10,10 +12,12 @@ export const usePluginInstalledCheck = (input: UsePluginInstalledCheckOptions = 
   const { providerPluginId, enabled = true } = input
   const pluginID = providerPluginId ?? ''
 
-  const { data: installedPluginData } = useCheckInstalled({
-    pluginIds: pluginID ? [pluginID] : [],
-    enabled: enabled && !!pluginID,
-  })
+  const { data: installedPluginData } = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: pluginID ? [pluginID] : [],
+      enabled: enabled && !!pluginID,
+    }),
+  )
   const installedPlugin = installedPluginData?.plugins.at(0)
   const shouldQueryMarketplace =
     enabled &&

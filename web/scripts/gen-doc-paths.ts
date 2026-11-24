@@ -62,15 +62,6 @@ const OPENAPI_BASE_URL = (
   process.env.DOCS_OPENAPI_BASE_URL || new URL('.', DOCS_JSON_URL).toString()
 ).replace(/\/?$/, '/')
 const DOCS_PRODUCTS = ['cloud', 'self-host'] as const
-const WORKSPACE_CHANNEL_PAGES = [
-  'dingtalk',
-  'email',
-  'feishu-lark',
-  'ms-teams',
-  'overview',
-  'slack',
-  'wecom',
-] as const
 
 type DocsProduct = (typeof DOCS_PRODUCTS)[number]
 type ProductAvailability = Record<string, Set<DocsProduct>>
@@ -137,16 +128,35 @@ function extractOpenAPIPaths(
 
 type EndpointPathMap = Map<string, string> // key: `${apiPath}_${method}`, value: generated doc path
 
+async function fetchDocsSource(url: string): Promise<Response> {
+  let failure = ''
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) {
+      console.warn(`Retrying ${url} after: ${failure}`)
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1000))
+    }
+
+    let response: Response
+    try {
+      response = await fetch(url)
+    } catch (error) {
+      failure = error instanceof Error ? error.message : String(error)
+      continue
+    }
+
+    if (response.ok) return response
+    failure = `${response.status} ${response.statusText}`
+    if (response.status !== 429 && response.status < 500) break
+  }
+
+  throw new Error(`Failed to fetch ${url}: ${failure}`)
+}
+
 /**
  * Fetch and parse OpenAPI spec, extract API reference paths with endpoint keys
  */
 async function fetchOpenAPIAndExtractPaths(openapiPath: string): Promise<EndpointPathMap> {
-  const url = `${OPENAPI_BASE_URL}${openapiPath}`
-  const response = await fetch(url)
-  if (!response.ok) {
-    console.warn(`Failed to fetch ${url}: ${response.status}`)
-    return new Map()
-  }
+  const response = await fetchDocsSource(`${OPENAPI_BASE_URL}${openapiPath}`)
 
   const spec = (await response.json()) as OpenAPISpec
   const pathMap: EndpointPathMap = new Map()
@@ -308,7 +318,6 @@ function generateTypeDefinitions(
     '// DON NOT EDIT IT MANUALLY',
     '//',
     `// Generated from: ${DOCS_JSON_URL}`,
-    `// Generated at: ${new Date().toISOString()}`,
     '',
     '// Language prefixes',
     "export type DocLanguage = 'en' | 'zh' | 'ja'",
@@ -320,6 +329,8 @@ function generateTypeDefinitions(
 
   // Generate type for each section
   for (const [section, pathsSet] of Object.entries(groups)) {
+    if (isDocsProduct(section)) continue
+
     const paths = Array.from(pathsSet).sort()
     const typeName = `${sectionToTypeName(section)}Path`
     typeNames.push(typeName)
@@ -408,9 +419,7 @@ function generateTypeDefinitions(
 async function main(): Promise<void> {
   console.log('Fetching docs.json from GitHub...')
 
-  const response = await fetch(DOCS_JSON_URL)
-  if (!response.ok)
-    throw new Error(`Failed to fetch docs.json: ${response.status} ${response.statusText}`)
+  const response = await fetchDocsSource(DOCS_JSON_URL)
 
   const docsJson = (await response.json()) as DocsJson
   console.log('Successfully fetched docs.json')
@@ -445,11 +454,6 @@ async function main(): Promise<void> {
 
   // Group by section
   const { groups, productAvailability } = groupPathsBySection(allPaths)
-  for (const page of WORKSPACE_CHANNEL_PAGES) {
-    const channelPath = `use-dify/workspace/channels/${page}`
-    addPathToGroup(groups, channelPath)
-    productAvailability[`/${channelPath}`] = new Set(DOCS_PRODUCTS)
-  }
 
   console.log(`Grouped into ${Object.keys(groups).length} sections:`, Object.keys(groups))
   console.log(`Found ${Object.keys(productAvailability).length} product-aware paths`)

@@ -3,27 +3,30 @@ import { Dialog } from '@langgenius/dify-ui/dialog'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { PricingContent } from '../content'
 
-const api = vi.hoisted(() => ({
-  features: vi.fn<typeof consoleClient.features.get>(),
-  education: vi.fn<typeof consoleClient.account.education.get>(),
+const fake = setupFakeApi(() => ({
+  console: {
+    features: { get: async () => ({}) },
+    account: {
+      education: {
+        get: () => ({
+          is_student: false,
+          allow_refresh: false,
+          can_redeem_discount: false,
+          expire_at: null,
+          result: false,
+        }),
+      },
+    },
+  },
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': api.features,
-      'account.education.get': api.education,
-    }),
-  }
-})
 
 async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = {}) {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
+    features: null,
     ...options,
   })
   onTestFinished(() => queryClient.clear())
@@ -36,14 +39,9 @@ async function setup(options: Parameters<typeof createConsoleQueryWrapper>[0] = 
   )
 }
 
-beforeEach(() => {
-  api.features.mockReset()
-  api.education.mockReset()
-})
-
 it('keeps prices and interval selection available while purchases wait for features', async () => {
   const request = createDeferred<Awaited<ReturnType<typeof consoleClient.features.get>>>()
-  api.features.mockReturnValue(request.promise)
+  fake.console.features.get.mockReturnValue(request.promise)
   const screen = await setup()
   await expect.element(screen.getByRole('status')).toHaveTextContent('appApi.loading')
   await expect
@@ -80,7 +78,7 @@ it('shows the payable annual or monthly price for the selected named interval', 
 
 it('preserves the chosen monthly interval when education eligibility arrives and refreshes', async () => {
   const request = createDeferred<Awaited<ReturnType<typeof consoleClient.account.education.get>>>()
-  api.education.mockReturnValueOnce(request.promise).mockResolvedValue({
+  fake.console.account.education.get.mockReturnValueOnce(request.promise).mockResolvedValue({
     is_student: true,
     allow_refresh: true,
     can_redeem_discount: true,
@@ -136,8 +134,10 @@ it('starts cached eligible education accounts on annual pricing with the discoun
 
 it('keeps prices readable after features fail and restores purchases through Retry', async () => {
   const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  api.features
-    .mockRejectedValueOnce(new Error('Unavailable'))
+  fake.console.features.get
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
+    )
     .mockResolvedValue(zGetFeaturesResponse.parse({}))
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')

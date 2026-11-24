@@ -1,7 +1,7 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
 import type { NodeTracing } from '@/types/workflow'
-import { useMutation } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
 import {
@@ -11,8 +11,8 @@ import {
 import { selectDatasourceSingleRun } from '@/app/components/rag-pipeline/utils/query-select'
 import { DatasourceType } from '@/models/pipeline'
 import { consoleQuery } from '@/service/console'
-import { useInvalidateLastRun } from '@/service/use-workflow'
 import { fetchNodeInspectVars } from '@/service/workflow'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
@@ -83,7 +83,12 @@ const useBeforeRunForm = ({
     })
   }
 
-  const invalidLastRun = useInvalidateLastRun(resource, nodeId)
+  const queryClient = useQueryClient()
+
+  const invalidLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource, nodeId) }),
+    [queryClient, nodeId, resource],
+  )
 
   const updateRunResult = async (data: NodeTracing | undefined) => {
     const isPaused = isPausedRef.current

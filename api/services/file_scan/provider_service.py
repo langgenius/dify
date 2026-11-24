@@ -62,7 +62,7 @@ class FileScanProviderService:
         return [
             FileScanProviderTypeView(
                 provider_type=provider_type.value,
-                available=_type_available(provider_type),
+                available=True,
                 credential_fields=cls.credential_fields,
             )
             for provider_type, cls in SCANNER_CLASSES.items()
@@ -186,8 +186,6 @@ class FileScanProviderService:
     @staticmethod
     def _verify(provider_type: ScanProviderType, config: dict[str, Any], credentials: dict[str, str]) -> None:
         """Validate the settings and prove them with a real connectivity check before saving."""
-        if not _type_available(provider_type):
-            raise FileScanValidationError("This scanner is not available on this deployment.")
         try:
             scanner_class(provider_type).validate_settings(credentials, _runtime_config(provider_type, config))
             _scanner(provider_type, config, credentials).check()
@@ -198,13 +196,8 @@ class FileScanProviderService:
 
 
 def build_scanner(tenant_id: str, row: FileScanProvider) -> FileScanner:
-    """Instantiate the scanner for a stored provider with decrypted credentials.
-
-    Raises ``ScannerConfigError`` when the deployment no longer offers this scanner type.
-    """
+    """Instantiate the scanner for a stored provider with decrypted credentials."""
     provider_type = ScanProviderType(row.provider_type)
-    if not _type_available(provider_type):
-        raise ScannerConfigError("This scanner is not available on this deployment.")
     return _scanner(provider_type, dict(row.config or {}), _decrypt(tenant_id, row.encrypted_credentials))
 
 
@@ -216,16 +209,7 @@ def _runtime_config(provider_type: ScanProviderType, config: dict[str, Any]) -> 
     """Add what is not stored on the provider: deployment settings."""
     runtime = dict(config)
     runtime["timeout"] = dify_config.FILE_SCAN_REQUEST_TIMEOUT_SECONDS
-    if provider_type is ScanProviderType.CLAMAV:
-        runtime["host"] = dify_config.FILE_SCAN_CLAMAV_HOST
-        runtime["port"] = dify_config.FILE_SCAN_CLAMAV_PORT
     return runtime
-
-
-def _type_available(provider_type: ScanProviderType) -> bool:
-    if provider_type is ScanProviderType.CLAMAV:
-        return bool(dify_config.FILE_SCAN_CLAMAV_HOST)
-    return True
 
 
 def _require_credentials_for_new_destination(

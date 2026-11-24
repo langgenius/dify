@@ -4,13 +4,18 @@ from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Request
+from flask import Flask, Request
+from flask import request as flask_request
 from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from libs import token
 from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
+
+CURRENT_AVATAR_PATH = (
+    "/console/api/accounts/11111111-1111-1111-1111-111111111111/avatars/22222222-2222-2222-2222-222222222222"
+)
 
 
 @dataclass(eq=False, repr=False)
@@ -19,6 +24,7 @@ class MockRequest:
     cookies: dict[str, str]
     args: dict[str, str]
     path: str = "/console/api/test"
+    method: str = "GET"
 
 
 def test_extract_access_token() -> None:
@@ -87,6 +93,17 @@ def test_workflow_run_archive_download_file_bypasses_csrf() -> None:
     )
 
     token.check_csrf_token(request, "account-1")
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_current_account_avatar_read_bypasses_csrf(method: str) -> None:
+    with Flask(__name__).test_request_context(CURRENT_AVATAR_PATH, method=method):
+        token.check_csrf_token(flask_request, "account-1")
+
+
+def test_current_account_avatar_post_requires_csrf() -> None:
+    with Flask(__name__).test_request_context(CURRENT_AVATAR_PATH, method="POST"), pytest.raises(Unauthorized):
+        token.check_csrf_token(flask_request, "account-1")
 
 
 def test_non_whitelisted_path_requires_csrf() -> None:

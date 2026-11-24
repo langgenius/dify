@@ -1,8 +1,14 @@
-class AppGenerateError(ValueError):
-    """Base class for application-generation errors with a stable response contract."""
+from typing import Literal
 
-    error_code: str
-    status_code: int
+
+class AppGenerateError(ValueError):
+    """Base application-generation failure; response boundaries choose the public representation."""
+
+
+class ModerationInvocationError(AppGenerateError):
+    """A model moderation failure that consumers must not downgrade to a best-effort result."""
+
+    error_code: Literal["moderation_rejected", "moderation_unavailable"]
 
 
 class GenerateTaskStoppedError(Exception):

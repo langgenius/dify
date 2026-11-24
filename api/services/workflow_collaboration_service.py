@@ -17,6 +17,7 @@ from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.account_avatar_service import AccountAvatarService
 from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService
 
@@ -448,6 +449,29 @@ class WorkflowCollaborationService:
             {"workflow_id": workflow_id, "users": users, "leader": leader_sid},
             room=workflow_id,
         )
+
+    def get_online_user_avatars(self, sid: str, *, avatar_service: AccountAvatarService) -> dict[str, str]:
+        """Resolve current profiles for active room sessions; an unjoined socket receives no URLs.
+
+        The room and account IDs come from server-managed sessions; profile avatars are read in one batch.
+        Missing or unowned uploads are omitted so clients can show initials. Redis avatar snapshots are ignored.
+        """
+        mapping = self._repository.get_sid_mapping(sid)
+        if not mapping:
+            return {}
+        workflow_id = mapping["workflow_id"]
+        if not self.is_session_active(workflow_id, sid):
+            return {}
+
+        active_users = [
+            user
+            for user in self._repository.list_sessions(workflow_id)
+            if self.is_session_active(workflow_id, user["sid"])
+        ]
+        urls_by_account = avatar_service.resolve_current_for_accounts(
+            account_ids=tuple(dict.fromkeys(user["user_id"] for user in active_users))
+        )
+        return {user["sid"]: url for user in active_users if (url := urls_by_account.get(user["user_id"])) is not None}
 
     def refresh_session_state(self, workflow_id: str, sid: str) -> None:
         self._refresh_server_heartbeat()

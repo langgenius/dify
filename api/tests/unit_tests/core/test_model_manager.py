@@ -8,25 +8,51 @@ import redis
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.entities.provider_configuration import ProviderModelBundle
 from core.entities.provider_entities import (
+    CustomModelConfiguration,
+    CustomProviderConfiguration,
     ModelLoadBalancingConfiguration,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
     RestrictModel,
+    SystemConfiguration,
 )
-from core.errors.error import ModelCurrentlyNotSupportError
-from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
+from core.errors.error import (
+    InsufficientHostedCreditsError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
+from core.model_manager import (
+    HostedCreditFallbackModelInstance,
+    LBModelManager,
+    ModelInstance,
+    ModelManager,
+    QuotaManagedModelInstance,
+)
+from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.model_runtime.model_providers.base.tts_model import TTSModel
 from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
+from services.billing_client import billing
+from services.billing_service import BillingService
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import (
+    RecordingLLM,
+    RecordingProviderManager,
+    make_tenant_moderation_provider,
+)
 
 
 @pytest.fixture
@@ -79,11 +105,57 @@ def test_model_manager_with_cache_enabled_reuses_stored_credentials() -> None:
     get_creds.assert_called_once()
 
 
+def test_tenant_only_model_does_not_reuse_system_credentials_from_cache() -> None:
+    provider, _ = make_tenant_moderation_provider()
+    manager = ModelManager(provider, enable_credentials_cache=True)
+    tenant_id = provider.bundle.configuration.tenant_id
+    model = "omni-moderation-latest"
+    system_instance = manager.get_model_instance(tenant_id, "openai", ModelType.MODERATION, model)
+    tenant_instance = manager.get_model_instance(
+        tenant_id, "openai", ModelType.MODERATION, model, require_custom_credentials=True
+    )
+
+    assert isinstance(system_instance, QuotaManagedModelInstance)
+    assert system_instance.credentials == {"openai_api_key": "system-key"}
+    assert type(tenant_instance) is ModelInstance
+    assert tenant_instance.credentials == {"openai_api_key": "tenant-key"}
+    assert provider.bundle.configuration.using_provider_type == ProviderType.SYSTEM
+
+
+def test_tenant_only_model_requires_an_explicit_provider() -> None:
+    provider, _ = make_tenant_moderation_provider()
+    manager = ModelManager(provider)
+
+    with pytest.raises(ValueError, match="explicit provider"):
+        manager.get_model_instance(
+            provider.bundle.configuration.tenant_id,
+            "",
+            ModelType.MODERATION,
+            "omni-moderation-latest",
+            require_custom_credentials=True,
+        )
+    assert provider.lookups == 0
+
+
+def test_missing_tenant_credentials_do_not_fall_back_to_system() -> None:
+    provider, client = make_tenant_moderation_provider()
+    config = provider.bundle.configuration
+    config.custom_configuration.provider = None
+    manager = ModelManager(provider)
+
+    with pytest.raises(ProviderTokenNotInitError):
+        manager.get_model_instance(
+            config.tenant_id, "openai", ModelType.MODERATION, "omni-moderation-latest", require_custom_credentials=True
+        )
+    assert not client.calls
+
+
 def _build_model_manager_bundle(
     *,
     provider_type: ProviderType,
     restrict_models: list[RestrictModel],
     model_type: ModelType = ModelType.LLM,
+    quota_type: ProviderQuotaType = ProviderQuotaType.TRIAL,
 ) -> tuple[ModelManager, MagicMock]:
     provider_manager = MagicMock()
     bundle = MagicMock()
@@ -91,10 +163,10 @@ def _build_model_manager_bundle(
     bundle.configuration.tenant_id = "tenant-1"
     bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
-    bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
+    bundle.configuration.system_configuration.current_quota_type = quota_type
     bundle.configuration.system_configuration.quota_configurations = [
         QuotaConfiguration(
-            quota_type=ProviderQuotaType.TRIAL,
+            quota_type=quota_type,
             quota_unit=QuotaUnit.CREDITS,
             quota_limit=200,
             quota_used=0,
@@ -116,7 +188,19 @@ def test_model_manager_wraps_allowlisted_system_llm() -> None:
 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
 
-    assert isinstance(model_instance, QuotaManagedModelInstance)
+    assert isinstance(model_instance, HostedCreditFallbackModelInstance)
+
+
+def test_model_manager_uses_quota_only_for_hosted_free_models() -> None:
+    manager, _ = _build_model_manager_bundle(
+        provider_type=ProviderType.SYSTEM,
+        restrict_models=[],
+        quota_type=ProviderQuotaType.FREE,
+    )
+
+    instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
+
+    assert type(instance) is QuotaManagedModelInstance
 
 
 @pytest.mark.parametrize("model_type", list(ModelType))
@@ -169,6 +253,196 @@ def test_model_manager_matches_allowlist_name_across_model_types() -> None:
     assert isinstance(model_instance, QuotaManagedModelInstance)
 
 
+def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[HostedCreditFallbackModelInstance, RecordingLLM]:
+    config = make_model_config(provider="openai", model="gpt-4", mode="chat")
+    bundle = config.provider_model_bundle
+    configuration = bundle.configuration
+    configuration.provider.models = [config.model_schema]
+    configuration.preferred_provider_type = ProviderType.SYSTEM
+    configuration.using_provider_type = ProviderType.SYSTEM
+    configuration.system_configuration = SystemConfiguration(
+        enabled=True,
+        current_quota_type=quota_type,
+        credentials={"api_key": "hosted"},
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=quota_type, quota_unit=QuotaUnit.CREDITS, quota_limit=100, quota_used=99, is_valid=True
+            )
+        ],
+    )
+    template = bundle.model_type_instance
+    assert isinstance(template, LargeLanguageModel)
+    runtime = template.model_runtime
+    assert isinstance(runtime, PluginModelRuntime)
+    configuration.bind_model_runtime(runtime)
+    llm = RecordingLLM(template, parts=["ok"])
+    manager = ModelManager(
+        RecordingProviderManager(ProviderModelBundle(configuration=configuration, model_type_instance=llm))
+    )
+    instance = manager.get_model_instance(configuration.tenant_id, config.provider, ModelType.LLM, config.model)
+    assert isinstance(instance, HostedCreditFallbackModelInstance)
+    return instance, llm
+
+
+def test_hosted_credit_denial_uses_custom_only_for_this_invocation(config_overrides: Callable[..., None]) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    configuration = instance.provider_model_bundle.configuration
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+
+    first_id, second_id = str(uuid4()), str(uuid4())
+    with (
+        patch(
+            "core.app.llm.quota._get_provider_configuration",
+            return_value=configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM}),
+        ) as fresh_provider_lookup,
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            side_effect=[
+                billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+                billing.QuotaReserveReply(reservation_id="reserved", available=8, reserved=2),
+            ],
+        ) as billing_reserve,
+        patch.object(BillingService, "quota_commit") as commit,
+        patch.object(BillingService, "quota_release") as release,
+    ):
+        assert (
+            instance.invoke_llm([], stream=False, request_metadata={"invocation_id": first_id}).message.content == "ok"
+        )
+        commit.assert_not_called()
+        assert llm.credential_calls == [{"api_key": "custom"}]
+        assert instance.credentials == {"api_key": "hosted"}
+        assert configuration.using_provider_type == configuration.preferred_provider_type == ProviderType.SYSTEM
+
+        assert (
+            instance.invoke_llm([], stream=False, request_metadata={"invocation_id": second_id}).message.content == "ok"
+        )
+        commit.assert_called_once()
+        assert commit.call_args.kwargs["actual_amount"] == 2
+        assert llm.credential_calls == [{"api_key": "custom"}, {"api_key": "hosted"}]
+        release.assert_not_called()
+
+    fresh_provider_lookup.assert_not_called()
+    assert [call.kwargs["amount"] for call in billing_reserve.call_args_list] == [2, 2]
+    assert [call.kwargs["bucket"] for call in billing_reserve.call_args_list] == ["trial", "trial"]
+    assert [call.kwargs["request_id"] for call in billing_reserve.call_args_list] == [first_id, second_id]
+
+
+def test_paid_hosted_stream_uses_model_level_custom_credentials(config_overrides: Callable[..., None]) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.PAID)
+    configuration = instance.provider_model_bundle.configuration
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+    configuration.custom_configuration.models = [
+        CustomModelConfiguration(model="gpt-4", model_type=ModelType.LLM, credentials={"api_key": "custom"})
+    ]
+
+    with (
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+        ) as reserve,
+        patch.object(PluginModelRuntime, "get_model_schema", return_value=configuration.provider.models[0]),
+    ):
+        assert [chunk.delta.message.content for chunk in instance.invoke_llm([], stream=True)] == ["ok"]
+
+    assert reserve.call_args.kwargs["bucket"] == "paid"
+    assert llm.credential_calls == [{"api_key": "custom"}]
+
+
+def test_quota_only_model_does_not_replace_executor_on_reservation_denial(
+    config_overrides: Callable[..., None],
+) -> None:
+    decorated, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    bundle = decorated.provider_model_bundle
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    instance = QuotaManagedModelInstance(bundle, decorated.model_name)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+
+    with (
+        patch("core.app.llm.quota._get_provider_configuration", return_value=bundle.configuration) as provider_lookup,
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+        ),
+        pytest.raises(InsufficientHostedCreditsError, match="Insufficient credits remaining"),
+    ):
+        instance.invoke_llm(prompt_messages=[], stream=False)
+
+    provider_lookup.assert_called_once_with(tenant_id=bundle.configuration.tenant_id, provider=decorated.provider)
+    assert not llm.credential_calls
+
+
+@pytest.mark.parametrize("custom_state", ["missing", "empty", "unrelated"])
+def test_hosted_credit_denial_without_eligible_custom_preserves_quota_error(
+    config_overrides: Callable[..., None], custom_state: str
+) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    configuration = instance.provider_model_bundle.configuration
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_MODEL_CREDIT_CONFIG="gpt-4:2")
+    if custom_state == "empty":
+        configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
+    if custom_state == "unrelated":
+        configuration.custom_configuration.models = [
+            CustomModelConfiguration(model="gpt-4o", model_type=ModelType.LLM, credentials={"api_key": "custom"})
+        ]
+
+    with (
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="", available=1, reserved=0),
+        ) as billing_reserve,
+        pytest.raises(InsufficientHostedCreditsError, match="Insufficient credits remaining"),
+    ):
+        instance.invoke_llm(prompt_messages=[], stream=False)
+
+    billing_reserve.assert_called_once()
+    assert not llm.credential_calls
+
+
+@pytest.mark.parametrize("failure", [TimeoutError("billing timeout"), QuotaExceededError("other quota failure")])
+def test_hosted_credit_fallback_does_not_catch_other_reservation_errors(
+    config_overrides: Callable[..., None], failure: Exception
+) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.PAID)
+    configuration = instance.provider_model_bundle.configuration
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    with patch.object(BillingService, "quota_reserve", side_effect=failure), pytest.raises(type(failure)) as raised:
+        instance.invoke_llm(prompt_messages=[], stream=False)
+
+    assert raised.value is failure
+    assert not llm.credential_calls
+
+
+@pytest.mark.parametrize("failure", [TimeoutError("commit timeout"), InsufficientHostedCreditsError("late denial")])
+def test_hosted_credit_fallback_does_not_retry_after_model_invocation(
+    config_overrides: Callable[..., None], failure: Exception
+) -> None:
+    instance, llm = _make_hosted_credit_model(ProviderQuotaType.PAID)
+    configuration = instance.provider_model_bundle.configuration
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    with (
+        patch.object(
+            BillingService,
+            "quota_reserve",
+            return_value=billing.QuotaReserveReply(reservation_id="reserved", available=0, reserved=1),
+        ),
+        patch.object(BillingService, "quota_commit", side_effect=failure),
+        patch.object(BillingService, "quota_release") as release,
+        pytest.raises(type(failure)) as raised,
+    ):
+        instance.invoke_llm(prompt_messages=[], stream=False)
+
+    assert raised.value is failure
+    assert llm.credential_calls == [{"api_key": "hosted"}]
+    release.assert_called_once()
+
+
 def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
@@ -182,7 +456,7 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=result) as invoke,
+        patch.object(ModelInstance, "_invoke_llm", return_value=result) as invoke,
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -218,7 +492,7 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -249,7 +523,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=failing_stream()),
         pytest.raises(RuntimeError, match="provider failed"),
     ):
         list(model_instance.invoke_llm(prompt_messages=[], stream=True))
@@ -288,7 +562,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=provider_stream()),
     ):
         response = model_instance.invoke_llm(prompt_messages=[], stream=True)
         assert next(response) is chunks[0]
@@ -316,7 +590,7 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
         pytest.raises(ValueError, match="terminal usage is required"),
     ):
         next(model_instance.invoke_llm(prompt_messages=[], stream=True))

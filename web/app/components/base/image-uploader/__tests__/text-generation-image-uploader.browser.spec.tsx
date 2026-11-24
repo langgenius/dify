@@ -1,21 +1,22 @@
+import type { ReactElement } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { installFakeApi, route } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationImageUploader from '../text-generation-image-uploader'
 import { brokenImageUrl, imageFile, imageUrl } from './image-fixtures'
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
-const api = vi.hoisted(() => ({
-  upload:
-    vi.fn<
-      (options: { data: FormData }, isPublic?: boolean, url?: string) => Promise<{ id: string }>
-    >(),
-}))
-vi.mock('@/service/base', () => ({ upload: api.upload }))
+// The public web-app upload reads its share token from the real route params.
+const renderWithRoute = (ui: ReactElement) =>
+  render(ui, {
+    wrapper: createTestNavigation({ url: '/chat/shared-app', params: { token: 'shared-app' } })
+      .NavigationProvider,
+  })
 
 const createSettings = (overrides: Partial<VisionSettings> = {}): VisionSettings => ({
   enabled: true,
@@ -51,7 +52,15 @@ function UploadExample({
   )
 }
 
-beforeEach(() => api.upload.mockResolvedValue({ id: 'uploaded-image' }))
+let fake: ReturnType<typeof installFakeApi>
+const uploadRoute = () => fake.route('POST', 'public', '/files/upload')
+beforeEach(() => {
+  // Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
+  fake = installFakeApi({
+    routes: [route('POST', 'public', '/files/upload', () => ({ id: 'uploaded-image' }))],
+  })
+  onTestFinished(fake)
+})
 afterEach(() => toast.dismiss())
 
 it.each([
@@ -67,7 +76,7 @@ it.each([
   ],
 ])('offers only the configured method %s', async (method, visible, hidden) => {
   await page.viewport(800, 600)
-  const screen = await render(
+  const screen = await renderWithRoute(
     <UploadExample settings={createSettings({ transfer_methods: [method] })} />,
   )
   await expect.element(screen.getByText(visible)).toBeVisible()
@@ -76,7 +85,7 @@ it.each([
 
 it('publishes actual local bytes as a completed, decoded preview', async () => {
   await page.viewport(800, 600)
-  const screen = await render(<UploadExample />)
+  const screen = await renderWithRoute(<UploadExample />)
   await screen.getByLabelText('common.imageUploader.uploadFromComputer').upload(imageFile())
   await expect
     .element(screen.getByRole('status', { name: 'Published images' }))
@@ -93,7 +102,7 @@ it('publishes actual local bytes as a completed, decoded preview', async () => {
 
 it('explains a numeric string size limit and leaves the published list empty', async () => {
   await page.viewport(800, 600)
-  const screen = await render(
+  const screen = await renderWithRoute(
     <UploadExample settings={createSettings({ image_file_size_limit: '1' })} />,
   )
   await screen
@@ -103,12 +112,12 @@ it('explains a numeric string size limit and leaves the published list empty', a
   await expect
     .element(screen.getByRole('status', { name: 'Published images' }))
     .toHaveTextContent('[]')
-  expect(api.upload).not.toHaveBeenCalled()
+  expect(uploadRoute()).not.toHaveBeenCalled()
 })
 
 it('publishes an invalid remote link, enforces the count limit and recovers after removal', async () => {
   await page.viewport(800, 600)
-  const screen = await render(
+  const screen = await renderWithRoute(
     <UploadExample
       settings={createSettings({
         number_limits: 1,
@@ -152,7 +161,7 @@ it('publishes an invalid remote link, enforces the count limit and recovers afte
 
 it('disables both native upload entry points', async () => {
   await page.viewport(800, 600)
-  const screen = await render(
+  const screen = await renderWithRoute(
     <UploadExample
       disabled
       settings={createSettings({

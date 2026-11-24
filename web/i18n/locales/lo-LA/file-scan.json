@@ -2,7 +2,6 @@
   "dialog.addTitle": "ເພີ່ມຕົວສະແກນ",
   "dialog.apiKey": "ຄີ API",
   "dialog.apiSecret": "ລະຫັດລັບ API",
-  "dialog.clamavHint": "ClamAV ເຮັດວຽກຢູ່ພາຍໃນລະບົບທີ່ຕິດຕັ້ງນີ້. ທີ່ຢູ່ຂອງມັນຖືກກຳນົດໂດຍຜູ້ດູແລລະບົບ.",
   "dialog.dataNotice": "ເນື້ອຫາຂອງໄຟລ໌ຈະຖືກສົ່ງໄປຍັງບໍລິການນີ້.",
   "dialog.editTitle": "ແກ້ໄຂຕົວສະແກນ",
   "dialog.endpoint": "ຈຸດເຊື່ອມຕໍ່ (ບໍ່ບັງຄັບ)",

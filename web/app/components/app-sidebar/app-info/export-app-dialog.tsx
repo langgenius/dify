@@ -16,7 +16,7 @@ import {
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useId, useState } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 
@@ -43,32 +43,40 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
     reset: resetExport,
   } = useExportAppDsl()
   const isPending = isChecking || isExporting
-  const check = async () => {
-    if (isPending) return
-    const result = await exportWorkflowAppDsl({
+  const activeExportRef = useRef<AbortController | null>(null)
+  const cancelExport = useCallback(() => {
+    activeExportRef.current?.abort()
+    activeExportRef.current = null
+  }, [])
+  useLayoutEffect(() => cancelExport, [appDetail.id, cancelExport, open])
+
+  const runExport = async (includeSecret?: boolean) => {
+    if (!open || isPending || activeExportRef.current) return
+    const controller = new AbortController()
+    activeExportRef.current = controller
+    const input = {
       appId: appDetail.id,
       appName: appDetail.name,
-      feedback: 'dialog',
-    })
+      feedback: 'dialog' as const,
+      signal: controller.signal,
+    }
+    const result =
+      includeSecret === undefined
+        ? await exportWorkflowAppDsl(input)
+        : await exportAppDsl({ ...input, includeSecret })
+    if (controller.signal.aborted) return
+
+    activeExportRef.current = null
     if (result.status === 'confirmation-required') setSecrets(result.secretEnvList)
     else if (result.status === 'downloaded') onClose()
-  }
-  const download = async (includeSecret: boolean) => {
-    if (isPending) return
-    const result = await exportAppDsl({
-      appId: appDetail.id,
-      appName: appDetail.name,
-      includeSecret,
-      feedback: 'dialog',
-    })
-    if (result.status === 'downloaded') onClose()
   }
   return (
     <AlertDialog
       open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending) details.cancel()
-        else if (!nextOpen) onClose()
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) return
+        cancelExport()
+        onClose()
       }}
       onOpenChangeComplete={(nextOpen) => {
         if (!nextOpen) {
@@ -85,7 +93,7 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
             errorMessage={exportError}
             isPending={isPending}
             onSubmit={(includeSecret) => {
-              void download(includeSecret)
+              void runExport(includeSecret)
             }}
           />
         ) : (
@@ -106,7 +114,7 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
               </AlertDialogBody>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancelButton disabled={isPending}>
+              <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton
@@ -114,7 +122,7 @@ export function ExportAppDialog({ appDetail, open, onClose }: ExportAppDialogPro
                 loading={isPending}
                 aria-labelledby={confirmLabelId}
                 onClick={() => {
-                  void check()
+                  void runExport()
                 }}
               >
                 <span id={confirmLabelId}>
@@ -200,7 +208,7 @@ function ExportSecretsForm({
         )}
       </AlertDialogBody>
       <AlertDialogFooter>
-        <AlertDialogCancelButton type="button" disabled={isPending}>
+        <AlertDialogCancelButton type="button">
           {t(($) => $['operation.cancel'], { ns: 'common' })}
         </AlertDialogCancelButton>
         <AlertDialogConfirmButton

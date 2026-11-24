@@ -17,9 +17,19 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request,
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
+
 vi.mock('@/service/use-plugins', () => ({
   useFetchPluginsInMarketPlaceByIds: marketplaceQuery,
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
 }))
 
 const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({

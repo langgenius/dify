@@ -173,9 +173,7 @@ class ModelConfigWithCredentialsEntity(BaseModel):
 
 
 class AppGenerateEntity(BaseModel):
-    """
-    App Generate Entity.
-    """
+    """Admitted generation data and process-local tracing context."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

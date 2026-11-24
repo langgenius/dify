@@ -66,16 +66,16 @@ const UploadMethodField = ({ label, labelOptions, className }: UploadMethodField
             {label}
           </FieldsetLegend>
           {!labelOptions?.isRequired && labelOptions?.showOptional && (
-            <span className="ml-1 system-xs-regular text-text-tertiary">
+            <span className="ms-1 system-xs-regular text-text-tertiary">
               {t(($) => $['label.optional'], { ns: 'common' })}
             </span>
           )}
           {labelOptions?.isRequired && (
-            <span className="ml-1 system-xs-regular text-text-destructive-secondary">*</span>
+            <span className="ms-1 system-xs-regular text-text-destructive-secondary">*</span>
           )}
           {labelOptions?.tooltip && (
             <Infotip>
-              <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+              <InfotipTrigger aria-labelledby={labelId} className="ms-0.5" />
               <InfotipContent aria-labelledby={labelId} className="w-50">
                 {labelOptions.tooltip}
               </InfotipContent>

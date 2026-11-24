@@ -35,7 +35,6 @@ const nextConfig: NextConfig = {
     })
     return config
   },
-  productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
@@ -49,7 +48,8 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  output: 'standalone',
+  // The Cloudflare Workers build (vinext POC) emits its own Worker bundle instead of a Node server.
+  output: process.env.VINEXT_PLATFORM === 'cloudflare' ? undefined : 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },
