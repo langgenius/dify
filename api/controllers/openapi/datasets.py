@@ -41,12 +41,10 @@ from controllers.openapi.auth.requirements import (
     workspace_write_guards,
 )
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from libs.helper import to_timestamp
 from models.account import TenantAccountRole
 from models.enums import DocumentCreatedFrom
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
-from services.file_service import FileService
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.datasets.application import DatasetListFilter
 from services.knowledge.documents.application import (
@@ -54,6 +52,7 @@ from services.knowledge.documents.application import (
     DocumentListFilter,
     DocumentNotFoundError,
     DocumentProviderError,
+    DocumentTextUpload,
 )
 from services.knowledge.entities.knowledge_entities import RetrievalModel
 
@@ -207,11 +206,11 @@ def _document_settings(
     body: DocumentCreateByTextPayload | DocumentUpdateByTextPayload,
     *,
     original_document_id: str | None,
-) -> dict[str, Any]:
-    """Translate the flat payload into `KnowledgeConfig` settings, uploading
-    `text` as a file last — the same shape the console's create-by-upload path
-    produces."""
+) -> tuple[dict[str, Any], DocumentTextUpload | None]:
+    """Resolve dataset defaults and translate the payload without writing files."""
     defaults = _dataset_defaults(ctx, dataset_id)
+    if defaults["provider"] == "external":
+        raise BadRequest("External datasets do not support local documents.")
     settings: dict[str, Any] = {
         "name": body.name,
         "doc_form": body.doc_form or defaults.get("doc_form") or "text_model",
@@ -233,20 +232,12 @@ def _document_settings(
         # `duplicate=False` keeps create from silently overwriting a same-name
         # document; update passes `original_document_id` instead.
         settings["duplicate"] = False
-    if body.text is not None:
-        upload_file = FileService(db.engine).upload_text(
-            text=body.text,
-            text_name=body.name or defaults.get("name") or "document",
-            user_id=ctx.account.id,
-            tenant_id=ctx.workspace.id,
-        )
-        settings["data_source"] = {
-            "info_list": {
-                "data_source_type": "upload_file",
-                "file_info_list": {"file_ids": [upload_file.id]},
-            }
-        }
-    return {key: value for key, value in settings.items() if value is not None}
+    text_upload = (
+        DocumentTextUpload(text=body.text, name=body.name or defaults.get("name") or "document")
+        if body.text is not None
+        else None
+    )
+    return {key: value for key, value in settings.items() if value is not None}, text_upload
 
 
 def _create_documents(
@@ -256,20 +247,15 @@ def _create_documents(
     *,
     original_document_id: str | None,
 ) -> dict[str, Any]:
-    """Create or update a document from translated settings.
-
-    The text upload commits before `create_documents` runs and ingestion can
-    still raise afterwards, so a failure here cannot tell the caller whether the
-    uploaded file was consumed; the file is deliberately left in place rather
-    than risk deleting one the service already attached.
-    """
+    """Translate text ingestion inputs and map service failures to HTTP errors."""
     with _document_errors():
-        settings = _document_settings(ctx, dataset_id, body, original_document_id=original_document_id)
+        settings, text_upload = _document_settings(ctx, dataset_id, body, original_document_id=original_document_id)
         return application_services().knowledge.documents.create_documents(
             ctx.request_context,
             dataset_id=dataset_id,
             settings=settings,
             created_from=DocumentCreatedFrom.API,
+            text_upload=text_upload,
         )
 
 
@@ -551,8 +537,8 @@ class DocumentBatchIndexingStatusApi(Resource):
         returns=(HTTPStatus.OK, DocumentIndexingStatusResponse, "Indexing statuses"),
     )
     def get(self, ctx: Context, workspace_id: str, dataset_id: str, batch: str):
-        """Aggregate indexing status of every document created under `batch`:
-        `failed` if any document failed, `available` once all complete."""
+        """Aggregate indexing status for a batch: `error` if any document failed,
+        `available` once all complete, even if some are disabled or archived."""
         with _document_errors():
             result = application_services().knowledge.documents.get_batch_indexing_status(
                 ctx.request_context, dataset_id=dataset_id, batch=batch
@@ -562,7 +548,15 @@ class DocumentBatchIndexingStatusApi(Resource):
         errors = [row.get("error") for row in rows if row.get("error")]
         if DocumentDisplayStatus.ERROR in statuses:
             status = DocumentDisplayStatus.ERROR
-        elif statuses and all(value == DocumentDisplayStatus.AVAILABLE for value in statuses):
+        elif statuses and all(
+            value
+            in {
+                DocumentDisplayStatus.AVAILABLE,
+                DocumentDisplayStatus.DISABLED,
+                DocumentDisplayStatus.ARCHIVED,
+            }
+            for value in statuses
+        ):
             status = DocumentDisplayStatus.AVAILABLE
         elif statuses and all(value == DocumentDisplayStatus.QUEUING for value in statuses):
             status = DocumentDisplayStatus.QUEUING

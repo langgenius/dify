@@ -501,6 +501,10 @@ export type DatasetListResponse = {
   total: number
 }
 
+export type DatasetPartialMemberPayload = {
+  user_id: string
+}
+
 export type DatasetPermission = 'all_team_members' | 'only_me' | 'partial_members'
 
 export type DatasetProvider = 'external' | 'vendor'
@@ -534,9 +538,7 @@ export type DatasetUpdatePayload = {
     [key: string]: unknown
   } | null
   name?: string | null
-  partial_member_list?: Array<{
-    [key: string]: string
-  }> | null
+  partial_member_list?: Array<DatasetPartialMemberPayload> | null
   permission?: DatasetPermission | null
   retrieval_model?: {
     [key: string]: unknown

@@ -2,6 +2,7 @@
 
 import copy
 import json
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from typing import Any, Literal
@@ -53,15 +54,18 @@ from services.knowledge.documents.application import (
     DocumentNotFoundError,
     DocumentProviderError,
     DocumentState,
+    DocumentTextUpload,
     DocumentZip,
 )
 from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
-from services.knowledge.entities.knowledge_entities import KnowledgeConfig
+from services.knowledge.entities.knowledge_entities import DataSource, FileInfo, InfoList, KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from services.rbac import contracts as rbac_contracts
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -346,6 +350,10 @@ class SQLAlchemyDocumentOperations:
         with self._sessions() as session:
             dataset = _require_dataset(session, ref)
             self._actor(session, context)
+            if config.original_document_id:
+                original = _require_document(session, ref.document(config.original_document_id))
+                if original.display_status != "available":
+                    raise ValueError("Document is not available")
             DatasetService.check_doc_form(dataset, config.doc_form, session=session)
             return DocumentCreationDataset(
                 dataset.tenant_id, dataset.indexing_technique, dataset.embedding_model, dataset.embedding_model_provider
@@ -427,6 +435,36 @@ class SQLAlchemyDocumentOperations:
         assert result is not None
         return result
 
+    def _prepare_text_creation(
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        snapshot: DocumentCreationDataset,
+        config: KnowledgeConfig,
+        text_upload: DocumentTextUpload,
+    ) -> KnowledgeConfig:
+        """Upload and prepare the source before any document write can attach it."""
+        files = FileService(self._sessions)
+        upload = files.upload_text(
+            text=text_upload.text,
+            text_name=text_upload.name,
+            user_id=context.account_id,
+            tenant_id=ref.tenant_id,
+        )
+        try:
+            source = DataSource(
+                info_list=InfoList(data_source_type="upload_file", file_info_list=FileInfo(file_ids=[upload.id]))
+            )
+            config = config.model_copy(update={"data_source": source})
+            DocumentService.document_create_args_validate(config)
+            return DocumentService.prepare_document_creation(snapshot, config)
+        except Exception:
+            try:
+                files.delete_file(upload.id)
+            except Exception:
+                logger.exception("Failed to clean up unattached text upload %s", upload.id)
+            raise
+
     def create_documents(
         self,
         context: RequestContext,
@@ -434,12 +472,27 @@ class SQLAlchemyDocumentOperations:
         settings: Mapping[str, Any],
         *,
         created_from: str = DocumentCreatedFrom.WEB,
+        text_upload: DocumentTextUpload | None = None,
     ) -> dict[str, Any]:
+        """Validate and prepare inputs before persistence, cleaning up only uploads that cannot be attached."""
         config = KnowledgeConfig.model_validate(settings)
-        DocumentService.document_create_args_validate(config)
+        if text_upload is None:
+            DocumentService.document_create_args_validate(config)
         with _translate_errors():
             snapshot = self._creation_dataset(context, ref, config)
-            config = DocumentService.prepare_document_creation(snapshot, config)
+            if (
+                not snapshot.indexing_technique
+                and config.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+                and config.embedding_model_provider
+                and config.embedding_model
+            ):
+                DatasetService.check_embedding_model_setting(
+                    ref.tenant_id, config.embedding_model_provider, config.embedding_model
+                )
+            if text_upload is None:
+                config = DocumentService.prepare_document_creation(snapshot, config)
+            else:
+                config = self._prepare_text_creation(context, ref, snapshot, config, text_upload)
             return self._run_creation(context, ref, config, initialize=False, created_from=created_from)
 
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]:

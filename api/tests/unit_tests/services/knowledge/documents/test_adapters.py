@@ -17,13 +17,15 @@ from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentPipelineExecutionLog, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode, SegmentStatus
+from models.model import UploadFile
 from services.document_indexing_proxy.batch_indexing_base import BatchDocumentIndexingProxy
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.entities.feature_entities import FeatureModel
 from services.errors.file import FileNotExistsError
+from services.knowledge.dataset_service import DatasetService
 from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
-from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError
+from services.knowledge.documents.application import DocumentListFilter, DocumentNotFoundError, DocumentTextUpload
 from services.knowledge.resource_scope import DatasetRef
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -655,3 +657,139 @@ class TestDocumentCreationCases:
         with pytest.raises(StopBeforeNetworkError):
             operations.create_documents(CONTEXT, _DOCUMENT_CREATION_REF, settings())
         outside_transaction()
+
+    @staticmethod
+    def test_explicit_embedding_pair_is_checked_before_any_write(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        outside_transaction: Callable[[], None],
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            dataset = session.get(Dataset, _DOCUMENT_CREATION_REF.dataset_id)
+            assert dataset is not None
+            dataset.indexing_technique = None
+
+        def check(tenant_id: str, provider: str, model: str) -> None:
+            outside_transaction()
+            assert (tenant_id, provider, model) == ("tenant", "provider", "embedding")
+            raise ValueError("No Embedding Model available")
+
+        monkeypatch.setattr(DatasetService, "check_embedding_model_setting", check)
+        with pytest.raises(ValueError, match="No Embedding Model available"):
+            operations.create_documents(
+                CONTEXT,
+                _DOCUMENT_CREATION_REF,
+                settings(
+                    indexing_technique="high_quality",
+                    embedding_model="embedding",
+                    embedding_model_provider="provider",
+                ),
+            )
+        assert external_calls == []
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Document.id)) is None
+            dataset = session.get(Dataset, _DOCUMENT_CREATION_REF.dataset_id)
+            assert dataset is not None
+            assert dataset.indexing_technique is None
+            assert dataset.embedding_model is None
+
+    @staticmethod
+    def test_missing_original_fails_before_upload(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = Mock()
+        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        with pytest.raises(DocumentNotFoundError):
+            operations.create_documents(
+                CONTEXT,
+                _DOCUMENT_CREATION_REF,
+                settings(original_document_id="missing"),
+                text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
+            )
+        files.upload_text.assert_not_called()
+        assert external_calls == []
+
+    @staticmethod
+    def test_unavailable_original_fails_before_upload(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            session.add(
+                _document(
+                    id="original-1",
+                    tenant_id="tenant",
+                    dataset_id="dataset",
+                    indexing_status=IndexingStatus.INDEXING,
+                )
+            )
+        files = Mock()
+        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        with pytest.raises(ValueError, match="Document is not available"):
+            operations.create_documents(
+                CONTEXT,
+                _DOCUMENT_CREATION_REF,
+                settings(original_document_id="original-1"),
+                text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
+            )
+        files.upload_text.assert_not_called()
+        assert external_calls == []
+
+    @staticmethod
+    def test_preflight_failure_deletes_unattached_upload(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        files = Mock()
+        files.upload_text.return_value = make_upload_file(file_id="new-upload", tenant_id="tenant")
+        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        with pytest.raises(ValueError, match="Process rule rules is required"):
+            operations.create_documents(
+                CONTEXT,
+                _DOCUMENT_CREATION_REF,
+                settings(process_rule={"mode": "custom"}),
+                text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
+            )
+        files.upload_text.assert_called_once()
+        files.delete_file.assert_called_once_with("new-upload")
+        assert external_calls == []
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Document.id)) is None
+
+    @staticmethod
+    def test_dispatch_failure_after_commit_keeps_attached_upload(
+        operations: SQLAlchemyDocumentOperations,
+        external_calls: list[tuple[str, tuple[str, ...]]],
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        with sqlite_session_factory() as session:
+            saved = session.get(UploadFile, "file")
+            assert saved is not None
+            session.expunge(saved)
+        files = Mock()
+        files.upload_text.return_value = saved
+        monkeypatch.setattr("services.knowledge.documents.adapters.FileService", lambda *_args, **_kwargs: files)
+        monkeypatch.setattr(DocumentIndexingTaskProxy, "delay", Mock(side_effect=RuntimeError("dispatch failed")))
+        with pytest.raises(RuntimeError, match="dispatch failed"):
+            operations.create_documents(
+                CONTEXT,
+                _DOCUMENT_CREATION_REF,
+                settings(),
+                text_upload=DocumentTextUpload(text="hello", name="guide.txt"),
+            )
+        files.delete_file.assert_not_called()
+        with sqlite_session_factory() as session:
+            document = session.scalar(select(Document))
+            assert document is not None
+            assert document.data_source_info_dict["upload_file_id"] == "file"
+            assert session.get(UploadFile, "file") is not None
+        assert external_calls == []

@@ -7,6 +7,7 @@ from http import HTTPStatus
 import pytest
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import TokenType
 from controllers.openapi import datasets as datasets_module
@@ -15,17 +16,25 @@ from controllers.openapi._models import (
     DatasetResponse,
     DatasetUpdatePayload,
     DocumentCreateByTextPayload,
+    DocumentDisplayStatus,
+    DocumentIndexingStatusResponse,
     DocumentUpdateByTextPayload,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
-from controllers.openapi.datasets import DatasetsApi, _dataset_row, _display_status, _document_row
+from controllers.openapi.datasets import (
+    DatasetsApi,
+    DocumentBatchIndexingStatusApi,
+    _dataset_row,
+    _display_status,
+    _document_row,
+)
 from libs.oauth_bearer import AuthContext
-from models.model import UploadFile
-from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from services.knowledge.documents.application import DocumentTextUpload
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
-def _endpoint_handler(view: object) -> Callable[..., tuple[DatasetResponse, HTTPStatus]]:
+def _endpoint_handler(view: object) -> Callable[..., object]:
     """Return the request handler the `@endpoint` decorator attaches to a view.
 
     ``__handler__`` is injected at decoration time, so it is absent from the
@@ -73,13 +82,22 @@ class _FakeDatasets:
 class _FakeDocuments:
     """Documents service fake whose ingestion outcome the test chooses."""
 
-    def __init__(self, error: Exception | None = None) -> None:
-        self.error = error
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+        self.batch_rows: list[Mapping[str, object]] = []
 
-    def create_documents(self, _request_context: object, **_kwargs: object) -> Mapping[str, object]:
-        if self.error is not None:
-            raise self.error
-        return _document()
+    def create_documents(self, _request_context: object, **kwargs: object) -> Mapping[str, object]:
+        self.calls.append(kwargs)
+        return {"documents": [_document()], "batch": "batch-1"}
+
+    def get_batch_indexing_status(
+        self,
+        _request_context: object,
+        *,
+        dataset_id: str,  # noqa: ARG002
+        batch: str,  # noqa: ARG002
+    ) -> Mapping[str, object]:
+        return {"data": self.batch_rows}
 
 
 @dataclass
@@ -91,28 +109,6 @@ class _FakeKnowledge:
 @dataclass
 class _FakeServices:
     knowledge: _FakeKnowledge
-
-
-class _FakeFileService:
-    """FileService stand-in that records deletions instead of touching storage."""
-
-    def __init__(self) -> None:
-        self.deleted_file_ids: list[str] = []
-
-    def upload_text(self, **_kwargs: object) -> UploadFile:
-        return make_upload_file(file_id="file-1")
-
-    def delete_file(self, *, upload_file_id: str, **_kwargs: object) -> None:
-        self.deleted_file_ids.append(upload_file_id)
-
-
-def _file_service_factory(file_service: _FakeFileService) -> Callable[[object], _FakeFileService]:
-    """Build the FileService constructor the controller calls with the engine."""
-
-    def build(_engine: object) -> _FakeFileService:
-        return file_service
-
-    return build
 
 
 def _bind_services(
@@ -227,6 +223,23 @@ def test_update_dataset_payload_accepts_non_indexing_changes() -> None:
     assert payload.model_dump(exclude_unset=True) == {"name": "Docs", "description": ""}
 
 
+@pytest.mark.parametrize("members", [[{}], [{"user_id": "not-a-uuid"}]])
+def test_update_dataset_payload_rejects_malformed_members(members: list[object]) -> None:
+    with pytest.raises(ValidationError, match="partial_member_list"):
+        DatasetUpdatePayload.model_validate({"partial_member_list": members})
+
+
+def test_update_dataset_payload_dumps_member_ids_as_strings() -> None:
+    member_id = str(uuid.uuid4())
+    payload = DatasetUpdatePayload.model_validate(
+        {"permission": "partial_members", "partial_member_list": [{"user_id": member_id}]}
+    )
+
+    [member] = payload.model_dump(exclude_unset=True)["partial_member_list"]
+    assert member["user_id"] == member_id
+    assert isinstance(member["user_id"], str)
+
+
 def test_create_document_requires_name_and_text() -> None:
     with pytest.raises(ValidationError):
         DocumentCreateByTextPayload.model_validate({"name": "guide.md"})
@@ -245,10 +258,13 @@ def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyP
     dataset_service, _ = _bind_services(monkeypatch)
 
     api = DatasetsApi()
-    response, status = _endpoint_handler(api.post)(
+    result = _endpoint_handler(api.post)(
         api, _ctx(sqlite_session), workspace_id="ws-1", body=DatasetCreatePayload(name="Docs")
     )
 
+    assert isinstance(result, tuple)
+    response, status = result
+    assert isinstance(response, DatasetResponse)
     assert status == HTTPStatus.CREATED
     assert response.name == "Docs"
     [values] = dataset_service.created_values
@@ -257,26 +273,12 @@ def test_dataset_post_passes_null_indexing_technique(monkeypatch: pytest.MonkeyP
     assert values["indexing_technique"] is None
 
 
-def _bind_document_services(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_session: Session,
-    file_service: _FakeFileService,
-    *,
-    documents: _FakeDocuments | None = None,
-) -> None:
-    """Point `db.engine` at the sqlite test database and bind the document services."""
-    monkeypatch.setattr(type(datasets_module.db), "engine", property(lambda _self: sqlite_session.get_bind()))
-    monkeypatch.setattr(datasets_module, "FileService", _file_service_factory(file_service))
-    _bind_services(monkeypatch, documents=documents)
-
-
 def test_document_settings_marks_create_as_non_duplicate(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    file_service = _FakeFileService()
-    _bind_document_services(monkeypatch, sqlite_session, file_service)
+    _bind_services(monkeypatch)
 
-    settings = datasets_module._document_settings(
+    settings, text_upload = datasets_module._document_settings(
         _ctx(sqlite_session),
         "ds-1",
         DocumentCreateByTextPayload(name="guide.md", text="hello"),
@@ -284,15 +286,16 @@ def test_document_settings_marks_create_as_non_duplicate(
     )
 
     assert settings["duplicate"] is False
-    assert settings["data_source"]["info_list"]["file_info_list"]["file_ids"] == ["file-1"]
+    assert "data_source" not in settings
+    assert text_upload == DocumentTextUpload(text="hello", name="guide.md")
 
 
 def test_document_settings_update_does_not_mark_duplicate(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    _bind_document_services(monkeypatch, sqlite_session, _FakeFileService())
+    _bind_services(monkeypatch)
 
-    settings = datasets_module._document_settings(
+    settings, text_upload = datasets_module._document_settings(
         _ctx(sqlite_session),
         "ds-1",
         DocumentUpdateByTextPayload(name="renamed.md"),
@@ -301,23 +304,69 @@ def test_document_settings_update_does_not_mark_duplicate(
 
     assert settings["original_document_id"] == "doc-1"
     assert "duplicate" not in settings
+    assert text_upload is None
 
 
-def test_failed_ingestion_keeps_the_uploaded_file(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
-    file_service = _FakeFileService()
-    _bind_document_services(
-        monkeypatch,
-        sqlite_session,
-        file_service,
-        documents=_FakeDocuments(RuntimeError("ingestion failed")),
+@pytest.mark.parametrize(
+    ("body", "original_document_id"),
+    [
+        (DocumentCreateByTextPayload(name="guide.md", text="hello"), None),
+        (DocumentUpdateByTextPayload(name="renamed.md", text="hello"), "doc-1"),
+        (DocumentUpdateByTextPayload(name="renamed.md"), "doc-1"),
+    ],
+)
+def test_external_dataset_rejects_documents_before_delegation(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    body: DocumentCreateByTextPayload | DocumentUpdateByTextPayload,
+    original_document_id: str | None,
+) -> None:
+    _, document_service = _bind_services(monkeypatch, datasets=_FakeDatasets(_dataset(provider="external")))
+
+    with pytest.raises(BadRequest, match="External datasets do not support local documents"):
+        datasets_module._create_documents(_ctx(sqlite_session), "ds-1", body, original_document_id=original_document_id)
+
+    assert document_service.calls == []
+
+
+def test_create_documents_forwards_the_text_upload(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    _, document_service = _bind_services(monkeypatch)
+
+    datasets_module._create_documents(
+        _ctx(sqlite_session),
+        "ds-1",
+        DocumentCreateByTextPayload(name="guide.md", text="hello"),
+        original_document_id=None,
     )
 
-    with pytest.raises(RuntimeError, match="ingestion failed"):
-        datasets_module._create_documents(
-            _ctx(sqlite_session),
-            "ds-1",
-            DocumentCreateByTextPayload(name="guide.md", text="hello"),
-            original_document_id=None,
-        )
+    [call] = document_service.calls
+    assert call["text_upload"] == DocumentTextUpload(text="hello", name="guide.md")
+    assert call["created_from"] == "api"
 
-    assert file_service.deleted_file_ids == []
+
+@pytest.mark.parametrize(
+    "display_statuses",
+    [
+        ["available", "disabled"],
+        ["available", "archived"],
+        ["disabled", "archived"],
+        ["available", "disabled", "archived"],
+    ],
+)
+def test_batch_status_aggregates_completed_documents(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, display_statuses: list[str]
+) -> None:
+    document_service = _FakeDocuments()
+    document_service.batch_rows = [
+        _document(id=f"doc-{index}", display_status=status) for index, status in enumerate(display_statuses)
+    ]
+    _bind_services(monkeypatch, documents=document_service)
+
+    api = DocumentBatchIndexingStatusApi()
+    response = _endpoint_handler(api.get)(
+        api, _ctx(sqlite_session), workspace_id="ws-1", dataset_id="ds-1", batch="batch-1"
+    )
+
+    assert isinstance(response, DocumentIndexingStatusResponse)
+    assert response.display_status == DocumentDisplayStatus.AVAILABLE
+    assert [item.display_status for item in response.documents] == display_statuses

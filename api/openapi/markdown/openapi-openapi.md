@@ -1773,9 +1773,9 @@ whole index and is not exposed here.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}
-**Aggregate indexing status of every document created under `batch`:**
+**Aggregate indexing status for a batch: `error` if any document failed,**
 
-`failed` if any document failed, `available` once all complete.
+`available` once all complete, even if some are disabled or archived.
 
 #### Parameters
 
@@ -3708,6 +3708,12 @@ How a knowledge base indexes its documents.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### DatasetPartialMemberPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user_id | string (uuid) |  | Yes |
+
 #### DatasetPermission
 
 Who can reach a knowledge base.
@@ -3758,7 +3764,7 @@ they are absent here and rejected as unknown fields.
 | external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
 | icon_info | object | Icon metadata as a JSON object. | No |
 | name | string |  | No |
-| partial_member_list | [ object ] | Member ids granted access when `permission` is `partial_members`. | No |
+| partial_member_list | [ [DatasetPartialMemberPayload](#datasetpartialmemberpayload) ] | Member ids granted access when `permission` is `partial_members`. | No |
 | permission | [DatasetPermission](#datasetpermission) |  | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
 | summary_index_setting | object | Summary index settings as a JSON object. | No |

@@ -1791,6 +1791,12 @@ class DatasetCreatePayload(BaseModel):
         return self
 
 
+class DatasetPartialMemberPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUIDStr
+
+
 class DatasetUpdatePayload(BaseModel):
     """Patchable knowledge-base settings.
 
@@ -1810,7 +1816,7 @@ class DatasetUpdatePayload(BaseModel):
     summary_index_setting: dict[str, Any] | None = Field(
         default=None, description="Summary index settings as a JSON object."
     )
-    partial_member_list: list[dict[str, str]] | None = Field(
+    partial_member_list: list[DatasetPartialMemberPayload] | None = Field(
         default=None, description="Member ids granted access when `permission` is `partial_members`."
     )
     external_retrieval_model: dict[str, Any] | None = Field(

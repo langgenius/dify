@@ -2142,18 +2142,18 @@ export const apps2 = {
 }
 
 /**
- * Aggregate indexing status of every document created under `batch`:
+ * Aggregate indexing status for a batch: `error` if any document failed,
  *
- * `failed` if any document failed, `available` once all complete.
+ * `available` once all complete, even if some are disabled or archived.
  */
 export const get42 = oc
   .route({
-    description: '`failed` if any document failed, `available` once all complete.',
+    description: '`available` once all complete, even if some are disabled or archived.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatch',
     path: '/workspaces/{workspace_id}/datasets/{dataset_id}/document-batches/{batch}',
-    summary: 'Aggregate indexing status of every document created under `batch`:',
+    summary: 'Aggregate indexing status for a batch: `error` if any document failed,',
     tags: ['openapi'],
   })
   .input(

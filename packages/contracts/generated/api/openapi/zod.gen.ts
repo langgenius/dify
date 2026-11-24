@@ -533,6 +533,13 @@ export const zDatasetListQuery = z.object({
 })
 
 /**
+ * DatasetPartialMemberPayload
+ */
+export const zDatasetPartialMemberPayload = z.object({
+  user_id: z.uuid(),
+})
+
+/**
  * DatasetPermission
  *
  * Who can reach a knowledge base.
@@ -597,7 +604,7 @@ export const zDatasetUpdatePayload = z.object({
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
   name: z.string().min(1).max(40).nullish(),
-  partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
+  partial_member_list: z.array(zDatasetPartialMemberPayload).nullish(),
   permission: zDatasetPermission.nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
