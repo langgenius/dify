@@ -71,7 +71,6 @@ type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
   isExporting: boolean
@@ -130,10 +129,6 @@ export const createHooksStore = ({
   availableNodesMetaData = {
     nodes: [],
   },
-  getWorkflowRunAndTraceUrl = () => ({
-    runUrl: '',
-    traceUrl: '',
-  }),
   exportCheck = async () => noop(),
   handleExportDSL = async () => false,
   isExporting = false,
@@ -173,7 +168,6 @@ export const createHooksStore = ({
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
-    getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
     isExporting,

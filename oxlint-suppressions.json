@@ -2977,7 +2977,7 @@
       "count": 1
     },
     "typescript/no-deprecated": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/console/browser.ts": {
@@ -3014,11 +3014,6 @@
   "web/service/http-error.spec.ts": {
     "typescript/no-deprecated": {
       "count": 10
-    }
-  },
-  "web/service/log.ts": {
-    "typescript/no-deprecated": {
-      "count": 2
     }
   },
   "web/service/marketplace-templates.ts": {
