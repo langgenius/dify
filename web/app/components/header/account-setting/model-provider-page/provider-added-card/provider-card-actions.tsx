@@ -37,7 +37,11 @@ import {
   checkGitHubPluginUpdate,
 } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
+import {
+  invalidateMarketplacePluginLists,
+  useMarketplace,
+  useMarketplacePluginVersions,
+} from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
@@ -153,8 +157,7 @@ function ProviderCardActions(props: Props) {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
-      queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
+      invalidateMarketplacePluginLists(queryClient),
     ])
     await onUpdate?.()
   }
