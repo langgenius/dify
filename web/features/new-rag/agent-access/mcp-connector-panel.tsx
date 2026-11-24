@@ -30,6 +30,7 @@ import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { AGENT_MCP_SERVER_NAME, agentConnectCommands } from './agent-access'
+import { AgentIcon } from './agent-icon'
 import { grantName, useInvalidateAgentAccess } from './grants'
 import { knowledgeBaseSummary, useKnowledgeBaseOptions } from './knowledge-base-options'
 import {
@@ -219,7 +220,10 @@ function CopyLine({ value }: { value: string }) {
 function CommandGroup({ children, title }: { children: ReactNode; title: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="system-sm-medium text-text-primary">{title}</span>
+      <span className="flex items-center gap-1.5 system-sm-medium text-text-primary">
+        <AgentIcon name={title} />
+        {title}
+      </span>
       {children}
     </div>
   )
@@ -309,7 +313,7 @@ function MyConnections({
             <tr key={grant.id} className="flex min-h-13 items-center gap-3 py-1.5 ps-2.5 pe-2">
               <td className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <GrantIdentity grant={grant} />
-                <span className="truncate system-xs-regular text-text-tertiary">
+                <span className="truncate ps-7 system-xs-regular text-text-tertiary">
                   {[
                     ...names,
                     ...(more > 0
