@@ -58,6 +58,7 @@ async function setup(initialAgents: AgentAppPartial[]) {
   let agents = initialAgents
   const fake = installFakeApi({
     console: {
+      tags: { get: () => [] },
       agent: {
         get: () => agentPage(agents),
         byAgentId: {
