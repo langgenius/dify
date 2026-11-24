@@ -1,12 +1,11 @@
 import type { Snippet as SnippetContract } from '@/types/snippet'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks/use-checklist'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { usePublishSnippetWorkflowMutation } from '@/service/use-snippet-workflows'
 import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 
 type UseSnippetPublishOptions = {
@@ -17,7 +16,11 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { t } = useTranslation(['snippet'])
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
-  const publishSnippetMutation = usePublishSnippetWorkflowMutation(snippetId, { silent: true })
+  const { mutateAsync: publishSnippet, isPending: isPublishing } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.publish.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
   const resetWorkflowVersionHistory = useCallback(
     () =>
       queryClient.resetQueries({
@@ -32,8 +35,9 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
       const canPublish = await handleCheckBeforePublish()
       if (!canPublish) return
 
-      const publishedWorkflow = await publishSnippetMutation.mutateAsync({
-        params: { snippetId },
+      const publishedWorkflow = await publishSnippet({
+        params: { snippet_id: snippetId },
+        body: {},
       })
       queryClient.setQueryData<SnippetContract | undefined>(
         consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
@@ -54,7 +58,7 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
     }
   }, [
     handleCheckBeforePublish,
-    publishSnippetMutation,
+    publishSnippet,
     queryClient,
     resetWorkflowVersionHistory,
     snippetId,
@@ -64,6 +68,6 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
 
   return {
     handlePublish,
-    isPublishing: publishSnippetMutation.isPending,
+    isPublishing,
   }
 }
