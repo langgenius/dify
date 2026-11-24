@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Any, Final, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from configs import dify_config
 from constants.languages import supported_language
@@ -1747,9 +1748,9 @@ class DatasetCreatePayload(BaseModel):
         description="`high_quality` uses embedding models; `economy` uses keyword indexing.",
     )
     permission: DatasetPermission | None = Field(
-        default=DatasetPermission.ONLY_ME,
-        description="`only_me` restricts to the creator, `all_team_members` grants workspace access, "
-        "`partial_members` grants access to `partial_member_list` members.",
+        default=None,
+        description="Legacy dataset permission. Only `only_me` and `all_team_members` are "
+        "supported when RBAC is disabled. Ignored when RBAC is enabled.",
     )
     provider: DatasetProvider = Field(
         default=DatasetProvider.VENDOR,
@@ -1807,7 +1808,9 @@ class DatasetUpdatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = Field(default=None, min_length=1, max_length=40)
+    name: str | SkipJsonSchema[None] = Field(
+        default=None, min_length=1, max_length=40, description="Knowledge base name. Omit to keep the current name."
+    )
     description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
     permission: DatasetPermission | None = None
     retrieval_model: dict[str, Any] | None = Field(
@@ -1822,13 +1825,24 @@ class DatasetUpdatePayload(BaseModel):
     external_retrieval_model: dict[str, Any] | None = Field(
         default=None, description="Retrieval model configuration for external knowledge bases as a JSON object."
     )
-    external_knowledge_id: str | None = Field(
-        default=None, description="External knowledge base id; required on every update of an external knowledge base."
+    external_knowledge_id: str | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        description="External knowledge base id. Omit to keep the current binding.",
     )
-    external_knowledge_api_id: str | None = Field(
-        default=None, description="External knowledge API id; required on every update of an external knowledge base."
+    external_knowledge_api_id: str | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        description="External knowledge API id. Omit to keep the current binding.",
     )
     icon_info: dict[str, Any] | None = Field(default=None, description="Icon metadata as a JSON object.")
+
+    @field_validator("name", "external_knowledge_id", "external_knowledge_api_id", mode="before")
+    @classmethod
+    def _reject_explicit_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("omit this field to keep its current value; null is not allowed")
+        return value
 
     @field_validator("retrieval_model", mode="before")
     @classmethod
@@ -1860,6 +1874,13 @@ class DatasetResponse(BaseModel):
     updated_at: int
 
 
+class DatasetDetailResponse(DatasetResponse):
+    partial_member_list: list[str] | None = Field(
+        default=None,
+        description="Member IDs for a legacy partial-members knowledge base; null when not applicable.",
+    )
+
+
 class DatasetListResponse(PaginationEnvelope[DatasetResponse]):
     pass
 
@@ -1875,6 +1896,13 @@ class DocumentTextPayload(BaseModel):
         description="`text_model` for standard chunking, `hierarchical_model` for parent-child, "
         "`qa_model` for question-answer pairs. Defaults to the knowledge base's form.",
     )
+
+
+class DocumentCreateByTextPayload(DocumentTextPayload):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, description="Document name.")
+    text: str = Field(min_length=1, description="Document text content.")
     doc_language: str | None = Field(default=None, description="Language of the document.")
     indexing_technique: DatasetIndexingTechnique | None = Field(
         default=None,
@@ -1891,13 +1919,6 @@ class DocumentTextPayload(BaseModel):
         if value is not None:
             _check_retrieval_model(value)
         return value
-
-
-class DocumentCreateByTextPayload(DocumentTextPayload):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str = Field(min_length=1, description="Document name.")
-    text: str = Field(min_length=1, description="Document text content.")
 
 
 class DocumentUpdateByTextPayload(DocumentTextPayload):
@@ -1935,6 +1956,10 @@ class DocumentResponse(BaseModel):
 class DocumentAndBatchResponse(BaseModel):
     document: DocumentResponse
     batch: str
+
+
+class DocumentUpdateResponse(BaseModel):
+    document: DocumentResponse
 
 
 class DocumentListQuery(PageQuery):

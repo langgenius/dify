@@ -23,6 +23,8 @@ from models.dataset import (
     DatasetPermissionEnum,
     DatasetQuery,
     DocumentSegment,
+    ExternalKnowledgeApis,
+    ExternalKnowledgeBindings,
 )
 from models.enums import (
     CreatorUserRole,
@@ -387,6 +389,56 @@ def test_partial_members_update_and_clear_are_committed(
     assert result["partial_member_list"] == []
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(DatasetPermission)) == 0
+
+
+def _external_binding(session: Session) -> ExternalKnowledgeBindings | None:
+    return session.scalar(select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id == "dataset"))
+
+
+def test_external_update_backfills_stored_binding(
+    operations: SQLAlchemyDatasetOperations, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    api = ExternalKnowledgeApis(
+        tenant_id="tenant", name="API", description="", settings="{}", created_by="actor", updated_by=None
+    )
+    with sqlite_session_factory.begin() as session:
+        stored = session.get(Dataset, "dataset")
+        assert stored is not None
+        stored.provider = "external"
+        session.add(api)
+        session.add(
+            ExternalKnowledgeBindings(
+                tenant_id="tenant",
+                external_knowledge_api_id=api.id,
+                dataset_id="dataset",
+                external_knowledge_id="knowledge-1",
+                created_by="actor",
+            )
+        )
+
+    renamed = operations.update_dataset(CONTEXT, REF, {"name": "Renamed"})
+    assert renamed["name"] == "Renamed"
+    with sqlite_session_factory() as session:
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-1"
+        assert binding.external_knowledge_api_id == api.id
+
+    operations.update_dataset(CONTEXT, REF, {"external_knowledge_id": "knowledge-2"})
+    with sqlite_session_factory() as session:
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-2"
+        assert binding.external_knowledge_api_id == api.id
+
+    operations.update_dataset(CONTEXT, REF, {"description": None})
+    with sqlite_session_factory() as session:
+        stored = session.get(Dataset, "dataset")
+        assert stored is not None
+        assert stored.description is None
+        binding = _external_binding(session)
+        assert binding is not None
+        assert binding.external_knowledge_id == "knowledge-2"
 
 
 def test_status_counts_and_errors_exclude_foreign_documents(

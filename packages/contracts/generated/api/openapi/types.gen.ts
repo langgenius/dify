@@ -484,6 +484,25 @@ export type DatasetCreatePayload = {
   } | null
 }
 
+export type DatasetDetailResponse = {
+  created_at: number
+  description: string | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  external_knowledge_api_id: string | null
+  external_knowledge_id: string | null
+  id: string
+  indexing_technique: string | null
+  name: string
+  partial_member_list?: Array<string> | null
+  permission: string
+  provider: string
+  retrieval_model: {
+    [key: string]: unknown
+  } | null
+  updated_at: number
+}
+
 export type DatasetIndexingTechnique = 'economy' | 'high_quality'
 
 export type DatasetListQuery = {
@@ -529,15 +548,15 @@ export type DatasetResponse = {
 
 export type DatasetUpdatePayload = {
   description?: string | null
-  external_knowledge_api_id?: string | null
-  external_knowledge_id?: string | null
+  external_knowledge_api_id?: string
+  external_knowledge_id?: string
   external_retrieval_model?: {
     [key: string]: unknown
   } | null
   icon_info?: {
     [key: string]: unknown
   } | null
-  name?: string | null
+  name?: string
   partial_member_list?: Array<DatasetPartialMemberPayload> | null
   permission?: DatasetPermission | null
   retrieval_model?: {
@@ -706,18 +725,15 @@ export type DocumentResponse = {
 
 export type DocumentUpdateByTextPayload = {
   doc_form?: DocumentForm | null
-  doc_language?: string | null
-  embedding_model?: string | null
-  embedding_model_provider?: string | null
-  indexing_technique?: DatasetIndexingTechnique | null
   name?: string | null
   process_rule?: {
     [key: string]: unknown
   } | null
-  retrieval_model?: {
-    [key: string]: unknown
-  } | null
   text?: string | null
+}
+
+export type DocumentUpdateResponse = {
+  document: DocumentResponse
 }
 
 export type DraftWorkflowRunPayload = {
@@ -4719,7 +4735,7 @@ export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
   GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof GetWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
 
 export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
-  200: DatasetResponse
+  200: DatasetDetailResponse
 }
 
 export type GetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
@@ -4744,7 +4760,7 @@ export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdError =
   PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors[keyof PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdErrors]
 
 export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponses = {
-  200: DatasetResponse
+  200: DatasetDetailResponse
 }
 
 export type PatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse =
@@ -4876,7 +4892,7 @@ export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdU
 
 export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses =
   {
-    200: DocumentAndBatchResponse
+    200: DocumentUpdateResponse
   }
 
 export type PostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =

@@ -13,18 +13,23 @@ from constants.oauth_bearer import TokenType
 from controllers.openapi import datasets as datasets_module
 from controllers.openapi._models import (
     DatasetCreatePayload,
+    DatasetDetailResponse,
     DatasetResponse,
     DatasetUpdatePayload,
     DocumentCreateByTextPayload,
     DocumentDisplayStatus,
     DocumentIndexingStatusResponse,
     DocumentUpdateByTextPayload,
+    DocumentUpdateResponse,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.datasets import (
+    DatasetApi,
     DatasetsApi,
     DocumentBatchIndexingStatusApi,
+    DocumentUpdateByTextApi,
+    _dataset_detail_row,
     _dataset_row,
     _display_status,
     _document_row,
@@ -68,6 +73,7 @@ class _FakeDatasets:
     def __init__(self, row: Mapping[str, object] | None = None) -> None:
         self.row = row if row is not None else _dataset()
         self.created_values: list[Mapping[str, object]] = []
+        self.updated_values: list[tuple[str, Mapping[str, object]]] = []
         self.queried_dataset_ids: list[str] = []
 
     def get_dataset(self, _request_context: object, *, dataset_id: str) -> Mapping[str, object]:
@@ -76,6 +82,12 @@ class _FakeDatasets:
 
     def create_dataset(self, _request_context: object, *, values: Mapping[str, object]) -> Mapping[str, object]:
         self.created_values.append(values)
+        return self.row
+
+    def update_dataset(
+        self, _request_context: object, *, dataset_id: str, values: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        self.updated_values.append((dataset_id, values))
         return self.row
 
 
@@ -370,3 +382,171 @@ def test_batch_status_aggregates_completed_documents(
     assert isinstance(response, DocumentIndexingStatusResponse)
     assert response.display_status == DocumentDisplayStatus.AVAILABLE
     assert [item.display_status for item in response.documents] == display_statuses
+
+
+@pytest.mark.parametrize(
+    "create_only",
+    [
+        {"doc_language": "English"},
+        {"indexing_technique": "economy"},
+        {
+            "retrieval_model": {
+                "search_method": "semantic_search",
+                "reranking_enable": False,
+                "top_k": 3,
+                "score_threshold_enabled": False,
+            }
+        },
+        {"embedding_model": "text-embedding-3-small"},
+        {"embedding_model_provider": "openai"},
+    ],
+)
+def test_create_only_document_fields_are_forbidden_on_update(create_only: dict[str, object]) -> None:
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        DocumentUpdateByTextPayload.model_validate({"name": "guide.md", **create_only})
+    DocumentCreateByTextPayload.model_validate({"name": "guide.md", "text": "hello", **create_only})
+
+
+def test_update_document_response_carries_only_the_document(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _bind_services(monkeypatch)
+
+    api = DocumentUpdateByTextApi()
+    response = _endpoint_handler(api.post)(
+        api,
+        _ctx(sqlite_session),
+        workspace_id="ws-1",
+        dataset_id="ds-1",
+        document_id="doc-1",
+        body=DocumentUpdateByTextPayload(name="guide.md", text="updated"),
+    )
+
+    assert isinstance(response, DocumentUpdateResponse)
+    assert response.document.id == "doc-1"
+    assert not hasattr(response, "batch")
+
+
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+def test_dataset_detail_row_members_follow_rbac_mode(rbac_enabled: bool, config_overrides: Callable[..., None]) -> None:
+    config_overrides(RBAC_ENABLED=rbac_enabled)
+    row = _dataset_detail_row(_dataset(permission="partial_members", partial_member_list=["acct-1"]))
+    assert isinstance(row, DatasetDetailResponse)
+    assert row.partial_member_list == (None if rbac_enabled else ["acct-1"])
+
+
+def test_create_dataset_rejects_partial_members_outside_rbac(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    dataset_service, _ = _bind_services(monkeypatch)
+
+    api = DatasetsApi()
+    with pytest.raises(BadRequest, match="partial_members is not supported"):
+        _endpoint_handler(api.post)(
+            api,
+            _ctx(sqlite_session),
+            workspace_id="ws-1",
+            body=DatasetCreatePayload.model_validate({"name": "Docs", "permission": "partial_members"}),
+        )
+    assert dataset_service.created_values == []
+
+
+@pytest.mark.parametrize("permission", ["only_me", "all_team_members", "partial_members", None])
+def test_create_dataset_ignores_legacy_permission_under_rbac(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    permission: str | None,
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    dataset_service, _ = _bind_services(monkeypatch)
+    payload = {"name": "Docs", **({"permission": permission} if permission else {})}
+
+    api = DatasetsApi()
+    result = _endpoint_handler(api.post)(
+        api, _ctx(sqlite_session), workspace_id="ws-1", body=DatasetCreatePayload.model_validate(payload)
+    )
+
+    assert isinstance(result, tuple)
+    [values] = dataset_service.created_values
+    assert "permission" not in values
+
+
+@pytest.mark.parametrize("body", [{"permission": "only_me"}, {"partial_member_list": [{"user_id": str(uuid.uuid4())}]}])
+def test_update_dataset_strips_legacy_access_fields_under_rbac(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    body: dict[str, object],
+) -> None:
+    config_overrides(RBAC_ENABLED=True)
+    dataset_service, _ = _bind_services(monkeypatch)
+
+    api = DatasetApi()
+    response = _endpoint_handler(api.patch)(
+        api,
+        _ctx(sqlite_session),
+        workspace_id="ws-1",
+        dataset_id="ds-1",
+        body=DatasetUpdatePayload.model_validate(body),
+    )
+
+    assert isinstance(response, DatasetDetailResponse)
+    [(_dataset_id, values)] = dataset_service.updated_values
+    assert "permission" not in values
+    assert "partial_member_list" not in values
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"permission": "partial_members"},
+        {"partial_member_list": [{"user_id": str(uuid.uuid4())}]},
+    ],
+)
+def test_update_dataset_requires_paired_member_fields_outside_rbac(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, body: dict[str, object]
+) -> None:
+    dataset_service, _ = _bind_services(monkeypatch)
+
+    api = DatasetApi()
+    with pytest.raises(BadRequest, match="partial_member_list must be supplied"):
+        _endpoint_handler(api.patch)(
+            api,
+            _ctx(sqlite_session),
+            workspace_id="ws-1",
+            dataset_id="ds-1",
+            body=DatasetUpdatePayload.model_validate(body),
+        )
+    assert dataset_service.updated_values == []
+
+
+def test_update_dataset_accepts_paired_member_fields_outside_rbac(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    dataset_service, _ = _bind_services(monkeypatch)
+    member = {"user_id": str(uuid.uuid4())}
+
+    api = DatasetApi()
+    _endpoint_handler(api.patch)(
+        api,
+        _ctx(sqlite_session),
+        workspace_id="ws-1",
+        dataset_id="ds-1",
+        body=DatasetUpdatePayload.model_validate({"permission": "partial_members", "partial_member_list": [member]}),
+    )
+
+    [(_dataset_id, values)] = dataset_service.updated_values
+    assert values["permission"] == "partial_members"
+    assert values["partial_member_list"] == [member]
+
+
+@pytest.mark.parametrize("field", ["name", "external_knowledge_id", "external_knowledge_api_id"])
+def test_update_dataset_payload_rejects_explicit_null(field: str) -> None:
+    with pytest.raises(ValidationError, match="null is not allowed"):
+        DatasetUpdatePayload.model_validate({field: None})
+
+
+def test_update_dataset_payload_accepts_null_description() -> None:
+    payload = DatasetUpdatePayload.model_validate({"description": None})
+    assert payload.model_dump(exclude_unset=True) == {"description": None}

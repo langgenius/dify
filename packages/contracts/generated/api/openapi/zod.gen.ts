@@ -517,6 +517,26 @@ export const zCustomModelRow = z.object({
 })
 
 /**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  created_at: z.int(),
+  description: z.string().nullable(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  external_knowledge_api_id: z.string().nullable(),
+  external_knowledge_id: z.string().nullable(),
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  name: z.string(),
+  partial_member_list: z.array(z.string()).nullish(),
+  permission: z.string(),
+  provider: z.string(),
+  retrieval_model: z.record(z.string(), z.unknown()).nullable(),
+  updated_at: z.int(),
+})
+
+/**
  * DatasetIndexingTechnique
  *
  * How a knowledge base indexes its documents.
@@ -564,7 +584,7 @@ export const zDatasetCreatePayload = z.object({
   external_knowledge_id: z.string().nullish(),
   indexing_technique: zDatasetIndexingTechnique.nullish(),
   name: z.string().min(1).max(40),
-  permission: zDatasetPermission.nullish().default('only_me'),
+  permission: zDatasetPermission.nullish(),
   provider: zDatasetProvider.optional().default('vendor'),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
 })
@@ -599,11 +619,11 @@ export const zDatasetResponse = z.object({
  */
 export const zDatasetUpdatePayload = z.object({
   description: z.string().max(400).nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
+  external_knowledge_api_id: z.string().min(1).optional(),
+  external_knowledge_id: z.string().min(1).optional(),
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string().min(1).max(40).nullish(),
+  name: z.string().min(1).max(40).optional(),
   partial_member_list: z.array(zDatasetPartialMemberPayload).nullish(),
   permission: zDatasetPermission.nullish(),
   retrieval_model: z.record(z.string(), z.unknown()).nullish(),
@@ -812,14 +832,16 @@ export const zDocumentAndBatchResponse = z.object({
  */
 export const zDocumentUpdateByTextPayload = z.object({
   doc_form: zDocumentForm.nullish(),
-  doc_language: z.string().nullish(),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  indexing_technique: zDatasetIndexingTechnique.nullish(),
   name: z.string().nullish(),
   process_rule: z.record(z.string(), z.unknown()).nullish(),
-  retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   text: z.string().nullish(),
+})
+
+/**
+ * DocumentUpdateResponse
+ */
+export const zDocumentUpdateResponse = z.object({
+  document: zDocumentResponse,
 })
 
 /**
@@ -4409,7 +4431,7 @@ export const zGetWorkspacesByWorkspaceIdDatasetsByDatasetIdPath = z.object({
 /**
  * Knowledge base
  */
-export const zGetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse = zDatasetResponse
+export const zGetWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse = zDatasetDetailResponse
 
 export const zPatchWorkspacesByWorkspaceIdDatasetsByDatasetIdBody = zDatasetUpdatePayload
 
@@ -4421,7 +4443,7 @@ export const zPatchWorkspacesByWorkspaceIdDatasetsByDatasetIdPath = z.object({
 /**
  * Knowledge base updated
  */
-export const zPatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse = zDatasetResponse
+export const zPatchWorkspacesByWorkspaceIdDatasetsByDatasetIdResponse = zDatasetDetailResponse
 
 export const zGetWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentBatchesByBatchPath = z.object({
   batch: z.string(),
@@ -4489,7 +4511,7 @@ export const zPostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentI
  * Document updated
  */
 export const zPostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
-  zDocumentAndBatchResponse
+  zDocumentUpdateResponse
 
 export const zPostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextBody =
   zDocumentCreateByTextPayload

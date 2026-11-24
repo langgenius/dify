@@ -1740,7 +1740,7 @@ knowledge API instead of indexing documents locally.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Knowledge base | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| 200 | Knowledge base | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [PATCH] /workspaces/{workspace_id}/datasets/{dataset_id}
@@ -1768,7 +1768,7 @@ whole index and is not exposed here.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Knowledge base updated | **application/json**: [DatasetResponse](#datasetresponse)<br> |
+| 200 | Knowledge base updated | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1852,8 +1852,8 @@ whole index and is not exposed here.
 ### [POST] /workspaces/{workspace_id}/datasets/{dataset_id}/documents/{document_id}:updateByText
 **Replace a document's content and re-index it**
 
-Fields left out keep
-their current values; providing `text` replaces the document body.
+Poll the document by ID
+to track indexing; its original import batch does not track this update.
 
 #### Parameters
 
@@ -1873,7 +1873,7 @@ their current values; providing `text` replaces the document body.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document updated | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 200 | Document updated | **application/json**: [DocumentUpdateResponse](#documentupdateresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -3677,9 +3677,28 @@ Button styles for user actions.
 | external_knowledge_id | string | External knowledge base id (required when `provider` is `external`). | No |
 | indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | `high_quality` uses embedding models; `economy` uses keyword indexing. | No |
 | name | string | Knowledge base name | Yes |
-| permission | [DatasetPermission](#datasetpermission) | `only_me` restricts to the creator, `all_team_members` grants workspace access, `partial_members` grants access to `partial_member_list` members. | No |
+| permission | [DatasetPermission](#datasetpermission) | Legacy dataset permission. Only `only_me` and `all_team_members` are supported when RBAC is disabled. Ignored when RBAC is enabled. | No |
 | provider | [DatasetProvider](#datasetprovider) | `vendor` for internal knowledge bases, `external` for external ones. | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
+
+#### DatasetDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| description | string |  | Yes |
+| embedding_model | string |  | Yes |
+| embedding_model_provider | string |  | Yes |
+| external_knowledge_api_id | string |  | Yes |
+| external_knowledge_id | string |  | Yes |
+| id | string |  | Yes |
+| indexing_technique | string |  | Yes |
+| name | string |  | Yes |
+| partial_member_list | [ string ] | Member IDs for a legacy partial-members knowledge base; null when not applicable. | No |
+| permission | string |  | Yes |
+| provider | string |  | Yes |
+| retrieval_model | object |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### DatasetIndexingTechnique
 
@@ -3759,11 +3778,11 @@ they are absent here and rejected as unknown fields.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| external_knowledge_api_id | string | External knowledge API id; required on every update of an external knowledge base. | No |
-| external_knowledge_id | string | External knowledge base id; required on every update of an external knowledge base. | No |
+| external_knowledge_api_id | string | External knowledge API id. Omit to keep the current binding. | No |
+| external_knowledge_id | string | External knowledge base id. Omit to keep the current binding. | No |
 | external_retrieval_model | object | Retrieval model configuration for external knowledge bases as a JSON object. | No |
 | icon_info | object | Icon metadata as a JSON object. | No |
-| name | string |  | No |
+| name | string | Knowledge base name. Omit to keep the current name. | No |
 | partial_member_list | [ [DatasetPartialMemberPayload](#datasetpartialmemberpayload) ] | Member ids granted access when `permission` is `partial_members`. | No |
 | permission | [DatasetPermission](#datasetpermission) |  | No |
 | retrieval_model | object | Retrieval model configuration as a JSON object. | No |
@@ -3964,14 +3983,15 @@ Chunking shape of a document.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | doc_form | [DocumentForm](#documentform) | `text_model` for standard chunking, `hierarchical_model` for parent-child, `qa_model` for question-answer pairs. Defaults to the knowledge base's form. | No |
-| doc_language | string | Language of the document. | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| indexing_technique | [DatasetIndexingTechnique](#datasetindexingtechnique) | Required for the first document when the knowledge base has no technique; later documents inherit the knowledge base's. | No |
 | name | string | Document name. | No |
 | process_rule | object | Processing rules for chunking as a JSON object. | No |
-| retrieval_model | object | Retrieval model configuration. | No |
 | text | string | Document text content. | No |
+
+#### DocumentUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document | [DocumentResponse](#documentresponse) |  | Yes |
 
 #### DraftWorkflowRunPayload
 

@@ -2172,13 +2172,13 @@ export const documentBatches = {
 /**
  * Replace a document's content and re-index it
  *
- * Fields left out keep
- * their current values; providing `text` replaces the document body.
+ * Poll the document by ID
+ * to track indexing; its original import batch does not track this update.
  */
 export const post28 = oc
   .route({
     description:
-      'Fields left out keep\ntheir current values; providing `text` replaces the document body.',
+      'Poll the document by ID\nto track indexing; its original import batch does not track this update.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText',

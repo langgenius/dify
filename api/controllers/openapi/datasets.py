@@ -10,6 +10,7 @@ from typing import Any, Final
 from flask_restx import Resource
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
+from configs import dify_config
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import DatasetId, RBACCheck, RBACPermission
@@ -17,8 +18,10 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._models import (
     DatasetCreatePayload,
+    DatasetDetailResponse,
     DatasetListQuery,
     DatasetListResponse,
+    DatasetPermission,
     DatasetResponse,
     DatasetUpdatePayload,
     DocumentAndBatchResponse,
@@ -30,6 +33,7 @@ from controllers.openapi._models import (
     DocumentListResponse,
     DocumentResponse,
     DocumentUpdateByTextPayload,
+    DocumentUpdateResponse,
 )
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
@@ -168,6 +172,13 @@ def _dataset_row(record: Mapping[str, Any]) -> DatasetResponse:
     )
 
 
+def _dataset_detail_row(record: Mapping[str, Any]) -> DatasetDetailResponse:
+    return DatasetDetailResponse(
+        **_dataset_row(record).model_dump(),
+        partial_member_list=None if dify_config.RBAC_ENABLED else record.get("partial_member_list"),
+    )
+
+
 def _display_status(record: Mapping[str, Any]) -> str | None:
     """The public document status vocabulary shared with the legacy service API."""
     status = record.get("display_status")
@@ -214,18 +225,19 @@ def _document_settings(
     settings: dict[str, Any] = {
         "name": body.name,
         "doc_form": body.doc_form or defaults.get("doc_form") or "text_model",
-        "doc_language": body.doc_language or "English",
-        "indexing_technique": body.indexing_technique or defaults.get("indexing_technique"),
+        "indexing_technique": defaults.get("indexing_technique"),
+        "process_rule": body.process_rule,
     }
+    if isinstance(body, DocumentCreateByTextPayload):
+        settings.update(
+            doc_language=body.doc_language or "English",
+            indexing_technique=body.indexing_technique or settings["indexing_technique"],
+            retrieval_model=body.retrieval_model,
+            embedding_model=body.embedding_model,
+            embedding_model_provider=body.embedding_model_provider,
+        )
     if settings["indexing_technique"] is None:
         raise BadRequest("indexing_technique is required for the first document of a knowledge base.")
-    extra_settings = {
-        "process_rule": body.process_rule,
-        "retrieval_model": body.retrieval_model,
-        "embedding_model": body.embedding_model,
-        "embedding_model_provider": body.embedding_model_provider,
-    }
-    settings.update({key: value for key, value in extra_settings.items() if value is not None})
     if original_document_id is not None:
         settings["original_document_id"] = original_document_id
     else:
@@ -302,10 +314,15 @@ class DatasetsApi(Resource):
     def post(self, ctx: Context, workspace_id: str, *, body: DatasetCreatePayload):
         """Create an empty knowledge base. `provider=external` binds an external
         knowledge API instead of indexing documents locally."""
+        if not dify_config.RBAC_ENABLED and body.permission == DatasetPermission.PARTIAL_MEMBERS:
+            raise BadRequest("partial_members is not supported when creating a dataset.")
         # `exclude_none` keeps schema defaults (description, permission,
         # provider) while dropping unset optional fields; `create_empty_dataset`
         # requires `description` even when the client omits it.
         values = body.model_dump(exclude_none=True, exclude={"retrieval_model"})
+        # RBAC owns dataset access; the legacy permission value is inert there.
+        if dify_config.RBAC_ENABLED:
+            values.pop("permission", None)
         # The legacy adapter takes `indexing_technique` as an argument even when null.
         values["indexing_technique"] = body.indexing_technique
         if "embedding_model" in values:
@@ -327,13 +344,13 @@ class DatasetApi(Resource):
         summary="One knowledge base",
         examples=(Example(title="Read a knowledge base", input={"dataset_id": "<dataset_id>"}),),
         requirements=_DATASET_READ_GUARDS,
-        returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base"),
+        returns=(HTTPStatus.OK, DatasetDetailResponse, "Knowledge base"),
     )
     def get(self, ctx: Context, workspace_id: str, dataset_id: str):
         """Read one knowledge base by id."""
         with _dataset_errors():
             result = application_services().knowledge.datasets.get_dataset(ctx.request_context, dataset_id=dataset_id)
-        return _dataset_row(result)
+        return _dataset_detail_row(result)
 
     @endpoint(
         op="set.dataset",
@@ -345,7 +362,7 @@ class DatasetApi(Resource):
         ),
         requirements=_DATASET_UPDATE_GUARDS,
         body=DatasetUpdatePayload,
-        returns=(HTTPStatus.OK, DatasetResponse, "Knowledge base updated"),
+        returns=(HTTPStatus.OK, DatasetDetailResponse, "Knowledge base updated"),
     )
     def patch(self, ctx: Context, workspace_id: str, dataset_id: str, *, body: DatasetUpdatePayload):
         """Update a knowledge base. Only the fields present in the body change.
@@ -354,13 +371,18 @@ class DatasetApi(Resource):
         whole index and is not exposed here.
         """
         values = body.model_dump(exclude_unset=True)
+        if dify_config.RBAC_ENABLED:
+            values.pop("permission", None)
+            values.pop("partial_member_list", None)
+        elif (body.permission == DatasetPermission.PARTIAL_MEMBERS) != (body.partial_member_list is not None):
+            raise BadRequest("partial_member_list must be supplied exactly when permission is partial_members")
         with _dataset_errors():
             result = application_services().knowledge.datasets.update_dataset(
                 ctx.request_context,
                 dataset_id=dataset_id,
                 values=values,
             )
-        return _dataset_row(result)
+        return _dataset_detail_row(result)
 
     @endpoint(
         op="delete.dataset",
@@ -506,18 +528,15 @@ class DocumentUpdateByTextApi(Resource):
         ),
         requirements=_DOCUMENT_UPDATE_GUARDS,
         body=DocumentUpdateByTextPayload,
-        returns=(HTTPStatus.OK, DocumentAndBatchResponse, "Document updated"),
+        returns=(HTTPStatus.OK, DocumentUpdateResponse, "Document updated"),
     )
     def post(
         self, ctx: Context, workspace_id: str, dataset_id: str, document_id: str, *, body: DocumentUpdateByTextPayload
     ):
-        """Replace a document's content and re-index it. Fields left out keep
-        their current values; providing `text` replaces the document body."""
+        """Replace a document's content and re-index it. Poll the document by ID
+        to track indexing; its original import batch does not track this update."""
         result = _create_documents(ctx, dataset_id, body, original_document_id=document_id)
-        return DocumentAndBatchResponse(
-            document=_document_row(result["documents"][0], dataset_id=dataset_id),
-            batch=result["batch"],
-        )
+        return DocumentUpdateResponse(document=_document_row(result["documents"][0], dataset_id=dataset_id))
 
 
 @openapi_ns.route(_DOCUMENT_BATCH)
