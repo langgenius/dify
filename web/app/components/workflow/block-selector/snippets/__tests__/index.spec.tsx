@@ -15,10 +15,10 @@ import Snippets from '../index'
 const requests = vi.hoisted(() => ({ list: vi.fn(), increment: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.customizedSnippets.get': requests.list,
       'workspaces.current.customizedSnippets.bySnippetId.useCount.increment.post':
         requests.increment,
@@ -131,7 +131,9 @@ it('keeps cached rows visible while the current search refreshes', async () => {
   await screen.findByRole('button', { name: /Customer Review/ })
   requests.list.mockReturnValue(pending.promise)
   act(() => {
-    void queryClient.invalidateQueries({ queryKey: ['snippets', 'list'] })
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.customizedSnippets.get.key(),
+    })
   })
   await waitFor(() => expect(queryClient.isFetching()).toBe(1))
   expect(screen.getByRole('button', { name: /Customer Review/ })).toBeInTheDocument()

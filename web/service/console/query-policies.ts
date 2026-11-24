@@ -382,6 +382,92 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       },
       workspaces: {
         current: {
+          customizedSnippets: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.snippets.key(),
+                  })
+                },
+              },
+            },
+            bySnippetId: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              useCount: {
+                increment: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) => {
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                        })
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.snippets.key(),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            imports: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.snippets.key(),
+                    })
+                  },
+                },
+              },
+              byImportId: {
+                confirm: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _onMutateResult, context) => {
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
+                        })
+                        void context.client.invalidateQueries({
+                          queryKey: consoleQuery.snippets.key(),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           humanInput: {
             v2: {
               contacts: {
@@ -2488,6 +2574,38 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           workflows: {
+            publish: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _onMutateResult, context) =>
+                    Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
+                          type: 'query',
+                          input: { params: { snippet_id: variables.params.snippet_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
+                          type: 'query',
+                          input: { params: { snippet_id: variables.params.snippet_id } },
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.get.key({
+                          type: 'query',
+                        }),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey:
+                          consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key(
+                            { type: 'query' },
+                          ),
+                      }),
+                    ]),
+                },
+              },
+            },
             byWorkflowId: {
               patch: {
                 mutationOptions: {

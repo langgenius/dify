@@ -42,28 +42,6 @@ export type SnippetListResponse = {
   has_more: boolean
 }
 
-export type CreateSnippetPayload = {
-  name: string
-  description?: string
-  type?: SnippetType
-  graph?: Record<string, unknown>
-  input_fields?: SnippetInputField[]
-}
-
-export type UpdateSnippetPayload = {
-  name?: string
-  description?: string
-}
-
-export type SnippetImportPayload = {
-  mode: string
-  yaml_content?: string
-  yaml_url?: string
-  snippet_id?: string
-  name?: string
-  description?: string
-}
-
 export type SnippetDSLImportResponse = {
   id: string
   status: string
@@ -71,11 +49,6 @@ export type SnippetDSLImportResponse = {
   current_dsl_version: string
   imported_dsl_version: string
   error: string
-}
-
-export type IncrementSnippetUseCountResponse = {
-  result: string
-  use_count: number
 }
 
 export type SnippetWorkflow = {
@@ -99,11 +72,6 @@ export type SnippetDraftSyncResponse = {
   result: string
   hash: string
   updated_at: number
-}
-
-export type PublishSnippetWorkflowResponse = {
-  result: string
-  created_at: number
 }
 
 export type SnippetDraftRunPayload = {

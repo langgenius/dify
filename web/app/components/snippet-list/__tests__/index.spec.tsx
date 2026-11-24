@@ -5,6 +5,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { SnippetDetailTop } from '@/app/components/snippets/components/snippet-detail-top'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { runDebouncedUserInteraction } from '@/test/debounce'
 import { createDeferred } from '@/test/deferred'
@@ -27,9 +28,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'tagBindings.post': mockBindTags,
-      'workspaces.current.customizedSnippets.get': listSnippets,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.get': listSnippets,
       'workspaces.current.members.get': async () => ({
         accounts: [
           { id: 'creator-1', name: 'Alice', avatar_url: null, status: 'active' },
@@ -381,7 +382,9 @@ it('announces kept-data refreshes when the result count stays the same', async (
   await salesCard()
   const status = screen.getByRole('status')
   act(() => {
-    void queryClient.invalidateQueries({ queryKey: ['snippets', 'list'] })
+    void queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.customizedSnippets.get.key(),
+    })
   })
   await waitFor(() => expect(status).toHaveTextContent('common.loading'))
   expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
