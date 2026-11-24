@@ -27,32 +27,6 @@ import { createDeferred } from '@/test/deferred'
 import BasePanel from '../index'
 
 const api = vi.hoisted(() => ({ run: vi.fn(), lastRun: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
-  return {
-    ...actual,
-    get: <T,>(...args: Parameters<typeof actual.get>): Promise<T> => {
-      if (args[0].startsWith('/workspaces/current/tool-provider/builtin/Tool/credential/info')) {
-        return Promise.resolve({
-          supported_credential_types: ['api-key'],
-          allow_custom_token: true,
-          is_oauth_custom_client_enabled: false,
-          credentials: [
-            {
-              id: 'credential-1',
-              name: 'Production key',
-              provider: 'Tool',
-              credential_type: 'api-key',
-              is_default: true,
-              credentials: {},
-            },
-          ],
-        } as T)
-      }
-      return actual.get<T>(...args)
-    },
-  }
-})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
@@ -67,6 +41,29 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': async ({
+        params,
+      }: {
+        params: { provider: string }
+      }) => {
+        if (params.provider !== 'Tool')
+          throw new Error(`Unexpected credential provider: ${params.provider}`)
+        return {
+          supported_credential_types: ['api-key'],
+          allow_custom_token: true,
+          is_oauth_custom_client_enabled: false,
+          credentials: [
+            {
+              id: 'credential-1',
+              name: 'Production key',
+              provider: 'Tool',
+              credential_type: 'api-key',
+              is_default: true,
+              credentials: {},
+            },
+          ],
+        }
+      },
       'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': api.lastRun,
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
