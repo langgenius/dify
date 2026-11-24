@@ -36,7 +36,7 @@ export default function PublishedAppCard({ app, dialog }: Props) {
         handle={dialog}
         payload={app.id}
         aria-label={app.app.name}
-        className="text-start outline-hidden after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid"
+        className="text-start outline-hidden after:absolute after:inset-0 after:rounded-xl focus-visible:ring-0 focus-visible:after:inset-ring-2 focus-visible:after:inset-ring-state-accent-solid"
       >
         <AppCardSummary app={app.app} />
       </DialogTrigger>

@@ -5,6 +5,7 @@ import type {
   InstalledAppResponse,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -137,6 +138,26 @@ beforeEach(() => {
     )
     return { result: 'success', message: 'updated' }
   })
+})
+
+it('shows a single card focus ring and moves the focus indicator to the star on Tab', async () => {
+  const screen = await renderPublished()
+  const card = screen.getByRole('button', { name: 'Assistant first', exact: true })
+  const star = screen.getByRole('button', {
+    name: 'app.endUser.starApp:{"name":"Assistant first"}',
+  })
+  await expect.element(card).toBeVisible()
+  screen.getByRole('combobox', { name: 'app.studio.sort.sortBy' }).element().focus()
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(card).toHaveFocus()
+  expect(getComputedStyle(card.element()).boxShadow).not.toContain('0px 0px 0px 2px')
+  expect(getComputedStyle(card.element(), '::after').boxShadow).toContain('inset')
+
+  await userEvent.keyboard('{Tab}')
+  await expect.element(star).toHaveFocus()
+  expect(getComputedStyle(card.element(), '::after').boxShadow).toBe('none')
+  expect(getComputedStyle(star.element()).boxShadow).not.toBe('none')
 })
 
 it('opens the selected installed app in a dialog and restores focus to its card on close', async () => {
