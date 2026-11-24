@@ -11,7 +11,9 @@ and realistic testing scenarios with actual PostgreSQL and Redis instances.
 """
 
 import logging
-from unittest.mock import MagicMock, patch
+from collections.abc import Iterator
+from typing import NamedTuple
+from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
@@ -22,6 +24,11 @@ from libs.email_i18n import EmailType
 from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from tasks.mail_email_code_login import send_email_code_login_mail_task
+
+
+class ExternalServiceMocks(NamedTuple):
+    is_inited: Mock
+    send_email: Mock
 
 
 class TestSendEmailCodeLoginMailTask:
@@ -40,7 +47,7 @@ class TestSendEmailCodeLoginMailTask:
     """
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, db_session_with_containers: Session) -> None:
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
@@ -54,27 +61,23 @@ class TestSendEmailCodeLoginMailTask:
         redis_client.flushdb()
 
     @pytest.fixture
-    def mock_external_service_dependencies(self):
+    def mock_external_service_dependencies(self) -> Iterator[ExternalServiceMocks]:
         """Mock setup for external service dependencies."""
         with (
             patch("tasks.mail_email_code_login.mail", autospec=True) as mock_mail,
             patch("tasks.mail_email_code_login.get_email_i18n_service", autospec=True) as mock_email_service,
         ):
             # Setup default mock returns
-            mock_mail.is_inited.return_value = True
+            is_inited: Mock = mock_mail.is_inited
+            is_inited.return_value = True
 
             # Mock email service
-            mock_email_service_instance = MagicMock()
-            mock_email_service_instance.send_email.return_value = None
-            mock_email_service.return_value = mock_email_service_instance
+            send_email: Mock = mock_email_service.return_value.send_email
+            send_email.return_value = None
 
-            yield {
-                "mail": mock_mail,
-                "email_service": mock_email_service,
-                "email_service_instance": mock_email_service_instance,
-            }
+            yield ExternalServiceMocks(is_inited=is_inited, send_email=send_email)
 
-    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None) -> Account:
         """
         Helper method to create a test account for testing.
 
@@ -101,7 +104,9 @@ class TestSendEmailCodeLoginMailTask:
 
         return account
 
-    def _create_test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_tenant_and_account(
+        self, db_session_with_containers: Session, fake: Faker | None = None
+    ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test tenant and account for testing.
 
@@ -141,8 +146,8 @@ class TestSendEmailCodeLoginMailTask:
         return account, tenant
 
     def test_send_email_code_login_mail_task_success_english(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test successful email code login mail sending in English.
 
@@ -167,14 +172,14 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Assert: Verify expected outcomes
-        mock_mail = mock_external_service_dependencies["mail"]
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_is_inited = mock_external_service_dependencies.is_inited
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify mail service was checked for initialization
-        mock_mail.is_inited.assert_called_once()
+        mock_is_inited.assert_called_once()
 
         # Verify email service was called with correct parameters
-        mock_email_service_instance.send_email.assert_called_once_with(
+        mock_send_email.assert_called_once_with(
             email_type=EmailType.EMAIL_CODE_LOGIN,
             language_code=test_language,
             to=test_email,
@@ -185,8 +190,8 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_success_chinese(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test successful email code login mail sending in Chinese.
 
@@ -210,10 +215,10 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Assert: Verify expected outcomes
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify email service was called with Chinese language
-        mock_email_service_instance.send_email.assert_called_once_with(
+        mock_send_email.assert_called_once_with(
             email_type=EmailType.EMAIL_CODE_LOGIN,
             language_code=test_language,
             to=test_email,
@@ -224,8 +229,8 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_success_multiple_languages(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test successful email code login mail sending with multiple languages.
 
@@ -250,22 +255,22 @@ class TestSendEmailCodeLoginMailTask:
             )
 
         # Assert: Verify expected outcomes
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify email service was called for each language
-        assert mock_email_service_instance.send_email.call_count == len(test_languages)
+        assert mock_send_email.call_count == len(test_languages)
 
         # Verify each call had correct parameters
         for i, language in enumerate(test_languages):
-            call_args = mock_email_service_instance.send_email.call_args_list[i]
+            call_args = mock_send_email.call_args_list[i]
             assert call_args[1]["email_type"] == EmailType.EMAIL_CODE_LOGIN
             assert call_args[1]["language_code"] == language
             assert call_args[1]["to"] == test_emails[i]
             assert call_args[1]["template_context"]["code"] == test_codes[i]
 
     def test_send_email_code_login_mail_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task when mail service is not initialized.
 
@@ -282,8 +287,8 @@ class TestSendEmailCodeLoginMailTask:
         test_language = "en-US"
 
         # Mock mail service as not initialized
-        mock_mail = mock_external_service_dependencies["mail"]
-        mock_mail.is_inited.return_value = False
+        mock_is_inited = mock_external_service_dependencies.is_inited
+        mock_is_inited.return_value = False
 
         # Act: Execute the task
         send_email_code_login_mail_task(
@@ -293,17 +298,17 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Assert: Verify expected outcomes
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify mail service was checked for initialization
-        mock_mail.is_inited.assert_called_once()
+        mock_is_inited.assert_called_once()
 
         # Verify email service was not called
-        mock_email_service_instance.send_email.assert_not_called()
+        mock_send_email.assert_not_called()
 
     def test_send_email_code_login_mail_task_email_service_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task when email service raises an exception.
 
@@ -320,8 +325,9 @@ class TestSendEmailCodeLoginMailTask:
         test_language = "en-US"
 
         # Mock email service to raise an exception
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
-        mock_email_service_instance.send_email.side_effect = Exception("Email service unavailable")
+        mock_is_inited = mock_external_service_dependencies.is_inited
+        mock_send_email = mock_external_service_dependencies.send_email
+        mock_send_email.side_effect = Exception("Email service unavailable")
 
         # Act: Execute the task - it should handle the exception gracefully
         send_email_code_login_mail_task(
@@ -330,15 +336,11 @@ class TestSendEmailCodeLoginMailTask:
             code=test_code,
         )
 
-        # Assert: Verify expected outcomes
-        mock_mail = mock_external_service_dependencies["mail"]
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
-
         # Verify mail service was checked for initialization
-        mock_mail.is_inited.assert_called_once()
+        mock_is_inited.assert_called_once()
 
         # Verify email service was called (and failed)
-        mock_email_service_instance.send_email.assert_called_once_with(
+        mock_send_email.assert_called_once_with(
             email_type=EmailType.EMAIL_CODE_LOGIN,
             language_code=test_language,
             to=test_email,
@@ -349,8 +351,8 @@ class TestSendEmailCodeLoginMailTask:
         )
 
     def test_send_email_code_login_mail_task_invalid_parameters(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task with invalid parameters.
 
@@ -375,24 +377,28 @@ class TestSendEmailCodeLoginMailTask:
 
         for test_case in invalid_test_cases:
             # Reset mocks for each test case
-            mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
-            mock_email_service_instance.reset_mock()
+            mock_send_email = mock_external_service_dependencies.send_email
+            mock_send_email.reset_mock()
 
             # Act: Execute the task with invalid parameters
-            send_email_code_login_mail_task(
-                language=test_language,
-                to=test_case["email"],
-                code=test_case["code"],
+            send_email_code_login_mail_task.apply(
+                kwargs={"language": test_language, "to": test_case["email"], "code": test_case["code"]},
+                throw=True,
             )
 
             # Assert: Verify that email service was still called
             # The task should pass parameters to email service as-is
             # and let the email service handle validation
-            mock_email_service_instance.send_email.assert_called_once()
+            mock_send_email.assert_called_once_with(
+                email_type=EmailType.EMAIL_CODE_LOGIN,
+                language_code=test_language,
+                to=test_case["email"],
+                template_context={"to": test_case["email"], "code": test_case["code"]},
+            )
 
     def test_send_email_code_login_mail_task_edge_cases(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task with edge cases and boundary conditions.
 
@@ -432,8 +438,8 @@ class TestSendEmailCodeLoginMailTask:
 
         for test_case in edge_cases:
             # Reset mocks for each test case
-            mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
-            mock_email_service_instance.reset_mock()
+            mock_send_email = mock_external_service_dependencies.send_email
+            mock_send_email.reset_mock()
 
             # Act: Execute the task with edge case data
             send_email_code_login_mail_task(
@@ -443,7 +449,7 @@ class TestSendEmailCodeLoginMailTask:
             )
 
             # Assert: Verify that email service was called with edge case data
-            mock_email_service_instance.send_email.assert_called_once_with(
+            mock_send_email.assert_called_once_with(
                 email_type=EmailType.EMAIL_CODE_LOGIN,
                 language_code=test_language,
                 to=test_case["email"],
@@ -454,8 +460,8 @@ class TestSendEmailCodeLoginMailTask:
             )
 
     def test_send_email_code_login_mail_task_database_integration(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, db_session_with_containers: Session, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task with database integration.
 
@@ -481,10 +487,10 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Assert: Verify expected outcomes
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify email service was called with database account email
-        mock_email_service_instance.send_email.assert_called_once_with(
+        mock_send_email.assert_called_once_with(
             email_type=EmailType.EMAIL_CODE_LOGIN,
             language_code=test_language,
             to=test_email,
@@ -500,8 +506,8 @@ class TestSendEmailCodeLoginMailTask:
         assert account.status == "active"
 
     def test_send_email_code_login_mail_task_redis_integration(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+        self, mock_external_service_dependencies: ExternalServiceMocks
+    ) -> None:
         """
         Test email code login mail task with Redis integration.
 
@@ -531,10 +537,10 @@ class TestSendEmailCodeLoginMailTask:
         )
 
         # Assert: Verify expected outcomes
-        mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
+        mock_send_email = mock_external_service_dependencies.send_email
 
         # Verify email service was called
-        mock_email_service_instance.send_email.assert_called_once()
+        mock_send_email.assert_called_once()
 
         # Verify Redis cache is still accessible
         assert redis_client.exists(cache_key) == 1
@@ -545,10 +551,9 @@ class TestSendEmailCodeLoginMailTask:
 
     def test_send_email_code_login_mail_task_error_handling_comprehensive(
         self,
-        db_session_with_containers: Session,
-        mock_external_service_dependencies,
+        mock_external_service_dependencies: ExternalServiceMocks,
         caplog: pytest.LogCaptureFixture,
-    ):
+    ) -> None:
         """
         Test comprehensive error handling for email code login mail task.
 
@@ -577,9 +582,9 @@ class TestSendEmailCodeLoginMailTask:
         for error_name, exception in exception_types:
             # Reset mocks for each test case
             caplog.clear()
-            mock_email_service_instance = mock_external_service_dependencies["email_service_instance"]
-            mock_email_service_instance.reset_mock()
-            mock_email_service_instance.send_email.side_effect = exception
+            mock_send_email = mock_external_service_dependencies.send_email
+            mock_send_email.reset_mock()
+            mock_send_email.side_effect = exception
 
             # Act: Execute the task - it should handle the exception gracefully
             send_email_code_login_mail_task(
@@ -590,7 +595,7 @@ class TestSendEmailCodeLoginMailTask:
 
             # Assert: Verify error handling
             # Verify email service was called (and failed)
-            mock_email_service_instance.send_email.assert_called_once()
+            mock_send_email.assert_called_once()
 
             # Verify error was logged
             assert f"Send email code login mail to {test_email} failed" in caplog.messages, (
@@ -598,4 +603,4 @@ class TestSendEmailCodeLoginMailTask:
             )
 
             # Reset side effect for next iteration
-            mock_email_service_instance.send_email.side_effect = None
+            mock_send_email.side_effect = None
