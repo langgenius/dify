@@ -1,11 +1,14 @@
 import type { AdvancedPromptTemplateResponse } from '@dify/contracts/api/console/app/types.gen'
-import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type {
+  AppMode,
+  PostAppsByAppIdCompletionMessagesData,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { PostInstructionGenerateData } from '@dify/contracts/api/console/instruction-generate/types.gen'
 import type { PostRuleGenerateData } from '@dify/contracts/api/console/rule-generate/types.gen'
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './event-stream'
 import type { Model, ModelModeType } from '@/types/app'
-import { ssePost } from './base'
 import { consoleClient } from './console'
+import { streamEvents } from './event-stream'
 
 export type GenRes = {
   modified: string
@@ -59,14 +62,19 @@ export const sendCompletionMessage = async (
     onNotifyError?: IOnError
   },
 ) => {
-  return ssePost(
-    `apps/${appId}/completion-messages`,
-    {
-      body: {
-        ...body,
-        response_mode: 'streaming',
-      },
-    },
+  return streamEvents(
+    (options) =>
+      consoleClient.apps.byAppId.completionMessages.post(
+        {
+          params: { app_id: appId },
+          // The debugger builds the body from the editable model config.
+          body: {
+            ...body,
+            response_mode: 'streaming',
+          } as PostAppsByAppIdCompletionMessagesData['body'],
+        },
+        options,
+      ),
     handlers,
   )
 }

@@ -47,6 +47,20 @@ vi.mock('@/service/base', async (importOriginal) => ({
   ssePost: api.stream,
   upload: api.upload,
 }))
+// Completion requests use the generated client stream; record them with the chat stream calls.
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  sendCompletionMessage: (
+    appId: string,
+    body: Record<string, unknown>,
+    handlers: Parameters<typeof import('@/service/debug').sendCompletionMessage>[2],
+  ) =>
+    api.stream(
+      `apps/${appId}/completion-messages`,
+      { body: { ...body, response_mode: 'streaming' } },
+      handlers,
+    ),
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')

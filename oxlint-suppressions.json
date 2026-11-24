@@ -3326,14 +3326,6 @@
       "count": 1
     }
   },
-  "web/service/debug.ts": {
-    "no-restricted-imports": {
-      "count": 2
-    },
-    "typescript/no-deprecated": {
-      "count": 1
-    }
-  },
   "web/service/device-flow.ts": {
     "no-restricted-globals": {
       "count": 5
@@ -3426,14 +3418,6 @@
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
-    }
-  },
-  "web/service/workflow-generator.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 1
     }
   },
   "web/types/assets.d.ts": {
