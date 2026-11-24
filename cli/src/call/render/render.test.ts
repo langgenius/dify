@@ -75,6 +75,26 @@ it('sse exit code follows the fold in both modes', async () => {
   expect(await render('sse', sse(events), { stream: true }).code).toBe(1)
 })
 
+it('sse stops emitting buffered events when interrupted during a write', async () => {
+  const controller = new AbortController()
+  const buf = bufferStreams()
+  const io = ioService(buf)
+  const first = { event: 'message', answer: 'first' }
+  const res = sse([first, { event: 'message_end', message_id: 'm' }])
+  const interruptingIo = {
+    ...io,
+    async raw(chunk: string | Buffer) {
+      await io.raw(chunk)
+      controller.abort()
+    },
+  }
+
+  const render = rendererFor('sse', io)
+  expect(await render(res, interruptingIo, { stream: true }, OP_ID, controller.signal)).toBe(0)
+  expect(buf.outBuf()).toBe(`${JSON.stringify(first)}\n`)
+  expect(buf.errBuf()).toContain('stream ended early')
+})
+
 it('unknown kind renders as object with one warning line', async () => {
   const r = render('hologram', Response.json({ z: 1 }))
   expect(await r.code).toBe(0)

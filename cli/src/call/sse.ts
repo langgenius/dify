@@ -42,7 +42,10 @@ export async function* parseSSE(
       }
       parser.feed(dec.decode(next.value, { stream: true }))
       // Drain this chunk before reading more from the response.
-      yield* queue
+      for (const event of queue) {
+        signal?.throwIfAborted()
+        yield event
+      }
       queue.length = 0
     }
   } finally {

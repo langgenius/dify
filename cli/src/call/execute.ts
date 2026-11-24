@@ -79,6 +79,6 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
     signal,
   }))
 
-  const code = await rendererFor(req.op.kind, out)(res, out, req.flags, req.id)
+  const code = await rendererFor(req.op.kind, out)(res, out, req.flags, req.id, signal)
   return new Outcome(code)
 }

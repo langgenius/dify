@@ -14,6 +14,7 @@ export type Renderer = (
   io: IOService,
   flags: CallFlags,
   opId: string,
+  signal?: AbortSignal,
 ) => Promise<ExitCodeValue>
 
 const RENDERERS: Readonly<Record<Kind, Renderer>> = {
