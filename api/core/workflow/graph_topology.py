@@ -130,11 +130,7 @@ def _parse_nodes(raw_nodes: JsonValue) -> list[WorkflowGraphNode]:
     """
     if not isinstance(raw_nodes, list):
         return []
-    return [
-        node
-        for raw_node in raw_nodes
-        if (node := _parse_workflow_graph_node(raw_node)) is not None
-    ]
+    return [node for raw_node in raw_nodes if (node := _parse_workflow_graph_node(raw_node)) is not None]
 
 
 def _parse_edges(raw_edges: JsonValue) -> list[WorkflowGraphEdge]:
@@ -146,11 +142,7 @@ def _parse_edges(raw_edges: JsonValue) -> list[WorkflowGraphEdge]:
     """
     if not isinstance(raw_edges, list):
         return []
-    return [
-        edge
-        for raw_edge in raw_edges
-        if (edge := _parse_workflow_graph_edge(raw_edge)) is not None
-    ]
+    return [edge for raw_edge in raw_edges if (edge := _parse_workflow_graph_edge(raw_edge)) is not None]
 
 
 class WorkflowGraphTopology:
