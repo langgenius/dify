@@ -3426,12 +3426,6 @@
   "web/service/webapp-auth.ts": {
     "no-restricted-globals": {
       "count": 6
-    },
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 2
     }
   },
   "web/service/workflow-generator.ts": {
