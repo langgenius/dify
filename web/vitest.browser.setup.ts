@@ -1,5 +1,6 @@
 import { vi } from 'vite-plus/test'
 import { page, server, userEvent } from 'vite-plus/test/browser'
+import { cleanup } from 'vitest-browser-react'
 import { consoleErrorAllowlist } from './test/console-error-allowlist'
 import './app/styles/globals.css'
 
@@ -53,6 +54,14 @@ afterEach(({ task }) => {
   const messages = errors.map((args) => args.map((arg) => String(arg)).join(' ')).join('\n\n')
   throw new Error(`Test logged console.error:\n\n${messages}`)
 })
+
+// Unmount rendered trees when the test ends rather than when the next one starts. A tree left
+// mounted keeps re-rendering after the spec's `onTestFinished` cleanups (such as clearing its query
+// client) and after the fake API restores the real transports, so its refetches reach a missing
+// handler or the real network and fail this or the next test. `afterEach` hooks run in reverse, so
+// this runs before the guard above and its errors stay with this test. Failure screenshots are
+// taken before `afterEach`.
+afterEach(cleanup)
 
 // Tests in one file share a page, so the viewport and pointer position outlive the test that set them.
 beforeEach(async () => {
