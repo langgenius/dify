@@ -7,6 +7,7 @@ import { toast } from '@/app/notifications'
 import en from '@/i18n/locales/en-US/common.json'
 import ja from '@/i18n/locales/ja-JP/common.json'
 import zh from '@/i18n/locales/zh-Hans/common.json'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { renderWithTags } from '@/test/tag-management'
 import { TagManagementDialog } from '../tag-management-dialog'
 import { TagSelector } from '../tag-selector'
@@ -14,36 +15,29 @@ import { TagSelector } from '../tag-selector'
 vi.unmock('react-i18next')
 
 const locales = { 'en-US': en, 'ja-JP': ja, 'zh-Hans': zh }
+const duplicateNameError = () =>
+  apiError({ status: 400, code: 'invalid_param', message: 'Tag name already exists' })
 const original: TagResponse = {
   id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
   name: 'Original',
   type: 'agent',
   binding_count: '2',
 }
-// Exercise the real Console transport, including suppression of its default error toast.
-function installTagApi() {
-  const writes: Array<{ method: string; name: string }> = []
-  let saved = original
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-    const request = new Request(input, init)
-    const { pathname } = new URL(request.url)
-    if (request.method === 'GET' && pathname.endsWith('/tags')) return Response.json([saved])
-    const create = request.method === 'POST' && pathname.endsWith('/tags')
-    const rename = request.method === 'PATCH' && pathname.endsWith(`/tags/${original.id}`)
-    if (!create && !rename) throw new Error(`Unexpected request: ${request.method} ${pathname}`)
-    const { name } = (await request.json()) as { name: string }
-    writes.push({ method: request.method, name })
-    if (name === 'Finance') {
-      return Response.json(
-        { code: 'invalid_param', message: 'Tag name already exists' },
-        { status: 400 },
-      )
-    }
-    if (rename) saved = { ...saved, name }
-    return Response.json(create ? { ...original, id: 'new-tag', name } : saved)
-  })
-  return writes
-}
+let saved = original
+const fake = setupFakeApi(() => ({
+  console: {
+    tags: {
+      get: () => [saved],
+      post: ({ body }) => ({ id: 'new-tag', ...body }),
+      byTagId: {
+        patch: ({ body }) => {
+          saved = { ...saved, ...body }
+          return saved
+        },
+      },
+    },
+  },
+}))
 
 async function renderLocalized(language: keyof typeof locales, ui: ReactElement) {
   const i18n = createInstance()
@@ -59,8 +53,10 @@ async function renderLocalized(language: keyof typeof locales, ui: ReactElement)
   )
 }
 
+beforeEach(() => {
+  saved = original
+})
 afterEach(() => {
-  vi.restoreAllMocks()
   toast.dismiss()
 })
 
@@ -83,12 +79,14 @@ it.each([
 ] as const)(
   'shows one $language error notification for a $action conflict and accepts a correction',
   async ({ language, action, expected }) => {
-    const writes = installTagApi()
+    const error = duplicateNameError()
     const common = locales[language]
     await renderLocalized(language, <TagManagementDialog type="agent" show onClose={() => {}} />)
     const dialog = page.getByRole('dialog', { name: common['tag.manageTags'] })
     let input = dialog.getByRole('textbox', { name: common['tag.addNew'] })
-    if (action === 'rename') {
+    if (action === 'create') fake.console.tags.post.mockRejectedValueOnce(error)
+    else {
+      fake.console.tags.byTagId.patch.mockRejectedValueOnce(error)
       await dialog.getByRole('button', { name: `${common['operation.edit']} Original` }).click()
       input = dialog.getByRole('textbox', { name: `${common['operation.rename']} Original` })
     }
@@ -106,20 +104,23 @@ it.each([
     if (action === 'create') {
       await expect.element(input).toHaveValue('')
       await expect.element(dialog.getByText('Original', { exact: true })).toBeVisible()
+      expect(fake.console.tags.post.mock.calls.map(([input]) => input.body.name)).toEqual([
+        'Finance',
+        'Corrected',
+      ])
     } else {
       await expect.element(dialog.getByText('Corrected', { exact: true })).toBeVisible()
+      expect(fake.console.tags.byTagId.patch.mock.calls.map(([input]) => input.body.name)).toEqual([
+        'Finance',
+        'Corrected',
+      ])
     }
-    const method = action === 'create' ? 'POST' : 'PATCH'
-    expect(writes).toEqual([
-      { method, name: 'Finance' },
-      { method, name: 'Corrected' },
-    ])
     await expect.element(dialog.getByText('2', { exact: true })).toBeVisible()
   },
 )
 
 it('shows a single Japanese notification when creating from a card races a concurrent creation', async () => {
-  const writes = installTagApi()
+  fake.console.tags.post.mockRejectedValueOnce(duplicateNameError())
   await renderLocalized(
     'ja-JP',
     <TagSelector type="agent" targetId="agent-1" value={[original]} canBindOrUnbindTags />,
@@ -132,5 +133,7 @@ it('shows a single Japanese notification when creating from a card races a concu
     .element(notifications.getByRole('dialog', { name: '同じ名前のタグがすでに存在します。' }))
     .toBeVisible()
   expect(notifications.getByRole('dialog').all()).toHaveLength(1)
-  expect(writes).toEqual([{ method: 'POST', name: 'Finance' }])
+  expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+    body: { name: 'Finance', type: 'agent' },
+  })
 })

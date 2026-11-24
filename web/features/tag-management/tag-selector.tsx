@@ -10,13 +10,14 @@ import {
   ComboboxTrigger,
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { refreshAgentTagCatalogs } from '@/service/console/query-policies'
 import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { getTagManagePermissionKey } from './permissions'
@@ -73,6 +74,11 @@ type ClosingTagPopup = {
   isTagCatalogEmpty: boolean
 }
 
+type AgentTagCreation = {
+  result: Promise<string | undefined>
+  pending: boolean
+}
+
 export const TagSelector = ({
   targetId,
   contextLabel,
@@ -89,10 +95,12 @@ export const TagSelector = ({
   ...rootProps
 }: TagSelectorProps) => {
   const { t } = useTranslation(['common'])
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [closingPopup, setClosingPopup] = useState<ClosingTagPopup | null>(null)
   const [draftTagIds, setDraftTagIds] = useState(() => value.map((tag) => tag.id))
-  const pendingAgentTagRef = useRef<Promise<string | undefined> | null>(null)
+  const [createdAgentTags, setCreatedAgentTags] = useState<Tag[]>(EMPTY_TAGS)
+  const agentTagCreationRef = useRef<AgentTagCreation | null>(null)
   const [inputValue, setInputValue] = useState('')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
@@ -103,7 +111,10 @@ export const TagSelector = ({
 
   const { isPending: isApplyingBindings, mutateAsync: saveBindings } = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutateAsync: createTag } = useMutation(
-    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.tags.post.mutationOptions({
+      context: { silent: true },
+      meta: { deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags },
+    }),
   )
   const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = useQuery({
     ...consoleQuery.tags.get.queryOptions({
@@ -148,7 +159,7 @@ export const TagSelector = ({
       nextItems.push(tag)
     }
 
-    for (const tag of value) {
+    for (const tag of [...value, ...createdAgentTags]) {
       if (tag.type === type && !tagIds.has(tag.id)) {
         tagIds.add(tag.id)
         nextItems.push(tag)
@@ -172,7 +183,17 @@ export const TagSelector = ({
     }
 
     return nextItems
-  }, [canManageTags, closingPopup, inputValue, nameTooLong, open, tagList, type, value])
+  }, [
+    canManageTags,
+    closingPopup,
+    createdAgentTags,
+    inputValue,
+    nameTooLong,
+    open,
+    tagList,
+    type,
+    value,
+  ])
   const isTagCatalogEmpty = closingPopup?.isTagCatalogEmpty ?? (hasLoadedTags && items.length === 0)
   const tagItemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
   const tagItems = useMemo(
@@ -185,15 +206,24 @@ export const TagSelector = ({
   )
 
   const applyTagBindings = useCallback(async () => {
-    // Closing saves the draft even when the server has yet to return the new Agent tag ID.
-    const createdId = pendingAgentTagRef.current && (await pendingAgentTagRef.current)
-    const nextTagIds = createdId ? [...draftTagIds, createdId] : draftTagIds
+    const creation = agentTagCreationRef.current
+    const createdId = creation && (await creation.result)
+    // The POST can resolve before React commits the updated draft. A committed draft may
+    // already have deselected the new tag, so only append IDs it has not seen yet.
+    const nextTagIds =
+      createdId && !createdAgentTags.some((tag) => tag.id === createdId)
+        ? [...draftTagIds, createdId]
+        : draftTagIds
     const draftTagIdSet = new Set(nextTagIds)
     const tagSelectionChanged =
       selectedTagIds.length !== nextTagIds.length ||
       selectedTagIds.some((tagId) => !draftTagIdSet.has(tagId))
 
-    if (!tagSelectionChanged) return
+    if (!tagSelectionChanged) {
+      if (!onApplyTags && createdAgentTags.length)
+        await refreshAgentTagCatalogs(consoleQuery, queryClient)
+      return
+    }
 
     if (onApplyTags) {
       onApplyTags(nextTagIds)
@@ -218,7 +248,18 @@ export const TagSelector = ({
         { id: toastId },
       )
     }
-  }, [draftTagIds, onApplyTags, onTagsChange, saveBindings, selectedTagIds, t, targetId, type])
+  }, [
+    createdAgentTags,
+    draftTagIds,
+    onApplyTags,
+    onTagsChange,
+    queryClient,
+    saveBindings,
+    selectedTagIds,
+    t,
+    targetId,
+    type,
+  ])
 
   const closeAndApply = () => {
     if (!open) return
@@ -231,11 +272,14 @@ export const TagSelector = ({
 
   const createNewTag = useCallback(
     (name: string) => {
-      if (!canManageTags || !name || isCreatingTag || pendingAgentTagRef.current) return
+      if (!canManageTags || !name || isCreatingTag || agentTagCreationRef.current?.pending) return
 
       const creation = createTag({ body: { name, type } }).then(
         (tag) => {
-          if (type === 'agent') setDraftTagIds((ids) => [...ids, tag.id])
+          if (type === 'agent') {
+            setCreatedAgentTags((tags) => [...tags, tag])
+            setDraftTagIds((ids) => [...ids, tag.id])
+          }
           toast.success(t(($) => $['tag.created'], { ns: 'common' }))
           setInputValue('')
           return tag.id
@@ -250,8 +294,10 @@ export const TagSelector = ({
         },
       )
       if (type === 'agent') {
-        pendingAgentTagRef.current = creation.finally(() => {
-          pendingAgentTagRef.current = null
+        const operation = { result: creation, pending: true }
+        agentTagCreationRef.current = operation
+        void creation.then(() => {
+          operation.pending = false
         })
       }
     },
@@ -282,7 +328,9 @@ export const TagSelector = ({
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen) return closeAndApply()
         if (isSavingAgentTags) return details.cancel()
+        agentTagCreationRef.current = null
         setDraftTagIds(selectedTagIds)
+        setCreatedAgentTags(EMPTY_TAGS)
         setClosingPopup(null)
         setOpen(true)
       }}

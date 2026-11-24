@@ -43,17 +43,17 @@ export function TagNameForm({
   const submit = async (onBlur: boolean) => {
     if (pending) return
     if (onBlur && (invalid || (initialName === undefined && !draft))) return
-    const name = draft.trim()
+    const name = draft === initialName ? draft : draft.trim()
+    if (name === initialName) {
+      onFinish?.()
+      return
+    }
     if (!name) {
       showValidationError(t(($) => $['tag.nameRequired']))
       return
     }
     if (isTagNameTooLong(name)) {
       showValidationError(t(($) => $['tag.nameTooLong'], { max: MAX_TAG_NAME_LENGTH }))
-      return
-    }
-    if (name === initialName) {
-      onFinish?.()
       return
     }
     if (tags.some((other) => other.id !== tag?.id && other.name.trim() === name)) {

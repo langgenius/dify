@@ -34,6 +34,17 @@ def test_education_feature_is_disabled_by_default() -> None:
 
 
 @pytest.mark.parametrize(
+    ("edition", "expected"),
+    [(DeploymentEdition.CLOUD, True), (DeploymentEdition.COMMUNITY, False), (DeploymentEdition.ENTERPRISE, False)],
+)
+def test_knowledge_subscription_limits_are_cloud_only(
+    config_overrides: Callable[..., None], edition: DeploymentEdition, expected: bool
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    assert FeatureService.has_knowledge_subscription_limits() is expected
+
+
+@pytest.mark.parametrize(
     ("edition", "plan", "enabled", "expected", "upgrade_available"),
     [
         (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),

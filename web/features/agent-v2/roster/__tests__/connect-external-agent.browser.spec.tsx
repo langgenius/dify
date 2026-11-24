@@ -180,6 +180,33 @@ it('validates native endpoint/token fields and invalidates verification when con
   )
 })
 
+it('keeps Save visually primary and blocks repeated submission while creation is pending', async () => {
+  const pending = createDeferred<ReturnType<typeof createExternalOperation>>()
+  requests.create.mockImplementationOnce(() => pending.promise)
+  await setup()
+  await reachDetails()
+  const save = dialog().getByRole('button', { name: 'Save', exact: true })
+  await expect.element(save).toBeEnabled()
+  const appearance = () => {
+    const style = getComputedStyle(save.element())
+    return { background: style.backgroundColor, foreground: style.color }
+  }
+  const primaryAppearance = appearance()
+  await save.click()
+  await expect.element(save).toHaveAttribute('aria-disabled', 'true')
+  await expect.element(save).toHaveFocus()
+  // DIFY-3065: pending creation must retain the primary fill and label contrast.
+  expect(appearance()).toEqual(primaryAppearance)
+  await userEvent.keyboard('{Enter}')
+  expect(requests.create).toHaveBeenCalledTimes(1)
+  expect(requests.push).not.toHaveBeenCalled()
+  pending.resolve(createExternalOperation())
+  await expect.element(dialog()).not.toBeInTheDocument()
+  expect(requests.push).toHaveBeenCalledExactlyOnceWith(
+    `/external-agent/${createExternalOperation().resource_id}/overview`,
+  )
+})
+
 it('locks a pending verification and displays a generic HTTP400 without inventing a failure category', async () => {
   const pending = createDeferred<ExternalAgentVerificationResponse>()
   requests.verify.mockImplementationOnce(() => pending.promise)

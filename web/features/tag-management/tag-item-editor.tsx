@@ -67,7 +67,7 @@ export const TagItemEditor = ({ tag, tags, onTagsChange }: TagItemEditorProps) =
       <div className="flex max-w-full items-center gap-0.5 rounded-lg border border-components-panel-border py-1 ps-2 pe-1 text-sm/5 text-text-secondary">
         {!isEditing && (
           <>
-            <div className="truncate">{tag.name}</div>
+            <div className="min-w-0 wrap-anywhere">{tag.name}</div>
             <Tooltip>
               <TooltipTrigger>
                 <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">

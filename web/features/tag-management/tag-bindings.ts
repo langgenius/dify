@@ -1,7 +1,10 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { invalidateTaggedResources } from '@/service/console/query-policies'
+import {
+  invalidateTaggedResources,
+  refreshAgentTagCatalogs,
+} from '@/service/console/query-policies'
 
 type ApplyTagBindingsInput = {
   currentTagIds: string[]
@@ -57,9 +60,11 @@ export const useApplyTagBindingsMutation = () => {
     },
     onSettled: (_data, _error, { type, targetId }) =>
       Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.tags.get.key({ type: 'query', input: { query: { type } } }),
-        }),
+        type === 'agent'
+          ? refreshAgentTagCatalogs(consoleQuery, queryClient)
+          : queryClient.invalidateQueries({
+              queryKey: consoleQuery.tags.get.key({ type: 'query', input: { query: { type } } }),
+            }),
         invalidateTaggedResources(consoleQuery, queryClient, type, targetId),
       ]),
   })

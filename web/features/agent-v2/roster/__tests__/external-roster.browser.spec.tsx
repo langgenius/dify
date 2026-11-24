@@ -29,8 +29,8 @@ const requests = vi.hoisted(() => ({
   difyList: vi.fn(),
 }))
 const agentTags = vi.hoisted(() => [
-  { id: 'research', name: 'Research', type: 'agent' as const },
-  { id: 'finance', name: 'Finance', type: 'agent' as const },
+  { id: '00000000-0000-4000-8000-000000000011', name: 'Research', type: 'agent' as const },
+  { id: '00000000-0000-4000-8000-000000000012', name: 'Finance', type: 'agent' as const },
 ])
 // boundary: replace Console transport responses while retaining generated keys, policies and observers.
 vi.mock('@/service/console', async (importOriginal) => {
@@ -147,9 +147,9 @@ it('requests each server sort and keeps external and Dify filters in the URL', a
   }
 })
 
-it('queries server filters and clears them without touching Dify parameters', async () => {
+it('clears external filters while preserving sorting and Dify parameters and restoring All focus', async () => {
   const { onUrlUpdate } = await setup({
-    searchParams: '?filter=drafts&keyword=keep-dify&layout=grid',
+    searchParams: '?filter=drafts&keyword=keep-dify&layout=grid&external_sort_by=earliest_created',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
   const filtered = createDeferred<ExternalAgentListResponse>()
@@ -177,8 +177,8 @@ it('queries server filters and clears them without touching Dify parameters', as
       limit: 20,
       enabled: false,
       connected_by_me: true,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'asc',
     },
   })
   await search().fill('vendor')
@@ -193,11 +193,17 @@ it('queries server filters and clears them without touching Dify parameters', as
   expect(params?.get('external_keyword')).toBe('vendor')
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
   await expect.element(card('Contract Review Agent')).toBeVisible()
-  await expect.element(search()).toHaveFocus()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toHaveFocus()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toBeChecked()
+  await expect.element(search()).toHaveValue('')
+  await expect
+    .element(page.getByRole('combobox', { name: 'Sort by', exact: true }))
+    .toMatchTextContent('Earliest created')
   const cleared = onUrlUpdate.mock.lastCall?.[0].searchParams
   expect(cleared?.get('filter')).toBe('drafts')
   expect(cleared?.get('keyword')).toBe('keep-dify')
   expect(cleared?.get('layout')).toBe('grid')
+  expect(cleared?.get('external_sort_by')).toBe('earliest_created')
   expect(cleared?.has('external_keyword')).toBe(false)
   expect(cleared?.has('external_status')).toBe(false)
   expect(cleared?.has('external_connected_by_me')).toBe(false)
@@ -214,9 +220,7 @@ it('keeps a failed initial list distinct from empty results without a query erro
   await expect.element(page.getByRole('status')).not.toBeInTheDocument()
   await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'Disabled 0', exact: true })).toBeVisible()
-  await expect
-    .element(page.getByText('No external agents yet', { exact: true }))
-    .not.toBeInTheDocument()
+  await expect.element(page.getByText('No agent yet', { exact: true })).not.toBeInTheDocument()
   await expect.element(page.getByRole('alert')).not.toBeInTheDocument()
   await expect
     .element(page.getByRole('button', { name: 'Retry', exact: true }))
@@ -475,12 +479,13 @@ it('requires a deletion-impact response and retains reachable focus after server
 })
 
 it('loads only the active roster and removes outgoing filters from the URL on tab changes', async () => {
+  const tagIds = agentTags.map((tag) => tag.id)
   const { onUrlUpdate } = await setup({
     pageOwner: true,
     searchParams:
       '?agent_type=external&external_keyword=Contract&external_status=enabled' +
       '&external_connected_by_me=true&external_sort_by=earliest_created' +
-      '&keyword=internal&filter=drafts&tag_ids=research;finance&created_by_me=true' +
+      `&keyword=internal&filter=drafts&tag_ids=${tagIds.join(';')}&created_by_me=true` +
       '&sort_by=earliest_created&utm_source=blog',
   })
   await expect.element(card('Contract Review Agent')).toBeVisible()
@@ -491,7 +496,7 @@ it('loads only the active roster and removes outgoing filters from the URL on ta
   await expect.poll(urlParams).toEqual({
     keyword: 'internal',
     filter: 'drafts',
-    tag_ids: 'research;finance',
+    tag_ids: tagIds.join(';'),
     created_by_me: 'true',
     sort_by: 'earliest_created',
     utm_source: 'blog',
@@ -502,7 +507,7 @@ it('loads only the active roster and removes outgoing filters from the URL on ta
       limit: 30,
       page: 1,
       name: 'internal',
-      tag_ids: ['research', 'finance'],
+      tag_ids: tagIds,
       is_created_by_me: true,
       publication_status: 'drafts',
       sort_by: 'earliest_created',

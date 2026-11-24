@@ -28,16 +28,15 @@ import { toast } from '@/app/notifications'
 import { getAgentACLCapabilities, getAgentDefaultSection } from '@/features/agent-v2/acl'
 import { DeleteAgentForm } from '@/features/agent-v2/delete-agent-form'
 import { useCanCreateAgents } from '@/features/agent-v2/permissions'
-import { TagSelector } from '@/features/tag-management/tag-selector'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { AgentRosterSkeleton } from './agent-roster-skeleton'
+import { AgentRosterTags } from './agent-roster-tags'
 import { AgentWorkflowReferencesMenu } from './agent-workflow-references-menu'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
-import { ReadOnlyAgentTags } from './read-only-agent-tags'
 
 type AgentRosterListFooterState =
   | { status: 'none' }
@@ -374,18 +373,13 @@ function AgentRosterItem({
           !capabilities.canEdit && 'pointer-events-none',
         )}
       >
-        {capabilities.canEdit ? (
-          <TagSelector
-            type="agent"
-            targetId={agent.id}
-            contextLabel={agent.name}
-            value={agent.tags ?? []}
-            canBindOrUnbindTags
-            onOpenTagManagement={onOpenTagManagement}
-          />
-        ) : (
-          <ReadOnlyAgentTags agent={agent} />
-        )}
+        <AgentRosterTags
+          id={agent.id}
+          name={agent.name}
+          tags={agent.tags}
+          canEdit={capabilities.canEdit}
+          onOpenTagManagement={onOpenTagManagement}
+        />
       </div>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex min-w-0 items-center ps-4 pe-3 pt-2 pb-3 system-xs-regular text-text-tertiary">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">

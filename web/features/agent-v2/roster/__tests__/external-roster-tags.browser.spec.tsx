@@ -152,7 +152,7 @@ it('keeps tags read-only when the asset has no edit grant even for a workspace m
   expect(api.unbind).not.toHaveBeenCalled()
 })
 
-it('keeps server tag filters across pages and restarts from page one when another tag is selected', async () => {
+it('keeps sorting while paging tag results and clearing all filters without a search', async () => {
   const matches: ExternalAgentAssetResponse[] = Array.from({ length: 20 }, (_, index) =>
     createExternalAgentAsset({
       id: `matching-${index}`,
@@ -177,9 +177,9 @@ it('keeps server tag filters across pages and restarts from page one when anothe
       page: query.page ?? 1,
     }
   })
-  await setup({
+  const { onUrlUpdate } = await setup({
     searchParams:
-      '?external_tag_ids=research&external_status=enabled&external_connected_by_me=true',
+      '?external_tag_ids=research&external_status=enabled&external_connected_by_me=true&external_sort_by=earliest_created',
   })
   await expect.element(card('Matching Agent 1')).toBeVisible()
   await page.getByRole('button', { name: 'Load more', exact: true }).click()
@@ -191,8 +191,8 @@ it('keeps server tag filters across pages and restarts from page one when anothe
       tag_ids: ['research'],
       enabled: true,
       connected_by_me: true,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'asc',
     },
   })
   await page.getByRole('combobox', { name: 'Research', exact: true }).click()
@@ -208,12 +208,31 @@ it('keeps server tag filters across pages and restarts from page one when anothe
       tag_ids: ['research', 'finance'],
       enabled: true,
       connected_by_me: true,
-      sort_by: 'updated_at',
-      sort_order: 'desc',
+      sort_by: 'created_at',
+      sort_order: 'asc',
     },
   })
   await expect.element(page.getByRole('radio', { name: 'Enabled 0', exact: true })).toBeChecked()
   await expect.element(page.getByRole('radio', { name: 'Disabled 1', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click()
+  await expect.element(card('Matching Agent 1')).toBeVisible()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toBeChecked()
+  await expect.element(page.getByRole('radio', { name: 'All', exact: true })).toHaveFocus()
+  await expect
+    .element(page.getByRole('checkbox', { name: 'Connected by me', exact: true }))
+    .not.toBeChecked()
+  expect(api.list).toHaveBeenLastCalledWith({
+    query: {
+      page: 1,
+      limit: 20,
+      connected_by_me: false,
+      sort_by: 'created_at',
+      sort_order: 'asc',
+    },
+  })
+  expect(Object.fromEntries(onUrlUpdate.mock.lastCall?.[0].searchParams ?? [])).toEqual({
+    external_sort_by: 'earliest_created',
+  })
 })
 
 it('reconciles bookmarked tags with the shared catalog and drops a deleted selected tag', async () => {

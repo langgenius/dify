@@ -5,7 +5,7 @@ import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app
 
 const placeholderCardIds = Array.from({ length: 16 }, (_, index) => `empty-card-${index}`)
 
-export function ExternalAgentEmptySearch({ onClearFilters }: { onClearFilters: () => void }) {
+export function ExternalAgentEmptyState({ onClearFilters }: { onClearFilters?: () => void }) {
   const { t } = useTranslation(['agentRoster'])
 
   return (
@@ -33,12 +33,16 @@ export function ExternalAgentEmptySearch({ onClearFilters }: { onClearFilters: (
           >
             <span className="i-ri-robot-line size-6" />
           </span>
-          <p>{t(($) => $['external.emptySearch'])}</p>
-          <p>{t(($) => $['external.emptySearchDescription'])}</p>
+          <p>
+            {onClearFilters ? t(($) => $['external.emptySearch']) : t(($) => $['roster.empty'])}
+          </p>
+          {onClearFilters && <p>{t(($) => $['external.emptySearchDescription'])}</p>}
         </div>
-        <Button size="small" variant="secondary" onClick={onClearFilters}>
-          {t(($) => $['external.clearFilters'])}
-        </Button>
+        {onClearFilters && (
+          <Button size="small" variant="secondary" onClick={onClearFilters}>
+            {t(($) => $['external.clearFilters'])}
+          </Button>
+        )}
       </div>
     </div>
   )
