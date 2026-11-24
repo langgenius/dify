@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import datetime
 
+import httpx
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -202,6 +203,8 @@ class EnterpriseService:
             )
         except EnterpriseServiceError as e:
             raise MCPTokenError(str(e) or "forwarded identity verification failed") from e
+        except (httpx.HTTPError, ValueError) as e:
+            raise MCPTokenError(f"Enterprise API request failed: {type(e).__name__}: {e}") from e
 
         email = response.get("email") if isinstance(response, dict) else None
         if not isinstance(email, str) or not email:
