@@ -43,8 +43,8 @@ import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { externalAgentErrorMessage } from './external-connection-verification'
 
-export type ExternalAgentActionRequest = {
-  kind: 'edit' | 'toggle' | 'delete'
+export type ExternalAgentConfirmationRequest = {
+  kind: 'toggle' | 'delete'
   agent: ExternalAgentListItem
   trigger: HTMLButtonElement | null
   adjacentFocusTargets: HTMLElement[]
@@ -295,7 +295,7 @@ export function ExternalAgentConfirmationContent({
   onConfirm,
   onPauseInstead,
 }: {
-  request: ExternalAgentActionRequest
+  request: ExternalAgentConfirmationRequest
   pending: boolean
   error: unknown
   fallbackFocus: RefObject<HTMLElement | null>
@@ -330,7 +330,7 @@ function ExternalAgentConfirmationSession({
   onConfirm,
   onPauseInstead,
 }: {
-  request: ExternalAgentActionRequest
+  request: ExternalAgentConfirmationRequest
   pending: boolean
   error: unknown
   onConfirm: () => void

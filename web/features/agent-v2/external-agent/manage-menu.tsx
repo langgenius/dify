@@ -1,6 +1,6 @@
 'use client'
 
-import type { ExternalAgentActionRequest } from '../roster/components/external-agent-actions'
+import type { ExternalAgentConfirmationRequest } from '../roster/components/external-agent-actions'
 import type { ExternalAgentListItem } from '../roster/components/external-agent-list'
 import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -26,7 +26,7 @@ export function ExternalAgentManageMenu({
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
   const router = useRouter()
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentActionRequest>())
+  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentConfirmationRequest>())
   const toggle = useMutation(
     consoleQuery.externalAgents.byAgentId.enabled.put.mutationOptions({
       context: { silent: true },
@@ -42,7 +42,7 @@ export function ExternalAgentManageMenu({
 
   if (!canManage) return null
 
-  const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
+  const requestAction = (kind: ExternalAgentConfirmationRequest['kind']) => {
     confirmation.openWithPayload({
       kind,
       agent,

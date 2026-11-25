@@ -1,7 +1,8 @@
 'use client'
 
 import type { GetExternalAgentsData } from '@dify/contracts/api/console/external-agents/types.gen'
-import type { ExternalAgentActionRequest } from './components/external-agent-actions'
+import type { ExternalAgentConfirmationRequest } from './components/external-agent-actions'
+import type { ExternalAgentListItem } from './components/external-agent-list'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -63,8 +64,8 @@ function ExternalRosterSession() {
   const profile = useQuery(userProfileQueryOptions())
   const canManage = !workspaceLoading && (workspace.role === 'owner' || workspace.role === 'admin')
   const canReadDetails = !workspaceLoading && (canManage || workspace.role === 'editor')
-  const [editDialog] = useState(() => createDialogHandle<ExternalAgentActionRequest>())
-  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentActionRequest>())
+  const [editDialog] = useState(() => createDialogHandle<ExternalAgentListItem>())
+  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentConfirmationRequest>())
   const update = useMutation(
     consoleQuery.externalAgents.byAgentId.info.patch.mutationOptions({
       context: { silent: true },
@@ -328,7 +329,7 @@ function ExternalRosterSession() {
         {({ payload }) =>
           payload && (
             <ExternalAgentEditDialogContent
-              agent={payload.agent}
+              agent={payload}
               pending={update.isPending}
               error={update.error}
               onReset={update.reset}

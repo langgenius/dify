@@ -4,7 +4,7 @@ import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/ext
 import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { Ref } from 'react'
-import type { ExternalAgentActionRequest } from './external-agent-actions'
+import type { ExternalAgentConfirmationRequest } from './external-agent-actions'
 import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -55,8 +55,8 @@ type ExternalAgentListProps = {
   agents: readonly ExternalAgentListItem[]
   filtered: boolean
   onClearFilters: () => void
-  editDialog?: DialogHandle<ExternalAgentActionRequest>
-  confirmation?: AlertDialogHandle<ExternalAgentActionRequest>
+  editDialog?: DialogHandle<ExternalAgentListItem>
+  confirmation?: AlertDialogHandle<ExternalAgentConfirmationRequest>
   canReadDetails?: boolean
   onOpenTagManagement: () => void
   viewportRef?: Ref<HTMLDivElement>
@@ -83,9 +83,8 @@ function ExternalAgentCard({
   const itemRef = useRef<HTMLLIElement>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const canEditTags = getAgentACLCapabilities(agent.permissionKeys).canEdit
-  const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
-    const dialog = kind === 'edit' ? editDialog : confirmation
-    dialog?.openWithPayload({
+  const requestAction = (kind: ExternalAgentConfirmationRequest['kind']) => {
+    confirmation?.openWithPayload({
       kind,
       agent,
       trigger: menuTriggerRef.current,
@@ -171,7 +170,7 @@ function ExternalAgentCard({
                 }
               />
               <MenuContent align="end" className="min-w-40">
-                <MenuItem className="gap-2" onClick={() => requestAction('edit')}>
+                <MenuItem className="gap-2" onClick={() => editDialog.openWithPayload(agent)}>
                   <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                   {t(($) => $['external.editInfo'])}
                 </MenuItem>
