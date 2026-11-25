@@ -5,20 +5,16 @@ import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { Shape } from '@/app/components/workflow/store/workflow'
-import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import type { consoleClient } from '@/service/console'
 import { zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Fragment, useMemo } from 'react'
+import { Fragment, useEffect } from 'react'
 import { useStoreApi } from 'reactflow'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { createSocket } from '@/app/components/workflow/collaboration/core/__tests__/test-socket'
-import {
-  CollaborationManager,
-  collaborationManager,
-} from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { isLLMEnvironmentVariableValue } from '@/app/components/workflow/llm-environment-variable'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -165,10 +161,6 @@ vi.mock(
   },
 )
 
-const collaborationConnections: Array<{
-  connectionId: string
-  manager: CollaborationManager
-}> = []
 const collaborationTransports = new Map<string, ReturnType<typeof createSocket>>()
 
 function registerCollaborationTransport(appId: string) {
@@ -177,58 +169,22 @@ function registerCollaborationTransport(appId: string) {
   return transport
 }
 
-async function connectCollaboration(role: 'leader' | 'follower') {
+function connectCollaboration() {
   const transport = registerCollaborationTransport('app-1')
-  const connectionId = await collaborationManager.connect('app-1')
-  collaborationConnections.push({ connectionId, manager: collaborationManager })
-  transport.receive('status', { isLeader: role === 'leader' })
-  transport.emit.mockClear()
+  vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
+  mockDoSyncWorkflowDraft.mockImplementation(async (_notRefresh, callbacks, options) => {
+    try {
+      if (options?.environmentVariablePatch)
+        await mockUpdateEnvironmentVariables({
+          appId: 'app-1',
+          ...options.environmentVariablePatch,
+        })
+      callbacks?.onSuccess?.()
+    } catch {
+      callbacks?.onError?.()
+    }
+  })
   return transport
-}
-
-async function createRemoteCollaboration(nodes: Node[]) {
-  const appId = `remote-${collaborationConnections.length}`
-  const transport = registerCollaborationTransport(appId)
-  const manager = new CollaborationManager()
-  let remoteNodes = nodes
-  let remoteEdges: Edge[] = []
-  const reactFlowStore = {
-    getState: () => ({
-      getNodes: () => remoteNodes,
-      setNodes: (next: Node[]) => {
-        remoteNodes = next
-      },
-      getEdges: () => remoteEdges,
-      setEdges: (next: Edge[]) => {
-        remoteEdges = next
-      },
-    }),
-  }
-  const connectionId = await manager.connect(appId, reactFlowStore)
-  collaborationConnections.push({ connectionId, manager })
-  transport.receive('status', { isLeader: true })
-  transport.emit.mockClear()
-  return { manager, nodes: () => remoteNodes, ...transport }
-}
-
-function CollaborationConnector() {
-  const store = useStoreApi()
-  const collaborationStore = useMemo(
-    () => ({
-      getState: () => {
-        const state = store.getState()
-        return {
-          getNodes: state.getNodes,
-          setNodes: state.setNodes,
-          getEdges: () => state.edges,
-          setEdges: state.setEdges,
-        }
-      },
-    }),
-    [store],
-  )
-  useCollaboration('app-1', true, collaborationStore)
-  return null
 }
 
 const createEnv = (overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
@@ -315,10 +271,18 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
       { initialData: { data: [modelRule] } },
     )
     let flow: ReactFlowInstance | undefined
+    let canvas: ReturnType<typeof useStoreApi>
+    function CaptureCanvas() {
+      const api = useStoreApi()
+      useEffect(() => {
+        canvas = api
+      }, [api])
+      return null
+    }
     const result = renderWorkflowFlowComponent(
       <Fragment>
         {ui}
-        {collaboration && <CollaborationConnector />}
+        <CaptureCanvas />
       </Fragment>,
       {
         resource,
@@ -337,6 +301,7 @@ const renderPanelWithNuqs = createNuqsTestRenderer(
 
     return {
       ...result,
+      setNodes: (nodes: Node[]) => canvas.getState().setNodes(nodes),
       getNodes: () => {
         if (!flow) throw new Error('React Flow was not initialized')
         return flow.getNodes()
@@ -462,8 +427,6 @@ describe('EnvPanel container', () => {
   })
 
   afterEach(() => {
-    for (const { connectionId, manager } of collaborationConnections.splice(0).reverse())
-      manager.disconnect(connectionId)
     collaborationTransports.clear()
     vi.restoreAllMocks()
   })
@@ -594,7 +557,7 @@ describe('EnvPanel container', () => {
 
   it('adds secret variables and stores only masked values after persistence', async () => {
     const user = userEvent.setup()
-    await connectCollaboration('leader')
+    connectCollaboration()
     mockFetchWorkflowDraft.mockImplementationOnce(async () => {
       const saved = mockUpdateEnvironmentVariables.mock.calls[0]![0].environmentVariables[0]!
       return {
@@ -821,21 +784,16 @@ describe('EnvPanel container', () => {
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
-  it('persists follower graph edits before asking the leader to sync', async () => {
+  it('persists shared model edits and notifies the other editors', async () => {
     const user = userEvent.setup()
     const env = oldModelEnv()
     const llmNode = createLLMNode({ data: { model_selector: ['env', env.name] } })
-    const remote = await createRemoteCollaboration([llmNode])
-    const local = registerCollaborationTransport('app-1')
+    const local = connectCollaboration()
     const { getNodes, store } = renderPanel({
       collaboration: true,
       nodes: [llmNode],
       initialStoreState: { environmentVariables: [env], envSecrets: {} },
     })
-    await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
-    local.receive('status', { isLeader: false })
-    local.receive('graph_update', remote.snapshot())
-    await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
     local.emit.mockClear()
 
     await changeExistingModel(user, env.name)
@@ -852,14 +810,13 @@ describe('EnvPanel container', () => {
       ],
       deletedEnvironmentVariableIds: [],
     })
-    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockDoSyncWorkflowDraft).toHaveBeenCalledOnce()
     expect(getNodes()[0]?.data.model).toMatchObject({
       provider: 'new-provider',
       name: 'new-model',
     })
     expect(local.emit).toHaveBeenCalledWith('collaboration_event', {
       type: 'vars_and_features_update',
-      data: { syncWorkflowDraft: true },
     })
   })
 
@@ -892,25 +849,19 @@ describe('EnvPanel container', () => {
         resolveRules = resolve
       }),
     )
-    const remote = await createRemoteCollaboration([staleNode])
-    const local = registerCollaborationTransport('app-1')
-    const { getNodes } = renderPanel({
+    connectCollaboration()
+    const { getNodes, setNodes } = renderPanel({
       collaboration: true,
       nodes: [staleNode],
       initialStoreState: { environmentVariables: [env], envSecrets: {} },
     })
-    await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
-    local.receive('status', { isLeader: false })
-    local.receive('graph_update', remote.snapshot())
-    await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
 
     await openEditVariable(user, env.name)
     await selectModel(user, 'old-model', 'new-model')
     await saveForm(user)
     await waitFor(() => expect(mockFetchModelParameterRulesForModel).toHaveBeenCalledTimes(1))
 
-    remote.manager.setNodes(remote.nodes(), [latestNode])
-    local.receive('graph_update', remote.snapshot())
+    act(() => setNodes([latestNode]))
     await waitFor(() =>
       expect(getNodes()[0]?.data.model.completion_params).toEqual({
         temperature: 0.9,
@@ -930,13 +881,13 @@ describe('EnvPanel container', () => {
   })
 
   it.each([false, true])(
-    'reports a follower save failure only if the server did not commit it (committed: %s)',
+    'reports a shared-model save failure only if the server did not commit it (committed: %s)',
     async (committed) => {
       const user = userEvent.setup()
       const notifyError = vi.spyOn(toast, 'error')
       notifyError.mockClear()
       vi.spyOn(console, 'error').mockImplementation(() => {})
-      await connectCollaboration('follower')
+      connectCollaboration()
       const env = oldModelEnv()
       const savedEnv = oldModelEnv({
         value: { provider: 'new-provider', name: 'new-model', mode: 'chat' },
@@ -964,10 +915,10 @@ describe('EnvPanel container', () => {
       )
       if (committed) expect(notifyError).not.toHaveBeenCalled()
       else {
-        await waitFor(() => expect(notifyError).toHaveBeenCalledExactlyOnceWith(message))
+        await waitFor(() => expect(notifyError).toHaveBeenCalledExactlyOnceWith('common.error'))
         expect(getNodes()[0]?.data).toEqual(llmNode.data)
       }
-      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockDoSyncWorkflowDraft).toHaveBeenCalledOnce()
     },
   )
 
@@ -1091,7 +1042,7 @@ describe('EnvPanel container', () => {
 
   it('keeps model reconciliation when a remote snapshot changes only alias metadata', async () => {
     const user = userEvent.setup()
-    await connectCollaboration('leader')
+    connectCollaboration()
     const env = oldModelEnv()
     let savedEnv: EnvironmentVariable | undefined
     mockDoSyncWorkflowDraft.mockImplementationOnce(async (_notRefresh, callback, options) => {
@@ -1197,7 +1148,7 @@ describe('EnvPanel container', () => {
     const env = oldModelEnv()
     let persistedEnv = env
     let resolveFirstPersistence!: () => void
-    await connectCollaboration('follower')
+    connectCollaboration()
     mockFetchWorkflowDraft.mockImplementation(async () => ({
       environment_variables: [persistedEnv],
     }))
@@ -1254,7 +1205,7 @@ describe('EnvPanel container', () => {
 
   it('preserves a remote update to an untouched alias across queued local saves', async () => {
     const user = userEvent.setup()
-    await connectCollaboration('leader')
+    connectCollaboration()
     const localEnv = createEnv({
       id: 'env-local',
       name: 'local_value',
@@ -1315,7 +1266,7 @@ describe('EnvPanel container', () => {
 
   it('keeps a newer server value for the same alias after a delayed local response', async () => {
     const user = userEvent.setup()
-    await connectCollaboration('leader')
+    connectCollaboration()
     const env = createEnv({ value_type: 'string', value: 'initial', description: '' })
     const remoteEnv = { ...env, value: 'newer-server-value', description: 'remote edit' }
     let serverEnv = env

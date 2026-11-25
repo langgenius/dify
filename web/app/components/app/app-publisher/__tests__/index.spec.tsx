@@ -498,7 +498,10 @@ it('refreshes the visible version and workflow store after receiving a collabora
   }) as unknown as Socket
   vi.spyOn(webSocketClient, 'connect').mockReturnValue(socket)
   vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {})
-  const connection = await collaborationManager.connect('app-1')
+  const connection = await collaborationManager.connect('app-1', undefined, {
+    accountId: 'editor',
+    epoch: 'shared',
+  })
   try {
     const { store } = renderPublisher({ app: { mode: 'workflow' } })
     await user.click(trigger())

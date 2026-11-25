@@ -1,9 +1,6 @@
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { WorkflowProps } from '@/app/components/workflow'
-import type {
-  CollaborationUpdate,
-  JoinFailure,
-} from '@/app/components/workflow/collaboration/types/collaboration'
+import type { JoinFailure } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
@@ -27,7 +24,9 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { BlockEnum, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
@@ -47,14 +46,7 @@ type WorkflowDataUpdatePayload = Pick<
   FetchWorkflowDraftResponse,
   'features' | 'conversation_variables' | 'environment_variables'
 >
-type VarsUpdateSnapshot = {
-  generation: number
-  response: FetchWorkflowDraftResponse
-  syncRequest: number
-}
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
-const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
-const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { t } = useTranslation(['workflow'] as const)
@@ -75,6 +67,17 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   const reactFlowStore = useMemo(
     () => ({
+      hydrateGraph: (graph: { nodes: Node[]; edges: Edge[] }) => {
+        const canvas = getWorkflowDraftGraphForCanvas(graph, {
+          localStartPlaceholderNodes: reactFlow
+            .getNodes()
+            .filter((node) => node.data.type === BlockEnum.StartPlaceholder),
+        })
+        return {
+          nodes: initialNodes(canvas.nodes, canvas.edges),
+          edges: initialEdges(canvas.edges, canvas.nodes),
+        }
+      },
       getState: () => ({
         getNodes: () => reactFlow.getNodes(),
         setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
@@ -82,7 +85,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
       }),
     }),
-    [reactFlow],
+    [getWorkflowDraftGraphForCanvas, reactFlow],
   )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -142,8 +145,43 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
-    return collaborationManager.onJoinFailure(setJoinFailure)
-  }, [appId, isCollaborationEnabled])
+    const unsubscribe = collaborationManager.onJoinFailure((failure) => {
+      setJoinFailure(failure)
+      workflowStore.setState({ collaborationJoinFailure: failure })
+    })
+    return () => {
+      unsubscribe()
+      workflowStore.setState({ collaborationJoinFailure: null })
+    }
+  }, [appId, isCollaborationEnabled, workflowStore])
+
+  useEffect(() => {
+    if (!isCollaborationEnabled) return
+    const unsubscribeConfirmation = collaborationManager.onLoroDraftConfirmed(
+      ({ hash, updatedAt, isEmpty, cleanup }) => {
+        workflowStore.setState({
+          syncWorkflowDraftHash: hash,
+          syncWorkflowDraftIsEmpty: isEmpty,
+        })
+        workflowStore.getState().setDraftUpdatedAt(updatedAt)
+        if (cleanup === 'skipped')
+          toast.warning(t(($) => $['collaboration.compactedMissingNodes'], { ns: 'workflow' }))
+        if (cleanup === 'cleared')
+          toast.warning(t(($) => $['collaboration.replacedWithPendingEdits'], { ns: 'workflow' }))
+        else if (cleanup === 'failed')
+          toast.warning(t(($) => $['collaboration.cleanupFailed'], { ns: 'workflow' }))
+      },
+    )
+    const unsubscribePending = collaborationManager.onLoroDraftPendingChange(
+      (hasPendingLoroDraftChanges) => {
+        workflowStore.setState({ hasPendingLoroDraftChanges })
+      },
+    )
+    return () => {
+      unsubscribeConfirmation()
+      unsubscribePending()
+    }
+  }, [isCollaborationEnabled, t, workflowStore])
 
   const handleWorkflowDataUpdate = useCallback(
     (payload: WorkflowDataUpdatePayload) => {
@@ -202,7 +240,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
           nextEnvSecrets[environmentVariable.id] =
             environmentVariable.value === HIDDEN_SECRET_VALUE
-              ? envSecrets[environmentVariable.id] || HIDDEN_SECRET_VALUE
+              ? (envSecrets[environmentVariable.id] ?? HIDDEN_SECRET_VALUE)
               : String(environmentVariable.value)
           return { ...environmentVariable, value: HIDDEN_SECRET_VALUE }
         })
@@ -216,14 +254,25 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
-  const varsUpdateGenerationRef = useRef(0)
-  const varsUpdateAppliedGenerationRef = useRef(0)
-  const varsUpdateFailedGenerationRef = useRef(0)
-  const varsUpdateLatestSuccessfulRef = useRef<VarsUpdateSnapshot | null>(null)
-  const varsUpdateSyncRequestRef = useRef(0)
-  const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  useEffect(() => {
+    if (!isCollaborationEnabled) return
+    return collaborationManager.onClearRequested((confirm) => {
+      const { showConfirm, setShowConfirm } = workflowStore.getState()
+      if (showConfirm) return
+      setShowConfirm({
+        title: t(($) => $['common.clearCanvasConfirmTitle'], { ns: 'workflow' }),
+        desc: t(($) => $['common.clearCanvasConfirmDescription'], { ns: 'workflow' }),
+        onCancel: () => setShowConfirm(undefined),
+        onConfirm: () => {
+          setShowConfirm(undefined)
+          confirm()
+        },
+      })
+    })
+  }, [isCollaborationEnabled, workflowStore, t])
+
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
@@ -235,126 +284,62 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
-    const applySnapshot = async (snapshot: VarsUpdateSnapshot) => {
-      if (snapshot.generation <= varsUpdateAppliedGenerationRef.current) return
-
-      handleWorkflowDataUpdate(snapshot.response)
-      varsUpdateAppliedGenerationRef.current = snapshot.generation
-      if (
-        snapshot.syncRequest > varsUpdateCompletedSyncRef.current &&
-        collaborationManager.getIsLeader()
-      ) {
-        let syncSucceeded = false
-        await doSyncWorkflowDraft(false, {
-          onSuccess: () => {
-            syncSucceeded = true
-          },
-        })
-        if (syncSucceeded)
-          varsUpdateCompletedSyncRef.current = Math.max(
-            varsUpdateCompletedSyncRef.current,
-            snapshot.syncRequest,
-          )
+    let generation = 0
+    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(async () => {
+      const request = ++generation
+      const epoch = workflowStore.getState().loroDraft?.epoch
+      try {
+        const response = await fetchAppWorkflowDraft(appId)
+        if (
+          request === generation &&
+          epoch === workflowStore.getState().loroDraft?.epoch &&
+          response.loro_draft_epoch === epoch
+        )
+          handleWorkflowDataUpdate(response)
+      } catch (error) {
+        if (request === generation) console.error('Failed to refresh workflow variables:', error)
       }
+    })
+    return () => {
+      generation++
+      unsubscribe()
     }
-
-    const applyLatestSuccessfulSnapshot = async () => {
-      const latestSuccessful = varsUpdateLatestSuccessfulRef.current
-      if (latestSuccessful && latestSuccessful.generation > varsUpdateAppliedGenerationRef.current)
-        await applySnapshot(latestSuccessful)
-    }
-
-    const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(
-      async (_update: CollaborationUpdate) => {
-        if (_update.data?.syncWorkflowDraft) varsUpdateSyncRequestRef.current++
-        const updateGeneration = ++varsUpdateGenerationRef.current
-        const syncRequest = varsUpdateSyncRequestRef.current
-        try {
-          const response = await fetchAppWorkflowDraft(appId)
-          const snapshot = { generation: updateGeneration, response, syncRequest }
-          if (
-            !varsUpdateLatestSuccessfulRef.current ||
-            updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
-          )
-            varsUpdateLatestSuccessfulRef.current = snapshot
-          if (varsUpdateGenerationRef.current !== updateGeneration) {
-            if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
-              await applyLatestSuccessfulSnapshot()
-            return
-          }
-          await applySnapshot(snapshot)
-        } catch (error) {
-          if (varsUpdateGenerationRef.current !== updateGeneration) return
-
-          const latestSuccessful = varsUpdateLatestSuccessfulRef.current
-          if (
-            latestSuccessful &&
-            latestSuccessful.generation > varsUpdateAppliedGenerationRef.current
-          )
-            await applySnapshot(latestSuccessful)
-
-          const needsFreshSnapshot =
-            syncRequest > varsUpdateCompletedSyncRef.current &&
-            (!latestSuccessful || latestSuccessful.syncRequest < syncRequest)
-          if (varsUpdateGenerationRef.current !== updateGeneration) return
-          if (!needsFreshSnapshot) {
-            varsUpdateFailedGenerationRef.current = updateGeneration
-            await applyLatestSuccessfulSnapshot()
-            if (!latestSuccessful) console.error('workflow vars and features update failed:', error)
-            return
-          }
-
-          try {
-            const response = await fetchAppWorkflowDraft(appId)
-            const snapshot = { generation: updateGeneration, response, syncRequest }
-            if (
-              !varsUpdateLatestSuccessfulRef.current ||
-              updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
-            )
-              varsUpdateLatestSuccessfulRef.current = snapshot
-            if (varsUpdateGenerationRef.current !== updateGeneration) {
-              if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
-                await applyLatestSuccessfulSnapshot()
-              return
-            }
-            await applySnapshot(snapshot)
-          } catch (retryError) {
-            if (varsUpdateGenerationRef.current === updateGeneration) {
-              varsUpdateFailedGenerationRef.current = updateGeneration
-              await applyLatestSuccessfulSnapshot()
-            }
-            console.error('workflow vars and features update failed:', retryError)
-          }
-        }
-      },
-    )
-
-    return unsubscribe
-  }, [appId, doSyncWorkflowDraft, handleWorkflowDataUpdate, isCollaborationEnabled])
+  }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled, workflowStore])
 
   // Listen for workflow updates from other users
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
+    let disposed = false
+    let refreshSequence = 0
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
+      const { loroDraft: activeDraft } = workflowStore.getState()
+      const sequence = ++refreshSequence
       try {
         const response = await fetchAppWorkflowDraft(appId)
+        const state = workflowStore.getState()
+        if (disposed || sequence !== refreshSequence || state.loroDraft !== activeDraft) return
 
-        if (response.hash)
-          workflowStore.getState().setSyncWorkflowDraftHash(response.hash, response.graph)
-
-        // Handle features, variables etc.
+        const nextEpoch = response.loro_draft_epoch
+        if (activeDraft && nextEpoch && nextEpoch !== activeDraft.epoch) {
+          const identity = { ...activeDraft, epoch: nextEpoch }
+          if (!collaborationManager.replaceLoroDraft(appId, identity)) return
+          workflowStore.setState({ loroDraft: identity, hasPendingLoroDraftChanges: false })
+        }
+        if (response.hash) state.setSyncWorkflowDraftHash(response.hash, response.graph)
         handleWorkflowDataUpdate(response)
 
-        // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph)
+        if (response.graph && !activeDraft)
           handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       } catch (error) {
         console.error('Failed to fetch updated workflow:', error)
       }
     })
 
-    return unsubscribe
+    return () => {
+      disposed = true
+      unsubscribe()
+    }
   }, [
     appId,
     getWorkflowDraftGraphForCanvas,
@@ -364,70 +349,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     workflowStore,
   ])
 
-  // The server directs this request to the selected saver. Do not gate it on the
-  // local leader flag because the preceding status event may still be in flight.
-  useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
-
-    const unsubscribe = collaborationManager.onSyncRequest(({ acknowledge }) => {
-      if (!collaborationManager.canPersistLocalGraph()) {
-        acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
-        return
-      }
-
-      collaborationManager.refreshGraphSynchronously()
-      void doSyncWorkflowDraft(false, undefined, { forceLocal: true })
-        .then((result) => {
-          acknowledge(
-            result
-              ? { success: true, hash: result.hash, updatedAt: result.updatedAt }
-              : { success: false },
-          )
-        })
-        .catch(() => {
-          acknowledge({ success: false })
-        })
-    })
-
-    return unsubscribe
-  }, [appId, doSyncWorkflowDraft, isCollaborationEnabled])
-
-  useEffect(() => {
-    if (!appId || !isCollaborationEnabled) return
-
-    let retryTimer: ReturnType<typeof setTimeout> | undefined
-    let disposed = false
-    const unsubscribe = collaborationManager.onGraphReloadRequired(async (request) => {
-      if (retryTimer) {
-        clearTimeout(retryTimer)
-        retryTimer = undefined
-      }
-
-      const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
-      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
-      if (!isCurrent()) return
-
-      if (refreshed) {
-        collaborationManager.replaceGraphFromReactFlow(request)
-        return
-      }
-
-      const retryDelay = Math.min(
-        GRAPH_RELOAD_RETRY_BASE_DELAY * 2 ** request.attempt,
-        GRAPH_RELOAD_RETRY_MAX_DELAY,
-      )
-      retryTimer = setTimeout(() => {
-        retryTimer = undefined
-        collaborationManager.retryGraphReload(request)
-      }, retryDelay)
-    })
-
-    return () => {
-      disposed = true
-      if (retryTimer) clearTimeout(retryTimer)
-      unsubscribe()
-    }
-  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,

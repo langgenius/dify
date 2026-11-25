@@ -1,13 +1,10 @@
-import type {
-  BlockDefaultValue,
-  TriggerDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
+import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import type { BlockEnum } from '@/app/components/workflow/types'
 import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
-import { useStoreApi } from 'reactflow'
 import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
@@ -16,14 +13,15 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
+import {
+  getStartNodeData,
+  useSelectStartNode,
+} from '@/app/components/workflow/hooks/use-select-start-node'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
@@ -38,31 +36,6 @@ const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-ds
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
   ssr: false,
 })
-
-const getTriggerPluginNodeData = (
-  triggerConfig: TriggerDefaultValue,
-  fallbackTitle?: string,
-  fallbackDesc?: string,
-) => {
-  return {
-    plugin_id: triggerConfig.plugin_id,
-    provider_id: triggerConfig.provider_name,
-    provider_type: triggerConfig.provider_type,
-    provider_name: triggerConfig.provider_name,
-    event_name: triggerConfig.event_name,
-    event_label: triggerConfig.event_label,
-    event_description: triggerConfig.event_description,
-    title: triggerConfig.event_label || triggerConfig.title || fallbackTitle,
-    desc: triggerConfig.event_description || fallbackDesc,
-    output_schema: { ...triggerConfig.output_schema },
-    parameters_schema: triggerConfig.paramSchemas ? [...triggerConfig.paramSchemas] : [],
-    config: { ...triggerConfig.params },
-    subscription_id: triggerConfig.subscription_id,
-    plugin_unique_identifier: triggerConfig.plugin_unique_identifier,
-    is_team_authorization: triggerConfig.is_team_authorization,
-    meta: triggerConfig.meta ? { ...triggerConfig.meta } : undefined,
-  }
-}
 
 const WorkflowChildren = () => {
   const appId = useAtomValue(workflowAppIdentityAtom).appId
@@ -80,9 +53,8 @@ const WorkflowChildren = () => {
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
-  const reactFlowStore = useStoreApi()
+  const selectStartNode = useSelectStartNode()
   const availableNodesMetaData = useWorkflowNodeCatalog()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { exportCheck, handleExportDSL, isExporting } = useDSL()
@@ -91,8 +63,6 @@ const WorkflowChildren = () => {
     if (isExportSecretEnvironmentEvent(event))
       exportSecretsDialog.openWithPayload(event.payload.data)
   })
-
-  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const handleCloseOnboarding = useCallback(() => {
     handleOnboardingClose()
@@ -105,62 +75,27 @@ const WorkflowChildren = () => {
       const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
       if (!nodeDefault?.defaultValue) return
 
-      const baseNodeData = { ...nodeDefault.defaultValue }
-
-      const mergedNodeData = (() => {
-        if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
-          return {
-            ...baseNodeData,
-            ...toolConfig,
-          }
-        }
-
-        const triggerNodeData = getTriggerPluginNodeData(
-          toolConfig as TriggerDefaultValue,
-          baseNodeData.title,
-          baseNodeData.desc,
-        )
-
-        return {
-          ...baseNodeData,
-          ...triggerNodeData,
-          config: {
-            ...(baseNodeData as { config?: Record<string, any> }).config,
-            ...triggerNodeData.config,
-          },
-        }
-      })()
+      const nodeData = getStartNodeData(nodeType, nodeDefault.defaultValue, toolConfig)
 
       const { newNode } = generateNewNode({
-        data: {
-          ...mergedNodeData,
-        } as any,
+        data: nodeData,
         position: START_INITIAL_POSITION,
       })
 
-      const { setNodes, setEdges } = reactFlowStore.getState()
-      setNodes([newNode])
-      setEdges([])
-
-      setShowOnboarding?.(false)
-      setHasSelectedStartNode?.(true)
-      setShouldAutoOpenStartNodeSelector?.(true)
-
-      handleSyncWorkflowDraft(true, false, {
-        onSuccess: () => {
-          autoGenerateWebhookUrl(newNode.id)
+      selectStartNode(
+        () => newNode,
+        () => {
+          setShowOnboarding?.(false)
+          setHasSelectedStartNode?.(true)
+          setShouldAutoOpenStartNodeSelector?.(true)
         },
-        onError: () => {
-          console.error('Failed to save node to draft')
-        },
-      })
+        true,
+      )
     },
     [
+      selectStartNode,
       availableNodesMetaData,
-      autoGenerateWebhookUrl,
       canEdit,
-      handleSyncWorkflowDraft,
-      reactFlowStore,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,
       setShowOnboarding,

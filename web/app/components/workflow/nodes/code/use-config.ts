@@ -3,6 +3,7 @@ import type { CodeNodeType, OutputVar } from './types'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorAppIdAtom,
   editorPipelineIdAtom,
@@ -85,10 +86,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
 
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
-      setInputs({
-        ...inputs,
-        ...defaultConfig,
-      })
+      runDraftInitialization(() => setInputs({ ...inputs, ...defaultConfig }))
       syncOutputKeyOrders(defaultConfig.outputs)
     }
   }, [defaultConfig])

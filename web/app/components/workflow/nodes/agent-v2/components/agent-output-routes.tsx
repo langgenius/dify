@@ -4,6 +4,7 @@ import type { NodeProps, Var } from '@/app/components/workflow/types'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useEdgesInteractions } from '@/app/components/workflow/hooks/use-edges-interactions'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
@@ -38,24 +39,33 @@ export function AgentOutputRoutes({ id, data }: NodeProps<AgentV2NodeType>) {
     const nextRoutes = next.routes?.map(({ id, name, label }) => ({ id, name, label }))
     const currentHandles = routes?.enabled ? list.map((route) => route.id) : ['source']
     const nextHandles = next.enabled ? (nextRoutes ?? []).map((route) => route.id) : ['source']
-    // Downstream references must be removed before their connecting edges disappear.
-    if (routes?.enabled && !next.enabled) removeUsedVarInNodes([id, 'switch'])
-    handleNodeDataUpdate({
-      id,
-      data: {
-        agent_output_routes: { ...next, routes: nextRoutes },
-        ...(next.enabled && data.error_strategy === ErrorHandleTypeEnum.defaultValue
-          ? { error_strategy: undefined, default_value: undefined }
-          : {}),
-        _targetBranches: next.enabled
-          ? nextRoutes?.map((route) => ({ id: route.id, name: route.name ?? '' }))
-          : [],
-      },
+    collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeChange, () => {
+      // Downstream references must be removed before their connecting edges disappear.
+      if (routes?.enabled && !next.enabled) removeUsedVarInNodes([id, 'switch'])
+      handleNodeDataUpdate({
+        id,
+        previousData: {
+          agent_output_routes: routes,
+          ...(next.enabled && data.error_strategy === ErrorHandleTypeEnum.defaultValue
+            ? { error_strategy: data.error_strategy, default_value: data.default_value }
+            : {}),
+          _targetBranches: data._targetBranches,
+        },
+        data: {
+          agent_output_routes: { ...next, routes: nextRoutes },
+          ...(next.enabled && data.error_strategy === ErrorHandleTypeEnum.defaultValue
+            ? { error_strategy: undefined, default_value: undefined }
+            : {}),
+          _targetBranches: next.enabled
+            ? nextRoutes?.map((route) => ({ id: route.id, name: route.name ?? '' }))
+            : [],
+        },
+      })
+      removeBranchEdges(
+        id,
+        currentHandles.filter((handle) => !nextHandles.includes(handle)),
+      )
     })
-    removeBranchEdges(
-      id,
-      currentHandles.filter((handle) => !nextHandles.includes(handle)),
-    )
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeChange)
   }

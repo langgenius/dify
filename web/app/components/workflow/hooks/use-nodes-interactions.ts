@@ -16,7 +16,7 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConnectedEdges, getOutgoers, useReactFlow } from 'reactflow'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
@@ -69,6 +69,7 @@ import {
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
+import { stepDraftHistory, useCollaborativeHistoryAppId } from './use-canvas-draft-history'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
@@ -179,6 +180,7 @@ export const useNodesInteractions = () => {
     }),
   )
   const collaborativeWorkflow = useCollaborativeWorkflow()
+  const historyAppId = useCollaborativeHistoryAppId()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
@@ -190,6 +192,8 @@ export const useNodesInteractions = () => {
   const { handleNodeIterationChildDrag, handleNodeIterationChildrenCopy } =
     useNodeIterationInteractions()
   const { handleNodeLoopChildDrag, handleNodeLoopChildrenCopy } = useNodeLoopInteractions()
+  const endDragHistoryRef = useRef<(() => void) | undefined>(undefined)
+  useEffect(() => () => endDragHistoryRef.current?.(), [])
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as {
     x: number
     y: number
@@ -239,6 +243,12 @@ export const useNodesInteractions = () => {
 
       if (getNodesReadOnly()) return
 
+      if (historyAppId) {
+        endDragHistoryRef.current?.()
+        endDragHistoryRef.current = collaborationManager.beginDraftHistoryAction(
+          WorkflowHistoryEvent.NodeDragStop,
+        )
+      }
       if (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_NOTE_NODE) {
         return
       }
@@ -252,7 +262,7 @@ export const useNodesInteractions = () => {
         y: node.position.y,
       }
     },
-    [workflowStore, getNodesReadOnly],
+    [workflowStore, getNodesReadOnly, historyAppId],
   )
 
   const handleNodeDrag = useCallback<NodeDragHandler>(
@@ -333,6 +343,8 @@ export const useNodesInteractions = () => {
 
   const handleNodeDragStop = useCallback<NodeDragHandler>(
     (_, node) => {
+      endDragHistoryRef.current?.()
+      endDragHistoryRef.current = undefined
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
 
       if (getNodesReadOnly()) return
@@ -686,7 +698,7 @@ export const useNodesInteractions = () => {
   )
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
-  const handleNodeDelete = useCallback(
+  const performNodeDelete = useCallback(
     (nodeId: string) => {
       if (getNodesReadOnly()) return
 
@@ -707,13 +719,13 @@ export const useNodesInteractions = () => {
         if (iterationChildren.length) {
           if (currentNode.data._isBundled) {
             iterationChildren.forEach((child) => {
-              handleNodeDelete(child.id)
+              performNodeDelete(child.id)
             })
-            return handleNodeDelete(nodeId)
+            return performNodeDelete(nodeId)
           } else {
             if (iterationChildren.length === 1) {
-              handleNodeDelete(iterationChildren[0]!.id)
-              handleNodeDelete(nodeId)
+              performNodeDelete(iterationChildren[0]!.id)
+              performNodeDelete(nodeId)
 
               return
             }
@@ -725,9 +737,9 @@ export const useNodesInteractions = () => {
                 desc: t(($) => $['nodes.iteration.deleteDesc'], { ns: 'workflow' }),
                 onConfirm: () => {
                   iterationChildren.forEach((child) => {
-                    handleNodeDelete(child.id)
+                    performNodeDelete(child.id)
                   })
-                  handleNodeDelete(nodeId)
+                  performNodeDelete(nodeId)
                   handleSyncWorkflowDraft()
                   setShowConfirm(undefined)
                 },
@@ -744,13 +756,13 @@ export const useNodesInteractions = () => {
         if (loopChildren.length) {
           if (currentNode.data._isBundled) {
             loopChildren.forEach((child) => {
-              handleNodeDelete(child.id)
+              performNodeDelete(child.id)
             })
-            return handleNodeDelete(nodeId)
+            return performNodeDelete(nodeId)
           } else {
             if (loopChildren.length === 1) {
-              handleNodeDelete(loopChildren[0]!.id)
-              handleNodeDelete(nodeId)
+              performNodeDelete(loopChildren[0]!.id)
+              performNodeDelete(nodeId)
 
               return
             }
@@ -762,9 +774,9 @@ export const useNodesInteractions = () => {
                 desc: t(($) => $['nodes.loop.deleteDesc'], { ns: 'workflow' }),
                 onConfirm: () => {
                   loopChildren.forEach((child) => {
-                    handleNodeDelete(child.id)
+                    performNodeDelete(child.id)
                   })
-                  handleNodeDelete(nodeId)
+                  performNodeDelete(nodeId)
                   handleSyncWorkflowDraft()
                   setShowConfirm(undefined)
                 },
@@ -838,6 +850,24 @@ export const useNodesInteractions = () => {
       deleteNodeInspectorVars,
     ],
   )
+
+  const deleteNodes = useCallback(
+    (ids: string[]) => {
+      const remove = () =>
+        collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeDelete, () => {
+          for (const id of ids) performNodeDelete(id)
+        })
+      if (historyAppId)
+        collaborationManager.guardClear(
+          () => collaborationManager.deletionWillClear(new Set(ids)),
+          remove,
+        )
+      else remove()
+    },
+    [historyAppId, performNodeDelete],
+  )
+
+  const handleNodeDelete = useCallback((id: string) => deleteNodes([id]), [deleteNodes])
 
   const handleNodeAdd = useCallback<OnNodeAdd>(
     (
@@ -2192,8 +2222,10 @@ export const useNodesInteractions = () => {
       draft.push(...nodesToPaste)
     })
 
-    setNodes(newNodes)
-    setEdges([...edges, ...edgesToPaste])
+    collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodePaste, () => {
+      setNodes(newNodes)
+      setEdges([...edges, ...edgesToPaste])
+    })
     saveStateToHistory(WorkflowHistoryEvent.NodePaste, {
       nodeId: nodesToPaste?.[0]?.id,
     })
@@ -2231,7 +2263,7 @@ export const useNodesInteractions = () => {
     const bundledNodes = nodes.filter((node) => node.data._isBundled)
 
     if (bundledNodes.length) {
-      bundledNodes.forEach((node) => handleNodeDelete(node.id))
+      deleteNodes(bundledNodes.map((node) => node.id))
 
       return
     }
@@ -2242,7 +2274,7 @@ export const useNodesInteractions = () => {
     const selectedNode = nodes.find((node) => node.data.selected)
 
     if (selectedNode) handleNodeDelete(selectedNode.id)
-  }, [collaborativeWorkflow, getNodesReadOnly, handleNodeDelete])
+  }, [collaborativeWorkflow, getNodesReadOnly, handleNodeDelete, deleteNodes])
 
   const handleNodeResize = useCallback(
     (nodeId: string, params: ResizeParamsWithDirection) => {
@@ -2338,49 +2370,44 @@ export const useNodesInteractions = () => {
     [collaborativeWorkflow, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory],
   )
 
-  const handleHistoryBack = useCallback(() => {
-    if (getNodesReadOnly() || getWorkflowReadOnly()) return
-
-    undo()
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
-
-    const shouldBroadcast = collaborationManager.isConnected()
-    setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast, 'nodes:history-back')
-    if (shouldBroadcast) collaborationManager.emitHistoryAction('undo')
-    workflowStore.setState({ contextMenuTarget: undefined })
-  }, [
-    collaborativeWorkflow,
-    workflowStore,
-    undo,
-    workflowHistoryStore,
-    getNodesReadOnly,
-    getWorkflowReadOnly,
-  ])
-
-  const handleHistoryForward = useCallback(() => {
-    if (getNodesReadOnly() || getWorkflowReadOnly()) return
-
-    redo()
-    const { edges, nodes } = workflowHistoryStore.getState()
-    if (edges.length === 0 && nodes.length === 0) return
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
-
-    const shouldBroadcast = collaborationManager.isConnected()
-    setEdges(edges, shouldBroadcast)
-    setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
-    if (shouldBroadcast) collaborationManager.emitHistoryAction('redo')
-    workflowStore.setState({ contextMenuTarget: undefined })
-  }, [
-    collaborativeWorkflow,
-    redo,
-    workflowStore,
-    workflowHistoryStore,
-    getNodesReadOnly,
-    getWorkflowReadOnly,
-  ])
+  const stepHistory = useCallback(
+    (direction: 'undo' | 'redo') => {
+      if (getNodesReadOnly() || getWorkflowReadOnly()) return
+      if (historyAppId) {
+        if (
+          stepDraftHistory(
+            historyAppId,
+            workflowStore.getState().loroDraft,
+            direction === 'undo' ? -1 : 1,
+            direction,
+          )
+        )
+          handleSyncWorkflowDraft()
+      } else {
+        if (direction === 'undo') undo()
+        else redo()
+        const { edges, nodes } = workflowHistoryStore.getState()
+        if (edges.length === 0 && nodes.length === 0) return
+        const { setNodes, setEdges } = collaborativeWorkflow.getState()
+        setEdges(edges, false)
+        setNodes(nodes, false)
+      }
+      workflowStore.setState({ contextMenuTarget: undefined })
+    },
+    [
+      collaborativeWorkflow,
+      getNodesReadOnly,
+      getWorkflowReadOnly,
+      handleSyncWorkflowDraft,
+      historyAppId,
+      redo,
+      undo,
+      workflowHistoryStore,
+      workflowStore,
+    ],
+  )
+  const handleHistoryBack = useCallback(() => stepHistory('undo'), [stepHistory])
+  const handleHistoryForward = useCallback(() => stepHistory('redo'), [stepHistory])
 
   const [isDimming, setIsDimming] = useState(false)
   /** Add opacity-30 to all nodes except the nodeId */

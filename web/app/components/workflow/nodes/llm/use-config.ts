@@ -4,9 +4,11 @@ import type { EnvironmentVariable, ValueSelector } from '@/app/components/workfl
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useState } from 'react'
+import { useStoreApi } from 'reactflow'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
@@ -25,8 +27,11 @@ import {
 const EMPTY_ENVIRONMENT_VARIABLES: EnvironmentVariable[] = []
 
 const useConfig = (id: string, payload: LLMNodeType) => {
-  const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const { nodesReadOnly: readOnly, getNodesReadOnly } = useNodesReadOnly()
   const isChatflow = useAtomValue(isChatflowAtom)
+  const appId = useAtomValue(editorAppIdAtom)
+  const loroDraft = useStore((s) => s.loroDraft)
+  const flowStore = useStoreApi()
 
   const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type] as
     | LLMDefaultConfig
@@ -201,6 +206,33 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     isChatModel,
     setInputs,
   })
+  const { handlePromptChange: savePrompt } = promptConfig
+  const handlePromptChange = useCallback(
+    (prompt: LLMNodeType['prompt_template']) => {
+      if (getNodesReadOnly()) return
+      if (
+        appId &&
+        loroDraft &&
+        collaborationManager.queueInitialLlmPrompt(
+          appId,
+          loroDraft,
+          id,
+          prompt,
+          inputs.prompt_template,
+        )
+      ) {
+        const { getNodes, setNodes } = flowStore.getState()
+        setNodes(
+          getNodes().map((node) =>
+            node.id === id ? { ...node, data: { ...node.data, prompt_template: prompt } } : node,
+          ),
+        )
+        return
+      }
+      savePrompt(prompt)
+    },
+    [appId, loroDraft, id, inputs.prompt_template, getNodesReadOnly, flowStore, savePrompt],
+  )
 
   const structuredOutputConfig = useLLMStructuredOutputConfig({
     id,
@@ -241,7 +273,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar: promptConfig.filterVar,
     availableVars,
     availableNodesWithParent,
-    handlePromptChange: promptConfig.handlePromptChange,
+    handlePromptChange,
     handleMemoryChange: promptConfig.handleMemoryChange,
     handleSyeQueryChange: promptConfig.handleSyeQueryChange,
     handleVisionResolutionEnabledChange,

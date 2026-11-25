@@ -119,7 +119,9 @@ export function workflowVersionHistoryInfiniteOptions(
 }
 
 // Prefix of every version list page set for the resource, regardless of filters.
-export function workflowVersionHistoryKey(resource: EditorResource) {
+export function workflowVersionHistoryKey(
+  resource: EditorResource | { kind: 'app'; appId: string },
+) {
   switch (resource.kind) {
     case 'app':
       return consoleQuery.apps.byAppId.workflows.get.key({

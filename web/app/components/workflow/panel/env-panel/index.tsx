@@ -180,32 +180,25 @@ const useEnvPanelActions = ({
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   activeTextGenerationModelList: ModelSelectorProvider[]
 }) => {
-  const emitVarsAndFeaturesUpdate = useCallback(
-    async (syncWorkflowDraft = false) => {
-      if (resource.kind !== 'app') return
-      const { appId } = resource
-      try {
-        const { webSocketClient } =
-          await import('@/app/components/workflow/collaboration/core/websocket-manager')
-        const socket = webSocketClient.getSocket(appId)
-        if (socket) {
-          socket.emit('collaboration_event', {
-            type: 'vars_and_features_update',
-            ...(syncWorkflowDraft ? { data: { syncWorkflowDraft: true } } : {}),
-          })
-        }
-      } catch (error) {
-        console.error('Failed to emit vars_and_features_update event:', error)
+  const emitVarsAndFeaturesUpdate = useCallback(async () => {
+    if (resource.kind !== 'app') return
+    const { appId } = resource
+    try {
+      const { webSocketClient } =
+        await import('@/app/components/workflow/collaboration/core/websocket-manager')
+      const socket = webSocketClient.getSocket(appId)
+      if (socket) {
+        socket.emit('collaboration_event', {
+          type: 'vars_and_features_update',
+        })
       }
-    },
-    [resource],
-  )
+    } catch (error) {
+      console.error('Failed to emit vars_and_features_update event:', error)
+    }
+  }, [resource])
 
   const persistEnvironmentVariables = useCallback(
-    async (
-      patch: EnvironmentVariablePatch,
-      syncWorkflowDraft = false,
-    ): Promise<EnvironmentVariablePersistenceResult> => {
+    async (patch: EnvironmentVariablePatch): Promise<EnvironmentVariablePersistenceResult> => {
       if (resource.kind !== 'app') {
         let succeeded = false
         await doSyncWorkflowDraft(false, {
@@ -218,7 +211,7 @@ const useEnvPanelActions = ({
       try {
         const { updateEnvironmentVariables } = await import('@/service/workflow')
         await updateEnvironmentVariables({ appId: resource.appId, ...patch }, { silent: true })
-        await emitVarsAndFeaturesUpdate(syncWorkflowDraft)
+        await emitVarsAndFeaturesUpdate()
         return { persisted: true }
       } catch (error) {
         console.error('Failed to update environment variables:', error)
@@ -392,13 +385,9 @@ const useEnvPanelActions = ({
     ],
   )
   const syncEnvList = useCallback(
-    async (
-      nextEnvList: EnvironmentVariable[],
-      patch: EnvironmentVariablePatch,
-      syncWorkflowDraft = false,
-    ) => {
+    async (nextEnvList: EnvironmentVariable[], patch: EnvironmentVariablePatch) => {
       updateEnvList(nextEnvList)
-      return persistEnvironmentVariables(patch, syncWorkflowDraft)
+      return persistEnvironmentVariables(patch)
     },
     [persistEnvironmentVariables, updateEnvList],
   )
@@ -593,19 +582,12 @@ const EnvPanel = () => {
   )
 
   const persistEnvListWithGraphChanges = useCallback(
-    async (
-      nextEnvList: EnvironmentVariable[],
-      patch: EnvironmentVariablePatch,
-    ): Promise<EnvironmentVariablePersistenceResult> => {
-      const isCollaborationFollower =
-        collaborationManager.isConnected() && !collaborationManager.getIsLeader()
-      if (isCollaborationFollower) return syncEnvList(nextEnvList, patch, true)
-
+    async (patch: EnvironmentVariablePatch): Promise<EnvironmentVariablePersistenceResult> => {
       const persisted = await syncDraftWithResult(patch)
       if (persisted) await emitVarsAndFeaturesUpdate()
       return { persisted }
     },
-    [emitVarsAndFeaturesUpdate, syncDraftWithResult, syncEnvList],
+    [emitVarsAndFeaturesUpdate, syncDraftWithResult],
   )
 
   const handleEdit = (env: EnvironmentVariable) => {
@@ -629,7 +611,7 @@ const EnvPanel = () => {
         updateEnvList(nextEnvList)
         const rollbackAffectedNodes = updateAffectedNodes(committedEnv, [])
         const { persisted, error } = rollbackAffectedNodes
-          ? await persistEnvListWithGraphChanges(nextEnvList, patch)
+          ? await persistEnvListWithGraphChanges(patch)
           : await persistQueuedEnvList(nextEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
@@ -637,12 +619,7 @@ const EnvPanel = () => {
             rollbackAffectedNodes?.()
             toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           }
-          if (recovered)
-            await emitVarsAndFeaturesUpdate(
-              !!rollbackAffectedNodes &&
-                collaborationManager.isConnected() &&
-                !collaborationManager.getIsLeader(),
-            )
+          if (recovered) await emitVarsAndFeaturesUpdate()
           if (recovered && committedEnv.value_type === 'secret') removeEnvSecret(committedEnv.id)
           return
         }
@@ -763,7 +740,7 @@ const EnvPanel = () => {
           deletedEnvironmentVariableIds: [],
         }
         const { persisted, error } = hasGraphChanges
-          ? await persistEnvListWithGraphChanges(nextCommittedEnvList, patch)
+          ? await persistEnvListWithGraphChanges(patch)
           : await persistQueuedEnvList(nextCommittedEnvList, patch)
         if (!persisted) {
           const recovered = await reconcileAmbiguousPersistenceFailure(patch)
@@ -772,12 +749,7 @@ const EnvPanel = () => {
             rollbackReconciledLLMNodes?.()
             toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
           }
-          if (recovered)
-            await emitVarsAndFeaturesUpdate(
-              hasGraphChanges &&
-                collaborationManager.isConnected() &&
-                !collaborationManager.getIsLeader(),
-            )
+          if (recovered) await emitVarsAndFeaturesUpdate()
           if (recovered && shouldSaveSecret) saveSecretValue(newEnv)
           else if (recovered && shouldRemoveSecret) removeEnvSecret(currentVar.id)
           return

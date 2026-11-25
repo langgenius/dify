@@ -49,6 +49,9 @@ const api = vi.hoisted(() => ({
     vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
 }))
 const socketIo = vi.hoisted(() => vi.fn<typeof import('socket.io-client').io>())
+vi.mock('@/app/components/workflow/collaboration/core/loro-draft-storage', () => ({
+  LoroDraftStorage: { open: () => new Promise(() => {}) },
+}))
 vi.mock('socket.io-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('socket.io-client')>()),
   io: socketIo,
@@ -94,8 +97,6 @@ type Manager = typeof collaborationManager
 const events = {
   vars: new Set<Parameters<Manager['onVarsAndFeaturesUpdate']>[0]>(),
   workflow: new Set<Parameters<Manager['onWorkflowUpdate']>[0]>(),
-  sync: new Set<Parameters<Manager['onSyncRequest']>[0]>(),
-  reload: new Set<Parameters<Manager['onGraphReloadRequired']>[0]>(),
   users: new Set<Parameters<Manager['onOnlineUsersUpdate']>[0]>(),
   cursors: new Set<Parameters<Manager['onCursorUpdate']>[0]>(),
   ready: new Set<Parameters<Manager['onGraphReadyChange']>[0]>(),
@@ -107,6 +108,7 @@ const draft = (
   overrides: Partial<FetchWorkflowDraftResponse> = {},
 ): FetchWorkflowDraftResponse => ({
   ...createWorkflowResponseFixture(),
+  loro_draft_epoch: 'shared',
   conversation_variables: [],
   environment_variables: [],
   rag_pipeline_variables: [],
@@ -122,12 +124,10 @@ beforeEach(() => {
   vi.spyOn(collaborationManager, 'connect').mockResolvedValue('connection-1')
   vi.spyOn(collaborationManager, 'disconnect').mockImplementation(() => {})
   vi.spyOn(collaborationManager, 'isConnected').mockReturnValue(true)
-  vi.spyOn(collaborationManager, 'getIsLeader').mockReturnValue(true)
   vi.spyOn(collaborationManager, 'canPersistLocalGraph').mockReturnValue(true)
+  vi.spyOn(collaborationManager, 'setNodes').mockImplementation(() => {})
+  vi.spyOn(collaborationManager, 'setEdges').mockImplementation(() => {})
   vi.spyOn(collaborationManager, 'refreshGraphSynchronously').mockImplementation(() => {})
-  vi.spyOn(collaborationManager, 'replaceGraphFromReactFlow').mockReturnValue(true)
-  vi.spyOn(collaborationManager, 'isGraphReloadCurrent').mockReturnValue(true)
-  vi.spyOn(collaborationManager, 'retryGraphReload').mockImplementation(() => {})
   vi.spyOn(collaborationManager, 'onVarsAndFeaturesUpdate').mockImplementation((handler) => {
     events.vars.add(handler)
     return () => {
@@ -138,18 +138,6 @@ beforeEach(() => {
     events.workflow.add(handler)
     return () => {
       events.workflow.delete(handler)
-    }
-  })
-  vi.spyOn(collaborationManager, 'onSyncRequest').mockImplementation((handler) => {
-    events.sync.add(handler)
-    return () => {
-      events.sync.delete(handler)
-    }
-  })
-  vi.spyOn(collaborationManager, 'onGraphReloadRequired').mockImplementation((handler) => {
-    events.reload.add(handler)
-    return () => {
-      events.reload.delete(handler)
     }
   })
   vi.spyOn(collaborationManager, 'onOnlineUsersUpdate').mockImplementation((handler) => {
@@ -275,6 +263,7 @@ async function renderMain({
         },
         initialStoreState: {
           isWorkflowDataLoaded: true,
+          loroDraft: collaboration ? { accountId: 'editor', epoch: 'shared' } : undefined,
           ...initialStoreState,
         },
         injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
@@ -289,7 +278,6 @@ function useRealCollaborationTransport() {
     'connect',
     'disconnect',
     'isConnected',
-    'getIsLeader',
     'canPersistLocalGraph',
     'onGraphReadyChange',
   ] as const)
@@ -338,13 +326,14 @@ it('keeps an established canvas on join failure without offering to reload it', 
   await waitFor(() => expect(socketIo).toHaveBeenCalled())
   act(() => {
     transport.receive('connect')
-    transport.receive('status', { isLeader: true })
     transport.acknowledge('user_connect', { msg: 'connected' })
     collaborationManager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
     transport.acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
     transport.acknowledge('user_connect', { msg: 'not_entitled' }, 403)
   })
-  expect(screen.getByText('workflow.collaboration.joinUnavailable')).toBeVisible()
+  expect(
+    within(screen.getByTestId('collaboration-graph-loading')).getByRole('status'),
+  ).toHaveTextContent('workflow.collaboration.joinUnavailable')
   expect(
     screen.queryByRole('button', { name: 'workflow.collaboration.reloadPage' }),
   ).not.toBeInTheDocument()
@@ -352,7 +341,7 @@ it('keeps an established canvas on join failure without offering to reload it', 
   expect(store.getState().nodes).toEqual(originalNodes)
 })
 
-it('clears a join error after a successful reconnect even when status precedes the acknowledgement', async () => {
+it('clears a join error after a successful reconnect after an initial outage', async () => {
   const transport = useRealCollaborationTransport()
   await renderMain()
   await waitFor(() => expect(socketIo).toHaveBeenCalled())
@@ -367,7 +356,6 @@ it('clears a join error after a successful reconnect even when status precedes t
     transport.receive('disconnect', 'transport close')
     transport.socket.id = 'socket-app-1-new'
     transport.receive('connect')
-    transport.receive('status', { isLeader: true })
     transport.acknowledge('user_connect', { msg: 'connected' })
   })
   expect(screen.queryByText('workflow.collaboration.joinUnavailable')).not.toBeInTheDocument()
@@ -417,11 +405,6 @@ const modelSnapshot = (name: string) =>
       },
     ],
   })
-const graphRequest = { generation: 2, token: 1, attempt: 0 }
-function reloadGraph() {
-  return Promise.all([...events.reload].map((handler) => handler(graphRequest)))
-}
-
 it('does not connect collaboration for a view-only app', async () => {
   await renderMain({ permission_keys: [AppACLPermission.ViewLayout] })
   expect(collaborationManager.connect).not.toHaveBeenCalled()
@@ -477,28 +460,7 @@ it('applies remote features and variables, retains omitted slices, and normalize
   ])
 })
 
-it('saves the trusted graph on a directed request and acknowledges the persisted revision', async () => {
-  await renderMain()
-  const acknowledge = vi.fn()
-  act(() => {
-    events.sync.forEach((handler) => handler({ requestId: 'save-1', acknowledge }))
-  })
-  await waitFor(() =>
-    expect(acknowledge).toHaveBeenCalledWith({ success: true, hash: 'saved-hash', updatedAt: 2 }),
-  )
-  expect(api.saveDraft).toHaveBeenCalledWith(
-    expect.objectContaining({
-      params: { app_id: 'app-1' },
-      body: expect.objectContaining({
-        graph: expect.objectContaining({ nodes: [expect.objectContaining({ id: 'start' })] }),
-      }),
-    }),
-    expect.anything(),
-  )
-  expect(collaborationManager.refreshGraphSynchronously).toHaveBeenCalled()
-})
-
-it('replaces the canvas from a workflow update and records its revision', async () => {
+it('retains the native canvas on a same-epoch refresh and records its revision', async () => {
   const { store } = await renderMain({ initialStoreState: { syncWorkflowDraftIsEmpty: true } })
   api.fetchDraft.mockResolvedValue(
     draft({
@@ -515,8 +477,8 @@ it('replaces the canvas from a workflow update and records its revision', async 
   await act(async () => {
     await updateWorkflow()
   })
-  // happy-dom does not measure ReactFlow nodes; verify content in the real renderer.
-  expect(await screen.findByText('Remote entry')).toBeInTheDocument()
+  expect(screen.queryByText('Remote entry')).not.toBeInTheDocument()
+  expect(store.getState().nodes.map((node) => node.id)).toEqual(['start'])
   expect(store.getState().syncWorkflowDraftHash).toBe('remote-hash')
   expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
 })
@@ -537,23 +499,6 @@ it('records an empty committed graph received from another collaborator', async 
   })
 })
 
-it('saves newly applied features when a follower requests synchronization', async () => {
-  const { store } = await renderMain()
-  api.fetchDraft.mockResolvedValue(modelSnapshot('latest-model'))
-  await act(async () => {
-    await updateVars(true)
-  })
-  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
-  expect(api.saveDraft).toHaveBeenCalledWith(
-    expect.objectContaining({
-      body: expect.objectContaining({
-        features: expect.objectContaining({ opening_statement: 'latest-model' }),
-      }),
-    }),
-    expect.anything(),
-  )
-})
-
 it('ignores an older environment refresh that resolves after the latest update', async () => {
   const first = createDeferred<FetchWorkflowDraftResponse>()
   const second = createDeferred<FetchWorkflowDraftResponse>()
@@ -566,165 +511,13 @@ it('ignores an older environment refresh that resolves after the latest update',
     await newer
   })
   expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
-  expect(api.saveDraft).toHaveBeenCalledOnce()
+  expect(api.saveDraft).not.toHaveBeenCalled()
   await act(async () => {
     first.resolve(modelSnapshot('stale-model'))
     await older
   })
   expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'latest-model' } }])
-  expect(api.saveDraft).toHaveBeenCalledOnce()
-})
-
-it.each(['before', 'after'] as const)(
-  'recovers the latest successful snapshot when it resolves %s a newer refresh fails',
-  async (order) => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    const first = createDeferred<FetchWorkflowDraftResponse>()
-    const second = createDeferred<FetchWorkflowDraftResponse>()
-    api.fetchDraft
-      .mockReturnValueOnce(first.promise)
-      .mockReturnValueOnce(second.promise)
-      .mockRejectedValueOnce(new Error('Retry failed'))
-    const { store } = await renderMain()
-    const older = updateVars(true)
-    const newer = updateVars()
-    if (order === 'before') {
-      await act(async () => {
-        first.resolve(modelSnapshot('recovered-model'))
-        await older
-      })
-      expect(store.getState().environmentVariables).toEqual([])
-    }
-    await act(async () => {
-      second.reject(new Error('Latest refresh failed'))
-      await newer
-    })
-    if (order === 'after')
-      await act(async () => {
-        first.resolve(modelSnapshot('recovered-model'))
-        await older
-      })
-    expect(store.getState().environmentVariables).toMatchObject([
-      { value: { name: 'recovered-model' } },
-    ])
-    expect(api.saveDraft).toHaveBeenCalledOnce()
-  },
-)
-
-it('applies an older slow retry after newer refresh attempts fail', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
-  const { store } = await renderMain()
-  await act(async () => {
-    await updateVars()
-  })
-  const retry = createDeferred<FetchWorkflowDraftResponse>()
-  api.fetchDraft
-    .mockReset()
-    .mockRejectedValueOnce(new Error('Older refresh failed'))
-    .mockReturnValueOnce(retry.promise)
-    .mockRejectedValueOnce(new Error('Newer refresh failed'))
-    .mockRejectedValueOnce(new Error('Newer retry failed'))
-  const older = updateVars(true)
-  await waitFor(() => expect(api.fetchDraft).toHaveBeenCalledTimes(2))
-  await act(async () => {
-    await updateVars()
-  })
-  expect(store.getState().environmentVariables).toEqual([])
-  await act(async () => {
-    retry.resolve(modelSnapshot('slow-retry'))
-    await older
-  })
-  expect(store.getState().environmentVariables).toMatchObject([{ value: { name: 'slow-retry' } }])
-  expect(api.saveDraft).toHaveBeenCalledOnce()
-})
-
-it('retries an outstanding follower save on the next update after persistence fails', async () => {
-  await renderMain()
-  api.fetchDraft.mockResolvedValue(modelSnapshot('latest-model'))
-  api.saveDraft.mockRejectedValueOnce(new Error('Save failed'))
-  await act(async () => {
-    await updateVars(true)
-  })
-  expect(api.saveDraft).toHaveBeenCalledOnce()
-  await act(async () => {
-    await updateVars()
-  })
-  expect(api.saveDraft).toHaveBeenCalledTimes(2)
-})
-
-it('reloads the authoritative HTTP graph before replacing the reconnected document', async () => {
-  await renderMain()
-  const response = createDeferred<FetchWorkflowDraftResponse>()
-  api.fetchDraft.mockReturnValueOnce(response.promise)
-  let reload: ReturnType<typeof reloadGraph>
-  act(() => {
-    reload = reloadGraph()
-  })
-  expect(collaborationManager.replaceGraphFromReactFlow).not.toHaveBeenCalled()
-  await act(async () => {
-    response.resolve(
-      draft({
-        graph: {
-          nodes: [createStartNode({ data: { title: 'Reloaded entry', variables: [] } })],
-          edges: [],
-        },
-      }),
-    )
-    await reload
-  })
-  expect(await screen.findByText('Reloaded entry')).toBeInTheDocument()
-  expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledExactlyOnceWith(
-    graphRequest,
-  )
-})
-
-it('rejects a directed save while the collaborative graph is untrusted', async () => {
-  vi.mocked(collaborationManager.canPersistLocalGraph).mockReturnValue(false)
-  await renderMain()
-  const acknowledge = vi.fn()
-  act(() => {
-    events.sync.forEach((handler) => handler({ requestId: 'untrusted', acknowledge }))
-  })
-  expect(acknowledge).toHaveBeenCalledWith({
-    success: false,
-    error: 'Collaborative graph is not ready to save.',
-  })
-  expect(collaborationManager.refreshGraphSynchronously).not.toHaveBeenCalled()
   expect(api.saveDraft).not.toHaveBeenCalled()
-})
-
-it('retries a graph reload after a transient HTTP failure', async () => {
-  await renderMain()
-  api.fetchDraft.mockRejectedValueOnce(new Error('Fetch failed'))
-  vi.useFakeTimers()
-  try {
-    await act(async () => {
-      await reloadGraph()
-    })
-    expect(collaborationManager.retryGraphReload).not.toHaveBeenCalled()
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000)
-    })
-    expect(collaborationManager.retryGraphReload).toHaveBeenCalledExactlyOnceWith(graphRequest)
-  } finally {
-    vi.useRealTimers()
-  }
-})
-
-it('restores a local start placeholder when a remote workflow graph is empty', async () => {
-  const { store } = await renderMain()
-  api.fetchDraft.mockResolvedValue(draft({ graph: { nodes: [], edges: [] } }))
-  await act(async () => {
-    await updateWorkflow()
-  })
-  await waitFor(() =>
-    expect(store.getState().nodes).toEqual([
-      expect.objectContaining({
-        data: expect.objectContaining({ type: BlockEnum.StartPlaceholder }),
-      }),
-    ]),
-  )
-  expect(await screen.findByText('workflow.blocks.start-placeholder')).toBeInTheDocument()
 })
 
 it('renders the collaborator roster and remote cursor, then disconnects on unmount', async () => {
@@ -950,6 +743,7 @@ it('imports a DSL file and replaces the graph through the real update event', as
   vi.mocked(collaborationManager.isConnected).mockReturnValue(false)
   api.fetchDraft.mockResolvedValue(
     draft({
+      loro_draft_epoch: undefined,
       graph: {
         nodes: [createStartNode({ data: { title: 'Imported entry', variables: [] } })],
         edges: [],
@@ -975,5 +769,58 @@ it('imports a DSL file and replaces the graph through the real update event', as
   expect(store.getState().syncWorkflowDraftIsEmpty).toBe(false)
   expect(api.importDSL).toHaveBeenCalledExactlyOnceWith({
     body: { mode: 'yaml-content', yaml_content: yaml, app_id: 'app-1' },
+  })
+})
+
+it('switches to the replacement draft’s history and ignores an older pending refresh', async () => {
+  const previous = { accountId: 'editor', epoch: 'original' }
+  const replace = vi.spyOn(collaborationManager, 'replaceLoroDraft').mockReturnValue(true)
+  const { store } = await renderMain({
+    initialStoreState: { loroDraft: previous, hasPendingLoroDraftChanges: true },
+  })
+  const slow = createDeferred<FetchWorkflowDraftResponse>()
+  api.fetchDraft.mockReturnValueOnce(slow.promise).mockResolvedValueOnce(
+    draft({
+      hash: 'replacement-hash',
+      loro_draft_epoch: 'new-epoch',
+    }),
+  )
+  const oldRefresh = updateWorkflow()
+  await act(async () => {
+    await updateWorkflow()
+  })
+  await act(async () => {
+    slow.resolve(draft({ hash: 'stale-hash', loro_draft_epoch: previous.epoch }))
+    await oldRefresh
+  })
+  const identity = { ...previous, epoch: 'new-epoch' }
+  expect(replace).toHaveBeenCalledExactlyOnceWith('app-1', identity)
+  expect(store.getState()).toMatchObject({
+    loroDraft: identity,
+    syncWorkflowDraftHash: 'replacement-hash',
+    hasPendingLoroDraftChanges: false,
+  })
+})
+
+it('uses the confirmed graph and revision for an empty draft after local undo', async () => {
+  const confirmed = vi.spyOn(collaborationManager, 'onLoroDraftConfirmed')
+  const pending = vi.spyOn(collaborationManager, 'onLoroDraftPendingChange')
+  const { store } = await renderMain({
+    initialStoreState: { loroDraft: { accountId: 'editor', epoch: 'shared' } },
+  })
+  const hydrate = vi.mocked(collaborationManager.connect).mock.lastCall?.[1]?.hydrateGraph
+  expect(hydrate?.({ nodes: [], edges: [] }).nodes.map((node) => node.data.type)).toEqual([
+    BlockEnum.StartPlaceholder,
+  ])
+  act(() => {
+    pending.mock.lastCall![0](true)
+    confirmed.mock.lastCall![0]({ hash: 'saved-after-undo', updatedAt: 123, isEmpty: true })
+    pending.mock.lastCall![0](false)
+  })
+  expect(store.getState()).toMatchObject({
+    draftUpdatedAt: 123_000,
+    syncWorkflowDraftHash: 'saved-after-undo',
+    syncWorkflowDraftIsEmpty: true,
+    hasPendingLoroDraftChanges: false,
   })
 })

@@ -1,45 +1,15 @@
 import type { FC } from 'react'
-import type {
-  PluginDefaultValue,
-  TriggerDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useAutoGenerateWebhookUrl } from '../../hooks/use-auto-generate-webhook-url'
-import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
-
-const getTriggerPluginNodeData = (
-  triggerConfig: TriggerDefaultValue,
-  fallbackTitle?: string,
-  fallbackDesc?: string,
-) => {
-  return {
-    plugin_id: triggerConfig.plugin_id,
-    provider_id: triggerConfig.provider_name,
-    provider_type: triggerConfig.provider_type,
-    provider_name: triggerConfig.provider_name,
-    event_name: triggerConfig.event_name,
-    event_label: triggerConfig.event_label,
-    event_description: triggerConfig.event_description,
-    title: triggerConfig.event_label || triggerConfig.title || fallbackTitle,
-    desc: triggerConfig.event_description || fallbackDesc,
-    output_schema: { ...triggerConfig.output_schema },
-    parameters_schema: triggerConfig.paramSchemas ? [...triggerConfig.paramSchemas] : [],
-    config: { ...triggerConfig.params },
-    subscription_id: triggerConfig.subscription_id,
-    plugin_unique_identifier: triggerConfig.plugin_unique_identifier,
-    is_team_authorization: triggerConfig.is_team_authorization,
-    meta: triggerConfig.meta ? { ...triggerConfig.meta } : undefined,
-  }
-}
+import { getStartNodeData, useSelectStartNode } from '../../hooks/use-select-start-node'
 
 const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
   const { t } = useTranslation(['workflow'])
@@ -50,81 +20,36 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
   const setShouldAutoOpenStartNodeSelector = useWorkflowStore(
     (s) => s.setShouldAutoOpenStartNodeSelector,
   )
-  const reactFlowStore = useStoreApi()
-  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const selectStartNode = useSelectStartNode()
 
   const handleSelectStartNode = useCallback(
     (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
       const nodeDefault = availableNodesMetaData?.nodesMap?.[nodeType]
       if (!nodeDefault?.defaultValue) return
 
-      const baseNodeData = { ...nodeDefault.defaultValue }
-      const mergedNodeData = (() => {
-        if (nodeType !== BlockEnum.TriggerPlugin || !toolConfig) {
-          return {
-            ...baseNodeData,
-            ...toolConfig,
-          }
-        }
+      const nodeData = getStartNodeData(nodeType, nodeDefault.defaultValue, toolConfig)
 
-        const triggerNodeData = getTriggerPluginNodeData(
-          toolConfig as TriggerDefaultValue,
-          baseNodeData.title,
-          baseNodeData.desc,
-        )
-
-        return {
-          ...baseNodeData,
-          ...triggerNodeData,
-          config: {
-            ...(baseNodeData as { config?: Record<string, unknown> }).config,
-            ...triggerNodeData.config,
-          },
-        }
-      })()
-
-      const { getNodes, setNodes } = reactFlowStore.getState()
-      const nextNodes = getNodes().map((node) => {
-        if (node.id !== id) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              selected: false,
-            },
-          }
-        }
-
-        return {
-          ...node,
-          data: {
-            ...mergedNodeData,
-            type: nodeType,
-            selected: true,
-          },
-        }
-      })
-
-      setNodes(nextNodes)
-      setHasSelectedStartNode?.(true)
-      setShouldAutoOpenStartNodeSelector?.(true)
-
-      handleSyncWorkflowDraft(true, false, {
-        onSuccess: () => {
-          autoGenerateWebhookUrl(id)
+      selectStartNode(
+        (nodes) => {
+          const placeholder = nodes.find(
+            (node) => node.id === id && node.data.type === BlockEnum.StartPlaceholder,
+          )
+          if (placeholder)
+            return {
+              ...placeholder,
+              data: { ...placeholder.data, ...nodeData, selected: true },
+            }
         },
-        onError: () => {
-          console.error('Failed to save start node selection to draft')
+        () => {
+          setHasSelectedStartNode?.(true)
+          setShouldAutoOpenStartNodeSelector?.(true)
         },
-      })
+      )
     },
     [
-      autoGenerateWebhookUrl,
+      selectStartNode,
       availableNodesMetaData?.nodesMap,
-      handleSyncWorkflowDraft,
       id,
-      reactFlowStore,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,
     ],

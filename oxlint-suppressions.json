@@ -1611,11 +1611,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow-app/components/workflow-children.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { isEqual } from 'es-toolkit/predicate'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -44,6 +45,7 @@ import {
   getTargetVarType,
   getVarKindType,
   mapSelectItems,
+  normalizeFormInput,
   normalizeVariableSelectorValue,
 } from './form-input-item.helpers'
 import { JsonEditorField, MultiSelectField } from './form-input-item.sections'
@@ -119,7 +121,10 @@ const FormInputItem: FC<Props> = ({
     showVariableSelector,
     variable,
   } = formState
-  const varInput = value[variable]
+  const varInput = normalizeFormInput(
+    value[variable],
+    getVarKindType(formState) ?? VarKindType.constant,
+  )
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -228,6 +233,7 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleValueChange = (newValue: FormInputValue) => {
+    if (isEqual(varInput?.value, newValue)) return
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
     onChange({
       ...value,
@@ -240,6 +246,7 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleAppOrModelSelect = (newValue: Record<string, unknown>) => {
+    if (isEqual(varInput?.value, newValue)) return
     const nextType = getVarKindType(formState) ?? varInput?.type ?? VarKindType.constant
     onChange({
       ...value,
@@ -326,7 +333,7 @@ const FormInputItem: FC<Props> = ({
       {isString && (
         <MixedVariableTextInput
           readOnly={readOnly}
-          value={(varInput?.value as string) || ''}
+          value={String(varInput?.value ?? '')}
           onChange={handleValueChange}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
@@ -457,7 +464,7 @@ const FormInputItem: FC<Props> = ({
       {isShowJSONEditor && isConstant && (
         <JsonEditorField
           readOnly={readOnly}
-          value={(varInput?.value as string) || ''}
+          value={String(varInput?.value ?? '')}
           onChange={handleValueChange}
           placeholder={
             <div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>

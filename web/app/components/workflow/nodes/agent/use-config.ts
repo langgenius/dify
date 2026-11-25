@@ -10,6 +10,7 @@ import {
   generateAgentToolValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { consoleQuery } from '@/service/console'
@@ -186,7 +187,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
   useEffect(() => {
     if (!currentStrategy) return
     const newData = formattingLegacyData()
-    setInputs(newData)
+    runDraftInitialization(() => setInputs(newData))
   }, [currentStrategy])
 
   // vars

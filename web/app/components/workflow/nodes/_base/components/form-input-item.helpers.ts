@@ -72,6 +72,15 @@ type FormInputState = {
   variable: string
 }
 
+export function normalizeFormInput(
+  input: FormInputValue | string | number | boolean,
+  type: VarKindType,
+) {
+  return typeof input === 'string' || typeof input === 'number' || typeof input === 'boolean'
+    ? { type, value: input }
+    : input
+}
+
 const optionMatchesValue = (values: ResourceVarInputs, showOnItem: ShowOnCondition) =>
   values[showOnItem.variable]?.value === showOnItem.value ||
   values[showOnItem.variable] === showOnItem.value

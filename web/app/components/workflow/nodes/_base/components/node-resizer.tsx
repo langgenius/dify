@@ -2,13 +2,15 @@ import type { OnResize } from 'reactflow'
 import type { CommonNodeType } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { memo, useCallback, useId, useRef } from 'react'
+import { memo, useCallback, useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeResizeControl, useReactFlow } from 'reactflow'
 import { getKeyboardResizeValue } from '@/app/components/base/resize-handle/keyboard'
+import { collaborationManager } from '../../../collaboration/core/collaboration-manager'
 import { ITERATION_PADDING, LOOP_PADDING } from '../../../constants'
 import { useNodesInteractions } from '../../../hooks/use-nodes-interactions'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
+import { WorkflowHistoryEvent } from '../../../hooks/use-workflow-history'
 import { BlockEnum } from '../../../types'
 
 const Icon = () => {
@@ -44,6 +46,8 @@ const NodeResizer = ({
   const { t } = useTranslation(['common'])
   const descriptionId = useId()
   const didDragRef = useRef(false)
+  const endHistoryRef = useRef<(() => void) | undefined>(undefined)
+  useEffect(() => () => endHistoryRef.current?.(), [])
   const { getNode, getNodes } = useReactFlow<CommonNodeType>()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeResize } = useNodesInteractions()
@@ -118,6 +122,14 @@ const NodeResizer = ({
         onResize={handleResize}
         onResizeStart={() => {
           didDragRef.current = false
+          endHistoryRef.current?.()
+          endHistoryRef.current = collaborationManager.beginDraftHistoryAction(
+            WorkflowHistoryEvent.NodeResize,
+          )
+        }}
+        onResizeEnd={() => {
+          endHistoryRef.current?.()
+          endHistoryRef.current = undefined
         }}
         minWidth={minWidth}
         minHeight={minHeight}

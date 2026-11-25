@@ -1,28 +1,18 @@
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { memo, useEffect, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
-import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import { useTemporalWorkflowHistory } from '@/app/components/workflow/workflow-history-store'
+import { useCanvasDraftHistory } from '../hooks/use-canvas-draft-history'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from '../operator/tip-popup'
 
 type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
   const { t } = useTranslation(['workflow'])
-  const { store } = useWorkflowHistoryStore()
-  const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
-
-  useEffect(() => {
-    const unsubscribe = store.temporal.subscribe((state) => {
-      setButtonsDisabled({
-        undo: state.pastStates.length === 0,
-        redo: state.futureStates.length === 0,
-      })
-    })
-    return () => unsubscribe()
-  }, [store])
-
+  const draftHistory = useCanvasDraftHistory()
+  const { pastStates, futureStates } = useTemporalWorkflowHistory()
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
@@ -33,7 +23,7 @@ function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
           className="rounded-md"
           aria-label={t(($) => $['common.undo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
-          disabled={nodesReadOnly || buttonsDisabled.undo}
+          disabled={nodesReadOnly || !(draftHistory?.undo ?? pastStates).length}
           focusableWhenDisabled
           onClick={handleUndo}
         >
@@ -46,7 +36,7 @@ function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
           className="rounded-md"
           aria-label={t(($) => $['common.redo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
-          disabled={nodesReadOnly || buttonsDisabled.redo}
+          disabled={nodesReadOnly || !(draftHistory?.redo ?? futureStates).length}
           focusableWhenDisabled
           onClick={handleRedo}
         >

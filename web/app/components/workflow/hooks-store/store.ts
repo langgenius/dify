@@ -33,7 +33,6 @@ export type SyncDraftResult = {
 
 export type SyncDraftOptions = {
   environmentVariablePatch?: EnvironmentVariablePatch
-  forceLocal?: boolean
 }
 
 export type WorkflowAccessControl = {

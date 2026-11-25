@@ -231,17 +231,19 @@ export const Workflow: FC<WorkflowProps> = memo(
     useEffect(() => {
       return collaborationManager.onGraphImport(
         ({ nodes: importedNodes, edges: importedEdges }) => {
-          if (!isEqual(nodes, importedNodes)) {
+          const { getNodes, edges: canvasEdges } = store.getState()
+          const loroDraft = workflowStore.getState().loroDraft
+          if (!isEqual(loroDraft ? getNodes() : nodes, importedNodes)) {
             setNodes(importedNodes)
             store.getState().setNodes(importedNodes)
           }
-          if (!isEqual(edges, importedEdges)) {
+          if (!isEqual(loroDraft ? canvasEdges : edges, importedEdges)) {
             setEdges(importedEdges)
             store.getState().setEdges(importedEdges)
           }
         },
       )
-    }, [edges, nodes, setEdges, setNodes, store])
+    }, [edges, nodes, setEdges, setNodes, store, workflowStore])
 
     useEffect(() => {
       return collaborationManager.onHistoryAction(() => {
@@ -303,12 +305,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
       debouncedSyncWorkflowDraft.cancel?.()
 
-      if (isCollaborationEnabled && collaborationManager.canUseLocalDraftFallback()) {
-        syncWorkflowDraftWhenPageClose()
-        return
-      }
-
-      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+      if (isCollaborationEnabled) return
 
       handleSyncWorkflowDraft(true, true, {
         onError: () => {
@@ -329,43 +326,30 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
     const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+      if (isCollaborationEnabled) return
       if (document.visibilityState === 'hidden') {
-        // Update the local guard synchronously. Waiting for the server's leader
-        // status would leave a window where this hidden tab saves a stale canvas.
-        collaborationManager.emitGraphViewState(false)
         syncWorkflowDraftWhenPageClose()
         return
       }
 
       if (document.visibilityState === 'visible') {
-        collaborationManager.emitGraphViewState(true)
         const { isListening, workflowRunningData } = workflowStore.getState()
         const status = workflowRunningData?.result?.status
         // Avoid resetting UI state when user comes back while a run is active or listening for triggers
         if (isListening || status === WorkflowRunningStatus.Running) return
 
-        // While this tab was hidden the canvas was frozen (rAF paused), but the CRDT doc kept
-        // receiving remote edits. Restore from the CRDT instead of the DB draft — the DB may
-        // hold the stale snapshot this very tab saved while hidden, and re-importing it would
-        // broadcast a rollback to everyone. A trusted CRDT remains authoritative when empty.
-        const collaborationConnected = collaborationManager.isConnected()
-        if (collaborationConnected && !collaborationManager.canRestoreGraphFromCrdt()) return
-
-        if (collaborationConnected) {
-          collaborationManager.refreshGraphSynchronously()
-          setTimeout(() => handleRefreshWorkflowDraft(true), 500)
-        } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
-        }
+        setTimeout(() => handleRefreshWorkflowDraft(), 500)
       }
-    }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
+    }, [
+      isCollaborationEnabled,
+      syncWorkflowDraftWhenPageClose,
+      handleRefreshWorkflowDraft,
+      workflowStore,
+    ])
 
-    // Also add beforeunload handler as additional safety net for tab close
     const handleBeforeUnload = useCallback(() => {
-      if (collaborationManager.canRestoreGraphFromCrdt())
-        collaborationManager.refreshGraphSynchronously()
-      syncWorkflowDraftWhenPageClose()
-    }, [syncWorkflowDraftWhenPageClose])
+      if (!isCollaborationEnabled) syncWorkflowDraftWhenPageClose()
+    }, [isCollaborationEnabled, syncWorkflowDraftWhenPageClose])
 
     useEffect(() => {
       document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
@@ -455,7 +439,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { isValidConnection } = useWorkflow()
 
     useOnViewportChange({
-      onEnd: () => {
+      onEnd: (viewport) => {
+        const { loroDraft, isRestoring } = workflowStore.getState()
+        if (loroDraft && !isRestoring) collaborationManager.setLoroDraftViewport(viewport)
         handleSyncWorkflowDraft()
       },
     })

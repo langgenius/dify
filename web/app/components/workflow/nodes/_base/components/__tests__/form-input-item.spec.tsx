@@ -3,7 +3,7 @@ import type {
   CredentialFormSchema,
   FormOption,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -45,7 +45,7 @@ const createOption = (value: string, overrides: Partial<FormOption> = {}): FormO
   ...overrides,
 })
 
-const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>> = {}) => {
+function createFormQueryClient() {
   const { queryClient } = createConsoleQueryWrapper()
   seedToolProviders(queryClient, {
     builtInTools: [],
@@ -54,6 +54,11 @@ const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>
     mcpTools: [],
   })
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  return queryClient
+}
+
+const renderFormInputItem = (props: Partial<ComponentProps<typeof FormInputItem>> = {}) => {
+  const queryClient = createFormQueryClient()
   const onChange = vi.fn()
   function Harness() {
     const [value, setValue] = useState<ComponentProps<typeof FormInputItem>['value']>(
@@ -226,5 +231,39 @@ it('prevents boolean edits and switching input kind in readonly mode', async () 
   expect(variable).toBeDisabled()
   await user.click(falseButton)
   await user.click(variable)
+  expect(onChange).not.toHaveBeenCalled()
+})
+
+it('displays a legacy Tool format again after undo without writing an empty format', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  type Values = ComponentProps<typeof FormInputItem>['value']
+  const legacy = { field: '%Y' } as unknown as Values
+  const edited = { field: { type: VarKindType.mixed, value: '%Y-%m' } }
+  const field = (value: Values) => (
+    <FormInputItem
+      nodeId="node-1"
+      readOnly={false}
+      schema={createSchema()}
+      value={value}
+      onChange={onChange}
+    />
+  )
+  const { rerender } = renderWorkflowFlowComponent(field(legacy), {
+    queryClient: createFormQueryClient(),
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    nodes: [createNode({ id: 'node-1' })],
+  })
+  const editor = screen.getByRole('textbox')
+  await waitFor(() => expect(editor).toHaveTextContent('%Y'))
+  expect(onChange).not.toHaveBeenCalled()
+  await user.type(editor, '-%m')
+  await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited))
+  rerender(field(edited))
+  onChange.mockClear()
+  rerender(field(legacy))
+  await waitFor(() => expect(editor.textContent).toBe('%Y'))
+  rerender(field(edited))
+  await waitFor(() => expect(editor.textContent).toBe('%Y-%m'))
   expect(onChange).not.toHaveBeenCalled()
 })

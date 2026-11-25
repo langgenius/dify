@@ -16,6 +16,7 @@ import { consoleQuery } from '@/service/console'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
+  workflowVersionHistoryKey,
 } from '@/service/workflow-queries'
 
 type UsePublishControllerParams = Pick<
@@ -170,6 +171,9 @@ export function usePublishController({
     const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
       if (action !== 'published') return
+      void queryClient.invalidateQueries({
+        queryKey: workflowVersionHistoryKey({ kind: 'app', appId }),
+      })
 
       if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
       void queryClient

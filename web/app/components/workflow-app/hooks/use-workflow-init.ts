@@ -4,7 +4,10 @@ import { ORPCError } from '@orpc/client'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationEnabledAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -58,6 +61,7 @@ export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const { nodes: nodesTemplate, edges: edgesTemplate } = useWorkflowTemplate()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const collaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -104,6 +108,10 @@ export const useWorkflowInit = () => {
 
       setData(initialData)
       workflowStore.setState({
+        loroDraft:
+          collaborationEnabled && appACLCapabilities.canEdit && res.loro_draft_epoch
+            ? { epoch: res.loro_draft_epoch, accountId: currentUserId }
+            : undefined,
         envSecrets: (initialData.environment_variables || [])
           .filter((env) => env.value_type === 'secret')
           .reduce(
@@ -183,6 +191,8 @@ export const useWorkflowInit = () => {
   }, [
     appACLCapabilities.canEdit,
     appDetail,
+    collaborationEnabled,
+    currentUserId,
     getWorkflowDraftGraphForCanvas,
     nodesTemplate,
     edgesTemplate,

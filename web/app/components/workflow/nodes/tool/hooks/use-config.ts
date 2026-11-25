@@ -10,6 +10,7 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
@@ -127,7 +128,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     if (inputsWithDefaultValue === inputs) return
 
     const { setControlPromptEditorRerenderKey } = workflowStore.getState()
-    setInputs(inputsWithDefaultValue)
+    runDraftInitialization(() => setInputs(inputsWithDefaultValue))
     const rerenderTimeout = setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
 
     return () => {

@@ -11,6 +11,9 @@ function EditingTitle() {
   const draftUpdatedAt = useStore((state) => state.draftUpdatedAt)
   const publishedAt = useStore((state) => state.publishedAt)
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
+  const hasPendingLoroDraftChanges = useStore((s) => s.hasPendingLoroDraftChanges)
+
+  const joinFailure = useStore((s) => s.collaborationJoinFailure)
 
   return (
     <div
@@ -18,7 +21,10 @@ function EditingTitle() {
       aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
       className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
     >
-      {!!draftUpdatedAt && (
+      {joinFailure && (
+        <span>{t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}</span>
+      )}
+      {!joinFailure && !!draftUpdatedAt && (
         <span className="flex items-center gap-1">
           <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
           <time dateTime={new Date(draftUpdatedAt).toISOString()}>
@@ -39,7 +45,7 @@ function EditingTitle() {
       ) : (
         <span>{t(($) => $['common.unpublished'], { ns: 'workflow' })}</span>
       )}
-      {isSyncingWorkflowDraft && (
+      {!joinFailure && (isSyncingWorkflowDraft || hasPendingLoroDraftChanges) && (
         <>
           <span aria-hidden="true" className="mx-1 flex items-center">
             ·

@@ -8,6 +8,7 @@ import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { isChatflowAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
@@ -98,11 +99,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     if (isChatflow && currentInputs.query_variable_selector.length === 0 && startNodeId)
       nextQueryVariableSelector = [startNodeId, 'sys.query']
 
-    setInputs(
-      produce(currentInputs, (draft) => {
-        draft.query_variable_selector = nextQueryVariableSelector
-      }),
-    )
+    const nextInputs = produce(currentInputs, (draft) => {
+      draft.query_variable_selector = nextQueryVariableSelector
+    })
+    runDraftInitialization(() => setInputs(nextInputs))
   }, [inputRef, isChatflow, setInputs, startNodeId])
 
   const metadataConfig = useKnowledgeMetadataConfig({

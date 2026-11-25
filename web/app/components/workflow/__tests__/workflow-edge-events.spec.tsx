@@ -94,8 +94,6 @@ const events = {
 
 beforeEach(() => {
   for (const listeners of Object.values(events)) listeners.clear()
-  vi.spyOn(collaborationManager, 'canFlushGraphOnPageClose').mockReturnValue(true)
-  vi.spyOn(collaborationManager, 'canUseLocalDraftFallback').mockReturnValue(false)
   vi.spyOn(collaborationManager, 'onGraphImport').mockImplementation((handler) => {
     events.graph.add(handler)
     return () => {
@@ -256,46 +254,25 @@ it('does not save before data loads or merely because collaboration props change
   expect(saveOnClose).not.toHaveBeenCalled()
 })
 
-it('keeps loaded edits unsaved during rerenders, then flushes on actual exit', async () => {
+it('stops the ordinary exit save when the loaded canvas switches to collaboration', async () => {
   const { rerender, subject, saveDraft, unmount } = renderSubject({
     initialStoreState: { isWorkflowDataLoaded: true },
   })
   rerender(subject({ isCollaborationEnabled: true }))
   expect(saveDraft).not.toHaveBeenCalled()
   await act(async () => unmount())
-  expect(saveDraft).toHaveBeenCalledTimes(1)
+  expect(saveDraft).not.toHaveBeenCalled()
 })
 
-it.each([
-  { name: 'current graph leader', canFlush: true, fallback: false, localSaves: 0, saves: 1 },
-  {
-    name: 'local draft before first connection',
-    canFlush: false,
-    fallback: true,
-    localSaves: 1,
-    saves: 0,
-  },
-  {
-    name: 'session without flush permission',
-    canFlush: false,
-    fallback: false,
-    localSaves: 0,
-    saves: 0,
-  },
-])(
-  'uses the safe persistence path for a $name',
-  async ({ canFlush, fallback, localSaves, saves }) => {
-    vi.mocked(collaborationManager.canFlushGraphOnPageClose).mockReturnValue(canFlush)
-    vi.mocked(collaborationManager.canUseLocalDraftFallback).mockReturnValue(fallback)
-    const { saveDraft, saveOnClose, unmount } = renderSubject({
-      isCollaborationEnabled: true,
-      initialStoreState: { isWorkflowDataLoaded: true },
-    })
-    await act(async () => unmount())
-    expect(saveOnClose).toHaveBeenCalledTimes(localSaves)
-    expect(saveDraft).toHaveBeenCalledTimes(saves)
-  },
-)
+it('leaves collaborative changes in the durable provider on unmount', async () => {
+  const { saveDraft, saveOnClose, unmount } = renderSubject({
+    isCollaborationEnabled: true,
+    initialStoreState: { isWorkflowDataLoaded: true },
+  })
+  await act(async () => unmount())
+  expect(saveOnClose).not.toHaveBeenCalled()
+  expect(saveDraft).not.toHaveBeenCalled()
+})
 
 it('cancels the host confirmation without executing its action', async () => {
   const user = userEvent.setup()
