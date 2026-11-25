@@ -32,9 +32,34 @@ export const TagManagementDialog = ({
   onClose,
   onTagsChange,
 }: TagManagementDialogProps) => {
-  const { t } = useTranslation(['common'])
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  if (!hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))) return null
+  return (
+    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
+      <TagManagementDialogContent type={type} onTagsChange={onTagsChange} />
+    </Dialog>
+  )
+}
+
+export function TagManagementDialogContent({
+  type,
+  onTagsChange,
+}: Pick<TagManagementDialogProps, 'type' | 'onTagsChange'>) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  if (!canManageTags) return null
+  return (
+    <DialogContent className="w-150">
+      <TagManagementSession type={type} onTagsChange={onTagsChange} />
+    </DialogContent>
+  )
+}
+
+function TagManagementSession({
+  type,
+  onTagsChange,
+}: Pick<TagManagementDialogProps, 'type' | 'onTagsChange'>) {
+  const { t } = useTranslation(['common'])
   const { data: tagList = [] } = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: {
@@ -42,38 +67,31 @@ export const TagManagementDialog = ({
           type,
         },
       },
-      enabled: show && canManageTags,
     }),
   )
   const createTagMutation = useMutation(
     consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
   )
-  if (!canManageTags) return null
-
   return (
-    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-150">
-        <DialogHeader>
-          <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
-          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-        </DialogHeader>
-        <DialogBody className="flex flex-wrap gap-2">
-          <TagNameForm
-            tags={tagList}
-            label={t(($) => $['tag.addNew'])}
-            inputClassName="w-25 max-w-full appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
-            pending={createTagMutation.isPending}
-            onSave={(name) => createTagMutation.mutateAsync({ body: { name, type } })}
-            onFinish={() => toast.success(t(($) => $['tag.created']))}
-            onSaveError={(error) =>
-              toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed']))
-            }
-          />
-          {tagList.map((tag) => (
-            <TagItemEditor key={tag.id} tag={tag} tags={tagList} onTagsChange={onTagsChange} />
-          ))}
-        </DialogBody>
-      </DialogContent>
-    </Dialog>
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['tag.manageTags'], { ns: 'common' })}</DialogTitle>
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody className="flex flex-wrap gap-2">
+        <TagNameForm
+          tags={tagList}
+          label={t(($) => $['tag.addNew'])}
+          inputClassName="w-25 max-w-full appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
+          pending={createTagMutation.isPending}
+          onSave={(name) => createTagMutation.mutateAsync({ body: { name, type } })}
+          onFinish={() => toast.success(t(($) => $['tag.created']))}
+          onSaveError={(error) => toast.error(getErrorMessage(error) ?? t(($) => $['tag.failed']))}
+        />
+        {tagList.map((tag) => (
+          <TagItemEditor key={tag.id} tag={tag} tags={tagList} onTagsChange={onTagsChange} />
+        ))}
+      </DialogBody>
+    </>
   )
 }

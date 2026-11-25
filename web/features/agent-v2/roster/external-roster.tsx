@@ -34,7 +34,7 @@ import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/wor
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { toExternalAgentListItem } from '@/features/agent-v2/external-agent/model'
 import { TagFilter } from '@/features/tag-management/tag-filter'
-import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
+import { TagManagementDialogContent } from '@/features/tag-management/tag-management-dialog'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterSkeleton } from './components/agent-roster-skeleton'
 import { ConnectExternalAgent } from './components/connect-external-agent'
@@ -87,7 +87,7 @@ function ExternalRosterSession() {
   const removalFocusRef = useRef<HTMLElement[] | null>(null)
   const allStatusRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [tagManagementOpen, setTagManagementOpen] = useState(false)
+  const [tagManagementDialog] = useState(() => createDialogHandle())
   const sortLabelId = useId()
   const [filters, setFilters] = useQueryStates(externalRosterQueryParsers)
   const urlTagIds = filters.external_tag_ids
@@ -230,7 +230,7 @@ function ExternalRosterSession() {
             resetRosterPagination(rosterQueryInput(1, nextIds))
             void setFilters({ external_tag_ids: nextIds })
           }}
-          onOpenTagManagement={() => setTagManagementOpen(true)}
+          onOpenTagManagement={() => tagManagementDialog.open(null)}
         />
         <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
           <Select
@@ -281,7 +281,7 @@ function ExternalRosterSession() {
               agents={agents}
               canReadDetails={canReadDetails}
               viewportRef={viewportRef}
-              onOpenTagManagement={() => setTagManagementOpen(true)}
+              onOpenTagManagement={() => tagManagementDialog.open(null)}
               editDialog={canManage ? editDialog : undefined}
               confirmation={canManage ? confirmation : undefined}
               onClearFilters={() => {
@@ -392,11 +392,9 @@ function ExternalRosterSession() {
           )
         }
       </AlertDialog>
-      <TagManagementDialog
-        type="agent"
-        show={tagManagementOpen}
-        onClose={() => setTagManagementOpen(false)}
-      />
+      <Dialog handle={tagManagementDialog}>
+        <TagManagementDialogContent type="agent" />
+      </Dialog>
     </>
   )
 }
