@@ -3,23 +3,53 @@ from collections.abc import Callable
 from typing import cast
 
 from flask import Request as FlaskRequest
+from pydantic import BaseModel, Field
 
+from configs import dify_config
 from core.db.session_factory import session_factory
+from events.app_event import app_draft_loro_epoch_was_replaced
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationForbiddenError,
+    WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationService,
+)
+from services.workflow_loro_document import (
+    LoroDraftEmptyGraphError,
+    LoroDraftEpochChangedError,
+    LoroDraftHistoryCompactedError,
+)
+from services.workflow_service import WorkflowService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
 
 
+class LoroDraftSyncPayload(BaseModel):
+    epoch: str = Field(min_length=36, max_length=36)
+    version: bytes | None = Field(default=None, strict=True, max_length=1024 * 1024)
+    update: bytes | None = Field(default=None, strict=True, max_length=dify_config.WEBSOCKET_MAX_HTTP_BUFFER_SIZE)
+    allow_empty: bool = Field(default=False, strict=True)
+
+
 def _sio_on(event: str) -> Callable[[Callable[..., object]], Callable[..., object]]:
     return cast(Callable[[Callable[..., object]], Callable[..., object]], sio.on(event))
+
+
+@app_draft_loro_epoch_was_replaced.connect
+def notify_draft_replacement(app_id: str, *, epoch: str) -> None:
+    """Ask all editors to reconcile after the replacement transaction has committed."""
+    try:
+        sio.emit("loro_draft_changed", {"epoch": epoch}, room=app_id)
+    except Exception:
+        logging.exception("Failed to notify collaborators about replaced Loro draft %s", app_id)
 
 
 @_sio_on("connect")
@@ -79,13 +109,14 @@ def handle_user_connect(sid, data):
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationForbiddenError:
+        return {"msg": "forbidden"}, 403
     except WorkflowCollaborationNotEntitledError:
         return {"msg": "not_entitled"}, 403
     if not result:
         return {"msg": "unauthorized"}, 401
 
-    user_id, is_leader = result
-    return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
+    return {"msg": "connected", "user_id": result, "sid": sid}
 
 
 @_sio_on("get_online_user_avatars")
@@ -113,23 +144,66 @@ def handle_disconnect(sid):
 @_sio_on("collaboration_event")
 @observe_workflow_event("collaboration_event", sio)
 def handle_collaboration_event(sid, data):
-    """
-    Handle general collaboration events, include:
-    1. mouse_move
-    2. vars_and_features_update
-    3. sync_request (ask leader to update graph)
-    4. workflow_update
-    5. comments_update
-    6. node_panel_presence
-    7. graph_view_state (session reports tab visibility; drives leader election)
-    """
+    """Broadcast presence and workflow metadata updates."""
     return collaboration_service.relay_collaboration_event(sid, data)
 
 
-@_sio_on("graph_event")
-@observe_workflow_event("graph_event", sio)
-def handle_graph_event(sid, data):
-    """
-    Handle graph events - simple broadcast relay.
-    """
-    return collaboration_service.relay_graph_event(sid, data)
+@_sio_on("loro_draft_sync")
+@observe_workflow_event("loro_draft_sync", sio)
+def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], int]:
+    """Confirm only versions that were applied and committed; notify peers to pull their delta."""
+    try:
+        payload = LoroDraftSyncPayload.model_validate(data)
+        with sio.app.app_context(), session_factory.create_session() as session:
+            admitted = collaboration_service.authorize_loro_draft_sync(sid, session=session)
+            if admitted is None:
+                return {"msg": "unauthorized"}, 401
+            app, account_id = admitted
+            app_id = app.id
+            result = WorkflowService().sync_loro_draft(
+                app_model=app,
+                account_id=account_id,
+                epoch=payload.epoch,
+                version=payload.version,
+                update=payload.update,
+                allow_empty=payload.allow_empty,
+                session=session,
+            )
+    except LoroDraftHistoryCompactedError:
+        return {"msg": "history_compacted"}, 409
+    except LoroDraftEpochChangedError:
+        return {"msg": "epoch_changed"}, 409
+    except WorkflowNotFoundError:
+        return {"msg": "draft_workflow_not_exist"}, 404
+    except LoroDraftEmptyGraphError:
+        return {"msg": "empty_graph_confirmation_required"}, 409
+    except ValueError:
+        return {"msg": "invalid_loro_update"}, 400
+    except WorkflowCollaborationForbiddenError:
+        return {"msg": "forbidden"}, 403
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
+    except BillingUpstreamError:
+        return {"msg": "collaboration_unavailable"}, 503
+
+    if result.changed:
+        try:
+            notification: dict[str, object] = {"epoch": result.epoch}
+            if result.committed_update is not None:
+                notification.update(
+                    fromVersion=result.from_version,
+                    version=result.version,
+                    update=result.committed_update,
+                    hash=result.hash,
+                    updatedAt=result.updated_at,
+                )
+            sio.emit("loro_draft_changed", notification, room=app_id, skip_sid=sid)
+        except Exception:
+            logging.exception("Failed to notify collaborators about committed Loro draft %s", app_id)
+    return {
+        "epoch": result.epoch,
+        "version": result.version,
+        "update": result.update,
+        "hash": result.hash,
+        "updatedAt": result.updated_at,
+    }, 200

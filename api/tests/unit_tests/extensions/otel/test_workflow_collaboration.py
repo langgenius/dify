@@ -174,8 +174,8 @@ def test_room_distribution_crosses_fixed_bucket_boundaries(
 def test_record_event_exports_seconds_and_matching_counter(observed_metrics: ObservedMetrics) -> None:
     """Counter and histogram retain the same bounded dimensions and seconds unit."""
     metrics, reader = observed_metrics
-    metrics.record_event("graph_event", "none", "success", 0.025)
-    _assert_event(reader, "graph_event", "none", "success")
+    metrics.record_event("loro_draft_sync", "none", "success", 0.025)
+    _assert_event(reader, "loro_draft_sync", "none", "success")
     duration = _metrics(reader)["dify.collaboration.event_duration"]
     assert duration.unit == "s"
     assert isinstance(duration.data, Histogram)
@@ -203,13 +203,13 @@ def test_event_outcome_preserves_exact_handler_return(
     assert isinstance(socket_server, instrumentation._SocketIO)
     _, reader = observed_metrics
 
-    @instrumentation.observe_workflow_event("graph_event", socket_server)
+    @instrumentation.observe_workflow_event("loro_draft_sync", socket_server)
     def handler(_sid: str, _data: object) -> object:
         return result
 
     assert handler("sid-a", b"graph-data") is result
     assert handler.__name__ == "handler"
-    _assert_event(reader, "graph_event", "none", outcome)
+    _assert_event(reader, "loro_draft_sync", "none", outcome)
 
 
 @pytest.mark.parametrize(
@@ -447,7 +447,7 @@ def test_sdk_failure_never_changes_handler_result_or_exception(
 
     monkeypatch.setattr(metrics._events, "add", unavailable_sdk)
 
-    @instrumentation.observe_workflow_event("graph_event", socket_server)
+    @instrumentation.observe_workflow_event("loro_draft_sync", socket_server)
     def handler(_sid: str, _data: object) -> dict[str, str]:
         if handler_fails:
             raise handler_failure

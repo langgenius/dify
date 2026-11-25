@@ -21,19 +21,21 @@ from configs import dify_config
 
 logger = logging.getLogger(__name__)
 
-type SocketEvent = Literal["connect", "user_connect", "disconnect", "collaboration_event", "graph_event"]
+type SocketEvent = Literal["connect", "user_connect", "disconnect", "collaboration_event", "loro_draft_sync"]
 type Outcome = Literal["success", "rejected", "error"]
 
 _EVENT_TYPES = frozenset(
     {
         "mouse_move",
         "vars_and_features_update",
-        "sync_request",
         "workflow_update",
         "comments_update",
         "node_panel_presence",
-        "graph_view_state",
-        "graph_resync_request",
+        "app_publish_update",
+        "app_meta_update",
+        "workflow_restore_intent",
+        "workflow_restore_complete",
+        "workflow_history_action",
     }
 )
 _SIZE_RANGES = ("1", "2-5", "6-10", "11-20", "21+")
