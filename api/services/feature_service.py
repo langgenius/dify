@@ -52,8 +52,11 @@ class FeatureService:
 
     @staticmethod
     def is_evaluation_supported() -> bool:
-        """Return whether this deployment ships Evaluation; Cloud workspaces still need a paid plan."""
-        return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD}
+        """Report Evaluation's deployment availability before checking Cloud workspace plans."""
+        return dify_config.ENABLE_EVALUATION and dify_config.DEPLOYMENT_EDITION in {
+            DeploymentEdition.ENTERPRISE,
+            DeploymentEdition.CLOUD,
+        }
 
     @classmethod
     def can_use_evaluation(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
