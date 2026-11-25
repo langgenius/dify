@@ -13,7 +13,7 @@ const { createSession, setup, cleanup } = createCollaborationTestEnvironment()
 beforeEach(setup)
 afterEach(cleanup)
 
-it('applies successive local snapshots even when both are based on an older version', async () => {
+it('applies only what changed against the caller graph when that graph is behind the document', async () => {
   const base = createStartNode([createVariable('a')])
   const { manager } = await createSession({ nodes: [base] })
   manager.setNodes([base], [createStartNode([createVariable('a'), createVariable('b')])])
@@ -21,10 +21,12 @@ it('applies successive local snapshots even when both are based on an older vers
     createVariable('a'),
     createVariable('b'),
   ])
+  // The second caller has not seen `b` yet; adding `c` must not remove it.
   manager.setNodes([base], [createStartNode([createVariable('a'), createVariable('c')])])
   expect(manager.getNodes()[0]).toHaveProperty('data.variables', [
     createVariable('a'),
     createVariable('c'),
+    createVariable('b'),
   ])
 })
 

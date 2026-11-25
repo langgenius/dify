@@ -12,7 +12,13 @@ from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
+from services.workflow_collaboration_service import (
+    LATEST_GRAPH_SCHEMA,
+    LEGACY_GRAPH_SCHEMA,
+    WorkflowCollaborationClientOutdatedError,
+    WorkflowCollaborationNotEntitledError,
+    WorkflowCollaborationService,
+)
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -73,14 +79,27 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
+    graph_schema = data.get("graph_schema", LEGACY_GRAPH_SCHEMA)
+    if (
+        not isinstance(graph_schema, int)
+        or isinstance(graph_schema, bool)
+        or not LEGACY_GRAPH_SCHEMA <= graph_schema <= LATEST_GRAPH_SCHEMA
+    ):
+        return {"msg": "invalid graph_schema"}, 400
+
     try:
         with sio.app.app_context(), session_factory.create_session() as session:
-            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+            result = collaboration_service.authorize_and_join_workflow_room(
+                workflow_id, sid, session=session, graph_schema=graph_schema
+            )
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
     except WorkflowCollaborationNotEntitledError:
         return {"msg": "not_entitled"}, 403
+    except WorkflowCollaborationClientOutdatedError:
+        # Older clients read 503 as unavailable and offer a page reload, which loads the current client.
+        return {"msg": "client_outdated"}, 503
     if not result:
         return {"msg": "unauthorized"}, 401
 

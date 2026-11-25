@@ -1,6 +1,6 @@
 'use client'
 
-import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
+import type { LoroDoc, LoroMap, UndoManager } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
 import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
@@ -22,6 +22,7 @@ import type { CRDTProvider } from './crdt-provider'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
 import { v4 as uuid4 } from 'uuid'
+import { GRAPH_SCHEMA_VERSION } from '../types/collaboration'
 import { EventEmitter } from './event-emitter'
 import {
   emitWithAuthGuard,
@@ -31,6 +32,7 @@ import {
 } from './websocket-manager'
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
+type GraphMap = LoroMap<Record<string, unknown>>
 
 type NodePanelPresenceEventData = {
   nodeId: string
@@ -58,11 +60,7 @@ type CollaborationEventPayload = {
 
 type LoroSubscribeEvent = {
   by?: string
-}
-
-type LoroContainer = {
-  kind?: () => string
-  getAttached?: () => unknown
+  events?: Array<{ target: unknown; path?: unknown[] }>
 }
 
 type GraphImportLogEntry = {
@@ -136,17 +134,17 @@ type GraphSyncDiagnosticEvent = {
   }
 }
 
+// Origin prefix of system writes: seeding the draft baseline, reloading it, replacing it after a
+// server-side import, and starting a lineage.
+const SYSTEM_COMMIT_ORIGIN_PREFIX = 'sys:'
 const MISSING_UPDATES_REQUEST_INTERVAL = 1000
+const GRAPH_LINEAGES_KEY = 'lineages'
 const GRAPH_IMPORT_LOG_LIMIT = 20
 const SET_NODES_ANOMALY_LOG_LIMIT = 100
 const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
 const WORKFLOW_SYNC_REQUEST_TIMEOUT = 20_000
 const GRAPH_RESYNC_RETRY_BASE_DELAY = 1000
 const GRAPH_RESYNC_RETRY_MAX_DELAY = 10_000
-
-const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
-const toLoroRecord = (value: unknown): Record<string, Value> =>
-  cloneDeep(value) as Record<string, Value>
 
 const toUint8Array = (value: unknown): Uint8Array | null => {
   if (value instanceof Uint8Array) return value
@@ -170,8 +168,6 @@ export class CollaborationManager {
   private doc: LoroDoc | null = null
   private undoManager: UndoManager | null = null
   private provider: CRDTProvider | null = null
-  private nodesMap: LoroMap<Record<string, Value>> | null = null
-  private edgesMap: LoroMap<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
   private currentAppId: string | null = null
   private reactFlowStore: ReactFlowStore | null = null
@@ -245,7 +241,15 @@ export class CollaborationManager {
       this.emitGraphReadyState()
       return
     }
-    if (isUnauthorizedAck(...args) || status === 403 || body === 403 || message === 'not_entitled')
+    // A room still on another graph schema rejects this client. Checked before the 503 branch,
+    // which older clients use to read the same response as a reload prompt.
+    if (message === 'client_outdated') this.joinFailure = 'outdated'
+    else if (
+      isUnauthorizedAck(...args) ||
+      status === 403 ||
+      body === 403 ||
+      message === 'not_entitled'
+    )
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
     else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
       this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
@@ -272,7 +276,7 @@ export class CollaborationManager {
     emitWithAuthGuard(
       socket,
       'user_connect',
-      { workflow_id: this.currentAppId },
+      { workflow_id: this.currentAppId, graph_schema: GRAPH_SCHEMA_VERSION },
       {
         onAck: (...args) => {
           if (
@@ -321,184 +325,6 @@ export class CollaborationManager {
     emitWithAuthGuard(socket, 'graph_event', payload, {
       onUnauthorized: this.handleSessionUnauthorized,
     })
-  }
-
-  private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
-    if (!this.nodesMap) throw new Error('Nodes map not initialized')
-
-    const { LoroMap } = this.getCrdtRuntime()
-
-    let container = this.nodesMap.get(nodeId) as unknown
-
-    const isMapContainer = (
-      value: unknown,
-    ): value is LoroMap<Record<string, Value>> & LoroContainer => {
-      return (
-        !!value &&
-        typeof (value as LoroContainer).kind === 'function' &&
-        (value as LoroContainer).kind?.() === 'Map'
-      )
-    }
-
-    if (!container || !isMapContainer(container)) {
-      const previousValue = container
-      const newContainer = this.nodesMap.setContainer(nodeId, new LoroMap())
-      const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
-      container = attached
-      if (previousValue && typeof previousValue === 'object')
-        this.populateNodeContainer(
-          container as LoroMap<Record<string, Value>>,
-          previousValue as Node,
-        )
-    } else {
-      const attached = (container as LoroContainer).getAttached?.() ?? container
-      container = attached
-    }
-
-    return container as LoroMap<Record<string, Value>>
-  }
-
-  private ensureDataContainer(
-    nodeContainer: LoroMap<Record<string, Value>>,
-  ): LoroMap<Record<string, Value>> {
-    const { LoroMap } = this.getCrdtRuntime()
-    let dataContainer = nodeContainer.get('data') as unknown
-
-    if (
-      !dataContainer ||
-      typeof (dataContainer as LoroContainer).kind !== 'function' ||
-      (dataContainer as LoroContainer).kind?.() !== 'Map'
-    )
-      dataContainer = nodeContainer.setContainer('data', new LoroMap())
-
-    const attached = (dataContainer as LoroContainer).getAttached?.() ?? dataContainer
-    return attached as LoroMap<Record<string, Value>>
-  }
-
-  private ensureList(
-    nodeContainer: LoroMap<Record<string, Value>>,
-    key: string,
-  ): LoroList<unknown> {
-    const { LoroList } = this.getCrdtRuntime()
-    const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get(key) as unknown
-
-    if (
-      !list ||
-      typeof (list as LoroContainer).kind !== 'function' ||
-      (list as LoroContainer).kind?.() !== 'List'
-    )
-      list = dataContainer.setContainer(key, new LoroList())
-
-    const attached = (list as LoroContainer).getAttached?.() ?? list
-    return attached as LoroList<unknown>
-  }
-
-  private exportNode(nodeId: string): Node {
-    const container = this.getNodeContainer(nodeId)
-    const json = container.toJSON() as Node
-    return {
-      ...json,
-      data: json.data || {},
-    }
-  }
-
-  private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'parameters'])
-    container.set('id', node.id)
-    container.set('type', node.type)
-    container.set('position', toLoroValue(node.position))
-    container.set('sourcePosition', node.sourcePosition)
-    container.set('targetPosition', node.targetPosition)
-
-    if (node.width === undefined) container.delete('width')
-    else container.set('width', node.width)
-
-    if (node.height === undefined) container.delete('height')
-    else container.set('height', node.height)
-
-    if (node.selected === undefined) container.delete('selected')
-    else container.set('selected', node.selected)
-
-    const optionalProps: Array<keyof Node> = [
-      'parentId',
-      'positionAbsolute',
-      'extent',
-      'zIndex',
-      'draggable',
-      'selectable',
-      'dragHandle',
-      'dragging',
-      'connectable',
-      'expandParent',
-      'focusable',
-      'hidden',
-      'style',
-      'className',
-      'ariaLabel',
-      'resizing',
-      'deletable',
-    ]
-
-    optionalProps.forEach((prop) => {
-      const value = node[prop]
-      if (value === undefined) container.delete(prop as string)
-      else container.set(prop as string, toLoroValue(value))
-    })
-
-    const dataContainer = this.ensureDataContainer(container)
-    const handledKeys = new Set<string>()
-
-    Object.entries(node.data || {}).forEach(([key, value]) => {
-      if (!this.shouldSyncDataKey(key)) return
-      handledKeys.add(key)
-
-      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
-        this.syncList(container, key, Array.isArray(value) ? value : [])
-      else dataContainer.set(key, toLoroValue(value))
-    })
-
-    const existingData = dataContainer.toJSON() || {}
-    Object.keys(existingData).forEach((key) => {
-      if (!this.shouldSyncDataKey(key)) return
-      if (handledKeys.has(key)) return
-
-      dataContainer.delete(key)
-    })
-  }
-
-  private shouldSyncDataKey(key: string): boolean {
-    const syncDataAllowList = new Set([
-      '_children',
-      '_connectedSourceHandleIds',
-      '_connectedTargetHandleIds',
-      '_targetBranches',
-    ])
-    return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
-  }
-
-  private syncList(
-    nodeContainer: LoroMap<Record<string, Value>>,
-    key: string,
-    desired: Array<unknown>,
-  ): void {
-    const list = this.ensureList(nodeContainer, key)
-    const current = list.toJSON() as Array<unknown>
-    const target = Array.isArray(desired) ? desired : []
-    const minLength = Math.min(current.length, target.length)
-
-    for (let i = 0; i < minLength; i += 1) {
-      if (!isEqual(current[i], target[i])) {
-        list.delete(i, 1)
-        list.insert(i, cloneDeep(target[i]))
-      }
-    }
-
-    if (current.length > target.length) {
-      list.delete(target.length, current.length - target.length)
-    } else if (target.length > current.length) {
-      for (let i = current.length; i < target.length; i += 1) list.insert(i, cloneDeep(target[i]))
-    }
   }
 
   private getNodePanelPresenceSnapshot(): NodePanelPresenceMap {
@@ -628,8 +454,6 @@ export class CollaborationManager {
     this.provider?.destroy()
     this.undoManager = null
     this.doc = new LoroDoc()
-    this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
-    this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
     this.crdtGeneration += 1
     this.pendingGraphImportEmit = false
     this.pendingGraphResyncBroadcast = false
@@ -899,8 +723,6 @@ export class CollaborationManager {
     this.missingUpdatesRequestTimer = null
     this.doc = null
     this.provider = null
-    this.nodesMap = null
-    this.edgesMap = null
     this.currentAppId = null
     this.reactFlowStore = null
     this.cursors = {}
@@ -949,13 +771,73 @@ export class CollaborationManager {
     )
   }
 
+  /**
+   * A history of the graph lives in its own containers. A leader that rebuilds the graph from the
+   * saved draft starts a new lineage; when two histories meet in one document, every replica
+   * shows the newest lineage, and the other one stays hidden instead of being merged into it,
+   * which would duplicate every list item.
+   */
+  private getActiveLineage(): string | undefined {
+    if (!this.doc) return undefined
+    let active: { id: string; createdAt: number } | undefined
+    Object.entries(this.doc.getMap(GRAPH_LINEAGES_KEY).toJSON() as Record<string, unknown>).forEach(
+      ([id, createdAt]) => {
+        if (typeof createdAt !== 'number') return
+        if (
+          !active ||
+          createdAt > active.createdAt ||
+          (createdAt === active.createdAt && id > active.id)
+        )
+          active = { id, createdAt }
+      },
+    )
+    return active?.id
+  }
+
+  private startLineage(): void {
+    if (!this.doc) return
+    const lineages = this.doc.getMap(GRAPH_LINEAGES_KEY)
+    const latest = Math.max(
+      0,
+      ...Object.values(lineages.toJSON() as Record<string, unknown>).filter(
+        (createdAt): createdAt is number => typeof createdAt === 'number',
+      ),
+    )
+    lineages.set(uuid4(), Math.max(Date.now(), latest + 1))
+  }
+
+  // Committed on its own: the lineage must never be part of an edit that undo could revert.
+  private ensureLineage(): void {
+    if (!this.doc || this.getActiveLineage()) return
+    this.startLineage()
+    this.doc.commit({ origin: `${SYSTEM_COMMIT_ORIGIN_PREFIX}lineage` })
+  }
+
+  private getGraphMaps(): { nodes: GraphMap; edges: GraphMap } | null {
+    const lineage = this.getActiveLineage()
+    if (!this.doc || !lineage) return null
+    return {
+      nodes: this.doc.getMap(`nodes:${lineage}`) as GraphMap,
+      edges: this.doc.getMap(`edges:${lineage}`) as GraphMap,
+    }
+  }
+
   getNodes(): Node[] {
-    if (!this.nodesMap) return []
-    return Array.from(this.nodesMap.keys()).map((id) => this.exportNode(id as string))
+    const maps = this.getGraphMaps()
+    if (!maps) return []
+    return this.getCrdtRuntime().graphModel.readNodes(maps.nodes)
+  }
+
+  private getStoredEdges(): Edge[] {
+    const maps = this.getGraphMaps()
+    return maps ? (Array.from(maps.edges.values()) as unknown as Edge[]) : []
   }
 
   getEdges(): Edge[] {
-    return this.edgesMap ? (Array.from(this.edgesMap.values()) as Edge[]) : []
+    const maps = this.getGraphMaps()
+    if (!maps) return []
+    const nodeIds = new Set(Array.from(maps.nodes.keys()))
+    return this.getCrdtRuntime().graphModel.readEdges(maps.edges, nodeIds)
   }
 
   canRestoreGraphFromCrdt(): boolean {
@@ -1043,18 +925,19 @@ export class CollaborationManager {
   replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
     if (!this.doc || !this.reactFlowStore || !this.isGraphReloadCurrent(request)) return false
 
-    const shouldBroadcastSnapshot = this.pendingGraphResyncBroadcast
     const state = this.reactFlowStore.getState()
+    this.startLineage()
     this.syncNodes(this.getNodes(), state.getNodes())
-    this.syncEdges(this.getEdges(), state.getEdges())
-    this.doc.commit()
+    this.syncEdges(this.getStoredEdges(), state.getEdges())
+    this.doc.commit({ origin: `${SYSTEM_COMMIT_ORIGIN_PREFIX}reload` })
     this.clearInitialSyncRetry()
     this.crdtTrusted = true
     this.awaitingSnapshotImport = false
     this.reconnectedWithFreshDoc = false
     this.graphReloadRequired = false
     this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
+    // Replicas waiting for a snapshot learn about the rebuilt graph right away.
+    this.broadcastCurrentGraph()
     return true
   }
 
@@ -1064,8 +947,8 @@ export class CollaborationManager {
     // A server-side import or restore replaces the whole draft. Its graph must also replace
     // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
     this.syncNodes(this.getNodes(), nodes)
-    this.syncEdges(this.getEdges(), edges)
-    this.doc.commit()
+    this.syncEdges(this.getStoredEdges(), edges)
+    this.doc.commit({ origin: `${SYSTEM_COMMIT_ORIGIN_PREFIX}replace` })
     this.clearUndoStack()
     return true
   }
@@ -1438,51 +1321,46 @@ export class CollaborationManager {
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap || !this.doc) return
+    this.ensureLineage()
+    const nodesMap = this.getGraphMaps()?.nodes
+    if (!nodesMap) return
 
+    const { graphModel } = this.getCrdtRuntime()
     const oldNodesMap = new Map(oldNodes.map((node) => [node.id, node]))
-    const newNodesMap = new Map(newNodes.map((node) => [node.id, node]))
+    const newNodeIds = new Set(newNodes.map((node) => node.id))
 
     oldNodes.forEach((oldNode) => {
-      if (!newNodesMap.has(oldNode.id)) {
-        this.nodesMap?.delete(oldNode.id)
-      }
+      if (!newNodeIds.has(oldNode.id)) graphModel.deleteNode(nodesMap, oldNode.id)
     })
 
     newNodes.forEach((newNode) => {
       const oldNode = oldNodesMap.get(newNode.id)
-      if (oldNode && oldNode === newNode) return
-      if (oldNode && isEqual(oldNode, newNode)) return
-
-      const nodeContainer = this.getNodeContainer(newNode.id)
-      this.populateNodeContainer(nodeContainer, newNode)
+      if (oldNode && (oldNode === newNode || isEqual(oldNode, newNode))) return
+      graphModel.writeNode(nodesMap, oldNode, newNode)
     })
   }
 
   private syncEdges(oldEdges: Edge[], newEdges: Edge[]): void {
-    if (!this.edgesMap) return
+    this.ensureLineage()
+    const edgesMap = this.getGraphMaps()?.edges
+    if (!edgesMap) return
 
+    const { graphModel } = this.getCrdtRuntime()
     const oldEdgesMap = new Map(oldEdges.map((edge) => [edge.id, edge]))
-    const newEdgesMap = new Map(newEdges.map((edge) => [edge.id, edge]))
+    const newEdgeIds = new Set(newEdges.map((edge) => edge.id))
 
     oldEdges.forEach((oldEdge) => {
-      if (!newEdgesMap.has(oldEdge.id)) {
-        this.edgesMap?.delete(oldEdge.id)
-      }
+      if (!newEdgeIds.has(oldEdge.id)) graphModel.deleteEdge(edgesMap, oldEdge.id)
     })
 
     newEdges.forEach((newEdge) => {
-      const oldEdge = oldEdgesMap.get(newEdge.id)
-      if (!oldEdge || !isEqual(oldEdge, newEdge)) {
-        const clonedEdge = toLoroRecord(newEdge)
-        this.edgesMap?.set(newEdge.id, clonedEdge)
-      }
+      graphModel.writeEdge(edgesMap, oldEdgesMap.get(newEdge.id), newEdge)
     })
   }
 
   private setupSubscriptions(): void {
     const generation = this.crdtGeneration
-    this.nodesMap?.subscribe((event: LoroSubscribeEvent) => {
+    const onNodesEvent = (event: LoroSubscribeEvent) => {
       if (generation !== this.crdtGeneration) return
 
       const reactFlowStore = this.reactFlowStore
@@ -1525,8 +1403,7 @@ export class CollaborationManager {
 
         this.pendingInitialSync = false
 
-        const updatedNodes = Array.from(this.nodesMap?.keys() || []).map((nodeId) => {
-          const node = this.exportNode(nodeId as string)
+        const updatedNodes = this.getNodes().map((node) => {
           const clonedNode: Node = {
             ...node,
             data: {
@@ -1567,9 +1444,9 @@ export class CollaborationManager {
 
         this.scheduleGraphImportEmit()
       })
-    })
+    }
 
-    this.edgesMap?.subscribe((event: LoroSubscribeEvent) => {
+    const onEdgesEvent = (event: LoroSubscribeEvent) => {
       if (generation !== this.crdtGeneration) return
 
       const reactFlowStore = this.reactFlowStore
@@ -1621,6 +1498,23 @@ export class CollaborationManager {
 
         this.scheduleGraphImportEmit()
       })
+    }
+
+    // The graph lives under the active lineage's containers, which an import can switch.
+    let activeLineage = this.getActiveLineage()
+    this.doc?.subscribe((event: LoroSubscribeEvent) => {
+      const lineage = this.getActiveLineage()
+      const lineageChanged = lineage !== activeLineage
+      activeLineage = lineage
+      // Local undo items point at the previous lineage, which no longer shows.
+      if (lineageChanged && event.by === 'import') this.clearUndoStack()
+
+      // The first path segment names the root container; list items have ids without it.
+      const roots = event.events?.map((item) => String(item.path?.[0] ?? item.target)) ?? []
+      const touches = (prefix: string) =>
+        lineageChanged || !roots.length || roots.some((root) => root.includes(prefix))
+      if (touches('nodes:')) onNodesEvent(event)
+      if (touches('edges:')) onEdgesEvent(event)
     })
   }
 
@@ -2099,6 +1993,11 @@ export class CollaborationManager {
 
     socket.on('disconnect', (reason) => {
       this.importFailureCount = 0
+      // The server disconnects a client only when a newer client takes over the room.
+      if (reason === 'io server disconnect') {
+        this.joinFailure = 'outdated'
+        this.eventEmitter.emit('joinFailure', this.joinFailure)
+      }
       this.joinPending = false
       this.rejoinInProgress = false
       this.joinAttempt += 1
@@ -2205,7 +2104,7 @@ export class CollaborationManager {
 
     this.syncNodes([], nodes)
     this.syncEdges([], edges)
-    this.doc.commit()
+    this.doc.commit({ origin: `${SYSTEM_COMMIT_ORIGIN_PREFIX}seed` })
   }
 
   private broadcastCurrentGraph(): void {

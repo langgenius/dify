@@ -21,6 +21,7 @@ from repositories.workflow_collaboration_repository import WorkflowCollaboration
 from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
+    WorkflowCollaborationClientOutdatedError,
     WorkflowCollaborationNotEntitledError,
     WorkflowCollaborationService,
 )
@@ -1655,3 +1656,66 @@ class TestWorkflowCollaborationService:
 
         assert repository.get_current_leader("wf-1") == "sid-2"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-2")
+
+
+def _join_with_graph_schema(
+    service: WorkflowCollaborationService, socketio: Mock, db_session: Session, sid: str, graph_schema: int
+) -> tuple[str, bool] | None:
+    socketio.get_session.return_value = {"user_id": "u-2", "username": "Joe", "avatar": None, "tenant_id": "t-1"}
+    if db_session.get(App, "wf-1") is None:
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1", maintainer="owner-1"))
+        db_session.commit()
+    with (
+        config_overrides_context(RBAC_ENABLED=True),
+        patch("services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=True),
+        patch(
+            "services.workflow_collaboration_service.FeatureService.can_use_workflow_collaboration", return_value=True
+        ),
+    ):
+        return service.authorize_and_join_workflow_room("wf-1", sid, session=db_session, graph_schema=graph_schema)
+
+
+def test_newer_graph_schema_disconnects_older_sessions(real_service: ServiceFixture, db_session: Session) -> None:
+    service, repository, socketio = real_service
+    seed_session(repository, "sid-old", user_id="u-1")
+    repository.set_leader("wf-1", "sid-old")
+
+    with patch.object(repository, "room_join_lock", wraps=repository.room_join_lock) as join_lock:
+        result = _join_with_graph_schema(service, socketio, db_session, "sid-new", graph_schema=2)
+
+    join_lock.assert_called_once_with("wf-1")
+    assert result == ("u-2", True)
+    assert repository.get_current_leader("wf-1") == "sid-new"
+    socketio.disconnect.assert_called_once_with("sid-old")
+    assert repository.get_session_info("wf-1", "sid-old") is None
+    new_session = repository.get_session_info("wf-1", "sid-new")
+    assert new_session is not None
+    assert new_session["graph_schema"] == 2
+
+
+def test_older_graph_schema_is_rejected_without_joining(real_service: ServiceFixture, db_session: Session) -> None:
+    service, repository, socketio = real_service
+    seed_sessions(
+        repository,
+        [{"sid": "sid-new", "user_id": "u-1", "username": "u-1", "avatar": None, "connected_at": 1, "graph_schema": 2}],
+    )
+
+    with pytest.raises(WorkflowCollaborationClientOutdatedError):
+        _join_with_graph_schema(service, socketio, db_session, "sid-old", graph_schema=1)
+
+    assert repository.get_session_info("wf-1", "sid-old") is None
+    socketio.disconnect.assert_not_called()
+    socketio.enter_room.assert_not_called()
+
+
+def test_same_graph_schema_keeps_existing_sessions(real_service: ServiceFixture, db_session: Session) -> None:
+    service, repository, socketio = real_service
+    seed_sessions(
+        repository,
+        [{"sid": "sid-a", "user_id": "u-1", "username": "u-1", "avatar": None, "connected_at": 1, "graph_schema": 2}],
+    )
+
+    _join_with_graph_schema(service, socketio, db_session, "sid-b", graph_schema=2)
+
+    socketio.disconnect.assert_not_called()
+    assert repository.get_session_info("wf-1", "sid-a") is not None

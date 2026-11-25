@@ -25,12 +25,20 @@ logger = logging.getLogger(__name__)
 
 SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
 SYNC_REQUEST_TIMEOUT_SECONDS = 15
+# Clients that predate the `graph_schema` join field.
+LEGACY_GRAPH_SCHEMA = 1
+# The newest graph schema this server admits. A client cannot claim a newer one and evict everyone else.
+LATEST_GRAPH_SCHEMA = 2
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
 
 
 class WorkflowCollaborationNotEntitledError(Exception):
     """The workspace cannot use workflow collaboration."""
+
+
+class WorkflowCollaborationClientOutdatedError(Exception):
+    """The room already runs a newer graph schema than the joining client."""
 
 
 def _get_process_server_id() -> str:
@@ -107,14 +115,15 @@ class WorkflowCollaborationService:
         )
 
     def authorize_and_join_workflow_room(
-        self, workflow_id: str, sid: str, *, session: Session
+        self, workflow_id: str, sid: str, *, session: Session, graph_schema: int = LEGACY_GRAPH_SCHEMA
     ) -> tuple[str, bool] | None:
         """
         Join a collaboration room only after validating the socket session, app access, and workspace entitlement.
 
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Missing access returns `None`; an ineligible workspace raises
-        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created.
+        `WorkflowCollaborationNotEntitledError` before any Redis or room state is created. A client older than the
+        room's graph schema raises `WorkflowCollaborationClientOutdatedError`.
         """
         socket_session = self._socketio.get_session(sid)
         user_id = socket_session.get("user_id")
@@ -147,9 +156,13 @@ class WorkflowCollaborationService:
             # Joins are assumed visible; hidden tabs re-report via a graph_view_state
             # event right after receiving the post-join "status" emit.
             "graph_active": True,
+            "graph_schema": graph_schema,
         }
 
-        self._repository.set_session_info(workflow_id, session_info)
+        # Without the lock, two clients on different schemas could both find the room empty and join it.
+        with self._repository.room_join_lock(workflow_id):
+            self._enforce_room_graph_schema(workflow_id, sid, graph_schema)
+            self._repository.set_session_info(workflow_id, session_info)
 
         leader_sid = self.get_or_set_leader(workflow_id, sid)
         is_leader = leader_sid == sid
@@ -160,6 +173,22 @@ class WorkflowCollaborationService:
         self._socketio.emit("status", {"isLeader": is_leader}, room=sid)
 
         return str(user_id), is_leader
+
+    def _enforce_room_graph_schema(self, workflow_id: str, sid: str, graph_schema: int) -> None:
+        """Keep a single graph schema per room.
+
+        Clients on different schemas store the graph in different container types under the same keys, so a mixed
+        room would overwrite each other's graph. A newer client disconnects the older sessions; their pages must
+        reload to rejoin. An older client is rejected.
+        """
+        other_sessions = [info for info in self._prune_inactive_sessions(workflow_id) if info["sid"] != sid]
+        if any(info.get("graph_schema", LEGACY_GRAPH_SCHEMA) > graph_schema for info in other_sessions):
+            raise WorkflowCollaborationClientOutdatedError
+
+        for info in other_sessions:
+            if info.get("graph_schema", LEGACY_GRAPH_SCHEMA) < graph_schema:
+                self.disconnect_session(info["sid"])
+                self._socketio.disconnect(info["sid"])
 
     def _can_access_workflow(self, workflow_id: str, tenant_id: str, user_id: str, *, session: Session) -> bool:
         """Check tenant and app permission without relying on Flask's scoped session."""
