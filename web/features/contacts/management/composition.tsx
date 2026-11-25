@@ -9,6 +9,7 @@ import { currentWorkspaceIdAtom, isCurrentWorkspaceManagerAtom } from '@/context
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { selectIMCentrallyManaged } from '../im-capability'
+import { useWorkspaceContactPermissions } from '../permissions'
 import { ContactsFeatureContext } from './composition-context'
 
 export function ContactsManagementProvider({
@@ -23,7 +24,8 @@ export function ContactsManagementProvider({
 
 export function ContactsManagementRuntimeProvider({ children }: { children: ReactNode }) {
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
-  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const canManageMembers = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { canViewContacts, canManageContacts } = useWorkspaceContactPermissions()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const capability = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -49,12 +51,21 @@ export function ContactsManagementRuntimeProvider({ children }: { children: Reac
       },
       workspaceId,
       permissions: {
-        canViewContacts: Boolean(workspaceId) && canManage,
-        canManageContacts: Boolean(workspaceId) && canManage,
-        canManageMembers: Boolean(workspaceId) && canManage,
+        canViewContacts: Boolean(workspaceId) && canViewContacts,
+        canManageContacts: Boolean(workspaceId) && canManageContacts,
+        canManageMembers: Boolean(workspaceId) && canManageMembers,
       },
     }),
-    [canManage, capabilityError, refetchCapability, deployment, imCentrallyManaged, workspaceId],
+    [
+      canViewContacts,
+      canManageContacts,
+      canManageMembers,
+      capabilityError,
+      refetchCapability,
+      deployment,
+      imCentrallyManaged,
+      workspaceId,
+    ],
   )
   return <ContactsManagementProvider context={context}>{children}</ContactsManagementProvider>
 }

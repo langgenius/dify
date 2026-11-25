@@ -467,6 +467,22 @@ describe('MainNav', () => {
     ])
   })
 
+  it.each([false, true])('uses the workspace Contact view grant for navigation (%s)', (canView) => {
+    mockConsoleState.current = {
+      ...consoleState,
+      currentWorkspace: { ...consoleState.currentWorkspace, role: 'normal' },
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+      workspacePermissionKeys: canView ? ['contact.view'] : [],
+    }
+
+    renderMainNav({ rbac_enabled: true })
+
+    const link = screen.queryByRole('link', { name: /contacts.directory.title/ })
+    if (canView) expect(link).toHaveAttribute('href', '/contacts')
+    else expect(link).not.toBeInTheDocument()
+  })
+
   it('hides Contacts while keeping other navigation available when HITL IM is not released', () => {
     mockConfig.ENABLE_HITL_IM = false
 

@@ -35,12 +35,9 @@ import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarType } from '@/app/components/workflow/types'
-import {
-  currentWorkspaceAtom,
-  currentWorkspaceIdAtom,
-  isCurrentWorkspaceManagerAtom,
-} from '@/context/workspace-state'
+import { currentWorkspaceAtom, currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
+import { useWorkspaceContactPermissions } from '@/features/contacts/permissions'
 import { consoleQuery } from '@/service/console'
 import { getContactRecipientQueryOptions } from '../contact-queries'
 import {
@@ -893,10 +890,10 @@ const RecipientsContent = ({
 const Recipients = (props: RecipientsProps) => {
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const workspace = useAtomValue(currentWorkspaceAtom)
-  const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { canViewContacts } = useWorkspaceContactPermissions()
   const operation = consoleQuery.workspaces.current.humanInput.v2.contacts.get
   const input =
-    workspaceId && canManage
+    workspaceId && canViewContacts
       ? { query: { group: 'workspace' as const, page: 1, limit: 1 } }
       : skipToken
   const count = useQuery(
@@ -914,7 +911,7 @@ const Recipients = (props: RecipientsProps) => {
       {...props}
       readonly={props.readonly || !workspaceId}
       workspaceId={workspaceId}
-      workspace={{ name: workspace.name, contactCount: canManage ? count.data : undefined }}
+      workspace={{ name: workspace.name, contactCount: canViewContacts ? count.data : undefined }}
     />
   )
 }

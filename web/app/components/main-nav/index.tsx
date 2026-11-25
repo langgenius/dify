@@ -11,13 +11,11 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import {
-  isCurrentWorkspaceDatasetOperatorAtom,
-  isCurrentWorkspaceManagerAtom,
-} from '@/context/workspace-state'
+import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
+import { useWorkspaceContactPermissions } from '@/features/contacts/permissions'
 import { useMarketplace } from '@/features/marketplace/client'
 import { useCanViewSkills } from '@/features/skills/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -61,7 +59,7 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
   const { t } = useTranslation(['common', 'navigation', 'contacts'])
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
-  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { canViewContacts } = useWorkspaceContactPermissions()
   const marketplaceEnabled = useMarketplace() !== null
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -82,7 +80,7 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
       MAIN_NAV_ROUTES.filter((route) =>
         isMainNavRouteVisible(route, {
           agentV2Enabled,
-          canViewContacts: isCurrentWorkspaceManager,
+          canViewContacts,
           contactsEnabled,
           canViewSkills,
           isCurrentWorkspaceDatasetOperator,
@@ -111,7 +109,7 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
       canViewSkills,
       enableSkill,
       isCurrentWorkspaceDatasetOperator,
-      isCurrentWorkspaceManager,
+      canViewContacts,
       marketplaceEnabled,
       t,
     ],
