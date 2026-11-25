@@ -44,7 +44,6 @@ const UploadRunPopover = ({
   const { t: tCommon } = useTranslation(['common'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const previewFields = inputFields
-  const booleanExampleValue = t(($) => $['conditions.boolean.true'])
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     onUploadFile(event.target.files?.[0])
@@ -187,7 +186,7 @@ const UploadRunPopover = ({
                         {field.name}
                       </div>
                       <div className="truncate px-3 py-2 system-sm-regular whitespace-nowrap text-text-secondary">
-                        {getExampleValue(field, booleanExampleValue)}
+                        {getExampleValue(field)}
                       </div>
                     </div>
                   ))}
