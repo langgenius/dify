@@ -4920,10 +4920,6 @@ export type WorkflowCommentDetailWritable = {
   updated_at?: number | null
 }
 
-export type TestCredentialPreflightResponseWritable = {
-  credentials: Array<TestCredentialState>
-}
-
 export type WorkflowAgentComposerResponseWritable = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   agent?: AgentComposerAgentResponse | null
@@ -4963,6 +4959,10 @@ export type ComposerSavePayloadWritable = {
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
   version_note?: string | null
+}
+
+export type TestCredentialPreflightResponseWritable = {
+  credentials: Array<TestCredentialState>
 }
 
 export type AppPartialWritable = {
@@ -6317,7 +6317,9 @@ export type PostAppsByAppIdAnnotationsResponse =
   PostAppsByAppIdAnnotationsResponses[keyof PostAppsByAppIdAnnotationsResponses]
 
 export type PostAppsByAppIdAnnotationsBatchImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }

@@ -12,6 +12,7 @@ import WebAppSignInHandoff from '@/app/components/share/webapp-sign-in-handoff'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
+import { webAppLogout } from '@/service/common'
 import {
   useGetWebAppAccountStatus,
   useGetWebAppParams,
@@ -19,7 +20,7 @@ import {
   webAppMetaQueryOptions,
 } from '@/service/share-queries'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
-import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
+import { expireWebAppAccountSession, getWebAppLoginMode } from '@/service/webapp-auth'
 
 const AuthenticatedApp = ({
   address,

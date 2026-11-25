@@ -361,7 +361,7 @@ describe('WorkflowApp', () => {
     await screen.findByRole('region', { name: 'Workflow canvas' })
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
       expect(workflowStore.getState().inputs).toEqual({
         foo: 'bar',
         count: 2,
@@ -411,7 +411,7 @@ describe('WorkflowApp', () => {
     await screen.findByRole('region', { name: 'Workflow canvas' })
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
     })
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -435,7 +435,7 @@ describe('WorkflowApp', () => {
     await screen.findByRole('region', { name: 'Workflow canvas' })
 
     await waitFor(() => {
-      expect(mockFetchRunDetail).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1')
+      expect(mockFetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
     })
 
     expect(workflowStore.getState().inputs).toEqual({})

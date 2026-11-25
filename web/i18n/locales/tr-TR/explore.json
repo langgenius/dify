@@ -1,7 +1,6 @@
 {
   "appCard.try": "Detaylar",
   "appCustomize.nameRequired": "Uygulama ismi gereklidir",
-  "appCustomize.subTitle": "Uygulama simgesi ve ismi",
   "appCustomize.title": "{{name}} uygulamasından uygulama oluştur",
   "apps.allCategories": "Tümü",
   "apps.description": "Topluluk ve Dify ekibinden kullanıma hazır şablonlar.",

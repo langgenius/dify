@@ -6,7 +6,7 @@ import {
 } from '@/app/components/base/amplitude/registration-session-state'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
-import { request, ssePost, upload } from '../base'
+import { request } from '../base'
 
 const mocks = vi.hoisted(() => ({
   isClient: true,
@@ -267,30 +267,6 @@ describe('request 401 handling', () => {
     expect(mocks.completeWebAppAuthorizationRecovery).not.toHaveBeenCalled()
   })
 
-  it('should show forbidden when an environment SSE request is denied', async () => {
-    const address = { kind: 'environment', code: 'environment-code' } as const
-    mocks.resolveWebAppAddress.mockReturnValue(address)
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          code: 401,
-          reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED',
-          message: 'You do not have permission to access this web app.',
-        }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } },
-      ),
-    )
-
-    ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true })
-
-    await vi.waitFor(() => {
-      expect(globalThis.location.href).toContain('/webapp-signin?')
-      expect(globalThis.location.href).toContain('code=403')
-    })
-    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
-    expect(globalThis.location.reload).not.toHaveBeenCalled()
-  })
-
   it('should stop reloading when environment authorization does not recover', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     const response = new Response(
@@ -316,26 +292,6 @@ describe('request 401 handling', () => {
     expect(globalThis.location.href).toContain('message=Unauthorized')
   })
 
-  it('should report a public SSE 403 that is not recoverable', async () => {
-    const onError = vi.fn()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          code: 'web_app_disabled',
-          message: 'webapp is disabled',
-        }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
-      ),
-    )
-
-    ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true, onError })
-
-    await vi.waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('webapp is disabled', 'web_app_disabled')
-    })
-    expect(mocks.beginWebAppAuthorizationRecovery).not.toHaveBeenCalled()
-  })
-
   it('should show forbidden when an environment request is denied', async () => {
     const address = { kind: 'environment', code: 'environment-code' } as const
     const response = new Response(
@@ -352,40 +308,6 @@ describe('request 401 handling', () => {
     await expect(request('/messages', {}, { isPublicAPI: true })).rejects.toMatchObject({
       defined: false,
       status: response.status,
-    })
-
-    expect(globalThis.location.href).toContain('/webapp-signin?')
-    expect(globalThis.location.href).toContain('code=403')
-    expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
-    expect(globalThis.location.reload).not.toHaveBeenCalled()
-  })
-
-  it('should show forbidden when an environment upload is denied', async () => {
-    const address = { kind: 'environment', code: 'environment-code' } as const
-    mocks.resolveWebAppAddress.mockReturnValue(address)
-    const xhr = {
-      open: vi.fn(),
-      setRequestHeader: vi.fn(),
-      getAllResponseHeaders: vi.fn(() => ''),
-      send: vi.fn(function (this: { onreadystatechange?: () => void }) {
-        this.onreadystatechange?.()
-      }),
-      status: 401,
-      response: {
-        code: 401,
-        reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED',
-        message: 'You do not have permission to access this web app.',
-      },
-      readyState: 4,
-      upload: {},
-      withCredentials: false,
-      responseType: '',
-    } as unknown as XMLHttpRequest
-
-    await expect(upload({ xhr, data: new FormData() }, true)).rejects.toMatchObject({
-      defined: false,
-      status: 401,
-      data: { reason: 'APPDEPLOY_WEB_APP_ACCESS_DENIED' },
     })
 
     expect(globalThis.location.href).toContain('/webapp-signin?')

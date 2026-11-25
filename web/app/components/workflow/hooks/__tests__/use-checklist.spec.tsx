@@ -77,14 +77,12 @@ vi.mock('@/config', async (importOriginal) => ({
 }))
 
 const marketplace = vi.hoisted(() =>
-  vi.fn<
-    (url: string, options: unknown) => Promise<{ data: PluginsFromMarketplaceByInfoResponse }>
-  >(),
+  vi.fn<(input: unknown) => Promise<{ data: PluginsFromMarketplaceByInfoResponse }>>(),
 )
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: marketplace })
+})
 
 function createChecklistQueryClient(builtInTools: ToolProviderListResponse = []) {
   const { queryClient } = createConsoleQueryWrapper({ features: {} })
@@ -183,8 +181,8 @@ beforeEach(() => {
   mockHitlIm.enabled = true
   resolveContacts.mockReset().mockResolvedValue({ data: [] })
   resetFixtureCounters()
-  marketplace.mockReset().mockImplementation((url: string) => {
-    throw new Error(`Unexpected marketplace request: ${url}`)
+  marketplace.mockReset().mockImplementation((input) => {
+    throw new Error(`Unexpected marketplace request: ${JSON.stringify(input)}`)
   })
 })
 afterEach(() => {

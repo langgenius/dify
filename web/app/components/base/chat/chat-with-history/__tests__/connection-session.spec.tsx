@@ -1,6 +1,5 @@
 import type { EndUserConnectionPreflightPayload } from '@dify/contracts/api/web/types.gen'
-// oxlint-disable-next-line no-restricted-imports -- Type the existing Chat SSE callbacks at this test's transport boundary.
-import type { IOtherOptions } from '@/service/base'
+import type { RecordedStreamCall } from '@/test/stream-recorder'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
@@ -12,21 +11,29 @@ import ChatWithHistory from '../index'
 import { chatConnectionEntry, checkedRevision, selectedConnectionId } from './connection-fixture'
 
 const { post } = vi.hoisted(() => ({
-  post: vi.fn<(url: string, options: unknown, stream: IOtherOptions) => Promise<void>>(),
+  post: vi.fn<RecordedStreamCall>(),
 }))
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post, get: vi.fn<RecordedStreamCall>() })
+})
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
   usePathname: () => '/chat/session-app',
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({ token: 'session-app' }),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: post,
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
 }))
 vi.mock('@/i18n/client', () => ({ changeLanguage: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
   fetchConversations: vi.fn().mockResolvedValue({ data: [], has_more: false, limit: 100 }),
   generationConversationName: vi.fn().mockResolvedValue({
     id: 'created-conversation',

@@ -19,8 +19,8 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
+  chatMessagesSender,
   fetchSuggestedQuestions,
-  getUrl,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -246,7 +246,7 @@ const ChatWrapper = () => {
           connections: { ...connections.runConfiguration.connections },
         }),
       }
-      const accepted = handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      const accepted = handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,

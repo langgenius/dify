@@ -57,8 +57,7 @@ vi.mock('@/context/web-app-context', () => ({
 }))
 
 const mockWebAppLogout = vi.fn().mockResolvedValue(undefined)
-vi.mock('@/service/webapp-auth', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/webapp-auth')>()),
+vi.mock('@/service/common', () => ({
   webAppLogout: (...args: unknown[]) => mockWebAppLogout(...args),
 }))
 

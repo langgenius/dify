@@ -11,7 +11,8 @@ import userEvent from '@testing-library/user-event'
 import SignIn from '@/app/components/share/sign-in'
 import { useWebAppEntry } from '@/app/components/share/webapp-entry'
 import { useWebAppStore } from '@/context/web-app-context'
-import { expireWebAppAccountSession, getWebAppLoginMode, webAppLogout } from '@/service/webapp-auth'
+import { webAppLogout } from '@/service/common'
+import { expireWebAppAccountSession, getWebAppLoginMode } from '@/service/webapp-auth'
 import AuthenticatedLayout from '../authenticated-layout'
 
 type QueryState<TData> = {
@@ -130,8 +131,11 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => userCanAccessAppQueryState,
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/common', () => ({
   webAppLogout: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-auth', () => ({
   getWebAppAccessToken: () => '',
   getWebAppLoginMode: vi.fn(() => 'console'),
   expireWebAppAccountSession: vi.fn(),

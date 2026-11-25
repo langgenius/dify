@@ -164,6 +164,8 @@ export const seedFeatures = (
   return data
 }
 
+export { createFeaturesFixture }
+
 export const seedKnowledgeFsFeatures = (
   queryClient: QueryClient,
   overrides: Partial<KnowledgeFsFeaturesResponse> = {},

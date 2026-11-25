@@ -18,6 +18,7 @@ import {
 } from '@/features/app-access-error/state'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { webAppLoginStatus, webAppLogout } from '@/service/common'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
@@ -26,8 +27,6 @@ import {
   getWebAppLoginMode,
   setWebAppAccessToken,
   setWebAppPassport,
-  webAppLoginStatus,
-  webAppLogout,
 } from '@/service/webapp-auth'
 import { restoreWebAppAccountSession } from '@/service/webapp/account-session'
 import { getClientLoginFallback } from '@/utils/login-redirect'

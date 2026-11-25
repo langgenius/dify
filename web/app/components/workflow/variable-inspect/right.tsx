@@ -29,6 +29,7 @@ import { CodeLanguage } from '../nodes/code/types'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import Empty from './empty'
+import styles from './panel.module.css'
 import ValueContent from './value-content'
 
 type Props = Readonly<{
@@ -40,7 +41,6 @@ type Props = Readonly<{
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
   const { t } = useTranslation(['common', 'workflowDebug', 'appGeneration'])
-  const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
   const toolIcon = useToolIcon(currentNodeVar?.nodeData)
@@ -139,15 +139,13 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
-        {bottomPanelWidth < 488 && (
-          <IconButton
-            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
-            className="shrink-0"
-            onClick={handleOpenMenu}
-          >
-            <span aria-hidden className="i-ri-menu-line size-4" />
-          </IconButton>
-        )}
+        <IconButton
+          aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
+          className={styles.menuTrigger}
+          onClick={handleOpenMenu}
+        >
+          <span aria-hidden className="i-ri-menu-line size-4" />
+        </IconButton>
         <div className="flex w-0 grow items-center gap-1">
           {currentNodeVar?.var && (
             <>

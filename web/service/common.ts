@@ -1,24 +1,9 @@
 import { webAppClient } from './webapp-client'
 
-type LoginSuccess = {
-  result: 'success'
-  data?: { access_token?: string }
-}
-type LoginFail = {
-  result: 'fail'
-  data: string
-  code: string
-  message: string
-}
-type LoginResponse = LoginSuccess | LoginFail
+export { webAppLoginStatus, webAppLogout } from './webapp-auth'
 
-export const webAppLogin = (body: {
-  email: string
-  password: string
-  remember_me?: boolean
-}): Promise<LoginResponse> => {
-  return webAppClient.login.post({ body }) as Promise<LoginResponse>
-}
+export const webAppLogin = (body: { email: string; password: string; remember_me?: boolean }) =>
+  webAppClient.login.post({ body })
 
 export const changeWebAppPasswordWithToken = (body: {
   token: string

@@ -2,7 +2,7 @@
 
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,14 +40,12 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { data: datasetRes, refetch: mutateDatasetRes } = useQuery(
     consoleQuery.datasets.byDatasetId.get.queryOptions({
-      input: { params: { dataset_id: datasetId ?? '' } },
-      enabled: !!datasetId,
+      input: datasetId ? { params: { dataset_id: datasetId } } : skipToken,
     }),
   )
   const { data: relatedApps } = useQuery(
     consoleQuery.datasets.byDatasetId.relatedApps.get.queryOptions({
-      input: { params: { dataset_id: datasetId ?? '' } },
-      enabled: !!datasetId && !!datasetRes,
+      input: datasetId && datasetRes ? { params: { dataset_id: datasetId } } : skipToken,
     }),
   )
   const datasetACLCapabilities = useMemo(

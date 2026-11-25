@@ -25,13 +25,10 @@ import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { webAppLogout } from '@/service/common'
 import { webAppQuery } from '@/service/webapp'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import {
-  getWebAppAuthSessionSnapshot,
-  subscribeWebAppAuthSession,
-  webAppLogout,
-} from '@/service/webapp-auth'
+import { getWebAppAuthSessionSnapshot, subscribeWebAppAuthSession } from '@/service/webapp-auth'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useWebAppEntry } from '../webapp-entry'
 import InfoModal from './info-modal'
