@@ -41,6 +41,7 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
+  updateConversationList,
   writeGeneratedConversation,
 } from '../utils'
 
@@ -559,7 +560,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        queryClient.setQueryData(
+        updateConversationList(
+          queryClient,
           conversationListQueryOptions.queryKey,
           (data) =>
             data && {
@@ -592,13 +594,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       // The generated name stays in the list cache until the list is loaded again after it.
       pendingNameConversationIdRef.current = newConversationId
       queryClient
-        .query(
-          shareConversationNameQueryOptions({
+        .query({
+          ...shareConversationNameQueryOptions({
             conversationId: newConversationId,
             appSourceType,
             appId,
           }),
-        )
+          // Imperative queries do not retry by default; keep the retries the name query observer had.
+          retry: 3,
+        })
         .then((conversation) => {
           if (pendingNameConversationIdRef.current !== newConversationId) return
           pendingNameConversationIdRef.current = ''

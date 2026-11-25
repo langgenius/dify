@@ -279,18 +279,32 @@ function withGeneratedConversation(
   return { ...data, data: list }
 }
 
+type ConversationListQueryKey = ReturnType<typeof shareConversationsQueryOptions>['queryKey']
+
 /**
- * Writes a generated conversation into the conversation list cache. A list that has not loaded
- * stays stale, so the next mount still loads the full list.
+ * Edits the conversation list cache. A list that has no data or whose last request failed stays
+ * stale after the edit, so the next mount still loads the full list.
  */
+function updateConversationList(
+  queryClient: QueryClient,
+  queryKey: ConversationListQueryKey,
+  updater: (data: AppConversationData | undefined) => AppConversationData | undefined,
+) {
+  const state = queryClient.getQueryState(queryKey)
+  const keepStale = state?.data === undefined || state.isInvalidated
+  queryClient.setQueryData(queryKey, updater)
+  if (keepStale) queryClient.invalidateQueries({ queryKey, exact: true, refetchType: 'none' })
+}
+
+/** Writes a generated conversation into the conversation list cache. */
 function writeGeneratedConversation(
   queryClient: QueryClient,
-  queryKey: ReturnType<typeof shareConversationsQueryOptions>['queryKey'],
+  queryKey: ConversationListQueryKey,
   conversation: ConversationItem,
 ) {
-  const loaded = queryClient.getQueryData(queryKey) !== undefined
-  queryClient.setQueryData(queryKey, (data) => withGeneratedConversation(data, conversation))
-  if (!loaded) queryClient.invalidateQueries({ queryKey, exact: true, refetchType: 'none' })
+  updateConversationList(queryClient, queryKey, (data) =>
+    withGeneratedConversation(data, conversation),
+  )
 }
 
 export {
@@ -303,5 +317,6 @@ export {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
+  updateConversationList,
   writeGeneratedConversation,
 }

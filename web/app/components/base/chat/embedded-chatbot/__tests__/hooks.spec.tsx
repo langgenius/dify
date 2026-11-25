@@ -403,6 +403,71 @@ describe('useEmbeddedChatbot', () => {
       )
     })
 
+    it('should retry generating the conversation name after a transient failure', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName
+        .mockRejectedValueOnce(new Error('bad gateway'))
+        .mockResolvedValueOnce(
+          createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+        )
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      await waitFor(
+        () => expect(result.current.conversationList[0]).toMatchObject({ name: 'Generated' }),
+        { timeout: 3000 },
+      )
+      expect(mockGenerationConversationName).toHaveBeenCalledTimes(2)
+    })
+
+    it('should keep a list that failed to load stale after another generated name', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: secondName, resolve: resolveSecondName } = createDeferred<ConversationItem>()
+      mockGenerationConversationName
+        .mockResolvedValueOnce(
+          createConversationItem({ id: 'conversation-a', name: 'Generated A' }),
+        )
+        .mockReturnValueOnce(secondName)
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-a')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated A'))
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-b')
+      })
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+      await act(async () => {
+        resolveSecondName(createConversationItem({ id: 'conversation-b', name: 'Generated B' }))
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated B'))
+
+      unmount()
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      const remounted = renderHook(() => useEmbeddedChatbot(AppSourceType.webApp), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-1',
+        ]),
+      )
+    })
+
     it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
       mockFetchChatList.mockResolvedValue({ data: [] })

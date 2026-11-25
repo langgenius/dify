@@ -401,6 +401,63 @@ describe('useChatWithHistory', () => {
       expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1'])
     })
 
+    it('should retry generating the conversation name after a transient failure', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName
+        .mockRejectedValueOnce(new Error('bad gateway'))
+        .mockResolvedValueOnce(
+          createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+        )
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      await waitFor(
+        () => expect(result.current.conversationList[0]).toMatchObject({ name: 'Generated' }),
+        { timeout: 3000 },
+      )
+      expect(mockGenerationConversationName).toHaveBeenCalledTimes(2)
+    })
+
+    it('should keep a list that failed to load stale after a rename', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      mockRenameConversation.mockResolvedValue(undefined)
+      const { result, queryClient, unmount } = await renderWithClient(() => useChatWithHistory())
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      await act(async () => {
+        await result.current.handleRenameConversation('conversation-new', 'Renamed', {
+          onSuccess: vi.fn(),
+        })
+      })
+      expect(result.current.conversationList[0]!.name).toBe('Renamed')
+
+      unmount()
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      const remounted = renderHook(() => useChatWithHistory(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-1',
+        ]),
+      )
+    })
+
     it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
       mockFetchChatList.mockResolvedValue({ data: [] })
