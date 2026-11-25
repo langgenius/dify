@@ -128,7 +128,8 @@ async function setup({
 }
 
 it('polls real indexing progress and announces completion without retaining a progress bar', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  // The query polls with an interval timer.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] })
   fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mockResolvedValueOnce({
     data: [status({ indexing_status: 'indexing', completed_segments: 50, total_segments: 100 })],
   })

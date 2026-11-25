@@ -103,6 +103,11 @@ function BadCasePromotionDialog({
       },
     ),
   )
+  const { mutateAsync: updateBadCase } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
+      { context: { silent: true } },
+    ),
+  )
 
   const close = () => {
     setError(undefined)
@@ -118,17 +123,14 @@ function BadCasePromotionDialog({
     tags: string[] = badCase.tags,
   ) => {
     try {
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
-        {
-          body: {
-            expected_revision: badCase.revision,
-            status: 'dismissed',
-            tags,
-          },
-          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+      await updateBadCase({
+        body: {
+          expected_revision: badCase.revision,
+          status: 'dismissed',
+          tags,
         },
-        { context: { silent: true } },
-      )
+        params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+      })
     } catch (mutationError) {
       const refreshed = await getBadCase(badCase.id).catch(() => undefined)
       if (refreshed?.status !== 'dismissed') throw mutationError
@@ -221,6 +223,11 @@ function BadCaseRow({
   const queryClient = useQueryClient()
   const router = useRouter()
   const [pending, setPending] = useState(false)
+  const { mutateAsync: updateBadCase } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
+      { context: { silent: true } },
+    ),
+  )
 
   const getBadCase = () =>
     consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
@@ -253,17 +260,14 @@ function BadCaseRow({
     try {
       const badCase = await getBadCase()
       try {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch(
-          {
-            body: {
-              expected_revision: badCase.revision,
-              status: 'dismissed',
-              tags: badCase.tags,
-            },
-            params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+        await updateBadCase({
+          body: {
+            expected_revision: badCase.revision,
+            status: 'dismissed',
+            tags: badCase.tags,
           },
-          { context: { silent: true } },
-        )
+          params: { bad_case_id: badCase.id, control_space_id: knowledgeSpaceId },
+        })
       } catch (mutationError) {
         const refreshed = await getBadCase().catch(() => undefined)
         if (refreshed?.status !== 'dismissed') throw mutationError

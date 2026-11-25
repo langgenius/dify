@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -86,14 +86,10 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const activeVersionId = selectedVersionId === undefined ? defaultVersionId : selectedVersionId
   const versionDetailQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.queryOptions({
-      input: {
-        params: {
-          skill_id: skillId,
-          version_id: activeVersionId ?? '',
-        },
-      },
+      input: activeVersionId
+        ? { params: { skill_id: skillId, version_id: activeVersionId } }
+        : skipToken,
     }),
-    enabled: !!activeVersionId,
   })
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
