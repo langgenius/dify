@@ -164,9 +164,10 @@ const EvaluationUpgradePreview = ({ resourceType }: EvaluationUpgradePreviewProp
         </div>
       </div>
 
-      {/* The sample is for looking only: `inert` keeps its controls out of reach of pointer, keyboard, and assistive tech. */}
+      {/* The sample is for looking only: `inert` keeps its controls out of reach of pointer, keyboard, and
+          assistive tech, and the faded look says so before anyone tries them. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div inert className="flex min-h-full flex-col select-none xl:flex-row">
+        <div inert className="flex min-h-full flex-col opacity-50 select-none xl:flex-row">
           <div className="min-w-0 xl:flex-1">
             <div className="flex flex-col px-6 py-4 xl:max-w-187">
               <SectionHeader
