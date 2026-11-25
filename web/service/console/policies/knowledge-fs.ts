@@ -6,6 +6,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['knowledgeFs'] {
   return {
@@ -100,23 +101,26 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           // Creating, importing or deleting questions changes the space's question list.
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) =>
-                invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+              onSuccess: (_data, { params }, _result, { client }) => {
+                void invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
+              },
             },
           },
           bulkImport: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) =>
-                  invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
+                },
               },
             },
           },
           byQuestionId: {
             delete: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) =>
-                  invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
+                },
               },
             },
             patch: {
@@ -267,9 +271,9 @@ function invalidateGoldenQuestionList(
   client: QueryClient,
   controlSpaceId: string,
 ) {
-  return client.invalidateQueries({
-    queryKey: query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+  return invalidateQueryKeys(client, [
+    query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
       input: { params: { control_space_id: controlSpaceId } },
     }),
-  })
+  ])
 }

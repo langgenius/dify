@@ -1,6 +1,7 @@
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['rag'] {
   return {
@@ -115,11 +116,11 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   mutationOptions: {
                     // A failed response can still follow an accepted stop request.
                     onSettled: (_data, _error, variables, _result, context) => {
-                      return context.client.invalidateQueries({
-                        queryKey: consoleQuery.rag.pipelines.byPipelineId.workflowRuns.key({
+                      void invalidateQueryKeys(context.client, [
+                        consoleQuery.rag.pipelines.byPipelineId.workflowRuns.key({
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
-                      })
+                      ])
                     },
                   },
                 },
@@ -131,22 +132,17 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           publish: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
-                  Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.key({
-                        input: { params: variables.params },
-                      }),
+                onSuccess: (_data, variables, _result, context) => {
+                  void invalidateQueryKeys(context.client, [
+                    consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.key({
+                      input: { params: variables.params },
                     }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
-                        input: { params: variables.params },
-                      }),
+                    consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                      input: { params: variables.params },
                     }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.datasets.get.key(),
-                    }),
-                  ]),
+                    consoleQuery.datasets.get.key(),
+                  ])
+                },
               },
             },
           },
@@ -154,11 +150,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             patch: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
-                  return Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
-                        input: { params: { pipeline_id: variables.params.pipeline_id } },
-                      }),
+                  void invalidateQueryKeys(context.client, [
+                    consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+                      input: { params: { pipeline_id: variables.params.pipeline_id } },
                     }),
                   ])
                 },

@@ -1,4 +1,5 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['enterprise'] {
   return {
@@ -55,10 +56,7 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     },
                   },
               )
-              return Promise.all([
-                context.client.invalidateQueries({ queryKey: list.queryKey }),
-                context.client.invalidateQueries({ queryKey: detail.queryKey }),
-              ])
+              void invalidateQueryKeys(context.client, [list.queryKey, detail.queryKey])
             },
           },
         },
@@ -113,10 +111,7 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                     },
                   },
               )
-              return Promise.all([
-                context.client.invalidateQueries({ queryKey: list.queryKey }),
-                context.client.invalidateQueries({ queryKey: detail.queryKey }),
-              ])
+              void invalidateQueryKeys(context.client, [list.queryKey, detail.queryKey])
             },
           },
         },
@@ -159,20 +154,12 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
+                  input: { params: { app_id, environment_id } },
                 }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                      input: { params: { app_id, environment_id } },
-                    }),
+                consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
+                  input: { params: { app_id, environment_id } },
                 }),
               ])
             },
@@ -182,20 +169,12 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
+                  input: { params: { app_id, environment_id } },
                 }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                      input: { params: { app_id, environment_id } },
-                    }),
+                consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
+                  input: { params: { app_id, environment_id } },
                 }),
               ])
             },
@@ -207,23 +186,13 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
+                  { input: { params: { app_id } } },
+                ),
+                consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
+                  { input: { params: { app_id, environment_id } } },
+                ),
               ])
             },
           },
@@ -232,30 +201,15 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
           mutationOptions: {
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
-                      {
-                        input: { params: { app_id, environment_id } },
-                      },
-                    ),
-                }),
-                context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey(
-                      {
-                        input: { params: { app_id } },
-                      },
-                    ),
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
+                  { input: { params: { app_id } } },
+                ),
+                consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
+                  { input: { params: { app_id, environment_id } } },
+                ),
+                consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
+                  input: { params: { app_id } },
                 }),
               ])
             },
@@ -267,24 +221,13 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
       updateWebAppWhitelistSubjects: {
         mutationOptions: {
           onSuccess: (_data, _variables, _result, context) => {
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
-
-            return Promise.all([
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
-              }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
-              }),
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.byAgentId.get.key(),
-              }),
+            void invalidateQueryKeys(context.client, [
+              consoleQuery.apps.get.key(),
+              consoleQuery.apps.starred.get.key(),
+              consoleQuery.apps.recent.get.key(),
+              consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+              consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+              consoleQuery.agent.byAgentId.get.key(),
             ])
           },
         },

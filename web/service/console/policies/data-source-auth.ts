@@ -15,29 +15,49 @@ export function dataSourceAuthPolicies(
           byProviderId: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) =>
-                  invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateDataSourceCredentialQueries(
+                    consoleQuery,
+                    client,
+                    params.provider_id,
+                  )
+                },
               },
             },
             update: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) =>
-                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateDataSourceCredentialQueries(
+                      consoleQuery,
+                      client,
+                      params.provider_id,
+                    )
+                  },
                 },
               },
             },
             customClient: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) =>
-                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateDataSourceCredentialQueries(
+                      consoleQuery,
+                      client,
+                      params.provider_id,
+                    )
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) =>
-                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateDataSourceCredentialQueries(
+                      consoleQuery,
+                      client,
+                      params.provider_id,
+                    )
+                  },
                 },
               },
             },
@@ -45,16 +65,26 @@ export function dataSourceAuthPolicies(
             default: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) =>
-                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateDataSourceCredentialQueries(
+                      consoleQuery,
+                      client,
+                      params.provider_id,
+                    )
+                  },
                 },
               },
             },
             delete: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) =>
-                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateDataSourceCredentialQueries(
+                      consoleQuery,
+                      client,
+                      params.provider_id,
+                    )
+                  },
                 },
               },
             },
