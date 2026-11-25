@@ -557,6 +557,18 @@ export const zKnowledgeFsTidyActionPayload = z.object({
 })
 
 /**
+ * KnowledgeFSTidyRewritePayload
+ *
+ * Adopt one side of a conflict: replace ``passage`` in ``documentId`` with ``replacement``.
+ */
+export const zKnowledgeFsTidyRewritePayload = z.object({
+  documentId: z.string().min(1).max(64),
+  expectedRevision: z.int().gt(0),
+  passage: z.string().min(1).max(8000),
+  replacement: z.string().min(1).max(8000),
+})
+
+/**
  * KnowledgeFSTidyRetryResponse
  */
 export const zKnowledgeFsTidyRetryResponse = z.object({
@@ -2685,6 +2697,16 @@ export const zKnowledgeFsTidyFindingListResponse = z.object({
   documents: z.record(z.string(), zKnowledgeFsTidyDocumentCardResponse).optional(),
   items: z.array(zKnowledgeFsTidyFindingResponse),
   nextCursor: z.string().nullable(),
+})
+
+/**
+ * KnowledgeFSTidyRewriteResponse
+ */
+export const zKnowledgeFsTidyRewriteResponse = z.object({
+  documentId: z.string(),
+  documentRevision: z.int(),
+  finding: zKnowledgeFsTidyFindingResponse.nullish(),
+  taskId: z.string(),
 })
 
 /**
@@ -5454,6 +5476,20 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdAction
  */
 export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse =
   zKnowledgeFsTidyFindingResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteBody =
+  zKnowledgeFsTidyRewritePayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewritePath = z.object({
+  control_space_id: z.string(),
+  finding_id: z.string(),
+})
+
+/**
+ * Rewrite accepted
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponse =
+  zKnowledgeFsTidyRewriteResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath = z.object({
   control_space_id: z.string(),

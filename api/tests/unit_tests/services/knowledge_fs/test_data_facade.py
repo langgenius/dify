@@ -14,7 +14,7 @@ from typing_extensions import TypedDict
 
 from services.knowledge_fs import data_facade as data_facade_module
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
-from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
+from services.knowledge_fs.data_facade import KnowledgeFSDataFacade, KnowledgeFSDocumentRevisionTarget
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAdmittedQueryRequest,
     KnowledgeFSCatQuery,
@@ -866,6 +866,29 @@ def test_facade_propagates_remote_io_failure() -> None:
             account_id="account-1",
             control_space_id="control-1",
         )
+
+
+def test_document_revision_upload_sends_the_document_and_the_versions_it_replaces() -> None:
+    remote = RecordingRemote()
+    facade = KnowledgeFSDataFacade(broker=RecordingBroker(), remote=remote)  # type: ignore[arg-type]
+
+    facade.create_document(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        body_reader=lambda _: KnowledgeFSRemoteMultipartFile(
+            filename="notes.md", content_type="text/markdown", body=b"# Notes"
+        ),
+        revision_of=KnowledgeFSDocumentRevisionTarget(
+            document_id="document-1", expected_active_revision=3, expected_row_version=7
+        ),
+    )
+
+    assert remote.multipart_requests[0].fields == (
+        ("documentId", "document-1"),
+        ("expectedActiveRevision", "3"),
+        ("expectedDocumentRowVersion", "7"),
+    )
 
 
 def test_document_upload_authorizes_before_read_and_binds_bounded_multipart_request() -> None:

@@ -1,7 +1,7 @@
 'use client'
 
 import type { KnowledgeFsTidySummaryResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { PlannedAction } from './review'
+import type { PlannedAction, RewriteRequest } from './review'
 import type { PlanConfirmation } from './review-cards'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -24,14 +24,17 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
-import { groupDuplicates, groupPairs } from './review'
+import { groupDuplicates, groupPairs, rewriteErrorCode } from './review'
 import { DuplicateGroupCard, KindSection, PairCard, PairGroupCard } from './review-cards'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
@@ -94,8 +97,13 @@ export function TidyPage() {
   const [similarCursor, setSimilarCursor] = useQueryState('tidySimilarCursor', parseAsString)
   const [scanCursor, setScanCursor] = useQueryState('tidyScanCursor', parseAsString)
   const [confirmation, setConfirmation] = useState<
-    { kind: 'enable' } | { kind: 'conflicts' } | ({ kind: 'plan' } & PlanConfirmation)
+    | { kind: 'enable' }
+    | { kind: 'conflicts' }
+    | ({ kind: 'plan' } & PlanConfirmation)
+    | ({ kind: 'rewrite' } & RewriteRequest)
   >()
+  const [replacement, setReplacement] = useState('')
+  const replacementId = useId()
   const [withConflicts, setWithConflicts] = useState(true)
   const [error, setError] = useState<string>()
   const queueFocusRef = useRef<HTMLButtonElement>(null)
@@ -157,10 +165,21 @@ export function TidyPage() {
     api.findings.byFindingId.actions.post.mutationOptions({ context: { silent: true } }),
   )
   const retry = useMutation(api.retry.post.mutationOptions({ context: { silent: true } }))
-  const pending = configure.isPending || act.isPending || retry.isPending
+  const rewrite = useMutation(
+    api.findings.byFindingId.rewrite.post.mutationOptions({ context: { silent: true } }),
+  )
+  const pending = configure.isPending || act.isPending || retry.isPending || rewrite.isPending
   const progress = progressOf(summary.data)
   const lastError = settings.data?.enabled ? settings.data.lastError : null
 
+  const rewriteErrors = {
+    tidy_rewrite_source_managed: t(($) => $['tidy.rewriteSourceManaged']),
+    tidy_rewrite_document_busy: t(($) => $['tidy.rewriteBusy']),
+    tidy_rewrite_unsupported_document: t(($) => $['tidy.adoptUnsupported']),
+    tidy_rewrite_passage_not_found: t(($) => $['tidy.rewriteNotFound']),
+    tidy_rewrite_passage_ambiguous: t(($) => $['tidy.rewriteAmbiguous']),
+    tidy_rewrite_no_change: t(($) => $['tidy.rewriteNoChange']),
+  }
   function report(cause: unknown) {
     setError(
       getHttpErrorStatus(cause) === 409 ? t(($) => $['tidy.stale']) : t(($) => $['tidy.error']),
@@ -204,6 +223,29 @@ export function TidyPage() {
       setConfirmation(undefined)
     } catch (cause) {
       report(cause)
+    }
+  }
+  /** Rewrites the other document's passage as a new revision and settles the finding. */
+  async function adopt(request: RewriteRequest, text: string) {
+    setError(undefined)
+    try {
+      await rewrite.mutateAsync({
+        params: { ...params, finding_id: request.finding.id },
+        body: {
+          expectedRevision: request.finding.revision,
+          documentId: request.targetDocumentId,
+          passage: request.passage,
+          replacement: text,
+        },
+      })
+      restoreQueueFocusRef.current = true
+      setConfirmation(undefined)
+      await findings.refetch()
+      toast.success(t(($) => $['tidy.rewriteAccepted'], { title: request.targetTitle }))
+    } catch (cause) {
+      const code = rewriteErrorCode(cause instanceof ORPCError ? cause.code : undefined)
+      if (code) setError(rewriteErrors[code])
+      else report(cause)
     }
   }
   async function resume() {
@@ -278,6 +320,12 @@ export function TidyPage() {
       setError(undefined)
       restoreQueueFocusRef.current = false
       setConfirmation({ kind: 'plan', ...plan })
+    },
+    onRewrite: (request: RewriteRequest) => {
+      setError(undefined)
+      restoreQueueFocusRef.current = false
+      setReplacement(request.replacement)
+      setConfirmation({ kind: 'rewrite', ...request })
     },
     onRun: (plan: PlannedAction[]) => void run(plan),
   }
@@ -606,6 +654,7 @@ export function TidyPage() {
               event.preventDefault()
               if (confirmation?.kind === 'enable') void save(true, withConflicts)
               else if (confirmation?.kind === 'conflicts') void save(true, true)
+              else if (confirmation?.kind === 'rewrite') void adopt(confirmation, replacement)
               else if (confirmation) void run(confirmation.plan)
             }}
           >
@@ -613,20 +662,51 @@ export function TidyPage() {
               <DialogTitle>
                 {confirmation?.kind === 'plan'
                   ? confirmation.title
-                  : confirmation?.kind === 'conflicts'
-                    ? t(($) => $['tidy.conflicts'])
-                    : 'Tidy'}
+                  : confirmation?.kind === 'rewrite'
+                    ? t(($) => $['tidy.rewriteTitle'], { title: confirmation.keptTitle })
+                    : confirmation?.kind === 'conflicts'
+                      ? t(($) => $['tidy.conflicts'])
+                      : 'Tidy'}
               </DialogTitle>
               <DialogDescription>
                 {confirmation?.kind === 'plan'
                   ? confirmation.description
-                  : confirmation?.kind === 'enable' && !withConflicts
-                    ? t(($) => $['tidy.freeNotice'])
-                    : t(($) => $['tidy.tokenNotice'])}
+                  : confirmation?.kind === 'rewrite'
+                    ? t(($) => $['tidy.rewriteDescription'], { title: confirmation.targetTitle })
+                    : confirmation?.kind === 'enable' && !withConflicts
+                      ? t(($) => $['tidy.freeNotice'])
+                      : t(($) => $['tidy.tokenNotice'])}
               </DialogDescription>
             </DialogHeader>
-            {(confirmation?.kind === 'enable' || error) && (
+            {(confirmation?.kind === 'enable' || confirmation?.kind === 'rewrite' || error) && (
               <DialogBody>
+                {confirmation?.kind === 'rewrite' && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="system-xs-medium text-text-tertiary">
+                        {t(($) => $['tidy.rewriteCurrent'])}
+                      </span>
+                      <blockquote className="max-h-32 overflow-y-auto rounded-lg bg-background-section px-3 py-2 body-sm-regular wrap-break-word whitespace-pre-wrap text-text-tertiary line-through">
+                        {confirmation.passage}
+                      </blockquote>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label
+                        htmlFor={replacementId}
+                        className="system-xs-medium text-text-tertiary"
+                      >
+                        {t(($) => $['tidy.rewriteReplacement'])}
+                      </label>
+                      <Textarea
+                        id={replacementId}
+                        value={replacement}
+                        rows={4}
+                        maxLength={8000}
+                        onValueChange={setReplacement}
+                      />
+                    </div>
+                  </div>
+                )}
                 {confirmation?.kind === 'enable' && (
                   <label className="flex items-start gap-2 body-sm-regular text-text-secondary">
                     <Checkbox
@@ -647,8 +727,15 @@ export function TidyPage() {
               <Button type="button" disabled={pending} onClick={() => setConfirmation(undefined)}>
                 {common(($) => $['operation.cancel'])}
               </Button>
-              <Button type="submit" variant="primary" loading={pending}>
-                {common(($) => $['operation.confirm'])}
+              <Button
+                type="submit"
+                variant="primary"
+                loading={pending}
+                disabled={confirmation?.kind === 'rewrite' && !replacement.trim()}
+              >
+                {confirmation?.kind === 'rewrite'
+                  ? t(($) => $['tidy.rewriteConfirm'])
+                  : common(($) => $['operation.confirm'])}
               </Button>
             </DialogFooter>
           </form>

@@ -204,3 +204,38 @@ export function relativeTime(value: string | undefined, locale: string, now = Da
     if (Math.abs(elapsed) >= size) return format.format(-Math.round(elapsed / size), unit)
   return format.format(0, 'minute')
 }
+
+/** Stored sources that are plain text end to end; a rewrite is a text substitution in them. */
+const REWRITABLE_MIME_TYPES = new Set(['text/markdown', 'text/x-markdown', 'text/plain'])
+
+/** Whether one passage of this document can be rewritten in place (see the server's same rule). */
+export function isRewritable(card: TidyDocumentCard | undefined) {
+  return REWRITABLE_MIME_TYPES.has(card?.mimeType.split(';')[0]?.trim().toLowerCase() ?? '')
+}
+
+/** Adopt one side of a conflict: replace `passage` in the other document with `replacement`. */
+export type RewriteRequest = {
+  finding: TidyFinding
+  /** The document whose statement is kept. */
+  keptTitle: string
+  /** The document that is rewritten. */
+  targetDocumentId: string
+  targetTitle: string
+  passage: string
+  replacement: string
+}
+
+const REWRITE_ERRORS = [
+  'tidy_rewrite_source_managed',
+  'tidy_rewrite_document_busy',
+  'tidy_rewrite_unsupported_document',
+  'tidy_rewrite_passage_not_found',
+  'tidy_rewrite_passage_ambiguous',
+  'tidy_rewrite_no_change',
+] as const
+export type RewriteErrorCode = (typeof REWRITE_ERRORS)[number]
+
+/** The server's reason for refusing a rewrite, when it gave one the page can explain. */
+export function rewriteErrorCode(code: unknown): RewriteErrorCode | undefined {
+  return REWRITE_ERRORS.find((known) => known === code)
+}

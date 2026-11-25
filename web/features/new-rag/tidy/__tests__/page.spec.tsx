@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -14,6 +15,7 @@ const service = vi.hoisted(() => ({
   scans: vi.fn(),
   act: vi.fn(),
   retry: vi.fn(),
+  rewrite: vi.fn(),
 }))
 vi.mock('@/service/console', async (original) => {
   const actual = await original<typeof import('@/service/console')>()
@@ -28,6 +30,7 @@ vi.mock('@/service/console', async (original) => {
       [`${path}.findings.get`]: service.findings,
       [`${path}.scans.get`]: service.scans,
       [`${path}.findings.byFindingId.actions.post`]: service.act,
+      [`${path}.findings.byFindingId.rewrite.post`]: service.rewrite,
       [`${path}.retry.post`]: service.retry,
     }),
   }
@@ -516,7 +519,7 @@ describe('Tidy', () => {
     )
     await user.click(
       within(within(card).getByRole('listitem', { name: 'amount' })).getByRole('button', {
-        name: 'knowledgeSpace.tidy.fixed',
+        name: 'knowledgeSpace.tidy.markHandled',
       }),
     )
     await waitFor(() =>
@@ -559,6 +562,83 @@ describe('Tidy', () => {
       ['amount', 'review'],
       ['duration', 'review'],
     ])
+  })
+  it('adopts one side of a conflict by rewriting the passage in the other document, after showing the edit', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    const card = (title: string, mimeType: string) => ({
+      title,
+      mimeType,
+      sizeBytes: 1,
+      publishedAt: '2026-11-03T00:00:00Z',
+      enabled: true,
+    })
+    const finding = (id: string, rightId: string, rightTitle: string) => ({
+      id,
+      kind: 'conflict',
+      left: { ...evidence, documentId: 'a', title: 'Notes A', text: '报销15000元' },
+      right: { ...evidence, documentId: rightId, title: rightTitle, text: '报销5000元' },
+      reason: id,
+      similarity: null,
+      status: 'open',
+      revision: 4,
+      actionId: null,
+      createdAt: '2026-11-03',
+      stale: false,
+    })
+    service.findings.mockResolvedValue({
+      items: [finding('amount', 'b', 'Notes B'), finding('scanned', 'p', 'Scan.pdf')],
+      documents: {
+        a: card('Notes A', 'text/markdown'),
+        b: card('Notes B', 'text/markdown; charset=utf-8'),
+        p: card('Scan.pdf', 'application/pdf'),
+      },
+      nextCursor: null,
+    })
+    service.rewrite.mockRejectedValueOnce(
+      new ORPCError('tidy_rewrite_document_busy', { status: 409 }),
+    )
+    service.rewrite.mockResolvedValue({ documentId: 'b', documentRevision: 2, taskId: 't' })
+    const user = userEvent.setup()
+    renderPage()
+
+    // Only a text document can be rewritten: adopting the Markdown side would edit the PDF.
+    const scanned = within(await screen.findByRole('listitem', { name: 'scanned' }))
+    const [keepNotes, keepScan] = scanned.getAllByRole('button', {
+      name: 'knowledgeSpace.tidy.adopt',
+    })
+    expect(keepNotes).toBeDisabled()
+    expect(keepScan).toBeEnabled()
+    expect(screen.getAllByText('knowledgeSpace.tidy.adoptUnsupported')).not.toHaveLength(0)
+
+    // Notes A is right: the passage in Notes B is replaced by A's statement, editable first.
+    const amount = within(screen.getByRole('listitem', { name: 'amount' }))
+    await user.click(amount.getAllByRole('button', { name: 'knowledgeSpace.tidy.adopt' })[0]!)
+    const dialog = within(screen.getByRole('dialog'))
+    expect(service.rewrite).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog').textContent).toMatch(/rewriteDescription.*Notes B/)
+    expect(dialog.getByText('报销5000元')).toBeVisible()
+    const replacement = dialog.getByRole('textbox')
+    expect(replacement).toHaveValue('报销15000元')
+    await user.clear(replacement)
+    await user.type(replacement, '报销 15,000 元')
+
+    // The server names why it refused; the dialog stays open for another try.
+    await user.click(dialog.getByRole('button', { name: 'knowledgeSpace.tidy.rewriteConfirm' }))
+    expect(await dialog.findByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.rewriteBusy')
+    await user.click(dialog.getByRole('button', { name: 'knowledgeSpace.tidy.rewriteConfirm' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(service.rewrite).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({ finding_id: 'amount' }),
+        body: {
+          expectedRevision: 4,
+          documentId: 'b',
+          passage: '报销5000元',
+          replacement: '报销 15,000 元',
+        },
+      }),
+    )
+    expect(service.act).not.toHaveBeenCalled()
   })
   it('offers keeping both overlapping documents on equal footing with disabling one', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }

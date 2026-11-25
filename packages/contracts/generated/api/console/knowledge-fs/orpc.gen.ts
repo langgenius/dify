@@ -352,6 +352,9 @@ import {
   zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsBody,
   zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsPath,
   zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteBody,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewritePath,
+  zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath,
   zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsBody,
@@ -3896,8 +3899,53 @@ export const actions = {
   post: post37,
 }
 
+/**
+ * Adopt one side of a conflict: rewrite the passage in the other document as a new revision
+ *
+ * The upload is compare-and-swap on the document, so a document that changed meanwhile is
+ * refused upstream. The finding is marked reviewed afterwards; if that fails the rewrite still
+ * stands and the next scan retires the finding.
+ */
+export const post38 = oc
+  .route({
+    description:
+      'The upload is compare-and-swap on the document, so a document that changed meanwhile is\nrefused upstream. The finding is marked reviewed afterwards; if that fails the rewrite still\nstands and the next scan retires the finding.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewrite',
+    path: '/knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/rewrite',
+    successStatus: 202,
+    summary:
+      'Adopt one side of a conflict: rewrite the passage in the other document as a new revision',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteBody,
+      params: zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewritePath,
+    }),
+  )
+  .output(zPostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponse)
+  .errors({
+    knowledge_fs_access_denied: { status: 403, data: zKnowledgeFsAccessDeniedError },
+    knowledge_fs_conflict: { status: 409, data: zKnowledgeFsConflictError },
+    knowledge_fs_invalid_request: { status: 400, data: zKnowledgeFsInvalidRequestError },
+    knowledge_fs_operation_unavailable: {
+      status: 503,
+      data: zKnowledgeFsOperationUnavailableError,
+    },
+    knowledge_fs_resource_not_found: { status: 404, data: zKnowledgeFsResourceNotFoundError },
+    knowledge_fs_space_not_found: { status: 404, data: zKnowledgeFsSpaceNotFoundError },
+    knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
+  })
+
+export const rewrite = {
+  post: post38,
+}
+
 export const byFindingId = {
   actions,
+  rewrite,
 }
 
 /**
@@ -3939,7 +3987,7 @@ export const findings = {
 /**
  * Validate admitted input, forward scoped operation, and preserve upstream errors
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3963,7 +4011,7 @@ export const post38 = oc
   })
 
 export const retry4 = {
-  post: post38,
+  post: post39,
 }
 
 /**
@@ -4256,7 +4304,7 @@ export const traces = {
   byTraceId,
 }
 
-export const post39 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4287,10 +4335,10 @@ export const post39 = oc
   })
 
 export const abort = {
-  post: post39,
+  post: post40,
 }
 
-export const post40 = oc
+export const post41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4321,10 +4369,10 @@ export const post40 = oc
   })
 
 export const complete = {
-  post: post40,
+  post: post41,
 }
 
-export const post41 = oc
+export const post42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4359,7 +4407,7 @@ export const post41 = oc
   })
 
 export const presign = {
-  post: post41,
+  post: post42,
 }
 
 export const byPartNumber = {
@@ -4370,7 +4418,7 @@ export const parts = {
   byPartNumber,
 }
 
-export const post42 = oc
+export const post43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4401,7 +4449,7 @@ export const post42 = oc
   })
 
 export const smallFile = {
-  post: post42,
+  post: post43,
 }
 
 export const byUploadSessionId = {
@@ -4411,7 +4459,7 @@ export const byUploadSessionId = {
   smallFile,
 }
 
-export const post43 = oc
+export const post44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4444,7 +4492,7 @@ export const post43 = oc
   })
 
 export const uploadSessions = {
-  post: post43,
+  post: post44,
   byUploadSessionId,
 }
 
@@ -4567,7 +4615,7 @@ export const get65 = oc
     knowledge_fs_upstream_unavailable: { status: 503, data: zKnowledgeFsUpstreamUnavailableError },
   })
 
-export const post44 = oc
+export const post45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4590,11 +4638,11 @@ export const post44 = oc
 
 export const spaces = {
   get: get65,
-  post: post44,
+  post: post45,
   byControlSpaceId,
 }
 
-export const post45 = oc
+export const post46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4620,7 +4668,7 @@ export const post45 = oc
   })
 
 export const streamCapability = {
-  post: post45,
+  post: post46,
 }
 
 export const byTaskId4 = {
@@ -4653,7 +4701,7 @@ export const byUploadId = {
   delete: delete14,
 }
 
-export const post46 = oc
+export const post47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -4674,7 +4722,7 @@ export const post46 = oc
   })
 
 export const uploads = {
-  post: post46,
+  post: post47,
   byUploadId,
 }
 

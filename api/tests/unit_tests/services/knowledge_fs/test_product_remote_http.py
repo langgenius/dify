@@ -268,6 +268,19 @@ def test_remote_client_posts_bounded_multipart_with_capability_only_headers(
     assert headers["Authorization"] == "Bearer capability-token"
     assert headers["X-Trace-Id"] == "trace-1"
     assert not any(name.lower() in {"cookie", "content-type"} for name in headers)
+    assert captured["data"] == {}
+
+    # A new revision of an existing document names it and the versions it replaces.
+    revision_fields = (
+        ("documentId", "document-1"),
+        ("expectedActiveRevision", "3"),
+        ("expectedDocumentRowVersion", "7"),
+    )
+    assert client.execute_multipart(request._replace(fields=revision_fields)) == {"logicalDocumentId": "document-1"}
+    assert captured["data"] == dict(revision_fields)
+    for fields in ((("sourceId", "source-1"),), (("documentId", "a"), ("documentId", "b"))):
+        with pytest.raises(KnowledgeFSProductRemoteError):
+            client.execute_multipart(request._replace(fields=fields))
     assert captured["files"] == {"file": ("notes.md", b"# Notes", "text/markdown")}
     assert captured["follow_redirects"] is False
 

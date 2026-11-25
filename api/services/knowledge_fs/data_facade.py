@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from pydantic import BaseModel, JsonValue, ValidationError
 
@@ -195,6 +195,14 @@ _BUFFERED_UPLOAD_CAPABILITY_MIN_REMAINING = timedelta(seconds=15)
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+class KnowledgeFSDocumentRevisionTarget(NamedTuple):
+    """The existing document a new revision replaces, with the versions the caller read."""
+
+    document_id: str
+    expected_active_revision: int
+    expected_row_version: int
 
 
 class KnowledgeFSDataFacade:
@@ -992,7 +1000,13 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         body_reader: Callable[[int], KnowledgeFSRemoteMultipartFile],
+        revision_of: KnowledgeFSDocumentRevisionTarget | None = None,
     ) -> KnowledgeFSDocumentUploadAcceptedResponse:
+        """Upload a document, or with ``revision_of`` a new revision of an existing one.
+
+        A revision upload is compare-and-swap on the document's active revision and row version;
+        KnowledgeFS rejects it when either moved.
+        """
         operation_id = "createDocument"
         _assert_multipart_bff_ready(operation_id)
         issued = self._broker.issue_interactive(
@@ -1041,6 +1055,15 @@ class KnowledgeFSDataFacade:
                     capability_token=issued.token,
                     trace_id=issued.trace_id,
                     file=upload,
+                    fields=(
+                        (
+                            ("documentId", revision_of.document_id),
+                            ("expectedActiveRevision", str(revision_of.expected_active_revision)),
+                            ("expectedDocumentRowVersion", str(revision_of.expected_row_version)),
+                        )
+                        if revision_of
+                        else ()
+                    ),
                 )
             )
             return KnowledgeFSDocumentUploadAcceptedResponse.model_validate(raw)

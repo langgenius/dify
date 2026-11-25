@@ -6,7 +6,7 @@ import type {
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
-import type { DuplicateGroup, PairGroup, PlannedAction } from './review'
+import type { DuplicateGroup, PairGroup, PlannedAction, RewriteRequest } from './review'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -19,6 +19,7 @@ import {
   disablePlan,
   evidenceOf,
   fileTypeLabel,
+  isRewritable,
   mergePlan,
   newestDocument,
   relativeTime,
@@ -42,6 +43,8 @@ export type CardProps = {
   cards: Cards
   spaceId: string
   onConfirm: (confirmation: PlanConfirmation) => void
+  /** Adopt one side of a conflict; the page shows the edit and asks before applying it. */
+  onRewrite: (request: RewriteRequest) => void
   onRun: (plan: PlannedAction[]) => void
 }
 
@@ -355,16 +358,20 @@ function StatusAside({
   return (
     <>
       <p className="system-sm-medium text-text-secondary">{labels[finding.status]}</p>
-      {canManage && finding.status !== 'outdated' && finding.status !== 'open' && (
-        <Button
-          className="mt-auto w-full"
-          disabled={busy || finding.stale}
-          onClick={() => onRun([{ finding, action: 'undo' }])}
-        >
-          <span aria-hidden className="i-ri-arrow-go-back-line size-3.5" />
-          {t(($) => $['tidy.undo'])}
-        </Button>
-      )}
+      {/* A decision carried over from an earlier revision has no action of its own to undo. */}
+      {canManage &&
+        finding.actionId &&
+        finding.status !== 'outdated' &&
+        finding.status !== 'open' && (
+          <Button
+            className="mt-auto w-full"
+            disabled={busy || finding.stale}
+            onClick={() => onRun([{ finding, action: 'undo' }])}
+          >
+            <span aria-hidden className="i-ri-arrow-go-back-line size-3.5" />
+            {t(($) => $['tidy.undo'])}
+          </Button>
+        )}
     </>
   )
 }
@@ -681,6 +688,7 @@ export function PairGroupCard({
   cards,
   group,
   onConfirm,
+  onRewrite,
   onRun,
   spaceId,
 }: CardProps & { group: PairGroup }) {
@@ -688,6 +696,7 @@ export function PairGroupCard({
   const first = group.findings[0] as Finding
   const titleOf = (id: string) => cards[id]?.title ?? evidenceOf(first, id).title
   const [leftId, rightId] = group.documentIds
+  const otherOf = (id: string) => (id === leftId ? rightId : leftId)
   const newest = newestDocument(group.documentIds, cards)
   const stale = group.findings.some((finding) => finding.stale)
   const editable = canManage && !stale
@@ -741,6 +750,11 @@ export function PairGroupCard({
               ...(group.similar ? [t(($) => $['tidy.pairAlsoSimilar'], { percent })] : []),
             ]}
           />
+          {editable && !group.documentIds.every((id) => isRewritable(cards[id])) && (
+            <p className="system-xs-regular text-text-tertiary">
+              {t(($) => $['tidy.adoptUnsupported'])}
+            </p>
+          )}
           {editable && (
             <div className="mt-auto flex flex-col gap-2 border-t border-divider-subtle pt-3">
               <p className="system-xs-medium text-text-tertiary">
@@ -792,12 +806,10 @@ export function PairGroupCard({
                   <div className="flex shrink-0 gap-2">
                     <Button
                       size="small"
-                      variant="primary"
                       disabled={busy}
                       onClick={() => onRun([{ finding, action: 'review' }])}
                     >
-                      <span aria-hidden className="i-ri-check-line size-3.5" />
-                      {t(($) => $['tidy.fixed'])}
+                      {t(($) => $['tidy.markHandled'])}
                     </Button>
                     <Button
                       size="small"
@@ -822,6 +834,28 @@ export function PairGroupCard({
                       />
                     </div>
                     <Passage evidence={evidenceOf(finding, id)} />
+                    {editable && (
+                      <Button
+                        size="small"
+                        variant="primary"
+                        className="self-start"
+                        // The statement is kept; the passage in the other document is rewritten.
+                        disabled={busy || !isRewritable(cards[otherOf(id)])}
+                        onClick={() =>
+                          onRewrite({
+                            finding,
+                            keptTitle: titleOf(id),
+                            targetDocumentId: otherOf(id),
+                            targetTitle: titleOf(otherOf(id)),
+                            passage: evidenceOf(finding, otherOf(id)).text,
+                            replacement: evidenceOf(finding, id).text,
+                          })
+                        }
+                      >
+                        <span aria-hidden className="i-ri-check-line size-3.5" />
+                        {t(($) => $['tidy.adopt'])}
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
