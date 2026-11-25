@@ -1,28 +1,14 @@
-import type { AgentV2NodeType } from '../types'
-import type { Node } from '@/app/components/workflow/types'
-import { useState } from 'react'
-import ReactFlow, { useNodes } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { FeaturesProvider } from '@/app/components/base/features/context'
-import { useNodesSyncDraft } from '@/app/components/workflow-app/hooks/use-nodes-sync-draft'
-import { createNode } from '@/app/components/workflow/__tests__/fixtures'
-import { renderWorkflowBrowserComponent } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
-import UndoRedo from '@/app/components/workflow/header/undo-redo'
-import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provider'
-import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import englishCopy from '@/i18n/locales/en-US/workflow-agent.json'
 import japaneseCopy from '@/i18n/locales/ja-JP/workflow-agent.json'
 import chineseCopy from '@/i18n/locales/zh-Hans/workflow-agent.json'
-import { consoleQuery } from '@/service/console'
 import { TEST_AGENT_ID, TEST_APP_ID } from '@/test/console/ids'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, hold, setupFakeApi } from '@/test/fake-api'
-import { createAgentFixture } from '@/test/fixtures/agent'
-import { createTestNavigation } from '@/test/next-navigation'
-import { AgentV2Panel } from '../panel'
+import { hold, setupFakeApi } from '@/test/fake-api'
+import {
+  createAgentNode,
+  renderSessionContinuityPanel,
+  sessionContinuityTitle as title,
+} from './session-continuity-test-env'
 
 const translations = vi.hoisted((): Record<string, string> => ({}))
 
@@ -52,118 +38,18 @@ const fake = setupFakeApi({
 })
 
 const saveDraft = () => fake.console.apps.byAppId.workflows.draft.post
-const title = 'workflowAgent.nodes.agent.sessionContinuity.title'
 const description = 'workflowAgent.nodes.agent.sessionContinuity.description'
 const taskLabel = 'workflowAgent.nodes.agent.task.label'
 
-const createAgentNode = (id: string, data: Partial<AgentV2NodeType> = {}) =>
-  createNode({
-    id,
-    type: 'default',
-    data: {
-      title: id,
-      type: BlockEnum.AgentV2,
-      version: '2',
-      agent_node_kind: 'dify_agent',
-      agent_binding: { binding_type: 'roster_agent', agent_id: TEST_AGENT_ID },
-      ...data,
-    },
-  })
-
-function HistoryControls() {
-  const { handleHistoryBack, handleHistoryForward } = useNodesInteractions()
-  return <UndoRedo handleUndo={handleHistoryBack} handleRedo={handleHistoryForward} />
-}
-
-function Panels({ nodes, showHistory }: { nodes: Node[]; showHistory: boolean }) {
-  const [selectedId, setSelectedId] = useState(nodes[0]?.id)
-  const selected = useNodes<AgentV2NodeType>().find((node) => node.id === selectedId)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-  const [hooks] = useState(() => createHooksStore({ doSyncWorkflowDraft }))
-
-  return (
-    <HooksStoreContext value={hooks}>
-      {showHistory && <HistoryControls />}
-      {nodes.length > 1 &&
-        nodes.map(({ id }) => (
-          <button key={id} type="button" onClick={() => setSelectedId(id)}>
-            Edit {id}
-          </button>
-        ))}
-      {selected && (
-        <AgentV2Panel
-          key={selected.id}
-          id={selected.id}
-          data={selected.data}
-          panelProps={{
-            getInputVars: () => [],
-            toVarInputs: () => [],
-            runInputData: {},
-            runInputDataRef: { current: {} },
-            setRunInputData: () => {},
-            runResult: null,
-          }}
-        />
-      )}
-    </HooksStoreContext>
-  )
-}
-
-async function renderPanel({
-  mode = 'advanced-chat',
-  nodes = [createAgentNode('Agent A')],
-  readOnly = false,
-  showHistory = false,
-}: {
-  mode?: 'advanced-chat' | 'workflow'
-  nodes?: Node[]
-  readOnly?: boolean
-  showHistory?: boolean
-} = {}) {
-  const { NavigationProvider } = createTestNavigation({ url: `/app/${TEST_APP_ID}/workflow` })
-  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
-  queryClient.setQueryData(
-    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: TEST_AGENT_ID } } }),
-    createAgentFixture({ name: 'Nadia' }),
-  )
-  onTestFinished(() => queryClient.clear())
-  const screen = await renderWorkflowBrowserComponent(
-    <NavigationProvider>
-      <FeaturesProvider>
-        <EventEmitterContextProvider>
-          <div className="h-px w-105">
-            <ReactFlow defaultNodes={nodes} />
-          </div>
-          <div className="w-105">
-            <Panels nodes={nodes} showHistory={showHistory} />
-          </div>
-        </EventEmitterContextProvider>
-      </FeaturesProvider>
-    </NavigationProvider>,
-    {
-      resource: { kind: 'app', appId: TEST_APP_ID, mode, collaborationEnabled: false },
-      queryClient,
-      historyStore: { nodes },
-      initialStoreState: {
-        canvasReadOnly: readOnly,
-        isWorkflowDataLoaded: true,
-        syncWorkflowDraftHash: 'initial',
-      },
-    },
-  )
-  onTestFinished(() => screen.store.getState().debouncedSyncWorkflowDraft.cancel?.())
-  return { ...screen, sessionSwitch: screen.getByRole('switch', { name: title }) }
-}
-
 it('keeps the session switch out of standalone Workflow settings', async () => {
-  const screen = await renderPanel({ mode: 'workflow' })
+  const screen = await renderSessionContinuityPanel({ mode: 'workflow' })
 
   await expect.element(screen.getByRole('textbox', { name: taskLabel })).toBeVisible()
   await expect.element(screen.sessionSwitch).not.toBeInTheDocument()
 })
 
 it('lets keyboard users turn a legacy Chatflow node off independently of another node using the same agent', async () => {
-  const screen = await renderPanel({
+  const screen = await renderSessionContinuityPanel({
     nodes: [createAgentNode('Agent A'), createAgentNode('Agent B')],
   })
   const { sessionSwitch } = screen
@@ -180,6 +66,8 @@ it('lets keyboard users turn a legacy Chatflow node off independently of another
   await expect.element(sessionSwitch).not.toBeChecked()
   await expect.element(sessionSwitch).toBeEnabled()
   await expect.element(sessionSwitch).toHaveAccessibleDescription(description)
+  screen.store.getState().flushPendingSync()
+  await expect.poll(() => saveDraft().mock.calls.length).toBe(1)
   expect(saveDraft()).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       params: { app_id: TEST_APP_ID },
@@ -208,7 +96,7 @@ it('lets keyboard users turn a legacy Chatflow node off independently of another
 })
 
 it('shows a previously saved off value in a read-only Chatflow', async () => {
-  const { sessionSwitch } = await renderPanel({
+  const { sessionSwitch } = await renderSessionContinuityPanel({
     nodes: [createAgentNode('Agent A', { continue_agent_session: false })],
     readOnly: true,
   })
@@ -216,35 +104,6 @@ it('shows a previously saved off value in a read-only Chatflow', async () => {
   await expect.element(sessionSwitch).toBeDisabled()
   await expect.element(sessionSwitch).not.toBeChecked()
   expect(saveDraft()).not.toHaveBeenCalled()
-})
-
-it('saves the explicit default when undoing a previously saved change on a legacy node', async () => {
-  const screen = await renderPanel({ showHistory: true })
-  const { sessionSwitch } = screen
-  const undo = screen.getByRole('button', { name: 'workflow.common.undo' })
-  const redo = screen.getByRole('button', { name: 'workflow.common.redo' })
-
-  await sessionSwitch.click()
-  await expect.element(sessionSwitch).not.toBeChecked()
-  await expect.element(sessionSwitch).toBeEnabled()
-  await expect.element(undo).toBeEnabled()
-  await undo.click()
-
-  await expect.element(sessionSwitch).toBeChecked()
-  await expect
-    .poll(() => saveDraft().mock.lastCall?.[0].body.graph.nodes)
-    .toEqual([
-      expect.objectContaining({ data: expect.objectContaining({ continue_agent_session: true }) }),
-    ])
-
-  await redo.click()
-  await expect.element(sessionSwitch).not.toBeChecked()
-  await expect
-    .poll(() => saveDraft().mock.lastCall?.[0].body.graph.nodes)
-    .toEqual([
-      expect.objectContaining({ data: expect.objectContaining({ continue_agent_session: false }) }),
-    ])
-  expect(saveDraft()).toHaveBeenCalledTimes(3)
 })
 
 it('keeps a saved inline node setting while its agent loads', async () => {
@@ -292,11 +151,12 @@ it('keeps a saved inline node setting while its agent loads', async () => {
     },
   })
   const request = hold(inline.console.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get)
-  const { sessionSwitch } = await renderPanel({
+  const screen = await renderSessionContinuityPanel({
     nodes: [
       createAgentNode('Inline Agent', { agent_binding: binding, continue_agent_session: false }),
     ],
   })
+  const { sessionSwitch } = screen
 
   await expect.element(sessionSwitch).toBeDisabled()
   await expect.element(sessionSwitch).not.toBeChecked()
@@ -306,53 +166,41 @@ it('keeps a saved inline node setting while its agent loads', async () => {
 
   await sessionSwitch.click()
   await expect.element(sessionSwitch).toBeChecked()
-  await expect.element(sessionSwitch).toBeEnabled()
-  expect(saveDraft().mock.lastCall?.[0].body.graph.nodes).toEqual([
-    expect.objectContaining({
-      data: expect.objectContaining({ agent_binding: binding, continue_agent_session: true }),
-    }),
-  ])
+  screen.store.getState().flushPendingSync()
+  await expect
+    .poll(() => saveDraft().mock.lastCall?.[0].body.graph.nodes)
+    .toEqual([
+      expect.objectContaining({
+        data: expect.objectContaining({ agent_binding: binding, continue_agent_session: true }),
+      }),
+    ])
 })
 
-it('blocks a second toggle while the draft saves and lets the user retry a failed change', async () => {
-  const request = hold(saveDraft())
-  const screen = await renderPanel()
+it('saves the latest switch value through the workflow draft queue', async () => {
+  const screen = await renderSessionContinuityPanel()
   const { sessionSwitch } = screen
 
   await sessionSwitch.click()
-  await expect.element(sessionSwitch).toBeDisabled()
-  await expect.element(sessionSwitch).toHaveAttribute('aria-busy', 'true')
-  await userEvent.keyboard(' ')
-  await expect.poll(() => saveDraft().mock.calls.length).toBe(1)
-  request.reject(apiError({ status: 500, message: 'Could not save draft' }))
-
-  const alert = screen.getByRole('alert')
-  await expect.element(alert).toMatchTextContent('workflow.common.draftSaveFailed')
-  await expect.element(sessionSwitch).toBeChecked()
-  await screen.getByRole('button', { name: 'common.operation.retry' }).click()
-  await expect.element(alert).not.toBeInTheDocument()
   await expect.element(sessionSwitch).not.toBeChecked()
-  await expect.element(sessionSwitch).toBeEnabled()
-  expect(saveDraft()).toHaveBeenCalledTimes(2)
-  expect(saveDraft().mock.lastCall?.[0].body).toMatchObject({
-    hash: 'initial',
-    graph: {
-      nodes: [
-        expect.objectContaining({
-          data: expect.objectContaining({ continue_agent_session: false }),
-        }),
-      ],
-    },
-  })
+  await sessionSwitch.click()
+  await expect.element(sessionSwitch).toBeChecked()
+  expect(saveDraft()).not.toHaveBeenCalled()
+
+  screen.store.getState().flushPendingSync()
+  await expect
+    .poll(() => saveDraft().mock.lastCall?.[0].body.graph.nodes)
+    .toMatchObject([{ id: 'Agent A', data: { continue_agent_session: true } }])
+  expect(saveDraft()).toHaveBeenCalledTimes(1)
 })
 
 it('preserves a saved off setting when the task, routes and outputs are edited', async () => {
-  const screen = await renderPanel()
+  const screen = await renderSessionContinuityPanel()
   const { sessionSwitch } = screen
 
   await sessionSwitch.click()
   await expect.element(sessionSwitch).not.toBeChecked()
-  await expect.element(sessionSwitch).toBeEnabled()
+  screen.store.getState().flushPendingSync()
+  await expect.poll(() => saveDraft().mock.calls.length).toBe(1)
 
   const task = screen.getByRole('textbox', { name: taskLabel })
   await task.fill('Generate ')
@@ -371,6 +219,7 @@ it('preserves a saved off setting when the task, routes and outputs are edited',
   await name.fill('report')
   await userEvent.keyboard('{Enter}')
   await expect.element(name).not.toBeInTheDocument()
+  screen.store.getState().flushPendingSync()
   await expect
     .poll(() => saveDraft().mock.lastCall?.[0].body)
     .toMatchObject({
@@ -408,7 +257,7 @@ it.each([
       delete translations[description]
     })
     await page.viewport(420, 800)
-    const screen = await renderPanel()
+    const screen = await renderSessionContinuityPanel()
     const text = screen.getByText(translations[description], { exact: true })
 
     await expect.element(screen.getByRole('switch', { name: translations[title] })).toBeVisible()

@@ -40,11 +40,7 @@ export const useNodeDataUpdate = () => {
       if (getNodesReadOnly()) return
 
       handleNodeDataUpdate(payload)
-      return handleSyncWorkflowDraft(
-        options?.sync,
-        options?.notRefreshWhenSyncError,
-        options?.callback,
-      )
+      handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
     },
     [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly],
   )

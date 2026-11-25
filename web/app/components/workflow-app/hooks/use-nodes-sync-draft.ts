@@ -262,8 +262,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
       }
 
-      const { setSyncWorkflowDraftHash, setDraftUpdatedAt, confirmAgentSessionContinuitySaves } =
-        workflowStore.getState()
+      const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
 
       try {
         const latestHash = workflowStore.getState().syncWorkflowDraftHash
@@ -301,7 +300,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
         setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
-        confirmAgentSessionContinuitySaves(body.graph.nodes)
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } finally {
@@ -375,11 +373,9 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
       try {
         const result = await collaborationManager.requestWorkflowSync()
-        const { setSyncWorkflowDraftHash, setDraftUpdatedAt, confirmAgentSessionContinuitySaves } =
-          workflowStore.getState()
+        const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
         setSyncWorkflowDraftHash(result.hash, baseParams.params.graph)
         setDraftUpdatedAt(result.updatedAt)
-        confirmAgentSessionContinuitySaves(baseParams.params.graph.nodes)
         callback?.onSuccess?.()
         return result
       } catch {

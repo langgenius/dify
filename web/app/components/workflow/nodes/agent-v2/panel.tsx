@@ -302,7 +302,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   )
 
   const handleSessionContinuityChange = (checked: boolean) => {
-    inputsRef.current = { ...inputsRef.current, continue_agent_session: checked }
+    const newInputs = { ...inputsRef.current, continue_agent_session: checked }
+    inputsRef.current = newInputs
+    setInputs(newInputs)
   }
 
   const handleRosterCopySuccess = useCallback(
@@ -738,7 +740,6 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           />
           {isChatflow && (
             <AgentSessionContinuityField
-              nodeId={id}
               checked={inputs.continue_agent_session ?? true}
               disabled={isAgentBindingPending || isCopyingFromRoster || rosterAgentQuery.isLoading}
               onChange={handleSessionContinuityChange}
