@@ -14,6 +14,7 @@ from typing import TypedDict, override
 
 import pandas as pd
 from openpyxl import load_workbook
+from openpyxl.chartsheet import Chartsheet
 from sqlalchemy import select
 
 from configs import dify_config
@@ -317,12 +318,15 @@ class ExcelExtractor(BaseExtractor):
 
     def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:
         """
-        Scan first N rows to find the most likely header row.
+        Scan up to N rows for a header. A standalone chart sheet has no tabular columns.
         Returns:
             header_row_idx: 1-based index of the header row
             column_map: Dict mapping 0-based column index to column name
             max_col_idx: 1-based index of the last valid column (for iter_rows boundary)
         """
+        if isinstance(sheet, Chartsheet):
+            return 0, {}, 0
+
         # Store potential candidates: (row_index, non_empty_count, column_map)
         candidates: list[Candidate] = []
 
