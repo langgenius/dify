@@ -521,9 +521,7 @@ class TestPluginDatasourceManager:
                 self.calls.append((method, path, response_model, headers, data))
                 return iter(self.messages)
 
-        download = OnlineDriveDownloadMessage(
-            message=OnlineDriveDownloadMessage.TextMessage(text="download")
-        )
+        download = OnlineDriveDownloadMessage(message=OnlineDriveDownloadMessage.TextMessage(text="download"))
         request = OnlineDriveDownloadFileRequest(id="file-1")
         requester = FakeOnlineDriveDownloadStreamRequester([download])
         manager = PluginDatasourceManager(online_drive_download_stream_requester=requester)
