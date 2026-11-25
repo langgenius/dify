@@ -727,6 +727,7 @@ class HttpConfig(BaseSettings):
     )
 
     @computed_field
+    @property
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
 
@@ -1195,7 +1196,7 @@ class AuthConfig(BaseSettings):
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
         "Bucket keyed on sha256(token), shared across api replicas via Redis. "
         "Set to 0 to disable the per-token limit entirely.",
-        default=60,
+        default=500,
     )
 
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
@@ -1443,7 +1444,12 @@ class DataSetConfig(BaseSettings):
 
 
 class OpenApiAgentConfig(BaseSettings):
-    """Settings for agents that work through /openapi/v1: run jobs."""
+    """Settings for agents that work through /openapi/v1: the MCP endpoint and run jobs."""
+
+    OPENAPI_MCP_ENABLED: bool = Field(
+        description="Serve the MCP endpoint, POST /openapi/v1/mcp. When false the endpoint answers 404.",
+        default=True,
+    )
 
     RUN_JOB_MAX_BACKGROUND_RUNS: PositiveInt = Field(
         description="Max app runs that one API process reads in the background for run jobs.",
