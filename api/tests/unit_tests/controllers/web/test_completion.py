@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import uuid
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dify_agent.protocol import RunInputHandoffResponse, RunInputRequest, RunInputResponse
 from flask import Flask
-from sqlalchemy.orm import Session
 from flask_restx import Api
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Conflict, InternalServerError, NotFound, ServiceUnavailable, Unauthorized
 
 from controllers.web.completion import (
@@ -260,20 +260,17 @@ def _agent_app() -> App:
     return _app(AppMode.AGENT)
 
 
-def _input_receipt(input_id: uuid.UUID) -> MagicMock:
-    receipt = MagicMock()
-    receipt.input_id = input_id
-    receipt.status = "queued"
-    return receipt
+def _input_receipt(input_id: uuid.UUID) -> RunInputResponse:
+    return RunInputResponse(input_id=input_id)
 
 
-def _handoff_receipt(input_id: uuid.UUID, pending: list[tuple[uuid.UUID, str]]) -> MagicMock:
-    receipt = MagicMock()
-    receipt.input_id = input_id
-    receipt.pending_inputs = [
-        SimpleNamespace(input_id=pending_id, text=text) for pending_id, text in pending
-    ]
-    return receipt
+def _handoff_receipt(
+    input_id: uuid.UUID, pending: list[tuple[uuid.UUID, str]]
+) -> RunInputHandoffResponse:
+    return RunInputHandoffResponse(
+        input_id=input_id,
+        pending_inputs=[RunInputRequest(input_id=pending_id, text=text) for pending_id, text in pending],
+    )
 
 
 class TestWebAgentChatInputApi:
@@ -343,7 +340,10 @@ class TestWebAgentChatInterruptApi:
             result, status = WebAgentChatInterruptApi().post(app_model, end_user, task_id, input_id)
 
         assert status == 200
-        assert [item["input_id"] for item in result["pending_inputs"]] == [str(older), str(input_id)]
+        assert result["pending_inputs"] == [
+            {"input_id": str(older), "text": "earlier"},
+            {"input_id": str(input_id), "text": "urgent"},
+        ]
         (call,) = mock_interrupt.call_args_list
         scope, request = call.args
         assert scope.invoke_from == InvokeFrom.WEB_APP

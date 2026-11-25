@@ -1,5 +1,4 @@
 import json
-from types import SimpleNamespace
 from typing import TypedDict
 from uuid import uuid4
 
@@ -9,7 +8,7 @@ from dify_agent.client import Client
 from dify_agent.protocol import RunInputRequest
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from machinery.context import RequestContext
 from services.agent import chat_steering
 from services.agent.chat_steering import (
@@ -445,10 +444,12 @@ def test_handoff_barrier_budget_outlasts_termination_grace(
         if settled_after is not None and elapsed >= settled_after:
             redis_calls["value"] = "1"
 
-    monkeypatch.setattr(steering_handoff, "time", SimpleNamespace(monotonic=lambda: elapsed, sleep=advance))
     monkeypatch.setattr(steering_handoff, "redis_client", _StubRedis(redis_calls))
+    with monkeypatch.context() as clock_patch:
+        clock_patch.setattr(steering_handoff.time, "monotonic", lambda: elapsed)
+        clock_patch.setattr(steering_handoff.time, "sleep", advance)
 
-    assert steering_handoff.wait_for_agent_chat_handoff("task-1") is (settled_after is not None)
+        assert steering_handoff.wait_for_agent_chat_handoff("task-1") is (settled_after is not None)
     if settled_after is None:
         assert elapsed == pytest.approx(steering_handoff._WAIT_TIMEOUT_SECONDS)
 
@@ -499,10 +500,11 @@ class TestSurfaceScopedBinding:
         redis = _MappedRedis()
         monkeypatch.setattr(chat_steering, "redis_client", redis)
         task_id = str(uuid4())
-        context = SimpleNamespace(
+        context = DifyRunContext(
             tenant_id="tenant-1",
             app_id="app-1",
             user_id="user-1",
+            user_from=UserFrom.END_USER,
             invoke_from=InvokeFrom.WEB_APP,
         )
         assert chat_steering.bind_steering_task_to_run(context, task_id, "run-web") is True
