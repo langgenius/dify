@@ -32,8 +32,9 @@ from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRet
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.tools.utils.uuid_utils import is_valid_uuid
 from core.tools.utils.yaml_utils import _load_yaml_file, load_yaml_file_cached
-from models.dataset import Dataset, Document, DocumentSegment
-from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
+from models.dataset import Dataset, DocumentSegment
+from models.enums import DataSourceType, SegmentStatus
+from tests.helpers.unit.model_factories import make_document
 
 
 def _flask_app() -> Flask:
@@ -70,31 +71,6 @@ def _persist_dataset(
     session.add(dataset)
     session.commit()
     return dataset
-
-
-def _persist_document(
-    session: Session,
-    *,
-    dataset: Dataset,
-    name: str,
-    data_source_type: DataSourceType = DataSourceType.UPLOAD_FILE,
-    doc_metadata: dict[str, object] | None = None,
-) -> Document:
-    document = Document(
-        id=str(uuid.uuid4()),
-        tenant_id=dataset.tenant_id,
-        dataset_id=dataset.id,
-        position=1,
-        data_source_type=data_source_type,
-        batch="batch-1",
-        name=name,
-        created_from=DocumentCreatedFrom.WEB,
-        created_by=dataset.created_by,
-        doc_metadata=doc_metadata,
-    )
-    session.add(document)
-    session.commit()
-    return document
 
 
 @dataclass(eq=False, repr=False)
@@ -311,19 +287,25 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
             },
         },
     )
-    document_low = _persist_document(
-        sqlite_session,
-        dataset=dataset,
+    document_low = make_document(
+        document_id=None,
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        created_by=dataset.created_by,
         name="Document Low",
         doc_metadata={"lang": "en"},
     )
-    document_high = _persist_document(
-        sqlite_session,
-        dataset=dataset,
+    document_high = make_document(
+        document_id=None,
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        created_by=dataset.created_by,
         name="Document High",
         data_source_type=DataSourceType.NOTION_IMPORT,
         doc_metadata={"lang": "fr"},
     )
+    sqlite_session.add_all([document_low, document_high])
+    sqlite_session.commit()
     callback = _TestHitCallback()
     low_segment = DocumentSegment(
         tenant_id=dataset.tenant_id,
@@ -404,6 +386,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].segment_id == high_segment.id
     assert resource_info[0].hit_count == 9
+    assert [item.doc_metadata for item in resource_info] == [{"lang": "fr"}, {"lang": "en"}]
     assert resource_info[1].summary == "summary low"
     assert resource_info[1].content == "question:raw low \nanswer:low answer"
 
@@ -530,19 +513,25 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
 def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlite_session: Session) -> None:
     dataset_one = _persist_dataset(sqlite_session, name="Dataset One")
     dataset_two = _persist_dataset(sqlite_session, tenant_id=dataset_one.tenant_id, name="Dataset Two")
-    document_two = _persist_document(
-        sqlite_session,
-        dataset=dataset_one,
+    document_two = make_document(
+        document_id=None,
+        tenant_id=dataset_one.tenant_id,
+        dataset_id=dataset_one.id,
+        created_by=dataset_one.created_by,
         name="Doc Two",
         data_source_type=DataSourceType.NOTION_IMPORT,
         doc_metadata={"p": 2},
     )
-    document_one = _persist_document(
-        sqlite_session,
-        dataset=dataset_two,
+    document_one = make_document(
+        document_id=None,
+        tenant_id=dataset_two.tenant_id,
+        dataset_id=dataset_two.id,
+        created_by=dataset_two.created_by,
         name="Doc One",
         doc_metadata={"p": 1},
     )
+    sqlite_session.add_all([document_two, document_one])
+    sqlite_session.commit()
     callback = _TestHitCallback()
     tool = DatasetMultiRetrieverTool(
         tenant_id=dataset_one.tenant_id,
@@ -634,5 +623,6 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     assert [item.position for item in resource_info] == [1, 2]
     assert resource_info[0].score == 0.9
     assert resource_info[0].content == "raw one"
+    assert [item.doc_metadata for item in resource_info] == [{"p": 1}, {"p": 2}]
     assert resource_info[1].score == 0.4
     assert resource_info[1].content == "question:raw two \nanswer:answer two"
