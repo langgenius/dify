@@ -131,14 +131,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         },
       },
       // An annotation added from a chat answer can land while the annotation page is
-      // still loading its first list, so refreshes cancel that pre-write load.
+      // still loading its first list, so refreshes cancel that pre-write load. They are
+      // not awaited: the chat button and the editors continue without the list, the
+      // count, or the quota.
       annotations: {
         byAnnotationId: {
           post: {
             mutationOptions: {
               onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
+                void invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
@@ -146,7 +148,7 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             mutationOptions: {
               onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return invalidateQueryKeys(client, [
+                void invalidateQueryKeys(client, [
                   annotationListKey(consoleQuery, params.app_id),
                   consoleQuery.features.get.key(),
                 ])
@@ -158,7 +160,7 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              return invalidateQueryKeys(client, [
+              void invalidateQueryKeys(client, [
                 annotationListKey(consoleQuery, params.app_id),
                 consoleQuery.features.get.key(),
               ])
@@ -170,7 +172,7 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              return invalidateQueryKeys(client, [
+              void invalidateQueryKeys(client, [
                 annotationListKey(consoleQuery, params.app_id),
                 consoleQuery.features.get.key(),
               ])

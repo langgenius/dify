@@ -1,5 +1,5 @@
 import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
-import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
@@ -15,6 +15,11 @@ afterEach(() => {
   for (const client of clients.splice(0)) client.clear()
   vi.restoreAllMocks()
 })
+
+const annotationCountKey = (): QueryKey =>
+  consoleQuery.apps.byAppId.annotations.count.get.queryKey({
+    input: { params: { app_id: 'app-1' } },
+  })
 
 const annotationListKey = (): QueryKey =>
   consoleQuery.apps.byAppId.annotations.get.queryKey({
@@ -164,5 +169,40 @@ describe('annotation policies', () => {
     )
 
     expect(invalidated).not.toHaveBeenCalled()
+  })
+
+  // Export stays disabled while the count reads 0, so the count must not keep a
+  // pre-write first load either.
+  it('restarts a first load of the annotation count after an add', async () => {
+    const { observer, queryFn, responses, context } = mountList(annotationCountKey())
+    const { onSettled } = consoleQuery.apps.byAppId.annotations.post.mutationOptions()
+
+    ;(onSettled as (...args: unknown[]) => unknown)(undefined, null, { params }, undefined, context)
+    await settle()
+    responses[1]!.resolve({ data: ['1 annotation'] })
+    responses[0]!.resolve({ data: ['0 annotations'] })
+    await settle()
+
+    expect(queryFn).toHaveBeenCalledTimes(2)
+    expect(observer.getCurrentResult().data).toEqual({ data: ['1 annotation'] })
+  })
+
+  it('resolves an add without waiting for the list, count, or quota to refetch', async () => {
+    const { client, queryFn, responses } = mountList(annotationListKey())
+    responses[0]!.resolve({ data: ['loaded'] })
+    await settle()
+
+    const mutation = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.annotations.post.mutationOptions({
+        mutationFn: async () => ({ id: 'annotation-1' }) as never,
+      }),
+    )
+    await mutation.mutate({ params, body: { question: 'q', answer: 'a' } } as never)
+
+    // The refetch started but is still pending: the add did not wait for it.
+    expect(queryFn).toHaveBeenCalledTimes(2)
+    expect(client.getQueryState(annotationListKey())?.fetchStatus).toBe('fetching')
+    responses[1]!.resolve({ data: ['after write'] })
   })
 })
