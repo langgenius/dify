@@ -468,6 +468,36 @@ describe('useEmbeddedChatbot', () => {
       )
     })
 
+    it('should drop a generated name that arrives after the chat unmounted', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      unmount()
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+
+      const cachedIds = queryClient
+        .getQueriesData<AppConversationData>({ queryKey: shareQueryKeys.conversations })
+        .flatMap(([, data]) => data?.data.map(({ id }) => id) ?? [])
+      expect(cachedIds).not.toContain('conversation-new')
+    })
+
     it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
       mockFetchChatList.mockResolvedValue({ data: [] })

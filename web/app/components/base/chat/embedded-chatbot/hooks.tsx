@@ -380,6 +380,13 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   // The conversation whose generated name is still loading. Leaving it drops the late name,
   // so a conversation pinned or deleted meanwhile does not come back to this list.
   const pendingNameConversationIdRef = useRef('')
+  useEffect(
+    () => () => {
+      // A name that arrives after this chat unmounts must not edit the shared list cache.
+      pendingNameConversationIdRef.current = ''
+    },
+    [],
+  )
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
       currentChatInstanceRef.current.handleStop()
