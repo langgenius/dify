@@ -22,6 +22,15 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
+# create_collection maps these metadata fields as keyword. Every other metadata field (app_id,
+# annotation_id, ...) gets Elasticsearch's dynamic string mapping: an analyzed text field, which a
+# term query never matches on a whole UUID, plus an exact "<field>.keyword" subfield.
+_KEYWORD_METADATA_FIELDS = frozenset({"doc_id", "document_id"})
+
+# A search returns 10 hits unless told otherwise. Ask for the most a single search may return
+# (Elasticsearch's default index.max_result_window) so a metadata lookup does not stop at 10.
+_MAX_SEARCH_HITS = 10_000
+
 
 class ElasticSearchConfig(BaseModel):
     # Regular Elasticsearch config
@@ -188,7 +197,16 @@ class ElasticSearchVector(BaseVector):
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
+        """Delete every document whose metadata[key] equals value.
+
+        Only doc_id and document_id are mapped as keyword; other metadata fields are analyzed
+        text, so an exact match needs the ".keyword" subfield. The search asks for up to 10,000
+        hits (index.max_result_window) instead of the default 10.
+        """
+        field = f"{Field.METADATA_KEY}.{key}"
+        if key not in _KEYWORD_METADATA_FIELDS:
+            field = f"{field}.keyword"
+        query_str = {"size": _MAX_SEARCH_HITS, "query": {"term": {field: value}}}
         results = self._client.search(index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
