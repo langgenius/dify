@@ -186,6 +186,33 @@ describe('useInsertSnippet', () => {
       expect(edges).toHaveLength(1)
     })
 
+    it('should leave the canvas untouched while the collaborative graph is not ready', async () => {
+      const canApply = vi
+        .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+        .mockReturnValue(false)
+      onTestFinished(() => canApply.mockRestore())
+      seedPublishedWorkflow(queryClient, {
+        graph: {
+          nodes: [{ id: 'snippet-code', position: { x: 0, y: 0 }, data: { type: 'code' } }],
+          edges: [],
+        },
+      })
+      const { result } = renderUseInsertSnippet()
+
+      let inserted: boolean | undefined
+      await act(async () => {
+        inserted = await result.current.handleInsertSnippet('snippet-1')
+      })
+
+      expect(inserted).toBe(false)
+      expect(getCanvas(result.current.reactFlowStore).nodes.map((node) => node.id)).toEqual([
+        'existing-node',
+      ])
+      expect(mockSaveStateToHistory).not.toHaveBeenCalled()
+      expect(mockHandleSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockIncrementSnippetUseCount).not.toHaveBeenCalled()
+    })
+
     it('should append remapped snippet graph into current workflow graph', async () => {
       seedPublishedWorkflow(queryClient, {
         graph: {

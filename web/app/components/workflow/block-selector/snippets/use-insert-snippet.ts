@@ -560,7 +560,7 @@ export const useInsertSnippet = () => {
           }
         })
 
-        setNodes(nextNodes)
+        if (!setNodes(nextNodes)) return false
         setEdges([
           ...edges
             .filter((edge) => edge.id !== currentEdge?.id)
