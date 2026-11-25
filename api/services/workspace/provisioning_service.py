@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Protocol
 
 from enums.account import TenantAccountRole
-from services.account.contracts import AccountCreation
+from services.account.contracts import AccountCreation, TokenerSignupEnrollment
 from services.account_errors import AccountNormalizedEmailAlreadyInUseError, AccountNotFoundError
 from services.entities.account_entities import AccountSnapshot
 from services.errors.workspace import (
@@ -51,6 +51,8 @@ class WorkspaceProvisioningStore(Protocol):
 
 class WorkspaceProvisioningEffects(Protocol):
     def prepare(self, name: str) -> WorkspaceCreation: ...
+
+    def signup_enrollment(self) -> TokenerSignupEnrollment | None: ...
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None: ...
 
@@ -159,10 +161,33 @@ class WorkspaceProvisioningService:
             timezone=timezone,
             ip_address=ip_address,
             check_normalized_email=True,
+            tokener_signup=self._effects.signup_enrollment(),
         )
         self._create(name=f"{name}'s Workspace", owner_id=account.id, account=account)
         self._effects.join_default_workspace(account.id)
         return account.id
+
+    def create_registration_owner_workspace(self, account_id: str) -> None:
+        """Create an initial workspace, honoring only a persisted signup intent.
+
+        Preconditions: the caller owns this account's initial workspace operation.
+        An account ID alone never confers a Tokener cohort; the repository checks
+        the durable intent written in the actual account-creation transaction.
+        Postconditions: a normal owner lock and membership check allow at most
+        one initial workspace; notifications happen only after its commit.
+        """
+        owner = self._owners.get(account_id)
+        if owner is None:
+            raise AccountNotFoundError
+        if not self._policies.is_workspace_creation_allowed():
+            raise WorkSpaceNotAllowedCreateError
+        if not self._policies.has_workspace_capacity():
+            raise WorkspacesLimitExceededError
+        self._create(
+            name=f"{owner.name}'s Workspace",
+            owner_id=account_id,
+            only_if_no_active_workspace=True,
+        )
 
     def ensure_owner_workspace(self, account_id: str) -> None:
         owner = self._owners.get(account_id)

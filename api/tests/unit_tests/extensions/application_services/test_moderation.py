@@ -3,9 +3,18 @@ from inspect import signature
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
+from core.entities.provider_configuration import ProviderModelBundle
+from core.entities.provider_entities import (
+    CustomModelConfiguration,
+    CustomProviderConfiguration,
+    ModelLoadBalancingConfiguration,
+    ModelSettings,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
+)
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_manager
@@ -26,20 +35,505 @@ from graphon.model_runtime.entities.llm_entities import (
 )
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
+from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from machinery.context import AppRequestContext
-from models.provider import ProviderType
+from models.account import Tenant
+from models.enums import CredentialSourceType
+from models.model_billing import TenantModelBillingProfile
+from models.provider import ProviderCredential, ProviderType
+from models.tokener import TenantTokenerIntegration
 from services.agent_llm_inner_service import AgentLLMInnerService, PreparedAgentLLMInvocation
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
-from services.moderation_adapters import ChainedLLMModerationPolicy, LLMModerationGuard
-from services.moderation_service import ModerationRejectedError, ModerationRule, ModerationService
+from services.moderation_adapters import (
+    ChainedLLMModerationPolicy,
+    HostedOpenAIModerationGateway,
+    LLMModerationGuard,
+)
+from services.moderation_invocation_errors import ModerationUnavailableInvocationError
+from services.moderation_service import (
+    ModerationPhase,
+    ModerationRejectedError,
+    ModerationRequest,
+    ModerationRule,
+    ModerationService,
+    ModerationVerdict,
+)
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.core.model_moderation_fixtures import (
+    RecordingLLM,
     RecordingPollingRuntime,
     RecordingProviderManager,
     RecordingQuotaModelInstance,
     make_moderated_manager,
     make_moderated_model,
 )
+
+TOKENER_PROVIDER = "langgenius/tokener/tokener"
+
+
+@pytest.fixture
+def native_moderation_bundle(sqlite_session: Session) -> tuple[ProviderModelBundle, RecordingLLM, str]:
+    """Use real native profile/integration ownership, not an editable credential label."""
+    tenant = Tenant(name="Native moderation")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    credential = ProviderCredential(
+        tenant_id=tenant.id,
+        provider_name=TOKENER_PROVIDER,
+        credential_name="ordinary-label",
+        encrypted_config='{"api_key":"ENCRYPTED_TEST_ONLY"}',
+    )
+    sqlite_session.add(credential)
+    sqlite_session.flush()
+    sqlite_session.add_all(
+        [
+            TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"),
+            TenantTokenerIntegration(tenant_id=tenant.id, provider_credential_id=credential.id),
+        ]
+    )
+    sqlite_session.commit()
+    bundle = make_model_config(provider=TOKENER_PROVIDER, model="gpt-4o-mini", mode="chat").provider_model_bundle
+    bundle.configuration.tenant_id = tenant.id
+    bundle.configuration.custom_configuration.provider = CustomProviderConfiguration(
+        credentials={"api_key": "managed-test-only"}, current_credential_id=credential.id
+    )
+    template = bundle.model_type_instance
+    assert isinstance(template, LargeLanguageModel)
+    runtime = RecordingLLM(template, ["approved"])
+    bundle.model_type_instance = runtime
+    return bundle, runtime, credential.id
+
+
+@pytest.fixture
+def native_moderation_calls(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+) -> list[tuple[ModerationPhase, str]]:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        HOSTED_MODERATION_ENABLED=True,
+        TOKENER_PROVIDER_NAME=TOKENER_PROVIDER,
+    )
+    calls: list[tuple[ModerationPhase, str]] = []
+
+    def check(
+        _gateway: HostedOpenAIModerationGateway,
+        context: AppRequestContext,
+        *,
+        rule: ModerationRule,
+        request: ModerationRequest,
+        phase: ModerationPhase,
+    ) -> ModerationVerdict:
+        assert context.tenant_id
+        assert rule.type == "openai_moderation"
+        calls.append((phase, request.text))
+        return ModerationVerdict(flagged="blocked" in request.text, message="blocked")
+
+    monkeypatch.setattr(HostedOpenAIModerationGateway, "check", check)
+    return calls
+
+
+@pytest.fixture
+def native_lb_index(monkeypatch: pytest.MonkeyPatch) -> Callable[[int], None]:
+    """Exercise the real LB selector while replacing only its Redis command I/O."""
+    from core import model_manager
+
+    monkeypatch.setattr(model_manager.redis_client, "expire", lambda *_args: True)
+    monkeypatch.setattr(model_manager.redis_client, "exists", lambda *_args: False)
+
+    def select(index: int) -> None:
+        monkeypatch.setattr(model_manager.redis_client, "incr", lambda _key: index)
+
+    return select
+
+
+def test_native_managed_selection_checks_both_phases_and_rejects_before_provider(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+) -> None:
+    bundle, runtime, managed_id = native_moderation_bundle
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    assert instance.credential_id == managed_id
+    instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == [("input", "safe"), ("output", "approved")]
+    with pytest.raises(ModerationRejectedError):
+        instance.invoke_llm([UserPromptMessage(content="blocked")], stream=False)
+    assert runtime.invocations == 1
+
+
+def test_native_output_guard_preserves_explicit_policy_and_closes_rejected_stream(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+) -> None:
+    bundle, runtime, _managed_id = native_moderation_bundle
+    runtime.parts = ["blocked"]
+
+    def allow(_text: str, _phase: ModerationPhase) -> None:
+        return None
+
+    explicit = LLMModerationGuard(
+        tenant_id=bundle.configuration.tenant_id,
+        check=allow,
+        check_input=False,
+        check_output=False,
+        non_stream_segment_size=2000,
+        stream_segment_size=300,
+    )
+    instance = ModelInstance(bundle, "gpt-4o-mini", moderation=explicit)
+    assert isinstance(instance.moderation, ChainedLLMModerationPolicy)
+    response = instance.invoke_llm([UserPromptMessage(content="safe")], stream=True)
+    assert isinstance(response, Generator)
+    with pytest.raises(ModerationRejectedError):
+        list(response)
+    assert native_moderation_calls == [("input", "safe"), ("output", "blocked")]
+    assert runtime.invocations == 1
+    assert runtime.stream_closed
+
+
+@pytest.mark.parametrize(
+    ("edition", "enabled"),
+    [(DeploymentEdition.CLOUD, False), (DeploymentEdition.COMMUNITY, True), (DeploymentEdition.ENTERPRISE, True)],
+)
+def test_native_eligibility_retains_the_existing_platform_edition_and_switch(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    config_overrides: Callable[..., None],
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    bundle, runtime, _managed_id = native_moderation_bundle
+    config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
+    # Identity selection itself keeps the normal enterprise policy dependency;
+    # this test supplies the already-resolved credentials as the cache does.
+    provider = bundle.configuration.custom_configuration.provider
+    assert provider is not None
+    instance = ModelInstance(bundle, "gpt-4o-mini", credentials=provider.credentials, credential_id=_managed_id)
+    instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == []
+    assert runtime.invocations == 1
+
+
+def test_null_native_profile_does_not_enable_platform_moderation(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    sqlite_session: Session,
+) -> None:
+    bundle, runtime, _managed_id = native_moderation_bundle
+    profile = sqlite_session.get(TenantModelBillingProfile, bundle.configuration.tenant_id)
+    assert profile is not None
+    profile.model_billing_source = None
+    sqlite_session.commit()
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == []
+    assert runtime.invocations == 1
+
+
+@pytest.mark.parametrize("model_override", [False, True])
+def test_native_byok_and_raw_credentials_never_inherit_bound_provider_identity(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    model_override: bool,
+) -> None:
+    bundle, runtime, managed_id = native_moderation_bundle
+    if model_override:
+        bundle.configuration.custom_configuration.models = [
+            CustomModelConfiguration(
+                model="gpt-4o-mini",
+                model_type=ModelType.LLM,
+                credentials={"api_key": "managed-test-only"},
+                current_credential_id=managed_id,
+            )
+        ]
+        instance = ModelInstance(bundle, "gpt-4o-mini")
+    else:
+        instance = ModelInstance(bundle, "gpt-4o-mini", credentials={"api_key": "managed-test-only"})
+    instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == []
+    assert runtime.invocations == 1
+
+
+def test_empty_model_override_keeps_normal_provider_fallback_identity(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+) -> None:
+    bundle, _runtime, managed_id = native_moderation_bundle
+    bundle.configuration.custom_configuration.models = [
+        CustomModelConfiguration(
+            model="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            credentials=None,
+            current_credential_id="unused-empty-model-credential",
+        )
+    ]
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    assert instance.credential_id == managed_id
+    instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert len(native_moderation_calls) == 2
+
+
+@pytest.mark.parametrize("cache_managed", [False, True])
+def test_native_manager_cache_preserves_identity_with_the_cached_credential(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    cache_managed: bool,
+) -> None:
+    bundle, _runtime, managed_id = native_moderation_bundle
+    provider = bundle.configuration.custom_configuration.provider
+    assert provider is not None
+    provider.current_credential_id = managed_id if cache_managed else "byok-before-cache"
+    manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
+    first = manager.get_model_instance(bundle.configuration.tenant_id, TOKENER_PROVIDER, ModelType.LLM, "gpt-4o-mini")
+    provider.current_credential_id = "byok-after-cache" if cache_managed else managed_id
+    provider.credentials = {"api_key": "changed-test-only"}
+    second = manager.get_model_instance(bundle.configuration.tenant_id, TOKENER_PROVIDER, ModelType.LLM, "gpt-4o-mini")
+    assert second.credentials == first.credentials
+    assert second.credential_id == first.credential_id
+    second.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert len(native_moderation_calls) == (2 if cache_managed else 0)
+
+
+def test_mixed_native_load_balancing_checks_only_the_actual_provider_bound_selection(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    native_lb_index: Callable[[int], None],
+) -> None:
+    bundle, runtime, managed_id = native_moderation_bundle
+    choices = [
+        ModelLoadBalancingConfiguration(id="inline", name="byok", credentials={"api_key": "managed-test-only"}),
+        ModelLoadBalancingConfiguration(
+            id="model",
+            name="model-specific",
+            credentials={"api_key": "managed-test-only"},
+            credential_source_type=CredentialSourceType.CUSTOM_MODEL,
+            credential_id=managed_id,
+        ),
+        ModelLoadBalancingConfiguration(
+            id="managed",
+            name="renamed",
+            credentials={"api_key": "managed-test-only"},
+            credential_source_type=CredentialSourceType.PROVIDER,
+            credential_id=managed_id,
+        ),
+        ModelLoadBalancingConfiguration(id="inherit", name="__inherit__", credentials={}),
+    ]
+    bundle.configuration.model_settings = [
+        ModelSettings(
+            model="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            load_balancing_enabled=True,
+            load_balancing_configs=choices,
+        )
+    ]
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    lb = instance.load_balancing_manager
+    assert lb is not None
+    for index, expected_checks in enumerate((0, 0, 2, 4)):
+        native_lb_index(index + 1)
+        instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+        assert len(native_moderation_calls) == expected_checks
+    assert runtime.invocations == 4
+
+
+def test_inherited_lb_credentials_do_not_cross_instance_cache_snapshots(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    native_lb_index: Callable[[int], None],
+) -> None:
+    bundle, _runtime, managed_id = native_moderation_bundle
+    inherited = ModelLoadBalancingConfiguration(id="inherit", name="__inherit__", credentials={})
+    bundle.configuration.model_settings = [
+        ModelSettings(
+            model="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            load_balancing_enabled=True,
+            load_balancing_configs=[inherited],
+        )
+    ]
+    managed = ModelInstance(bundle, "gpt-4o-mini")
+    provider = bundle.configuration.custom_configuration.provider
+    assert provider is not None
+    provider.current_credential_id = "byok-after-first-instance"
+    provider.credentials = {"api_key": "byok-test-only"}
+    byok = ModelInstance(bundle, "gpt-4o-mini")
+    assert managed.credential_id == managed_id
+    assert managed.credentials != byok.credentials
+    assert inherited.credentials == {}
+    native_lb_index(1)
+    managed.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert len(native_moderation_calls) == 2
+    byok.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert len(native_moderation_calls) == 2
+
+
+def test_native_profile_read_failure_fails_closed_before_provider(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repositories.model_billing_profile_repository import ModelBillingProfileRepository
+    from services.model_billing_profile_service import ModelBillingProfileResolutionError
+
+    def unavailable(_repository: ModelBillingProfileRepository, tenant_id: str) -> None:
+        assert tenant_id
+        raise RuntimeError("profile store unavailable")
+
+    bundle, runtime, _managed_id = native_moderation_bundle
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    monkeypatch.setattr(ModelBillingProfileRepository, "get", unavailable)
+    with pytest.raises(ModelBillingProfileResolutionError):
+        instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == []
+    assert runtime.invocations == 0
+
+
+def test_native_bound_identity_read_failure_fails_closed_before_provider(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
+
+    def unavailable(_repository: TokenerBootstrapRepository, tenant_id: str, provider: str) -> tuple[str | None, bool]:
+        assert tenant_id
+        assert provider == TOKENER_PROVIDER
+        raise RuntimeError("credential binding store unavailable")
+
+    bundle, runtime, _managed_id = native_moderation_bundle
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    monkeypatch.setattr(TokenerBootstrapRepository, "bound_credential", unavailable)
+    with pytest.raises(RuntimeError, match="^credential binding store unavailable$"):
+        instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert native_moderation_calls == []
+    assert runtime.invocations == 0
+
+
+def test_native_moderation_failure_cannot_retry_into_a_byok_load_balancer(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle, runtime, managed_id = native_moderation_bundle
+    choices = [
+        ModelLoadBalancingConfiguration(
+            id="managed",
+            name="managed",
+            credentials={"api_key": "managed-test-only"},
+            credential_source_type=CredentialSourceType.PROVIDER,
+            credential_id=managed_id,
+        ),
+        ModelLoadBalancingConfiguration(id="byok", name="byok", credentials={"api_key": "byok-test-only"}),
+    ]
+    bundle.configuration.model_settings = [
+        ModelSettings(
+            model="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            load_balancing_enabled=True,
+            load_balancing_configs=choices,
+        )
+    ]
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    lb = instance.load_balancing_manager
+    assert lb is not None
+    selections: list[str] = []
+
+    def choose() -> ModelLoadBalancingConfiguration:
+        selected = choices[len(selections)]
+        selections.append(selected.id)
+        return selected
+
+    def unavailable(*_args: object, **_kwargs: object) -> ModerationVerdict:
+        raise InvokeAuthorizationError("moderation unavailable")
+
+    monkeypatch.setattr(lb, "fetch_next", choose)
+    monkeypatch.setattr(HostedOpenAIModerationGateway, "check", unavailable)
+    with pytest.raises(ModerationUnavailableInvocationError):
+        instance.invoke_llm([UserPromptMessage(content="safe")], stream=False)
+    assert selections == ["managed"]
+    assert runtime.invocations == 0
+    assert native_moderation_calls == []
+
+
+@pytest.mark.parametrize("immediate", [False, True])
+def test_native_polling_uses_the_fixed_credential_policy_through_terminal_output(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    immediate: bool,
+) -> None:
+    bundle, provider, _managed_id = native_moderation_bundle
+    running = LLMPollingResult(status=LLMPollingStatus.RUNNING, plugin_state={"task_id": "native-polling"})
+    terminal = _succeeded("blocked", LLMUsage.empty_usage(), structured=False)
+    runtime = RecordingPollingRuntime(initial=terminal if immediate else running, terminal=terminal)
+    provider.model_runtime = runtime
+    instance = ModelInstance(bundle, "gpt-4o-mini")
+    prepared = DifyPreparedPollingLLM(instance)
+    policy = instance.moderation
+    assert isinstance(policy, LLMModerationGuard)
+    if immediate:
+        with pytest.raises(ModerationRejectedError):
+            prepared.start_llm_polling(
+                prompt_messages=[UserPromptMessage(content="safe")],
+                model_parameters={},
+                tools=None,
+                stop=None,
+                json_schema=None,
+            )
+    else:
+        result = prepared.start_llm_polling(
+            prompt_messages=[UserPromptMessage(content="safe")],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+        assert result.status == LLMPollingStatus.RUNNING
+        assert instance.moderation is policy
+        with pytest.raises(ModerationRejectedError):
+            prepared.check_llm_polling(plugin_state={"task_id": "native-polling"})
+    assert native_moderation_calls == [("input", "safe"), ("output", "blocked")]
+    assert runtime.starts == 1
+
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_native_polling_checks_only_the_base_credential_actually_used_for_submission(
+    native_moderation_bundle: tuple[ProviderModelBundle, RecordingLLM, str],
+    native_moderation_calls: list[tuple[ModerationPhase, str]],
+    managed: bool,
+) -> None:
+    bundle, provider, _managed_id = native_moderation_bundle
+    terminal = _succeeded("approved", LLMUsage.empty_usage(), structured=False)
+    runtime = RecordingPollingRuntime(initial=terminal, terminal=terminal)
+    provider.model_runtime = runtime
+    instance = (
+        ModelInstance(bundle, "gpt-4o-mini")
+        if managed
+        else ModelInstance(bundle, "gpt-4o-mini", credentials={"api_key": "managed-test-only"})
+    )
+    prepared = DifyPreparedPollingLLM(instance)
+    if managed:
+        with pytest.raises(ModerationRejectedError):
+            prepared.start_llm_polling(
+                prompt_messages=[UserPromptMessage(content="blocked")],
+                model_parameters={},
+                tools=None,
+                stop=None,
+                json_schema=None,
+            )
+        assert runtime.starts == 0
+        assert native_moderation_calls == [("input", "blocked")]
+    else:
+        assert (
+            prepared.start_llm_polling(
+                prompt_messages=[UserPromptMessage(content="blocked")],
+                model_parameters={},
+                tools=None,
+                stop=None,
+                json_schema=None,
+            ).status
+            == LLMPollingStatus.SUCCEEDED
+        )
+        assert runtime.starts == 1
+        assert native_moderation_calls == []
 
 
 @pytest.fixture

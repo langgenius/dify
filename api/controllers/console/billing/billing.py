@@ -61,6 +61,16 @@ def _subscription_portal_error(error: billing.BillingSubscriptionUpstreamError) 
         case "ANNUAL_DISCOUNT_ACTIVE":
             return AnnualDiscountActiveError()
         case (
+            "TOKENER_NATIVE_ACCOUNT_NOT_READY"
+            | "TOKENER_PAID_CONTROL_PLANE_UNAVAILABLE"
+            | "TOKENER_PAID_GRANTS_DISABLED"
+            | "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+            | "TENANT_BILLING_MODE_UNAVAILABLE"
+        ):
+            # No checkout was opened. Keep the public error contract stable and
+            # do not expose private Partner readiness or entitlement details.
+            return BillingUnavailableError()
+        case (
             ""
             | "CODEC"
             | "VALIDATOR"
@@ -102,6 +112,8 @@ def _invoice_portal_error(error: billing.BillingInvoiceUpstreamError) -> BaseHTT
             | "MISSING_ACCOUNT_ID"
             | "INVALID_ACCOUNT_ID"
             | "MISSING_PREFILLED_EMAIL"
+            | "TOKENER_NATIVE_ACCOUNT_NOT_READY"
+            | "TENANT_BILLING_MODE_UNAVAILABLE"
             | "INVALID_INVOICE_REQUEST"
             | "CREATE_INVOICE_PORTAL_FAILED"
         ):

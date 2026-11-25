@@ -557,11 +557,14 @@ export type ModelProviderCreditsResponse = {
   exhausted_at: number | null
   is_exhausted: boolean
   is_unlimited: boolean
+  model_billing_source?: ModelBillingSource
   next_credit_reset_date: number | null
   pool_type: 'paid' | 'trial' | null
   quota_limit: number | null
   quota_used: number | null
   remaining_credits: number | null
+  tokener_bootstrap_status?: TenantTokenerIntegrationStatus | null
+  tokener_metering?: TokenerMeteringResponse | null
 }
 
 export type ModelProviderSummaryListResponse = {
@@ -2229,6 +2232,34 @@ export type ProviderResponse = {
   tenant_id: string
 }
 
+export type ModelBillingSource = 'legacy_message_credits' | 'tokener'
+
+export type TenantTokenerIntegrationStatus =
+  | 'configuring_provider'
+  | 'failed'
+  | 'installing_plugin'
+  | 'pending'
+  | 'provisioning'
+  | 'ready'
+
+export type TokenerMeteringResponse = {
+  allowance?: TokenerAllowanceMeteringResponse | null
+  available_usd_micro: string
+  balance_generated_at: string
+  currency: 'USD'
+  current_month:
+    | ({
+        status: 'available'
+      } & TokenerCurrentMonthAvailableMeteringResponse)
+    | ({
+        status: 'unavailable'
+      } & TokenerCurrentMonthUnavailableMeteringResponse)
+  entitlement_error_code?: string | null
+  entitlement_status?: TokenerEntitlementStatus | null
+  tenant_id: string
+  usage_generated_at?: string | null
+}
+
 export type ModelProviderSummaryResponse = {
   configurate_methods: Array<ConfigurateMethod>
   custom_configuration: ModelProviderCustomConfigurationSummaryResponse
@@ -3189,6 +3220,32 @@ export type SystemConfigurationResponse = {
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
 }
+
+export type TokenerAllowanceMeteringResponse = {
+  amount_usd_micro: string
+  available_usd_micro: string
+  ends_at: string
+  source_ref: string
+  starts_at: string
+  window_id: string
+}
+
+export type TokenerCurrentMonthAvailableMeteringResponse = {
+  billed_usd_micro: string
+  end_date: string
+  request_count: string
+  start_date: string
+  status: 'available'
+}
+
+export type TokenerCurrentMonthUnavailableMeteringResponse = {
+  end_date: string
+  error_code: string
+  start_date: string
+  status: 'unavailable'
+}
+
+export type TokenerEntitlementStatus = 'active' | 'failed' | 'processing' | 'retrying'
 
 export type ModelProviderCustomConfigurationSummaryResponse = {
   available_credentials: Array<CredentialConfiguration>

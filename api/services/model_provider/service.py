@@ -602,6 +602,11 @@ class ModelProviderService:
         provider_configuration = self._get_provider_configuration(tenant_id, provider)
         provider_configuration.switch_active_provider_credential(credential_id=credential_id)
 
+    def activate_unselected_provider_credential(self, tenant_id: str, provider: str, credential_id: str) -> None:
+        """Internal recovery for an owned prevalidated credential; never replace a BYOK selection."""
+        configuration = self._get_provider_configuration(tenant_id, provider)
+        configuration.activate_unselected_provider_credential(credential_id)
+
     def get_model_credential(
         self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str | None
     ) -> dict[str, Any] | None:
@@ -900,8 +905,8 @@ class ModelProviderService:
             ),
         )
 
-    def initialize_default_llm(self, tenant_id: str) -> None:
-        """Save the first active LLM during onboarding without replacing a configured default."""
+    def initialize_default_llm(self, tenant_id: str, *, pinned: tuple[str, str] | None = None) -> None:
+        """Initialize an LLM only if no default exists; a pinned provider/model must be active."""
         saved_default = select(TenantDefaultModel.id).where(
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == ModelType.LLM,
@@ -912,6 +917,10 @@ class ModelProviderService:
 
         configurations = self._get_provider_manager(tenant_id).get_configurations(tenant_id)
         available_models = configurations.get_models(model_type=ModelType.LLM, only_active=True)
+        if pinned is not None:
+            available_models = [model for model in available_models if (model.provider.provider, model.model) == pinned]
+            if not available_models:
+                raise ValueError("The pinned default LLM is not active.")
         if not available_models:
             logger.info("No active LLM available for default model initialization, tenant_id: %s", tenant_id)
             return

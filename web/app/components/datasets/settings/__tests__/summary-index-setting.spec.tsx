@@ -60,6 +60,7 @@ const renderSettings = (props: Props) => {
   queryClient.setQueryData(
     consoleQuery.workspaces.current.modelProviders.credits.get.queryOptions().queryKey,
     {
+      model_billing_source: 'legacy_message_credits',
       remaining_credits: 0,
       is_unlimited: false,
       is_exhausted: true,

@@ -46,6 +46,18 @@ def bind_model_moderation_policy(
     return bind_hosted_llm_moderation(bundle, policy=policy)
 
 
+def bind_native_model_moderation_policy(
+    bundle: ProviderModelBundle, *, credential_id: str | None, policy: LLMModerationPolicy | None = None
+) -> LLMModerationPolicy | None:
+    """Select native moderation only after the exact custom credential has been chosen."""
+    from extensions.application_services.moderation import bind_hosted_llm_moderation
+    from models.provider import ProviderType
+
+    if bundle.configuration.using_provider_type != ProviderType.CUSTOM:
+        return policy
+    return bind_hosted_llm_moderation(bundle, policy=policy, credential_id=credential_id)
+
+
 def create_model_type_instance(
     *,
     runtime: ModelRuntime,

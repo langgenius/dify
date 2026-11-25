@@ -3,11 +3,8 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
-import {
-  createConsoleQueryClient,
-  createFeaturesFixture,
-  renderWithConsoleQuery,
-} from '@/test/console/query-data'
+import { createFeaturesFixture } from '@/test/console/features'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createAppInfoDialogHandles } from '../app-info-dialog-handles'

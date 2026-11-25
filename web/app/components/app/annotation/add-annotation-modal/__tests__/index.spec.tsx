@@ -1,7 +1,7 @@
 import type { consoleClient } from '@/service/console'
-import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createFeaturesFixture } from '@/test/console/features'
 import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import AddAnnotationDialog from '../index'
@@ -175,7 +175,7 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   expect(submit()).toBeDisabled()
   api.features.mockResolvedValue(
-    zGetFeaturesResponse.parse({ annotation_quota_limit: { size: 0, limit: 10 } }),
+    createFeaturesFixture({ annotation_quota_limit: { size: 0, limit: 10 } }),
   )
   await user.click(retry)
   await waitFor(() => expect(submit()).toBeEnabled())

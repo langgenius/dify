@@ -32,6 +32,23 @@ def test_knowledge_subscription_limits_are_cloud_only(
 
 
 @pytest.mark.parametrize(
+    ("edition", "expected"),
+    [(DeploymentEdition.CLOUD, True), (DeploymentEdition.COMMUNITY, False), (DeploymentEdition.ENTERPRISE, False)],
+)
+def test_managed_tokener_credential_policy_keeps_existing_keys_protected_after_signup_is_disabled(
+    config_overrides: Callable[..., None], edition: DeploymentEdition, expected: bool
+) -> None:
+    provider_name = "langgenius/tokener-staging/tokener"
+    config_overrides(
+        DEPLOYMENT_EDITION=edition,
+        TOKENER_PROVIDER_NAME=provider_name,
+        TOKENER_NEW_TENANT_COHORT_ENABLED=False,
+    )
+    assert FeatureService.protects_tokener_provider_credentials(provider_name) is expected
+    assert not FeatureService.protects_tokener_provider_credentials("langgenius/openai/openai")
+
+
+@pytest.mark.parametrize(
     ("edition", "plan", "enabled", "expected", "upgrade_available"),
     [
         (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),

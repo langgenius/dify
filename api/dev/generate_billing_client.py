@@ -23,11 +23,13 @@ Kratos serializes with protojson `EmitUnpopulated: true`, which the snapshot ste
   the upstream schema lists in `required` (`google.api.field_behavior = REQUIRED`) is non-null.
 - Proto3 `optional` fields (annotated `nullable` in dify-saas) are synthetic oneofs, which protojson
   omits when unset, so they are optional and nullable.
+- `QuotaGetInfoReply.app_runs` is also omittable for compatibility with Billing before the App Runs rollout.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 import json
 import keyword
@@ -37,6 +39,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import Any, Literal
 
@@ -51,11 +54,25 @@ GENERATOR = "api/dev/generate_billing_client.py"
 logger = logging.getLogger("generate_billing_client")
 
 type Service = Literal["billing", "saas"]
-type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS"]
 type JsonObject = dict[str, Any]
+
+
+class UpstreamName(StrEnum):
+    """Generator metadata naming the runtime Upstream members without importing HTTP transport."""
+
+    BILLING = auto()
+    BILLING_QUOTA = auto()
+    TOKENER_BILLING = auto()
+    SAAS = auto()
+    NETWORK_ACCESS = auto()
+
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
 SCHEMA_PREFIXES: dict[Service, str] = {"billing": "dify.saas.api.billing.", "saas": "dify.saas.api.saas."}
+# App Runs can be missing from a valid response during a staggered Billing rollout.
+_COMPAT_OMITTABLE_MESSAGE_FIELDS: dict[tuple[Service, str], frozenset[str]] = {
+    ("billing", "QuotaGetInfoReply"): frozenset({"app_runs"}),
+}
 # BILLING_API_URL already ends with the API version.
 PATH_VERSION_PREFIX = "/v1"
 SNAPSHOT_COMMIT_KEY = "x-dify-saas-commit"
@@ -77,43 +94,53 @@ class AllowedOperation:
 # Endpoints dify API calls today. Add an entry here, then rerun this script, to call a new one.
 ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
     "billing": (
-        AllowedOperation("GET", "/v1/subscription/info", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/vector-space", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/knowledge-rate-limit", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/payment-link", "BILLING"),
-        AllowedOperation("POST", "/v1/subscription/plan/batch", "BILLING"),
-        AllowedOperation("GET", "/v1/subscription/cleanup/whitelist", "BILLING"),
-        AllowedOperation("GET", "/v1/model-provider/payment-link", "BILLING"),
-        AllowedOperation("GET", "/v1/invoices", "BILLING"),
-        AllowedOperation("GET", "/v1/education/verify", "BILLING"),
-        AllowedOperation("GET", "/v1/education/status", "BILLING"),
-        AllowedOperation("POST", "/v1/education", "BILLING"),
-        AllowedOperation("GET", "/v1/education/autocomplete", "BILLING"),
-        AllowedOperation("POST", "/v1/compliance/download", "BILLING"),
-        AllowedOperation("GET", "/v1/quota/info", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/reserve", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/commit", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/release", "BILLING_QUOTA"),
-        AllowedOperation("GET", "/v1/quota/balance", "BILLING_QUOTA"),
-        AllowedOperation("POST", "/v1/quota/consume-capped", "BILLING_QUOTA"),
+        AllowedOperation("GET", "/v1/subscription/info", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/vector-space", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/knowledge-rate-limit", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/payment-link", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/subscription/plan/batch", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/subscription/cleanup/whitelist", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/model-provider/payment-link", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/invoices", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/verify", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/status", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/education", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/education/autocomplete", UpstreamName.BILLING),
+        AllowedOperation("POST", "/v1/compliance/download", UpstreamName.BILLING),
+        AllowedOperation("GET", "/v1/quota/info", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/reserve", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/commit", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/release", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("GET", "/v1/quota/balance", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/v1/quota/consume-capped", UpstreamName.BILLING_QUOTA),
+        AllowedOperation("POST", "/internal/v1/tokener/tenants/{tenant_id}/bootstrap", UpstreamName.TOKENER_BILLING),
+        AllowedOperation("GET", "/internal/v1/tokener/tenants/{tenant_id}/metering", UpstreamName.TOKENER_BILLING),
     ),
     "saas": (
-        AllowedOperation("DELETE", "/v1/account", "SAAS"),
-        AllowedOperation("GET", "/v1/account/in-freeze", "SAAS"),
-        AllowedOperation("POST", "/v1/account/delete-feedback", "SAAS"),
-        AllowedOperation("GET", "/v1/notifications/active", "SAAS"),
-        AllowedOperation("POST", "/v1/notifications/{notificationId}/dismiss", "SAAS"),
-        AllowedOperation("POST", "/v1/tenant_utms", "SAAS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups", "NETWORK_ACCESS"),
-        AllowedOperation("POST", "/v1/tenants/{tenantId}/network-access-groups", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("PUT", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("DELETE", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", "NETWORK_ACCESS"),
-        AllowedOperation("PUT", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", "NETWORK_ACCESS"),
-        AllowedOperation("GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group/status", "NETWORK_ACCESS"),
+        AllowedOperation("DELETE", "/v1/account", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/account/in-freeze", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/account/delete-feedback", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/notifications/active", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/notifications/{notificationId}/dismiss", UpstreamName.SAAS),
+        AllowedOperation("POST", "/v1/tenant_utms", UpstreamName.SAAS),
+        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("POST", "/v1/tenants/{tenantId}/network-access-groups", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("GET", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS),
+        AllowedOperation("PUT", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS),
         AllowedOperation(
-            "DELETE", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group-binding", "NETWORK_ACCESS"
+            "DELETE", "/v1/tenants/{tenantId}/network-access-groups/{groupId}", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "PUT", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "GET", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group/status", UpstreamName.NETWORK_ACCESS
+        ),
+        AllowedOperation(
+            "DELETE", "/v1/tenants/{tenantId}/apps/{appId}/network-access-group-binding", UpstreamName.NETWORK_ACCESS
         ),
     ),
 }
@@ -189,7 +216,8 @@ def _ref_names(node: Any) -> set[str]:
     return set()
 
 
-def _annotate_presence(schema: JsonObject) -> JsonObject:
+def _annotate_presence(schema: JsonObject, *, compat_omittable: frozenset[str]) -> JsonObject:
+    """Translate protobuf field presence while retaining non-required rollout omissions."""
     properties: dict[str, JsonObject] = schema.get("properties", {})
     always_set = set(schema.get("required", []))
     annotated: dict[str, JsonObject] = {}
@@ -200,7 +228,8 @@ def _annotate_presence(schema: JsonObject) -> JsonObject:
             annotated[name] = {"allOf": [{"$ref": field["$ref"]}], "nullable": True}
         else:
             annotated[name] = field
-        if "$ref" in field or not field.get("nullable"):
+        may_omit = "$ref" in field and name in compat_omittable and name not in always_set
+        if not may_omit and ("$ref" in field or not field.get("nullable")):
             required.append(name)
     result = {**schema, "properties": annotated}
     if required:
@@ -261,7 +290,15 @@ def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObj
         "info": source.get("info", {}),
         SNAPSHOT_COMMIT_KEY: commit,
         "paths": paths,
-        "components": {"schemas": {name: _annotate_presence(source_schemas[name]) for name in sorted(reachable)}},
+        "components": {
+            "schemas": {
+                name: _annotate_presence(
+                    source_schemas[name],
+                    compat_omittable=_COMPAT_OMITTABLE_MESSAGE_FIELDS.get((service, name), frozenset()),
+                )
+                for name in sorted(reachable)
+            }
+        },
     }
 
 
@@ -318,6 +355,7 @@ def operation_function_name(operation_id: str, service: Service) -> str:
 
 
 def python_type(schema: JsonObject, context: str) -> str:
+    """Render a supported snapshot schema, keeping enumerated wire strings as plain strings."""
     if "allOf" in schema:
         parts = schema["allOf"]
         if len(parts) != 1:
@@ -408,8 +446,17 @@ def render_model(name: str, schema: JsonObject) -> list[str]:
         attribute = python_name(wire_name)
         annotation = field_type(field, wire_name in required, f"{name}.{wire_name}")
         default = "" if wire_name in required else "None"
-        if attribute != wire_name:
-            arguments = ", ".join([*([default] if default else []), f"alias={json.dumps(wire_name)}"])
+        if "x-dify-sensitive" in field and type(field["x-dify-sensitive"]) is not bool:
+            raise GenerationError(f"{name}.{wire_name}: sensitivity metadata must be boolean")
+        sensitive = field.get("x-dify-sensitive") is True
+        if attribute != wire_name or sensitive:
+            arguments = ", ".join(
+                [
+                    *([default] if default else []),
+                    *([f"alias={json.dumps(wire_name)}"] if attribute != wire_name else []),
+                    *(["repr=False"] if sensitive else []),
+                ]
+            )
             lines.append(f"    {attribute}: {annotation} = Field({arguments})")
         else:
             lines.append(f"    {attribute}: {annotation}{f' = {default}' if default else ''}")
@@ -461,7 +508,7 @@ def render_operation(service: Service, allowed: AllowedOperation, operation: Jso
         signature,
         docstring,
         "    return request(",
-        f"        Upstream.{allowed.upstream},",
+        f"        Upstream.{allowed.upstream.name},",
         f"        {json.dumps(allowed.method)},",
         f"        {json.dumps(template)},",
         f"        response_model={response},",
@@ -564,7 +611,39 @@ def render_module(service: Service, snapshot: JsonObject) -> str:
         "    UpstreamErrorBody,",
         ")",
     ]
-    return format_python("\n".join(header) + "\n\n\n" + body + "\n", module_path(service))
+    formatted = format_python("\n".join(header) + "\n\n\n" + body + "\n", module_path(service))
+    return format_python(annotate_wire_literals(formatted), module_path(service))
+
+
+def annotate_wire_literals(source: str) -> str:
+    """Mark generated multi-string Literal types without changing the Python AST.
+
+    The source must come from this module's snapshot renderer. Its validated
+    payloads and TypeIs error guards retain plain strings from upstream JSON.
+    """
+    wire_lines = {
+        node.lineno: node.col_offset + len("Literal[")
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Subscript)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "Literal"
+        and isinstance(node.slice, ast.Tuple)
+        and len(node.slice.elts) > 1
+        and all(isinstance(value, ast.Constant) and isinstance(value.value, str) for value in node.slice.elts)
+    }
+    guard = "  # guard-ignore: no-new-multi-string-literal -- raw JSON strings"
+
+    def mark(line: str, column: int) -> str:
+        text = line.removesuffix("\n")
+        if len(text) + len(guard) <= LINE_LENGTH:
+            return text + guard + "\n"
+        indent = len(text) - len(text.lstrip()) + 4
+        return f"{text[:column]}{guard}\n{' ' * indent}{text[column:]}\n"
+
+    return "".join(
+        mark(line, wire_lines[number]) if number in wire_lines else line
+        for number, line in enumerate(source.splitlines(keepends=True), start=1)
+    )
 
 
 def format_python(source: str, path: Path) -> str:

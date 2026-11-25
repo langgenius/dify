@@ -1,15 +1,46 @@
 from configs import dify_config
 from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
+from enums.model_billing import ModelBillingSource
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
+from services.entities.model_billing import TenantModelBillingResolution
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class FeatureService:
+    @staticmethod
+    def supports_workspace_subscription_billing() -> bool:
+        """Return whether workspaces in this deployment have Cloud subscription billing."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
+    @classmethod
+    def protects_tokener_provider_credentials(cls, provider_name: str) -> bool:
+        """Decide whether to protect a provider's platform-owned key for this deployment.
+
+        The caller must pass a resolved provider name. The result selects
+        which provider needs a tenant-scoped managed-key check; it never
+        depends on whether new signup enrollment is currently open.
+        """
+        return cls.supports_workspace_subscription_billing() and provider_name == dify_config.TOKENER_PROVIDER_NAME
+
+    @staticmethod
+    def get_model_billing_resolution(tenant_id: str | None) -> TenantModelBillingResolution:
+        """Resolve a scoped Cloud profile; tenant-less defaults need no database.
+
+        A blank/missing scope is the existing default-feature query, not tenant
+        invocation admission. Real Cloud tenant lookups still fail closed even
+        when new signup admission is disabled.
+        """
+        if not tenant_id or not FeatureService.supports_workspace_subscription_billing():
+            return TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
+        from extensions.application_services.model_billing import build_model_billing_profiles
+
+        return build_model_billing_profiles().resolve(tenant_id)
+
     @staticmethod
     def is_im_centrally_managed() -> bool:
         """Enterprise centrally manages IM channels and default bindings."""
@@ -107,6 +138,9 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
+        billing_profile = cls.get_model_billing_resolution(tenant_id)
+        features.model_billing_source = billing_profile.model_billing_source
+        features.tokener_bootstrap_status = billing_profile.tokener_bootstrap_status
         features.im_centrally_managed = cls.is_im_centrally_managed()
         features.agent_preview_enabled = cls.is_agent_preview_enabled()
         if exclude_vector_space:
@@ -215,8 +249,13 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
+        """Expose hosted providers under the workspace's billing policy."""
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return cls._fulfill_trial_models_from_env()
+
+        if cls.get_model_billing_resolution(tenant_id).uses_tokener:
+            # For Tokener these flags describe the hosted catalog, not old
+            # credit plans. Tokener enforces the actual balance at invocation.
             return cls._fulfill_trial_models_from_env()
 
         quota_types = ("PAID", "TRIAL") if cls._is_paid_cloud_workspace(tenant_id) else ("TRIAL",)

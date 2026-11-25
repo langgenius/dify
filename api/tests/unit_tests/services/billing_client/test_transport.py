@@ -216,7 +216,19 @@ def test_transport_branches_on_no_specific_reason() -> None:
     ]
     reasons = {reason for reason_type in reason_types for reason in get_args(reason_type.__value__)}
 
-    assert len(reason_types) == 10
+    assert {reason_type.__name__ for reason_type in reason_types} == {
+        "AccountErrorReason",
+        "BillingComplianceErrorReason",
+        "BillingEducationErrorReason",
+        "BillingInvoiceErrorReason",
+        "BillingModelProviderErrorReason",
+        "BillingQuotaErrorReason",
+        "BillingSubscriptionErrorReason",
+        "BillingTokenerErrorReason",
+        "SaasNetworkAccessPolicyErrorReason",
+        "SaasNotificationErrorReason",
+        "UtmErrorReason",
+    }
     assert [reason for reason in reasons if reason and reason in source] == []
 
 

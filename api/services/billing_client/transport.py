@@ -76,6 +76,10 @@ ENFORCED_RESPONSE_PATHS: frozenset[str] = frozenset(
     }
 )
 
+_TOKENER_RESPONSE_PATHS = frozenset(
+    {"/internal/v1/tokener/tenants/{tenant_id}/bootstrap", "/internal/v1/tokener/tenants/{tenant_id}/metering"}
+)
+
 type HTTPMethod = Literal["GET", "POST", "PUT", "DELETE"]
 type QueryValue = str | int | float | bool | list[str]
 
@@ -94,6 +98,7 @@ _NON_REASON_CHARACTERS = re.compile(r"[^A-Z0-9_]")
 class Upstream(StrEnum):
     BILLING = "billing"
     BILLING_QUOTA = "billing_quota"
+    TOKENER_BILLING = "tokener_billing"
     SAAS = "saas"
     NETWORK_ACCESS = "network_access"
 
@@ -117,9 +122,16 @@ def _base_url(upstream: Upstream) -> str:
     billing_url = dify_config.BILLING_API_URL
     if upstream == Upstream.BILLING_QUOTA:
         return dify_config.BILLING_QUOTA_API_URL or billing_url
+    if upstream == Upstream.TOKENER_BILLING:
+        return dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
     if upstream == Upstream.NETWORK_ACCESS:
         return (dify_config.NETWORK_ACCESS_API_URL.strip() or billing_url).rstrip("/")
     return billing_url
+
+
+def tokener_billing_is_configured() -> bool:
+    """Expose only whether the private, non-fallback Tokener Billing upstream is configured."""
+    return bool(_base_url(Upstream.TOKENER_BILLING))
 
 
 @retry(
@@ -128,12 +140,21 @@ def _base_url(upstream: Upstream) -> str:
     retry=retry_if_exception_type(httpx.RequestError),
     reraise=True,
 )
-def _send(method: HTTPMethod, url: str, *, params: Mapping[str, QueryValue], json: object | None) -> httpx.Response:
+def _send(
+    method: HTTPMethod,
+    url: str,
+    *,
+    params: Mapping[str, QueryValue],
+    json: object | None,
+    follow_redirects: bool = True,
+) -> httpx.Response:
     headers = {
         "Content-Type": "application/json",
         "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
-    return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=True)
+    return _http_client.request(
+        method, url, params=params, json=json, headers=headers, follow_redirects=follow_redirects
+    )
 
 
 def request[ResponseT: BillingModel](
@@ -147,26 +168,46 @@ def request[ResponseT: BillingModel](
     params: Mapping[str, QueryValue],
     body: BillingModel | None,
 ) -> ResponseT:
+    tokener = upstream == Upstream.TOKENER_BILLING
+    if tokener != (path in _TOKENER_RESPONSE_PATHS):
+        raise ValueError("Tokener operations require their designated upstream")
+    base_url = _base_url(upstream)
+    if tokener and not base_url:
+        raise errors.unavailable("Tokener Billing is not configured")
     resolved_path = path.format_map({name: quote(value, safe="") for name, value in path_params.items()})
-    url = f"{_base_url(upstream)}{resolved_path}"
+    url = f"{base_url}{resolved_path}"
     request_json = body.model_dump(mode="json") if body is not None else None
     try:
-        response = _send(method, url, params=params, json=request_json)
+        if tokener:
+            # The service credential and bootstrap reply may not leave this upstream.
+            response = _send(method, url, params=params, json=request_json, follow_redirects=False)
+        else:
+            response = _send(method, url, params=params, json=request_json)
     except httpx.RequestError as error:
         raise errors.unavailable(f"{method} {path} failed") from error
 
     if response.status_code != httpx.codes.OK:
         message = f"{method} {path} returned {response.status_code}"
         status_code = response.status_code
-        error_body, reason = _error_details(response, errors.is_reason, upstream, method, path)
         error_type = (
             errors.unavailable
             if status_code in _UNAVAILABLE_STATUSES or status_code >= 500
             else errors.invalid_response
         )
+        if tokener:
+            raise error_type(message, status_code=status_code)
+        error_body, reason = _error_details(response, errors.is_reason, upstream, method, path)
         raise error_type(message, status_code=status_code, body=error_body, reason=reason)
 
     invalid_body = f"{method} {path} returned an invalid body"
+    if tokener:
+        try:
+            return response_model.model_validate_json(response.content, strict=True)
+        except ValidationError:
+            # Do not chain validation details: a malformed reply can contain a one-time key.
+            pass
+        del response
+        raise errors.invalid_response(invalid_body)
     try:
         payload = json.loads(response.content)
     except ValueError as error:

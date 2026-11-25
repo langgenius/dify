@@ -1,6 +1,7 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import type { ModelProvider } from '../../declarations'
+import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
@@ -76,7 +77,7 @@ const renderQuotaPanel = (ui: ReactElement) => {
   if (credits)
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
-      credits,
+      zModelProviderCreditsResponse.parse(credits),
     )
   return renderWithConsoleQuery(ui, { queryClient, trialModels: mockTrialModels ?? [] })
 }

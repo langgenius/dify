@@ -18,9 +18,12 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from enums.model_billing import ModelBillingSource
 from events.event_handlers import update_provider_when_message_created
 from models import AppMode, Message
 from models.provider import ProviderType
+from services.entities.model_billing import TenantModelBillingResolution
+from services.model_billing_profile_service import ModelBillingProfileResolutionError
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -45,11 +48,27 @@ def _app_config(tenant_id: str, app_mode: AppMode) -> EasyUIBasedAppConfig:
     )
 
 
-def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient(
+@pytest.mark.parametrize("cohort", ["legacy", "tokener", "unavailable"])
+def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
+    monkeypatch: pytest.MonkeyPatch,
+    cohort: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Given a complete trial invocation and limited balance, cap the debit at the remaining balance."""
+    """Cap debits to legacy balance; a native or unknown cohort must not debit that pool."""
     tenant_id = str(uuid4())
+    if cohort != "legacy":
+
+        def read_billing_scope(requested_tenant_id: str) -> TenantModelBillingResolution:
+            assert requested_tenant_id == tenant_id
+            if cohort == "unavailable":
+                raise ModelBillingProfileResolutionError("profile unavailable")
+            return TenantModelBillingResolution(ModelBillingSource.TOKENER)
+
+        monkeypatch.setattr(
+            update_provider_when_message_created.FeatureService,
+            "get_model_billing_resolution",
+            read_billing_scope,
+        )
     system_configuration = SystemConfiguration(
         enabled=True,
         current_quota_type=ProviderQuotaType.TRIAL,
@@ -88,10 +107,13 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
             application_generate_entity=application_generate_entity,
         )
 
-    mock_deduct.assert_called_once()
-    assert mock_deduct.call_args.kwargs["credits_required"] == 3
-    assert mock_deduct.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
-    assert "Credit pool exhausted during message-created accounting" in caplog.text
+    if cohort == "legacy":
+        mock_deduct.assert_called_once()
+        assert mock_deduct.call_args.kwargs["credits_required"] == 3
+        assert mock_deduct.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
+        assert "Credit pool exhausted during message-created accounting" in caplog.text
+    else:
+        mock_deduct.assert_not_called()
 
 
 def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:

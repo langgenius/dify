@@ -44,6 +44,7 @@ const renderComponent = (node: ReactElement) => {
     )
   }
   queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(), {
+    model_billing_source: 'legacy_message_credits',
     pool_type: 'trial',
     quota_limit: 100,
     quota_used: exhausted ? 100 : 40,

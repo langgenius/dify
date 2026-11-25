@@ -143,6 +143,13 @@ class SystemFeatureService:
     def is_trial_app_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
 
+    @staticmethod
+    def is_tokener_signup_enrollment_enabled() -> bool:
+        """Return whether a self-signup producer may record a new Tokener enrollment."""
+        return (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.TOKENER_NEW_TENANT_COHORT_ENABLED
+        )
+
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel) -> None:
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN

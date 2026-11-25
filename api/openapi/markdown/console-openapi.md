@@ -27642,7 +27642,9 @@ Effective feature availability and limits for the current workspace.
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_billing_source | [ModelBillingSource](#modelbillingsource) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
+| tokener_bootstrap_status | [TenantTokenerIntegrationStatus](#tenanttokenerintegrationstatus) |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workflow_collaboration_enabled | boolean |  | Yes |
@@ -32610,6 +32612,12 @@ Invitation code is required.
 | text_embedding | boolean |  | No |
 | tts | boolean |  | No |
 
+#### ModelBillingSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelBillingSource | string |  |  |
+
 #### ModelConfig
 
 | Name | Type | Description | Required |
@@ -32705,11 +32713,14 @@ Enum class for model property key.
 | exhausted_at | integer |  | Yes |
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
+| model_billing_source | [ModelBillingSource](#modelbillingsource) |  | No |
 | next_credit_reset_date | integer |  | Yes |
 | pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+| tokener_bootstrap_status | [TenantTokenerIntegrationStatus](#tenanttokenerintegrationstatus) |  | No |
+| tokener_metering | [TokenerMeteringResponse](#tokenermeteringresponse) |  | No |
 
 #### ModelProviderCustomConfigurationSummaryResponse
 
@@ -37381,6 +37392,14 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
 
+#### TenantTokenerIntegrationStatus
+
+Durable non-secret stages of a new-registration bootstrap.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantTokenerIntegrationStatus | string | Durable non-secret stages of a new-registration bootstrap. |  |
+
 #### TextContentResponse
 
 | Name | Type | Description | Required |
@@ -37456,6 +37475,58 @@ Timeout unit for form expiration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TimeoutUnit_Strict_strict_False_ | string | Timeout unit for form expiration. |  |
+
+#### TokenerAllowanceMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| amount_usd_micro | string |  | Yes |
+| available_usd_micro | string |  | Yes |
+| ends_at | string |  | Yes |
+| source_ref | string |  | Yes |
+| starts_at | string |  | Yes |
+| window_id | string |  | Yes |
+
+#### TokenerCurrentMonthAvailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| billed_usd_micro | string |  | Yes |
+| end_date | string |  | Yes |
+| request_count | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerCurrentMonthUnavailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_date | string |  | Yes |
+| error_code | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerEntitlementStatus
+
+Activity reported by the Tokener entitlement metering endpoint.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TokenerEntitlementStatus | string | Activity reported by the Tokener entitlement metering endpoint. |  |
+
+#### TokenerMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowance | [TokenerAllowanceMeteringResponse](#tokenerallowancemeteringresponse) |  | No |
+| available_usd_micro | string |  | Yes |
+| balance_generated_at | string |  | Yes |
+| currency | string |  | Yes |
+| current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
+| entitlement_error_code | string |  | No |
+| entitlement_status | [TokenerEntitlementStatus](#tokenerentitlementstatus) |  | No |
+| tenant_id | string |  | Yes |
+| usage_generated_at | string |  | No |
 
 #### TokensPerSecondStatisticItem
 

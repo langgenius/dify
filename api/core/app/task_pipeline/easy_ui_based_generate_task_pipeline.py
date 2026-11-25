@@ -549,7 +549,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
             completion_tokens = model_instance.get_llm_num_tokens([self._task_state.llm_result.message])
 
-        credentials = model_config.credentials
+        credentials = model_instance.credentials
 
         # transform usage
         model_type_instance = model_config.provider_model_bundle.model_type_instance

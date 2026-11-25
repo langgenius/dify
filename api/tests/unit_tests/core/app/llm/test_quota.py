@@ -230,6 +230,47 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
     assert credit_reservation.state == CreditPoolReservationState.COMMITTED
 
 
+@pytest.mark.parametrize(
+    ("model_type", "model"), [(ModelType.LLM, "gpt-4o"), (ModelType.TEXT_EMBEDDING, "text-embedding-3-small")]
+)
+def test_tokener_funded_system_invocations_do_not_reserve_or_settle_legacy_credits(
+    model_type: ModelType, model: str
+) -> None:
+    provider_configuration = _provider_configuration(
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            tokener_funded=True,
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
+                    quota_type=ProviderQuotaType.TRIAL,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    with (
+        patch(
+            "core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(provider_configuration)
+        ),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits") as reserve,
+        patch("core.app.llm.quota._deduct_used_model_quota") as deduct,
+    ):
+        reservation = reserve_model_quota_for_model(
+            tenant_id="tenant-id", provider="openai", model_type=model_type, model=model
+        )
+        reservation.commit()
+        reservation.release()
+    assert reservation.state == LLMQuotaReservationState.COMMITTED
+    assert reservation.credit_pool_reservation is None
+    reserve.assert_not_called()
+    deduct.assert_not_called()
+
+
 def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
     credit_reservation = CreditPoolReservation(
         tenant_id="tenant-id",

@@ -210,6 +210,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
+        "tasks.bootstrap_tokener_tenant_task",  # explicit new-registration Tokener provisioning
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
@@ -229,6 +230,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK:
+        beat_schedule["tokener_bootstrap_recovery_sweeper"] = {
+            "task": "tasks.bootstrap_tokener_tenant_task.sweep_pending_tokener_integrations_task",
+            "schedule": timedelta(minutes=dify_config.TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL),
+            "options": {"queue": "plugin"},
+        }
     if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
         beat_schedule["evaluation-run-reconciler"] = {
             "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",

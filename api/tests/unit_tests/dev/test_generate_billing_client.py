@@ -1,8 +1,21 @@
+import ast
+
 import pytest
 
 from dev import generate_billing_client as generator
+from services.billing_client.billing import QuotaGetInfoReply
 
 PREFIX = "#/components/schemas/dify.saas.api.billing."
+
+
+@pytest.mark.parametrize("app_runs", [{}, {"app_runs": None}])
+def test_generated_quota_info_accepts_billing_before_app_runs_rollout(app_runs: dict[str, None]) -> None:
+    quota = {"usage": 0, "limit": 10, "reset_date": 0}
+
+    reply = QuotaGetInfoReply.model_validate({"trigger_event": quota, "api_rate_limit": quota, **app_runs})
+
+    assert reply.app_runs is None
+    assert reply.trigger_event.limit == 10
 
 
 def _source_spec() -> generator.JsonObject:
@@ -72,7 +85,7 @@ def subscription_info_only(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(
         generator.ALLOWED_OPERATIONS,
         "billing",
-        (generator.AllowedOperation("GET", "/v1/subscription/info", "BILLING"),),
+        (generator.AllowedOperation("GET", "/v1/subscription/info", generator.UpstreamName.BILLING),),
     )
 
 
@@ -108,15 +121,17 @@ def test_rendered_module_types_fields_and_operations() -> None:
     snapshot = generator.build_snapshot("billing", _source_spec(), "abc123")
 
     source = generator.render_module("billing", snapshot)
-
-    assert 'plan: Literal["sandbox", "team"]' in source
+    normalized_source = ast.unparse(ast.parse(source))
+    assert "plan: Literal['sandbox', 'team']" in normalized_source
     assert "paid_period_end: int\n" in source
     assert "members: Quota | None\n" in source
     assert "usage_unknown: bool | None = None\n" in source
     assert "renewed_at: datetime\n" in source
     assert "def subscription_get_subscription_info() -> GetSubscriptionInfoReply:" in source
     assert '"/subscription/info",' in source
-    assert 'type BillingSubscriptionErrorReason = Literal["", "CODEC", "MISSING_PLAN"]' in source
+    assert "type BillingSubscriptionErrorReason = Literal['', 'CODEC', 'MISSING_PLAN']" in normalized_source
+    assert "# guard-ignore: no-new-multi-string-literal -- raw JSON strings" in source
+    assert "Upstream.BILLING," in source
     assert "def _is_billing_subscription_error_reason(value: str) -> TypeIs[BillingSubscriptionErrorReason]:" in source
     assert "errors=BILLING_SUBSCRIPTION_ERRORS," in source
     assert "class BillingSubscriptionUpstreamError(BillingUpstreamError):" in source
@@ -136,8 +151,8 @@ def test_rendered_module_gives_each_service_its_own_errors(monkeypatch: pytest.M
         generator.ALLOWED_OPERATIONS,
         "billing",
         (
-            generator.AllowedOperation("GET", "/v1/subscription/info", "BILLING"),
-            generator.AllowedOperation("GET", "/v1/coupons/stripe", "BILLING"),
+            generator.AllowedOperation("GET", "/v1/subscription/info", generator.UpstreamName.BILLING),
+            generator.AllowedOperation("GET", "/v1/coupons/stripe", generator.UpstreamName.BILLING),
         ),
     )
     snapshot = generator.build_snapshot("billing", _source_spec(), "abc123")
@@ -155,7 +170,7 @@ def test_rendered_module_gives_each_service_its_own_errors(monkeypatch: pytest.M
 
 
 def test_long_operation_docstring_is_wrapped() -> None:
-    allowed = generator.AllowedOperation("GET", f"/v1/subscription/{'x' * 80}", "BILLING")
+    allowed = generator.AllowedOperation("GET", f"/v1/subscription/{'x' * 80}", generator.UpstreamName.BILLING)
     operation = {
         "operationId": "BillingSubscription_GetSubscriptionInfo",
         "responses": {"200": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Reply"}}}}},
@@ -262,6 +277,7 @@ def test_committed_snapshots_keep_only_the_reasons_of_called_services() -> None:
         "BillingModelProviderErrorReason",
         "BillingQuotaErrorReason",
         "BillingSubscriptionErrorReason",
+        "BillingTokenerErrorReason",
     ]
     assert sorted(reason_schemas["saas"]) == [
         "AccountErrorReason",

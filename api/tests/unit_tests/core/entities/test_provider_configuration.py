@@ -6,6 +6,7 @@ from collections.abc import Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -62,6 +63,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
+from models.tokener import TenantTokenerIntegration
 
 
 def _build_provider_configuration(*, provider_name: str = "openai") -> ProviderConfiguration:
@@ -96,6 +98,26 @@ def _build_provider_configuration(*, provider_name: str = "openai") -> ProviderC
             custom_configuration=CustomConfiguration(provider=None, models=[]),
             model_settings=[],
         )
+
+
+def test_bound_tokener_credential_protection_is_tenant_scoped(sqlite_session: Session) -> None:
+    configuration = _build_provider_configuration(provider_name="langgenius/tokener/tokener")
+    configuration.tenant_id = str(uuid4())
+    managed_id = str(uuid4())
+    foreign_id = str(uuid4())
+    sqlite_session.add_all(
+        [
+            TenantTokenerIntegration(tenant_id=configuration.tenant_id, provider_credential_id=managed_id),
+            TenantTokenerIntegration(tenant_id=str(uuid4()), provider_credential_id=foreign_id),
+        ]
+    )
+    sqlite_session.commit()
+
+    configuration.bind_managed_tokener_credential_protection(enabled=True)
+    with pytest.raises(ValueError, match="platform-managed credential"):
+        configuration._reject_managed_tokener_credential_mutation(sqlite_session, managed_id)
+    configuration._reject_managed_tokener_credential_mutation(sqlite_session, foreign_id)
+    configuration._reject_managed_tokener_credential_mutation(sqlite_session, str(uuid4()))
 
 
 def _build_ai_model(name: str, *, model_type: ModelType = ModelType.LLM) -> AIModelEntity:

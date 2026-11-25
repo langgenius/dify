@@ -692,6 +692,7 @@ def test_retried_gateway_delivery_uses_one_effective_billing_charge(
     provider_configuration = bundle.configuration
     provider_configuration.tenant_id = request.caller.tenant_id
     provider_configuration.provider.models = [model.model_schema]
+    provider_configuration.preferred_provider_type = ProviderType.SYSTEM
     provider_configuration.using_provider_type = ProviderType.SYSTEM
     provider_configuration.system_configuration = SystemConfiguration(
         enabled=True,

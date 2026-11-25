@@ -4,6 +4,7 @@ from unittest.mock import patch
 from uuid import UUID
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.credit_usage import CreditUsageAppType
@@ -228,3 +229,41 @@ def test_deduct_credits_capped_generates_a_request_id_when_absent() -> None:
     generated_request_id = quota_consume_capped.call_args.kwargs["request_id"]
     assert str(UUID(generated_request_id)) == generated_request_id
     assert quota_consume_capped.call_args.kwargs["bucket"] == "trial"
+
+
+@pytest.mark.parametrize("operation", ["get", "reserve", "capped"])
+def test_native_signup_profile_blocks_new_legacy_quota_io(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    from enums import DeploymentEdition
+    from models.account import Tenant
+    from models.model_billing import TenantModelBillingProfile
+    from services.billing_service import BillingService
+    from services.errors.billing import LegacyCreditPoolManagedByTokenerError
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    tenant = Tenant(name="Native signup no legacy quota")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"))
+    sqlite_session.commit()
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("native profile must not call legacy Billing quota APIs")
+
+    monkeypatch.setattr(BillingService, "quota_get_balance", forbidden)
+    monkeypatch.setattr(BillingService, "quota_reserve", forbidden)
+    monkeypatch.setattr(BillingService, "quota_consume_capped", forbidden)
+
+    def invoke() -> object:
+        if operation == "get":
+            return CreditPoolService.get_pool(tenant.id)
+        if operation == "reserve":
+            return CreditPoolService.reserve_credits(tenant.id, 1, request_id="native-blocked")
+        return CreditPoolService.deduct_credits_capped(tenant.id, 1)
+
+    with pytest.raises(LegacyCreditPoolManagedByTokenerError, match="credits_managed_by_tokener"):
+        invoke()

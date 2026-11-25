@@ -10,9 +10,15 @@ from configs import dify_config
 from core.entities.provider_configuration import ProviderModelBundle
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
-from extensions.application_services.moderation_policy import platform_moderation_enabled
+from extensions.application_services.moderation_policy import (
+    platform_moderation_configured,
+    platform_moderation_enabled,
+)
+from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import AppRequestContext
+from models.provider import ProviderType
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
+from repositories.tokener_bootstrap_repository import TokenerBootstrapRepository
 from services.api_based_extension_adapters import WorkspaceTokenCipher
 from services.moderation_adapters import (
     ChainedLLMModerationPolicy,
@@ -25,6 +31,33 @@ from services.moderation_service import ModerationPhase, ModerationRule, Moderat
 
 if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
+
+
+def _managed_tokener_moderation_enabled(bundle: ProviderModelBundle, credential_id: str | None) -> bool:
+    """Select a native managed credential without changing shared hosted admission.
+
+    Only a durably bound credential of an enrolled workspace qualifies. Source
+    provider credits are handled by the generic SYSTEM policy.
+    """
+    configuration = bundle.configuration
+    if (
+        not platform_moderation_configured()
+        or bundle.model_type_instance.model_type != ModelType.LLM
+        or configuration.using_provider_type != ProviderType.CUSTOM
+        or credential_id is None
+        or configuration.provider.provider != dify_config.TOKENER_PROVIDER_NAME
+    ):
+        return False
+
+    from core.db.session_factory import session_factory
+    from extensions.application_services.model_billing import build_model_billing_profiles
+
+    if not build_model_billing_profiles().resolve(configuration.tenant_id).uses_tokener:
+        return False
+    bound_id, _active = TokenerBootstrapRepository(sessions=session_factory.create_session).bound_credential(
+        configuration.tenant_id, configuration.provider.provider
+    )
+    return bound_id is not None and credential_id == bound_id
 
 
 def build_platform_moderation_service() -> ModerationService:
@@ -53,10 +86,10 @@ def platform_moderation_credentials() -> dict[str, str] | None:
 
 
 def bind_hosted_llm_moderation(
-    bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None
+    bundle: ProviderModelBundle, *, policy: LLMModerationPolicy | None, credential_id: str | None = None
 ) -> LLMModerationPolicy | None:
-    """Bind both phases when enabled without I/O; explicit policies supplement rather than replace them."""
-    if not platform_moderation_enabled(bundle):
+    """Bind both phases; a native selected credential requires durable ownership reads that fail closed."""
+    if not (platform_moderation_enabled(bundle) or _managed_tokener_moderation_enabled(bundle, credential_id)):
         return policy
     guard = build_llm_moderation_guard(
         AppRequestContext(tenant_id=bundle.configuration.tenant_id, app_id=""),
