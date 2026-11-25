@@ -86,6 +86,7 @@ from controllers.openapi._models import (
     DslIssueRow,
     EnvVariableListResponse,
     EnvVariableSetPayload,
+    FileResultResponse,
     FileUploadPayload,
     FormSubmitResponse,
     HealthResponse,
@@ -178,6 +179,11 @@ from controllers.openapi._models import (
     ToolListResponse,
     ToolProviderDetailResponse,
     ToolProviderRow,
+    TransferredFile,
+    UploadCommands,
+    UploadPrepared,
+    UploadPreparePayload,
+    UploadReceived,
     UsageInfo,
     VersionListQuery,
     VersionListResponse,
@@ -242,7 +248,9 @@ api = _OpenApi(
     description="User-scoped programmatic API (bearer auth). A stream operation called with the header "
     "X-Dify-Stream-Result: job runs as a background job and answers JSON with the job's state instead of the "
     "stream; X-Dify-Job-Wait-Seconds sets how long it waits for a result and Idempotency-Key makes a repeated call "
-    "return the first job. Without the header it streams.",
+    "return the first job. Without the header it streams. A file operation called with the header "
+    "X-Dify-File-Result: transfer parks its file and answers JSON with a transfer id and a short-lived "
+    "download link instead of the bytes. Without the header it answers the file itself.",
     error_body_formatter=OpenApiErrorFormatter(),
 )
 
@@ -281,6 +289,7 @@ register_schema_models(
     DocumentListQuery,
     DraftWorkflowRunPayload,
     FileUploadPayload,
+    UploadPreparePayload,
     MemberInvitePayload,
     MemberListQuery,
     MemberRoleUpdatePayload,
@@ -365,6 +374,11 @@ register_response_schema_models(
     MemberActionResponse,
     TaskStopResponse,
     JobState,
+    UploadCommands,
+    UploadPrepared,
+    UploadReceived,
+    TransferredFile,
+    FileResultResponse,
     FormSubmitResponse,
     HumanInputFormDefinitionResponse,
     DeviceCodeResponse,
@@ -485,6 +499,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         plugins,
         skills,
         tool_providers,
+        transfers,
         workflow_events,
         workflow_tools,
         workspaces,
@@ -519,6 +534,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         plugins,
         skills,
         tool_providers,
+        transfers,
         workflow_events,
         workflow_tools,
         workspaces,
@@ -554,6 +570,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     plugins,
     skills,
     tool_providers,
+    transfers,
     workflow_events,
     workflow_tools,
     workspaces,
@@ -592,6 +609,7 @@ __all__ = [
     "plugins",
     "skills",
     "tool_providers",
+    "transfers",
     "workflow_events",
     "workflow_tools",
     "workspaces",

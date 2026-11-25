@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from flask import request
@@ -25,6 +24,7 @@ from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.subjects import AccountSubject
 from core.logging.context import get_request_id, get_trace_id
 from extensions.ext_application_services import application_services
+from libs.datetime_utils import to_utc_iso
 from libs.rate_limit import LIMIT_ME_PER_ACCOUNT, enforce
 from machinery.context import AccountRequestContext
 from machinery.scope import scope_admits
@@ -148,23 +148,15 @@ def _request_context(ctx: Context) -> AccountRequestContext:
     )
 
 
-def _iso(dt: datetime | None) -> str | None:
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt.isoformat().replace("+00:00", "Z")
-
-
 def _session_row(session: AccountSessionSnapshot) -> SessionRow:
     return SessionRow(
         id=session.id,
         prefix=session.prefix,
         client_id=session.client_id,
         device_label=session.device_label,
-        created_at=_iso(session.created_at),
-        last_used_at=_iso(session.last_used_at),
-        expires_at=_iso(session.expires_at),
+        created_at=to_utc_iso(session.created_at),
+        last_used_at=to_utc_iso(session.last_used_at),
+        expires_at=to_utc_iso(session.expires_at),
     )
 
 

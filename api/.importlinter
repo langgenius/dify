@@ -919,6 +919,18 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:file-transfer-transport-boundary]
+name = File transfer transport reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.openapi._transfer
+    controllers.openapi.transfers
+forbidden_modules =
+    models
+    repositories
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:account-activation-service-boundary]
 name = Account activation application service is framework and persistence neutral
 type = forbidden

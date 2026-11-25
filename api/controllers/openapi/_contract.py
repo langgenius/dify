@@ -31,11 +31,13 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
 from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits, refuse_invalid_request
+from controllers.openapi._files import end_read_transaction
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._stream_result import answers_stream_or_job, check_stream_op
-from controllers.openapi._upload import file_fields
+from controllers.openapi._transfer import answers_file_as_transfer
+from controllers.openapi._upload import file_fields, folder_fields
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
 from controllers.openapi.auth.router import subject_router
@@ -101,9 +103,9 @@ def multipart_header_allowance(parts: int) -> int:
     return parts * MULTIPART_HEADER_BYTES_PER_PART
 
 
-def _read_body(body_file_fields: frozenset[str]) -> dict[str, Any]:
+def _read_body(body_file_fields: frozenset[str], body_folder_fields: frozenset[str]) -> dict[str, Any]:
     try:
-        return body_from_request(file_fields=body_file_fields)
+        return body_from_request(file_fields=body_file_fields, folder_fields=body_folder_fields)
     except RequestEntityTooLarge as exc:
         limit = request.max_content_length
         if limit is None:
@@ -128,6 +130,7 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
 
     def decorator(view: Callable) -> Callable:
         body_file_fields = file_fields(body) if body is not None else frozenset()
+        body_folder_fields = folder_fields(body) if body is not None else frozenset()
         query_list_fields = _list_fields(query) if query is not None else ()
 
         @wraps(view)
@@ -135,8 +138,14 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
             try:
                 if query is not None:
                     kwargs["query"] = query_params_from_request(query, list_fields=query_list_fields)
+                if body_file_fields:
+                    # End the login step's read transaction, so the body's files (multipart parts or transfers)
+                    # are never read while it holds a connection.
+                    ctx = kwargs.get("ctx")
+                    if isinstance(ctx, Context):
+                        end_read_transaction(ctx.session)
                 if body is not None:
-                    kwargs["body"] = body.model_validate(_read_body(body_file_fields))
+                    kwargs["body"] = body.model_validate(_read_body(body_file_fields, body_folder_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
                 refuse_invalid_request(exc.errors(include_url=False, include_input=False, include_context=False))
@@ -278,6 +287,8 @@ def endpoint(
         decorated = view
         if kind is Kind.LIST:
             decorated = paginated(op)(decorated)
+        if kind is Kind.FILE:
+            decorated = answers_file_as_transfer(decorated)
         if kind is Kind.SSE:
             decorated = answers_stream_or_job(op)(decorated)
         if query is not None or body is not None:

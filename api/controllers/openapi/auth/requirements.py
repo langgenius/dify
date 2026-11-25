@@ -39,6 +39,7 @@ from controllers.openapi._errors import (
     WebAppAccessRequiresEE,
 )
 from controllers.openapi._models import Hint
+from controllers.openapi._transfer import require_file_transfers
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import (
     load_app,
@@ -366,6 +367,16 @@ class CheckSkillEnabled(Requirement):
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
         if not dify_config.ENABLE_SKILL:
             raise SkillsDisabled()
+
+
+class CheckFileTransfersEnabled(Requirement):
+    """Ranked ahead of membership and permission checks so every caller gets 503 while file transfers are off."""
+
+    rank = Rank.EARLY
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        require_file_transfers()
 
 
 class CheckAppAccess(Requirement):
