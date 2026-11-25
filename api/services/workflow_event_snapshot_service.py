@@ -91,12 +91,18 @@ def build_workflow_event_stream(
     tenant_id: str,
     app_id: str,
     session_maker: sessionmaker[Session],
-    human_input_surface: HumanInputSurface | None = None,
+    human_input_surface: HumanInputSurface,
     idle_timeout: float = 300,
     ping_interval: float = 10.0,
     close_on_pause: bool = True,
     include_node_details: bool = False,
 ) -> Generator[Mapping[str, Any] | str]:
+    """Replay admitted run state for an explicit entry before forwarding live events.
+
+    The caller authorizes the tenant, app and run. Legacy form snapshot tokens
+    are restricted by the current endpoint's surface, regardless of run origin;
+    building the snapshot never changes form recipients or their tokens.
+    """
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
@@ -404,8 +410,13 @@ def _build_paused_snapshot_events(
     node_executions: Mapping[str, WorkflowNodeExecutionModel],
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session],
-    human_input_surface: HumanInputSurface | None = None,
+    human_input_surface: HumanInputSurface,
 ) -> list[Mapping[str, Any]]:
+    """Replay waiting forms for an admitted run and explicit response entry.
+
+    Use the persisted pause and supplied context without changing form state.
+    Legacy form tokens are restricted to the response entry's recipients.
+    """
     events = _build_snapshot_events(
         workflow_run=workflow_run,
         node_snapshots=node_snapshots,
@@ -558,8 +569,9 @@ def _load_legacy_form_snapshot(
     pause_snapshot: WorkflowPauseSnapshot,
     *,
     session_maker: sessionmaker[Session],
-    human_input_surface: HumanInputSurface | None,
+    human_input_surface: HumanInputSurface,
 ) -> _LegacyFormSnapshot:
+    """Read V1 forms from the admitted pause and filter tokens for the response entry."""
     human_input_form_ids = [
         reason.form_id
         for reason in pause_snapshot.reasons

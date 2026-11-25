@@ -4,7 +4,7 @@ import json
 from collections.abc import Callable, Generator, Iterator
 from typing import cast
 from unittest.mock import Mock
-from uuid import uuid4
+from uuid import UUID, uuid4
 from zipfile import ZipFile
 
 import pytest
@@ -31,7 +31,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from repositories.app.export_repository import AppExportRepository
@@ -59,6 +59,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
+from services.evaluation_service import EvaluationService
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
@@ -226,7 +227,11 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             assert bindings[node_id].agent_id == roster_id
             assert bindings[node_id].current_snapshot_id == roster_snapshot_id
         for node_id in node_ids:
-            assert bindings[node_id].node_job_config_dict == source_jobs[node_id]
+            copied_job = WorkflowNodeJobConfig.model_validate(bindings[node_id].node_job_config_dict)
+            source_job = WorkflowNodeJobConfig.model_validate(source_jobs[node_id])
+            assert str(UUID(copied_job.session_generation)) == copied_job.session_generation
+            assert copied_job.session_generation != source_job.session_generation
+            assert copied_job == source_job.model_copy(update={"session_generation": copied_job.session_generation})
         if include_inline:
             binding = bindings["inline"]
             assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
@@ -817,7 +822,10 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     # The app event handlers reach the Flask-bound database; this test only checks the saved draft.
     monkeypatch.setattr("services.workflow_service.app_draft_workflow_was_synced", Namespace().signal("synced"))
 
-    AppLifecycleGateway(session_factory=sqlite_session_factory).create_draft(context, app_id)
+    AppLifecycleGateway(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]

@@ -230,6 +230,7 @@ def harness(
 def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_config(
     harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given an admitted caller and invalid saved provider settings, return no questions and log the cause."""
     with harness.factory.begin() as session:
         target = session.get(App, harness.target.id)
         assert target is not None
@@ -254,7 +255,7 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)
@@ -562,7 +563,9 @@ def test_default_admission_keeps_legacy_app_attached(harness: _Harness) -> None:
     harness.app.add_url_rule("/legacy", view_func=view)
     with harness.app.test_request_context("/legacy?user=alice", headers={"Authorization": "Bearer test-token"}):
         assert harness.app.dispatch_request() == "legacy"
-        assert db.session().in_transaction()
+        # The app stays attached to the request session, but admission no longer leaves that
+        # session holding a pooled connection for the handler.
+        assert not db.session().in_transaction()
         assert harness.admissions == []
 
 

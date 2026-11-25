@@ -3,7 +3,7 @@ import type { InputForm, ThoughtItem } from './type'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
-import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
+import type { IOnDataMoreInfo, StreamCallbacks, StreamSender } from '@/service/event-stream'
 import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
@@ -33,9 +33,11 @@ import {
 } from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
-import { sseGet, ssePost } from '@/service/base'
+import { streamEvents } from '@/service/event-stream'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
+import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
@@ -76,9 +78,9 @@ type SendCallback = {
     getAbortController: GetAbortController,
   ) => Promise<unknown>
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
-  onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
+  onUnhandledEvent?: StreamCallbacks['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
-  onNotifyError?: IOtherOptions['onNotifyError']
+  onNotifyError?: StreamCallbacks['onNotifyError']
   isPublicAPI?: boolean
 }
 
@@ -237,7 +239,7 @@ export const useChat = (
   const pausedWorkflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const pausedWorkflowEventsRef = useRef<{
     workflowRunId: string
-    options: IOtherOptions
+    options: StreamCallbacks
   } | null>(null)
   const workflowEventsSubscriptionActiveRef = useRef(false)
   const workflowEventsSubscriptionRunIdRef = useRef<string | null>(null)
@@ -252,7 +254,7 @@ export const useChat = (
     }>
   >([])
   const startWorkflowEventsSubscriptionRef = useRef<
-    ((workflowRunId: string, options: IOtherOptions) => void) | null
+    ((workflowRunId: string, options: StreamCallbacks) => void) | null
   >(null)
   const params = useParams()
   const pathname = usePathname()
@@ -403,7 +405,7 @@ export const useChat = (
   }, [])
 
   const startWorkflowEventsSubscription = useCallback(
-    (workflowRunId: string, options: IOtherOptions) => {
+    (workflowRunId: string, options: StreamCallbacks) => {
       const generation = ++workflowEventsSubscriptionGenerationRef.current
       abortWorkflowEventsRequest(pausedWorkflowEventsAbortControllerRef.current)
       pausedWorkflowEventsAbortControllerRef.current = null
@@ -422,7 +424,7 @@ export const useChat = (
         pausedWorkflowEventsAbortControllerRef.current = null
         return true
       }
-      const subscriptionOptions: IOtherOptions = {
+      const subscriptionOptions: StreamCallbacks = {
         ...options,
         getAbortController: (abortController) => {
           if (generation !== workflowEventsSubscriptionGenerationRef.current) {
@@ -477,9 +479,8 @@ export const useChat = (
         },
       }
 
-      void sseGet(
-        `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`,
-        {},
+      streamEvents(
+        workflowRunEventsRequest(workflowRunId, { isPublicAPI: options.isPublicAPI }),
         subscriptionOptions,
       )
     },
@@ -490,7 +491,7 @@ export const useChat = (
   }, [startWorkflowEventsSubscription])
 
   const ensureWorkflowEventsSubscription = useCallback(
-    (workflowRunId: string, options: IOtherOptions) => {
+    (workflowRunId: string, options: StreamCallbacks) => {
       pausedWorkflowEventsRef.current = { workflowRunId, options }
       if (
         workflowEventsSubscriptionActiveRef.current &&
@@ -666,7 +667,7 @@ export const useChat = (
         hasSettled = true
         onSendSettled?.(hasError)
       }
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         isPublicAPI,
         onNotifyError,
         getAbortController: (abortController) => {
@@ -806,6 +807,12 @@ export const useChat = (
                 responseItem.agent_thoughts.find((item) => item.id === thought.id) ?? thought
               upsertAgentResponseThoughtPart(responseItem, currentThought)
             }
+          })
+        },
+        onAgentLog(agentLog) {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          updateChatTreeNode(messageId, (responseItem) => {
+            upsertWorkflowToolActivity(responseItem, agentLog.data)
           })
         },
         onMessageEnd: (messageEnd) => {
@@ -1093,7 +1100,7 @@ export const useChat = (
 
   const handleSend = useCallback(
     async (
-      url: string,
+      send: StreamSender,
       data: {
         query: string
         files?: FileEntity[]
@@ -1212,7 +1219,7 @@ export const useChat = (
 
       const getOrCreatePlayer = createAudioPlayerManager()
 
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         isPublicAPI,
         onNotifyError,
         onUnhandledEvent,
@@ -1470,6 +1477,16 @@ export const useChat = (
               responseItem.agent_thoughts?.find((item) => item.id === thought.id) ?? thought
             upsertAgentResponseThoughtPart(responseItem, currentThought)
           }
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
+        onAgentLog(agentLog) {
+          if (!isCurrentRequest()) return
+          upsertWorkflowToolActivity(responseItem, agentLog.data)
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -1785,7 +1802,7 @@ export const useChat = (
       // Abort the previous workflow events SSE request
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
-      const postOptions: IOtherOptions = {
+      const postOptions: StreamCallbacks = {
         ...otherOptions,
         onError: (...args) => {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
@@ -1807,13 +1824,7 @@ export const useChat = (
           return otherOptions.onCompleted?.(hasError, errorMessage)
         },
       }
-      ssePost(
-        url,
-        {
-          body: bodyParams,
-        },
-        postOptions,
-      )
+      streamEvents((requestOptions) => send(bodyParams, requestOptions), postOptions)
       return true
     },
     [
@@ -1929,6 +1940,7 @@ export const useChat = (
   )
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The existing clearChatList command resets the imperative chat session and acknowledges it to its owner.
     if (clearChatList) handleRestart(() => clearChatListCallback?.(false))
   }, [clearChatList, clearChatListCallback, handleRestart])
 

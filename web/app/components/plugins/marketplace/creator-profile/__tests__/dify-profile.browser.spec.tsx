@@ -1,34 +1,20 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { TestNavigation } from '@/test/next-navigation'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import DifyCreatorProfile from '../dify-profile'
 
-const api = vi.hoisted(() => ({
-  push: vi.fn(),
-  searchPlugins: vi.fn(),
-  searchTemplates: vi.fn(),
-  installed: vi.fn(),
-}))
+let navigation: TestNavigation
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: api.push }),
-}))
-
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: () => <span aria-hidden />,
-}))
-
-vi.mock('../../detail-dialog/use-silent-install', () => ({
-  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
-}))
-
-// Keep embedded Marketplace documents local while preserving their real route parameters.
+// boundary: embedded Marketplace documents stay local while preserving their real route parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
   const toBlank = (url: string) =>
@@ -42,45 +28,6 @@ vi.mock('@/features/marketplace/links', async (importOriginal) => {
       template: (...args: Parameters<typeof actual.marketplaceLinks.template>) =>
         toBlank(actual.marketplaceLinks.template(...args)),
     },
-  }
-})
-
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceQuery: {
-      ...actual.marketplaceQuery,
-      searchAdvanced: {
-        ...actual.marketplaceQuery.searchAdvanced,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.searchAdvanced.queryOptions(options),
-          queryFn: () => api.searchPlugins(),
-        }),
-      },
-      templateSearch: {
-        ...actual.marketplaceQuery.templateSearch,
-        queryOptions: (
-          options: Parameters<typeof actual.marketplaceQuery.templateSearch.queryOptions>[0],
-        ) => ({
-          ...actual.marketplaceQuery.templateSearch.queryOptions(options),
-          queryFn: () => api.searchTemplates(),
-        }),
-      },
-    },
-  }
-})
-
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': api.installed,
-    }),
   }
 })
 
@@ -172,15 +119,20 @@ const loadedProfile: LoadedCreatorProfile = {
 
 async function renderProfile(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD') {
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+  const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
   })
+  seedModelProviderQueries(queryClient, [])
+  navigation = createTestNavigation({ url: '/marketplace/creator/creator' })
+  const { NavigationProvider } = navigation
   const screen = await render(
-    <ConsoleProvider>
-      <UrlState>
-        <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />
-      </UrlState>
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <UrlState>
+          <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />
+        </UrlState>
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
   return { screen, onUrlUpdate }
 }
@@ -190,15 +142,6 @@ async function chooseSearchResult(
   query: string,
   name: RegExp,
 ) {
-  api.searchPlugins.mockResolvedValue({
-    data: { plugins: query === 'search' ? [searchPlugin] : [], total: query === 'search' ? 1 : 0 },
-  })
-  api.searchTemplates.mockResolvedValue({
-    data: {
-      templates: query === 'template' ? [template] : [],
-      total: query === 'template' ? 1 : 0,
-    },
-  })
   const search = screen.getByPlaceholder('plugin.marketplace.creatorProfile.searchPlaceholder')
   await search.fill(query)
   await expect.element(screen.getByRole('option', { name })).toBeVisible()
@@ -209,16 +152,35 @@ async function chooseSearchResult(
 
 beforeEach(async () => {
   await page.viewport(1280, 900)
-  onTestFinished(guardUnexpectedFetch())
   vi.clearAllMocks()
   const installed = createPluginEntity({
     id: 'installed-deep-research',
     plugin_id: 'dify/deep_research',
     plugin_unique_identifier: 'dify/deep_research:0.0.1@test',
   })
-  api.installed.mockResolvedValue({ plugins: [installed] })
-  api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
-  api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              list: { installations: { ids: { post: () => ({ plugins: [installed] }) } } },
+            },
+          },
+        },
+      },
+      marketplace: {
+        searchAdvanced: ({ body }) => {
+          const plugins = body.query === 'search' ? [searchPlugin] : []
+          return { data: { plugins, total: plugins.length } }
+        },
+        templateSearch: ({ body }) => {
+          const templates = body.query === 'template' ? [template] : []
+          return { data: { templates, total: templates.length } }
+        },
+      },
+    }),
+  )
 })
 
 it('runs the Cloud header, installed card, close/reopen focus, and search result through one owner', async () => {
@@ -266,7 +228,7 @@ it('imports a template only after the real embedded dialog sends its install mes
   )
 
   await expect
-    .poll(() => api.push)
+    .poll(() => navigation.router.push)
     .toHaveBeenCalledExactlyOnceWith('/apps?template-id=template-one')
   await expect.element(dialog).not.toBeInTheDocument()
 })

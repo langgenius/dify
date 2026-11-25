@@ -132,7 +132,7 @@ def create_mcp_error_response(request_id: int | str | None, code: int, message: 
     error_data = ErrorData(code=code, message=message, data=data)
     json_response = JSONRPCError(
         jsonrpc="2.0",
-        id=request_id or 1,
+        id=request_id if request_id is not None else 1,
         error=error_data,
     )
     json_data = json.dumps(jsonable_encoder(json_response))

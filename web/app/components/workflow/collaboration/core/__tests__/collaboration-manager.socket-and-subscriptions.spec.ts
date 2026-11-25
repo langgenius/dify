@@ -62,6 +62,54 @@ it('starts joining before notifying connection listeners', async () => {
   expect(onStateChange).toHaveBeenCalledWith({ isConnected: true })
 })
 
+it('resolves avatar URLs over the active room socket without sending file or account IDs', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  expect(emit).toHaveBeenCalledWith('get_online_user_avatars', expect.any(Function))
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  const avatars = { 'other-sid': 'https://example.com/signed-avatar.png' }
+  ack(null, avatars)
+  await expect(pending).resolves.toEqual(avatars)
+  await expect(manager.getOnlineUserAvatars('another-editor')).resolves.toEqual({})
+  expect(emit).toHaveBeenCalledTimes(1)
+})
+
+it('resolves a successful empty avatar acknowledgement without treating it as a failure', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(null, {})
+  await expect(pending).resolves.toEqual({})
+})
+
+it('rejects an avatar request when the active socket acknowledgement fails', async () => {
+  const { manager, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  ack(new Error('avatar acknowledgement timed out'))
+  await expect(pending).rejects.toThrow('avatar acknowledgement timed out')
+})
+
+it('drops an avatar acknowledgement that completes after the active room switches', async () => {
+  const { manager, store, emit } = await createSession({ appId: 'editor' })
+  const pending = manager.getOnlineUserAvatars('editor')
+  const ack = emit.mock.calls.find(([event]) => event === 'get_online_user_avatars')?.[1]
+  if (typeof ack !== 'function') throw new TypeError('Missing avatar acknowledgement')
+
+  const next = createSocket('socket-other-editor')
+  transports.set('other-editor', next)
+  await connect(manager, 'other-editor', store)
+  ack(null, { 'old-room-sid': 'https://example.com/old-room-avatar.png' })
+
+  await expect(pending).resolves.toEqual({})
+})
+
 it('handles a status and join acknowledgement delivered synchronously', async () => {
   const { manager, receive, emit, socket } = await createSession({
     connected: false,
@@ -89,7 +137,7 @@ it('ignores the old join acknowledgement after a socket reconnects', async () =>
   manager.onJoinFailure(failures)
   receive('connect')
   const oldAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-  if (typeof oldAck !== 'function') throw new Error('Missing initial join acknowledgement')
+  if (typeof oldAck !== 'function') throw new TypeError('Missing initial join acknowledgement')
 
   receive('disconnect', 'transport close')
   socket.id = 'new-session'
@@ -137,7 +185,8 @@ it.each(['before', 'after'] as const)(
     const failures = vi.fn()
     manager.onJoinFailure(failures)
     const initialAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-    if (typeof initialAck !== 'function') throw new Error('Missing initial join acknowledgement')
+    if (typeof initialAck !== 'function')
+      throw new TypeError('Missing initial join acknowledgement')
 
     receive('status', { isLeader: true })
     manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
@@ -158,7 +207,7 @@ it('ignores a rejoin acknowledgement after the editor disconnects', async () => 
   manager.emitCursorMove({ x: 1, y: 2, userId: 'user-1', timestamp: 1 })
   acknowledge('mouse_move', { msg: 'unauthorized' }, 401)
   const rejoinAck = emit.mock.calls.find(([event]) => event === 'user_connect')?.[2]
-  if (typeof rejoinAck !== 'function') throw new Error('Missing rejoin acknowledgement')
+  if (typeof rejoinAck !== 'function') throw new TypeError('Missing rejoin acknowledgement')
 
   manager.disconnect(connectionId)
   rejoinAck({ msg: 'not_entitled' }, 403)

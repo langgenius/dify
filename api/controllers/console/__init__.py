@@ -14,6 +14,7 @@ from controllers.common.errors import (
     NotFoundError,
     UnauthorizedError,
     register_credential_refresh_error_handler,
+    register_moderation_error_handlers,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -38,6 +39,7 @@ api = ExternalApi(
 )
 register_permission_error_handler(api)
 register_credential_refresh_error_handler(api)
+register_moderation_error_handlers(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -141,18 +143,22 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     # Import other controllers
     from . import (
         apikey,
+        evaluation,
         extension,
         feature,
+        file_scan,
         human_input_form,
         init_validate,
         notification,
         onboarding,
+        personal_access_token,
         resource_access_token,
         setup,
         spec,
         system,
         workflow_run_archive,
     )
+    from .agent import api_access as agent_api_access
     from .agent import composer as agent_composer
     from .agent import roster as agent_roster
     from .agent import tracing as agent_tracing
@@ -267,7 +273,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         apikey,
+        evaluation,
         extension,
+        file_scan,
         feature,
         human_input_form,
         human_input_channel,
@@ -275,11 +283,13 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         init_validate,
         notification,
         onboarding,
+        personal_access_token,
         resource_access_token,
         setup,
         spec,
         system,
         workflow_run_archive,
+        agent_api_access,
         agent_composer,
         agent_roster,
         agent_tracing,
@@ -370,7 +380,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    evaluation,
     extension,
+    file_scan,
     feature,
     human_input_form,
     human_input_channel,
@@ -378,11 +390,13 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     init_validate,
     notification,
     onboarding,
+    personal_access_token,
     resource_access_token,
     setup,
     spec,
     system,
     workflow_run_archive,
+    agent_api_access,
     agent_composer,
     agent_roster,
     agent_tracing,
@@ -477,6 +491,7 @@ __all__ = [
     "activate",
     "advanced_prompt_template",
     "agent",
+    "agent_api_access",
     "agent_app_access",
     "agent_app_feature",
     "agent_app_sandbox",
@@ -509,9 +524,11 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
+    "file_scan",
     "forgot_password",
     "generator",
     "hit_testing",
@@ -539,6 +556,7 @@ __all__ = [
     "onboarding",
     "ops_trace",
     "parameter",
+    "personal_access_token",
     "plugin",
     "rag_pipeline",
     "rag_pipeline_datasets",

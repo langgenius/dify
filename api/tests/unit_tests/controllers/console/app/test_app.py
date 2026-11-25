@@ -66,6 +66,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.response import app_detail_response
 from controllers.console.app.site import AppSiteUpdatePayload
 from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
@@ -997,7 +998,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 replace(
                     app_record(app_obj, session=sqlite_session, projection="detail-with-site"),
                     permission_keys=app_obj.permission_keys,
@@ -1101,6 +1102,58 @@ class TestAppResponseModelsCases:
         assert serialized["data"][1]["icon_url"] is None
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "selection",
+        [
+            {"provider": None, "name": None, "mode": "chat", "completion_params": {}},
+            {"provider": "openai", "name": None},
+            {"mode": "chat", "completion_params": {}},
+            {},
+            None,
+            {"provider": "openai", "name": "gpt-4o"},
+        ],
+    )
+    def test_list_and_detail_preserve_unset_model_selection(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, selection: dict[str, object] | None
+    ) -> None:
+        """Stored unset selections remain readable without changing configuration or hiding apps."""
+        app_obj = _persist_response_graph(sqlite_session)
+        app_obj.mode = AppMode.AGENT_CHAT
+        config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+        assert config is not None
+        stored_model = json.dumps(selection) if selection is not None else None
+        config.model = stored_model
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+        )
+        configured = replace(
+            app_record(app_obj, session=sqlite_session),
+            id="00000000-0000-0000-0000-000000000112",
+            app_model_config={"model": {"provider": "openai", "name": "gpt-4o"}},
+        )
+        without_config = replace(configured, id="00000000-0000-0000-0000-000000000113", app_model_config=None)
+        detail = app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        service = AppBoundary(
+            record=detail, records=[configured, without_config, app_record(app_obj, session=sqlite_session)]
+        )
+        monkeypatch.setattr(controller, "application_services", lambda: Services(AppServices(service)))
+
+        with app.test_request_context("/"):
+            data, status = unwrap(controller.AppListApi.get)(controller.AppListApi(), CONTEXT)
+            response = unwrap(controller.AppApi.get)(controller.AppApi(), CONTEXT, app_id=UUID(app_obj.id))
+
+        assert status == 200
+        assert [item["id"] for item in data["data"]] == [configured.id, without_config.id, app_obj.id]
+        assert data["data"][0]["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
+        assert data["data"][1]["model_config"] is None
+        assert data["data"][2]["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["pre_prompt"] == "hello"
+        sqlite_session.expire(config)
+        assert config.model == stored_model
+
+    @staticmethod
     @pytest.mark.parametrize("strategy", [None, "cot", "function-calling"])
     def test_app_detail_preserves_historical_agent_strategy(
         app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, strategy: str | None
@@ -1118,7 +1171,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1140,7 +1193,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1191,7 +1244,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1238,7 +1291,7 @@ class TestAppResponseModelsCases:
             "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
         )
         with app.test_request_context("/"):
-            detail = controller._app_detail_response(
+            detail = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1260,6 +1313,8 @@ class TestAppResponseModelsCases:
             {"dataset_configs": {"retrieval_model": "unsupported"}},
             {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},
             {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unsupported"}},
+            {"model": {"provider": 123, "name": "gpt-4o"}},
+            {"model": {"provider": "openai", "name": ["gpt-4o"]}},
             {"user_input_form": [{"unsupported": {"label": "Name", "variable": "name"}}]},
         ):
             with pytest.raises(ValidationError):
@@ -1311,10 +1366,11 @@ class AppBoundary:
     status: ImportStatus = ImportStatus.COMPLETED
     exported: str | RosterAgentPackageExport = "dsl"
     record: AppRecord = RECORD
+    records: list[AppRecord] = app_field(default_factory=lambda: [RECORD])
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
         self.calls.append(("list", context, params))
-        return AppPage(params.page, params.limit, 1, False, [RECORD])
+        return AppPage(params.page, params.limit, len(self.records), False, self.records)
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
         self.calls.append(("create", context, params))

@@ -52,7 +52,7 @@ const mocks = vi.hoisted(() => {
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post
       >(),
-    upload: vi.fn(),
+    upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
     indexing:
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.byDocumentId.indexingStatus.get
@@ -70,11 +70,6 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   usePathname: () => '/datasets/ds-1/documents/doc-1',
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams(mocks.state.searchParams),
-}))
-
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: mocks.upload,
 }))
 
 const render = (ui: ReactElement) => {
@@ -170,7 +165,7 @@ const indexingStatus = (
 describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.upload.mockResolvedValue({ id: 'file-1', name: 'chunks.csv' })
+    mocks.upload.mockResolvedValue({ id: 'file-1', name: 'chunks.csv', size: 10 })
     mocks.detailRefetch.mockImplementation(
       async () => mocks.state.documentDetail ?? new Promise(() => {}),
     )
@@ -572,6 +567,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': mocks.upload,
       'datasets.byDatasetId.documents.byDocumentId.indexingStatus.get': (input) =>
         mocks.indexing(input),
       'datasets.byDatasetId.documents.byDocumentId.processing.resume.patch': (input) =>

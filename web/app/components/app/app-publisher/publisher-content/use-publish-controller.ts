@@ -6,14 +6,13 @@ import type {
   AppPublisherPublishParams,
 } from '../types'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useQueryClient } from '@tanstack/react-query'
-import { use, useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { use, useCallback, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { consoleQuery } from '@/service/console'
-import { useAppWorkflow, useInvalidateAppWorkflow } from '@/service/use-workflow'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
@@ -21,7 +20,7 @@ import {
 
 type UsePublishControllerParams = Pick<
   AppPublisherProps,
-  'onPublish' | 'onRestore' | 'publishedAt'
+  'onPublish' | 'onPublishEvaluation' | 'onRestore' | 'publishedAt'
 > & {
   appId?: string
   appMode?: AppMode
@@ -55,6 +54,7 @@ export function usePublishController({
   appName,
   onClose,
   onPublish,
+  onPublishEvaluation,
   onRestore,
   publishedAt,
   supportsMultiEnvironment,
@@ -64,7 +64,13 @@ export function usePublishController({
   const publishingRef = useRef(false)
   const queryClient = useQueryClient()
   const workflowStore = use(WorkflowContext)
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const invalidateAppWorkflow = useCallback(
+    (workflowAppId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
+      }),
+    [queryClient],
+  )
   const isWorkflowApp = appMode === 'workflow' || appMode === 'advanced-chat'
   const isChatApp = appMode === 'chat' || appMode === 'agent-chat' || appMode === 'completion'
   const {
@@ -72,7 +78,7 @@ export function usePublishController({
     isError: isPublishedWorkflowError,
     isLoading: isPublishedWorkflowLoading,
     isSuccess: isPublishedWorkflowSuccess,
-  } = useAppWorkflow(isWorkflowApp ? (appId ?? '') : '')
+  } = useQuery(appWorkflowQueryOptions(isWorkflowApp ? (appId ?? '') : ''))
   const currentPublishedAt =
     isWorkflowApp && isPublishedWorkflowSuccess
       ? publishedWorkflow?.created_at
@@ -82,10 +88,11 @@ export function usePublishController({
   const hasPublishedVersion = Boolean(currentPublishedAt)
 
   async function publishApp(
+    publishHandler: AppPublisherProps['onPublish'],
     params?: AppPublisherPublishParams,
     options?: AppPublisherPublishOptions,
   ) {
-    await onPublish?.(params, options)
+    await publishHandler?.(params, options)
     setPublished(true)
 
     const socket = appId ? webSocketClient.getSocket(appId) : null
@@ -121,7 +128,7 @@ export function usePublishController({
     publishingRef.current = true
     setIsPublishing(true)
     try {
-      await publishApp(params)
+      await publishApp(onPublish, params)
     } catch (error) {
       console.warn('[app-publisher] publish failed', error)
       setPublished(false)
@@ -131,8 +138,23 @@ export function usePublishController({
     }
   }
 
+  async function handlePublishEvaluation(params?: AppPublisherPublishParams) {
+    if (publishingRef.current || !onPublishEvaluation) return
+    publishingRef.current = true
+    setIsPublishing(true)
+    try {
+      await publishApp(onPublishEvaluation, params)
+    } catch (error) {
+      console.warn('[app-publisher] evaluation publish failed', error)
+      setPublished(false)
+    } finally {
+      publishingRef.current = false
+      setIsPublishing(false)
+    }
+  }
+
   async function publishWorkflowTool(params?: AppPublisherPublishParams) {
-    await publishApp(params, { showSuccessToast: false })
+    await publishApp(onPublish, params, { showSuccessToast: false })
   }
 
   async function handleRestore() {
@@ -169,6 +191,7 @@ export function usePublishController({
   return {
     currentPublishedAt,
     handlePublish,
+    handlePublishEvaluation,
     handleRestore,
     hasPublishedVersion,
     isChatApp,

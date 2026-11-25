@@ -10,7 +10,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import (
     AppDatasetJoin,
@@ -413,13 +413,15 @@ class TestDatasetServicePermissionsAndLifecycle:
         self, db_session_with_containers: Session
     ) -> None:
         owner, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(db_session_with_containers)
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
         dataset_ref = DatasetRef(tenant_id=tenant.id, dataset_id=str(uuid4()))
 
-        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=features):
+        with patch(
+            "services.knowledge.dataset_service.FeatureService.get_workspace_plan", return_value=None
+        ) as get_workspace_plan:
             result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result == {"document_ids": [], "count": 0}
+        get_workspace_plan.assert_not_called()
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_get_dataset_auto_disable_logs_returns_recent_document_ids(
@@ -443,10 +445,12 @@ class TestDatasetServicePermissionsAndLifecycle:
             dataset_id=dataset.id,
             document_id=str(uuid4()),
         )
-        features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="professional")))
         dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
-        with patch("services.knowledge.dataset_service.FeatureService.get_features", return_value=features):
+        with patch(
+            "services.knowledge.dataset_service.FeatureService.get_workspace_plan",
+            return_value=CloudPlan.PROFESSIONAL,
+        ):
             result = DatasetService.get_dataset_auto_disable_logs(dataset_ref, session=db_session_with_containers)
 
         assert result["count"] == 2

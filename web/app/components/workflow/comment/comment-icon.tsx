@@ -1,26 +1,35 @@
 'use client'
 
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
+import type { PopoverHandle } from '@langgenius/dify-ui/popover'
 import type { FC, PointerEvent as ReactPointerEvent } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
-import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getKeyboardMovement } from '../utils/keyboard-movement'
+import { CommentMarker } from './comment-marker'
 import CommentPreview from './comment-preview'
+import { getCommentMarkerId } from './marker-id'
+import { getCommentParticipants } from './participants'
 
 type CommentIconProps = {
   comment: WorkflowCommentBasic
-  onClick: () => void
+  /** The canvas's comment thread popover; the marker is one of its triggers. */
+  threadHandle: PopoverHandle<unknown>
   isActive?: boolean
-  onPositionUpdate?: (position: { x: number; y: number }) => void
+  /** Called with the marker's comment, so the canvas can pass one stable handler to all. */
+  onPositionUpdate?: (commentId: string, position: { x: number; y: number }) => void
+  /** Called with the marker's comment when its preview opens, a sign its thread may open next. */
+  onPreview?: (commentId: string) => void
 }
 
 export const CommentIcon: FC<CommentIconProps> = memo(
-  ({ comment, onClick, isActive = false, onPositionUpdate }) => {
+  ({ comment, threadHandle, isActive = false, onPositionUpdate, onPreview }) => {
+    const markerId = getCommentMarkerId(comment.id)
     const { t } = useTranslation(['workflow'])
     const descriptionId = useId()
     const { flowToScreenPosition, screenToFlowPosition } = useReactFlow()
@@ -31,16 +40,57 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     })
     const isAuthor = comment.created_by_account?.id === currentUserId
     const [showPreview, setShowPreview] = useState(false)
+    const previewOpen = showPreview && !isActive
+    // The preview mounts when it opens and unmounts once its close animation finishes, so it
+    // can animate both ways without every hovered marker keeping a hidden preview.
+    const [previewMounted, setPreviewMounted] = useState(false)
+    if (previewOpen && !previewMounted) setPreviewMounted(true)
+    const previewRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+      if (previewOpen || !previewMounted) return
+      const element = previewRef.current
+      let aborted = false
+      const unmount = () => {
+        if (!aborted) setPreviewMounted(false)
+      }
+      // As Base UI does: give the close transition a frame to register, wait for every
+      // animation on the preview, and look again if one is replaced; reopening aborts.
+      const waitForAnimations = () => {
+        if (!element || typeof element.getAnimations !== 'function') return unmount()
+        Promise.all(element.getAnimations().map((animation) => animation.finished)).then(
+          unmount,
+          () => {
+            if (!aborted) waitForAnimations()
+          },
+        )
+      }
+      const frame = requestAnimationFrame(waitForAnimations)
+      return () => {
+        aborted = true
+        cancelAnimationFrame(frame)
+      }
+    }, [previewOpen, previewMounted])
     const [dragPosition, setDragPosition] = useState<{ x: number; y: number } | null>(null)
+    // Where the marker was dropped, in canvas coordinates, for the comment it was dropped as. The
+    // new position reaches the comment a few frames later, so the marker stays where it was
+    // dropped until its comment changes: to that position, or back if the move fails.
+    const [drop, setDrop] = useState<{
+      position: { x: number; y: number }
+      comment: WorkflowCommentBasic
+    } | null>(null)
+    if (drop && drop.comment !== comment) setDrop(null)
     const [isDragging, setIsDragging] = useState(false)
     const keyboardPositionRef = useRef<{ x: number; y: number } | null>(null)
+    const dragEndedRef = useRef(false)
     const finishKeyboardMove = useCallback(() => {
       const position = keyboardPositionRef.current
       if (!position) return
       keyboardPositionRef.current = null
       setDragPosition(null)
-      onPositionUpdate?.(position)
-    }, [onPositionUpdate])
+      if (!onPositionUpdate) return
+      setDrop({ position, comment })
+      onPositionUpdate(comment.id, position)
+    }, [comment, onPositionUpdate])
     const dragStateRef = useRef<{
       offsetX: number
       offsetY: number
@@ -70,7 +120,9 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       flowToScreenPosition,
     ])
 
-    const effectiveScreenPosition = dragPosition ?? screenPosition
+    const effectiveScreenPosition =
+      dragPosition ??
+      (drop && drop.comment === comment ? flowToScreenPosition(drop.position) : screenPosition)
     const canvasPosition = useMemo(
       () => ({
         x: effectiveScreenPosition.x - containerLeft,
@@ -87,6 +139,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
     const handlePointerDown = useCallback(
       (event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0) return
+        dragEndedRef.current = false
 
         event.stopPropagation()
         event.preventDefault()
@@ -163,25 +216,30 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         setShowPreview(false)
 
         if (didDrag) {
+          // Only a drag on the marker itself is followed by a click on it to swallow.
+          dragEndedRef.current = event.currentTarget.dataset.role === 'comment-marker'
           if (onPositionUpdate) {
             const flowPosition = screenToFlowPosition({
               x: finalScreenPosition.x,
               y: finalScreenPosition.y,
             })
-            onPositionUpdate(flowPosition)
+            setDrop({ position: flowPosition, comment })
+            onPositionUpdate(comment.id, flowPosition)
           }
-        } else if (!isActive) {
-          onClick()
+        } else if (event.currentTarget.dataset.role === 'comment-preview' && !isActive) {
+          threadHandle.open(markerId)
         }
       },
       [
+        comment,
         dragPosition,
         finishDrag,
         isActive,
-        onClick,
+        markerId,
         onPositionUpdate,
         screenPosition,
         screenToFlowPosition,
+        threadHandle,
       ],
     )
 
@@ -194,38 +252,53 @@ export const CommentIcon: FC<CommentIconProps> = memo(
       [finishDrag],
     )
 
-    const handleMouseEnter = useCallback(() => {
-      if (isActive || isDragging) return
+    // A preview dismissed with Escape stays closed until the pointer moves anywhere outside
+    // the marker; otherwise the marker revealed under the pointer would reopen it.
+    const dismissedRef = useRef(false)
+    const stopDismissalRef = useRef<() => void>(undefined)
+    const dismissPreview = useCallback(() => {
+      dismissedRef.current = true
+      setShowPreview(false)
+      stopDismissalRef.current?.()
+      const handlePointerMove = (event: PointerEvent) => {
+        // The closing preview still covers the marker while it animates out.
+        const marker = document.getElementById(markerId)
+        if (
+          event.target instanceof Node &&
+          (marker?.contains(event.target) || previewRef.current?.contains(event.target))
+        )
+          return
+        stopDismissalRef.current?.()
+      }
+      document.addEventListener('pointermove', handlePointerMove)
+      stopDismissalRef.current = () => {
+        dismissedRef.current = false
+        document.removeEventListener('pointermove', handlePointerMove)
+        stopDismissalRef.current = undefined
+      }
+    }, [markerId])
+    useEffect(() => () => stopDismissalRef.current?.(), [])
+    const openPreview = useCallback(() => {
+      if (isActive || isDragging || dismissedRef.current) return
       setShowPreview(true)
-    }, [isActive, isDragging])
+      onPreview?.(comment.id)
+    }, [comment.id, isActive, isDragging, onPreview])
+
+    // Content shown on hover can be dismissed without moving the pointer (WCAG 1.4.13).
+    useEffect(() => {
+      if (!previewOpen) return
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') dismissPreview()
+      }
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [dismissPreview, previewOpen])
 
     const handleMouseLeave = useCallback(() => {
       setShowPreview(false)
     }, [])
 
-    const participants = useMemo(() => {
-      const list = comment.participants ?? []
-      const author = comment.created_by_account
-      if (!author) return [...list]
-      const rest = list.filter((user) => user.id !== author.id)
-      return [author, ...rest]
-    }, [comment.created_by_account, comment.participants])
-
-    // Calculate dynamic width based on number of participants
-    const participantCount = participants.length
-    const maxVisible = Math.min(3, participantCount)
-    const showCount = participantCount > 3
-    const avatarSize = 24
-    const avatarSpacing = 4 // -space-x-1 is about 4px overlap
-
-    // Width calculation: first avatar + (additional avatars * (size - spacing)) + padding
-    const dynamicWidth = Math.max(
-      40, // minimum width
-      8 +
-        avatarSize +
-        Math.max(0, showCount ? 2 : maxVisible - 1) * (avatarSize - avatarSpacing) +
-        8,
-    )
+    const participants = useMemo(() => getCommentParticipants(comment), [comment])
 
     const pointerEventHandlers = useMemo(
       () => ({
@@ -239,27 +312,49 @@ export const CommentIcon: FC<CommentIconProps> = memo(
 
     return (
       <>
-        <IconButton
-          aria-label={t(($) => $['keyboard.openComment'], {
-            name: comment.created_by_account?.name ?? '',
-          })}
+        <PopoverTrigger
+          handle={threadHandle}
+          id={markerId}
+          render={
+            <IconButton
+              aria-label={t(($) => $['keyboard.openComment'], {
+                name: comment.created_by_account?.name ?? '',
+              })}
+              className="nokey absolute size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
+            >
+              <CommentMarker
+                participants={participants}
+                selected={isActive}
+                className={cursorClass}
+                onMouseEnter={openPreview}
+                onMouseLeave={handleMouseLeave}
+              />
+            </IconButton>
+          }
           aria-describedby={isAuthor && onPositionUpdate ? descriptionId : undefined}
-          className="nokey absolute z-10 h-auto w-auto border-0 bg-transparent p-0"
           style={{
             left: canvasPosition.x,
             top: canvasPosition.y,
-            transform: 'translate(-50%, -50%)',
           }}
           data-role="comment-marker"
-          id={`workflow-comment-marker-${comment.id}`}
           {...pointerEventHandlers}
           onClick={(event) => {
-            if (event.detail === 0 && !isActive) {
-              finishKeyboardMove()
-              onClick()
+            if (dragEndedRef.current) {
+              dragEndedRef.current = false
+              event.preventBaseUIHandler()
+              return
             }
+            if (event.detail === 0) finishKeyboardMove()
           }}
-          onBlur={finishKeyboardMove}
+          // Keyboard focus previews the comment like hovering does.
+          onFocus={(event) => {
+            if (event.currentTarget.matches(':focus-visible')) openPreview()
+          }}
+          onBlur={() => {
+            finishKeyboardMove()
+            stopDismissalRef.current?.()
+            setShowPreview(false)
+          }}
           onKeyUp={(event) => {
             if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key))
               finishKeyboardMove()
@@ -269,6 +364,8 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             if (!delta || !isAuthor || !onPositionUpdate) return
             event.preventDefault()
             event.stopPropagation()
+            // The preview sits over the marker; moving it should show where it goes.
+            setShowPreview(false)
             const current = keyboardPositionRef.current ?? {
               x: comment.position_x,
               y: comment.position_y,
@@ -277,35 +374,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
             keyboardPositionRef.current = next
             setDragPosition(flowToScreenPosition(next))
           }}
-        >
-          <div
-            className={cursorClass}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            <div
-              className="relative h-10 rounded-t-full rounded-br-full"
-              style={{ width: dynamicWidth }}
-            >
-              <div
-                className={`absolute inset-1.5 overflow-hidden rounded-tl-full rounded-tr-full rounded-br-full border bg-components-panel-bg transition-shadow ${
-                  isActive
-                    ? 'border-primary-500 ring-1 ring-primary-500'
-                    : 'border-components-panel-border'
-                }`}
-              >
-                <div className="flex size-full items-center justify-center px-1">
-                  <UserAvatarList
-                    users={participants}
-                    maxVisible={3}
-                    size="sm"
-                    className="translate-y-[-1.5px]"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </IconButton>
+        />
         {isAuthor && onPositionUpdate && (
           <span id={descriptionId} className="sr-only" aria-live="polite">
             {t(($) => $['keyboard.moveHelp'])}{' '}
@@ -314,39 +383,30 @@ export const CommentIcon: FC<CommentIconProps> = memo(
         )}
 
         {/* Preview panel */}
-        {showPreview && !isActive && (
+        {previewMounted && (
           <div
-            className="absolute z-20"
+            data-open={previewOpen || undefined}
+            ref={previewRef}
+            className="absolute z-1 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:opacity-0 not-data-open:duration-100 motion-safe:not-data-open:scale-95 starting:opacity-0 motion-safe:starting:scale-95"
             style={{
-              left: effectiveScreenPosition.x - containerLeft - dynamicWidth / 2,
-              top: effectiveScreenPosition.y - containerTop + 20,
-              transform: 'translateY(-100%)',
+              left: canvasPosition.x,
+              top: canvasPosition.y,
             }}
             data-role="comment-preview"
             {...pointerEventHandlers}
-            onMouseEnter={() => setShowPreview(true)}
-            onMouseLeave={() => setShowPreview(false)}
+            onMouseEnter={openPreview}
+            onMouseLeave={handleMouseLeave}
           >
             <CommentPreview
               comment={comment}
               onClick={() => {
                 setShowPreview(false)
-                onClick()
+                threadHandle.open(markerId)
               }}
             />
           </div>
         )}
       </>
-    )
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.comment.id === nextProps.comment.id &&
-      prevProps.comment.position_x === nextProps.comment.position_x &&
-      prevProps.comment.position_y === nextProps.comment.position_y &&
-      prevProps.onClick === nextProps.onClick &&
-      prevProps.isActive === nextProps.isActive &&
-      prevProps.onPositionUpdate === nextProps.onPositionUpdate
     )
   },
 )

@@ -14,8 +14,7 @@ import { setLocaleOnClient } from '@/i18n/client'
 import arTime from '@/i18n/locales/ar-TN/time.json'
 import enTime from '@/i18n/locales/en-US/time.json'
 
-vi.mock('react-i18next', async (importOriginal) => await importOriginal())
-vi.mock('@/next/navigation', () => ({ useServerInsertedHTML: () => {} }))
+vi.unmock('react-i18next')
 
 function LanguageControls() {
   return (

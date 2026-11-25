@@ -17,12 +17,19 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.application_services.account import AccountServices, build_account_services
-from extensions.application_services.agent import AgentAppServices, build_agent_app_services
+from extensions.application_services.agent import (
+    AgentAppServices,
+    build_agent_app_services,
+    build_agent_invite_options_service,
+    build_agent_observability,
+    build_agent_version_service,
+)
 from extensions.application_services.app import AppServices, build_app_api_key_service, build_app_services
 from extensions.application_services.data_sources import (
     DataSourceServices,
@@ -36,10 +43,13 @@ from extensions.application_services.knowledge import (
     build_dataset_api_key_service,
     build_knowledge_services,
 )
+from extensions.application_services.moderation import build_moderation_service
+from extensions.application_services.personal_access_token import build_personal_access_token_service
 from extensions.application_services.rbac import RBACServices, build_rbac_services
 from extensions.application_services.resource_access_token import build_resource_access_token_service
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
+from extensions.application_services.trigger import TriggerServices, build_trigger_services
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
@@ -48,6 +58,7 @@ from extensions.application_services.workspace import (
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from extensions.tracing import bind_tracing
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -90,6 +101,7 @@ from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchem
 from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.tag_repository import TagRepository
 from repositories.trial_app_repository import TrialAppRepository
+from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
@@ -109,7 +121,10 @@ from services.account.forgot_password_service import (
 from services.account.login_adapters import RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
+from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.observability_contracts import AgentObservability
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
+from services.agent.version_service import AgentVersionService
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
@@ -148,6 +163,7 @@ from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
+from services.evaluation_service import EvaluationService
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
@@ -171,6 +187,7 @@ from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.moderation_service import ModerationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
     NetworkAccessGroupGateway,
@@ -192,6 +209,8 @@ from services.oauth_device_application_service import (
 )
 from services.oauth_device_flow import DeviceFlowRedis
 from services.oauth_server_service import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthServerService
+from services.openapi_execution_service import OpenApiExecutionService
+from services.personal_access_token_service import PersonalAccessTokenService
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.recommended_app_catalog_gateway import (
@@ -219,6 +238,8 @@ from services.system_feature_service import SystemFeatureService
 from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import StoredPolicyTraceScopes
+from services.trigger.provider_loader import PluginTriggerProviderLoader
+from services.trigger.workflow_dispatch_gateway import AppScopedTriggerEndUsers
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_authentication_adapters import (
@@ -244,6 +265,7 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -294,12 +316,16 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    moderation: ModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
     annotation_reply: AnnotationReplyService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    agent_versions: AgentVersionService
+    agent_invite_options: AgentInviteOptionsService
+    agent_observability: AgentObservability
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
     credential_queries: CredentialQuery
@@ -307,6 +333,8 @@ class ApplicationServices:
     app_api_keys: AppApiKeyService
     dataset_api_keys: DatasetApiKeyService
     resource_access_tokens: ResourceAccessTokenService
+    personal_access_tokens: PersonalAccessTokenService
+    openapi_executions: OpenApiExecutionService
     apps: AppServices
     app_definitions: AppDefinitionQueryService
     app_mcp_servers: AppMCPServerService
@@ -361,6 +389,7 @@ class ApplicationServices:
     workflow_run_archives: WorkflowRunArchiveService
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
+    triggers: TriggerServices
     workflow_app_logs: WorkflowAppLogQueryService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
@@ -439,6 +468,11 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> File
     )
 
 
+def _collect_agent_workspaces(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    """Enqueue physical collection of committed RETIRED Agent workspaces of a tenant."""
+    enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=agent_workspace_ids)
+
+
 def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return None
@@ -485,9 +519,12 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_repository = WorkspaceRepository(session_factory=database_client)
+    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     workspace_members, workspace_provisioning = build_workspace_membership_services(
         workspaces=workspace_repository,
         accounts=accounts,
+        invitation_tokens=invitation_tokens,
+        redis=redis,
     )
     recommended_app_queries = RecommendedAppQueryService(
         catalog=recommended_app_catalog,
@@ -557,7 +594,6 @@ def build_application_services(
         ),
         access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
-    invitation_tokens = RedisInvitationTokenStore(redis=redis)
     activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
     workflow_run_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker=database_client)
     workflow_node_execution_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -576,6 +612,20 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     credential_queries = CredentialQueryRepository(session_factory=database_client)
+    trigger_subscriptions = TriggerSubscriptionRepository(session_factory=database_client)
+    trigger_providers = PluginTriggerProviderLoader(client=PluginTriggerClient())
+    triggers = build_trigger_services(
+        database_client=database_client,
+        redis=redis,
+        credentials=credential_queries,
+        subscriptions=trigger_subscriptions,
+        provider_loader=trigger_providers,
+        workflow_queries=app_definition_repository,
+        mark_rate_limited=apps.trigger_status.mark_tenant_triggers_rate_limited,
+        trigger_end_users=AppScopedTriggerEndUsers(
+            end_users=AppScopedEndUserService(end_users=app_scoped_end_user_repository)
+        ),
+    )
     workspace_services = build_workspace_services(
         database_client=database_client,
         workspaces=workspace_repository,
@@ -587,6 +637,9 @@ def build_application_services(
         registration=account_services.lifecycle,
         invitation_tokens=invitation_tokens,
         credentials=credential_queries,
+        trigger_subscriptions=trigger_subscriptions,
+        trigger_builders=triggers.builders,
+        trigger_providers=trigger_providers,
     )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
@@ -594,7 +647,9 @@ def build_application_services(
         generate_name=DefaultModelConversationNameGenerator(trace_scopes=tracing.scopes),
     )
     conversation_commands = ConversationCommandService(
-        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+        conversations=conversations,
+        enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        collect_agent_workspaces=_collect_agent_workspaces,
     )
     message_files = MessageFileResolver()
     conversation_queries = ConversationQueryService(
@@ -603,12 +658,14 @@ def build_application_services(
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
+    workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
         repository=messages,
     )
 
     return ApplicationServices(
+        moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
             add_index=add_annotation_to_index_task.delay,
@@ -642,7 +699,12 @@ def build_application_services(
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,
-        agent_apps=build_agent_app_services(database_client=database_client),
+        agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
+        agent_versions=build_agent_version_service(database_client=database_client),
+        agent_invite_options=build_agent_invite_options_service(
+            database_client=database_client, rbac_members=rbac.members
+        ),
+        agent_observability=build_agent_observability(database_client=database_client),
         advanced_prompt_templates=AdvancedPromptTemplateService(),
         app_definitions=app_definitions,
         app_mcp_servers=AppMCPServerService(
@@ -664,10 +726,19 @@ def build_application_services(
             dataset_access=dataset_dependencies.access,
         ),
         resource_access_tokens=build_resource_access_token_service(database_client=database_client),
+        personal_access_tokens=build_personal_access_token_service(
+            database_client=database_client, apps=apps.console, datasets=knowledge.datasets
+        ),
+        openapi_executions=OpenApiExecutionService(
+            runs=lambda: DifyAPIRepositoryFactory.create_api_workflow_run_repository(database_client),
+        ),
         app_statistics=AppStatisticQueryRepository(session_factory=database_client),
         app_tracing_configs=tracing_configs,
         agent_tracing_configs=AgentTracingConfigService(
-            owners=AgentAppRepository(session_factory=database_client),
+            owners=AgentAppRepository(
+                session_factory=database_client,
+                stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+            ),
             settings=apps.console,
             configs=tracing_configs,
         ),
@@ -808,6 +879,7 @@ def build_application_services(
             apps=SQLAlchemyNetworkAccessGroupAppRepository(session_factory=database_client),
             memberships=workspace_repository,
             entitlement=BillingNetworkAccessGroupEntitlementGateway(),
+            rbac_enabled=lambda: dify_config.RBAC_ENABLED,
         ),
         step_by_step_tour=StepByStepTourService(
             accounts=accounts,
@@ -837,13 +909,16 @@ def build_application_services(
             session_factory=database_client,
         ),
         workspaces=workspace_services,
+        triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         workflow_comments=WorkflowCommentService(
-            comments=WorkflowCommentRepository(session_factory=database_client),
+            threads=workflow_comment_repository,
+            queries=workflow_comment_repository,
             notifier=CeleryWorkflowCommentMentionNotifier(),
             console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=naive_utc_now,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(
@@ -875,8 +950,10 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
+    from core.moderation.base import AppModeration as AppModerationPort
+    from extensions.application_services.app_moderation import AppModeration
     from extensions.application_services.tools import resolve_tool_credentials
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_account_only_loader
 
     app.extensions["knowledge_fs_node_dependencies"] = build_knowledge_fs_node_dependencies
     # The Agent Knowledge Base tool cannot run without KnowledgeFS, so keep it out of tool lists when disabled.
@@ -890,8 +967,11 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app_moderation: AppModerationPort = AppModeration()
+    app.extensions["app_moderation"] = app_moderation
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_account_only_loader(app, services.accounts.identity.load_account)
 
 
 def application_services() -> ApplicationServices:

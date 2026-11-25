@@ -41,11 +41,16 @@ module.exports = async function waitForBuild({
         // GitHub relabels reused successful jobs with the current run_attempt.
         // Their upload step keeps its original timestamps, identifying the artifact
         // to reuse when only consumers are rerun (including across several attempts).
-        return (
-          upload?.conclusion === 'success' &&
-          item.created_at >= upload.started_at &&
-          item.created_at <= upload.completed_at
-        )
+        if (upload?.conclusion !== 'success') return false
+        // Compare against the job's own window as well as the upload step's. GitHub
+        // has been observed reporting `steps[].started_at/completed_at` one hour off
+        // (2026-11-01, the US DST fall-back), which put every artifact outside the
+        // step window and made consumers wait the full 30 minutes before failing.
+        // Job-level timestamps agreed with `artifacts[].created_at` in those runs.
+        return [
+          [producer.started_at, producer.completed_at],
+          [upload.started_at, upload.completed_at],
+        ].some(([start, end]) => start && end && item.created_at >= start && item.created_at <= end)
       })
       if (artifact) {
         const seconds = Math.round((now() - started) / 1000)

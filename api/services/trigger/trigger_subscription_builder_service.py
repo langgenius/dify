@@ -1,7 +1,6 @@
 import logging
 import uuid
 from collections.abc import Mapping
-from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Any, Protocol
 
@@ -10,36 +9,16 @@ from flask import Request, Response
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerDispatchResponse
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
-from core.trigger.entities.entities import (
-    RequestLog,
-    Subscription,
-    SubscriptionBuilder,
-    SubscriptionBuilderUpdater,
-    SubscriptionConstructor,
-)
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.utils.encryption import masked_credentials
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
+from core.trigger.entities.entities import Subscription, SubscriptionConstructor
 from models.provider_ids import TriggerProviderID
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
+from services.trigger.builder_entities import RequestLog, SubscriptionBuilder, SubscriptionBuilderUpdater
+from services.trigger.builder_store import TriggerSubscriptionBuilderStore
+from services.trigger.credential_encryption import masked_credentials
+from services.trigger.plugin_provider import PluginTriggerProvider
 
 logger = logging.getLogger(__name__)
-
-
-class TriggerSubscriptionBuilderStore(Protocol):
-    """Persist temporary builders and validation logs without owning their policies."""
-
-    def get(self, *, subscription_id: str) -> SubscriptionBuilder | None: ...
-
-    def save(self, *, builder: SubscriptionBuilder) -> None: ...
-
-    def delete(self, *, subscription_id: str) -> None: ...
-
-    def lock(self, *, subscription_id: str) -> AbstractContextManager[None]: ...
-
-    def list_logs(self, *, endpoint_id: str) -> list[RequestLog]: ...
-
-    def append_log(self, *, log: RequestLog) -> None: ...
 
 
 class TriggerSubscriptionBuilderQuery(Protocol):
@@ -56,7 +35,7 @@ class TriggerSubscriptionBuilderQuery(Protocol):
 
 
 class TriggerSubscriptionProviderLookup(Protocol):
-    def __call__(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController: ...
+    def __call__(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider: ...
 
 
 class TriggerSubscriber(Protocol):
@@ -153,6 +132,13 @@ class TriggerSubscriptionBuilderService:
         Update a trigger subscription validation.
         """
         subscription_id = subscription_builder_id
+        # Reject foreign builders before provider I/O, then revalidate under the lock.
+        self._require_owned_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
+        )
         provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
@@ -184,6 +170,13 @@ class TriggerSubscriptionBuilderService:
         This ensures the verification is done on the exact data that was just updated.
         """
         subscription_id = subscription_builder_id
+        # Reject foreign builders before provider I/O, then revalidate under the lock.
+        self._require_owned_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
+        )
         provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
@@ -228,6 +221,13 @@ class TriggerSubscriptionBuilderService:
         This ensures the build uses the exact data that was just updated.
         """
         subscription_id = subscription_builder_id
+        # Reject foreign builders before provider I/O, then revalidate under the lock.
+        self._require_owned_subscription_builder(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription_builder_id=subscription_builder_id,
+        )
         provider_controller = self._get_provider(tenant_id=tenant_id, provider_id=provider_id)
         if not provider_controller:
             raise ValueError(f"Provider {provider_id} not found")
@@ -302,7 +302,7 @@ class TriggerSubscriptionBuilderService:
 
     @staticmethod
     def builder_to_api_entity(
-        controller: PluginTriggerProviderController, entity: SubscriptionBuilder
+        controller: PluginTriggerProvider, entity: SubscriptionBuilder
     ) -> SubscriptionBuilderApiEntity:
         credential_type = CredentialType.of(entity.credential_type or CredentialType.UNAUTHORIZED.value)
         return SubscriptionBuilderApiEntity(
@@ -420,7 +420,7 @@ class TriggerSubscriptionBuilderService:
 
         try:
             # response to validation endpoint
-            controller: PluginTriggerProviderController = self._get_provider(
+            controller: PluginTriggerProvider = self._get_provider(
                 tenant_id=subscription_builder.tenant_id,
                 provider_id=TriggerProviderID(subscription_builder.provider_id),
             )

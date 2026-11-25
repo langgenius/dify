@@ -14,11 +14,12 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { useInfiniteSnippetList } from '@/service/use-snippets'
+import { snippetListInfiniteOptions } from '@/service/snippet-queries'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
@@ -73,13 +74,15 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const keyword = deferredSearchText.trim() || undefined
 
   const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
-    useInfiniteSnippetList({
-      page: 1,
-      limit: 30,
-      keyword,
-      ...(tagIds.length ? { tag_ids: tagIds } : {}),
-      is_published: true,
-    })
+    useInfiniteQuery(
+      snippetListInfiniteOptions({
+        page: 1,
+        limit: 30,
+        keyword,
+        ...(tagIds.length ? { tag_ids: tagIds } : {}),
+        is_published: true,
+      }),
+    )
 
   const snippets = useMemo(() => {
     return (data?.pages ?? []).flatMap(({ data }) => data)
@@ -111,7 +114,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const filter = (
     <div className="p-2">
       <div className="flex items-center rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover">
-        <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
+        <div className="flex h-8 min-w-0 grow items-center ps-2 pe-2">
           <span
             className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
@@ -124,9 +127,9 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             value={searchText}
             placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
             className={cn(
-              'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+              'ms-1.5 me-1 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
               '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
-              searchText && 'mr-2',
+              searchText && 'me-2',
             )}
             onChange={(event) => onSearchTextChange?.(event.target.value)}
           />
@@ -142,7 +145,7 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
             </IconButton>
           )}
         </div>
-        <div className="mx-0 mr-0.5 h-3.5 w-px bg-divider-regular" />
+        <div className="mx-0 me-0.5 h-3.5 w-px bg-divider-regular" />
         <SnippetTagsFilter embedded value={tagIds} onChange={setTagIds} />
       </div>
     </div>

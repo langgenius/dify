@@ -429,6 +429,42 @@ class TestCustomToolCases:
             invalid_method_tool.do_http_request("https://api.example.com", "TRACE", headers={}, parameters={})
 
     @staticmethod
+    @pytest.mark.parametrize("content_type", ["application/json; charset=utf-8", "Application/JSON"])
+    def test_do_http_request_serializes_json_body_when_content_type_has_parameters(
+        monkeypatch: pytest.MonkeyPatch, content_type: str
+    ) -> None:
+        openapi: dict[str, Any] = {
+            "parameters": [],
+            "requestBody": {
+                "content": {
+                    content_type: {
+                        "schema": {
+                            "type": "object",
+                            "properties": {"name": {"type": "string"}, "count": {"type": "integer"}},
+                        }
+                    }
+                }
+            },
+        }
+        tool = _build_tool(openapi=openapi)
+        captured: dict[str, Any] = {}
+
+        def _fake_post(url: str, **kwargs: object) -> Response:
+            captured["kwargs"] = kwargs
+            return httpx.Response(200, text="ok")
+
+        monkeypatch.setattr("core.tools.custom_tool.tool.ssrf_proxy.post", _fake_post)
+        tool.do_http_request(
+            "https://api.example.com/items",
+            "POST",
+            headers={},
+            parameters={"name": "widget", "count": "2"},
+        )
+
+        assert captured["kwargs"]["headers"]["Content-Type"] == content_type
+        assert json.loads(captured["kwargs"]["data"]) == {"name": "widget", "count": 2}
+
+    @staticmethod
     def test_do_http_request_handles_file_upload_and_invoke_paths(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
@@ -704,3 +740,36 @@ class TestApiToolCases:
 
             # Verify the error message
             assert "Request failed with status code 404" in str(exc_info.value)
+
+
+class TestApiToolPathParameterEncodingCases:
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("raw", "expected_path"),
+        [
+            ("a?b=1#c", "/items/a%3Fb%3D1%23c"),
+            ("50%", "/items/50%25"),
+            ("a/b c", "/items/a%2Fb%20c"),
+            ("line1\nline2", "/items/line1%0Aline2"),
+            ("订单 1", "/items/%E8%AE%A2%E5%8D%95%201"),
+        ],
+    )
+    def test_path_parameters_are_percent_encoded(monkeypatch: pytest.MonkeyPatch, raw: str, expected_path: str) -> None:
+        tool = _build_tool(
+            openapi={
+                "parameters": [
+                    {"in": "path", "name": "id", "required": True, "schema": {"type": "string"}},
+                ]
+            }
+        )
+        captured: list[httpx.Request] = []
+
+        def capture_request(request: httpx.Request) -> httpx.Response:
+            captured.append(request)
+            return httpx.Response(200, json={"ok": True})
+
+        with httpx.Client(transport=httpx.MockTransport(capture_request)) as client:
+            monkeypatch.setattr("core.helper.ssrf_proxy._get_ssrf_client", lambda ssl_verify_enabled: client)
+            tool.do_http_request(tool.api_bundle.server_url, "GET", {}, {"id": raw})
+
+        assert captured[0].url.raw_path.decode() == expected_path

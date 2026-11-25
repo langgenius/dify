@@ -190,6 +190,7 @@ def test_chat_modes_return_empty_questions_when_stored_provider_config_is_invali
     mode: AppMode,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given invalid saved provider settings, return no questions and log the internal cause."""
     with harness.factory.begin() as session:
         session.execute(update(App).where(App.id == harness.target.id).values(mode=mode))
         if mode == AppMode.ADVANCED_CHAT:
@@ -247,7 +248,7 @@ def test_chat_modes_return_empty_questions_when_stored_provider_config_is_invali
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

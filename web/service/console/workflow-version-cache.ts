@@ -12,9 +12,6 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 
-// Transitional key until the editor version list uses generated query options.
-export const legacyWorkflowVersionHistoryKey = ['workflow', 'versionHistory'] as const
-
 function syncWorkflowVersionMetadata(
   version: WorkflowVersion | undefined,
   updatedWorkflow: WorkflowResponse,
@@ -81,7 +78,9 @@ function syncWorkflowVersionPages(
 
       changed = true
       pageChanged = true
-      return updatedWorkflow
+      // Merge so fields the list response carries beyond the PATCH response survive, such as
+      // the `environments` the enterprise gateway adds to the app version list.
+      return { ...workflow, ...updatedWorkflow }
     })
 
     return pageChanged ? { ...page, items } : page

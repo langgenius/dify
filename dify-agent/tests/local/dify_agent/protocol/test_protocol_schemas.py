@@ -249,6 +249,21 @@ def test_run_succeeded_event_round_trips_complete_pricing_usage() -> None:
     assert decoded.data.usage.time_to_generate == 0.3
 
 
+@pytest.mark.parametrize("key", ["", "   ", "\t\n"])
+def test_create_run_request_rejects_blank_idempotency_key(key: str) -> None:
+    with pytest.raises(ValidationError) as invalid:
+        CreateRunRequest.model_validate({"composition": {"layers": []}, "idempotency_key": key})
+
+    assert invalid.value.errors()[0]["loc"] == ("idempotency_key",)
+
+
+@pytest.mark.parametrize("key", [None, "retry-1", "  retry-1\t\n"])
+def test_create_run_request_preserves_nonblank_idempotency_key(key: str | None) -> None:
+    request = CreateRunRequest.model_validate({"composition": {"layers": []}, "idempotency_key": key})
+
+    assert request.idempotency_key == key
+
+
 def test_create_run_request_rejects_removed_top_level_execution_context() -> None:
     with pytest.raises(ValidationError):
         _ = CreateRunRequest.model_validate(

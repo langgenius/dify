@@ -51,6 +51,13 @@ class AppResponseGateway:
     def mask_record(context: RequestContext, app: AppRecord) -> AppRecord:
         if app.mode_compatible_with_agent != AppMode.AGENT_CHAT or app.app_model_config is None:
             return app
+        return AppResponseGateway.mask_agent_mode(context, app)
+
+    @staticmethod
+    def mask_agent_mode(context: RequestContext, app: AppRecord) -> AppRecord:
+        """Mask legacy Agent tool parameters in a detached model configuration."""
+        if app.app_model_config is None:
+            return app
         config = deepcopy(app.app_model_config)
         config["agent_mode"] = mask_agent_tool_parameters(
             agent_mode=cast(Mapping[str, JsonValue], config.get("agent_mode", {})),

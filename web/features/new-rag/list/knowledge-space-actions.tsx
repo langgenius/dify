@@ -27,7 +27,7 @@ export function KnowledgeSpaceActions({
   if (!canEdit && !canDelete) return null
 
   return (
-    <div className="pointer-events-none absolute top-0 right-0 flex h-16 w-30 items-start justify-end bg-linear-65 from-components-card-bg-alt-transparent to-components-card-bg-alt to-75% p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
+    <div className="pointer-events-none absolute inset-e-0 top-0 flex h-16 w-30 items-start justify-end bg-linear-65 from-components-card-bg-alt-transparent to-components-card-bg-alt to-75% p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 [@media(hover:none)]:opacity-100">
       <div className="pointer-events-auto flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs">
         <Menu modal={false}>
           <MenuTrigger
@@ -46,7 +46,7 @@ export function KnowledgeSpaceActions({
               <MenuLinkItem
                 render={<Link href={newKnowledgeSettingsPath(knowledgeSpace.control_space_id)} />}
               >
-                <span aria-hidden className="mr-1 i-ri-edit-line size-4 text-text-tertiary" />
+                <span aria-hidden className="me-1 i-ri-edit-line size-4 text-text-tertiary" />
                 {tCommon(($) => $['operation.edit'])}
               </MenuLinkItem>
             )}
@@ -54,7 +54,7 @@ export function KnowledgeSpaceActions({
               <>
                 {canEdit && <MenuSeparator />}
                 <MenuItem variant="destructive" onClick={onDelete}>
-                  <span aria-hidden className="mr-1 i-ri-delete-bin-line size-4" />
+                  <span aria-hidden className="me-1 i-ri-delete-bin-line size-4" />
                   {tCommon(($) => $['operation.delete'])}
                 </MenuItem>
               </>

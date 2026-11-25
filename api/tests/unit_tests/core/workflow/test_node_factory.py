@@ -42,7 +42,7 @@ from graphon.nodes.variable_assigner.v1.node import (
 from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
@@ -116,7 +116,12 @@ class TestNodeFactoryCases:
             )
 
             return DifyNodeFactory(
-                init_params=SimpleNamespace(run_context=run_context),
+                init_params=InitParams(
+                    workflow_id="workflow-1",
+                    run_context=run_context,
+                    graph_config={"nodes": [], "edges": []},
+                    call_depth=0,
+                ),
                 runtime_state=SimpleNamespace(),
             )
 
@@ -125,6 +130,19 @@ class TestNodeFactoryCases:
 
             with pytest.raises(ValueError, match="No class mapping found for node type: unknown"):
                 factory.create_node({"id": "node-1", "data": {"type": "unknown"}})
+
+        def test_child_factories_keep_root_container_ledger_for_agent_sessions(self) -> None:
+            factory = self._factory()
+            child_state = RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow-1")
+            child = factory.with_runtime_state(child_state)
+            grandchild_state = RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow-1")
+            grandchild = child.with_runtime_state(grandchild_state)
+            assert child.runtime_state is child_state
+            assert child._root_runtime_state is factory.runtime_state
+            assert grandchild._root_runtime_state is factory.runtime_state
+            scoped = child.with_graph_config({"nodes": [{"id": "only-child"}], "edges": []})
+            assert scoped._root_graph_config is factory.init_params.graph_config
+            assert scoped.with_runtime_state(grandchild_state)._root_graph_config is factory.init_params.graph_config
 
         def test_create_node_missing_mapping(self, monkeypatch: pytest.MonkeyPatch):
             factory = self._factory()
@@ -1551,3 +1569,111 @@ class TestNodeFactoryCasesWorkflow:
                 node_data_memory=memory_config,
                 model_instance=sentinel.model_instance,
             )
+
+
+def test_real_scoped_child_graph_keeps_root_agent_parallel_session_lineage(
+    config_overrides: Callable[..., None],
+) -> None:
+    """Given real child graph construction, sibling Agent nodes retain root policy and distinct branches."""
+    from datetime import datetime
+    from uuid import uuid4
+
+    from core.workflow.nodes.agent_v2.agent_node import DifyAgentNode
+    from graphon.engine.frame import FrameRegistry
+    from graphon.enums import ErrorHandleMode
+    from graphon.runtime.container_state import IterationFrameState, IterationRunState
+
+    config_overrides(AGENT_BACKEND_USE_FAKE=True)
+    variables: list[dict[str, object]] = []
+    outputs: list[dict[str, object]] = []
+    graph_config = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": variables}},
+            {
+                "id": "parallel",
+                "data": {
+                    "type": "iteration",
+                    "title": "Parallel research",
+                    "start_node_id": "iteration-start",
+                    "iterator_selector": ["start", "items"],
+                    "output_selector": ["agent-node", "text"],
+                    "is_parallel": True,
+                    "parallel_nums": 1,
+                },
+            },
+            {
+                "id": "iteration-start",
+                "data": {"type": "iteration-start", "title": "Each company", "container_id": "parallel"},
+            },
+            {
+                "id": "agent-node",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_node_kind": "dify_agent",
+                    "title": "Research",
+                    "container_id": "parallel",
+                    "continue_agent_session": False,
+                },
+            },
+            {"id": "end", "data": {"type": "end", "title": "End", "outputs": outputs}},
+        ],
+        "edges": [
+            {"id": "start-parallel", "source": "start", "target": "parallel"},
+            {"id": "parallel-end", "source": "parallel", "target": "end"},
+            {"id": "iteration-agent", "source": "iteration-start", "target": "agent-node"},
+        ],
+    }
+    root_state = RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id="workflow")
+    factory = DifyNodeFactory(build_test_graph_init_params(graph_config=graph_config), root_state)
+    root_graph = Graph.init(graph_config=graph_config, node_factory=factory, root_node_id="start")
+    registry = FrameRegistry()
+    registry.create(frame_id="root", container_id="", graph=root_graph, state=root_state)
+    invocation_id = str(uuid4())
+    root_state.put_container_run(
+        IterationRunState(
+            invocation_id=invocation_id,
+            frame_id="root",
+            node_id="parallel",
+            started_at=datetime(2026, 1, 1),
+            items=(),
+            root_node_id="iteration-start",
+            output_selector=("agent-node", "text"),
+            error_handle_mode=ErrorHandleMode.TERMINATED,
+            flatten_output=False,
+            parallel_nums=1,
+        )
+    )
+    branch_ids: list[str] = []
+    for index in (0, 1):
+        frame_id = f"opaque-child-{index}"
+        child = registry.create_child(
+            frame_id=frame_id,
+            parent_frame_id="root",
+            container_id="parallel",
+            root_node_id="iteration-start",
+            variable_pool=VariablePool(),
+        )
+        root_state.put_container_frame(
+            IterationFrameState(
+                frame_id=frame_id,
+                parent_invocation_id=invocation_id,
+                root_node_id="iteration-start",
+                index=index,
+                started_at=datetime(2026, 1, 1),
+                runtime_data=child.state.snapshot_frame(copy_variable_pool=False),
+            )
+        )
+        agent = child.graph.nodes["agent-node"]
+        assert isinstance(agent, DifyAgentNode)
+        execution = child.state.graph_execution.get_or_create_node_execution(frame_id=frame_id, node_id=agent.id)
+        agent.bind_execution_id(execution.execution_id)
+
+        assert {node["id"] for node in agent.init_params.graph_config["nodes"]} == {"iteration-start", "agent-node"}
+        assert agent._root_runtime_state is root_state
+        assert any(node["id"] == "parallel" for node in agent._root_graph_config["nodes"])
+        assert agent.node_data.continue_agent_session is False
+        branch_ids.append(agent._session_branch_id())
+
+    assert all(len(branch_id) == 64 for branch_id in branch_ids)
+    assert branch_ids[0] != branch_ids[1]
