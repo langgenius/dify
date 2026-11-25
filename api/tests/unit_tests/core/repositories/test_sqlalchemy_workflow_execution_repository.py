@@ -768,7 +768,7 @@ class TestWorkflowControlPersistenceCases:
             assert max(records, key=lambda row: int(row["log_version"]))["status"] == expected_status
             stale_node = next(row for row in records if row["status"] == node_status)
             mocker.patch.object(logstore, "execute_sql", return_value=[stale_node])
-            api = LogstoreAPIWorkflowNodeExecutionRepository(sqlite_session_factory)  # pyrefly: ignore[bad-instantiation]
+            api = LogstoreAPIWorkflowNodeExecutionRepository(sqlite_session_factory)
             assert api.get_executions_by_workflow_run("tenant-1", "app-1", "run-1")[0].status == expected_status
             by_id = api.get_execution_by_id("node-1", "tenant-1")
             assert by_id is not None

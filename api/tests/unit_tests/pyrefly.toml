@@ -119,7 +119,6 @@ project-excludes = [
   "dev/test_generate_knowledge_fs_contract.py",
   "enterprise/telemetry/test_enterprise_trace.py",
   "events/test___init__.py",
-  "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
   "../e2e_tests/contracts/libs/_human_input/test_models.py",
   "libs/broadcast_channel/redis/test_pubsub_channel.py",
