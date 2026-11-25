@@ -8,6 +8,7 @@ so a refused call can be shown to have run nothing.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from http import HTTPMethod
@@ -15,9 +16,15 @@ from http import HTTPMethod
 import pytest
 from flask import Flask, g, request
 
-from constants import HEADER_NAME_IDEMPOTENCY_KEY, HEADER_NAME_JOB_WAIT_SECONDS, HEADER_NAME_STREAM_RESULT
-from controllers.openapi import _mcp_call
+from constants import (
+    HEADER_NAME_FILE_RESULT,
+    HEADER_NAME_IDEMPOTENCY_KEY,
+    HEADER_NAME_JOB_WAIT_SECONDS,
+    HEADER_NAME_STREAM_RESULT,
+)
+from controllers.openapi import _mcp_call, _transfer
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for, op_registry
+from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._mcp_call import (
     FileInputUnsupported,
     OpCall,
@@ -28,7 +35,9 @@ from controllers.openapi._mcp_call import (
     call_op,
 )
 from controllers.openapi._stream_result import StreamResult
+from controllers.openapi._transfer import FileResult
 from controllers.openapi.jobs import WAIT_JOB_OP
+from extensions.ext_application_services import ApplicationServices
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 _BEARER = "Bearer dfoa_admitted"
@@ -38,6 +47,7 @@ _CALLER_ADDR = "203.0.113.7"
 _OUTER_HOST_URL = "https://dify.example.com:8443/"
 _LONE_SURROGATE = "\ud800"
 _INNER = "inner"
+_UNKNOWN_UPLOAD = "00000000-0000-4000-8000-000000000000"
 
 _marker: ContextVar[str] = ContextVar("mcp_call_test_marker")
 
@@ -49,6 +59,7 @@ class _SeenRequest:
     headers: dict[str, str]
     remote_addr: str | None
     host_url: str
+    body: object
 
 
 @pytest.fixture
@@ -66,6 +77,7 @@ def inner_requests(openapi_app: Flask) -> list[_SeenRequest]:
                 headers=dict(request.headers),
                 remote_addr=request.remote_addr,
                 host_url=request.host_url,
+                body=request.get_json(silent=True),
             )
         )
         g.mcp_call_marker = _INNER
@@ -138,6 +150,7 @@ def test_the_inner_request_carries_the_callers_authorization_and_the_catalog_fin
     assert headers["X-Trace-Id"] == _TRACE_ID
     assert headers["Accept"] == "application/json"
     assert headers[HEADER_NAME_STREAM_RESULT] == StreamResult.JOB
+    assert headers[HEADER_NAME_FILE_RESULT] == FileResult.TRANSFER
 
 
 _RUN_WORKFLOW = "run.console_app.workflow"
@@ -277,14 +290,20 @@ def test_an_op_error_body_comes_back_unchanged(
     assert result.body == direct.get_json()
 
 
-def test_a_file_bound_input_is_refused(
-    admitted_bearer: AdmittedWorld, openapi_app: Flask, inner_requests: list[_SeenRequest]
+def test_a_file_bound_key_goes_into_the_json_body(
+    admitted_bearer: AdmittedWorld,
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    with openapi_app.test_request_context():
-        with pytest.raises(FileInputUnsupported):
-            _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": "upload-id"})
+    monkeypatch.setattr(_transfer, "application_services", lambda: account_application_services)
 
-    assert inner_requests == []
+    with openapi_app.test_request_context():
+        result = _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": _UNKNOWN_UPLOAD})
+
+    assert inner_requests[0].body == {"file": _UNKNOWN_UPLOAD}
+    assert (result.status, result.body["code"]) == (400, OpenApiErrorCode.UPLOAD_NOT_FOUND)
 
 
 @pytest.mark.usefixtures("admitted_bearer")
@@ -327,3 +346,45 @@ def test_the_inner_request_keeps_the_callers_scheme_and_host(
     assert outer_host_url == _OUTER_HOST_URL
     assert inner_requests[0].host_url == outer_host_url
     assert inner_requests[0].path == "/openapi/v1/workspaces"
+
+
+_TRANSFERS_OFF = pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+@_TRANSFERS_OFF
+def test_with_transfers_off_the_inner_request_does_not_ask_for_a_transfer(
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    config_overrides: Callable[..., None],
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    with openapi_app.test_request_context():
+        result = _call("get.workspace", {})
+
+    assert result.status == 200
+    assert HEADER_NAME_FILE_RESULT not in inner_requests[0].headers
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_a_file_bound_key_is_refused_before_anything_runs(
+    admitted_bearer: AdmittedWorld,
+    openapi_app: Flask,
+    inner_requests: list[_SeenRequest],
+    config_overrides: Callable[..., None],
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    with openapi_app.test_request_context(), pytest.raises(FileInputUnsupported):
+        _call("upload.console_app.file", {"app_id": admitted_bearer.app_id, "file": _UNKNOWN_UPLOAD})
+
+    assert inner_requests == []

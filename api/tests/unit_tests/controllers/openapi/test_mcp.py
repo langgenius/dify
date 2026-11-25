@@ -15,7 +15,7 @@ from werkzeug.test import EnvironBuilder, TestResponse, run_wsgi_app
 from controllers.openapi import account as account_module
 from controllers.openapi import mcp as mcp_module
 from controllers.openapi._mcp_call import OpCall, OpResult
-from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS
+from controllers.openapi._mcp_tools import mcp_instructions
 from controllers.openapi.auth import router as router_module
 from controllers.openapi.mcp import MCP_MAX_BODY_BYTES
 from core.mcp import types as mcp_types
@@ -77,7 +77,7 @@ def test_initialize_with_a_good_token_negotiates_and_returns_the_instructions(ad
     assert response.content_type.startswith("application/json")
     result = response.get_json()["result"]
     assert result["protocolVersion"] == "2025-06-18"
-    assert result["instructions"] == MCP_INSTRUCTIONS
+    assert result["instructions"] == mcp_instructions()
 
 
 @pytest.mark.parametrize("message", [_initialize(), _rpc("tools/list")], ids=["initialize", "tools/list"])

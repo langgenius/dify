@@ -7,6 +7,8 @@ feed a response no fixture can produce.
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 import operator
 import re
@@ -23,33 +25,48 @@ from controllers.openapi._contract import op_of
 from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp
 from controllers.openapi._mcp_tools import (
     FIND_TOOL,
-    MCP_INSTRUCTIONS,
+    FOLDER_UPLOAD_ID_SCHEMA,
+    UPLOAD_ID_EXAMPLE,
+    UPLOAD_ID_SCHEMA,
     CallTool,
     McpCaller,
     Unauthenticated,
     callable_ops,
     describe_op,
     find_ops,
+    mcp_instructions,
     run_tool,
     tool_list,
 )
-from controllers.openapi.auth.spec import Effect
+from controllers.openapi._upload import has_binary_leaf
+from controllers.openapi.auth.spec import Effect, Kind
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
+from controllers.openapi.transfers import PREPARE_UPLOAD_OP
 from core.mcp import types as mcp_types
+from services.skill_management_service import PublishedSkillArchive, SkillManagementService
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
+from tests.unit_tests.controllers.openapi.test_transfers import (
+    _HOST,
+    TransferWorld,
+    _RecordingFiles,
+    recording_files,
+    world,
+)
+
+__all__ = ["recording_files", "world"]
 
 _PERSONAL = "dpat_x"
 _WORKSPACE = "sk-x"
 _ACCOUNT = "dfoa_x"
 _UNKNOWN_PREFIX = "zz-x"
 _STREAMS = ("run.console_app.workflow", "test.console_app.workflow", "get.run.event")
-_FILE_RESULT = "export.skill"
 _INTERNAL = "switch.workspace"
 _ACCOUNT_ONLY = "describe.account"
 _NEEDS_ACCOUNT_SCOPE = "invite.workspace.member"
 _RUN_WORKFLOW = "run.console_app.workflow"
+_JOB_FIELDS = frozenset({"wait_seconds", "idempotency_key"})
 _LIST_APPS = "get.console_app"
-_FILE_REQUIRED = "upload.console_app.file"
+_UPLOAD = "upload.console_app.file"
 _SUBMIT_FORM_OP = "submit.run.form"
 _WAIT_JOB_OP = "wait.job"
 _CHECK_DSL = "check.console_app.dsl"
@@ -67,20 +84,9 @@ def _ids(found: Mapping[str, list[dict[str, str]]]) -> list[str]:
 
 
 @pytest.mark.usefixtures("in_request")
-@pytest.mark.parametrize("token", [None, _PERSONAL, _WORKSPACE, _ACCOUNT, _UNKNOWN_PREFIX])
-def test_file_ops_are_never_listed(token: str | None) -> None:
-    assert _FILE_RESULT not in callable_ops(token)
-
-
-@pytest.mark.usefixtures("in_request")
 def test_stream_ops_are_listed_as_they_answer_a_job() -> None:
     listed = callable_ops(_ACCOUNT)
     assert set(_STREAMS) <= set(listed)
-
-
-@pytest.mark.usefixtures("in_request")
-def test_ops_with_a_required_file_input_are_never_listed() -> None:
-    assert _FILE_REQUIRED not in callable_ops(None)
 
 
 @pytest.mark.usefixtures("in_request")
@@ -251,7 +257,16 @@ def test_the_last_page_has_no_next_offset() -> None:
 
 
 @pytest.mark.usefixtures("in_request")
-def test_describe_returns_schema_and_examples_without_file_fields() -> None:
+def test_a_file_field_is_described_as_an_upload_id() -> None:
+    described = describe_op(_UPLOAD, token=_ACCOUNT)
+
+    assert described["input"]["properties"]["file"] == UPLOAD_ID_SCHEMA
+    assert "file" in described["input"]["required"]
+    assert described["examples"][0]["input"]["file"] == UPLOAD_ID_EXAMPLE
+
+
+@pytest.mark.usefixtures("in_request")
+def test_named_file_fields_keep_their_shape_with_upload_ids() -> None:
     before = op_registry()[_RUN_WORKFLOW].entry
     file_names = {name for name, bind in before["bind"].items() if bind == Bind.FILE}
     assert file_names
@@ -259,12 +274,70 @@ def test_describe_returns_schema_and_examples_without_file_fields() -> None:
     described = describe_op(_RUN_WORKFLOW, token=_ACCOUNT)
 
     assert set(described) == {"op", "summary", "effect", "tool", "input", "examples"}
-    assert described["op"] == _RUN_WORKFLOW
-    assert not file_names & set(described["input"]["properties"])
-    assert not file_names & set(described["input"]["required"])
-    assert described["input"]["properties"]
-    assert described["examples"] == before["examples"]
-    assert op_registry()[_RUN_WORKFLOW].entry["input"] == before["input"]
+    assert file_names <= set(described["input"]["properties"])
+    assert not has_binary_leaf(described["input"])
+    assert UPLOAD_ID_SCHEMA["description"] in json.dumps(described["input"])
+    for example in described["examples"]:
+        for name in file_names & set(example["input"]):
+            assert set(_string_leaves(example["input"][name])) == {UPLOAD_ID_EXAMPLE}
+
+
+_UPLOAD_IDS_BY_NAME = {
+    "type": "object",
+    "additionalProperties": {"anyOf": [UPLOAD_ID_SCHEMA, {"type": "array", "items": UPLOAD_ID_SCHEMA}]},
+}
+
+
+@pytest.mark.usefixtures("in_request")
+def test_a_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op("import.skill", token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]
+    assert files["description"] == "The skill folder; SKILL.md at its root"
+    assert "type" not in files
+    assert "additionalProperties" not in files
+
+
+@pytest.mark.usefixtures("in_request")
+def test_an_optional_mapping_file_field_also_takes_one_folder_upload_id() -> None:
+    files = describe_op(_RUN_WORKFLOW, token=_ACCOUNT)["input"]["properties"]["files"]
+
+    assert files["anyOf"] == [{"anyOf": [FOLDER_UPLOAD_ID_SCHEMA, _UPLOAD_IDS_BY_NAME]}, {"type": "null"}]
+
+
+@pytest.mark.usefixtures("in_request")
+def test_a_list_file_field_takes_no_folder_upload_id() -> None:
+    described = describe_op(_RUN_WORKFLOW, token=_ACCOUNT)["input"]["properties"]["attachments"]
+
+    assert described["anyOf"] == [{"type": "array", "items": UPLOAD_ID_SCHEMA}, {"type": "null"}]
+    assert FOLDER_UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("op", [_UPLOAD, _RUN_WORKFLOW, "import.skill"])
+def test_describe_does_not_change_the_shared_entry(op: str) -> None:
+    before = copy.deepcopy(op_registry()[op].entry)
+
+    describe_op(op, token=_ACCOUNT)
+
+    assert op_registry()[op].entry == before
+
+
+def _string_leaves(node: object) -> list[str]:
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, list):
+        return [leaf for item in node for leaf in _string_leaves(item)]
+    if isinstance(node, dict):
+        return [leaf for item in node.values() for leaf in _string_leaves(item)]
+    return []
+
+
+@pytest.mark.usefixtures("in_request")
+@pytest.mark.parametrize("op", [_INTERNAL, "no.such.op"])
+def test_describe_of_a_hidden_op_is_unknown(op: str) -> None:
+    with pytest.raises(UnknownOp):
+        describe_op(op, token=_ACCOUNT)
 
 
 @pytest.mark.usefixtures("in_request")
@@ -306,13 +379,6 @@ def test_a_required_input_an_example_leaves_out_is_a_placeholder() -> None:
     described = describe_op(op, token=_ACCOUNT)
 
     assert all(example["input"][name] == f"<{name}>" for example in described["examples"])
-
-
-@pytest.mark.usefixtures("in_request")
-@pytest.mark.parametrize("op", [_FILE_RESULT, _INTERNAL, "no.such.op"])
-def test_describe_of_a_hidden_op_is_unknown(op: str) -> None:
-    with pytest.raises(UnknownOp):
-        describe_op(op, token=_ACCOUNT)
 
 
 @pytest.mark.usefixtures("in_request")
@@ -405,9 +471,13 @@ def test_every_effect_has_exactly_one_call_tool() -> None:
 _NAMED_OP = re.compile(r"\b[a-z_]+(?:\.[a-z_]+)+\b")
 
 
-def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(openapi_app: Flask) -> None:
+@pytest.mark.parametrize("transfers", [True, False], ids=["transfers on", "transfers off"])
+def test_every_op_the_instructions_and_job_hints_name_is_in_the_catalog(
+    openapi_app: Flask, config_overrides: Callable[..., None], transfers: bool
+) -> None:
+    config_overrides(FILE_TRANSFER_ENABLED=transfers)
     ops = set(build_catalog(openapi_app)["ops"])
-    named = set(_NAMED_OP.findall(MCP_INSTRUCTIONS))
+    named = set(_NAMED_OP.findall(mcp_instructions()))
     hinted = {jobs.WAIT_JOB_OP, jobs.STOP_JOB_OP, op_of(OpenApiWorkflowHumanInputFormSubmitApi.post)}
 
     assert named - ops == set()
@@ -713,3 +783,155 @@ def test_find_with_an_empty_op_searches_by_query(arguments: dict[str, object]) -
 
     assert result.isError is False
     assert "get.workspace" in [item["op"] for item in json.loads(_text(result))["ops"]]
+
+
+# Files beside the call, through the four tools.
+
+_SKILL_ID = "11111111-1111-4111-8111-111111111111"
+_SKILL_ZIP = b"PK\x05\x06" + b"\0" * 18
+
+
+def test_a_file_result_reaches_the_agent_as_json(
+    openapi_app: Flask,
+    world: TransferWorld,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_overrides(ENABLE_SKILL=True)
+
+    def export_draft_archive(_service: SkillManagementService, **_kwargs: object) -> PublishedSkillArchive:
+        return PublishedSkillArchive(filename="skill.zip", mime_type="application/zip", payload=_SKILL_ZIP)
+
+    monkeypatch.setattr(SkillManagementService, "export_draft_archive", export_draft_archive)
+
+    with openapi_app.test_request_context(base_url=_HOST):
+        result = _run(
+            CallTool.READ,
+            {"op": "export.skill", "input": {"workspace_id": world.caller.workspace_id, "skill_id": _SKILL_ID}},
+        )
+
+    assert result.isError is False
+    file = json.loads(_text(result))["file"]
+    assert file["sha256"] == hashlib.sha256(_SKILL_ZIP).hexdigest()
+    assert world.get(file["download_url"]).data == _SKILL_ZIP
+
+
+def test_send_use_and_fetch_through_the_four_tools(
+    openapi_app: Flask, world: TransferWorld, recording_files: _RecordingFiles
+) -> None:
+    with openapi_app.test_request_context(base_url=_HOST):
+        prepared = json.loads(_text(_run(CallTool.WRITE, {"op": PREPARE_UPLOAD_OP, "input": {}})))
+    sent = world.upload(prepared["upload_url"], content=b"%PDF", name="r.pdf")
+    with openapi_app.test_request_context(base_url=_HOST):
+        used = _run(CallTool.WRITE, {"op": _UPLOAD, "input": {"app_id": world.caller.app_id, "file": prepared["id"]}})
+
+    assert sent.status_code == 200
+    assert used.isError is False
+    assert json.loads(_text(used))["name"] == "r.pdf"
+    assert recording_files.received == [("r.pdf", b"%PDF", "application/pdf")]
+
+
+# With file transfers off (either switch), no tool offers a transfer id.
+
+_TRANSFERS_OFF = pytest.mark.parametrize(
+    ("mcp", "transfers"),
+    [(True, False), (False, True), (False, False)],
+    ids=["transfers off", "mcp off, transfers on", "both off"],
+)
+_EXPORT_SKILL = "export.skill"
+_IMPORT_SKILL = "import.skill"
+_FILE_OPS = {PREPARE_UPLOAD_OP, _UPLOAD, _EXPORT_SKILL, _IMPORT_SKILL}
+
+
+def _file_step() -> str:
+    return next(line for line in mcp_instructions().splitlines() if line.startswith("7."))
+
+
+@pytest.mark.usefixtures("in_request")
+@_TRANSFERS_OFF
+def test_with_transfers_off_no_op_that_needs_a_transfer_is_listed(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    listed = callable_ops(_ACCOUNT)
+
+    assert not _FILE_OPS & set(listed)
+    assert not [op for op, entry in listed.items() if entry["kind"] == Kind.FILE]
+    assert _RUN_WORKFLOW in listed
+
+
+@pytest.mark.usefixtures("in_request")
+def test_with_transfers_on_the_file_ops_are_listed(config_overrides: Callable[..., None]) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=True, FILE_TRANSFER_ENABLED=True)
+
+    assert set(callable_ops(_ACCOUNT)) >= _FILE_OPS
+
+
+@pytest.mark.usefixtures("in_request")
+@_TRANSFERS_OFF
+def test_with_transfers_off_describe_leaves_out_the_file_fields(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+    entry = op_registry()[_RUN_WORKFLOW].entry
+    file_names = {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
+    before = copy.deepcopy(entry)
+
+    described = describe_op(_RUN_WORKFLOW, token=_ACCOUNT)
+
+    assert not file_names & set(described["input"]["properties"])
+    assert not file_names & set(described["input"]["required"])
+    assert set(entry["input"]["properties"]) - file_names == set(described["input"]["properties"]) - _JOB_FIELDS
+    assert all(not file_names & set(example["input"]) for example in described["examples"])
+    assert UPLOAD_ID_SCHEMA["description"] not in json.dumps(described)
+    assert op_registry()[_RUN_WORKFLOW].entry == before
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_a_file_input_is_refused_and_nothing_runs(
+    openapi_app: Flask,
+    world: TransferWorld,
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    mcp: bool,
+    transfers: bool,
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    def must_not_run(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("nothing may run")
+
+    monkeypatch.setattr("controllers.openapi._mcp_call._run", must_not_run)
+    arguments = {
+        "op": _RUN_WORKFLOW,
+        "input": {"app_id": world.caller.app_id, "files": {"doc": "some-id"}},
+    }
+
+    with openapi_app.test_request_context(base_url=_HOST):
+        result = _run(CallTool.WRITE, arguments)
+
+    assert result.isError is True
+    assert _text(result) == "Nothing ran: file transfers are off on this server, so a file field cannot be filled."
+
+
+@_TRANSFERS_OFF
+def test_with_transfers_off_the_instructions_send_files_by_url_only(
+    config_overrides: Callable[..., None], mcp: bool, transfers: bool
+) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    step = _file_step()
+
+    assert PREPARE_UPLOAD_OP not in mcp_instructions()
+    assert '"transfer_method": "remote_url"' in step
+    assert "Local files cannot be sent to or fetched from this server." in step
+
+
+def test_with_transfers_on_the_instructions_explain_transfers(config_overrides: Callable[..., None]) -> None:
+    config_overrides(OPENAPI_MCP_ENABLED=True, FILE_TRANSFER_ENABLED=True)
+
+    step = _file_step()
+
+    assert PREPARE_UPLOAD_OP in step
+    assert '"files": {"<variable name>": "<id>"}' in step

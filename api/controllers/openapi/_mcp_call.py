@@ -37,7 +37,8 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Response
 
-from constants import HEADER_NAME_STREAM_RESULT
+from configs import dify_config
+from constants import HEADER_NAME_FILE_RESULT, HEADER_NAME_STREAM_RESULT
 from controllers.openapi._catalog import (
     _QUERY_METHODS,
     CATALOG_HEADER,
@@ -48,6 +49,7 @@ from controllers.openapi._catalog import (
     op_registry,
 )
 from controllers.openapi._stream_result import JOB_FIELD_HEADERS, StreamResult
+from controllers.openapi._transfer import FileResult
 from controllers.openapi.auth.spec import Kind
 
 AUTHORIZATION_HEADER: Final = "Authorization"
@@ -60,6 +62,8 @@ _URL_ENCODING: Final = "utf-8"
 _PLACEHOLDER_RE: Final = re.compile(r"\{(\w+)\}")
 # Kept unescaped when the proved path is encoded: the separators the template itself holds.
 _PATH_SAFE: Final = "/"
+# A file field travels in the JSON body as a transfer id; the op's parse layer swaps it for the file.
+_SLOT_OF: Final[Mapping[Bind, Bind]] = {Bind.FILE: Bind.BODY}
 # The input fields an op of each kind takes as request headers, and the header each one goes in.
 _HEADER_FIELDS_BY_KIND: Final[Mapping[str, Mapping[str, str]]] = {Kind.SSE.value: JOB_FIELD_HEADERS}
 _NO_HEADER_FIELDS: Final[Mapping[str, str]] = {}
@@ -99,7 +103,7 @@ class UnsafeHeaderValue(Exception):  # noqa: N818
 
 
 class FileInputUnsupported(Exception):  # noqa: N818
-    """The input fills a field the op binds as a file upload."""
+    """The input fills a field the op binds as a file, while file transfers are off: there is no transfer id."""
 
 
 class RouteMismatch(Exception):  # noqa: N818
@@ -142,15 +146,19 @@ def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any])
 
     Precondition: ``entry`` is a catalog entry. Postcondition: returns the filled
     path, the query, for body-bound methods the JSON body, and the fields the op's
-    kind takes as headers (``_HEADER_FIELDS_BY_KIND``; a null one is left out). Keys
-    the bind table does not list go to the body for body-bound methods and to the
-    query otherwise, so the op's own validation answers them. Raises
-    ``FileInputUnsupported`` when a file-bound key is present, ``UnsafePathValue`` for
-    a bad path value and ``UnsafeHeaderValue`` for a bad header value.
+    kind takes as headers (``_HEADER_FIELDS_BY_KIND``; a null one is left out). A
+    file-bound key goes to the body, where it holds a transfer id. Keys the bind
+    table does not list go to the body for body-bound methods and to the query
+    otherwise, so the op's own validation answers them. Raises
+    ``FileInputUnsupported`` for a file-bound key while file transfers are off,
+    ``UnsafePathValue`` for a bad path value and ``UnsafeHeaderValue`` for a bad
+    header value.
     """
     body_bound = method not in _QUERY_METHODS
     default = Bind.BODY if body_bound else Bind.QUERY
     bind = entry["bind"]
+    if not dify_config.file_transfers_on:
+        _refuse_file_input(input, bind)
     header_fields = _HEADER_FIELDS_BY_KIND.get(entry["kind"], _NO_HEADER_FIELDS)
     headers = {
         header_fields[name]: _header_value(name, value)
@@ -160,9 +168,8 @@ def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any])
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
         if name not in header_fields:
-            parts[Bind(bind.get(name, default))][name] = value
-    if parts[Bind.FILE]:
-        raise FileInputUnsupported(sorted(parts[Bind.FILE]))
+            kind = Bind(bind.get(name, default))
+            parts[_SLOT_OF.get(kind, kind)][name] = value
     path_values = parts[Bind.PATH]
     path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry["path"])
     _check_query_text(parts[Bind.QUERY])
@@ -182,6 +189,13 @@ def _header_value(name: str, value: Any) -> str:
     if not text.isprintable():
         raise UnsafeHeaderValue(f"{name}: use printable ASCII text")
     return text
+
+
+def _refuse_file_input(input: Mapping[str, Any], bind: Mapping[str, Bind]) -> None:
+    """Raises ``FileInputUnsupported`` when the input fills any file-bound field."""
+    names = sorted(name for name in input if bind.get(name) == Bind.FILE)
+    if names:
+        raise FileInputUnsupported(names)
 
 
 def _safe_path_value(name: str, values: Mapping[str, Any]) -> str:
@@ -254,11 +268,15 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
     from ``request.url_root`` point at the server the caller reached.
     Headers: the caller's Authorization and trace id when given, the current
     catalog fingerprint, ``Accept: application/json``, ``X-Dify-Stream-Result: job``
-    so a stream op answers its job's state, and the input fields the op takes as headers.
+    so a stream op answers its job's state, the input fields the op takes as headers,
+    and, while file transfers are on, the file-result header, so a file operation
+    answers JSON with a transfer instead of bytes.
     """
     _, fingerprint = current_catalog()
     headers = Headers({CATALOG_HEADER: fingerprint, ACCEPT_HEADER: JSON_CONTENT_TYPE, **built.headers})
     headers[HEADER_NAME_STREAM_RESULT] = StreamResult.JOB
+    if dify_config.file_transfers_on:
+        headers[HEADER_NAME_FILE_RESULT] = FileResult.TRANSFER
     if call.authorization is not None:
         headers[AUTHORIZATION_HEADER] = call.authorization
     if call.trace_id is not None:
