@@ -1454,7 +1454,7 @@ class DataSetConfig(BaseSettings):
 
 
 class OpenApiAgentConfig(BaseSettings):
-    """Settings for agents that work through /openapi/v1: the MCP endpoint and run jobs."""
+    """Settings for agents that work through /openapi/v1: the MCP endpoint, run jobs and file transfers."""
 
     OPENAPI_MCP_ENABLED: bool = Field(
         description="Serve the MCP endpoint, POST /openapi/v1/mcp. When false the endpoint answers 404.",
@@ -1489,6 +1489,43 @@ class OpenApiAgentConfig(BaseSettings):
         description="Characters of one MCP tool result. A longer result is cut there, with a note that says so.",
         default=40_000,
     )
+
+    FILE_TRANSFER_ENABLED: bool = Field(
+        description="Serve file transfers: prepare.upload, the transfer byte route, transfer ids in file fields and "
+        "file results parked as transfers. They are on only while OPENAPI_MCP_ENABLED is also true.",
+        default=True,
+    )
+
+    FILE_TRANSFER_TTL_SECONDS: PositiveInt = Field(
+        description="How long a file transfer id can be used in calls, in seconds, before the transfer is deleted.",
+        default=1800,
+    )
+
+    FILE_TRANSFER_MAX_BYTES: PositiveInt = Field(
+        description="Largest file one transfer holds, in bytes. One upload request must also fit the reverse "
+        "proxy's body limit (100 MB in the bundled nginx).",
+        default=96 * 1024 * 1024,
+    )
+
+    FILE_TRANSFER_MAX_PER_OWNER: PositiveInt = Field(
+        description="Live file transfers per owner. Creating one more first deletes the owner's expired "
+        "transfers, then its oldest.",
+        default=20,
+    )
+
+    FILE_TRANSFER_MAX_ACTIVE: PositiveInt = Field(
+        description="Max requests that hold file transfer bytes in one API process at the same time. Each holds "
+        "one of the worker's SERVER_WORKER_CONNECTIONS (10 by default) and the file in memory, so raise it only "
+        "together with that number and the process's memory.",
+        default=2,
+    )
+
+    @property
+    def file_transfers_on(self) -> bool:
+        """True only while both the MCP endpoint and file transfers are switched on."""
+        if not self.OPENAPI_MCP_ENABLED:
+            return False
+        return self.FILE_TRANSFER_ENABLED
 
 
 class SkillConfig(BaseSettings):
