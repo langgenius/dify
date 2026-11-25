@@ -30,7 +30,7 @@ export const knowledgeSettingsEditSessionAtom = atom<
   | undefined
 >(undefined)
 
-export const knowledgeSettingsServerSnapshotAtom = atom(
+const knowledgeSettingsServerSnapshotAtom = atom(
   (get): KnowledgeSettingsSnapshot | undefined => {
     const space = get(knowledgeSettingsSpaceAtom)
     const settings = get(knowledgeSettingsSettingsAtom)

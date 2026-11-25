@@ -1,10 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { KnowledgeSettingsSnapshot } from '../draft'
 import type { SettingsMigrationProgress, SettingsSaveStep } from '../save-workflow'
+import { notifyManager } from '@tanstack/query-core'
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
-import { settingsDraftChanges, settingsSnapshotVersion } from '../draft'
+import { settingsDraftChanges } from '../draft'
 import { settingsSaveErrorMessageKey } from '../save-error'
 import {
   rebaseSettingsDraft,
@@ -18,7 +19,6 @@ import {
   knowledgeSettingsCanSaveAtom,
   knowledgeSettingsEditSessionAtom,
   knowledgeSettingsHasConflictAtom,
-  knowledgeSettingsServerSnapshotAtom,
 } from './draft'
 import { knowledgeSettingsSpaceIdAtom } from './inputs'
 
@@ -178,16 +178,6 @@ export const saveKnowledgeSettingsAtom = atom(
         await new Promise<void>((resolve) => setTimeout(resolve, 2000))
       }
     }
-    // Query observers apply cache updates asynchronously, so keep the submitted draft
-    // rendered until the server snapshot atom reflects everything this save committed.
-    const waitForSavedSnapshot = async (expected: KnowledgeSettingsSnapshot) => {
-      const expectedVersion = settingsSnapshotVersion(expected)
-      for (let attempt = 0; attempt < 100; attempt += 1) {
-        const current = get(knowledgeSettingsServerSnapshotAtom)
-        if (current && settingsSnapshotVersion(current) === expectedVersion) return
-        await new Promise<void>((resolve) => setTimeout(resolve, 0))
-      }
-    }
     const saveModels = async (steps: SettingsSaveStep[]) => {
       const response = await get(saveSettingsMutationAtom).mutateAsync({
         params,
@@ -258,7 +248,8 @@ export const saveKnowledgeSettingsAtom = atom(
         queryClient.setQueryData(queries.externalAccess.queryKey, externalAccess)
         checkpoint({ ...session.baseline, externalAccess }, ['external'])
       }
-      await waitForSavedSnapshot(session.baseline)
+      // Flush queued observer updates before releasing the submitted draft.
+      await new Promise<void>(resolve => notifyManager.schedule(resolve))
       set(knowledgeSettingsEditSessionAtom, undefined)
       return { status: 'saved' }
     } catch (error) {
