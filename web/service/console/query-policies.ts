@@ -1968,6 +1968,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
               },
             },
+            refresh: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (server, { params }, _result, { client }) => {
+                    const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    })
+                    client.setQueryData(queryKey, (previous) =>
+                      previous?.id === server.id
+                        ? { ...previous, server_code: server.server_code }
+                        : server,
+                    )
+                    void client.invalidateQueries({ queryKey, exact: true })
+                  },
+                },
+              },
+            },
           },
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
           networkAccessGroup: {
@@ -2204,25 +2221,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       input: { params: { app_id: params.app_id } },
                     }),
                   }),
-              },
-            },
-          },
-          server: {
-            refresh: {
-              post: {
-                mutationOptions: {
-                  onSuccess: (server, { params }, _result, { client }) => {
-                    const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({
-                      input: { params: { app_id: params.app_id } },
-                    })
-                    client.setQueryData(queryKey, (previous) =>
-                      previous?.id === server.id
-                        ? { ...previous, server_code: server.server_code }
-                        : server,
-                    )
-                    void client.invalidateQueries({ queryKey, exact: true })
-                  },
-                },
               },
             },
           },
