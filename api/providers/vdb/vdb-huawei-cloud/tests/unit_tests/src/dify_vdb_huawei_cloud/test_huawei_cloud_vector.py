@@ -97,15 +97,22 @@ def test_crud_methods(huawei_module: ModuleType) -> None:
     vector.delete_by_ids(["id-1"])
     vector._client.delete.assert_called_once_with(index="collection", id="id-1")
 
-    vector._client.search.return_value = {"hits": {"hits": [{"_id": "id-1"}]}}
-    vector.delete_by_ids = MagicMock()
     vector.delete_by_metadata_field("doc_id", "x")
-    vector.delete_by_ids.assert_called_once_with(["id-1"])
-
-    vector.delete_by_ids.reset_mock()
-    vector._client.search.return_value = {"hits": {"hits": list[dict[str, object]]()}}
-    vector.delete_by_metadata_field("doc_id", "x")
-    vector.delete_by_ids.assert_not_called()
+    vector._client.delete_by_query.assert_called_once_with(
+        index="collection",
+        body={
+            "query": {
+                "bool": {
+                    "should": [
+                        {"term": {"metadata.doc_id": "x"}},
+                        {"term": {"metadata.doc_id.keyword": "x"}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            }
+        },
+        refresh=True,
+    )
 
     vector.delete()
     vector._client.indices.delete.assert_called_once_with(index="collection")

@@ -102,11 +102,20 @@ class HuaweiCloudVector(BaseVector):
 
     @override
     def delete_by_metadata_field(self, key: str, value: str):
-        query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
-        results = self._client.search(index=self._collection_name, body=query_str)
-        ids = [hit["_id"] for hit in results["hits"]["hits"]]
-        if ids:
-            self.delete_by_ids(ids)
+        query = {
+            "query": {
+                "bool": {
+                    # doc_id/document_id are mapped as keyword; other string fields
+                    # match via the dynamic mapping's .keyword sub-field.
+                    "should": [
+                        {"term": {f"metadata.{key}": value}},
+                        {"term": {f"metadata.{key}.keyword": value}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            }
+        }
+        self._client.delete_by_query(index=self._collection_name, body=query, refresh=True)
 
     @override
     def delete(self):
