@@ -1,4 +1,5 @@
 import type { IConfiguration } from '@cucumber/cucumber'
+import { workflowCollaborationEnabled } from './test-env.ts'
 import './scripts/env-register.ts'
 
 const hasCliTags = process.argv.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
@@ -6,7 +7,12 @@ const defaultNonExternalTags =
   'not @axe and not @prepared and not @external-model and not @external-tool and not @cloud-catalog-runtime'
 const selectedTags =
   process.env.E2E_CUCUMBER_TAGS || (hasCliTags ? undefined : defaultNonExternalTags)
-const tags = selectedTags ? `(${selectedTags}) and not @skip` : 'not @skip'
+const runtimeTags = process.argv.includes('--dry-run')
+  ? 'not @skip'
+  : workflowCollaborationEnabled
+    ? 'not @skip and not @workflow-http-draft'
+    : 'not @skip and not @workflow-collaboration'
+const tags = selectedTags ? `(${selectedTags}) and ${runtimeTags}` : runtimeTags
 
 const config = {
   format: [

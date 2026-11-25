@@ -237,6 +237,7 @@ After(
     const diagnosticPages = uniqueDiagnosticPages([
       { label: 'main-page', page: this.page },
       { label: 'shared-app', page: this.sharedAppPage },
+      { label: 'workflow-collaborator', page: this.workflowDraft?.collaborator?.page },
       { label: 'agent-v2-web-app', page: this.agentBuilder.accessPoint.webAppPage },
       { label: 'agent-v2-api-reference', page: this.agentBuilder.accessPoint.apiReferencePage },
       {
@@ -266,6 +267,17 @@ After(
 
     if (artifactPaths.length > 0)
       this.attach(`Artifacts:\n${artifactPaths.join('\n')}`, 'text/plain')
+  },
+)
+
+After(
+  { tags: '@workflow-collaboration or @workflow-http-draft', name: 'Check workflow editor errors' },
+  function (this: DifyWorld) {
+    const draft = this.workflowDraft
+    if (!draft) return
+    const errors = [...draft.network.pageErrors, ...(draft.collaborator?.network.pageErrors ?? [])]
+    if (errors.length)
+      throw new AggregateError(errors, errors.map((error) => error.message).join('\n'))
   },
 )
 
