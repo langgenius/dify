@@ -169,5 +169,7 @@
   "results.status.passed": "Superato",
   "results.title": "Dettagli del test",
   "title": "Valutazione",
-  "unavailableUntilPublished": "Pubblica prima di configurare la valutazione."
+  "unavailableUntilPublished": "Pubblica prima di configurare la valutazione.",
+  "upgradePreview.description": "Esegui l'upgrade a un piano Professional o Team per configurare le metriche ed eseguire test batch sui tuoi dati.",
+  "upgradePreview.title": "Stai visualizzando un'anteprima della valutazione con dati di esempio"
 }

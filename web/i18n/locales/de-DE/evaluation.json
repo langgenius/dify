@@ -168,5 +168,7 @@
   "results.status.passed": "Bestanden",
   "results.title": "Testdetails",
   "title": "Evaluierung",
-  "unavailableUntilPublished": "Veröffentlichen Sie zuerst, um die Evaluierung einzurichten."
+  "unavailableUntilPublished": "Veröffentlichen Sie zuerst, um die Evaluierung einzurichten.",
+  "upgradePreview.description": "Führen Sie ein Upgrade auf den Professional- oder Team-Plan durch, um Metriken zu konfigurieren und Batch-Tests mit Ihren eigenen Daten auszuführen.",
+  "upgradePreview.title": "Sie sehen eine Vorschau der Evaluierung mit Beispieldaten"
 }

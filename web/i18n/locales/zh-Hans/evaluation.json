@@ -168,5 +168,7 @@
   "results.status.passed": "通过",
   "results.title": "测试详情",
   "title": "评测",
-  "unavailableUntilPublished": "请先发布，再配置评测。"
+  "unavailableUntilPublished": "请先发布，再配置评测。",
+  "upgradePreview.description": "升级到 Professional 或 Team 版计划，即可配置指标并使用自己的数据运行批量测试。",
+  "upgradePreview.title": "你正在使用示例数据预览评测"
 }

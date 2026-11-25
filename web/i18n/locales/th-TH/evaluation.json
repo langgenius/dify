@@ -168,5 +168,7 @@
   "results.status.passed": "ผ่าน",
   "results.title": "รายละเอียดการทดสอบ",
   "title": "การประเมิน",
-  "unavailableUntilPublished": "เผยแพร่ก่อนเพื่อตั้งค่าการประเมิน"
+  "unavailableUntilPublished": "เผยแพร่ก่อนเพื่อตั้งค่าการประเมิน",
+  "upgradePreview.description": "อัปเกรดเป็นแผน Professional หรือ Team เพื่อกำหนดค่าเมตริกและเรียกใช้การทดสอบแบบกลุ่มกับข้อมูลของคุณเอง",
+  "upgradePreview.title": "คุณกำลังดูตัวอย่างการประเมินด้วยข้อมูลตัวอย่าง"
 }

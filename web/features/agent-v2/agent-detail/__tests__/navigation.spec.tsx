@@ -257,14 +257,14 @@ describe('AgentDetailSection', () => {
     expect(screen.queryByText('agentV2.agentDetail.sections.evaluation')).not.toBeInTheDocument()
   })
 
-  it('disables evaluation when the workspace can upgrade into it instead of redirecting', async () => {
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
     mocks.evaluation = { evaluation_enabled: false, evaluation_upgrade_available: true }
 
     renderAgentDetailSection()
 
     expect(
-      await screen.findByRole('button', { name: 'agentV2.agentDetail.sections.evaluation' }),
-    ).toBeDisabled()
+      await screen.findByRole('link', { name: 'agentV2.agentDetail.sections.evaluation' }),
+    ).toHaveAttribute('href', '/agents/agent-1/evaluation')
   })
 
   it('hides evaluation when the workspace cannot use or upgrade into it', () => {

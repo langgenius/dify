@@ -170,5 +170,7 @@
   "results.status.passed": "Uspešno",
   "results.title": "Podrobnosti testa",
   "title": "Vrednotenje",
-  "unavailableUntilPublished": "Najprej objavite, da nastavite vrednotenje."
+  "unavailableUntilPublished": "Najprej objavite, da nastavite vrednotenje.",
+  "upgradePreview.description": "Nadgradite na paket Professional ali Team, da nastavite metrike in zaženete paketne teste na lastnih podatkih.",
+  "upgradePreview.title": "Ogledujete si predogled vrednotenja z vzorčnimi podatki"
 }

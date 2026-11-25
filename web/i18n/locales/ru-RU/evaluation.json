@@ -170,5 +170,7 @@
   "results.status.passed": "Пройдено",
   "results.title": "Подробности теста",
   "title": "Оценка",
-  "unavailableUntilPublished": "Сначала опубликуйте, чтобы настроить оценку."
+  "unavailableUntilPublished": "Сначала опубликуйте, чтобы настроить оценку.",
+  "upgradePreview.description": "Перейдите на тариф Professional или Team, чтобы настраивать метрики и запускать пакетные тесты на собственных данных.",
+  "upgradePreview.title": "Вы просматриваете оценку на примере данных"
 }

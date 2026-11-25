@@ -172,5 +172,7 @@
   "results.status.passed": "نجح",
   "results.title": "تفاصيل الاختبار",
   "title": "التقييم",
-  "unavailableUntilPublished": "انشر أولاً لإعداد التقييم."
+  "unavailableUntilPublished": "انشر أولاً لإعداد التقييم.",
+  "upgradePreview.description": "قم بالترقية إلى خطة Professional أو Team لتكوين المقاييس وتشغيل الاختبارات الدفعية على بياناتك الخاصة.",
+  "upgradePreview.title": "أنت تعاين التقييم باستخدام بيانات نموذجية"
 }

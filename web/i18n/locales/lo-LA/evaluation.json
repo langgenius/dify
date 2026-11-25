@@ -168,5 +168,7 @@
   "results.status.passed": "ຜ່ານ",
   "results.title": "ລາຍລະອຽດການທົດສອບ",
   "title": "ການປະເມີນ",
-  "unavailableUntilPublished": "ເຜີຍແຜ່ກ່ອນເພື່ອຕັ້ງຄ່າການປະເມີນ."
+  "unavailableUntilPublished": "ເຜີຍແຜ່ກ່ອນເພື່ອຕັ້ງຄ່າການປະເມີນ.",
+  "upgradePreview.description": "ອັບເກຣດເປັນແຜນ Professional ຫຼື Team ເພື່ອຕັ້ງຄ່າຕົວຊີ້ວັດ ແລະ ດຳເນີນການທົດສອບແບບກຸ່ມກັບຂໍ້ມູນຂອງທ່ານເອງ.",
+  "upgradePreview.title": "ທ່ານກຳລັງເບິ່ງຕົວຢ່າງການປະເມີນດ້ວຍຂໍ້ມູນຕົວຢ່າງ"
 }

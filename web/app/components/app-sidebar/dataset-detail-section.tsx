@@ -7,7 +7,7 @@ import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
+import { selectEvaluationEntryVisible } from '@/app/components/evaluation/entry'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -72,11 +72,9 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     return !datasetRes.is_published
   }, [datasetRes])
 
-  const { data: evaluationEntry } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  const { data: isEvaluationVisible = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntryVisible }),
   )
-  const isEvaluationVisible = evaluationEntry?.visible ?? false
-  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
@@ -122,13 +120,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
           href: `/datasets/${datasetId}/evaluation`,
           icon: 'i-ri-flask-line',
           selectedIcon: 'i-ri-flask-fill',
-          disabled:
-            evaluationRequiresUpgrade ||
-            isButtonDisabledWithPipeline ||
-            !datasetACLCapabilities.canPipelineTest,
-          disabledReason: evaluationRequiresUpgrade
-            ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
-            : undefined,
+          disabled: isButtonDisabledWithPipeline || !datasetACLCapabilities.canPipelineTest,
         })
       }
       baseNavigation.unshift({
@@ -155,7 +147,6 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     datasetRes?.provider,
     datasetACLCapabilities,
     isEvaluationVisible,
-    evaluationRequiresUpgrade,
   ])
 
   if (!datasetRes) return null

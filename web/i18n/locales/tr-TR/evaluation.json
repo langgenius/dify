@@ -168,5 +168,7 @@
   "results.status.passed": "Başarılı",
   "results.title": "Test Ayrıntıları",
   "title": "Değerlendirme",
-  "unavailableUntilPublished": "Değerlendirmeyi ayarlamak için önce yayınlayın."
+  "unavailableUntilPublished": "Değerlendirmeyi ayarlamak için önce yayınlayın.",
+  "upgradePreview.description": "Metrikleri yapılandırmak ve kendi verilerinizle toplu testler çalıştırmak için Professional veya Team planına yükseltin.",
+  "upgradePreview.title": "Değerlendirmeyi örnek verilerle önizliyorsunuz"
 }
