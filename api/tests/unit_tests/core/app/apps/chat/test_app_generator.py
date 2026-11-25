@@ -1,7 +1,6 @@
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from decimal import Decimal
-from types import SimpleNamespace
-from typing import Protocol, override
+from typing import override
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -11,74 +10,23 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 import core.app.apps.chat.app_generator as generator_module
-from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
+from constants import UUID_NIL
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
 from extensions.tracing import correlation_from_extras
-from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource, ConversationStatus
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
 from tests.helpers.unit.core.model_fixtures import make_model_config
-
-
-class _AppConfigLike(Protocol):
-    """Structural view of the app config the generator reads from the entity."""
-
-    app_id: str
-    tenant_id: str
-    app_mode: AppMode
-    prompt_template: object | None
-    external_data_variables: Sequence[object]
-    dataset: object | None
-    additional_features: object | None
-
-
-class DummyGenerateEntity(ChatAppGenerateEntity):
-    """Generate entity assembled field by field, bypassing pydantic validation."""
-
-    def __init__(
-        self,
-        *,
-        task_id: str = "",
-        app_config: _AppConfigLike | None = None,
-        model_conf: ModelConfigWithCredentialsEntity | None = None,
-        inputs: Mapping[str, object] | None = None,
-        query: str = "",
-        files: Sequence[File] | None = None,
-        file_upload_config: FileUploadConfig | None = None,
-        conversation_id: str | None = None,
-        parent_message_id: str | None = None,
-        stream: bool = False,
-        user_id: str = "",
-        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
-        extras: Mapping[str, object] | None = None,
-        trace_scope: TraceScope | None = None,
-    ) -> None:
-        self.__dict__.update(
-            task_id=task_id,
-            app_config=app_config,
-            model_conf=model_conf,
-            inputs=inputs,
-            query=query,
-            files=files,
-            file_upload_config=file_upload_config,
-            conversation_id=conversation_id,
-            parent_message_id=parent_message_id,
-            stream=stream,
-            user_id=user_id,
-            invoke_from=invoke_from,
-            extras=extras,
-            trace_scope=trace_scope,
-        )
 
 
 class _TraceRecorder:
@@ -129,6 +77,31 @@ def _account() -> Account:
     account = Account(name="User", email="user-1@example.com")
     account.id = "user-1"
     return account
+
+
+def _generate_entity(*, model: str = "mock-model", stream: bool = False) -> ChatAppGenerateEntity:
+    """Build a validated service-API chat request with no external tools or datasets."""
+    model_config = make_model_config(provider="mock-provider", model=model, mode="chat")
+    return ChatAppGenerateEntity(
+        task_id="t1",
+        app_config=ChatAppConfig(
+            app_id="app-1",
+            tenant_id="tenant-1",
+            app_mode=AppMode.CHAT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider=model_config.provider, model=model_config.model, mode="chat"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
+        model_conf=model_config,
+        inputs={},
+        query="hi",
+        files=[],
+        parent_message_id=UUID_NIL,
+        stream=stream,
+        user_id="user-1",
+        invoke_from=InvokeFrom.SERVICE_API,
+    )
 
 
 def _conversation() -> Conversation:
@@ -368,7 +341,7 @@ class TestChatAppGenerator:
     def test_generate_worker_handles_exceptions(self) -> None:
         generator = ChatAppGenerator()
         queue_manager = DummyQueueManager()
-        entity = DummyGenerateEntity(task_id="t1", user_id="u1")
+        entity = _generate_entity()
 
         with (
             patch.object(ChatAppGenerator, "_get_conversation", return_value=_conversation()),
@@ -402,21 +375,7 @@ class TestChatAppGenerator:
 class TestChatAppRunner:
     def test_run_raises_when_app_missing(self, sqlite_session: Session) -> None:
         runner = ChatAppRunner()
-        app_config = SimpleNamespace(
-            app_id="app-1", tenant_id="tenant-1", prompt_template=None, external_data_variables=[]
-        )
-        app_generate_entity = DummyGenerateEntity(
-            app_config=app_config,
-            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
-            inputs={},
-            query="hi",
-            files=[],
-            file_upload_config=None,
-            conversation_id=None,
-            stream=False,
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-        )
+        app_generate_entity = _generate_entity()
 
         with pytest.raises(ValueError, match="App not found"):
             runner.run(
@@ -430,27 +389,7 @@ class TestChatAppRunner:
     def test_run_moderation_error_direct_output(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
-        app_config = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            app_mode=AppMode.CHAT,
-            prompt_template=None,
-            external_data_variables=[],
-            dataset=None,
-            additional_features=None,
-        )
-        app_generate_entity = DummyGenerateEntity(
-            app_config=app_config,
-            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
-            inputs={},
-            query="hi",
-            files=[],
-            file_upload_config=None,
-            conversation_id=None,
-            stream=False,
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-        )
+        app_generate_entity = _generate_entity()
 
         with (
             patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
@@ -470,27 +409,7 @@ class TestChatAppRunner:
     def test_run_annotation_reply_short_circuits(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
-        app_config = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            app_mode=AppMode.CHAT,
-            prompt_template=None,
-            external_data_variables=[],
-            dataset=None,
-            additional_features=None,
-        )
-        app_generate_entity = DummyGenerateEntity(
-            app_config=app_config,
-            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
-            inputs={},
-            query="hi",
-            files=[],
-            file_upload_config=None,
-            conversation_id=None,
-            stream=False,
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-        )
+        app_generate_entity = _generate_entity()
 
         annotation = MessageAnnotation(
             app_id="app-1",
@@ -515,28 +434,8 @@ class TestChatAppRunner:
     def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
-        app_config = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            app_mode=AppMode.CHAT,
-            prompt_template=None,
-            external_data_variables=[],
-            dataset=None,
-            additional_features=None,
-        )
-        model_config = make_model_config(provider="mock-provider", model="model-1", mode="chat")
-        app_generate_entity = DummyGenerateEntity(
-            app_config=app_config,
-            model_conf=model_config,
-            inputs={},
-            query="hi",
-            files=[],
-            file_upload_config=None,
-            conversation_id=None,
-            stream=True,
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-        )
+        app_generate_entity = _generate_entity(model="model-1", stream=True)
+        model_config = app_generate_entity.model_conf
 
         events = []
         queue_manager = DummyQueueManager()
