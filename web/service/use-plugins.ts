@@ -613,10 +613,17 @@ export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   return useCallback(
     (category?: PluginCategoryEnum) => {
+      // Plugin installs and updates can change a provider's actions and their parameter schemas.
       const invalidateAllBuiltInTools = () =>
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-        })
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey:
+              consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.key(),
+          }),
+        ])
       if (category) {
         const invalidateCategoryPluginList = queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
