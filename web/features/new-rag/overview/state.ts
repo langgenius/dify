@@ -296,32 +296,45 @@ export const retryOverviewSnapshotsAtom = atom(null, (get) => {
     get(backgroundTasksRefetchAtom)(),
   ])
 })
-export const reconcileOverviewAfterTasksAtom = atom(null, async (get) => {
-  const queryClient = get(queryClientAtom)
-  const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
-  const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
-  const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
-  if (get(deploymentEditionAtom) === 'CLOUD') {
-    void Promise.allSettled([
-      queryClient.invalidateQueries(
-        { queryKey: consoleQuery.features.get.key() },
-        { cancelRefetch: false },
-      ),
-      queryClient.invalidateQueries(
-        { queryKey: consoleQuery.features.vectorSpace.get.key() },
-        { cancelRefetch: false },
-      ),
-    ])
-  }
-  await Promise.all(
-    keys.map(async (queryKey) => {
-      // A pre-completion request may finish late with a stale snapshot. Cancel it before the
-      // final fetch; dataUpdatedAt alone cannot tell when its server-side snapshot was taken.
-      await queryClient.cancelQueries({ queryKey })
-      await queryClient.invalidateQueries({ queryKey })
-    }),
-  )
-})
+export const reconcileOverviewAfterTasksAtom = atom(
+  null,
+  async (get, _set, { refreshSnapshots }: { refreshSnapshots: boolean }) => {
+    const queryClient = get(queryClientAtom)
+    const input = { params: { control_space_id: get(overviewKnowledgeSpaceIdAtom) } }
+    const overview = consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview
+    // Stopped snapshots do not re-evaluate their interval, so a newly observed terminal task must
+    // refresh them; their interval then keeps polling until they catch up with that task.
+    if (refreshSnapshots) {
+      for (const queryKey of [
+        overview.stats.get.key({ input }),
+        overview.queryOutcomes.get.key({ input }),
+        overview.inventory.get.key({ input }),
+      ])
+        void queryClient.invalidateQueries({ queryKey }, { cancelRefetch: false })
+    }
+    const keys = [overview.attention.get.key({ input }), overview.activity.get.key({ input })]
+    if (get(deploymentEditionAtom) === 'CLOUD') {
+      void Promise.allSettled([
+        queryClient.invalidateQueries(
+          { queryKey: consoleQuery.features.get.key() },
+          { cancelRefetch: false },
+        ),
+        queryClient.invalidateQueries(
+          { queryKey: consoleQuery.features.vectorSpace.get.key() },
+          { cancelRefetch: false },
+        ),
+      ])
+    }
+    await Promise.all(
+      keys.map(async (queryKey) => {
+        // A pre-completion request may finish late with a stale snapshot. Cancel it before the
+        // final fetch; dataUpdatedAt alone cannot tell when its server-side snapshot was taken.
+        await queryClient.cancelQueries({ queryKey })
+        await queryClient.invalidateQueries({ queryKey })
+      }),
+    )
+  },
+)
 // Snapshot intervals are evaluated after each of their own fetches, so a snapshot that stopped
 // polling does not notice a task that starts later. Refresh the snapshots once when that happens;
 // their intervals then read the active task from the cache and resume polling.

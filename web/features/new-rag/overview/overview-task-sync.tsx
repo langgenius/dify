@@ -19,7 +19,7 @@ import {
  */
 export function OverviewTaskSync() {
   const knowledgeSpaceId = useAtomValueRawSync(overviewKnowledgeSpaceIdAtom)
-  const { data } = useInfiniteQuery({
+  const { data, isError } = useInfiniteQuery({
     ...overviewBackgroundTasksOptions(knowledgeSpaceId),
     select: (result) => {
       const tasks = result.pages.flatMap((page) => page.data)
@@ -35,14 +35,23 @@ export function OverviewTaskSync() {
   const hasActiveTasks = data?.hasActiveTasks
   // Undefined until the first task list arrives; snapshots keep polling until then.
   const hadActiveTasksRef = useRef<boolean | undefined>(undefined)
+  const terminalVersionRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (terminalVersion) void reconcile()
+    // A terminal task seen for the first time may finish after the snapshots stopped polling.
+    const changed =
+      terminalVersionRef.current !== undefined && terminalVersionRef.current !== terminalVersion
+    terminalVersionRef.current = terminalVersion
+    if (terminalVersion) void reconcile({ refreshSnapshots: changed })
   }, [terminalVersion, reconcile])
   useEffect(() => {
-    if (hasActiveTasks === undefined) return
+    if (hasActiveTasks === undefined) {
+      // A failed task request stops snapshot polling, so a later active result must resume it.
+      if (isError) hadActiveTasksRef.current = false
+      return
+    }
     const started = hasActiveTasks && hadActiveTasksRef.current === false
     hadActiveTasksRef.current = hasActiveTasks
     if (started) void resumePolling()
-  }, [hasActiveTasks, resumePolling])
+  }, [hasActiveTasks, isError, resumePolling])
   return null
 }

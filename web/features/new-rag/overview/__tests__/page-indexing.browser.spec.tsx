@@ -213,6 +213,43 @@ describe('KnowledgeOverviewPage indexing', () => {
     expect(calls()).toEqual(settled)
   })
 
+  it('resumes refreshing visible metrics when tasks load after the task request failed', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'running'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
+  })
+
+  it('refreshes stopped metrics when a task is first seen after it finished', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks.push({
+      ...queryData.tasks[0]!,
+      id: 'task-finished-elsewhere',
+      state: 'completed',
+      updated_at: '2026-07-29T10:02:00Z',
+    })
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
   it('resumes refreshing visible metrics when a task starts after polling stopped', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.stats.generated_at = '2026-07-29T10:01:00Z'
