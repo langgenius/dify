@@ -43,9 +43,11 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: features } = useSuspenseQuery(consoleQuery.features.get.queryOptions())
-  const { data: vectorSpace, isPending: isVectorSpacePending } = useQuery(
-    consoleQuery.features.vectorSpace.get.queryOptions({ context: { silent: true } }),
-  )
+  const {
+    data: vectorSpace,
+    isPending: isVectorSpacePending,
+    isFetched: hasFetchedVectorSpace,
+  } = useQuery(consoleQuery.features.vectorSpace.get.queryOptions({ context: { silent: true } }))
   const enableEducationPlan = features.education.enabled
   const { data: educationStatus } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -58,7 +60,7 @@ const PlanComp: FC<Props> = ({ loc }) => {
   const appRunsQuota = getAppRunsQuota(features.api_rate_limit, type)
 
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  if (isVectorSpacePending) return <PlanLoading />
+  if (isVectorSpacePending && !hasFetchedVectorSpace) return <PlanLoading />
 
   return (
     <div className="@container/plan relative min-w-0 rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">

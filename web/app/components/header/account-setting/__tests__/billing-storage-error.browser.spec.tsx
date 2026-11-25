@@ -1,3 +1,4 @@
+import { notifyManager } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -12,6 +13,7 @@ import education from '@/i18n/locales/en-US/education.json'
 import navigation from '@/i18n/locales/en-US/navigation.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
+import { act } from '@/test/react-act'
 import { SettingsModal } from '../settings-modal'
 
 vi.unmock('react-i18next')
@@ -33,7 +35,7 @@ const fake = setupFakeApi({
   },
 })
 
-it('keeps the billing deep link usable when storage usage cannot load', async () => {
+it('keeps the billing deep link usable when storage usage fails and retries', async () => {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'normal' },
     features: { billing: { subscription: { plan: 'team' } }, apps: { size: 17, limit: 50 } },
@@ -78,4 +80,22 @@ it('keeps the billing deep link usable when storage usage cannot load', async ()
   const apps = dialog.getByRole('group', { name: 'Build Apps' })
   await expect.element(apps.getByText('17')).toBeVisible()
   await expect.element(apps.getByText('50')).toBeVisible()
+
+  const retry = hold(fake.console.features.vectorSpace.get)
+  // boundary: the test iframe cannot background its browser tab; supply the document visibility signal.
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  onTestFinished(() => visibility.mockRestore())
+  await act(async () => {
+    window.dispatchEvent(new Event('visibilitychange'))
+    visibility.mockReturnValue('visible')
+    window.dispatchEvent(new Event('visibilitychange'))
+    await retry.arrived
+    await new Promise<void>(notifyManager.schedule)
+  })
+
+  await expect.element(dialog.getByRole('heading', { name: 'Team' })).toBeVisible()
+  await expect.element(apps.getByText('17')).toBeVisible()
+
+  retry.resolve({ size: 75, limit: 100, usage_unknown: false })
+  await expect.element(storage.getByRole('meter')).toBeVisible()
 })
