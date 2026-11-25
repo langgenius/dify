@@ -69,7 +69,7 @@ class SessionBinding:
 
 
 @pytest.fixture
-def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
+def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Database]:
     statements: list[tuple[str, Sequence[object] | Mapping[str, object]]] = []
 
     def record_statement(
@@ -78,10 +78,16 @@ def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest
         statements.append((statement, parameters))
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement, named=True)
-    database = Database(engine=sqlite_engine, session=sqlite_session, statements=statements)
-    monkeypatch.setattr(memory_module, "db", SessionBinding(sqlite_session=sqlite_session))
-    yield database
-    event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+    try:
+        yield Database(engine=sqlite_engine, session=sqlite_session, statements=statements)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", record_statement)
+
+
+@pytest.fixture
+def bind_wrapper_session(database: Database, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Supply the real test session only for the wrapper that obtains it from Flask-SQLAlchemy."""
+    monkeypatch.setattr(memory_module, "db", SessionBinding(sqlite_session=database.session))
 
 
 def _make_app(*, app_id: str | None = None, mode: AppMode = AppMode.CHAT) -> App:
@@ -240,9 +246,11 @@ class TestGetHistoryPromptMessages:
         conv = _persist_conversation(database, mode)
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_returns_empty_when_no_messages(self, database: Database) -> None:
         assert self._make_memory(database).get_history_prompt_messages() == []
 
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_missing_app_preserves_text_history(self, database: Database) -> None:
         conversation = _make_conversation()
         mem = TokenBufferMemory(conversation=conversation, model_instance=_make_model_instance())
@@ -256,6 +264,7 @@ class TestGetHistoryPromptMessages:
         build_file.assert_not_called()
 
     @pytest.mark.parametrize("mode", [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_workflow_history_uses_callers_uncommitted_app(self, database: Database, mode: AppMode) -> None:
         mem = self._make_memory(database, mode)
         workflow_run = _make_workflow_run()
@@ -279,6 +288,7 @@ class TestGetHistoryPromptMessages:
         )
         assert database.session.get(Workflow, workflow.id) is workflow
 
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_skips_newest_message_without_answer(self, database: Database) -> None:
         mem = self._make_memory(database)
         message = _persist_message(database, mem.conversation.id, answer="", answer_tokens=0)
@@ -286,6 +296,7 @@ class TestGetHistoryPromptMessages:
         assert mem.get_history_prompt_messages() == []
         assert database.session.get(Message, message.id) is message
 
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_message_with_answer_returns_user_and_assistant_prompts(self, database: Database) -> None:
         mem = self._make_memory(database)
         _persist_message(database, mem.conversation.id, query="My query", answer="My answer", answer_tokens=10)
@@ -303,14 +314,20 @@ class TestGetHistoryPromptMessages:
         _persist_message(database, mem.conversation.id, answer="visible")
         _persist_message(database, "other-conversation", answer="hidden")
 
-        result = mem.get_history_prompt_messages()
+        history = mem.load_history(
+            conversation=mem.conversation,
+            app_record=mem.conversation.app(session=database.session),
+            session=database.session,
+            message_limit=None,
+        )
 
-        assert [prompt.content for prompt in result] == ["user query", "visible"]
+        assert [prompt.text for prompt in history.prompts] == ["user query", "visible"]
 
     @pytest.mark.parametrize(
         ("message_limit", "expected_limit"),
         [(None, 500), (9999, 500), (10, 10), (0, 500)],
     )
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_message_limit_is_applied_to_executable_query(
         self,
         database: Database,
@@ -359,6 +376,7 @@ class TestGetHistoryPromptMessages:
         assert file_prompt.is_user_message is is_user_message
         assert other_prompt.files == ()
 
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_message_files_are_batch_loaded_with_constant_query_count(self, database: Database) -> None:
         mem = self._make_memory(database)
         base_time = datetime.now(UTC).replace(tzinfo=None)
@@ -400,7 +418,13 @@ class TestGetHistoryPromptMessages:
         database.session.expunge_all()
         before = len(database.statements)
 
-        result = mem.get_history_prompt_messages()
+        history = mem.load_history(
+            conversation=mem.conversation,
+            app_record=mem.conversation.app(session=database.session),
+            session=database.session,
+            message_limit=None,
+        )
+        result = history.get_prompt_messages(model_instance=mem.model_instance, max_token_limit=2000)
 
         message_selects = [sql for sql, _ in database.statements[before:] if "FROM messages" in sql]
         assert len(message_selects) == 1
@@ -422,6 +446,7 @@ class TestGetHistoryPromptMessages:
             ([50], 2000, 2),
         ],
     )
+    @pytest.mark.usefixtures("bind_wrapper_session")
     def test_token_pruning_uses_persisted_history(
         self,
         database: Database,
