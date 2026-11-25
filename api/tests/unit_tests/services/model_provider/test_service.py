@@ -20,9 +20,10 @@ from core.entities.provider_entities import (
     CredentialConfiguration,
     CustomModelConfiguration,
 )
+from core.hosting_configuration import FreeHostingQuota, HostingConfiguration, HostingProvider, TrialHostingQuota
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import (
     FetchFrom,
@@ -35,6 +36,7 @@ from graphon.model_runtime.entities.provider_entities import (
     ProviderEntity,
 )
 from models.account import Account, TenantAccountRole
+from models.enums import ProviderQuotaType
 from models.provider import (
     Provider,
     ProviderCredential,
@@ -43,10 +45,12 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from services.billing_service import BillingService
 from services.credentials.query import CredentialQuery, ModelCredentialRecord
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider import service as service_module
 from services.model_provider.service import ModelProviderService, _ProviderSummaryState
+from tests.helpers.billing_builders import subscription_info
 
 
 class _RecordingConfigurations:
@@ -401,9 +405,70 @@ class TestModelProviderServiceCases:
             assert result[0].provider == "openai"
             assert result[0].custom_configuration.status.value == "no-configure"
 
-        def test_get_provider_summary_list_uses_lightweight_state_and_plugin_bindings(
-            self, monkeypatch: pytest.MonkeyPatch
+        @pytest.mark.parametrize(
+            ("plan", "has_key", "expected_hosted", "expected_configured"),
+            [
+                pytest.param(CloudPlan.SANDBOX, False, False, False, id="sandbox-without-key"),
+                pytest.param(CloudPlan.SANDBOX, True, False, True, id="sandbox-with-key"),
+                pytest.param(CloudPlan.TEAM, False, True, True, id="paid-without-key"),
+            ],
+        )
+        def test_paid_only_provider_summary(
+            self,
+            monkeypatch: pytest.MonkeyPatch,
+            sqlite_session: Session,
+            config_overrides: Callable[..., None],
+            plan: CloudPlan,
+            has_key: bool,
+            expected_hosted: bool,
+            expected_configured: bool,
         ) -> None:
+            """A paid-only provider counts as configured in Sandbox only with workspace credentials."""
+            config_overrides(
+                DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+                HOSTED_OPENAI_TRIAL_ENABLED=False,
+                HOSTED_OPENAI_PAID_ENABLED=True,
+            )
+            provider = ProviderEntity(
+                provider="langgenius/openai/openai",
+                label=I18nObject(en_US="OpenAI"),
+                supported_model_types=[ModelType.LLM],
+                configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            )
+            binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
+            monkeypatch.setattr(service_module.PluginService, "list_model_provider_bindings", lambda *_: [binding])
+            monkeypatch.setattr(service_module.PluginService, "fetch_plugin_model_providers", lambda **_: [provider])
+            monkeypatch.setitem(
+                service_module.ext_hosting_provider.hosting_configuration.provider_map,
+                provider.provider,
+                HostingConfiguration().init_openai(),
+            )
+            monkeypatch.setattr(BillingService, "get_info", lambda *_, **__: subscription_info(plan))
+            if has_key:
+                credential = ProviderCredential(
+                    tenant_id="tenant-1", provider_name="openai", credential_name="Workspace", encrypted_config="opaque"
+                )
+                sqlite_session.add_all(
+                    [
+                        credential,
+                        Provider(
+                            tenant_id="tenant-1", provider_name="openai", credential_id=credential.id, is_valid=True
+                        ),
+                    ]
+                )
+                sqlite_session.commit()
+
+            [summary], _ = ModelProviderService().get_provider_summary_list("tenant-1")
+
+            assert summary.is_configured is expected_configured
+            assert summary.system_configuration.enabled is expected_hosted
+
+        def test_get_provider_summary_list_uses_lightweight_state_and_plugin_bindings(
+            self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
+        ) -> None:
+            """An eligible hosted provider needs neither decryption nor a full provider graph."""
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            monkeypatch.setattr(BillingService, "get_info", lambda *_, **__: subscription_info("sandbox"))
             service = ModelProviderService()
             provider = SimpleNamespace(
                 provider="langgenius/openai/openai",
@@ -463,7 +528,7 @@ class TestModelProviderServiceCases:
             monkeypatch.setattr(
                 service_module.ext_hosting_provider.hosting_configuration,
                 "provider_map",
-                {provider.provider: SimpleNamespace(enabled=True, quotas=[SimpleNamespace()])},
+                {provider.provider: HostingProvider(enabled=True, quotas=[TrialHostingQuota()])},
             )
 
             providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
@@ -491,10 +556,19 @@ class TestModelProviderServiceCases:
             assert call_order == ["bindings", "providers"]
             manager_constructor.assert_not_called()
 
-        def test_get_provider_summary_list_enables_system_only_for_verified_hosted_non_package_bindings(
+        @pytest.mark.parametrize(("tenant_id", "has_free_quota"), [("tenant-1", False), ("tenant-2", True)])
+        def test_get_provider_summary_list_only_enables_eligible_hosting(
             self,
             monkeypatch: pytest.MonkeyPatch,
+            config_overrides: Callable[..., None],
+            sqlite_session: Session,
+            tenant_id: str,
+            has_free_quota: bool,
         ) -> None:
+            """Check bindings and free quota ownership without a billing round trip per provider."""
+            config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+            get_info = MagicMock(return_value=subscription_info("sandbox"))
+            monkeypatch.setattr(BillingService, "get_info", get_info)
             marketplace_binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
             package_binding = _build_model_provider_binding(
                 PluginInstallationSource.Package,
@@ -521,8 +595,27 @@ class TestModelProviderServiceCases:
                 plugin_unique_identifier="langgenius/unverified:1.0.0@checksum",
                 verified=False,
             )
+            free_binding = _build_model_provider_binding(
+                PluginInstallationSource.Marketplace,
+                plugin_id="langgenius/free",
+                plugin_unique_identifier="langgenius/free:1.0.0@checksum",
+            )
+            free_provider_name = f"{free_binding.plugin_id}/openai"
+            sqlite_session.add(
+                Provider(
+                    tenant_id="tenant-2",
+                    provider_name=free_provider_name,
+                    provider_type=ProviderType.SYSTEM,
+                    quota_type=ProviderQuotaType.FREE,
+                    is_valid=True,
+                    quota_limit=10,
+                    quota_used=10,
+                )
+            )
+            sqlite_session.commit()
             bindings = [
                 marketplace_binding,
+                free_binding,
                 package_binding,
                 unhosted_binding,
                 remote_binding,
@@ -544,11 +637,10 @@ class TestModelProviderServiceCases:
                 service_module.ext_hosting_provider.hosting_configuration,
                 "provider_map",
                 {
-                    "langgenius/openai/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
-                    "langgenius/package/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
-                    "langgenius/remote/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
-                    "langgenius/unverified/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
-                },
+                    f"{binding.plugin_id}/openai": HostingProvider(enabled=True, quotas=[TrialHostingQuota()])
+                    for binding in (marketplace_binding, package_binding, remote_binding, unverified_binding)
+                }
+                | {free_provider_name: HostingProvider(enabled=True, quotas=[FreeHostingQuota()])},
             )
             monkeypatch.setattr(
                 service_module.PluginService,
@@ -560,20 +652,17 @@ class TestModelProviderServiceCases:
                 "fetch_plugin_model_providers",
                 MagicMock(return_value=provider_entities),
             )
-            monkeypatch.setattr(
-                ModelProviderService,
-                "_load_provider_summary_states",
-                MagicMock(return_value={}),
-            )
             monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
 
-            providers, _ = ModelProviderService().get_provider_summary_list("tenant-1")
+            providers, _ = ModelProviderService().get_provider_summary_list(tenant_id)
 
+            get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
             assert {provider.provider: provider.system_configuration.enabled for provider in providers} == {
+                free_provider_name: has_free_quota,
                 "langgenius/openai/openai": True,
                 "langgenius/package/openai": False,
                 "langgenius/unhosted/openai": False,
-                "langgenius/remote/openai": True,
+                "langgenius/remote/openai": False,
                 "langgenius/unverified/openai": False,
             }
 
