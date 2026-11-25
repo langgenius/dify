@@ -578,8 +578,9 @@ describe('AgentFiles', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'diagram.png' }))
 
+    // Images load through the download endpoint rather than the text preview.
     await waitFor(() => {
-      expect(mocks.previewQueryOptions).toHaveBeenCalledWith(
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
         expect.objectContaining({
           input: expect.objectContaining({
             params: {
