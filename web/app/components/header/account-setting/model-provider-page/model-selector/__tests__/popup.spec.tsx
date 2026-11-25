@@ -532,7 +532,12 @@ describe('workspace credits and marketplace availability', () => {
 
 describe('installation through real polling and invalidation', () => {
   it('refreshes the provider catalog after installation and removes the installed marketplace entry', async () => {
-    const { user } = await setup({ modelList: [] }, { marketplace: true })
+    const { user, queryClient } = await setup({ modelList: [] }, { marketplace: true })
+    const llmCatalogKey =
+      consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+        input: { params: { model_type: 'llm' } },
+      })
+    queryClient.setQueryData(llmCatalogKey, { data: [] })
     api.summary.mockResolvedValue(installedSummary())
     api.catalog.mockClear()
     await user.click(installButton())
@@ -544,7 +549,8 @@ describe('installation through real polling and invalidation', () => {
     expect(await screen.findByRole('region', { name: 'OpenAI' })).toBeInTheDocument()
     expect(api.lookup).toHaveBeenCalledExactlyOnceWith({ org: 'langgenius', name: 'openai' })
     expect(api.install).toHaveBeenCalledWith({ body: { plugin_unique_identifiers: [packageId] } })
-    expect(api.catalog).toHaveBeenCalledWith({ params: { model_type: 'llm' } })
+    // The popup receives its models as props, so the catalog is marked stale instead of refetched.
+    expect(queryClient.getQueryState(llmCatalogKey)?.isInvalidated).toBe(true)
   })
 
   it('allows retry after the install request fails without refreshing providers prematurely', async () => {
