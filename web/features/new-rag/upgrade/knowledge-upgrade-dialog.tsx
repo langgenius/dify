@@ -59,18 +59,20 @@ export function KnowledgeUpgradeDialog({
     datasetId: dataset?.id,
     recommendations: canUpgrade ? discoveryQuery.data?.models : undefined,
   })
-  const startMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions(),
-    onSuccess: (job) => {
-      idempotencyKeyRef.current = undefined
-      if (dataset) onStarted(dataset, job)
-    },
-    onError: (error, { body }) => {
-      if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable') return
-      if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
-      void models.refresh()
-    },
-  })
+  const startMutation = useMutation(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions({
+      onSuccess: (job) => {
+        idempotencyKeyRef.current = undefined
+        if (dataset) onStarted(dataset, job)
+      },
+      onError: (error, { body }) => {
+        if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable')
+          return
+        if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
+        void models.refresh()
+      },
+    }),
+  )
   const modelsRejected =
     isDefinedError(startMutation.error) &&
     startMutation.error.code === 'knowledge_fs_upgrade_models_unavailable'

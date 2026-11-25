@@ -22,7 +22,6 @@ import type {
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
-import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { noop } from 'es-toolkit/function'
 import {
   markAppDeletionFailed,
@@ -30,6 +29,7 @@ import {
   markAppDeletionSucceeded,
 } from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
+import { createPolicyQueryUtils } from './mutation-policies'
 import { upsertStartedPluginTask } from './plugin-task-cache'
 import {
   syncAppWorkflowVersionCaches,
@@ -55,7 +55,7 @@ async function refreshRejectedPersonalToken(
 }
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
-  const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
+  const consoleQuery: RouterUtils<ConsoleClient> = createPolicyQueryUtils(consoleClient, {
     path: ['console'],
     experimental_defaults: {
       workflowRunArchives: {

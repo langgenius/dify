@@ -13,19 +13,27 @@ transport for the Python Console API.
   request identity is resolved per request.
 - Shared query/mutation defaults live in
   [query-policies.ts].
-  In oRPC v1, caller options override defaults, including callbacks.
 - Routes/layouts own prefetching and hydration. Use the existing
   [QueryClient factory].
 
 ## Policy ownership
 
 Shared operation defaults belong in `query-policies.ts`. Call sites own inputs,
-execution conditions, projections, and interaction feedback. A local option
-overrides the corresponding default; callbacks are not composed automatically.
-When a mutation uses shared `onSettled` invalidation, keep local toast, close, and
-navigation behavior in `onSuccess` / `onError`. Do not override `onSettled` without
-preserving that cache contract. The returned invalidation promise keeps the
-mutation pending until active consumers have refreshed.
+execution conditions, projections, and interaction feedback.
+
+Mutation policy callbacks (`onMutate`, `onSuccess`, `onError`, `onSettled`)
+always run. `mutationOptions({ onSuccess })` chains the caller's callback after
+the policy's and awaits the policy first, so the caller sees the settled cache
+and the returned invalidation promise keeps the mutation pending until active
+consumers have refreshed. When both define `onMutate`, each side receives its
+own result in later callbacks. Other options (`retry`, `context`, `meta`) still
+merge shallowly: the caller's value wins.
+
+Pass callbacks to `mutationOptions()`. Spreading `...mutationOptions()` into
+`useMutation` and then setting a callback, or calling a policy callback by hand,
+replaces the policy; `dify/no-mutation-policy-bypass` reports both. Callbacks
+passed to `mutate(variables, { onSuccess })` run after both and are skipped when
+the component has unmounted, so keep cache work out of them.
 
 List affected generated keys inline in the owning operation's policy. Whether
 invalidation runs after an error depends on the write contract: a rejected
