@@ -27,6 +27,7 @@ import {
   queryOptions,
   skipToken,
   useInfiniteQuery,
+  useMutation,
   useQueries,
   useQuery,
   useQueryClient,
@@ -654,6 +655,12 @@ function ResourceConfiguration({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  const { mutateAsync: updateSource } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mutationOptions(),
+  )
+  const { mutateAsync: importSourceItems } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(),
+  )
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
   const sessionRef = useRef<PreviewSourceSession>({ active: false, committed: false })
@@ -1458,7 +1465,7 @@ function ResourceConfiguration({
       const currentSource = session.source
       if (!currentSource?.version) throw new Error('Source has no version')
       const finalSource = sourceFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+        await updateSource({
           body: {
             expectedVersion: currentSource.version,
             name: draft.sourceName.trim(),
@@ -1496,7 +1503,7 @@ function ResourceConfiguration({
       }
       const importWorkflow = sourceWorkflowFromApi(
         await (!driveTransport
-          ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          ? importSourceItems({
               body: {
                 items: selectedPages.map((resource) => ({
                   lastEditedTime: resource.page.last_edited_time ?? undefined,
@@ -1515,7 +1522,7 @@ function ResourceConfiguration({
                 source_id: finalSource.id,
               },
             })
-          : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          : importSourceItems({
               body: {
                 items: selectedFiles.map((resource) => ({
                   bucket: resource.bucket,
@@ -1871,6 +1878,9 @@ function ConnectedSourceWorkflowSession({
 }: ConnectedSourceWorkflowProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions(),
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
@@ -2020,7 +2030,7 @@ function ConnectedSourceWorkflowSession({
       try {
         rememberConnection(
           sourceConnectionFromApi(
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+            await createConnection({
               body: {
                 authKind: 'endpoint',
                 configuration: {
@@ -2055,6 +2065,7 @@ function ConnectedSourceWorkflowSession({
       }
     },
     [
+      createConnection,
       credential,
       datasourceIdentity,
       datasourceProvider,
