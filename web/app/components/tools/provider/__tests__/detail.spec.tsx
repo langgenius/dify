@@ -56,6 +56,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.toolProvider.api.delete.post': api.customRemove,
       'workspaces.current.toolProvider.workflow.delete.post': api.workflowRemove,
+      // The action settings drawer reads the same lists through queries.
+      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
+      'workspaces.current.toolProvider.api.tools.get': api.customTools,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,

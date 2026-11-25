@@ -46,12 +46,6 @@ export const fetchCustomToolList = (collectionName: string) => {
     .then(selectBuiltinProviderTools)
 }
 
-export const fetchWorkflowToolList = (appID: string) => {
-  return toolProvider.workflow.tools
-    .get({ query: { workflow_tool_id: appID } })
-    .then(selectBuiltinProviderTools)
-}
-
 export const parseParamsSchema = (schema: string) => {
   return toolProvider.api.schema.post({ body: { schema } }).then(selectApiSchemaParameters)
 }
