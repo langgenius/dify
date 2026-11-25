@@ -39,9 +39,7 @@ function DeleteExternalApiConfirmation({
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
       context: { silent: true },
-      gcTime: 0,
       networkMode: 'always',
-      staleTime: 0,
       retry: false,
       refetchOnReconnect: false,
       refetchOnWindowFocus: false,

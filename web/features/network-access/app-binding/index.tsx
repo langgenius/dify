@@ -172,7 +172,6 @@ function AccessControlSession({
         open &&
         view === 'config',
       context: { silent: true },
-      staleTime: 0,
       retry: false,
     }),
   )

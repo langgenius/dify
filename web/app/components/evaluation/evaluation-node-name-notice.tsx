@@ -41,7 +41,6 @@ const EvaluationNodeNameNotice = ({
         params: { evaluate_target_type: resourceType, evaluate_target_id: resourceId },
         body: { metrics: [] },
       },
-      refetchOnMount: 'always',
       retry: false,
     }),
   )

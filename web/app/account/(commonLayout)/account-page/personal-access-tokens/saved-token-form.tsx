@@ -22,7 +22,6 @@ export default function SavedTokenForm({
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
       context: { silent: true },
       input: { params: { token_id: tokenId } },
-      staleTime: 0,
     }),
   )
   if (query.data)

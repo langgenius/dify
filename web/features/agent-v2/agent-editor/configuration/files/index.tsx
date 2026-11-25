@@ -165,7 +165,6 @@ function AgentFileItem({
         },
       },
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
     enabled: shouldDownloadPreviewFile && !apiContext.workflow && !apiContext.trialAppId,
   })
@@ -183,7 +182,6 @@ function AgentFileItem({
         },
       },
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
@@ -196,7 +194,6 @@ function AgentFileItem({
           }
         : skipToken,
       enabled: !!apiContext.trialAppId && shouldDownloadPreviewFile,
-      staleTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
