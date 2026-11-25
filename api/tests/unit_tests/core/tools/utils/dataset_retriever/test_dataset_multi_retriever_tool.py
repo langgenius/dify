@@ -18,10 +18,13 @@ from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance, ModelManager
 from core.provider_manager import ProviderManager
+from core.rag.data_post_processor.data_post_processor import WeightsDict
+from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict
 from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.entities import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever import dataset_multi_retriever_tool as multi_retriever_module
 from core.tools.utils.dataset_retriever import dataset_retriever_tool as single_retriever_module
 from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
@@ -52,7 +55,7 @@ def _persist_dataset(
     tenant_id: str | None = None,
     name: str = "Knowledge Base",
     provider: str = "vendor",
-    retrieval_model: dict[str, object] | None = None,
+    retrieval_model: DefaultRetrievalModelDict | None = None,
 ) -> Dataset:
     dataset = Dataset(
         id=dataset_id or str(uuid.uuid4()),
@@ -214,7 +217,10 @@ def test_single_dataset_retriever_from_dataset_builds_name_and_description(sqlit
 
 
 def test_single_dataset_retriever_external_run_returns_content_and_resources(sqlite_session: Session) -> None:
-    dataset = _persist_dataset(sqlite_session, provider="external", retrieval_model={})
+    dataset = _persist_dataset(sqlite_session, provider="external")
+    # External retrieval forwards its stored parameters, including an explicitly empty mapping.
+    dataset.retrieval_model = {}
+    sqlite_session.commit()
     callback = _TestHitCallback()
     metadata_filter_result = (
         {dataset.id: ["doc-a"]},
@@ -255,6 +261,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
     assert resource_info[0].dataset_id == dataset.id
     fetch_mock.assert_called_once()
     assert fetch_mock.call_args.kwargs["session"] is sqlite_session
+    assert fetch_mock.call_args.kwargs["external_retrieval_parameters"] == {}
 
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents(
@@ -287,13 +294,21 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
     dataset = _persist_dataset(
         sqlite_session,
         retrieval_model={
-            "search_method": "semantic_search",
+            "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+            "top_k": 4,
             "score_threshold_enabled": True,
             "score_threshold": 0.2,
             "reranking_enable": True,
             "reranking_model": {"reranking_provider_name": "provider", "reranking_model_name": "model"},
             "reranking_mode": "reranking_model",
-            "weights": {"vector_setting": {"vector_weight": 0.6}},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.6,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {"keyword_weight": 0.4},
+            },
         },
     )
     document_low = _persist_document(
@@ -440,22 +455,35 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
     retrieve_mock.assert_not_called()
 
 
+@pytest.mark.parametrize("legacy_null_reranking_mode", [False, True], ids=["missing-mode", "legacy-null-mode"])
 def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
+    legacy_null_reranking_mode: bool,
 ) -> None:
-    dataset = _persist_dataset(
-        sqlite_session,
-        retrieval_model={
-            "search_method": "semantic_search",
-            "top_k": 6,
-            "score_threshold_enabled": True,
-            "score_threshold": 0.4,
-            "reranking_enable": False,
-            "reranking_mode": None,
-            "weights": {"balanced": True},
+    """Forward configured retrieval options and default both missing and legacy null reranking modes."""
+    weights: WeightsDict = {
+        "vector_setting": {
+            "vector_weight": 0.5,
+            "embedding_provider_name": "openai",
+            "embedding_model_name": "text-embedding-3-small",
         },
-    )
+        "keyword_setting": {"keyword_weight": 0.5},
+    }
+    retrieval_model: DefaultRetrievalModelDict = {
+        "search_method": RetrievalMethod.SEMANTIC_SEARCH,
+        "top_k": 6,
+        "score_threshold_enabled": True,
+        "score_threshold": 0.4,
+        "reranking_enable": False,
+        "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
+        "weights": weights,
+    }
+    dataset = _persist_dataset(sqlite_session, retrieval_model=retrieval_model)
+    if legacy_null_reranking_mode:
+        # The JSON column also accepts legacy data outside the default settings shape.
+        dataset.retrieval_model = {**retrieval_model, "reranking_mode": None}
+        sqlite_session.commit()
     callback = _TestHitCallback()
     documents = [RagDocument(page_content="retrieved", metadata={"doc_id": "node-1", "score": 0.4})]
     all_documents: list[RagDocument] = []
@@ -495,7 +523,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
         score_threshold=0.4,
         reranking_model=None,
         reranking_mode="reranking_model",
-        weights={"balanced": True},
+        weights=weights,
     )
 
 
