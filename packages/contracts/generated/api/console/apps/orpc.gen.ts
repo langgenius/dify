@@ -384,6 +384,7 @@ import {
   zPostAppsByAppIdAnnotationReplyByActionBody,
   zPostAppsByAppIdAnnotationReplyByActionPath,
   zPostAppsByAppIdAnnotationReplyByActionResponse,
+  zPostAppsByAppIdAnnotationsBatchImportBody,
   zPostAppsByAppIdAnnotationsBatchImportPath,
   zPostAppsByAppIdAnnotationsBatchImportResponse,
   zPostAppsByAppIdAnnotationsBody,
@@ -1552,7 +1553,12 @@ export const post16 = oc
     path: '/apps/{app_id}/annotations/batch-import',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdAnnotationsBatchImportPath }))
+  .input(
+    z.object({
+      body: zPostAppsByAppIdAnnotationsBatchImportBody,
+      params: zPostAppsByAppIdAnnotationsBatchImportPath,
+    }),
+  )
   .output(zPostAppsByAppIdAnnotationsBatchImportResponse)
   .errors({
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },

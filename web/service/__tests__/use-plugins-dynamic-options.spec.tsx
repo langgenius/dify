@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
-import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '../use-plugins'
+import {
+  pluginDynamicOptionsMutationOptions,
+  pluginDynamicTreeOptionsMutationOptions,
+} from '../plugin-list-queries'
 
 const { mockDynamicOptionsGet, mockDynamicTreeGet } = vi.hoisted(() => ({
   mockDynamicOptionsGet: vi.fn(),
@@ -50,14 +53,16 @@ describe('dynamic plugin option hooks', () => {
     mockDynamicOptionsGet.mockResolvedValue({ options: [] })
     const { result } = renderHook(
       () =>
-        useFetchDynamicOptions({
-          plugin_id: 'plugin-1',
-          provider: 'provider-1',
-          action: 'search',
-          parameter: 'region',
-          credential_id: 'credential-1',
-          parameter_values: { region: 'us' },
-        }),
+        useMutation(
+          pluginDynamicOptionsMutationOptions({
+            plugin_id: 'plugin-1',
+            provider: 'provider-1',
+            action: 'search',
+            parameter: 'region',
+            credential_id: 'credential-1',
+            parameter_values: { region: 'us' },
+          }),
+        ),
       { wrapper: createWrapper() },
     )
 
@@ -80,13 +85,15 @@ describe('dynamic plugin option hooks', () => {
     mockDynamicOptionsGet.mockResolvedValue({ options: [] })
     const { result } = renderHook(
       () =>
-        useFetchDynamicOptions({
-          plugin_id: 'plugin-1',
-          provider: 'provider-1',
-          action: 'search',
-          parameter: 'region',
-          parameter_values: {},
-        }),
+        useMutation(
+          pluginDynamicOptionsMutationOptions({
+            plugin_id: 'plugin-1',
+            provider: 'provider-1',
+            action: 'search',
+            parameter: 'region',
+            parameter_values: {},
+          }),
+        ),
       { wrapper: createWrapper() },
     )
 
@@ -127,14 +134,16 @@ describe('dynamic plugin option hooks', () => {
     })
     const { result } = renderHook(
       () =>
-        useFetchDynamicTreeOptions({
-          plugin_id: 'plugin-1',
-          provider: 'provider-1',
-          action: 'search',
-          parameter: 'category',
-          credential_id: 'credential-1',
-          parameter_values: { region: 'us' },
-        }),
+        useMutation(
+          pluginDynamicTreeOptionsMutationOptions({
+            plugin_id: 'plugin-1',
+            provider: 'provider-1',
+            action: 'search',
+            parameter: 'category',
+            credential_id: 'credential-1',
+            parameter_values: { region: 'us' },
+          }),
+        ),
       { wrapper: createWrapper() },
     )
 

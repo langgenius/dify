@@ -37,12 +37,6 @@ const knowledgeSpacePermissionState = vi.hoisted(() => ({
 
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
-// Protected images are fetched as blobs through the base request helper.
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: multimodalAssetGet,
-}))
-
 vi.mock('../../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
@@ -380,6 +374,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       [`${space}.backgroundTasks.byTaskKind.byTaskId.retry.post`]: retryTaskRequest,
+      // Protected images are fetched as blobs through the multimodal asset route.
+      [`${space}.documents.byDocumentId.multimodal.byItemId.asset.get`]: multimodalAssetGet,
       [`${space}.documents.byDocumentId.patch`]: patchDocumentMetadata,
       [`${space}.metadata.get`]: () =>
         metadataFieldsQuery.isPending
@@ -772,7 +768,7 @@ describe('DocumentDetailPage', () => {
     multimodalQuery.error = null
     multimodalQuery.isPending = false
     multimodalAssetGet.mockImplementation(
-      async () => new Response(new Blob(['image-bytes'], { type: 'image/png' })),
+      async () => new Blob(['image-bytes'], { type: 'image/png' }),
     )
     taskSnapshotQuery.data = undefined
     taskSnapshotQuery.error = null
@@ -1191,8 +1187,8 @@ describe('DocumentDetailPage', () => {
   it('loads protected document images next to the chunk selected by canonical offsets', async () => {
     // Each protected variant resolves to its own bytes, so its object URL follows the content.
     multimodalAssetGet.mockImplementation(
-      async (path: string) =>
-        new Response(new Blob([path.includes('thumbnail') ? 'thumbnail' : 'asset'])),
+      async (input: { query?: { variant?: string } }) =>
+        new Blob([input.query?.variant === 'thumbnail' ? 'thumbnail' : 'asset']),
     )
     vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) =>
       (blob as Blob).size === 'thumbnail'.length ? 'blob:thumbnail' : 'blob:asset',
@@ -1221,14 +1217,16 @@ describe('DocumentDetailPage', () => {
       id: 'manifest-1',
       items: [
         {
-          asset_url: '/console/api/knowledge-fs/image-1',
+          asset_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/image-1/asset',
           caption: 'Screenshot of the source configuration',
           id: 'image-1',
           modality: 'image',
           parse_element_id: 'parse-image-1',
           section_path: ['Images'],
           start_offset: 20,
-          thumbnail_url: '/console/api/knowledge-fs/image-1?variant=thumbnail',
+          thumbnail_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/image-1/asset?variant=thumbnail',
         },
       ],
       manifest_version: 'document-multimodal-manifest-v1',
@@ -1241,11 +1239,11 @@ describe('DocumentDetailPage', () => {
       name: 'Screenshot of the source configuration',
     })
     expect(image).toHaveAttribute('src', 'blob:asset')
+    const assetParams = { control_space_id: 'space-1', document_id: 'asset-1', item_id: 'image-1' }
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       1,
-      '/knowledge-fs/image-1',
-      { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { params: assetParams },
+      { signal: expect.any(AbortSignal), context: { silent: true } },
     )
     fireEvent.error(image)
     await waitFor(() =>
@@ -1255,9 +1253,8 @@ describe('DocumentDetailPage', () => {
     )
     expect(multimodalAssetGet).toHaveBeenNthCalledWith(
       2,
-      '/knowledge-fs/image-1?variant=thumbnail',
-      { signal: expect.any(AbortSignal) },
-      { needAllResponseContent: true, silent: true },
+      { params: assetParams, query: { variant: 'thumbnail' } },
+      { signal: expect.any(AbortSignal), context: { silent: true } },
     )
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:asset')
     expect(
@@ -1304,7 +1301,8 @@ describe('DocumentDetailPage', () => {
       id: 'manifest-1',
       items: [
         {
-          asset_url: '/console/api/knowledge-fs/spreadsheet-image-1',
+          asset_url:
+            '/console/api/knowledge-fs/spaces/space-1/documents/asset-1/multimodal/spreadsheet-image-1/asset',
           caption: 'Screenshot for the copy button issue',
           id: 'spreadsheet-image-1',
           modality: 'image',

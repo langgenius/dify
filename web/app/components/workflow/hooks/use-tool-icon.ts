@@ -11,7 +11,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
 import { useResolvedTheme } from '@/features/theme/hooks'
 import { consoleQuery } from '@/service/console'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { allTriggerPluginsQueryOptions } from '@/service/trigger-queries'
 import { canFindTool } from '@/utils'
 import { matchesProviderReference } from '@/utils/provider-reference'
 import { useStore, useWorkflowStore } from '../store'
@@ -188,7 +188,7 @@ export const useToolIcon = (data?: Node['data']) => {
     consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
   )
   const dataSourceList = useStore((s) => s.dataSourceList)
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
   const theme = useResolvedTheme()
 
   const toolIcon = useMemo(() => {
@@ -237,7 +237,7 @@ export const useGetToolIcon = () => {
   const { data: mcpTools } = useQuery(
     consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
   )
-  const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { data: triggerPlugins } = useQuery(allTriggerPluginsQueryOptions())
   const workflowStore = useWorkflowStore()
   const theme = useResolvedTheme()
 

@@ -22,8 +22,8 @@ import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
+import { webAppLogout } from '@/service/common'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
 type Props = Readonly<

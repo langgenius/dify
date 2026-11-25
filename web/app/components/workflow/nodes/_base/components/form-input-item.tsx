@@ -17,6 +17,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
@@ -30,8 +31,11 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
-import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '@/service/use-plugins'
-import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import {
+  pluginDynamicOptionsMutationOptions,
+  pluginDynamicTreeOptionsMutationOptions,
+} from '@/service/plugin-list-queries'
+import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
 import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
 import FormInputDynamicTreeSelect from './form-input-dynamic-tree-select'
@@ -204,27 +208,31 @@ const FormInputItem: FC<Props> = ({
       ? currentProvider.credential_id
       : undefined
 
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions({
-    plugin_id: currentProvider?.plugin_id || '',
-    provider: currentProvider?.name || '',
-    action: currentTool?.name || '',
-    parameter: variable || '',
-    provider_type: toolOrTriggerProviderType,
-    credential_id: providerCredentialId,
-    parameter_values: parameterValuesForDynamicOptions,
-  })
-  const { mutateAsync: fetchDynamicTreeOptions } = useFetchDynamicTreeOptions({
-    plugin_id: currentProvider?.plugin_id || '',
-    provider: currentProvider?.name || '',
-    action: currentTool?.name || '',
-    parameter: variable || '',
-    credential_id: providerCredentialId,
-    parameter_values: parameterValuesForDynamicOptions,
-  })
+  const { mutateAsync: fetchDynamicOptions } = useMutation(
+    pluginDynamicOptionsMutationOptions({
+      plugin_id: currentProvider?.plugin_id || '',
+      provider: currentProvider?.name || '',
+      action: currentTool?.name || '',
+      parameter: variable || '',
+      provider_type: toolOrTriggerProviderType,
+      credential_id: providerCredentialId,
+      parameter_values: parameterValuesForDynamicOptions,
+    }),
+  )
+  const { mutateAsync: fetchDynamicTreeOptions } = useMutation(
+    pluginDynamicTreeOptionsMutationOptions({
+      plugin_id: currentProvider?.plugin_id || '',
+      provider: currentProvider?.name || '',
+      action: currentTool?.name || '',
+      parameter: variable || '',
+      credential_id: providerCredentialId,
+      parameter_values: parameterValuesForDynamicOptions,
+    }),
+  )
 
   // Fetch dynamic options hook for triggers
-  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } =
-    useTriggerPluginDynamicOptions(
+  const { data: triggerDynamicOptions, isLoading: isTriggerOptionsLoading } = useQuery(
+    triggerPluginDynamicOptionsQueryOptions(
       {
         plugin_id: currentProvider?.plugin_id || '',
         provider: currentProvider?.name || '',
@@ -238,7 +246,8 @@ const FormInputItem: FC<Props> = ({
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
-    )
+    ),
+  )
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options

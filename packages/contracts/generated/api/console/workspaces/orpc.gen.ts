@@ -513,6 +513,7 @@ import {
   zPostWorkspacesCurrentPluginUpgradeGithubResponse,
   zPostWorkspacesCurrentPluginUpgradeMarketplaceBody,
   zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse,
+  zPostWorkspacesCurrentPluginUploadBundleBody,
   zPostWorkspacesCurrentPluginUploadBundleResponse,
   zPostWorkspacesCurrentPluginUploadGithubBody,
   zPostWorkspacesCurrentPluginUploadGithubResponse,
@@ -3356,6 +3357,7 @@ export const post54 = oc
     path: '/workspaces/current/plugin/upload/bundle',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginUploadBundleBody }))
   .output(zPostWorkspacesCurrentPluginUploadBundleResponse)
 
 export const bundle = {

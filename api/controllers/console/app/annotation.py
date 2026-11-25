@@ -505,6 +505,10 @@ class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={"file": {"description": "Annotation CSV file", "in": "formData", "type": "file", "required": True}},
+    )
     @console_ns.response(
         HTTPStatus.OK,
         "Import started, or CSV/subscription validation failed (error_msg)",

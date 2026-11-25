@@ -8,8 +8,6 @@ import { DemoEndPanel } from '../demo-end-panel'
 const api = { urlUpdate: vi.fn() }
 let navigation: TestNavigation
 
-const app = { id: 'chatflow-1', name: 'Refund assistant', updated_at: 20 }
-
 async function renderPanel(state: DemoEndState) {
   const onReplay = vi.fn()
   const onExit = vi.fn()
@@ -35,36 +33,16 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-it.each<[DemoEndState, string, string]>([
-  [{ kind: 'tryNow', app }, 'collaborationDemo.end.enabled.action', '/app/chatflow-1/workflow'],
-  [{ kind: 'appsError' }, 'collaborationDemo.end.goToStudio', '/apps'],
-  [
-    { kind: 'createApp' },
-    'collaborationDemo.end.createWorkflow',
-    '/apps?create=blank&mode=workflow',
-  ],
-])('links %o to its destination', async (state, name, href) => {
-  const { screen } = await renderPanel(state)
+it('explains who can upgrade and offers close and replay to other members', async () => {
+  const { screen, onReplay } = await renderPanel({ kind: 'upgradeContactAdmin' })
 
+  await expect.element(screen.getByText('collaborationDemo.end.upgrade.contactAdmin')).toBeVisible()
   await expect
-    .element(screen.getByRole('heading', { name: 'collaborationDemo.end.enabled.title' }))
-    .toHaveFocus()
-  await expect.element(screen.getByRole('link', { name })).toHaveAttribute('href', href)
+    .element(screen.getByRole('button', { name: 'collaborationDemo.end.upgrade.action' }))
+    .not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: 'collaborationDemo.end.close' }))
     .toBeVisible()
-})
-
-it.each<[DemoEndState, string]>([
-  [{ kind: 'readOnly', role: 'normal' }, 'collaborationDemo.end.readOnly.normal'],
-  [{ kind: 'readOnly', role: 'datasetOperator' }, 'collaborationDemo.end.readOnly.datasetOperator'],
-  [{ kind: 'upgradeContactAdmin' }, 'collaborationDemo.end.upgrade.contactAdmin'],
-])('offers only close and replay for %o', async (state, description) => {
-  const { screen, onReplay } = await renderPanel(state)
-
-  await expect.element(screen.getByText(description)).toBeVisible()
-  expect(screen.getByRole('link').elements()).toHaveLength(0)
-  expect(screen.getByRole('button').elements()).toHaveLength(2)
   await screen.getByRole('button', { name: 'collaborationDemo.playback.replay' }).click()
   expect(onReplay).toHaveBeenCalledOnce()
 })
@@ -95,18 +73,25 @@ it('sends users back to the workspace when collaboration is unavailable', async 
 })
 
 it('leaves the demo through Close', async () => {
-  const { screen, onExit } = await renderPanel({ kind: 'createApp' })
+  const { screen, onExit } = await renderPanel({ kind: 'enabled' })
 
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
   expect(onExit).toHaveBeenCalledOnce()
 })
 
-it('keeps focus in the panel when a focused loading action resolves to none', async () => {
+it('keeps Close focused as the Studio link becomes available', async () => {
   const { screen, rerender } = await renderPanel({ kind: 'loading' })
   const close = screen.getByRole('button', { name: 'collaborationDemo.end.close' })
-  await expect.element(close).toBeVisible()
+  const studioLink = screen.getByRole('link', { name: 'collaborationDemo.end.goToStudio' })
 
-  screen.getByRole('button', { name: 'collaborationDemo.end.enabled.action' }).element().focus()
-  await rerender({ kind: 'readOnly', role: 'normal' })
+  await expect.element(screen.getByText('collaborationDemo.end.loading')).toBeVisible()
+  await expect.element(studioLink).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.playback.replay' }))
+    .toBeVisible()
+  close.element().focus()
+
+  await rerender({ kind: 'enabled' })
+  await expect.element(studioLink).toHaveAttribute('href', '/apps')
   await expect.element(close).toHaveFocus()
 })

@@ -13,6 +13,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import filter_uuid_strings
 from machinery.context import RequestContext
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -30,8 +31,10 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import build_initial_agent_soul
+from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from repositories.agent_app_composer_queries import read_composer_state, require_composer_agent
 from repositories.agent_drafts import agent_soul_matches_active_config, get_or_create_agent_draft, save_agent_draft
 from repositories.agent_roster_queries import (
     find_agent_draft,
@@ -55,6 +58,13 @@ from repositories.app.console_repository import ConsoleAppRepository, StageTarge
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from repositories.tag_repository import TagRepository
+from services.agent.app_composer_store import (
+    AgentComposerAgentMissingError,
+    AgentComposerCandidateSource,
+    AgentComposerDatasetLabel,
+    AgentComposerSnapshotMissingError,
+    AgentComposerState,
+)
 from services.agent.build_session_store import (
     AgentBuildAgentNotFoundError,
     AgentBuildApplied,
@@ -407,6 +417,75 @@ class AgentAppRepository:
                 mapping.app_id = app_id
                 mapping.conversation_id = conversation_id
             return AgentBuildRefresh(conversation_id=conversation_id, retired_binding_id=retired_binding_id)
+
+    def get_composer(self, *, tenant_id: str, agent_id: str) -> AgentComposerState:
+        """Return the tenant's Agent configuration without writing a draft."""
+        with self._session_factory() as session:
+            agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            return read_composer_state(session, agent=agent)
+
+    def save_composer(
+        self, *, tenant_id: str, agent_id: str, account_id: str, soul: AgentSoulConfig
+    ) -> AgentComposerState:
+        """Save the normal draft and recalculate the publish flag in one transaction."""
+        try:
+            with self._session_factory.begin() as session, session.no_autoflush:
+                agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+                draft = save_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    agent_soul=soul,
+                    account_id_for_audit=account_id,
+                )
+                agent.updated_by = account_id
+                agent.active_config_is_published = agent_soul_matches_active_config(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    agent_soul=AgentSoulConfig.model_validate(draft.config_snapshot_dict),
+                    home_snapshot_id=draft.home_snapshot_id,
+                )
+                session.flush()
+                return read_composer_state(session, agent=agent)
+        except AgentBuildAgentNotFoundError as exc:
+            raise AgentComposerAgentMissingError from exc
+        except AgentBuildBaseUnavailableError as exc:
+            raise AgentComposerSnapshotMissingError from exc
+
+    @staticmethod
+    def _composer_datasets(
+        session: Session, *, tenant_id: str, dataset_ids: list[str]
+    ) -> dict[str, AgentComposerDatasetLabel]:
+        """Return labels for valid dataset IDs owned by the tenant."""
+        ids = filter_uuid_strings(dataset_ids)
+        if not ids:
+            return {}
+        rows = session.execute(
+            select(Dataset.id, Dataset.name, Dataset.description).where(
+                Dataset.tenant_id == tenant_id, Dataset.id.in_(ids)
+            )
+        )
+        return {dataset_id: AgentComposerDatasetLabel(name, description) for dataset_id, name, description in rows}
+
+    def missing_composer_datasets(self, *, tenant_id: str, dataset_ids: list[str]) -> list[str]:
+        """Return malformed, missing and foreign dataset IDs in the request order."""
+        with self._session_factory() as session:
+            datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=dataset_ids)
+        return [dataset_id for dataset_id in dataset_ids if dataset_id not in datasets]
+
+    def get_composer_candidates(self, *, tenant_id: str, agent_id: str) -> AgentComposerCandidateSource:
+        """Detach the effective Soul and labels, retaining empty Soul candidates for an unknown Agent."""
+        with self._session_factory() as session:
+            try:
+                agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            except AgentComposerAgentMissingError:
+                return AgentComposerCandidateSource(soul=None, datasets={})
+            soul = AgentSoulConfig.model_validate(read_composer_state(session, agent=agent).agent_soul)
+            datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=soul.knowledge.dataset_ids())
+            return AgentComposerCandidateSource(soul=soul, datasets=datasets)
 
     def get_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildDraft:
         """Return the existing account-owned draft and its stored Soul without creating or changing rows."""

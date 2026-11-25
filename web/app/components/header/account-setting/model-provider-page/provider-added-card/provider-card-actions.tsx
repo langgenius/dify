@@ -37,10 +37,14 @@ import {
   checkGitHubPluginUpdate,
 } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
+import {
+  invalidateMarketplacePluginLists,
+  useMarketplace,
+  useMarketplacePluginVersions,
+} from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
 type Props =
@@ -92,7 +96,11 @@ function ProviderCardActions(props: Props) {
   const isFromGitHub = source === PluginSource.github
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
-  const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
+  const autoUpgradeSettings = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
   const marketplace = useMarketplace()
   const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
   const policy = autoUpgradeSettings.data?.auto_upgrade
@@ -149,8 +157,7 @@ function ProviderCardActions(props: Props) {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
-      queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
+      invalidateMarketplacePluginLists(queryClient),
     ])
     await onUpdate?.()
   }

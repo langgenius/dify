@@ -19,6 +19,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useMutation } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -33,7 +34,10 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
-import { useFetchDynamicOptions, useFetchDynamicTreeOptions } from '@/service/use-plugins'
+import {
+  pluginDynamicOptionsMutationOptions,
+  pluginDynamicTreeOptionsMutationOptions,
+} from '@/service/plugin-list-queries'
 import { useWorkflowVariables } from '../../../../hooks/use-workflow-variables'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import { removeFileVars, varTypeToStructType } from './utils'
@@ -353,23 +357,27 @@ const VarReferencePicker: FC<Props> = ({
     currentProvider && 'credential_id' in currentProvider
       ? currentProvider.credential_id
       : undefined
-  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions({
-    plugin_id: currentProvider?.plugin_id || '',
-    provider: currentProvider?.name || '',
-    action: currentTool?.name || '',
-    parameter: (schema as CredentialFormSchemaSelect)?.variable || '',
-    provider_type: 'tool',
-    credential_id: providerCredentialId,
-    parameter_values: dynamicSelectParameterValues,
-  })
-  const { mutateAsync: fetchDynamicTreeOptions } = useFetchDynamicTreeOptions({
-    plugin_id: currentProvider?.plugin_id || '',
-    provider: currentProvider?.name || '',
-    action: currentTool?.name || '',
-    parameter: (schema as CredentialFormSchemaSelect)?.variable || '',
-    credential_id: providerCredentialId,
-    parameter_values: dynamicSelectParameterValues,
-  })
+  const { mutateAsync: fetchDynamicOptions } = useMutation(
+    pluginDynamicOptionsMutationOptions({
+      plugin_id: currentProvider?.plugin_id || '',
+      provider: currentProvider?.name || '',
+      action: currentTool?.name || '',
+      parameter: (schema as CredentialFormSchemaSelect)?.variable || '',
+      provider_type: 'tool',
+      credential_id: providerCredentialId,
+      parameter_values: dynamicSelectParameterValues,
+    }),
+  )
+  const { mutateAsync: fetchDynamicTreeOptions } = useMutation(
+    pluginDynamicTreeOptionsMutationOptions({
+      plugin_id: currentProvider?.plugin_id || '',
+      provider: currentProvider?.name || '',
+      action: currentTool?.name || '',
+      parameter: (schema as CredentialFormSchemaSelect)?.variable || '',
+      credential_id: providerCredentialId,
+      parameter_values: dynamicSelectParameterValues,
+    }),
+  )
 
   const handleFetchPluginDynamicFormOptions = useCallback(async () => {
     if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider) return

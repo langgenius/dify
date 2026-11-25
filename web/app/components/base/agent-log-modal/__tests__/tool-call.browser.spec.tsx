@@ -1,5 +1,4 @@
 import { useLocale } from '#i18n'
-import { basePath } from '@/utils/var'
 import ToolCallItem from '../tool-call'
 import { renderAgentLog } from './browser-test-env'
 
@@ -8,22 +7,6 @@ vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
 }))
-
-beforeAll(() => {
-  // Launch the real worker from its local asset URL so Monaco does not need a blob worker
-  // to import the script from the Browser Mode server.
-  vi.stubGlobal('MonacoEnvironment', {
-    getWorkerUrl: (_moduleId: string, label: string) => {
-      const url = new URL(`${basePath}/vs/base/worker/workerMain.js`, window.location.origin)
-      url.hash = label
-      return url.href
-    },
-  })
-})
-
-afterAll(() => {
-  vi.unstubAllGlobals()
-})
 
 const toolCall = {
   status: 'success',
@@ -59,10 +42,7 @@ it('formats subsecond and minute-long tool calls', async () => {
   await expect.element(screen.getByText('1 m 5.000 s')).toBeVisible()
 })
 
-// Skipped: flaky in CI. The Monaco editor worker (`vs/base/worker/workerMain.js`) sometimes fails
-// to load, and the logged error fails the next test in this file. Re-enable once the worker loads
-// reliably.
-it.skip('reveals real readonly input and output editors and hides them when collapsed', async () => {
+it('reveals real readonly input and output editors and hides them when collapsed', async () => {
   const { screen } = await renderAgentLog(<ToolCallItem toolCall={toolCall} isLLM={false} />)
   const trigger = screen.getByText('Test Tool Label')
   const editors = screen.getByRole('textbox', { name: 'Editor content' })
