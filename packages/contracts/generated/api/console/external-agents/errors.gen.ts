@@ -10,6 +10,12 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zExternalAgentCardFieldErrorResponse = /* @__PURE__ */ (() =>
+  z.object({
+    code: z.string(),
+    path: z.string(),
+  }))()
+
 const zVerificationFailureReason = /* @__PURE__ */ (() =>
   z.enum([
     'authentication_failed',
@@ -20,7 +26,9 @@ const zVerificationFailureReason = /* @__PURE__ */ (() =>
 
 const zExternalAgentVerificationFailureDetailsResponse = /* @__PURE__ */ (() =>
   z.object({
+    card_errors: z.array(zExternalAgentCardFieldErrorResponse).nullish(),
     reason: zVerificationFailureReason,
+    subreason: z.string().nullish(),
   }))()
 
 const zVerificationFailedError = /* @__PURE__ */ (() =>

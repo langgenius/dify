@@ -238,7 +238,9 @@ export type ExternalAgentConnectionWarningsResponse = {
 }
 
 export type ExternalAgentVerificationFailureDetailsResponse = {
+  card_errors?: Array<ExternalAgentCardFieldErrorResponse> | null
   reason: VerificationFailureReason
+  subreason?: string | null
 }
 
 export type ExternalAgentConnectionResponse = {
@@ -321,6 +323,11 @@ export type ExternalTracingProviderStateResponse = {
   enabled: boolean
   provider: string
   revision: number
+}
+
+export type ExternalAgentCardFieldErrorResponse = {
+  code: string
+  path: string
 }
 
 export type VerificationFailureReason =
