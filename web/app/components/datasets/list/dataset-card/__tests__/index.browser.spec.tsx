@@ -3,10 +3,9 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCard from '../index'
-
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 const centerOf = (element: Element) => {
   const rect = element.getBoundingClientRect()
@@ -37,6 +36,7 @@ it('makes the whole card the entry while footer details and tags stay separate c
         />
       </ul>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/datasets' }).NavigationProvider },
   )
 
   const link = screen.getByRole('link', { name: 'Test Dataset' })
@@ -85,6 +85,7 @@ it('returns focus after renaming is cancelled and resets the draft on reopening'
         />
       </ul>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/datasets' }).NavigationProvider },
   )
   const trigger = screen.getByRole('button', { name: 'common.operation.more' })
   const open = async () => {

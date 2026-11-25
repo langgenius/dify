@@ -8,16 +8,17 @@ import { useChat } from '../../hooks'
 const mockHandleRun = vi.fn()
 const mockNotify = vi.fn()
 const mockFetchInspectVars = vi.fn()
-const mockInvalidAllLastRun = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
-const mockSseGet = vi.fn()
+const mockStreamEvents = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/base', () => ({
-  sseGet: (...args: unknown[]) => mockSseGet(...args),
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: mockStreamEvents,
 }))
 
-vi.mock('@/service/use-workflow', () => ({
-  useInvalidateAllLastRun: () => mockInvalidAllLastRun,
+// Tags each resume request with its run id; workflow-events.spec covers the request itself.
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: (workflowRunId: string) => ({ workflowRunId }),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -49,7 +50,7 @@ describe('useChat – handleSwitchSibling', () => {
   beforeEach(() => {
     resetMocksAndWorkflowState()
     mockHandleRun.mockReset()
-    mockSseGet.mockReset()
+    mockStreamEvents.mockReset()
   })
 
   it('should call handleResume when target has workflow_run_id and pending humanInputFormData', async () => {
@@ -57,7 +58,7 @@ describe('useChat – handleSwitchSibling', () => {
     mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
-    mockSseGet.mockImplementation(() => {})
+    mockStreamEvents.mockImplementation(() => {})
 
     const { result } = renderHook(() => useChat({}), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -90,9 +91,8 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-switch', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-switch/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
+    expect(mockStreamEvents).toHaveBeenCalledWith(
+      { workflowRunId: 'wfr-switch' },
       expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
     )
   })
@@ -128,7 +128,7 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-switch', {})
     })
 
-    expect(mockSseGet).not.toHaveBeenCalled()
+    expect(mockStreamEvents).not.toHaveBeenCalled()
   })
 
   it('should search children recursively in findMessageInTree', async () => {
@@ -136,7 +136,7 @@ describe('useChat – handleSwitchSibling', () => {
     mockHandleRun.mockImplementation((_params: unknown, callbacks: any) => {
       sendCallbacks = callbacks
     })
-    mockSseGet.mockImplementation(() => {})
+    mockStreamEvents.mockImplementation(() => {})
 
     const { result } = renderHook(() => useChat({}), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
@@ -192,9 +192,8 @@ describe('useChat – handleSwitchSibling', () => {
       result.current.handleSwitchSibling('msg-child', {})
     })
 
-    expect(mockSseGet).toHaveBeenCalledWith(
-      '/workflow/wfr-2/events?include_state_snapshot=true&continue_on_pause=true',
-      {},
+    expect(mockStreamEvents).toHaveBeenCalledWith(
+      { workflowRunId: 'wfr-2' },
       expect.objectContaining({ onData: expect.any(Function), onCompleted: expect.any(Function) }),
     )
   })

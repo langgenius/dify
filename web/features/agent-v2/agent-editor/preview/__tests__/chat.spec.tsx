@@ -21,8 +21,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentBuildChat } from '../build-chat'
 import { AgentPreviewChat } from '../preview-chat'
 
-// oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing SSE transport used by Agent preview.
-const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+const ssePost = vi.hoisted(() => vi.fn<import('@/test/stream-recorder').RecordedStreamCall>())
 const api = vi.hoisted(() => ({
   history: vi.fn(),
   suggestions: vi.fn(),
@@ -38,9 +37,25 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ agentId: 'agent-1' }),
   usePathname: () => '/agents/agent-1/configure',
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 // Audio capture/encoding is a platform boundary; keep VoiceInput and its service routing real.
 vi.mock('@/app/components/base/voice-input/recorder', () => ({ startVoiceRecorder: api.record }))
@@ -742,9 +757,16 @@ describe('Agent stop and failure ownership', () => {
 it.each(['sse', 'http'])(
   'renders a persistent safe error from the real %s transport',
   async (transport) => {
-    const actual = await vi.importActual<typeof import('@/service/base')>('@/service/base')
-    // oxlint-disable-next-line typescript/no-deprecated -- Restore the real SSE parser for the transport regression test.
-    ssePost.mockImplementation(actual.ssePost)
+    // Send the recorded agent chat through the real stream adapter and generated client.
+    const { streamEvents } =
+      await vi.importActual<typeof import('@/service/event-stream')>('@/service/event-stream')
+    const { agentChatMessagesSender } = await vi.importActual<
+      typeof import('@/service/console-chat-messages')
+    >('@/service/console-chat-messages')
+    ssePost.mockImplementation((url, { body = {} }, callbacks) => {
+      const agentId = /^agent\/([^/]+)\/chat-messages$/.exec(url)![1]!
+      streamEvents((options) => agentChatMessagesSender(agentId)(body, options), callbacks)
+    })
     const payload = {
       event: 'error',
       message: 'SECRET provider details',
@@ -758,7 +780,7 @@ it.each(['sse', 'http'])(
         : new Response(
             new ReadableStream({
               start(controller) {
-                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`))
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`))
                 controller.close()
               },
             }),

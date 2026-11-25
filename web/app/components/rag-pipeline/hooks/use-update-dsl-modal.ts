@@ -11,7 +11,7 @@ import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
@@ -67,9 +67,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   )
   const updateWorkflow = useCallback(
     async (pipelineId: string) => {
-      const { graph, hash, rag_pipeline_variables } = await fetchWorkflowDraft(
-        `/rag/pipelines/${pipelineId}/workflows/draft`,
-      )
+      const { graph, hash, rag_pipeline_variables } = await fetchPipelineWorkflowDraft(pipelineId)
       const { nodes, edges, viewport } = graph
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,

@@ -1,10 +1,11 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { channelSummary, emailDetail } from './fixtures/channel-client'
@@ -24,10 +25,6 @@ vi.mock('@/service/base', async () => {
   }
 })
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-// boundary: documentation routing is covered separately from channel management requests.
-vi.mock('../use-channel-doc-link', () => ({
-  useChannelDocLink: () => () => 'https://docs.dify.ai',
-}))
 const clients: QueryClient[] = []
 function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 'CLOUD') {
   const client = new QueryClient({
@@ -36,7 +33,7 @@ function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 
   seedSystemFeatures(client, { deployment_edition: deploymentEdition })
   clients.push(client)
   render(
-    <QueryClientProvider client={client}>
+    <QueryClientTestProvider queryClient={client}>
       <NuqsTestingAdapter>
         <ContactsImPlatformRuntimeProvider
           organization={{ canManage, organizationId: 'workspace-1', workspaceId: 'workspace-1' }}
@@ -44,7 +41,7 @@ function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 
           <ContactsImPlatformManagementSurface />
         </ContactsImPlatformRuntimeProvider>
       </NuqsTestingAdapter>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   return client
 }

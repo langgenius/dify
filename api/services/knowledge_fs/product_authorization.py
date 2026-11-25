@@ -37,21 +37,23 @@ class KnowledgeFSProductRBACPort(Protocol):
     def permission_keys_by_control_space(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
-    ) -> dict[str, frozenset[KnowledgeFSProductPermission]]: ...
+    ) -> dict[str, frozenset[KnowledgeFSProductPermission]]:
+        """Return RBAC grants for the tenant-scoped IDs without accessing a database session."""
+        ...
 
     def filter_authorized_control_space_ids(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
         permission: KnowledgeFSProductPermission,
-    ) -> frozenset[str]: ...
+    ) -> frozenset[str]:
+        """Return the supplied IDs whose RBAC grants include the requested permission."""
+        ...
 
     def workspace_permission_allowed(
         self,
@@ -74,11 +76,11 @@ class DifyKnowledgeFSProductRBACPort:
     def permission_keys_by_control_space(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
     ) -> dict[str, frozenset[KnowledgeFSProductPermission]]:
+        """Map RBAC grants for the supplied IDs; empty input or a lookup failure returns no grants."""
         if not control_space_ids:
             return {}
         try:
@@ -86,7 +88,6 @@ class DifyKnowledgeFSProductRBACPort:
                 tenant_id,
                 account_id,
                 list(control_space_ids),
-                session=session,
             )
         except Exception:
             logger.warning("KnowledgeFS enterprise RBAC batch lookup failed for tenant_id=%s", tenant_id, exc_info=True)
@@ -99,14 +100,13 @@ class DifyKnowledgeFSProductRBACPort:
     def filter_authorized_control_space_ids(
         self,
         *,
-        session: Session,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],
         permission: KnowledgeFSProductPermission,
     ) -> frozenset[str]:
+        """Return only supplied IDs granted the requested permission, failing closed on lookup errors."""
         permissions = self.permission_keys_by_control_space(
-            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_ids=control_space_ids,

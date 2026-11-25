@@ -1,6 +1,7 @@
 """Build and inspect Agent Soul configuration without application or persistence dependencies."""
 
 import logging
+import uuid
 
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.provider_ids import ModelProviderID
@@ -30,3 +31,23 @@ def build_initial_agent_soul(tenant_id: str, default_model: tuple[str, str] | No
             model=agent_model,
         )
     )
+
+
+def backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
+    """Mint stable ids for CLI tools that predate the id field (ENG-616).
+
+    `[§cli_tool:<id>§]` mentions resolve by id so renames never break references;
+    the frontend mints ids for new entries, and save backfills legacy ones. Runs
+    before validation so duplicate-id checks see the final state. Save-only — the
+    validate endpoint must not mutate the payload.
+    """
+    if agent_soul is None:
+        return
+    seen_ids = {cli_tool.id for cli_tool in agent_soul.tools.cli_tools if cli_tool.id}
+    for cli_tool in agent_soul.tools.cli_tools:
+        if not cli_tool.id:
+            minted = uuid.uuid4().hex[:12]
+            while minted in seen_ids:
+                minted = uuid.uuid4().hex[:12]
+            cli_tool.id = minted
+            seen_ids.add(minted)
