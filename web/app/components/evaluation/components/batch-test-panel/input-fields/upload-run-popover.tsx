@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { getExampleValue } from './input-fields-utils'
 
 type UploadRunPopoverProps = {
@@ -141,11 +141,11 @@ const UploadRunPopover = ({
                 </button>
                 <div className="min-w-0 flex-1 text-start">
                   <div className="system-md-regular text-text-secondary">
-                    {t(($) => $['batch.uploadDropzonePrefix'])}{' '}
-                    <span className="system-md-semibold">
-                      {t(($) => $['batch.uploadDropzoneEmphasis'])}
-                    </span>{' '}
-                    {t(($) => $['batch.uploadDropzoneSuffix'])}
+                    <Trans
+                      i18nKey={($) => $['batch.uploadDropzone']}
+                      ns="evaluation"
+                      components={{ strong: <span className="system-md-semibold" /> }}
+                    />
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1 system-xs-regular text-text-tertiary">
                     <button
