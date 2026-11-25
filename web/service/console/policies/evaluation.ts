@@ -1,8 +1,8 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { invalidateQueryKeys } from './shared'
 
-// Callers report a save, run, cancel, or retry from the response; the config and the
-// run history reload without holding the action pending.
+// Callers report a run, cancel, or retry from the response, so the run history reloads
+// without holding the action pending. A config save waits for its reload (see below).
 export function evaluationPolicies(
   consoleQuery: ConsoleQuery,
 ): ConsolePolicies['byEvaluateTargetType'] {
@@ -14,7 +14,9 @@ export function evaluationPolicies(
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
 
-              void invalidateQueryKeys(context.client, [
+              // The editor hydrates the whole draft from this config, so the save stays
+              // pending until it lands; a later response would wipe newer edits.
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.get.key({
                   type: 'query',
                   input: { params: variables.params },

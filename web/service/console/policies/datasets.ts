@@ -114,7 +114,9 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
 
-              void invalidateQueryKeys(context.client, [
+              // The editor hydrates the whole draft from this config, so the save stays
+              // pending until it lands; a later response would wipe newer edits.
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.datasets.byDatasetId.evaluation.get.key({
                   type: 'query',
                   input: { params: variables.params },

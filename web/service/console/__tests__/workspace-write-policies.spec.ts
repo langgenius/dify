@@ -1,5 +1,9 @@
-import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
-import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import type {
+  MutationFunctionContext,
+  MutationObserverOptions,
+  QueryKey,
+} from '@tanstack/react-query'
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
@@ -344,4 +348,44 @@ describe('mutations and the refetches they start', () => {
     expect(state.done).toBe(true)
     agents.refetch.resolve({ loaded: true })
   })
+})
+
+describe('evaluation config save policies', () => {
+  it.each([
+    [
+      'app',
+      () => consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation,
+      { evaluate_target_type: 'apps', evaluate_target_id: 'app-1' },
+    ],
+    ['dataset', () => consoleQuery.datasets.byDatasetId.evaluation, { dataset_id: 'dataset-1' }],
+  ] as const)(
+    'keeps the %s config save pending until the reloaded config lands',
+    async (_, evaluation, params) => {
+      const { client } = setup()
+      const configKey = evaluation().get.queryKey({ input: { params } } as never)
+      const reload = createDeferred<unknown>()
+      const queryFn = vi.fn(() => (queryFn.mock.calls.length === 1 ? {} : reload.promise))
+      const observer = new QueryObserver(client, { queryKey: configKey, queryFn })
+      const unsubscribe = observer.subscribe(() => undefined)
+      await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+
+      let saved = false
+      const options = evaluation().put.mutationOptions({
+        mutationFn: async () => ({}) as never,
+      } as never) as MutationObserverOptions<unknown, Error, unknown, unknown>
+      const save = new MutationObserver(client, options)
+        .mutate({ params, body: {} } as never)
+        .then(() => {
+          saved = true
+        })
+      await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(saved).toBe(false)
+
+      reload.resolve({})
+      await save
+      unsubscribe()
+      expect(saved).toBe(true)
+    },
+  )
 })

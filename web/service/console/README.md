@@ -29,8 +29,9 @@ A returned invalidation promise keeps the mutation pending until active consumer
 have refreshed, while caller feedback does not wait for that refetch.
 
 Return or await an invalidation only when a caller needs the refreshed data
-before it continues (it reads the cache after `mutateAsync`, or a toggle must keep
-its pending value until the refreshed state lands), and say which caller in a
+before it continues (it reads the cache after `mutateAsync`, a toggle must keep
+its pending value until the refreshed state lands, or an editor rehydrates its
+draft from the response, so a late refetch would discard newer edits), and say which caller in a
 comment. Fire everything else with `void`: plan and quota, counts, catalogs, and
 lists or details the calling flow doesn't show. Otherwise success feedback is
 delayed and buttons gated on `isPending` stay pending until unrelated refetches
