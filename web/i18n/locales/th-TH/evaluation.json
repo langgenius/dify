@@ -97,6 +97,7 @@
   "history.status.cancelled": "ยกเลิกแล้ว",
   "history.status.completed": "เสร็จสิ้น",
   "history.status.failed": "ล้มเหลว",
+  "history.status.notCompleted": "ไม่สามารถทำงานให้เสร็จสมบูรณ์ได้",
   "history.status.partiallyFailed": "เสร็จสิ้นแต่มีบางรายการล้มเหลว",
   "history.status.pending": "รอดำเนินการ",
   "history.status.running": "กำลังทำงาน",

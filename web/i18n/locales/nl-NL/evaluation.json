@@ -97,6 +97,7 @@
   "history.status.cancelled": "Geannuleerd",
   "history.status.completed": "Voltooid",
   "history.status.failed": "Mislukt",
+  "history.status.notCompleted": "Taak kon niet worden voltooid",
   "history.status.partiallyFailed": "Voltooid met fouten",
   "history.status.pending": "In afwachting",
   "history.status.running": "Bezig",

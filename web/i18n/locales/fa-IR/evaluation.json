@@ -97,6 +97,7 @@
   "history.status.cancelled": "لغوشده",
   "history.status.completed": "تکمیل‌شده",
   "history.status.failed": "ناموفق",
+  "history.status.notCompleted": "تکمیل وظیفه ممکن نشد",
   "history.status.partiallyFailed": "با خطا تکمیل شد",
   "history.status.pending": "در انتظار",
   "history.status.running": "در حال اجرا",
