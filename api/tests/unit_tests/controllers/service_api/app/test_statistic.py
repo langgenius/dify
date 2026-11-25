@@ -213,7 +213,19 @@ class TestStatisticControllers:
         """Each controller delegates to its expected statistics method."""
 
         service = Mock()
-        expected_method = getattr(service, service_method)
+
+        service_methods = {
+            "get_daily_messages": service.get_daily_messages,
+            "get_daily_conversations": service.get_daily_conversations,
+            "get_daily_terminals": service.get_daily_terminals,
+            "get_daily_token_costs": service.get_daily_token_costs,
+            "get_average_session_interactions": service.get_average_session_interactions,
+            "get_user_satisfaction_rates": service.get_user_satisfaction_rates,
+            "get_average_response_times": service.get_average_response_times,
+            "get_tokens_per_second": service.get_tokens_per_second,
+        }
+
+        expected_method = service_methods[service_method]
         expected_method.return_value = []
 
         monkeypatch.setattr(

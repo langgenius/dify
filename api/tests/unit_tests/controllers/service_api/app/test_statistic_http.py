@@ -113,8 +113,14 @@ def http_harness(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
 
     service = Mock()
 
-    for _, method_name in ENDPOINTS:
-        getattr(service, method_name).return_value = []
+    service.get_daily_messages.return_value = []
+    service.get_daily_conversations.return_value = []
+    service.get_daily_terminals.return_value = []
+    service.get_daily_token_costs.return_value = []
+    service.get_average_session_interactions.return_value = []
+    service.get_user_satisfaction_rates.return_value = []
+    service.get_average_response_times.return_value = []
+    service.get_tokens_per_second.return_value = []
 
     monkeypatch.setattr(
         statistic,
@@ -164,7 +170,18 @@ class TestStatisticHTTP:
 
         expected_app_id = http_harness.app_b.id if token == "token-b" else http_harness.app_a.id
 
-        method = getattr(http_harness.service, method_name)
+        service_methods = {
+            "get_daily_messages": http_harness.service.get_daily_messages,
+            "get_daily_conversations": http_harness.service.get_daily_conversations,
+            "get_daily_terminals": http_harness.service.get_daily_terminals,
+            "get_daily_token_costs": http_harness.service.get_daily_token_costs,
+            "get_average_session_interactions": http_harness.service.get_average_session_interactions,
+            "get_user_satisfaction_rates": http_harness.service.get_user_satisfaction_rates,
+            "get_average_response_times": http_harness.service.get_average_response_times,
+            "get_tokens_per_second": http_harness.service.get_tokens_per_second,
+        }
+
+        method = service_methods[method_name]
         assert method.call_count == 1
         assert method.call_args.kwargs["app_id"] == expected_app_id
 
@@ -183,7 +200,11 @@ class TestStatisticHTTP:
     ):
         """The statistics query uses the authenticated app."""
 
-        expected_app = getattr(http_harness, app_attribute)
+        expected_app = (
+            http_harness.app_a
+            if app_attribute == "app_a"
+            else http_harness.app_b
+        )
 
         response = http_harness.client.get(
             "/v1/statistics/daily-messages",

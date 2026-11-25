@@ -170,7 +170,19 @@ def query_statistics(app_model, query, method_name):
     start_date, end_date = resolve_time_range(query)
 
     service = application_services().app_statistics
-    method = getattr(service, method_name)
+
+    methods = {
+        "get_daily_messages": service.get_daily_messages,
+        "get_daily_conversations": service.get_daily_conversations,
+        "get_daily_terminals": service.get_daily_terminals,
+        "get_daily_token_costs": service.get_daily_token_costs,
+        "get_average_session_interactions": service.get_average_session_interactions,
+        "get_user_satisfaction_rates": service.get_user_satisfaction_rates,
+        "get_average_response_times": service.get_average_response_times,
+        "get_tokens_per_second": service.get_tokens_per_second,
+    }
+
+    method = methods[method_name]
 
     return method(
         app_id=app_model.id,
