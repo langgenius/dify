@@ -802,6 +802,27 @@ it('creates and saves the user-input entry selected in onboarding', async () => 
   expect(api.webhook).not.toHaveBeenCalled()
 })
 
+it('writes the onboarding entry through the collaborative graph', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  const collabSetEdges = vi.spyOn(collaborationManager, 'setEdges')
+  onTestFinished(() => {
+    collabSetNodes.mockRestore()
+    collabSetEdges.mockRestore()
+  })
+  await renderMain({ collaboration: false, nodes: [], initialStoreState: { showOnboarding: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(collabSetNodes).toHaveBeenCalledWith(
+    [],
+    [expect.objectContaining({ data: expect.objectContaining({ type: BlockEnum.Start }) })],
+    expect.any(String),
+  )
+  expect(collabSetEdges).toHaveBeenCalledWith([], [])
+})
+
 it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
   const user = userEvent.setup()
   const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
