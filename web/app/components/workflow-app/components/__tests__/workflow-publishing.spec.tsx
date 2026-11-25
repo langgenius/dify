@@ -187,6 +187,7 @@ function renderEditor({
   initialStoreState = {},
   permissions = Object.values(AppACLPermission),
   seedQueries,
+  workflowKind = 'standard',
 }: {
   mode?: 'workflow' | 'advanced-chat'
   graph?: { nodes: Node[]; edges: Edge[] }
@@ -196,6 +197,7 @@ function renderEditor({
   initialStoreState?: Partial<Shape>
   seedQueries?: (queryClient: QueryClient) => void
   permissions?: NonNullable<ReturnType<typeof createAppDetailFixture>['permission_keys']>
+  workflowKind?: ReturnType<typeof createAppDetailFixture>['workflow_kind']
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
@@ -203,7 +205,11 @@ function renderEditor({
       enable_marketplace: false,
       webapp_auth: { enabled: false },
     },
-    features: { billing: { subscription: { plan } } },
+    features: {
+      billing: { subscription: { plan } },
+      evaluation_enabled: false,
+      evaluation_upgrade_available: false,
+    },
     workspacePermissionKeys: ['tool.manage'],
   })
   const app = createAppDetailFixture({
@@ -211,6 +217,7 @@ function renderEditor({
     name: 'Workflow app',
     mode,
     permission_keys: permissions,
+    workflow_kind: workflowKind,
   })
   seedAppDetail(queryClient, app)
   api.app.mockResolvedValue(app)
@@ -288,6 +295,16 @@ it('does not offer chat features in a workflow and disables publishing an empty 
   renderEditor({ graph: { nodes: [], edges: [] } })
   expect(screen.queryByRole('button', { name: 'workflow.common.features' })).not.toBeInTheDocument()
   expect(trigger()).toBeDisabled()
+})
+
+it('disables republishing an evaluation workflow when Evaluation is unavailable', async () => {
+  const user = userEvent.setup()
+  renderEditor({ workflowKind: 'evaluation' })
+
+  expect(await openPublisher(user)).toBeDisabled()
+  expect(
+    screen.queryByRole('button', { name: 'workflow.common.switchToStandardWorkflow' }),
+  ).not.toBeInTheDocument()
 })
 
 it('saves once when opening the publisher and does not save again when closing it', async () => {
