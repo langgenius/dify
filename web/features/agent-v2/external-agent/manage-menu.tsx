@@ -2,15 +2,18 @@
 
 import type { ExternalAgentActionRequest } from '../roster/components/external-agent-actions'
 import type { ExternalAgentListItem } from '../roster/components/external-agent-list'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useRouter } from '@/next/navigation'
-import { ExternalAgentActions } from '../roster/components/external-agent-actions'
+import { consoleQuery } from '@/service/console'
+import { ExternalAgentConfirmationContent } from '../roster/components/external-agent-actions'
 
 export function ExternalAgentManageMenu({
   agent,
@@ -23,14 +26,29 @@ export function ExternalAgentManageMenu({
   const canManage = useAtomValue(isCurrentWorkspaceManagerAtom)
   const router = useRouter()
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const [request, setRequest] = useState<ExternalAgentActionRequest>()
-  const [open, setOpen] = useState(false)
+  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentActionRequest>())
+  const toggle = useMutation(
+    consoleQuery.externalAgents.byAgentId.enabled.put.mutationOptions({
+      context: { silent: true },
+      retry: false,
+    }),
+  )
+  const deletion = useMutation(
+    consoleQuery.externalAgents.byAgentId.delete.mutationOptions({
+      context: { silent: true },
+      retry: false,
+    }),
+  )
 
   if (!canManage) return null
 
   const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
-    setRequest({ kind, agent, trigger: triggerRef.current, adjacentFocusTargets: [] })
-    setOpen(true)
+    confirmation.openWithPayload({
+      kind,
+      agent,
+      trigger: triggerRef.current,
+      adjacentFocusTargets: [],
+    })
   }
 
   return (
@@ -65,14 +83,55 @@ export function ExternalAgentManageMenu({
           </MenuItem>
         </MenuContent>
       </Menu>
-      <ExternalAgentActions
-        request={request}
-        open={open}
-        onOpenChange={setOpen}
-        onRequest={setRequest}
-        fallbackFocus={triggerRef}
-        onDeleted={() => router.replace('/agents?agent_type=external')}
-      />
+      <AlertDialog
+        handle={confirmation}
+        onOpenChange={(open, details) => {
+          if (
+            !open &&
+            (toggle.isPending || deletion.isPending) &&
+            details.reason !== 'imperative-action'
+          )
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            toggle.reset()
+            deletion.reset()
+          }
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <ExternalAgentConfirmationContent
+              request={payload}
+              pending={toggle.isPending || deletion.isPending}
+              error={payload.kind === 'delete' ? deletion.error : toggle.error}
+              fallbackFocus={triggerRef}
+              onPauseInstead={() => confirmation.openWithPayload({ ...payload, kind: 'toggle' })}
+              onConfirm={() => {
+                if (payload.kind === 'delete')
+                  deletion.mutate(
+                    { params: { agent_id: payload.agent.key } },
+                    {
+                      onSuccess: () => {
+                        confirmation.close()
+                        router.replace('/agents?agent_type=external')
+                      },
+                    },
+                  )
+                else
+                  toggle.mutate(
+                    {
+                      params: { agent_id: payload.agent.key },
+                      body: { enabled: !payload.agent.enabled },
+                    },
+                    { onSuccess: () => confirmation.close() },
+                  )
+              }}
+            />
+          )
+        }
+      </AlertDialog>
     </>
   )
 }

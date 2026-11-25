@@ -1,6 +1,8 @@
 'use client'
 
 import type { ExternalAgentAssetResponse } from '@dify/contracts/api/console/external-agents/types.gen'
+import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { Ref } from 'react'
 import type { ExternalAgentActionRequest } from './external-agent-actions'
 import type { AppIconProps } from '@/app/components/base/app-icon'
@@ -53,7 +55,8 @@ type ExternalAgentListProps = {
   agents: readonly ExternalAgentListItem[]
   filtered: boolean
   onClearFilters: () => void
-  onAction?: (request: ExternalAgentActionRequest) => void
+  editDialog?: DialogHandle<ExternalAgentActionRequest>
+  confirmation?: AlertDialogHandle<ExternalAgentActionRequest>
   canReadDetails?: boolean
   onOpenTagManagement: () => void
   viewportRef?: Ref<HTMLDivElement>
@@ -61,12 +64,14 @@ type ExternalAgentListProps = {
 
 function ExternalAgentCard({
   agent,
-  onAction,
+  editDialog,
+  confirmation,
   canReadDetails,
   onOpenTagManagement,
 }: {
   agent: ExternalAgentListItem
-  onAction: ExternalAgentListProps['onAction']
+  editDialog: ExternalAgentListProps['editDialog']
+  confirmation: ExternalAgentListProps['confirmation']
   canReadDetails: boolean
   onOpenTagManagement: () => void
 }) {
@@ -79,7 +84,8 @@ function ExternalAgentCard({
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const canEditTags = getAgentACLCapabilities(agent.permissionKeys).canEdit
   const requestAction = (kind: ExternalAgentActionRequest['kind']) => {
-    onAction?.({
+    const dialog = kind === 'edit' ? editDialog : confirmation
+    dialog?.openWithPayload({
       kind,
       agent,
       trigger: menuTriggerRef.current,
@@ -148,7 +154,7 @@ function ExternalAgentCard({
           />
         </span>
       )}
-      {onAction && (
+      {editDialog && confirmation && (
         <div className="pointer-events-none absolute inset-e-[-0.5px] top-[-0.5px] flex h-16 w-30 items-start justify-end bg-[linear-gradient(67deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] p-2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 has-data-popup-open:opacity-100 rtl:bg-[linear-gradient(293deg,var(--color-components-card-bg-alt-transparent)_0%,var(--color-components-card-bg-alt)_75%)] [@media(hover:none)]:opacity-100">
           <div className="pointer-events-none rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs group-focus-within:pointer-events-auto group-hover:pointer-events-auto has-data-popup-open:pointer-events-auto [@media(hover:none)]:pointer-events-auto">
             <Menu modal={false}>
@@ -271,7 +277,8 @@ export function ExternalAgentList({
   agents,
   filtered,
   onClearFilters,
-  onAction,
+  editDialog,
+  confirmation,
   canReadDetails = true,
   onOpenTagManagement,
   viewportRef,
@@ -298,7 +305,8 @@ export function ExternalAgentList({
               <ExternalAgentCard
                 key={agent.key}
                 agent={agent}
-                onAction={onAction}
+                editDialog={editDialog}
+                confirmation={confirmation}
                 canReadDetails={canReadDetails}
                 onOpenTagManagement={onOpenTagManagement}
               />
