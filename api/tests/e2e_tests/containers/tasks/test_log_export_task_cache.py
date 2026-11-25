@@ -8,6 +8,8 @@ from extensions.ext_redis import RedisClientWrapper
 from services.retention.log_export_task import (
     LogExportLeaseBusyError,
     LogExportLimitReachedError,
+    LogExportProgress,
+    LogExportStage,
     LogExportStatus,
     LogExportTask,
 )
@@ -124,6 +126,48 @@ def test_finish_requires_the_lease_token_for_the_same_attempt(application_redis:
     result = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
     assert result is not None
     assert result.storage_key == "owned.csv"
+
+
+def test_progress_advances_only_for_the_owned_attempt(application_redis: RedisClientWrapper) -> None:
+    """Fence progress writes, preserve task expiry and reset progress on reclaim."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[tuple[str, ...]], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[tuple[str, ...]].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters=())
+    task_key = f"conversation_log_export:{{tenant}}:app:{task.task_id}"
+    store.save(task)
+    ttl = application_redis.ttl(task_key)
+    first = store.claim(task)
+    assert first is not None
+    assert first.progress == LogExportProgress(stage=LogExportStage.PREPARING, rows_written=0)
+
+    writing = LogExportProgress(stage=LogExportStage.WRITING, rows_written=100)
+    assert store.renew(first, progress=writing)
+    assert store.renew(first, progress=writing)
+    assert store.renew(first, progress=LogExportProgress(stage=LogExportStage.WRITING, rows_written=50))
+    current = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert current is not None
+    assert current.filters == ()
+    assert current.progress == writing
+
+    uploading = LogExportProgress(stage=LogExportStage.UPLOADING, rows_written=100)
+    assert store.renew(first, progress=uploading)
+    assert store.renew(first, progress=writing)
+    foreign_claim = first.model_copy(update={"claim_token": "wrong-token"})
+    assert not store.renew(foreign_claim, progress=writing)
+    current = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert current is not None
+    assert current.progress == uploading
+    assert 0 < application_redis.ttl(task_key) <= ttl
+
+    application_redis.expire(f"{task_key}:lease", 0)
+    second = store.claim(current)
+    assert second is not None
+    assert second.attempt == 2
+    assert not store.renew(first, progress=uploading)
+    current = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    assert current is not None
+    assert current.progress == LogExportProgress(stage=LogExportStage.PREPARING, rows_written=0)
 
 
 def test_repeated_worker_loss_stops_after_three_attempts(application_redis: RedisClientWrapper) -> None:

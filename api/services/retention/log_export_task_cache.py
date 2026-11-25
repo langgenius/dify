@@ -20,6 +20,8 @@ from libs.datetime_utils import utc_now
 from services.retention.log_export_task import (
     LogExportLeaseBusyError,
     LogExportLimitReachedError,
+    LogExportProgress,
+    LogExportStage,
     LogExportStatus,
     LogExportTask,
 )
@@ -81,8 +83,23 @@ return can_claim and 1 or 0
 """
 
 _RENEW_LOG_EXPORT_TASK = """
-if redis.call("GET", KEYS[2]) ~= ARGV[1] or redis.call("EXISTS", KEYS[1]) == 0 then
+if redis.call("GET", KEYS[2]) ~= ARGV[1] then
     return 0
+end
+local raw = redis.call("GET", KEYS[1])
+if not raw then
+    return 0
+end
+if ARGV[3] then
+    local previous = cjson.decode(raw).progress
+    local snapshot = cjson.decode(ARGV[3]).progress
+    -- A heartbeat can arrive after the worker starts uploading.
+    if not previous or previous == cjson.null or (
+        previous.stage ~= "uploading" and snapshot.rows_written >= previous.rows_written and
+        (snapshot.stage == "uploading" or snapshot.rows_written > previous.rows_written)
+    ) then
+        redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
+    end
 end
 return redis.call("EXPIRE", KEYS[2], ARGV[2])
 """
@@ -201,10 +218,15 @@ class RedisLogExportTasks[FiltersT]:
         # Generate the lease token once per claim, outside the Redis client's retries.
         token = uuid4().hex
         if task.attempt >= _MAX_EXPORT_ATTEMPTS:
-            updated = task.model_copy(update={"status": LogExportStatus.FAILED})
+            updated = task.model_copy(update={"status": LogExportStatus.FAILED, "progress": None})
         else:
             updated = task.model_copy(
-                update={"status": LogExportStatus.PROCESSING, "attempt": task.attempt + 1, "claim_token": token}
+                update={
+                    "status": LogExportStatus.PROCESSING,
+                    "attempt": task.attempt + 1,
+                    "claim_token": token,
+                    "progress": LogExportProgress(stage=LogExportStage.PREPARING, rows_written=0),
+                }
             )
         args = [
             task.status.value,
@@ -222,18 +244,27 @@ class RedisLogExportTasks[FiltersT]:
             raise LogExportLeaseBusyError("The log export claim is busy or has changed.")
         return updated if result else None
 
-    def renew(self, task: LogExportTask[FiltersT]) -> bool:
-        """Extend a live, owned lease or signal a retry when Redis cannot confirm it."""
+    def renew(self, task: LogExportTask[FiltersT], *, progress: LogExportProgress | None = None) -> bool:
+        """Extend an owned lease and advance its progress without extending the task's lifetime."""
         if task.claim_token is None:
             return False
         task_key, lease_key, _ = self._execution_keys(task)
+        args: list[str | int] = [task.claim_token, _LEASE_SECONDS]
+        if progress is not None:
+            args.append(task.model_copy(update={"progress": progress}).model_dump_json())
         with _translate_transient_redis_errors():
             renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
-            return bool(renew(keys=[task_key, lease_key], args=[task.claim_token, _LEASE_SECONDS]))
+            return bool(renew(keys=[task_key, lease_key], args=args))
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
         """Finish the expected pending state or the processing attempt that owns the lease token."""
-        updated = task.model_copy(update={"status": status, "storage_key": storage_key})
+        updated = task.model_copy(
+            update={
+                "status": status,
+                "storage_key": storage_key,
+                "progress": task.progress if status is LogExportStatus.READY else None,
+            }
+        )
         args = [
             task.status.value,
             task.attempt,

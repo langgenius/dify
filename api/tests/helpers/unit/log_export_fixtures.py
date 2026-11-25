@@ -61,10 +61,12 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         cache[keys[0]] = args[2]
         return 1
 
-    def renew(**_arguments: object) -> int:
+    def renew(*, keys: list[str], args: list[Any]) -> int:
         io.renew_calls += 1
         if (error := io.renew_error) is not None:
             raise error
+        if len(args) == 3:
+            cache[keys[0]] = args[2]
         return 1
 
     def unconfigured_script(**_arguments: object) -> int:

@@ -152,13 +152,16 @@ class ConversationLogExportService:
         *,
         filters: ConsoleConversationLogFilters,
         output: TextIO,
+        report_rows: CsvRowProgress | None = None,
     ) -> int:
         """Write the app's filtered logs with its mode's columns and return the data row count.
 
         Require an admitted caller and a writable stream opened with newline="". The caller
         owns the stream and publishes it only after success, since a failure may leave partial output.
         """
-        return self.write_scoped_csv(scope=self.get_scope(context, app_id), filters=filters, output=output)
+        return self.write_scoped_csv(
+            scope=self.get_scope(context, app_id), filters=filters, output=output, report_rows=report_rows
+        )
 
     def write_scoped_csv(
         self,

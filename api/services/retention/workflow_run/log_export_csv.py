@@ -31,11 +31,17 @@ class WorkflowLogCsvWriter:
         self._logs = logs
 
     def write_csv(
-        self, context: RequestContext, app_id: str, *, filters: WorkflowLogExportFilters, output: TextIO
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        filters: WorkflowLogExportFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
     ) -> int:
         """Write Workflow-run columns for an admitted Workflow app and return the data row count."""
         scope = self._logs.get_log_export_scope(context, app_id)
-        return self.write_scoped_csv(scope=scope, filters=filters, output=output)
+        return self.write_scoped_csv(scope=scope, filters=filters, output=output, report_rows=report_rows)
 
     def write_scoped_csv(
         self,

@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from libs.datetime_utils import utc_now
 from machinery.context import RequestContext
 from services.entities.conversation_entities import ConsoleLogIdentitySource
+from services.retention.log_export_csv import CsvRowProgress
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
@@ -36,6 +37,21 @@ class LogExportStatus(StrEnum):
     PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
+
+
+class LogExportStage(StrEnum):
+    PREPARING = "preparing"
+    WRITING = "writing"
+    UPLOADING = "uploading"
+
+
+class LogExportProgress(BaseModel):
+    """The last reported stage and number of CSV data rows for the current attempt."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    stage: LogExportStage
+    rows_written: int = Field(ge=0)
 
 
 class LogExportTaskNotFoundError(Exception):
@@ -94,6 +110,7 @@ class LogExportTask[FiltersT](BaseModel):
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
     status: LogExportStatus = LogExportStatus.PENDING
     storage_key: str | None = None
+    progress: LogExportProgress | None = Field(default=None, exclude_if=lambda value: value is None)
     attempt: int = 0
     claim_token: str | None = Field(default=None, exclude=True, repr=False)
 
@@ -151,8 +168,11 @@ class LogExportTaskStore[FiltersT](Protocol):
         """Return an owned attempt, retry if another claim changed it, or return None for a terminal task."""
         ...
 
-    def renew(self, task: LogExportTask[FiltersT]) -> bool:
-        """Extend an owned lease, returning False on loss or raising LogExportLeaseBusyError if unavailable."""
+    def renew(self, task: LogExportTask[FiltersT], *, progress: LogExportProgress | None = None) -> bool:
+        """Extend an owned lease and optionally advance progress.
+
+        Return False on lease loss or raise LogExportLeaseBusyError if Redis cannot confirm ownership.
+        """
         ...
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
@@ -161,8 +181,10 @@ class LogExportTaskStore[FiltersT](Protocol):
 
 
 class WriteLogExportCsv[FiltersT](Protocol):
-    def __call__(self, context: RequestContext, app_id: str, /, *, filters: FiltersT, output: TextIO) -> int:
-        """Resolve the app within the saved workspace and write the matching rows to the open file."""
+    def __call__(
+        self, context: RequestContext, app_id: str, /, *, filters: FiltersT, output: TextIO, report_rows: CsvRowProgress
+    ) -> int:
+        """Write matching log rows in this workspace, reporting the cumulative data row count."""
         ...
 
 
@@ -209,17 +231,23 @@ def prepare_log_export_task[FiltersT](
     )
     # A stale attempt can only upload to its own key.
     storage_key = f"{storage_prefix}/{task.tenant_id}/{task.app_id}/{task.task_id}/{processing.attempt}.csv"
+    rows_written = 0
+
+    def report_rows(count: int) -> None:
+        """Keep the writer's cumulative count for the heartbeat to publish."""
+        nonlocal rows_written
+        rows_written = count
 
     def write_owned_csv(output: TextIO) -> int:
-        """Generate the CSV and confirm ownership immediately before upload."""
-        count = write_csv(context, task.app_id, filters=task.filters, output=output)
-        if not tasks.renew(processing):
+        """Generate the CSV and publish its exact row count before starting the upload."""
+        count = write_csv(context, task.app_id, filters=task.filters, output=output, report_rows=report_rows)
+        if not tasks.renew(processing, progress=LogExportProgress(stage=LogExportStage.UPLOADING, rows_written=count)):
             raise LogExportLeaseBusyError("The log export lease expired before upload.")
         return count
 
-    with _renew_export_lease(processing, tasks):
+    with _renew_export_lease(processing, tasks, read_rows=lambda: rows_written):
         try:
-            store_csv(storage_key, write_owned_csv)
+            count = store_csv(storage_key, write_owned_csv)
         except LogExportLeaseBusyError:
             raise
         except Exception as exc:
@@ -238,21 +266,26 @@ def prepare_log_export_task[FiltersT](
                 if not failure_recorded:
                     raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
             raise
-        if not tasks.finish(processing, status=LogExportStatus.READY, storage_key=storage_key):
+        completed = processing.model_copy(
+            update={"progress": LogExportProgress(stage=LogExportStage.UPLOADING, rows_written=count)}
+        )
+        if not tasks.finish(completed, status=LogExportStatus.READY, storage_key=storage_key):
             raise LogExportLeaseBusyError("The log export lease expired before publication.")
 
 
 @contextmanager
 def _renew_export_lease[FiltersT](
-    task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT]
+    task: LogExportTask[FiltersT], tasks: LogExportTaskStore[FiltersT], *, read_rows: Callable[[], int]
 ) -> Generator[None]:
-    """Retry temporary heartbeat failures and stop on lease loss, a permanent error, or worker exit."""
+    """Renew the lease and publish written rows until lease loss, a permanent error, or worker exit."""
     stopped = Event()
 
     def renew() -> None:
         while not stopped.wait(_LOG_EXPORT_LEASE_RENEW_SECONDS):
             try:
-                if not tasks.renew(task):
+                count = read_rows()
+                progress = LogExportProgress(stage=LogExportStage.WRITING, rows_written=count) if count else None
+                if not tasks.renew(task, progress=progress):
                     return
             except Exception as exc:
                 logger.exception("Failed to renew log export lease: task=%s attempt=%s", task.task_id, task.attempt)
