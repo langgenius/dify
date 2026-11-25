@@ -29,6 +29,7 @@ import {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  withGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -145,17 +146,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       limit: 100,
     }),
   )
-  const {
-    data: appConversationData,
-    isLoading: appConversationDataLoading,
-    dataUpdatedAt: conversationListUpdatedAt,
-  } = useQuery(
-    shareConversationsQueryOptions({
-      appSourceType,
-      appId,
-      pinned: false,
-      limit: 100,
-    }),
+  const conversationListQueryOptions = shareConversationsQueryOptions({
+    appSourceType,
+    appId,
+    pinned: false,
+    limit: 100,
+  })
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    conversationListQueryOptions,
   )
   const { data: appChatListData, isLoading: appChatListDataLoading } = useQuery(
     shareChatListQueryOptions({
@@ -285,27 +283,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation, dataUpdatedAt: newConversationUpdatedAt } = useQuery(
-    shareConversationNameQueryOptions(
-      {
-        conversationId: newConversationId,
-        appSourceType,
-        appId,
-      },
-      {
-        refetchOnWindowFocus: false,
-        enabled: !isTryApp,
-      },
-    ),
-  )
   const conversationList = useMemo(() => {
     const data = (appConversationData?.data ?? []).slice()
-    // The generated name of a new conversation shows until the list is loaded again after it.
-    if (newConversation && newConversationUpdatedAt >= conversationListUpdatedAt) {
-      const index = data.findIndex((item) => item.id === newConversation.id)
-      if (index > -1) data[index] = newConversation
-      else data.unshift(newConversation)
-    }
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
@@ -315,14 +294,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       })
     }
     return data
-  }, [
-    appConversationData,
-    newConversation,
-    newConversationUpdatedAt,
-    conversationListUpdatedAt,
-    showNewConversationItemInList,
-    t,
-  ])
+  }, [appConversationData, showNewConversationItemInList, t])
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find((item) => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)
@@ -442,8 +414,33 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       handleConversationIdInfoChange(newConversationId)
       setShowNewConversationItemInList(false)
       invalidateShareConversations()
+      if (isTryApp) return
+      // The generated name stays in the list cache until the list is loaded again after it.
+      queryClient
+        .query(
+          shareConversationNameQueryOptions({
+            conversationId: newConversationId,
+            appSourceType,
+            appId,
+          }),
+        )
+        .then((conversation) =>
+          queryClient.setQueryData(
+            conversationListQueryOptions.queryKey,
+            (data) => data && withGeneratedConversation(data, conversation),
+          ),
+        )
+        .catch(noop)
     },
-    [handleConversationIdInfoChange, invalidateShareConversations],
+    [
+      handleConversationIdInfoChange,
+      invalidateShareConversations,
+      isTryApp,
+      queryClient,
+      appSourceType,
+      appId,
+      conversationListQueryOptions.queryKey,
+    ],
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {

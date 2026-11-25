@@ -41,6 +41,7 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
+  withGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -226,11 +227,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       refetchOnReconnect: false,
     },
   )
-  const {
-    data: appConversationData,
-    isLoading: appConversationDataLoading,
-    dataUpdatedAt: conversationListUpdatedAt,
-  } = useQuery(conversationListQueryOptions)
+  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+    conversationListQueryOptions,
+  )
   const {
     data: appChatListData,
     error: appChatListError,
@@ -378,28 +377,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const newConversationQueryOptions = shareConversationNameQueryOptions(
-    {
-      conversationId: newConversationId,
-      appSourceType,
-      appId,
-    },
-    {
-      refetchOnWindowFocus: false,
-      enabled: !!newConversationId,
-    },
-  )
-  const { data: newConversation, dataUpdatedAt: newConversationUpdatedAt } = useQuery(
-    newConversationQueryOptions,
-  )
   const conversationList = useMemo(() => {
     const data = (appConversationData?.data ?? []).slice()
-    // The generated name of a new conversation shows until the list is loaded again after it.
-    if (newConversation && newConversationUpdatedAt >= conversationListUpdatedAt) {
-      const index = data.findIndex((item) => item.id === newConversation.id)
-      if (index > -1) data[index] = newConversation
-      else data.unshift(newConversation)
-    }
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
@@ -409,14 +388,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       })
     }
     return data
-  }, [
-    appConversationData,
-    newConversation,
-    newConversationUpdatedAt,
-    conversationListUpdatedAt,
-    showNewConversationItemInList,
-    t,
-  ])
+  }, [appConversationData, showNewConversationItemInList, t])
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find((item) => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)
@@ -590,11 +562,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
               ),
             },
         )
-        if (newConversation?.id === conversationId)
-          queryClient.setQueryData(newConversationQueryOptions.queryKey, {
-            ...newConversation,
-            name: newName,
-          })
         onSuccess()
       } finally {
         setConversationRenaming(false)
@@ -607,8 +574,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       conversationRenaming,
       queryClient,
       conversationListQueryOptions.queryKey,
-      newConversation,
-      newConversationQueryOptions.queryKey,
     ],
   )
   const handleNewConversationCompleted = useCallback(
@@ -617,8 +582,31 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       handleConversationIdInfoChange(newConversationId)
       setShowNewConversationItemInList(false)
       invalidateShareConversations()
+      // The generated name stays in the list cache until the list is loaded again after it.
+      queryClient
+        .query(
+          shareConversationNameQueryOptions({
+            conversationId: newConversationId,
+            appSourceType,
+            appId,
+          }),
+        )
+        .then((conversation) =>
+          queryClient.setQueryData(
+            conversationListQueryOptions.queryKey,
+            (data) => data && withGeneratedConversation(data, conversation),
+          ),
+        )
+        .catch(noop)
     },
-    [handleConversationIdInfoChange, invalidateShareConversations],
+    [
+      handleConversationIdInfoChange,
+      invalidateShareConversations,
+      queryClient,
+      appSourceType,
+      appId,
+      conversationListQueryOptions.queryKey,
+    ],
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {

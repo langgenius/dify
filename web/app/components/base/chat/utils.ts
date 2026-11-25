@@ -1,5 +1,6 @@
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
+import type { AppConversationData, ConversationItem } from '@/models/share'
 import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -260,6 +261,18 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
+/** Puts a new conversation with its generated name into a loaded conversation list. */
+function withGeneratedConversation(
+  data: AppConversationData,
+  conversation: ConversationItem,
+): AppConversationData {
+  const list = data.data.slice()
+  const index = list.findIndex((item) => item.id === conversation.id)
+  if (index > -1) list[index] = conversation
+  else list.unshift(conversation)
+  return { ...data, data: list }
+}
+
 export {
   buildChatItemTree,
   getLastAnswer,
@@ -270,4 +283,5 @@ export {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
+  withGeneratedConversation,
 }

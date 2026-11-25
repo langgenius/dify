@@ -18,6 +18,7 @@ import {
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
+import { createDeferred } from '@/test/deferred'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
 import { createTestQueryClient } from '@/test/query-client'
 import { TransferMethod } from '@/types/app'
@@ -343,6 +344,41 @@ describe('useEmbeddedChatbot', () => {
           100,
         ),
       )
+    })
+
+    it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({
+          data: [createConversationItem({ id: 'conversation-new', name: 'Original' })],
+        }),
+      )
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Original'))
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      await waitFor(() => expect(queryClient.isFetching()).toBe(0))
+
+      act(() => {
+        result.current.handleChangeConversation('conversation-new')
+      })
+
+      expect(result.current.conversationList[0]).toMatchObject({
+        id: 'conversation-new',
+        name: 'Generated',
+      })
     })
   })
 
