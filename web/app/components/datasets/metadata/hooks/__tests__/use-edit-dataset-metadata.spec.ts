@@ -7,7 +7,11 @@ import useEditDatasetMetadata from '../use-edit-dataset-metadata'
 const mockDoAddMetaData = vi.fn().mockResolvedValue({})
 const mockDoRenameMetaData = vi.fn().mockResolvedValue({})
 const mockDoDeleteMetaData = vi.fn().mockResolvedValue({})
-const mockToggleBuiltInStatus = vi.fn().mockResolvedValue({})
+const builtInState = vi.hoisted(() => ({ enabled: false }))
+const mockToggleBuiltInStatus = vi.fn(async ({ params }: { params: { action: string } }) => {
+  builtInState.enabled = params.action === 'enable'
+  return {}
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -20,7 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
           { id: '1', name: 'field_one', type: DataType.string, count: 5 },
           { id: '2', name: 'field_two', type: DataType.number, count: 3 },
         ],
-        built_in_field_enabled: false,
+        built_in_field_enabled: builtInState.enabled,
       }),
       'datasets.byDatasetId.metadata.post': (input) => mockDoAddMetaData(input),
       'datasets.byDatasetId.metadata.byMetadataId.patch': (input) => mockDoRenameMetaData(input),
@@ -49,7 +53,10 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-beforeEach(() => localStorage.removeItem(isShowManageMetadataLocalStorageKey))
+beforeEach(() => {
+  builtInState.enabled = false
+  localStorage.removeItem(isShowManageMetadataLocalStorageKey)
+})
 afterEach(() => localStorage.removeItem(isShowManageMetadataLocalStorageKey))
 
 it('consumes the management navigation flag once and opens the editor', () => {
@@ -116,10 +123,22 @@ it('updates built-in metadata after the server accepts the requested status', as
   expect(mockToggleBuiltInStatus).toHaveBeenCalledWith({
     params: { dataset_id: 'ds-1', action: 'enable' },
   })
-  expect(result.current.builtInEnabled).toBe(true)
+  await waitFor(() => expect(result.current.builtInEnabled).toBe(true))
   await act(async () => result.current.setBuiltInEnabled(false))
   expect(mockToggleBuiltInStatus).toHaveBeenLastCalledWith({
     params: { dataset_id: 'ds-1', action: 'disable' },
+  })
+  await waitFor(() => expect(result.current.builtInEnabled).toBe(false))
+})
+
+it('keeps the built-in status a failed request did not change', async () => {
+  mockToggleBuiltInStatus.mockRejectedValueOnce(new Error('Failed'))
+  const { result } = renderHook(() =>
+    useEditDatasetMetadata({ datasetId: 'ds-1', onUpdateDocList: vi.fn() }),
+  )
+  await waitFor(() => expect(result.current.builtInEnabled).toBe(false))
+  await act(async () => {
+    await expect(result.current.setBuiltInEnabled(true)).rejects.toThrow('Failed')
   })
   expect(result.current.builtInEnabled).toBe(false)
 })
