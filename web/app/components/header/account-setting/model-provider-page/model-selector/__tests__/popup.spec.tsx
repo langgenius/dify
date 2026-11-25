@@ -215,7 +215,13 @@ async function setup(
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
         <>
-          <Harness modelList={modelList} onSelect={onSelect} onHide={onHide} {...props} />
+          <Harness
+            modelList={modelList}
+            onSelect={onSelect}
+            onHide={onHide}
+            onConfigureEmptyState={vi.fn()}
+            {...props}
+          />
           <ModelCredentialDialog />
         </>
       </NuqsTestingAdapter>,
