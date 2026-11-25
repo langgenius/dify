@@ -1,7 +1,8 @@
 import json
-from collections.abc import Generator, Iterable
+from collections.abc import Generator, Iterable, Mapping
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from types import MappingProxyType
 from typing import Any, ClassVar
 from uuid import uuid4
 
@@ -413,6 +414,17 @@ class TestToolEngineSerializationCases:
             assert isinstance(result["datetime"], str)
             assert isinstance(result["decimal"], float)
 
+        @pytest.mark.parametrize("value", ["not a dict", [1, 2, 3], 42, MappingProxyType({"key": 1})])
+        def test_invalid_input_type(self, value: str | list[int] | int | Mapping[str, int]) -> None:
+            """Reject non-dict inputs with the existing error even if they supply items()."""
+            with pytest.raises(TypeError, match=r"safe_json_dict\(\) expects a dictionary \(dict\) as input"):
+                safe_json_dict(value)
+
+        def test_unknown_nested_values_and_non_string_keys_pass_through(self) -> None:
+            sentinel = object()
+            payload = {7: {"values": [sentinel]}}
+            assert safe_json_dict(payload) == payload
+
         def test_empty_dict(self) -> None:
             """Test empty dictionary handling"""
             result = safe_json_dict({})
@@ -428,7 +440,7 @@ class TestToolEngineSerializationCases:
                     }
                 }
             }
-            nested = _NestedPayload.model_validate(safe_json_dict(test_dict))
+            nested = _NestedPayload.model_validate(safe_json_dict(test_dict), strict=True)
             assert nested.level1.level2.datetime == "2024-01-01T12:00:00+00:00"
             assert nested.level1.level2.decimal == 123.456
 
@@ -533,7 +545,9 @@ class TestToolEngineSerializationCases:
             assert transformed_message.type == ToolInvokeMessage.MessageType.JSON
 
             # Verify the JSON object was transformed
-            payload = _SerializedIntegrationPayload.model_validate(_json_message_of(transformed_message).json_object)
+            payload = _SerializedIntegrationPayload.model_validate(
+                _json_message_of(transformed_message).json_object, strict=True
+            )
             assert payload.metadata.created_at == "2024-01-01T12:00:00+00:00"
             assert payload.metadata.version == 1.0
             assert payload.metadata.tags == ["tag1", "tag2"]

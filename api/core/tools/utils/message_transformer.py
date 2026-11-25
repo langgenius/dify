@@ -1,6 +1,6 @@
 import logging
 import re
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -8,7 +8,6 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import numpy as np
-from pydantic import JsonValue
 
 from core.app.file_access import grant_tool_file_access
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -57,7 +56,10 @@ def safe_json_value(v):
             return v
 
 
-def safe_json_dict(d: Mapping[str, object]) -> dict[str, JsonValue]:
+def safe_json_dict(d: object) -> dict[object, object]:
+    """Normalize recognized values in a dict, preserving its keys and unrecognized values."""
+    if not isinstance(d, dict):
+        raise TypeError("safe_json_dict() expects a dictionary (dict) as input")
     return {k: safe_json_value(v) for k, v in d.items()}
 
 
