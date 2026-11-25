@@ -169,6 +169,19 @@ const isNoteLinkClickTarget = (target: EventTarget | null, node: Node) => {
   )
 }
 
+function hasAgentSessionContinuityChange(previousNodes: Node[], nextNodes: Node[]) {
+  const previousData = new Map(previousNodes.map(({ id, data }) => [id, data]))
+  return nextNodes.some(({ id, data }) => {
+    const previous = previousData.get(id)
+    return (
+      previous &&
+      isAgentV2NodeData(previous) &&
+      isAgentV2NodeData(data) &&
+      (previous.continue_agent_session ?? true) !== (data.continue_agent_session ?? true)
+    )
+  })
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation(['workflow'] as const)
   const isChatflow = useAtomValue(isChatflowAtom)
@@ -2344,12 +2357,14 @@ export const useNodesInteractions = () => {
     undo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0) return
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
+    const { nodes: previousNodes, setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
     setNodes(nodes, shouldBroadcast, 'nodes:history-back')
     if (shouldBroadcast) collaborationManager.emitHistoryAction('undo')
+    if (isChatflow && hasAgentSessionContinuityChange(previousNodes, nodes))
+      void handleSyncWorkflowDraft(true)
     workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
@@ -2358,6 +2373,8 @@ export const useNodesInteractions = () => {
     workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
+    handleSyncWorkflowDraft,
+    isChatflow,
   ])
 
   const handleHistoryForward = useCallback(() => {
@@ -2366,12 +2383,14 @@ export const useNodesInteractions = () => {
     redo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0) return
-    const { setNodes, setEdges } = collaborativeWorkflow.getState()
+    const { nodes: previousNodes, setNodes, setEdges } = collaborativeWorkflow.getState()
 
     const shouldBroadcast = collaborationManager.isConnected()
     setEdges(edges, shouldBroadcast)
     setNodes(nodes, shouldBroadcast, 'nodes:history-forward')
     if (shouldBroadcast) collaborationManager.emitHistoryAction('redo')
+    if (isChatflow && hasAgentSessionContinuityChange(previousNodes, nodes))
+      void handleSyncWorkflowDraft(true)
     workflowStore.setState({ contextMenuTarget: undefined })
   }, [
     collaborativeWorkflow,
@@ -2380,6 +2399,8 @@ export const useNodesInteractions = () => {
     workflowHistoryStore,
     getNodesReadOnly,
     getWorkflowReadOnly,
+    handleSyncWorkflowDraft,
+    isChatflow,
   ])
 
   const [isDimming, setIsDimming] = useState(false)

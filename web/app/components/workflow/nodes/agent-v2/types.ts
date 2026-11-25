@@ -1,26 +1,28 @@
 import type {
   DeclaredOutputConfig,
+  WorkflowNodeJobConfig,
   WorkflowOutputRoutes,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentBinding } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-export type AgentV2NodeType = CommonNodeType & {
-  agent_binding?: AgentBinding
-  agent_declared_outputs?: DeclaredOutputConfig[]
-  agent_output_routes?: WorkflowOutputRoutes
-  agent_node_kind: 'dify_agent'
-  agent_task?: string
-  version: '2'
-}
+export type AgentV2NodeType = CommonNodeType &
+  Pick<WorkflowNodeJobConfig, 'continue_agent_session'> & {
+    agent_binding?: AgentBinding
+    agent_declared_outputs?: DeclaredOutputConfig[]
+    agent_output_routes?: WorkflowOutputRoutes
+    agent_node_kind: 'dify_agent'
+    readonly agent_session_generation?: WorkflowNodeJobConfig['session_generation']
+    agent_task?: string
+    version: '2'
+  }
 
-export function isAgentV2NodeData(data: CommonNodeType): data is AgentV2NodeType {
-  const payload = data as { agent_node_kind?: string; version?: string }
+export function isAgentV2NodeData(data: Record<string, unknown>): data is AgentV2NodeType {
   return (
     (data.type === BlockEnum.Agent || data.type === BlockEnum.AgentV2) &&
-    payload.agent_node_kind === 'dify_agent' &&
-    payload.version === '2'
+    data.agent_node_kind === 'dify_agent' &&
+    data.version === '2'
   )
 }
 

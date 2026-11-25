@@ -53,13 +53,17 @@ it('merges edits into the target node and saves only when draft synchronization 
 it('updates the graph and immediately saves with the requested error policy and callback', async () => {
   const { result, sync } = setup()
   const callback = { onSuccess: vi.fn() }
+  const saved = { hash: 'draft-hash', updatedAt: 42 }
+  sync.mockResolvedValueOnce(saved)
   await waitFor(() => expect(result.current.nodes).toHaveLength(2))
-  act(() =>
-    result.current.handleNodeDataUpdateWithSyncDraft(
-      { id: 'node-1', data: { value: 'saved' } },
-      { sync: true, notRefreshWhenSyncError: true, callback },
-    ),
-  )
+  await act(async () => {
+    await expect(
+      result.current.handleNodeDataUpdateWithSyncDraft(
+        { id: 'node-1', data: { value: 'saved' } },
+        { sync: true, notRefreshWhenSyncError: true, callback },
+      ),
+    ).resolves.toEqual(saved)
+  })
   expect(result.current.nodes.find((node) => node.id === 'node-1')?.data.value).toBe('saved')
   expect(sync).toHaveBeenCalledExactlyOnceWith(true, callback)
 })

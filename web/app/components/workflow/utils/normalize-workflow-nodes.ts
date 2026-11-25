@@ -1,9 +1,20 @@
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { BlockEnum } from '../types'
 
 export const normalizeWorkflowNodes = <T extends { data: Record<string, unknown> }>(
   nodes: T[],
   appMode?: string,
 ): T[] => {
+  if (appMode === 'advanced-chat') {
+    return nodes.map((node) => {
+      if (!isAgentV2NodeData(node.data) || node.data.continue_agent_session != null) return node
+
+      // A missing setting in a draft save preserves the server's current mode.
+      // Send the effective default so undo can restore it on legacy nodes.
+      return { ...node, data: { ...node.data, continue_agent_session: true } }
+    })
+  }
+
   if (appMode !== 'workflow') return nodes
 
   return nodes.map((node) => {

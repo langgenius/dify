@@ -359,18 +359,23 @@ describe('Inline Agent configure workspace', () => {
     const saved = createDeferred<ReturnType<typeof createComposer>>()
     api.saveComposer.mockReturnValue(saved.promise)
     api.saveBuildDraft.mockResolvedValue(createBuildDraft('Normalized instructions'))
-    renderWorkspace()
+    const nodeJob = { continue_agent_session: false, workflow_prompt: 'Keep the node task' }
+    renderWorkspace({ composer: createComposer({ node_job: nodeJob }) })
     await replacePromptEditorText(
       await screen.findByRole('textbox', { name: `${prefix}.prompt.label` }),
       'Local instructions',
     )
     await sendBuild(user)
     await waitFor(() => expect(api.saveComposer).toHaveBeenCalledOnce())
+    expect(api.saveComposer.mock.calls[0]?.[0].body).not.toHaveProperty('node_job')
     expect(api.saveBuildDraft).not.toHaveBeenCalled()
     expect(ssePost).not.toHaveBeenCalled()
     await act(async () =>
       saved.resolve(
-        createComposer({ agent_soul: { prompt: { system_prompt: 'Saved instructions' } } }),
+        createComposer({
+          agent_soul: { prompt: { system_prompt: 'Saved instructions' } },
+          node_job: nodeJob,
+        }),
       ),
     )
     await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
