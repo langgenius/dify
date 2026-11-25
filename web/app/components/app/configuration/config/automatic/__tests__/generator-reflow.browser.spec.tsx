@@ -15,20 +15,10 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import GetAutomaticRes from '../get-automatic-res'
 
 vi.unmock('react-i18next')
-
-// boundary: prompt generation is remote; the real dialog consumes a deterministic response.
-vi.mock('@/service/debug', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/debug')>()),
-  generateBasicAppFirstTimeRule: async () => ({
-    prompt: 'Summarize the supplied meeting notes into actionable next steps for the team.',
-    variables: [],
-    opening_statement: '',
-  }),
-  generateRule: vi.fn(),
-}))
 
 const expectWithin = (element: Element, container: Element) => {
   const rect = element.getBoundingClientRect()
@@ -40,6 +30,21 @@ const expectWithin = (element: Element, container: Element) => {
 
 describe('Prompt generator reflow', () => {
   beforeEach(() => {
+    onTestFinished(
+      installFakeApi({
+        console: {
+          ruleGenerate: {
+            post: () => ({
+              prompt:
+                'Summarize the supplied meeting notes into actionable next steps for the team.',
+              variables: [],
+              opening_statement: '',
+              error: '',
+            }),
+          },
+        },
+      }),
+    )
     localStorage.clear()
     sessionStorage.clear()
   })

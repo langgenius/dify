@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -966,6 +967,29 @@ class TestAccountsCases:
 
             assert result["id"] == user.id
             update_profile.assert_called_once_with(request_context, AccountProfileChanges())
+
+        def test_invalid_avatar_is_an_invalid_argument(self, app: Flask, account_services: AccountServices) -> None:
+            api = AccountProfileApi()
+            method = inspect.unwrap(api.patch)
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id="trace-1",
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+            payload = {"avatar": "550e8400-e29b-41d4-a716-446655440000"}
+            args = AccountProfilePatchPayload.model_validate(payload)
+
+            with (
+                app.test_request_context("/account/profile", method="PATCH", json=payload),
+                patch.object(
+                    account_services.profile,
+                    "update",
+                    side_effect=AvatarFileNotFoundError,
+                ),
+                pytest.raises(InvalidArgumentError, match="Avatar file is invalid"),
+            ):
+                method(api, args, request_context)
 
         @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
         def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]) -> None:

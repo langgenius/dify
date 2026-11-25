@@ -2,7 +2,7 @@ import type { AppIconProps } from '../../base/app-icon'
 import type { Operation } from './app-operations'
 import { cn } from '@langgenius/dify-ui/cn'
 import AppIcon from '../../base/app-icon'
-import AppOperations from './app-operations'
+import { AppOperations } from './app-operations'
 
 type AppInfoHeaderProps = {
   icon: AppIconProps['icon']
@@ -12,7 +12,7 @@ type AppInfoHeaderProps = {
   operationGroups: Operation[][]
 }
 
-export default function AppInfoHeader({
+export function AppInfoHeader({
   expand,
   appName,
   modeLabel,

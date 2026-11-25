@@ -5,21 +5,10 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi, route } from '@/test/fake-api'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { createTestNavigation } from '@/test/next-navigation'
 import { SnippetSidebarContent } from '../snippet-sidebar'
-
-// oxlint-disable-next-line typescript/no-deprecated -- Control the Console HTTP transport for configuration and remote uploads.
-const request = vi.hoisted(() => vi.fn<typeof import('@/service/base').request>())
-// oxlint-disable-next-line typescript/no-deprecated -- Local files still use the XHR upload transport.
-const upload = vi.hoisted(() => vi.fn<typeof import('@/service/base').upload>())
-vi.mock('@/service/base', () => ({ request, upload, post: vi.fn() }))
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ snippetId: 'snippet-1' }),
-  usePathname: () => '/snippets/snippet-1/orchestrate',
-  useRouter: () => ({ replace: vi.fn() }),
-  useSelectedLayoutSegment: () => 'orchestrate',
-}))
 
 const MIB = 1024 * 1024
 const snippet: SnippetDetail = {
@@ -47,30 +36,47 @@ function EditableSnippetInputs() {
 }
 
 it('adds a default file list from the Snippet sidebar and enforces the configured limit when replacing its file', async () => {
-  onTestFinished(guardUnexpectedFetch())
   const oversized = 'https://example.com/oversized.txt'
   const replacement = 'https://example.com/replacement.txt'
-  request.mockImplementation(async (_url, _init, options) => {
-    if (options?.request?.method === 'GET')
-      return Response.json(createFileUploadConfigFixture({ file_size_limit: 2 }))
-
-    const { url } = (await options?.request?.json()) as { url: string }
-    const tooLarge = url === oversized
-    return Response.json({
-      id: tooLarge ? 'oversized-file' : 'replacement-file',
-      name: tooLarge ? 'oversized.txt' : 'replacement.txt',
-      mime_type: 'text/plain',
-      size: (tooLarge ? 3 : 1) * MIB,
-      url,
-    })
-  })
-  upload.mockResolvedValue({ id: 'original-file' })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        files: { upload: { get: () => createFileUploadConfigFixture({ file_size_limit: 2 }) } },
+        remoteFiles: {
+          upload: {
+            post: ({ body }) => {
+              const tooLarge = body.url === oversized
+              return {
+                id: tooLarge ? 'oversized-file' : 'replacement-file',
+                name: tooLarge ? 'oversized.txt' : 'replacement.txt',
+                extension: 'txt',
+                mime_type: 'text/plain',
+                size: (tooLarge ? 3 : 1) * MIB,
+                url: body.url,
+                created_at: null,
+                created_by: null,
+              }
+            },
+          },
+        },
+      },
+      // Local files still use the XHR upload transport.
+      routes: [route('POST', 'console', '/files/upload', () => ({ id: 'original-file' }))],
+    }),
+  )
   const { wrapper: Query } = createConsoleQueryWrapper()
   await render(
     <Query>
       <AppToaster />
       <EditableSnippetInputs />
     </Query>,
+    {
+      wrapper: createTestNavigation({
+        segments: ['orchestrate'],
+        url: '/snippets/snippet-1/orchestrate',
+        params: { snippetId: 'snippet-1' },
+      }).NavigationProvider,
+    },
   )
 
   const sidebar = page.getByRole('complementary', { name: 'Snippet settings' })

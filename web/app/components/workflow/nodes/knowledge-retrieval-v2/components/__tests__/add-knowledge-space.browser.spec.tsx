@@ -5,20 +5,10 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import AddKnowledgeSpace from '../add-knowledge-space'
 
 type Space = Awaited<ReturnType<typeof consoleClient.knowledgeFs.spaces.get>>['data'][number]
-
-const api = vi.hoisted(() => ({ list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>() }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, { 'knowledgeFs.spaces.get': api.list }),
-  }
-})
 
 const space = (id: string, name: string, overrides: Partial<Space> = {}): Space => ({
   control_space_id: id,
@@ -53,25 +43,29 @@ const response = (data: Space[], page = 1, has_more = false) => ({
   limit: 50,
 })
 
-beforeEach(() => {
-  onTestFinished(guardUnexpectedFetch())
-  api.list.mockReset().mockResolvedValue(
-    response([
-      space('product', 'Product docs', {
-        technical_summary: {
-          knowledge_space_id: 'product',
-          name: 'Product docs',
-          revision: 1,
-          slug: 'product',
-          icon: '📘',
-          description: null,
-          document_count: 0,
-        },
-      }),
-      space('archive', 'Archived docs', { technical_status: 'unavailable' }),
-    ]),
-  )
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    knowledgeFs: {
+      spaces: {
+        get: () =>
+          response([
+            space('product', 'Product docs', {
+              technical_summary: {
+                knowledge_space_id: 'product',
+                name: 'Product docs',
+                revision: 1,
+                slug: 'product',
+                icon: '📘',
+                description: null,
+                document_count: 0,
+              },
+            }),
+            space('archive', 'Archived docs', { technical_status: 'unavailable' }),
+          ]),
+      },
+    },
+  },
+}))
 
 async function setup(initial: KnowledgeRetrievalV2SpaceSummary[] = []) {
   function Selection() {
@@ -129,7 +123,7 @@ it('replaces an unavailable saved space and retains the confirmed catalog select
 it.each(['all_team_members', 'partial_members'] as const)(
   'confirms a %s space with read and query access',
   async (visibility) => {
-    api.list.mockResolvedValue(
+    fake.console.knowledgeFs.spaces.get.mockReturnValue(
       response([
         space('shared', 'Shared docs', {
           visibility,
@@ -151,7 +145,9 @@ it.each([
 ] satisfies Partial<Space>[])(
   'prevents confirming a catalog space publishing would reject: %j',
   async (overrides) => {
-    api.list.mockResolvedValue(response([space('restricted', 'Restricted docs', overrides)]))
+    fake.console.knowledgeFs.spaces.get.mockReturnValue(
+      response([space('restricted', 'Restricted docs', overrides)]),
+    )
     const { dialog, saved } = await setup()
     const restricted = dialog.getByRole('checkbox', { name: 'Restricted docs' })
     await expect.element(restricted).toBeDisabled()
@@ -164,7 +160,9 @@ it.each([
 )
 
 it('recovers the initial catalog through its retry action', async () => {
-  api.list.mockRejectedValueOnce(new Error('spaces unavailable'))
+  fake.console.knowledgeFs.spaces.get.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'spaces unavailable' }),
+  )
   const { dialog } = await setup()
   const alert = dialog.getByRole('alert')
   await expect
@@ -178,30 +176,54 @@ it('recovers the initial catalog through its retry action', async () => {
   await expect.element(alert).not.toBeInTheDocument()
 })
 
-// Skipped: intermittently hits the 15 s test timeout in CI (5 of 17 runs) while passing locally.
-// Re-enable once the retry flow is deterministic under CI load.
-it.skip('retains the loaded page and its selection while retrying the failed next page', async () => {
-  api.list.mockImplementation(
-    async (input: Parameters<typeof consoleClient.knowledgeFs.spaces.get>[0]) => {
-      if (input?.query?.page === 1) return response([space('product', 'Product docs')], 1, true)
-      throw new Error('next page unavailable')
+it('retains the loaded page and its selection while retrying the failed next page', async () => {
+  const requestedPages: unknown[] = []
+  fake.use({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async (input) => {
+            requestedPages.push(input?.query?.page)
+            if (input?.query?.page === 1)
+              return response([space('product', 'Product docs')], 1, true)
+            throw apiError({
+              status: 503,
+              code: 'SERVICE_UNAVAILABLE',
+              message: 'next page unavailable',
+            })
+          },
+        },
+      },
     },
-  )
+  })
   const { dialog, saved } = await setup()
-  const product = dialog.getByRole('checkbox', { name: 'Product docs' })
-  await product.click()
   const alert = dialog.getByRole('alert')
   await expect.element(alert).toBeVisible()
-  api.list.mockImplementation(
-    async (input: Parameters<typeof consoleClient.knowledgeFs.spaces.get>[0]) => {
-      if (input?.query?.page !== 2) throw new Error('The retry must request the failed second page')
-      return response([space('later', 'Later docs')], 2)
+  const product = dialog.getByRole('checkbox', { name: 'Product docs' })
+  await product.click()
+  await expect.element(product).toBeChecked()
+  // The failed page waits for the retry action instead of being requested again on its own.
+  await expect.element(alert).toBeVisible()
+  expect(requestedPages).toEqual([1, 2])
+  fake.use({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async (input) => {
+            requestedPages.push(input?.query?.page)
+            if (input?.query?.page !== 2)
+              throw new Error('The retry must request the failed second page')
+            return response([space('later', 'Later docs')], 2)
+          },
+        },
+      },
     },
-  )
+  })
   await alert.getByRole('button', { name: 'common.operation.retry' }).click()
   const later = dialog.getByRole('checkbox', { name: 'Later docs' })
   await expect.element(later).toBeVisible()
   await expect.element(product).toBeChecked()
+  expect(requestedPages).toEqual([1, 2, 2])
   await later.click()
   await dialog.getByRole('button', { name: 'common.operation.add', exact: true }).click()
   await expect.element(saved).toHaveTextContent('Product docs, Later docs')

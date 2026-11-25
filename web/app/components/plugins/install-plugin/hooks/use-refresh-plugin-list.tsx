@@ -3,11 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { consoleQuery } from '@/service/console'
-import {
-  useInvalidateCheckInstalled,
-  useInvalidateInstalledPluginList,
-} from '@/service/use-plugins'
-import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
@@ -24,7 +20,6 @@ const SYSTEM_MODEL_TYPES = [
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const invalidateCheckInstalled = useInvalidateCheckInstalled()
   const { refetch: refetchLLMModelList } = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: ModelTypeEnum.textGeneration } },
@@ -53,7 +48,6 @@ const useRefreshPluginList = () => {
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const queryClient = useQueryClient()
 
-  const invalidateAllTriggerPlugins = useInvalidateAllTriggerPlugins()
   return {
     refreshPluginList: (
       manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null,
@@ -62,7 +56,6 @@ const useRefreshPluginList = () => {
       // installed list
       if (refreshAllType || !manifest) invalidateInstalledPluginList()
       else invalidateInstalledPluginList(manifest.category)
-      invalidateCheckInstalled()
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
       })
@@ -83,11 +76,14 @@ const useRefreshPluginList = () => {
             input: { query: { type: 'tool' } },
           }),
         })
-        // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
+        // TODO: refresh the suggested marketplace tools (useMarketplacePlugins in marketplace/query.ts).
       }
 
-      if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType)
-        invalidateAllTriggerPlugins()
+      if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType) {
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
+        })
+      }
 
       if (
         (manifest && PluginCategoryEnum.datasource.includes(manifest.category)) ||

@@ -1,3 +1,6 @@
+from collections.abc import Generator
+from contextlib import contextmanager
+from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
@@ -9,6 +12,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -19,17 +23,22 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user_id,
 )
+from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentAppComposerResponse,
     AgentComposerCandidatesResponse,
     AgentComposerImpactResponse,
     AgentComposerValidateResponse,
+    ComposerValidationFindingsResponse,
     WorkflowAgentComposerResponse,
 )
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
+from machinery.context import RequestContext
+from models.account import TenantAccountRole
 from models.model import App, AppMode
+from services.agent.app_composer_store import AgentComposerAgentMissingError, AgentComposerSnapshotMissingError
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
@@ -552,21 +561,32 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
         )
 
 
+_COMPOSER_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+
+
+@contextmanager
+def _composer_errors() -> Generator[None]:
+    """Map missing tenant-scoped Agent configuration to the existing Console errors."""
+    try:
+        yield
+    except AgentComposerAgentMissingError as exc:
+        raise AgentNotFoundError from exc
+    except AgentComposerSnapshotMissingError as exc:
+        raise AgentVersionNotFoundError from exc
+
+
 @console_ns.route("/agent/<uuid:agent_id>/composer")
 class AgentComposerApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent app composer state", console_ns.models[AgentAppComposerResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        return dump_response(
-            AgentAppComposerResponse,
-            AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id)),
-        )
+    @console_ns.response(
+        HTTPStatus.OK, "Agent app composer state", console_ns.models[AgentAppComposerResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the Agent's effective shared configuration without creating a draft."""
+        with _composer_errors():
+            state = application_services().agent_apps.composer.get(context, str(agent_id))
+        return dump_response(AgentAppComposerResponse, state)
 
     @error_responses(
         AgentNotFoundError,
@@ -576,27 +596,21 @@ class AgentComposerApi(Resource):
         PlaintextSecretNotAllowedError,
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
-    @console_ns.response(200, "Agent app composer saved", console_ns.models[AgentAppComposerResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Agent app composer saved", console_ns.models[AgentAppComposerResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_EDIT, AgentId())],
+    )
     @model_validate(ComposerSavePayload)
-    def put(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, account_id: str, agent_id: UUID):
-        return dump_response(
-            AgentAppComposerResponse,
-            AgentComposerService.save_agent_composer(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                account_id=account_id,
-                payload=req_data,
-            ),
-        )
+    def put(self, req_data: ComposerSavePayload, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Save the shared draft and return the committed state with validation findings."""
+        with _composer_errors():
+            result = application_services().agent_apps.composer.save(context, str(agent_id), req_data)
+        response = dump_response(AgentAppComposerResponse, result.state)
+        response["validation"] = dump_response(ComposerValidationFindingsResponse, result.validation)
+        return response
 
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/validate")
@@ -610,45 +624,26 @@ class AgentComposerValidateApi(Resource):
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
+        HTTPStatus.OK, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
     @model_validate(ComposerSavePayload)
-    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, agent_id: UUID):
-        AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id))
-        ComposerConfigValidator.validate_publish_payload(req_data)
-        AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
-        )
-        findings = AgentComposerService.collect_validation_findings(payload=req_data)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
+    def post(self, req_data: ComposerSavePayload, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Check publish rules for the supplied configuration and report findings without writing."""
+        with _composer_errors():
+            result = application_services().agent_apps.composer.validate(context, str(agent_id), req_data)
+        return dump_response(AgentComposerValidateResponse, result)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/candidates")
 class AgentComposerCandidatesApi(Resource):
     @error_responses(AgentVersionNotFoundError)
     @console_ns.response(
-        200, "Agent app composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
+        HTTPStatus.OK, "Agent app composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user_id: str, agent_id: UUID):
-        return dump_response(
-            AgentComposerCandidatesResponse,
-            AgentComposerService.get_agent_app_candidates(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                user_id=current_user_id,
-            ),
-        )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return mention candidates from tenant-scoped configuration and workspace tools."""
+        with _composer_errors():
+            result = application_services().agent_apps.composer.candidates(context, str(agent_id))
+        return dump_response(AgentComposerCandidatesResponse, result)

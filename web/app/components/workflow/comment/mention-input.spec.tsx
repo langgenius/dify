@@ -3,39 +3,41 @@ import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { act, render as renderComponent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { WorkflowContext } from '../context'
 import { EditorResourceScope } from '../editor-resource/provider'
 import { createWorkflowStore } from '../store'
+import { seedMentionableUsers } from './__tests__/comment-query-data'
 import { MentionInput } from './mention-input'
 
 const render = (ui: ReactElement, cachedUsers?: UserProfile[]) => {
   const store = createWorkflowStore({})
-  if (cachedUsers) store.getState().setMentionableUsersCache('app-1', cachedUsers)
+  const { wrapper, queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'user-1', name: 'Me', avatar_url: null },
+  })
+  if (cachedUsers) seedMentionableUsers(queryClient, cachedUsers)
   return renderComponent(
     <EditorResourceScope
       resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
     >
       <WorkflowContext value={store}>{ui}</WorkflowContext>
     </EditorResourceScope>,
+    { wrapper },
   )
 }
 const mockFetchMentionableUsers = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    apps: {
-      byAppId: {
-        workflow: {
-          comments: {
-            mentionUsers: {
-              get: (...args: unknown[]) => mockFetchMentionableUsers(...args),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflow.comments.mentionUsers.get': (...args: unknown[]) =>
+        mockFetchMentionableUsers(...args),
+    }),
+  }
+})
 
 const mentionUsers: UserProfile[] = [
   {
@@ -93,6 +95,29 @@ describe('MentionInput', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith('@Alice hi', ['user-2'])
     })
+  })
+
+  it('lets Tab leave the input when no mention matches and Shift+Tab leave without inserting', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button type="button">Before</button>
+        <ControlledMentionInput onSubmit={vi.fn()} />
+      </>,
+      mentionUsers,
+    )
+    const textarea = screen.getByPlaceholderText('workflowComments.comments.placeholder.add')
+
+    await user.type(textarea, '@zzz')
+    await user.tab()
+    expect(textarea).not.toHaveFocus()
+
+    await user.clear(textarea)
+    await user.type(textarea, '@Ali')
+    expect(await screen.findByRole('listbox')).toBeInTheDocument()
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Before' })).toHaveFocus()
+    expect(textarea).toHaveValue('@Ali')
   })
 
   it('uses cached users and trims the saved reply in editing mode', async () => {

@@ -12,11 +12,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
+from graphon.file import helpers as file_helpers
 from models.account import Account, Tenant
 from models.base import TypeBase
 from models.model import App, AppMode
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
 from services.workflow_collaboration_service import (
     SYNC_REQUEST_TIMEOUT_SECONDS,
@@ -24,7 +25,7 @@ from services.workflow_collaboration_service import (
     WorkflowCollaborationService,
 )
 from tests.helpers.unit.config_override import config_overrides_context
-from tests.helpers.unit.model_factories import make_app, make_upload_file
+from tests.helpers.unit.model_factories import make_account, make_app, make_upload_file
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
@@ -1265,28 +1266,77 @@ class TestWorkflowCollaborationService:
             room="wf-1",
         )
 
-    def test_online_user_avatars_are_scoped_to_active_room_and_upload_owner(
+    def test_online_user_avatars_use_current_profiles_for_active_room_sessions(
         self, real_service: ServiceFixture, sqlite_session_factory: sessionmaker[Session]
     ) -> None:
         service, repository, socketio = real_service
-        avatar_id = str(uuid4())
+        stale_avatar_id, owner_avatar_id, assigned_later_avatar_id = (str(uuid4()) for _ in range(3))
+        owner_id, assigned_later_id, other_id, outside_id = (str(uuid4()) for _ in range(4))
         with sqlite_session_factory.begin() as session:
-            session.add(make_upload_file(file_id=avatar_id, created_by="owner", extension="png", mime_type="image/png"))
+            owner = make_account(account_id=owner_id, email="owner@example.com")
+            owner.avatar = owner_avatar_id
+            assigned_later = make_account(account_id=assigned_later_id, email="later@example.com")
+            assigned_later.avatar = assigned_later_avatar_id
+            other = make_account(account_id=other_id, email="other@example.com")
+            other.avatar = stale_avatar_id
+            outside = make_account(account_id=outside_id, email="outside@example.com")
+            outside.avatar = "https://example.com/other-avatar.png"
+            session.add_all(
+                [
+                    owner,
+                    assigned_later,
+                    other,
+                    outside,
+                    make_upload_file(
+                        file_id=stale_avatar_id, created_by=owner_id, extension="png", mime_type="image/png"
+                    ),
+                    make_upload_file(
+                        file_id=owner_avatar_id, created_by=owner_id, extension="png", mime_type="image/png"
+                    ),
+                    make_upload_file(
+                        file_id=assigned_later_avatar_id,
+                        created_by=assigned_later_id,
+                        extension="png",
+                        mime_type="image/png",
+                    ),
+                ]
+            )
         avatar_service = AccountAvatarService(
-            files=SQLAlchemyAccountAvatarFileGateway(session_factory=sqlite_session_factory)
+            avatars=SQLAlchemyAccountRepository(session_factory=sqlite_session_factory),
+            sign_file_url=file_helpers.get_signed_file_url,
+            console_api_url="https://console.example.com",
         )
         seed_session(repository, "viewer")
         seed_sessions(
             repository,
             [
-                {"sid": "owner", "user_id": "owner", "username": "Owner", "avatar": avatar_id, "connected_at": 1},
-                {"sid": "unowned", "user_id": "other", "username": "Other", "avatar": avatar_id, "connected_at": 1},
+                {
+                    "sid": "owner",
+                    "user_id": owner_id,
+                    "username": "Owner",
+                    "avatar": stale_avatar_id,
+                    "connected_at": 1,
+                },
+                {
+                    "sid": "assigned-later",
+                    "user_id": assigned_later_id,
+                    "username": "Later",
+                    "avatar": None,
+                    "connected_at": 1,
+                },
+                {
+                    "sid": "unowned",
+                    "user_id": other_id,
+                    "username": "Other",
+                    "avatar": stale_avatar_id,
+                    "connected_at": 1,
+                },
                 {"sid": "invalid", "user_id": "invalid", "username": "Invalid", "avatar": "invalid", "connected_at": 1},
                 {
                     "sid": "offline",
-                    "user_id": "owner",
+                    "user_id": owner_id,
                     "username": "Owner",
-                    "avatar": avatar_id,
+                    "avatar": stale_avatar_id,
                     "connected_at": 1,
                 },
             ],
@@ -1295,26 +1345,25 @@ class TestWorkflowCollaborationService:
             "other-room",
             {
                 "sid": "outside",
-                "user_id": "outside",
+                "user_id": outside_id,
                 "username": "Outside",
-                "avatar": "https://example.com/other-avatar.png",
+                "avatar": None,
                 "connected_at": 1,
             },
         )
         socketio.manager.is_connected.side_effect = lambda sid, _namespace: sid != "offline"
 
-        with patch(
-            "services.account_avatar_file_gateway.file_helpers.get_signed_file_url",
-            return_value="https://example.com/signed-avatar.png",
-        ) as sign_avatar:
-            assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
-            assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
-                "outside": "https://example.com/other-avatar.png"
-            }
-            assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
-                "owner": "https://example.com/signed-avatar.png"
-            }
-            sign_avatar.assert_called_once_with(upload_file_id=avatar_id)
+        assert service.get_online_user_avatars("unjoined", avatar_service=avatar_service) == {}
+        assert service.get_online_user_avatars("outside", avatar_service=avatar_service) == {
+            "outside": "https://example.com/other-avatar.png"
+        }
+        assert service.get_online_user_avatars("viewer", avatar_service=avatar_service) == {
+            "owner": f"https://console.example.com/console/api/accounts/{owner_id}/avatars/{owner_avatar_id}",
+            "assigned-later": (
+                "https://console.example.com/console/api/accounts/"
+                f"{assigned_later_id}/avatars/{assigned_later_avatar_id}"
+            ),
+        }
 
     def test_broadcast_online_users_reassigns_missing_leader(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, socketio = real_service
