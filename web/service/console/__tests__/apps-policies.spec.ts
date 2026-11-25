@@ -101,16 +101,16 @@ describe('skill mutation policies', () => {
 })
 
 describe('app mutation policies', () => {
-  it('waits for the refreshed triggers and custom config, and refreshes the app detail in the background', async () => {
+  it('waits for the refreshed triggers, app detail, and custom config', async () => {
     const { consoleQuery, invalidatedKeys, success } = await setup()
     const params = { app_id: 'app-1' }
 
     await expect(
       success(consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions(), {}, { params }),
     ).resolves.toBeUndefined()
-    expect(
+    await expect(
       success(consoleQuery.apps.byAppId.modelConfig.post.mutationOptions(), {}, { params }),
-    ).toBeUndefined()
+    ).resolves.toBeDefined()
     await expect(
       success(consoleQuery.workspaces.customConfig.post.mutationOptions(), {}, { body: {} }),
     ).resolves.toBeUndefined()

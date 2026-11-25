@@ -279,16 +279,18 @@ describe('mutations and the refetches they start', () => {
         workspace.humanInput.v2.channels.im.byChannelId.put.mutationOptions().onSettled as Callback,
       [{}, null, { params: { channel_id: 'channel-1' } }, undefined],
     ],
-  ])('%s starts the refetch without waiting for it', async (_, queryKey, policy, args) => {
+  ])('%s waits for the refetch of the data it changes', async (_, queryKey, policy, args) => {
     const { client, context } = setup()
     const { queryFn, refetch } = await mountLoaded(client, queryKey)
 
-    const result = policy()(...args, context)
+    const state = track(policy()(...args, context))
     await settle()
 
-    expect(result).toBeUndefined()
     expect(queryFn).toHaveBeenCalledTimes(2)
+    expect(state.done).toBe(false)
     refetch.resolve({ loaded: true })
+    await settle()
+    expect(state.done).toBe(true)
   })
 
   it('waits for the endpoint list, not plugin counts, after toggling an endpoint', async () => {
@@ -543,6 +545,12 @@ describe('saves whose editor reopens from the refreshed data', () => {
         ],
       ]
     }),
+    [
+      'IP policy update (the edit session reopens with the group version)',
+      () => workspace().networkAccessGroups.byGroupId.put.mutationOptions,
+      workspace().networkAccessGroups.get.key(),
+      { params: { group_id: 'group-1' }, body: {} },
+    ],
     ...(['apps', 'agent'] as const).flatMap((owner): Case[] => {
       const trace =
         owner === 'apps'

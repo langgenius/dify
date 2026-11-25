@@ -28,15 +28,21 @@ optimistic write), and the other callbacks start both at once and wait for both.
 A returned invalidation promise keeps the mutation pending until active consumers
 have refreshed, while caller feedback does not wait for that refetch.
 
-Return or await an invalidation only when a caller needs the refreshed data
-before it continues (it reads the cache after `mutateAsync`, a toggle must keep
-its pending value until the refreshed state lands, or an editor rehydrates its
-draft from the response, so a late refetch would discard newer edits), and say which caller in a
-comment. Fire everything else with `void`: plan and quota, counts, catalogs, and
-lists or details the calling flow doesn't show. Otherwise success feedback is
-delayed and buttons gated on `isPending` stay pending until unrelated refetches
-finish. When both
-define `onMutate`, each side receives its own result in later callbacks. Other
+Await the primary source; detach everything else:
+
+- **Primary source, awaited:** the list and detail the mutated entity itself is read
+  from (the roles list after a role edit, the group list after a group update, the
+  list a new entity appears in, a run's own history row). Either return its
+  invalidation, or write the response into that cache before the callback resolves.
+  Editors and flows copy these values into local state right after a save (reopening
+  a dialog, "deploy latest", resending a batch), so a late refetch would let them act
+  on the old row.
+- **Secondary, `void`:** plan and quota, counts, catalogs and option lists, other
+  resources' lists or details, summaries. Awaiting them would delay success feedback
+  and keep `isPending` buttons pending on unrelated refetches.
+
+When the policy and the caller both define `onMutate`, each side receives its own
+result in later callbacks. Other
 options (`retry`, `context`, `meta`) still merge shallowly: the caller's value
 wins.
 

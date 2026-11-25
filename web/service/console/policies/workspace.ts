@@ -24,13 +24,16 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             post: {
               mutationOptions: {
                 // A failed revoke may mean the invitation was already accepted or revoked.
+                // Waits for the pending invitations; members and seats refresh in the background.
                 onSettled: (_data, _error, { params }, _result, { client }) => {
                   void invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.members.get.key(),
+                    consoleQuery.features.get.queryKey(),
+                  ])
+                  return invalidateQueryKeys(client, [
                     consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
                       input: { params: { workspace_id: params.workspace_id } },
                     }),
-                    consoleQuery.features.get.queryKey(),
                   ])
                 },
               },
@@ -43,12 +46,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
       customizedSnippets: {
         post: {
           mutationOptions: {
+            // Waits for the snippet list and details; workflows refresh in the background.
             onSuccess: (_data, _variables, _onMutateResult, context) => {
               void context.client.invalidateQueries({
-                queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-              })
-              void context.client.invalidateQueries({
                 queryKey: consoleQuery.snippets.key(),
+              })
+              return context.client.invalidateQueries({
+                queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
               })
             },
           },
@@ -56,24 +60,26 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         bySnippetId: {
           patch: {
             mutationOptions: {
+              // Waits for the snippet list and details; workflows refresh in the background.
               onSuccess: (_data, _variables, _onMutateResult, context) => {
                 void context.client.invalidateQueries({
-                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-                void context.client.invalidateQueries({
                   queryKey: consoleQuery.snippets.key(),
+                })
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
                 })
               },
             },
           },
           delete: {
             mutationOptions: {
+              // Waits for the snippet list and details; workflows refresh in the background.
               onSuccess: (_data, _variables, _onMutateResult, context) => {
                 void context.client.invalidateQueries({
-                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-                void context.client.invalidateQueries({
                   queryKey: consoleQuery.snippets.key(),
+                })
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
                 })
               },
             },
@@ -82,12 +88,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             increment: {
               post: {
                 mutationOptions: {
+                  // Waits for the snippet list and details; workflows refresh in the background.
                   onSuccess: (_data, _variables, _onMutateResult, context) => {
                     void context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                    })
-                    void context.client.invalidateQueries({
                       queryKey: consoleQuery.snippets.key(),
+                    })
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
                     })
                   },
                 },
@@ -98,12 +105,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         imports: {
           post: {
             mutationOptions: {
+              // Waits for the snippet list and details; workflows refresh in the background.
               onSuccess: (_data, _variables, _onMutateResult, context) => {
                 void context.client.invalidateQueries({
-                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                })
-                void context.client.invalidateQueries({
                   queryKey: consoleQuery.snippets.key(),
+                })
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
                 })
               },
             },
@@ -112,12 +120,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             confirm: {
               post: {
                 mutationOptions: {
+                  // Waits for the snippet list and details; workflows refresh in the background.
                   onSuccess: (_data, _variables, _onMutateResult, context) => {
                     void context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
-                    })
-                    void context.client.invalidateQueries({
                       queryKey: consoleQuery.snippets.key(),
+                    })
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.workspaces.current.customizedSnippets.key(),
                     })
                   },
                 },
@@ -128,12 +137,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
       },
       members: {
         // Invitations change seats (plan usage), the member list, and pending invitations.
+        // Waits for the member list and pending invitations; seats refresh in the background.
         inviteEmail: {
           post: {
             mutationOptions: {
               onSuccess: (response, _variables, _result, { client }) => {
-                void invalidateQueryKeys(client, [
-                  consoleQuery.features.get.queryKey(),
+                void invalidateQueryKeys(client, [consoleQuery.features.get.queryKey()])
+                return invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.members.get.key(),
                   consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
                     input: { params: { workspace_id: response.tenant_id } },
@@ -189,17 +199,28 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         byGroupId: {
           put: {
             mutationOptions: {
-              onSettled: (_data, error, _variables, _result, context) => {
+              // Waits for the groups list and details; app bindings refresh in the background.
+              onSettled: (_data, error, _variables, _result, { client }) => {
                 if (error) return
-                void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                const groups = consoleQuery.workspaces.current.networkAccessGroups
+                void invalidateQueryKeys(client, [
+                  consoleQuery.apps.byAppId.networkAccessGroup.key(),
+                ])
+                return invalidateQueryKeys(client, [groups.get.key(), groups.byGroupId.key()])
               },
             },
           },
           delete: {
             mutationOptions: {
-              onSettled: (_data, error, _variables, _result, context) => {
+              // Waits for the groups list; details and app bindings refresh in the background.
+              onSettled: (_data, error, _variables, _result, { client }) => {
                 if (error) return
-                void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                const groups = consoleQuery.workspaces.current.networkAccessGroups
+                void invalidateQueryKeys(client, [
+                  groups.byGroupId.key(),
+                  consoleQuery.apps.byAppId.networkAccessGroup.key(),
+                ])
+                return invalidateQueryKeys(client, [groups.get.key()])
               },
             },
           },
@@ -261,13 +282,15 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             copy: {
               post: {
                 mutationOptions: {
+                  // Waits for the role list the copy appears in; members refresh in the background.
                   onSettled: (_data, error, variables, _result, { client }) => {
                     if (error) return
-                    void invalidateQueryKeys(client, [
+                    if (variables.body?.copy_member)
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.workspaces.current.members.get.key(),
+                      ])
+                    return invalidateQueryKeys(client, [
                       consoleQuery.workspaces.current.rbac.roles.get.key(),
-                      ...(variables.body?.copy_member
-                        ? [consoleQuery.workspaces.current.members.get.key()]
-                        : []),
                     ])
                   },
                 },
@@ -296,8 +319,8 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             },
           },
         },
-        // The permission-set modal seeds its draft from the rule lists, so create and
-        // edit wait for them; resource details refresh in the background.
+        // Every permission-set write waits for the RBAC lists it changes (the modal seeds its
+        // draft from them); resource details refresh in the background.
         accessPolicies: {
           post: {
             mutationOptions: {
@@ -320,7 +343,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               mutationOptions: {
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
-                  void invalidateAccessPolicyQueries(consoleQuery, context.client)
+                  return invalidateAccessPolicyQueries(consoleQuery, context.client)
                 },
               },
             },
@@ -329,7 +352,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
                     if (error) return
-                    void invalidateAccessPolicyQueries(consoleQuery, context.client)
+                    return invalidateAccessPolicyQueries(consoleQuery, context.client)
                   },
                 },
               },

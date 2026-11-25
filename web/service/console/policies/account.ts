@@ -2,7 +2,6 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
-import { noop } from 'es-toolkit/function'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { invalidateQueryKeys } from './shared'
 
@@ -12,13 +11,14 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       byTokenId: {
         delete: {
           mutationOptions: {
+            // Drops the token's detail and waits for the token list it leaves.
             onSuccess: (_data, variables, _onMutateResult, context) => {
               context.client.removeQueries({
                 queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
                   input: { params: variables.params },
                 }),
               })
-              void invalidateQueryKeys(context.client, [
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.account.personalAccessTokens.get.key(),
               ])
             },
@@ -50,13 +50,11 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       },
       post: {
         mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            void context.client
-              .invalidateQueries({
-                queryKey: consoleQuery.account.personalAccessTokens.get.key(),
-              })
-              .catch(noop)
-          },
+          // Waits for the token list the new token appears in.
+          onSuccess: (_data, _variables, _onMutateResult, context) =>
+            invalidateQueryKeys(context.client, [
+              consoleQuery.account.personalAccessTokens.get.key(),
+            ]),
         },
       },
     },
@@ -73,12 +71,13 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
           onSuccess: (data, _variables, _onMutateResult, context) => {
             if (data.message !== 'success') return
 
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.account.education.get.key(),
-            })
-            // Verified education changes the plan features.
+            // Verified education changes the plan features, which refresh in the background;
+            // the save waits for the education status.
             void context.client.invalidateQueries({
               queryKey: consoleQuery.features.get.queryKey(),
+            })
+            return context.client.invalidateQueries({
+              queryKey: consoleQuery.account.education.get.key(),
             })
           },
         },

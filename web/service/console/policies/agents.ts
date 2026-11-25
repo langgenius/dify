@@ -11,13 +11,10 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
   return {
     post: {
       mutationOptions: {
+        // Waits for the agent list the new agent appears in; invite options refresh in the background.
         onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
-          context.client.invalidateQueries({
-            queryKey: consoleQuery.agent.get.key(),
-          })
-          context.client.invalidateQueries({
-            queryKey: consoleQuery.agent.inviteOptions.get.key(),
-          })
+          void invalidateQueryKeys(context.client, [consoleQuery.agent.inviteOptions.get.key()])
+          return invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()])
         },
       },
     },
@@ -109,37 +106,31 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       apiKeys: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) =>
-              void Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
-                    input: { params: { agent_id: variables.params.agent_id } },
-                  }),
-                }),
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
-                    input: { params: { agent_id: variables.params.agent_id } },
-                  }),
-                }),
-              ]),
+            // Waits for the key list the new key appears in; API access refreshes in the background.
+            onSuccess: (_data, variables, _result, context) => {
+              const input = { params: { agent_id: variables.params.agent_id } }
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
+              ])
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
+              ])
+            },
           },
         },
         byApiKeyId: {
           delete: {
             mutationOptions: {
-              onSuccess: (_data, variables, _result, context) =>
-                void Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
-                      input: { params: { agent_id: variables.params.agent_id } },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
-                      input: { params: { agent_id: variables.params.agent_id } },
-                    }),
-                  }),
-                ]),
+              // Waits for the key list it deletes from; API access refreshes in the background.
+              onSuccess: (_data, variables, _result, context) => {
+                const input = { params: { agent_id: variables.params.agent_id } }
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
+                ])
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
+                ])
+              },
             },
           },
         },
@@ -156,6 +147,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       copy: {
         post: {
           mutationOptions: {
+            // The copy's detail is written from the response; waits for the agent list it appears
+            // in, invite options refresh in the background.
             onSuccess: (copiedAgent, _variables, _onMutateResult, context) => {
               context.client.setQueryData(
                 consoleQuery.agent.byAgentId.get.queryKey({
@@ -167,12 +160,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 }),
                 copiedAgent,
               )
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.get.key(),
-              })
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.inviteOptions.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [consoleQuery.agent.inviteOptions.get.key()])
+              return invalidateQueryKeys(context.client, [consoleQuery.agent.get.key()])
             },
           },
         },
@@ -283,19 +272,17 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
             },
           },
         },
-        // Applying the build draft rewrites the agent. The editor refetches the composer
-        // itself when it leaves build mode, so the policy does not wait for these reloads.
+        // Applying the build draft rewrites the agent: waits for its detail and the agent list.
         apply: {
           post: {
             mutationOptions: {
-              onSuccess: (_data, { params }, _result, { client }) => {
-                void invalidateQueryKeys(client, [
+              onSuccess: (_data, { params }, _result, { client }) =>
+                invalidateQueryKeys(client, [
                   consoleQuery.agent.byAgentId.get.queryKey({
                     input: { params: { agent_id: params.agent_id } },
                   }),
                   consoleQuery.agent.get.key(),
-                ])
-              },
+                ]),
             },
           },
         },

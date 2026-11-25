@@ -1,5 +1,6 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { isNotFoundError } from '@/service/http-error'
+import { invalidateQueryKeys } from './shared'
 
 export function installedAppPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['installedApps'] {
   return {
@@ -15,18 +16,16 @@ export function installedAppPolicies(consoleQuery: ConsoleQuery): ConsolePolicie
       },
       patch: {
         mutationOptions: {
-          onSuccess: (_response, variables, _onMutateResult, context) => {
-            context.client.invalidateQueries({
-              queryKey: consoleQuery.installedApps.get.key(),
-            })
-            context.client.invalidateQueries({
-              queryKey: consoleQuery.installedApps.byInstalledAppId.get.queryKey({
+          // Waits for the installed app list and the edited app's detail.
+          onSuccess: (_response, variables, _onMutateResult, context) =>
+            invalidateQueryKeys(context.client, [
+              consoleQuery.installedApps.get.key(),
+              consoleQuery.installedApps.byInstalledAppId.get.queryKey({
                 input: {
                   params: variables.params,
                 },
               }),
-            })
-          },
+            ]),
         },
       },
     },

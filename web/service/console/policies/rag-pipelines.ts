@@ -14,10 +14,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           byTemplateId: {
             patch: {
               mutationOptions: {
+                // Waits for the customized template list it edits.
                 onSuccess: (_data, _variables, _result, { client }) => {
-                  void client.invalidateQueries({
-                    queryKey: customizedPipelineTemplatesKey(consoleQuery),
-                  })
+                  return invalidateQueryKeys(client, [customizedPipelineTemplatesKey(consoleQuery)])
                 },
               },
             },
@@ -42,13 +41,13 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           },
         },
       },
-      // A new pipeline dataset joins the dataset list.
+      // Waits for the dataset list the new pipeline dataset joins.
       emptyDataset: {
         post: {
           mutationOptions: {
             onSuccess: (data, _variables, _result, { client }) => {
               if (!data) return
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+              return invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
             },
           },
         },
@@ -56,8 +55,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
       dataset: {
         post: {
           mutationOptions: {
+            // Waits for the dataset list the new pipeline dataset joins.
             onSuccess: (_data, _variables, _result, { client }) => {
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+              return invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
             },
           },
         },
@@ -69,13 +69,14 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           byDatasetId: {
             post: {
               mutationOptions: {
+                // Waits for the converted dataset's detail.
                 onSuccess: (data, { params }, _result, { client }) => {
                   if (data.status !== 'success') return
-                  void client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+                  return invalidateQueryKeys(client, [
+                    consoleQuery.datasets.byDatasetId.get.queryKey({
                       input: { params: { dataset_id: params.dataset_id } },
                     }),
-                  })
+                  ])
                 },
               },
             },
@@ -99,10 +100,9 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           publish: {
             post: {
               mutationOptions: {
+                // Waits for the customized template list the published pipeline joins.
                 onSuccess: (_data, _variables, _result, { client }) => {
-                  void client.invalidateQueries({
-                    queryKey: customizedPipelineTemplatesKey(consoleQuery),
-                  })
+                  return invalidateQueryKeys(client, [customizedPipelineTemplatesKey(consoleQuery)])
                 },
               },
             },
@@ -114,9 +114,10 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
               stop: {
                 post: {
                   mutationOptions: {
-                    // A failed response can still follow an accepted stop request.
+                    // Waits for the pipeline's run history, also after a failed response: one can
+                    // still follow an accepted stop request.
                     onSettled: (_data, _error, variables, _result, context) => {
-                      void invalidateQueryKeys(context.client, [
+                      return invalidateQueryKeys(context.client, [
                         consoleQuery.rag.pipelines.byPipelineId.workflowRuns.key({
                           input: { params: { pipeline_id: variables.params.pipeline_id } },
                         }),
@@ -132,15 +133,17 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           publish: {
             post: {
               mutationOptions: {
+                // Waits for the published workflow and the version list; dataset cards refresh in
+                // the background.
                 onSuccess: (_data, variables, _result, context) => {
-                  void invalidateQueryKeys(context.client, [
+                  void invalidateQueryKeys(context.client, [consoleQuery.datasets.get.key()])
+                  return invalidateQueryKeys(context.client, [
                     consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.key({
                       input: { params: variables.params },
                     }),
                     consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                       input: { params: variables.params },
                     }),
-                    consoleQuery.datasets.get.key(),
                   ])
                 },
               },

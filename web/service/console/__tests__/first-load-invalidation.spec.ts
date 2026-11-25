@@ -187,22 +187,38 @@ describe('annotation policies', () => {
     expect(observer.getCurrentResult().data).toEqual({ data: ['1 annotation'] })
   })
 
-  it('resolves an add without waiting for the list, count, or quota to refetch', async () => {
+  it('waits for the annotation list on an add but not for the quota', async () => {
     const { client, queryFn, responses } = mountList(annotationListKey())
     responses[0]!.resolve({ data: ['loaded'] })
     await settle()
+    const quotaFn = vi.fn(() => new Promise(() => undefined))
+    const quota = new QueryObserver(client, {
+      queryKey: consoleQuery.features.get.queryKey(),
+      queryFn: quotaFn,
+    })
+    unsubscribers.push(quota.subscribe(() => undefined))
+    await settle()
 
+    let added = false
     const mutation = new MutationObserver(
       client,
       consoleQuery.apps.byAppId.annotations.post.mutationOptions({
         mutationFn: async () => ({ id: 'annotation-1' }) as never,
       }),
     )
-    await mutation.mutate({ params, body: { question: 'q', answer: 'a' } } as never)
-
-    // The refetch started but is still pending: the add did not wait for it.
+    const adding = mutation
+      .mutate({ params, body: { question: 'q', answer: 'a' } } as never)
+      .then(() => {
+        added = true
+      })
+    await settle()
     expect(queryFn).toHaveBeenCalledTimes(2)
-    expect(client.getQueryState(annotationListKey())?.fetchStatus).toBe('fetching')
+    expect(added).toBe(false)
+
+    // The list lands; the quota refetch is still pending and does not hold the add.
     responses[1]!.resolve({ data: ['after write'] })
+    await adding
+    expect(added).toBe(true)
+    expect(quotaFn).toHaveBeenCalledTimes(2)
   })
 })

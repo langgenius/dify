@@ -20,36 +20,32 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
   return {
     post: {
       mutationOptions: {
+        // Waits for the app list the new app appears in; quota and other lists refresh in the background.
         onSuccess: (_data, _variables, _onMutateResult, context) => {
-          void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
-          void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-          void context.client.invalidateQueries({
-            queryKey: consoleQuery.apps.starred.get.key(),
-          })
-          void context.client.invalidateQueries({
-            queryKey: consoleQuery.apps.recent.get.key(),
-          })
+          void invalidateQueryKeys(context.client, [
+            consoleQuery.features.get.key(),
+            consoleQuery.apps.starred.get.key(),
+            consoleQuery.apps.recent.get.key(),
+          ])
+          return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
         },
       },
     },
     imports: {
       post: {
         mutationOptions: {
+          // Waits for the app list the imported app appears in; quota and other lists refresh in
+          // the background.
           onSuccess: (data, variables, _onMutateResult, context) => {
             if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-            if (!('app_id' in variables.body) || !variables.body.app_id) {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.features.get.key(),
-              })
-            }
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
+            const isNewApp = !('app_id' in variables.body) || !variables.body.app_id
+            void invalidateQueryKeys(context.client, [
+              ...(isNewApp ? [consoleQuery.features.get.key()] : []),
+              consoleQuery.apps.starred.get.key(),
+              consoleQuery.apps.recent.get.key(),
+            ])
+            return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
           },
         },
       },
@@ -57,21 +53,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         confirm: {
           post: {
             mutationOptions: {
+              // Waits for the app list the imported app appears in; quota and other lists
+              // refresh in the background.
               onSuccess: (data, _variables, _onMutateResult, context) => {
                 if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
 
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.features.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.starred.get.key(),
-                })
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.recent.get.key(),
-                })
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.features.get.key(),
+                  consoleQuery.apps.starred.get.key(),
+                  consoleQuery.apps.recent.get.key(),
+                ])
+                return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
               },
             },
           },
@@ -131,16 +123,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         },
       },
       // An annotation added from a chat answer can land while the annotation page is
-      // still loading its first list, so refreshes cancel that pre-write load. They are
-      // not awaited: the chat button and the editors continue without the list, the
-      // count, or the quota.
+      // still loading its first list, so refreshes cancel that pre-write load. Writes wait
+      // for the annotation list and count (their primary source) but not for the quota.
       annotations: {
         byAnnotationId: {
           post: {
             mutationOptions: {
               onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                void invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
+                // Waits for the annotation list and count it edits.
+                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
@@ -148,10 +140,10 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             mutationOptions: {
               onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                void invalidateQueryKeys(client, [
-                  annotationListKey(consoleQuery, params.app_id),
-                  consoleQuery.features.get.key(),
-                ])
+                // Waits for the annotation list and count it changes; the quota refreshes in the
+                // background, so adding from a chat answer does not wait for it.
+                void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
@@ -160,10 +152,10 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              void invalidateQueryKeys(client, [
-                annotationListKey(consoleQuery, params.app_id),
-                consoleQuery.features.get.key(),
-              ])
+              // Waits for the annotation list and count it changes; the quota refreshes in the
+              // background, so adding from a chat answer does not wait for it.
+              void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+              return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
             },
           },
         },
@@ -172,10 +164,10 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           mutationOptions: {
             onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              void invalidateQueryKeys(client, [
-                annotationListKey(consoleQuery, params.app_id),
-                consoleQuery.features.get.key(),
-              ])
+              // Waits for the annotation list and count it changes; the quota refreshes in the
+              // background, so adding from a chat answer does not wait for it.
+              void invalidateQueryKeys(client, [consoleQuery.features.get.key()])
+              return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
             },
           },
         },
@@ -193,11 +185,11 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
             stop: {
               post: {
                 mutationOptions: {
-                  // A failed response can still follow an accepted stop request. The run
-                  // history refreshes in the background; the stop control does not wait.
+                  // A failed response can still follow an accepted stop request. Waits for the
+                  // run histories and details the stopped run is read from.
                   onSettled: (_data, _error, variables, _result, context) => {
                     const input = { params: { app_id: variables.params.app_id } }
-                    void invalidateQueryKeys(context.client, [
+                    return invalidateQueryKeys(context.client, [
                       consoleQuery.apps.byAppId.workflowRuns.key({ input }),
                       consoleQuery.apps.byAppId.advancedChat.workflowRuns.key({ input }),
                     ])
@@ -299,24 +291,24 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       server: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
-              void client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+            // Waits for the MCP server it saves.
+            onSuccess: (_data, { params }, _result, { client }) =>
+              invalidateQueryKeys(client, [
+                consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              })
-            },
+              ]),
           },
         },
         put: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
-              void client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+            // Waits for the MCP server it saves.
+            onSuccess: (_data, { params }, _result, { client }) =>
+              invalidateQueryKeys(client, [
+                consoleQuery.apps.byAppId.server.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              })
-            },
+              ]),
           },
         },
         refresh: {
@@ -349,14 +341,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 (current) => (current ? { ...current, ...data } : current),
               )
             },
-            // A version conflict means another write landed first: reload what it changed.
+            // A version conflict means another write landed first: waits for the app's binding to
+            // reload; the group list refreshes in the background.
             onError: (error, { params }, _result, { client }) => {
               if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
               void invalidateQueryKeys(client, [
+                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
+              ])
+              return invalidateQueryKeys(client, [
                 consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-                consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
               ])
             },
             // The binding is written above, so the save does not wait for the group lists.
@@ -418,13 +413,13 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
               }),
               data,
             )
-            void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.starred.get.key(),
-            })
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.apps.recent.get.key(),
-            })
+            // The detail is written above; waits for the app lists it edits, recent apps refresh
+            // in the background.
+            void invalidateQueryKeys(context.client, [consoleQuery.apps.recent.get.key()])
+            return invalidateQueryKeys(context.client, [
+              consoleQuery.apps.get.key(),
+              consoleQuery.apps.starred.get.key(),
+            ])
           },
         },
       },
@@ -454,20 +449,20 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       site: {
         post: {
           mutationOptions: {
+            // Waits for the app detail the site settings are read from; app lists refresh in the
+            // background.
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.get.key(),
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byAppId.get.queryKey({
                   input: { params: variables.params },
                 }),
-              })
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              ])
             },
           },
         },
@@ -506,14 +501,14 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       convertToWorkflow: {
         post: {
           mutationOptions: {
+            // Waits for the app list the converted app appears in; other lists refresh in the
+            // background.
             onSuccess: (_data, _variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
             },
           },
         },
@@ -521,19 +516,17 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       copy: {
         post: {
           mutationOptions: {
+            // Waits for the app list the copy appears in; quota and other lists refresh in the
+            // background.
             onSuccess: (data, _variables, _onMutateResult, context) => {
               if (!('mode' in data)) return
 
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.features.get.key(),
-              })
-              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.starred.get.key(),
-              })
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.recent.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.features.get.key(),
+                consoleQuery.apps.starred.get.key(),
+                consoleQuery.apps.recent.get.key(),
+              ])
+              return invalidateQueryKeys(context.client, [consoleQuery.apps.get.key()])
             },
           },
         },
@@ -573,17 +566,16 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           },
         },
       },
-      // The publisher keeps the config it sent; the app detail's publish time follows.
+      // Waits for the app detail the model config is read from.
       modelConfig: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, { params }, _result, { client }) => {
-              void invalidateQueryKeys(client, [
+            onSuccess: (_data, { params }, _result, { client }) =>
+              invalidateQueryKeys(client, [
                 consoleQuery.apps.byAppId.get.queryKey({
                   input: { params: { app_id: params.app_id } },
                 }),
-              ])
-            },
+              ]),
           },
         },
       },
@@ -726,6 +718,8 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                 saveToRoster: {
                   post: {
                     mutationOptions: {
+                      // The composer is written from the response; waits for the roster agent
+                      // list and the saved agent's detail, invite options refresh in the background.
                       onSuccess: (composerState, variables, _onMutateResult, context) => {
                         context.client.setQueryData(
                           consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
@@ -737,28 +731,24 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
                           ),
                           composerState,
                         )
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.get.key(),
-                        })
-                        context.client.invalidateQueries({
-                          queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                        })
+                        void invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.inviteOptions.get.key(),
+                        ])
 
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id
                             : undefined
-                        if (agentId) {
-                          context.client.invalidateQueries({
-                            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                              input: {
-                                params: {
-                                  agent_id: agentId,
-                                },
-                              },
-                            }),
-                          })
-                        }
+                        return invalidateQueryKeys(context.client, [
+                          consoleQuery.agent.get.key(),
+                          ...(agentId
+                            ? [
+                                consoleQuery.agent.byAgentId.get.queryKey({
+                                  input: { params: { agent_id: agentId } },
+                                }),
+                              ]
+                            : []),
+                        ])
                       },
                     },
                   },
@@ -773,25 +763,25 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       apiKeys: {
         post: {
           mutationOptions: {
-            onSuccess: (_data, variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+            // Waits for the API key list the new key appears in.
+            onSuccess: (_data, variables, _onMutateResult, context) =>
+              invalidateQueryKeys(context.client, [
+                consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                   input: { params: { resource_id: variables.params.resource_id } },
                 }),
-              })
-            },
+              ]),
           },
         },
         byApiKeyId: {
           delete: {
             mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+              // Waits for the API key list it deletes from.
+              onSuccess: (_data, variables, _onMutateResult, context) =>
+                invalidateQueryKeys(context.client, [
+                  consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                     input: { params: { resource_id: variables.params.resource_id } },
                   }),
-                })
-              },
+                ]),
             },
           },
         },

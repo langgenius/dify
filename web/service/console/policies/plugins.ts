@@ -12,6 +12,7 @@ export function workspacePluginPolicies(
   return {
     // Switching or re-prioritizing credentials changes the provider summaries. The
     // per-model-type lists depend on the provider's supported types, which callers own.
+    // Both wait for the provider list; summaries refresh in the background.
     modelProviders: {
       byProvider: {
         preferredProviderType: {
@@ -28,6 +29,8 @@ export function workspacePluginPolicies(
                 })
                 void invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+                ])
+                return invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.modelProviders.get.key(),
                 ])
               },
@@ -41,6 +44,8 @@ export function workspacePluginPolicies(
                 onSuccess: (_data, _variables, _result, { client }) => {
                   void invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+                  ])
+                  return invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.modelProviders.get.key(),
                   ])
                 },
@@ -53,9 +58,10 @@ export function workspacePluginPolicies(
     defaultModel: {
       post: {
         mutationOptions: {
+          // Waits for the saved model types' defaults.
           onSuccess: (response, { body }, _result, { client }) => {
             if (response.result !== 'success') return
-            void invalidateQueryKeys(
+            return invalidateQueryKeys(
               client,
               body.model_settings.map(({ model_type }) =>
                 consoleQuery.workspaces.current.defaultModel.get.queryKey({
@@ -73,14 +79,14 @@ export function workspacePluginPolicies(
           byProviderId: {
             get: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateQueryKeys(client, [
+                // Waits for the provider's tools and the MCP provider list it appears in.
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey(
                       { input: { params: { provider_id: params.provider_id } } },
                     ),
                     consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
-                  ])
-                },
+                  ]),
               },
             },
           },
@@ -91,14 +97,13 @@ export function workspacePluginPolicies(
           add: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
-                },
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider),
               },
             },
           },
-          // The credential editor reopens with the values from these lists, so the edit
-          // waits for them; otherwise a quick reopen saves the old values back.
+          // The credential editor reopens with the values from these lists, so every
+          // credential write waits for them; otherwise a quick reopen saves the old values back.
           update: {
             post: {
               mutationOptions: {
@@ -108,19 +113,18 @@ export function workspacePluginPolicies(
             },
           },
           oauth: {
+            // Waits for the OAuth client settings it writes.
             customClient: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider)
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider),
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider)
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider),
                 },
               },
             },
@@ -128,18 +132,16 @@ export function workspacePluginPolicies(
           defaultCredential: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
-                },
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider),
               },
             },
           },
           delete: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
-                },
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider),
               },
             },
           },
@@ -169,9 +171,10 @@ export function workspacePluginPolicies(
         exclude: {
           post: {
             mutationOptions: {
+              // Waits for the category's auto-upgrade settings.
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
-                void invalidateQueryKeys(context.client, [
+                return invalidateQueryKeys(context.client, [
                   consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
                     input: { query: { category: variables.body.category } },
                   }),
@@ -223,27 +226,25 @@ export function workspacePluginPolicies(
       },
     },
     // Endpoint writes change the endpoint list and the endpoint counts shown on plugin lists.
+    // Each waits for the endpoint list; plugin list counts refresh in the background.
     endpoints: {
       post: {
         mutationOptions: {
-          onSettled: (_data, _error, _variables, _result, { client }) => {
-            void invalidateEndpointQueries(consoleQuery, client)
-          },
+          onSettled: (_data, _error, _variables, _result, { client }) =>
+            invalidateEndpointQueries(consoleQuery, client),
         },
       },
       byId: {
         patch: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) => {
-              void invalidateEndpointQueries(consoleQuery, client)
-            },
+            onSettled: (_data, _error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client),
           },
         },
         delete: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) => {
-              void invalidateEndpointQueries(consoleQuery, client)
-            },
+            onSettled: (_data, _error, _variables, _result, { client }) =>
+              invalidateEndpointQueries(consoleQuery, client),
           },
         },
       },
@@ -252,7 +253,7 @@ export function workspacePluginPolicies(
           mutationOptions: {
             // The endpoint switch reads the refreshed list and stays disabled until it lands.
             onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointToggleQueries(consoleQuery, client),
+              invalidateEndpointQueries(consoleQuery, client),
           },
         },
       },
@@ -261,7 +262,7 @@ export function workspacePluginPolicies(
           mutationOptions: {
             // The endpoint switch reads the refreshed list and stays disabled until it lands.
             onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointToggleQueries(consoleQuery, client),
+              invalidateEndpointQueries(consoleQuery, client),
           },
         },
       },
@@ -269,16 +270,8 @@ export function workspacePluginPolicies(
   }
 }
 
-function invalidateEndpointQueries(query: ConsoleQuery, client: QueryClient) {
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.endpoints.list.key(),
-    query.workspaces.current.plugin.list.get.key(),
-    query.workspaces.current.plugin.byCategory.list.get.key(),
-  ])
-}
-
 // Returns once the endpoint list has refreshed; plugin list counts refresh in the background.
-function invalidateEndpointToggleQueries(query: ConsoleQuery, client: QueryClient) {
+function invalidateEndpointQueries(query: ConsoleQuery, client: QueryClient) {
   void invalidateQueryKeys(client, [
     query.workspaces.current.plugin.list.get.key(),
     query.workspaces.current.plugin.byCategory.list.get.key(),

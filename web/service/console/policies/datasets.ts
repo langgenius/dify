@@ -78,31 +78,30 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         post: {
           mutationOptions: {
             context: { silent: true },
-            // An upgrade job changes the dataset card and the list of running upgrades.
+            // Waits for the running-upgrades list the job joins; dataset cards refresh in the background.
             onSuccess: (_job, _variables, _result, { client }) => {
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-              })
+              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+              return invalidateQueryKeys(client, [
+                consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+              ])
             },
           },
         },
         byJobId: {
           post: {
             mutationOptions: {
+              // Waits for the job's detail and the running-upgrades list; dataset cards refresh in
+              // the background.
               onSuccess: (_job, { params }, _result, { client }) => {
-                void client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
-                      input: {
-                        params: { dataset_id: params.dataset_id, job_id: params.job_id },
-                      },
-                    }),
-                })
-                void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-                void client.invalidateQueries({
-                  queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
-                })
+                void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+                return invalidateQueryKeys(client, [
+                  consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
+                    input: {
+                      params: { dataset_id: params.dataset_id, job_id: params.job_id },
+                    },
+                  }),
+                  consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+                ])
               },
             },
           },
@@ -128,10 +127,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         run: {
           post: {
             mutationOptions: {
+              // Waits for the run history the new run joins.
               onSettled: (_data, error, variables, _onMutateResult, context) => {
                 if (error) return
 
-                void invalidateQueryKeys(context.client, [
+                return invalidateQueryKeys(context.client, [
                   consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
                     type: 'query',
                     input: { params: variables.params },
@@ -202,21 +202,17 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
       },
       documents: {
-        // Creating or re-saving a document changes the dataset card, the document list and
-        // the document's detail.
+        // Waits for the document list and the document's detail; the dataset card refreshes in
+        // the background.
         post: {
           mutationOptions: {
             onSuccess: (_data, { params }, _result, { client }) => {
               const input = { params: { dataset_id: params.dataset_id } }
-              void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
-              })
-              void client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                  input,
-                }),
-              })
+              void invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
+              return invalidateQueryKeys(client, [
+                consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
+                consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({ input }),
+              ])
             },
           },
         },
@@ -269,16 +265,13 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           rename: {
             post: {
               mutationOptions: {
+                // Waits for the document list and the renamed document's detail.
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const documents = consoleQuery.datasets.byDatasetId.documents
-                  void client.invalidateQueries({
-                    queryKey: documents.get.key({
-                      input: { params: { dataset_id: params.dataset_id } },
-                    }),
-                  })
-                  void client.invalidateQueries({
-                    queryKey: documents.byDocumentId.get.key({ input: { params } }),
-                  })
+                  return invalidateQueryKeys(client, [
+                    documents.get.key({ input: { params: { dataset_id: params.dataset_id } } }),
+                    documents.byDocumentId.get.key({ input: { params } }),
+                  ])
                 },
               },
             },
@@ -366,9 +359,10 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           byAction: {
             post: {
               mutationOptions: {
+                // Waits for the field list that shows the built-in fields.
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  void invalidateQueryKeys(context.client, [
+                  return invalidateQueryKeys(context.client, [
                     consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                       input: { params: { dataset_id: variables.params.dataset_id } },
                     }),
@@ -380,12 +374,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
         },
       },
     },
-    // A dataset created with its first document joins the dataset list.
+    // Waits for the dataset list the new dataset (created with its first document) joins.
     init: {
       post: {
         mutationOptions: {
           onSuccess: (_data, _variables, _result, { client }) => {
-            void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+            return invalidateQueryKeys(client, [consoleQuery.datasets.get.key()])
           },
         },
       },
@@ -417,20 +411,18 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
     apiKeys: {
       post: {
         mutationOptions: {
+          // Waits for the key list the new key joins.
           onSuccess: (_data, _variables, _onMutateResult, context) => {
-            void context.client.invalidateQueries({
-              queryKey: consoleQuery.datasets.apiKeys.get.key(),
-            })
+            return invalidateQueryKeys(context.client, [consoleQuery.datasets.apiKeys.get.key()])
           },
         },
       },
       byApiKeyId: {
         delete: {
           mutationOptions: {
+            // Waits for the key list the deleted key leaves.
             onSuccess: (_data, _variables, _onMutateResult, context) => {
-              void context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.apiKeys.get.key(),
-              })
+              return invalidateQueryKeys(context.client, [consoleQuery.datasets.apiKeys.get.key()])
             },
           },
         },

@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { invalidateQueryKeys } from './shared'
 
@@ -127,7 +128,8 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
                 }),
                 site,
               )
-              void client.invalidateQueries({
+              // The site comes from the response; waits for the subjects the save may replace.
+              return client.invalidateQueries({
                 queryKey:
                   consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryKey(
                     { input },
@@ -150,43 +152,28 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
             },
           },
         },
+        // API key writes wait for the key list; the environment API settings refresh in the
+        // background.
         createEnvironmentApiKey: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
-              const { app_id, environment_id } = variables.params
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
-                  input: { params: { app_id, environment_id } },
-                }),
-                consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                  input: { params: { app_id, environment_id } },
-                }),
-              ])
-            },
+            onSuccess: (_data, variables, _result, context) =>
+              invalidateEnvironmentApiKeyQueries(consoleQuery, context.client, variables.params),
           },
         },
         deleteEnvironmentApiKey: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) => {
-              const { app_id, environment_id } = variables.params
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
-                  input: { params: { app_id, environment_id } },
-                }),
-                consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryKey({
-                  input: { params: { app_id, environment_id } },
-                }),
-              ])
-            },
+            onSuccess: (_data, variables, _result, context) =>
+              invalidateEnvironmentApiKeyQueries(consoleQuery, context.client, variables.params),
           },
         },
       },
       deploymentService: {
         deployWorkflow: {
           mutationOptions: {
+            // Waits for the environment's deployment list and detail.
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              void invalidateQueryKeys(context.client, [
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
                   { input: { params: { app_id } } },
                 ),
@@ -199,18 +186,22 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         },
         undeployWorkflow: {
           mutationOptions: {
+            // Waits for the environment's deployment list and detail; the app's environments
+            // refresh in the background.
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
               void invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
+                  input: { params: { app_id } },
+                }),
+              ])
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
                   { input: { params: { app_id } } },
                 ),
                 consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryKey(
                   { input: { params: { app_id, environment_id } } },
                 ),
-                consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
-                  input: { params: { app_id } },
-                }),
               ])
             },
           },
@@ -238,4 +229,15 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
       },
     },
   }
+}
+
+function invalidateEnvironmentApiKeyQueries(
+  query: ConsoleQuery,
+  client: QueryClient,
+  { app_id, environment_id }: { app_id: string; environment_id: string },
+) {
+  const input = { params: { app_id, environment_id } }
+  const access = query.enterprise.appDeploy.accessService
+  void invalidateQueryKeys(client, [access.getEnvironmentApi.queryKey({ input })])
+  return invalidateQueryKeys(client, [access.listEnvironmentApiKeys.queryKey({ input })])
 }

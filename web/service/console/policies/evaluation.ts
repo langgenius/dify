@@ -1,9 +1,8 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { invalidateQueryKeys } from './shared'
 
-// Callers report a run from the response, so the run history reloads without holding it
-// pending. Cancel and retry wait for the history: its row status decides whether the action
-// is offered again. A config save waits for its reload (see below).
+// Starting, cancelling and retrying a run wait for the run history (cancel and retry also for
+// the run's detail). A config save waits for its reload (see below).
 export function evaluationPolicies(
   consoleQuery: ConsoleQuery,
 ): ConsolePolicies['byEvaluateTargetType'] {
@@ -29,10 +28,11 @@ export function evaluationPolicies(
         run: {
           post: {
             mutationOptions: {
+              // Waits for the run history the new run joins.
               onSettled: (_data, error, variables, _onMutateResult, context) => {
                 if (error) return
 
-                void invalidateQueryKeys(context.client, [
+                return invalidateQueryKeys(context.client, [
                   consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key({
                     type: 'query',
                     input: { params: variables.params },

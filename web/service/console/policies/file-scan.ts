@@ -26,9 +26,10 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
         },
         delete: {
           mutationOptions: {
+            // Waits for the scanner list it removes from.
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              void invalidateProviders(consoleQuery, context.client)
+              return invalidateProviders(consoleQuery, context.client)
             },
           },
         },

@@ -8,24 +8,19 @@ export function dataSourceAuthPolicies(
   return {
     auth: {
       plugin: {
-        // Credential writes change the provider's credentials and both data source lists.
+        // Credential writes change the provider's credentials and both data source lists, and
+        // each waits for them.
         datasource: {
           list: { get: { queryOptions: { retry: false } } },
           defaultList: { get: { queryOptions: { retry: false } } },
           byProviderId: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateDataSourceCredentialQueries(
-                    consoleQuery,
-                    client,
-                    params.provider_id,
-                  )
-                },
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
               },
             },
-            // The credential editor reopens with the values from the credential list, so
-            // the edit waits for it.
+            // The credential editor reopens with the values from the credential list.
             update: {
               post: {
                 mutationOptions: {
@@ -37,24 +32,14 @@ export function dataSourceAuthPolicies(
             customClient: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateDataSourceCredentialQueries(
-                      consoleQuery,
-                      client,
-                      params.provider_id,
-                    )
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateDataSourceCredentialQueries(
-                      consoleQuery,
-                      client,
-                      params.provider_id,
-                    )
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
                 },
               },
             },
@@ -62,26 +47,16 @@ export function dataSourceAuthPolicies(
             default: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateDataSourceCredentialQueries(
-                      consoleQuery,
-                      client,
-                      params.provider_id,
-                    )
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
                 },
               },
             },
             delete: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateDataSourceCredentialQueries(
-                      consoleQuery,
-                      client,
-                      params.provider_id,
-                    )
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
                 },
               },
             },
