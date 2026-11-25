@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
 import type { LogIdentity } from '@/features/log-export/log-identity'
+import type { LogCustomDateRange } from '@/features/log-export/log-time-range'
 import { useTranslation } from 'react-i18next'
 import { identityKey, logIdentityFilters } from '@/features/log-export/log-identity'
 import { logDateRange, useLogTimeFilterOptions } from '../log/log-filters'
@@ -12,6 +13,7 @@ type WorkflowLogStatus = NonNullable<GetAppsByAppIdWorkflowAppLogsData['query']>
 
 export type WorkflowLogQuery = {
   period: string
+  customRange?: LogCustomDateRange
   status?: WorkflowLogStatus | 'all'
   keyword?: string
   identities?: LogIdentity[]
@@ -42,17 +44,20 @@ export function useWorkflowLogFilterOptions(planState: CloudSandboxPlanState) {
 export type WorkflowLogFilterOptions = ReturnType<typeof useWorkflowLogFilterOptions>
 
 export function toWorkflowLogFilters(
-  { period, status, keyword, identities }: WorkflowLogQuery,
+  { period, customRange, status, keyword, identities }: WorkflowLogQuery,
   planState: CloudSandboxPlanState,
   timezone: string,
 ) {
-  const range = logDateRange(period, planState, timezone)
+  const range = logDateRange(period, planState, timezone, customRange)
   return {
     ...(status && status !== 'all' ? { status } : {}),
     ...(keyword ? { keyword } : {}),
     ...(range && {
       created_at__after: range.start.format('YYYY-MM-DDTHH:mm:ssZ'),
-      created_at__before: range.end.format('YYYY-MM-DDTHH:mm:ssZ'),
+      // The inclusive custom bound covers the final microsecond of the selected day.
+      created_at__before: range.end.format(
+        period === 'custom' ? 'YYYY-MM-DDTHH:mm:ss.SSS[999]Z' : 'YYYY-MM-DDTHH:mm:ssZ',
+      ),
     }),
     ...logIdentityFilters(identities),
   }

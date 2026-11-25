@@ -126,7 +126,9 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   await page.viewport(1024, 800)
   const { screen, listQueries, previews, requests } = await renderLogs()
   await expect.element(screen.getByText('Mia Chen', { exact: true })).toBeVisible()
-  await screen.getByRole('combobox', { name: 'appLog.status.all' }).click()
+  await screen
+    .getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' })
+    .click()
   await page.getByRole('option', { name: 'appLog.status.succeeded' }).click()
   const identityLabel = 'appLog.table.header.endUser'
   await screen.getByRole('combobox', { name: identityLabel }).click()

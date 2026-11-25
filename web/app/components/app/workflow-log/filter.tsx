@@ -8,6 +8,7 @@ import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 
 type IFilterProps = {
   appId: string
@@ -15,6 +16,7 @@ type IFilterProps = {
   setQueryParams: (value: WorkflowLogQuery) => void
   filterOptions: WorkflowLogFilterOptions
   identityOptions: LogIdentity[]
+  timezone?: string
   actions?: ReactNode
 }
 
@@ -24,13 +26,15 @@ export default function Filter({
   setQueryParams,
   filterOptions,
   identityOptions,
+  timezone,
   actions,
 }: IFilterProps) {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['appLog', 'common'])
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-2">
       <Chip
+        label={t(($) => $['table.header.status'], { ns: 'appLog' })}
         value={queryParams.status ?? 'all'}
         onSelect={({ value: status }) => {
           setQueryParams({ ...queryParams, status })
@@ -41,14 +45,15 @@ export default function Filter({
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
         items={filterOptions.statuses.map(({ value, label }) => ({ value, name: label }))}
       />
-      <Chip
-        className="min-w-37.5"
-        panelClassName="w-[270px]"
-        leftIcon={<span className="i-ri-calendar-line size-4 text-text-secondary" aria-hidden />}
-        value={queryParams.period}
-        onSelect={({ value: period }) => setQueryParams({ ...queryParams, period })}
-        onClear={() => setQueryParams({ ...queryParams, period: filterOptions.clearedPeriod })}
-        items={filterOptions.periods.map(({ value, label }) => ({ value, name: label }))}
+      <LogTimeRangePicker
+        value={queryParams}
+        options={filterOptions.periods}
+        clearedPeriod={filterOptions.clearedPeriod}
+        timezone={timezone}
+        allowCustom={filterOptions.allowCustom}
+        onChange={({ period, customRange }) =>
+          setQueryParams({ ...queryParams, period, customRange })
+        }
       />
       <LogIdentityField
         appId={appId}

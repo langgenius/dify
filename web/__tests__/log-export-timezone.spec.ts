@@ -46,4 +46,38 @@ describe('log date filters', () => {
       end: '2026-12-01 04:16',
     })
   })
+
+  it('includes the full selected day in the timezone of each export', () => {
+    const selection = {
+      period: 'custom' as const,
+      customRange: { start: '2026-03-08', end: '2026-03-08' },
+    }
+    const timezone = 'America/Los_Angeles'
+    expect(toLogFilters(selection, 'unrestricted', timezone)).toEqual({
+      start: '2026-03-08 00:00',
+      end: '2026-03-08 23:59',
+    })
+    expect(toWorkflowLogFilters(selection, 'unrestricted', timezone)).toEqual({
+      created_at__after: '2026-03-08T00:00:00-08:00',
+      created_at__before: '2026-03-08T23:59:59.999999-07:00',
+    })
+    expect(toAgentLogQuery({ ...defaultAgentLogFilters, ...selection }, timezone)).toEqual({
+      start: '2026-03-08 00:00',
+      end: '2026-03-09 00:00',
+    })
+  })
+
+  it.each(['sandbox', 'pending'] as const)(
+    'falls back to Today for a saved custom range while plan is %s',
+    (plan) => {
+      const selection = {
+        period: 'custom',
+        customRange: { start: '2026-10-01', end: '2026-11-08' },
+      }
+      expect(toLogFilters(selection, plan, 'Asia/Shanghai')).toEqual({
+        start: '2026-12-01 00:00',
+        end: '2026-12-01 23:59',
+      })
+    },
+  )
 })

@@ -1,6 +1,8 @@
 import type { LogIdentity } from './log-identity'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
+  ComboboxClear,
   ComboboxEmpty,
   ComboboxIcon,
   ComboboxInput,
@@ -33,6 +35,12 @@ type LogIdentityFieldProps = {
 type LogIdentitySearchTarget =
   | { appId: string; workflow?: boolean; agentId?: never }
   | { agentId: string; appId?: never; workflow?: never }
+
+type LogIdentityOption = LogIdentity | 'all'
+
+function optionKey(option: LogIdentityOption) {
+  return option === 'all' ? option : identityKey(option)
+}
 
 function useLogIdentityMatches(
   { appId, workflow, agentId }: LogIdentitySearchTarget,
@@ -161,33 +169,39 @@ export function LogIdentityField(
   const { t } = useTranslation(['appLog', 'common'])
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState<LogIdentity[] | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const selected = draft ?? value
-  const firstSelected = selected[0]
+  const hasSelection = selected.length > 0
   const { matches, searching, failed } = useLogIdentityMatches(props, options, selected, search)
   const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
-  const placeholder = showLabel ? t(($) => $['export.identitiesAll'], { ns: 'appLog' }) : label
+  const allLabel = t(($) => $[showLabel ? 'export.identitiesAll' : 'status.all'], { ns: 'appLog' })
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
+  const items: LogIdentityOption[] = showLabel || search.trim() ? matches : ['all', ...matches]
+  const optionLabel = (option: LogIdentityOption) => (option === 'all' ? allLabel : option.label)
   const selectionDescription =
     selected.length > 1
       ? t(($) => $['dynamicSelect.selected'], { ns: 'common', count: selected.length })
-      : (firstSelected?.label ?? (showLabel ? placeholder : undefined))
+      : (selected[0]?.label ?? allLabel)
 
   return (
-    <Combobox<LogIdentity, true>
+    <Combobox<LogIdentityOption, true>
       multiple
       autoHighlight
       disabled={disabled}
-      items={matches}
+      items={items}
       filter={null}
       inputValue={search}
       onInputValueChange={(next, eventDetails) => {
         if (eventDetails.isItemPress) eventDetails.cancel()
         else setSearch(next)
       }}
-      value={selected}
+      value={showLabel || hasSelection ? selected : ['all']}
       onValueChange={(next) => {
-        if (draft) setDraft(next)
-        else onChange(next)
+        const identities =
+          hasSelection && next.includes('all') ? [] : next.filter((item) => item !== 'all')
+        if (!showLabel && !identities.length && !hasSelection) return
+        if (draft) setDraft(identities)
+        else onChange(identities)
       }}
       onOpenChange={(open) => {
         if (!open) setSearch('')
@@ -204,23 +218,54 @@ export function LogIdentityField(
           onChange(draft)
         setDraft(null)
       }}
-      itemToStringLabel={(item) => item.label}
-      itemToStringValue={identityKey}
-      isItemEqualToValue={(item, selection) => identityKey(item) === identityKey(selection)}
+      itemToStringLabel={optionLabel}
+      itemToStringValue={optionKey}
+      isItemEqualToValue={(item, selection) => optionKey(item) === optionKey(selection)}
     >
-      <div className={showLabel ? 'flex flex-col gap-1.5' : 'w-58 max-w-full'}>
+      <div
+        className={cn(
+          showLabel ? 'flex flex-col gap-1.5' : 'w-fit max-w-full',
+          !showLabel && hasSelection && 'w-58',
+        )}
+      >
         {showLabel && <ComboboxLabel>{label}</ComboboxLabel>}
-        <ComboboxTrigger
-          aria-label={showLabel ? undefined : label}
-          aria-description={selectionDescription}
-          className="flex h-8 w-full min-w-0 items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled disabled:text-components-input-text-disabled data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt"
-        >
-          {!showLabel && (
-            <span className="i-ri-user-line size-4 shrink-0 text-text-tertiary" aria-hidden />
+        <div className="relative">
+          <ComboboxTrigger
+            ref={showLabel ? undefined : triggerRef}
+            aria-label={showLabel ? undefined : label}
+            aria-description={selectionDescription}
+            className={cn(
+              'flex h-8 w-full min-w-0 items-center gap-1 rounded-lg text-start system-sm-regular disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled disabled:text-components-input-text-disabled',
+              showLabel
+                ? 'bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt'
+                : 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover',
+            )}
+          >
+            {!showLabel && (
+              <span className="i-ri-user-line size-4 shrink-0 text-text-tertiary" aria-hidden />
+            )}
+            <LogIdentitySummary identities={selected} placeholder={showLabel ? allLabel : label} />
+            {!showLabel && !hasSelection && (
+              <span className="shrink-0 system-sm-medium whitespace-nowrap">{allLabel}</span>
+            )}
+            {!showLabel && hasSelection && <span className="size-5 shrink-0" aria-hidden />}
+            {(showLabel || !hasSelection) && <ComboboxIcon />}
+          </ComboboxTrigger>
+          {!showLabel && hasSelection && (
+            <ComboboxClear
+              keepMounted
+              tabIndex={0}
+              className="group/clear absolute inset-e-1.5 top-1/2 -translate-y-1/2"
+              aria-label={`${t(($) => $['operation.clear'], { ns: 'common' })} ${label}`}
+              onClick={() => triggerRef.current?.focus()}
+            >
+              <span
+                aria-hidden
+                className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
+              />
+            </ComboboxClear>
           )}
-          <LogIdentitySummary identities={selected} placeholder={placeholder} />
-          <ComboboxIcon />
-        </ComboboxTrigger>
+        </div>
       </div>
       <ComboboxPortal>
         <ComboboxPositioner>
@@ -242,10 +287,10 @@ export function LogIdentityField(
             ) : (
               <ComboboxEmpty>{t(($) => $['export.noIdentities'], { ns: 'appLog' })}</ComboboxEmpty>
             )}
-            <ComboboxList<LogIdentity> className="max-h-48">
+            <ComboboxList<LogIdentityOption> className="max-h-48">
               {(item) => (
-                <ComboboxItem<LogIdentity> key={identityKey(item)} value={item}>
-                  <ComboboxItemText>{item.label}</ComboboxItemText>
+                <ComboboxItem<LogIdentityOption> key={optionKey(item)} value={item}>
+                  <ComboboxItemText>{optionLabel(item)}</ComboboxItemText>
                   <ComboboxItemIndicator />
                 </ComboboxItem>
               )}

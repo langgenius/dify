@@ -136,6 +136,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           appId={appDetail.id}
           filterOptions={filterOptions}
           queryParams={effectiveQueryParams}
+          timezone={timezone}
           setQueryParams={handleQueryParamsChange}
           identityOptions={supportsLogExport ? identityOptions : undefined}
           actions={
@@ -147,7 +148,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 appId={appDetail.id}
                 appName={appDetail.name}
                 appMode={appDetail.mode}
-                currentQueryParams={effectiveQueryParams}
+                currentQueryParams={
+                  effectiveQueryParams.period === 'custom'
+                    ? {
+                        ...effectiveQueryParams,
+                        period: defaultQueryParams.period,
+                        customRange: undefined,
+                      }
+                    : effectiveQueryParams
+                }
                 filterOptions={filterOptions}
                 identityOptions={identityOptions}
                 planState={cloudSandboxPlanState}

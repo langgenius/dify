@@ -11,7 +11,8 @@ import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import agentV2 from '@/i18n/locales/en-US/agent-v-2.json'
 import appLog from '@/i18n/locales/en-US/app-log.json'
 import common from '@/i18n/locales/en-US/common.json'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper, createFeaturesFixture } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogsPage } from '../page'
 
@@ -22,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   latest: vi.fn(),
   workspace: vi.fn(),
+  features: vi.fn(),
 }))
 
 vi.unmock('react-i18next')
@@ -32,6 +34,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': mocks.features,
       'workspaces.current.summary.get': mocks.workspace,
       'agent.byAgentId.get': async () => ({ name: 'Agent log export test' }),
       'agent.byAgentId.logSources.get': mocks.sources,
@@ -98,7 +101,7 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
     const controls = [
       screen.getByRole('combobox', { name: 'Last 7 days' }),
       screen.getByRole('combobox', { name: 'Log source' }),
-      screen.getByRole('combobox', { name: 'End User or Account' }),
+      screen.getByRole('combobox', { name: 'End user or account' }),
       screen.getByRole('searchbox', { name: 'Search logs' }),
       screen.getByRole('button', { name: /Sort by:/ }),
     ]
@@ -186,7 +189,7 @@ it('keeps identities selectable after narrowing the list and exports both select
     const exportButton = screen.getByRole('button', { name: 'Export logs' })
     await expect.element(exportButton).toBeVisible()
     await expect.element(screen.getByRole('cell', { name: 'account-1' })).toBeVisible()
-    const identityFilter = screen.getByRole('combobox', { name: 'End User or Account' })
+    const identityFilter = screen.getByRole('combobox', { name: 'End user or account' })
     await identityFilter.click()
     const search = screen.getByRole('combobox', { name: 'Search', exact: true })
     await search.fill('001')
@@ -207,6 +210,43 @@ it('keeps identities selectable after narrowing the list and exports both select
     expect(mocks.preview.mock.lastCall?.[0].query).toMatchObject(identities)
     await dialog.getByRole('button', { name: 'Export as CSV' }).click()
     await expect.poll(() => mocks.create.mock.lastCall?.[0].body).toMatchObject(identities)
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it('falls back to the default date preset when Cloud custom dates become unavailable', async () => {
+  mocks.logs.mockResolvedValue(emptyLogs)
+  mocks.sources.mockResolvedValue(emptySources)
+  mocks.workspace.mockResolvedValue(initialWorkspaceSummary)
+  const paidPlan = createFeaturesFixture({ billing: { subscription: { plan: 'professional' } } })
+  mocks.features.mockResolvedValue(paidPlan)
+  const i18n = await createLogsI18n()
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    currentWorkspace: initialWorkspaceSummary,
+    features: paidPlan,
+  })
+
+  try {
+    const screen = await render(
+      <QueryClientTestProvider queryClient={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <AgentLogsPage agentId="agent-1" />
+        </I18nextProvider>
+      </QueryClientTestProvider>,
+    )
+    await screen.getByRole('combobox', { name: 'Last 7 days' }).click()
+    await screen.getByRole('option', { name: 'Custom' }).click()
+    await expect.element(screen.getByRole('combobox', { name: 'Custom' })).toBeVisible()
+
+    mocks.features.mockResolvedValue(
+      createFeaturesFixture({ billing: { subscription: { plan: 'sandbox' } } }),
+    )
+    await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    await screen.getByRole('combobox', { name: 'Last 7 days' }).click()
+    await expect.element(screen.getByRole('option', { name: 'Last 30 days' })).toBeVisible()
+    await expect.element(screen.getByRole('option', { name: 'Custom' })).not.toBeInTheDocument()
   } finally {
     queryClient.clear()
   }

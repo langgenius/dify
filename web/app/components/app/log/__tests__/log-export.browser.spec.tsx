@@ -71,6 +71,28 @@ it.each([
   },
 )
 
+it('defaults the list to all identities and clears specific selections from the field', async () => {
+  const { screen, listQueries } = await openExport(false, 'advanced-chat')
+  const label = 'appLog.table.header.endUser'
+  const all = 'appLog.status.all'
+  const listIdentity = screen.getByRole('combobox', { name: label })
+  const allOption = page.getByRole('option', { name: all })
+  const clear = screen.getByRole('button', { name: `common.operation.clear ${label}` })
+
+  await expect.element(listIdentity.getByText(all, { exact: true })).toBeVisible()
+  await listIdentity.click()
+  await expect.element(allOption).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await page.getByRole('option', { name: 'Mia Chen' }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect.poll(() => listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
+  expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  await clear.click()
+  await expect.element(listIdentity).toHaveFocus()
+  await expect.element(listIdentity.getByText(all, { exact: true })).toBeVisible()
+  await expect.element(clear).not.toBeInTheDocument()
+})
+
 it('previews CSV rows and submits a Completion export with the list identities', async () => {
   const { screen, trigger, dialog, lastExport, listQueries, requests } = await openExport(
     false,

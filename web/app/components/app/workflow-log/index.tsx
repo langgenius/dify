@@ -24,7 +24,7 @@ import { consoleQuery } from '@/service/console'
 import PageTitle from '../log-annotation/page-title'
 import { ArchivedLogsNotice } from '../log/archived-logs-notice'
 import { shouldShowArchivedLogsNotice } from '../log/archived-logs-notice-utils'
-import { TIME_PERIOD_MAPPING } from '../log/log-filters'
+import { logDateRange, TIME_PERIOD_MAPPING } from '../log/log-filters'
 import { RetentionUpgradeNotice } from '../log/retention-upgrade-notice'
 import Filter from './filter'
 import List from './list'
@@ -51,7 +51,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const effectivePeriod = resolveLogTimePeriod(queryParams.period, cloudSandboxPlanState)
   const effectiveQueryParams = { ...queryParams, period: effectivePeriod }
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
-  const requestQueryParams = { ...debouncedQueryParams, period: effectivePeriod }
+  const requestQueryParams = {
+    ...debouncedQueryParams,
+    period: resolveLogTimePeriod(debouncedQueryParams.period, cloudSandboxPlanState),
+  }
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
 
   const query = timezone
@@ -74,10 +77,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       ? identityOptionsBeforeFilter
       : getWorkflowLogIdentities(workflowLogs?.data ?? [])
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const showArchivedLogsNotice = shouldShowArchivedLogsNotice(
-    effectiveQueryParams.period,
-    TIME_PERIOD_MAPPING,
-  )
+  const customStart =
+    effectivePeriod === 'custom' && timezone
+      ? logDateRange('custom', cloudSandboxPlanState, timezone, queryParams.customRange)?.start
+      : undefined
+  const archiveCutoff = timezone && logDateRange('4', 'unrestricted', timezone)?.start
+  const showArchivedLogsNotice =
+    customStart && archiveCutoff
+      ? customStart.isBefore(archiveCutoff, 'day')
+      : shouldShowArchivedLogsNotice(effectivePeriod, TIME_PERIOD_MAPPING)
 
   function handleQueryParamsChange(next: WorkflowLogQuery) {
     if (next.identities?.length && !queryParams.identities?.length)
@@ -99,6 +107,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           setQueryParams={handleQueryParamsChange}
           filterOptions={filterOptions}
           identityOptions={identityOptions}
+          timezone={timezone}
           actions={
             canExportLogs &&
             timezone && (
@@ -107,7 +116,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
                 appId={appDetail.id}
                 appName={appDetail.name}
                 filterOptions={filterOptions}
-                currentQueryParams={effectiveQueryParams}
+                currentQueryParams={
+                  effectiveQueryParams.period === 'custom'
+                    ? { ...effectiveQueryParams, period: '2', customRange: undefined }
+                    : effectiveQueryParams
+                }
                 identityOptions={identityOptions}
                 planState={cloudSandboxPlanState}
                 timezone={timezone}
