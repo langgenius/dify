@@ -208,6 +208,9 @@ class _RecordingRedisClient:
     def hexists(self, name: str | bytes, key: str | bytes) -> None:
         self._record("hexists", name, key)
 
+    def hsetnx(self, name: str | bytes, key: str | bytes, value: str | bytes) -> None:
+        self._record("hsetnx", name, key, value)
+
     def zadd(self, name: str | bytes, mapping: Mapping[object, object], **kwargs: object) -> None:
         self._record("zadd", name, mapping, **kwargs)
 
@@ -417,12 +420,14 @@ class TestRedisCases:
             wrapper.hgetall("hash:key")
             wrapper.hkeys("hash:key")
             wrapper.hexists("hash:key", "field")
+            wrapper.hsetnx("hash:key", "field", "value")
 
             assert client.calls == [
                 ("hset", ("enterprise-a:hash:key", "field", "value"), {}),
                 ("hgetall", ("enterprise-a:hash:key",), {}),
                 ("hkeys", ("enterprise-a:hash:key",), {}),
                 ("hexists", ("enterprise-a:hash:key", "field"), {}),
+                ("hsetnx", ("enterprise-a:hash:key", "field", "value"), {}),
             ]
 
         def test_wrapper_zadd_prefixes_sorted_set_name(self, config_overrides: Callable[..., None]) -> None:

@@ -1452,6 +1452,29 @@ class DataSetConfig(BaseSettings):
     )
 
 
+class OpenApiAgentConfig(BaseSettings):
+    """Settings for agents that work through /openapi/v1: run jobs."""
+
+    RUN_JOB_MAX_BACKGROUND_RUNS: PositiveInt = Field(
+        description="Max app runs that one API process reads in the background for run jobs.",
+        default=10,
+    )
+
+    RUN_JOB_MAX_WAITERS: PositiveInt = Field(
+        description="Max run job wait calls that one API process holds open at the same time. "
+        "Each waiting call holds one of the worker's SERVER_WORKER_CONNECTIONS (10 by default) for up to 45 "
+        "seconds, and a reverse proxy's idle keep-alive connections hold more, so keep it at about a fifth of "
+        "that number.",
+        default=2,
+    )
+
+    RUN_JOB_TTL_SECONDS: PositiveInt = Field(
+        description="How long a run job's state is kept after its last change, in seconds. Waiting on or stopping a "
+        "job after that answers job_not_found.",
+        default=24 * 60 * 60,
+    )
+
+
 class SkillConfig(BaseSettings):
     ENABLE_SKILL: bool = Field(
         description="Enable or disable Skill feature entry points",
@@ -1899,6 +1922,7 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
+    OpenApiAgentConfig,
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
