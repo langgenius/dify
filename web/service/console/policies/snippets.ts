@@ -1,4 +1,5 @@
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['snippets'] {
   return {
@@ -9,13 +10,14 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
             stop: {
               post: {
                 mutationOptions: {
-                  // A failed response can still follow an accepted stop request.
+                  // A failed response can still follow an accepted stop request. The run
+                  // history refreshes in the background; the stop control does not wait.
                   onSettled: (_data, _error, variables, _result, context) => {
-                    return context.client.invalidateQueries({
-                      queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.key({
+                    void invalidateQueryKeys(context.client, [
+                      consoleQuery.snippets.bySnippetId.workflowRuns.key({
                         input: { params: { snippet_id: variables.params.snippet_id } },
                       }),
-                    })
+                    ])
                   },
                 },
               },
@@ -34,36 +36,27 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                   }),
                   (snippet) => (snippet ? { ...snippet, is_published: true } : snippet),
                 )
-                // The version list reloads from its first page; the publisher does not wait.
+                // The version list reloads from its first page. The publisher reads the
+                // publish response, so it waits for none of these reloads.
                 void context.client.resetQueries({
                   queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                     type: 'infinite',
                     input: { params: { snippet_id: variables.params.snippet_id } },
                   }),
                 })
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
-                      type: 'query',
-                      input: { params: { snippet_id: variables.params.snippet_id } },
-                    }),
+                const input = { params: { snippet_id: variables.params.snippet_id } }
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
+                    type: 'query',
+                    input,
                   }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
-                      type: 'query',
-                      input: { params: { snippet_id: variables.params.snippet_id } },
-                    }),
+                  consoleQuery.snippets.bySnippetId.workflows.publish.get.key({
+                    type: 'query',
+                    input,
                   }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflowRuns.get.key({
-                      type: 'query',
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey:
-                      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key(
-                        { type: 'query' },
-                      ),
+                  consoleQuery.snippets.bySnippetId.workflowRuns.get.key({ type: 'query' }),
+                  consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key({
+                    type: 'query',
                   }),
                 ])
               },
@@ -73,12 +66,11 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
         byWorkflowId: {
           patch: {
             mutationOptions: {
+              // The version history closes its editor without waiting for the list to reload.
               onSuccess: (_data, variables, _result, context) => {
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
-                      input: { params: { snippet_id: variables.params.snippet_id } },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.snippets.bySnippetId.workflows.get.key({
+                    input: { params: { snippet_id: variables.params.snippet_id } },
                   }),
                 ])
               },
