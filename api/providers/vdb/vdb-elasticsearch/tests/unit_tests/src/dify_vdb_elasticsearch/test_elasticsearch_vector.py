@@ -237,11 +237,12 @@ def test_crud_methods_and_get_type(elasticsearch_module):
 
 
 def test_delete_by_metadata_field_uses_term_query_and_size(elasticsearch_module):
-    vector = elasticsearch_module.ElasticSearchVector.__new__(elasticsearch_module.ElasticSearchVector)
-    vector._collection_name = "collection_1"
-    vector._client = MagicMock()
+    vector = elasticsearch_module.ElasticSearchVector(
+        "collection_1", _regular_config(elasticsearch_module), attributes=[]
+    )
     vector._client.search.return_value = {"hits": {"hits": [{"_id": "id-1"}]}}
-    vector.delete_by_ids = MagicMock()
+    deleted_ids: list[list[str]] = []
+    vector.delete_by_ids = deleted_ids.append
 
     def sent_query(key: str) -> dict:
         vector._client.search.reset_mock()
@@ -258,9 +259,9 @@ def test_delete_by_metadata_field_uses_term_query_and_size(elasticsearch_module)
 
     # The matched documents are deleted by their Elasticsearch _id.
     vector._client.search.return_value = {"hits": {"hits": [{"_id": "id-1"}, {"_id": "id-2"}]}}
-    vector.delete_by_ids.reset_mock()
+    deleted_ids.clear()
     vector.delete_by_metadata_field("annotation_id", "annotation-1")
-    vector.delete_by_ids.assert_called_once_with(["id-1", "id-2"])
+    assert deleted_ids == [["id-1", "id-2"]]
 
 
 @pytest.mark.parametrize("japanese", [False, True], ids=["elasticsearch", "elasticsearch-ja"])
