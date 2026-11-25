@@ -268,6 +268,13 @@ class ExternalAssetService:
         agent_id: str | None,
         expected_connection_revision_id: str | None,
     ) -> VerificationEvidence:
+        """Verify read-only connection facts and persist evidence only on success.
+
+        Pre: the admitted manager supplies a valid authentication intent and any
+        current revision. Post: failure creates no evidence or Task; the four
+        public reason categories remain stable and optional refinements contain
+        only safe gateway facts, never remote input or exception messages.
+        """
         self._require(context, manage=True)
         if auth_type not in {"none", "bearer"} or credential_action not in {"keep", "replace", "remove"}:
             raise ExternalAgentInvalidInputError("Unsupported authentication configuration.")
@@ -344,7 +351,12 @@ class ExternalAssetService:
             else:
                 reason = VerificationFailureReason.CONNECTION_FAILED
                 message = "Could not connect to the external Agent."
-            raise ExternalAgentVerificationFailedError(message, reason=reason) from error
+            raise ExternalAgentVerificationFailedError(
+                message,
+                reason=reason,
+                subreason=error.verification_subreason,
+                card_errors=error.card_errors,
+            ) from error
         declaration = result.card.get("capabilities")
         declared_extensions = declaration.get("extensions", []) if isinstance(declaration, dict) else []
         extensions = declared_extensions if isinstance(declared_extensions, list) else []

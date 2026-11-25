@@ -16,6 +16,7 @@ from urllib.parse import quote, urlsplit, urlunsplit
 
 from pydantic import ValidationError
 
+from services.external_agents.contracts import VerificationFailureSubreason
 from services.external_agents.io_contracts import JsonObject, JsonValue
 from services.external_agents.protocol import (
     TRACEABILITY_URI,
@@ -27,14 +28,16 @@ from services.external_agents.protocol import (
     GatewayReceiptKind,
     GatewayUsageCarrier,
     GatewayUsageSource,
+    NoAuth,
     SealedBearerAuth,
     SendRequest,
     VerificationAuthCheck,
     VerificationResult,
 )
 
-from .transport import BoundedTransport, HTTPReply, TransportError
+from .transport import BoundedTransport, HTTPReply, TransportDiagnostic, TransportError
 from .types import AgentCardV1, MessageRoleV1, MessageV1, ResponseV1, SecurityRequirementV1, TaskV1, strict_json
+from .verification import card_field_errors, invalid_bearer_challenge
 
 _TERMINAL = frozenset({"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"})
 
@@ -149,7 +152,14 @@ class A2AGateway:
         timeout_seconds: float,
         streaming: bool = False,
         card: bool = False,
+        discovery: bool = False,
     ) -> HTTPReply:
+        """Read one admitted response without redirects or retries.
+
+        Pre: URL is within the configured origin and the budget is finite.
+        Post: existing runtime codes/uncertainty/retry behavior stay unchanged;
+        only Card reads attach evidence-backed, safe verification diagnostics.
+        """
         self._url(url)
         _same_origin(connection.endpoint, url)
         headers = self._headers(connection)
@@ -187,16 +197,40 @@ class A2AGateway:
                 known_receipt=known_receipt,
                 retryable=method == "GET"
                 and error.code in ("network_failure", "deadline_exceeded", "io_capacity_exhausted"),
+                verification_subreason=(
+                    VerificationFailureSubreason.CONNECTION_TIMEOUT
+                    if error.code == "deadline_exceeded" or error.diagnostic == TransportDiagnostic.TIMEOUT
+                    else VerificationFailureSubreason.TLS_ERROR
+                    if error.diagnostic == TransportDiagnostic.TLS_CERTIFICATE
+                    else None
+                )
+                if card
+                else None,
             ) from None
         if reply.status in (401, 403):
+            subreason = None
+            if card:
+                if reply.status == 403:
+                    subreason = VerificationFailureSubreason.ACCESS_DENIED
+                elif isinstance(connection.authentication, NoAuth):
+                    subreason = VerificationFailureSubreason.AUTHENTICATION_REQUIRED
+                elif invalid_bearer_challenge(reply.headers.get("www-authenticate", "")):
+                    subreason = VerificationFailureSubreason.TOKEN_INVALID_OR_EXPIRED
             raise GatewayError(
                 "authentication_failed" if reply.status == 401 else "permission_denied",
                 "The external service rejected access.",
+                verification_subreason=subreason,
             )
         if 300 <= reply.status < 400:
-            raise GatewayError("redirect_rejected", "External redirects are not followed.")
+            raise GatewayError(
+                "invalid_agent_card" if card and not discovery else "redirect_rejected",
+                "External redirects are not followed.",
+                verification_subreason=VerificationFailureSubreason.INVALID_A2A_ENDPOINT if discovery else None,
+            )
         if reply.status < 200 or reply.status >= 300:
             code = "task_not_found" if reply.status == 404 else "remote_request_failed"
+            if card and not discovery and reply.status in (404, 410):
+                code = "invalid_agent_card"
             if url.endswith(":cancel"):
                 code = (
                     "cancellation_unsupported"
@@ -214,6 +248,17 @@ class A2AGateway:
                 submission_unknown=method == "POST" and "/message:" in url and reply.status >= 500,
                 retryable=method == "GET" and reply.status in (429, 500, 502, 503, 504),
                 retry_after_seconds=float(retry_after) if retry_after.isdigit() else None,
+                verification_subreason=(
+                    VerificationFailureSubreason.INVALID_A2A_ENDPOINT
+                    if discovery and reply.status in (404, 410)
+                    else VerificationFailureSubreason.RATE_LIMITED
+                    if reply.status == 429
+                    else VerificationFailureSubreason.REMOTE_SERVICE_ERROR
+                    if reply.status >= 500
+                    else None
+                )
+                if card
+                else None,
             )
         content_type = reply.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         allowed = {"application/json", "application/a2a+json"} if card or not streaming else {"text/event-stream"}
@@ -222,11 +267,17 @@ class A2AGateway:
                 "invalid_content_type",
                 "The external service returned an unsupported response format.",
                 submission_unknown=method == "POST",
+                verification_subreason=VerificationFailureSubreason.INVALID_A2A_ENDPOINT if discovery else None,
             )
         return reply
 
     def verify(self, connection: ConnectionSpec, *, timeout_seconds: float = 30) -> VerificationResult:
-        """Verify only Card/protected read; success never asserts execution credential validity."""
+        """Verify only Card/protected reads; never submit a business request.
+
+        Pre: the configured endpoint passes URL/SSRF policy. Post: success only
+        proves the declared read scope; failures carry safe evidence-backed
+        refinements and static Card paths without exposing peer input.
+        """
         endpoint = self._url(connection.endpoint)
         deadline = time.monotonic() + min(timeout_seconds, 30)
         parsed = urlsplit(endpoint)
@@ -235,24 +286,34 @@ class A2AGateway:
             if parsed.path.endswith("/.well-known/agent-card.json")
             else urlunsplit((parsed.scheme, parsed.netloc, "/.well-known/agent-card.json", "", ""))
         )
-        reply = self._request(connection, "GET", card_url, timeout_seconds=timeout_seconds, card=True)
+        reply = self._request(connection, "GET", card_url, timeout_seconds=timeout_seconds, card=True, discovery=True)
         try:
             value = strict_json(reply.body)
         except ValueError:
             raise GatewayError(
-                "invalid_agent_card", "The Agent Card does not match the frozen A2A 1.0 profile."
+                "invalid_agent_card",
+                "The Agent Card does not match the frozen A2A 1.0 profile.",
+                verification_subreason=VerificationFailureSubreason.INVALID_A2A_ENDPOINT,
             ) from None
         if (
             isinstance(value, dict)
             and isinstance(value.get("protocolVersion"), str)
             and value["protocolVersion"] != "1.0"
         ):
-            raise GatewayError("profile_unsupported", "The Agent Card advertises an unsupported protocol version.")
+            raise GatewayError(
+                "profile_unsupported",
+                "The Agent Card advertises an unsupported protocol version.",
+                verification_subreason=VerificationFailureSubreason.UNSUPPORTED_PROTOCOL_VERSION,
+            )
         try:
             card = AgentCardV1.model_validate(value)
-        except ValueError:
+        except ValidationError as error:
+            errors = card_field_errors(error)
             raise GatewayError(
-                "invalid_agent_card", "The Agent Card does not match the frozen A2A 1.0 profile."
+                "invalid_agent_card",
+                "The Agent Card does not match the frozen A2A 1.0 profile.",
+                verification_subreason=VerificationFailureSubreason.AGENT_CARD_FIELD_INVALID if errors else None,
+                card_errors=errors,
             ) from None
         interface = next(
             (
@@ -263,12 +324,22 @@ class A2AGateway:
             None,
         )
         if interface is None:
-            raise GatewayError("profile_unsupported", "The Agent does not advertise A2A 1.0 HTTP+JSON.")
+            raise GatewayError(
+                "profile_unsupported",
+                "The Agent does not advertise A2A 1.0 HTTP+JSON.",
+                verification_subreason=VerificationFailureSubreason.UNSUPPORTED_PROTOCOL_VERSION
+                if any(item.protocolBinding == "HTTP+JSON" for item in card.supportedInterfaces)
+                else VerificationFailureSubreason.UNSUPPORTED_TRANSPORT,
+            )
         self._url(interface.url)
         _same_origin(endpoint, interface.url)
         required = tuple(ext.uri for ext in card.capabilities.extensions if ext.required)
         if any(uri != TRACEABILITY_URI for uri in required):
-            raise GatewayError("required_extension_unsupported", "A required extension is unsupported.")
+            raise GatewayError(
+                "required_extension_unsupported",
+                "A required extension is unsupported.",
+                verification_subreason=VerificationFailureSubreason.UNSUPPORTED_REQUIRED_EXTENSION,
+            )
         negotiated = replace(
             connection, enabled_extensions=tuple(dict.fromkeys((*connection.enabled_extensions, *required)))
         )
@@ -280,9 +351,22 @@ class A2AGateway:
                 negotiated, "GET", extended_url, timeout_seconds=deadline - time.monotonic(), card=True
             )
             try:
-                AgentCardV1.model_validate(strict_json(protected.body))
+                protected_value = strict_json(protected.body)
             except ValueError:
-                raise GatewayError("invalid_agent_card", "The protected Agent Card is invalid.") from None
+                raise GatewayError(
+                    "invalid_agent_card",
+                    "The protected Agent Card is invalid.",
+                ) from None
+            try:
+                AgentCardV1.model_validate(protected_value)
+            except ValidationError as error:
+                errors = card_field_errors(error)
+                raise GatewayError(
+                    "invalid_agent_card",
+                    "The protected Agent Card is invalid.",
+                    verification_subreason=VerificationFailureSubreason.AGENT_CARD_FIELD_INVALID if errors else None,
+                    card_errors=errors,
+                ) from None
             if isinstance(connection.authentication, BearerAuth | SealedBearerAuth):
                 auth_check = VerificationAuthCheck.PASSED_FOR_READ_ENDPOINT
         value = card.model_dump(mode="json", exclude_unset=True)
@@ -312,6 +396,11 @@ class A2AGateway:
 
     @staticmethod
     def _validate_auth(card: AgentCardV1, connection: ConnectionSpec) -> None:
+        """Check declared authentication alternatives without an execution probe.
+
+        Pre: Card schema is valid. Post: satisfiable alternatives pass; missing
+        supported auth and unsupported methods receive distinct safe refinements.
+        """
         if card.securityRequirements:
 
             def bearer_scheme(name: str) -> bool:
@@ -331,7 +420,12 @@ class A2AGateway:
 
             if not any(supported(requirement) for requirement in card.securityRequirements):
                 raise GatewayError(
-                    "authentication_incompatible", "The selected authentication cannot satisfy the Card requirements."
+                    "authentication_incompatible",
+                    "The selected authentication cannot satisfy the Card requirements.",
+                    verification_subreason=VerificationFailureSubreason.AUTHENTICATION_REQUIRED
+                    if isinstance(connection.authentication, NoAuth)
+                    and any(all(bearer_scheme(name) for name in item.schemes) for item in card.securityRequirements)
+                    else VerificationFailureSubreason.UNSUPPORTED_AUTHENTICATION,
                 )
 
     @staticmethod

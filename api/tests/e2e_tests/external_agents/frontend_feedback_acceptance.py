@@ -143,17 +143,37 @@ class FrontendFeedbackAcceptance(WorkflowAcceptance):
         )
 
     def verify_failure_categories(self) -> None:
-        """Four read-only failure categories must not issue evidence or Send."""
+        """Require stable reasons plus reliable refinements without evidence or Send.
+
+        Preconditions: the fixture exposes controlled Card failures. Postconditions:
+        a missing Card is distinct from unreachable networking; the old reason
+        fallback remains usable and all failed checks stay read-only.
+        """
         self.phase = "verify_failure_categories"
         before = self.stats()["counts"]["send"]
         cases = (
-            ("connection_failed", "/cards/not-a-fixture-card/.well-known/agent-card.json", False),
-            ("invalid_agent_card", "/cards/missing-required/.well-known/agent-card.json", False),
-            ("unsupported_protocol", "/cards/unsupported-required-extension/.well-known/agent-card.json", False),
-            ("authentication_failed", "/bearer/.well-known/agent-card.json", True),
+            (
+                "connection_failed",
+                "invalid_a2a_endpoint",
+                "/cards/not-a-fixture-card/.well-known/agent-card.json",
+                False,
+            ),
+            (
+                "invalid_agent_card",
+                "agent_card_field_invalid",
+                "/cards/missing-required/.well-known/agent-card.json",
+                False,
+            ),
+            (
+                "unsupported_protocol",
+                "unsupported_required_extension",
+                "/cards/unsupported-required-extension/.well-known/agent-card.json",
+                False,
+            ),
+            ("authentication_failed", None, "/bearer/.well-known/agent-card.json", True),
         )
         require(bool(os.environ.get("BYOA_FIXTURE_BEARER")), "The protected read fixture requires its Bearer setting.")
-        for reason, suffix, authenticated in cases:
+        for reason, subreason, suffix, authenticated in cases:
             response = self.client.post(
                 self.base + "/external-agents/verify",
                 json={
@@ -168,6 +188,10 @@ class FrontendFeedbackAcceptance(WorkflowAcceptance):
             require(
                 value.get("code") == "verification_failed" and (value.get("details") or {}).get("reason") == reason,
                 "Verify did not return its exact stable frontend failure category.",
+            )
+            require(
+                (value.get("details") or {}).get("subreason") == subreason,
+                "Verify did not return its evidence-backed refinement.",
             )
             require("verification_id" not in value, "A rejected Verify issued Save evidence.")
             self.report["verify_failure_reasons"].append(reason)

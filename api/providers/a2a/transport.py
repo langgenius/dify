@@ -6,12 +6,14 @@ caller deadline, so slow peers cannot create unbounded orphan threads.
 """
 
 import math
+import ssl
 import threading
 import time
 from collections.abc import Callable
 from contextlib import suppress
 from contextvars import copy_context
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
 import httpx
@@ -39,13 +41,45 @@ class HTTPReply:
     listen_window_ended: bool = False
 
 
+class TransportDiagnostic(StrEnum):
+    TIMEOUT = "timeout"
+    TLS_CERTIFICATE = "tls_certificate"
+
+
+def _diagnostic(error: Exception) -> TransportDiagnostic | None:
+    """Inspect typed causes only; never infer TLS/timeout from exception text.
+
+    Pre: an outbound operation failed. Post: no error text/URL is retained;
+    uncertain causes stay unknown and existing runtime failure codes are intact.
+    """
+    cause: BaseException | None = error
+    seen: set[int] = set()
+    diagnostic = None
+    while cause is not None and id(cause) not in seen and len(seen) < 16 and diagnostic is None:
+        seen.add(id(cause))
+        if isinstance(cause, httpx.TimeoutException):
+            diagnostic = TransportDiagnostic.TIMEOUT
+        elif isinstance(cause, ssl.SSLCertVerificationError):
+            diagnostic = TransportDiagnostic.TLS_CERTIFICATE
+        cause = cause.__cause__ or cause.__context__
+    return diagnostic
+
+
 class TransportError(ValueError):
     """A safe failure code without raw peer content or credential-bearing URL."""
 
-    def __init__(self, code: str, partial_reply: HTTPReply | None = None) -> None:
+    def __init__(
+        self,
+        code: str,
+        partial_reply: HTTPReply | None = None,
+        *,
+        diagnostic: TransportDiagnostic | None = None,
+    ) -> None:
+        """Retain a safe optional cause without changing the established failure code."""
         super().__init__(code)
         self.code = code
         self.partial_reply = partial_reply
+        self.diagnostic = diagnostic
 
 
 class BoundedTransport:
@@ -137,6 +171,7 @@ class BoundedTransport:
             except Exception as error:
                 with lock:
                     state["error"] = error.code if isinstance(error, TransportError) else "network_failure"
+                    state["diagnostic"] = error.diagnostic if isinstance(error, TransportError) else _diagnostic(error)
             finally:
                 if response is not None:
                     with suppress(Exception):
@@ -151,6 +186,7 @@ class BoundedTransport:
             stop.set()
         with lock:
             error = state.get("error")
+            diagnostic = state.get("diagnostic")
             status = state.get("status")
             response_headers = state.get("headers")
             received = b"".join(chunks)
@@ -160,9 +196,14 @@ class BoundedTransport:
                 if streaming and isinstance(status, int) and isinstance(response_headers, dict)
                 else None
             )
-            raise TransportError(error, partial)
+            raise TransportError(
+                error, partial, diagnostic=diagnostic if isinstance(diagnostic, TransportDiagnostic) else None
+            )
         if not isinstance(status, int) or not isinstance(response_headers, dict):
-            raise TransportError("deadline_exceeded" if not completed else "network_failure")
+            raise TransportError(
+                "deadline_exceeded" if not completed else "network_failure",
+                diagnostic=TransportDiagnostic.TIMEOUT if not completed else None,
+            )
         if not completed and not streaming:
-            raise TransportError("deadline_exceeded")
+            raise TransportError("deadline_exceeded", diagnostic=TransportDiagnostic.TIMEOUT)
         return HTTPReply(status, response_headers, received, listen_window_ended=not completed)
