@@ -15,6 +15,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
+from typing import Protocol
 from uuid import UUID
 
 from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError
@@ -25,6 +26,7 @@ from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext
 from extensions.ext_redis import redis_client
+from machinery.context import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ class AgentChatBackendUnavailableError(RuntimeError):
 
 
 def agent_preview_async_loop_enabled() -> bool:
-    """Return whether opted-in preview runs may steer and run background jobs.
+    """Return whether opted-in preview runs may accept steering inputs.
 
     Requires the feature flag, a configured real backend URL, a nonblank
     control-plane token, and the fake client to be off.
@@ -162,3 +164,43 @@ def enqueue_agent_chat_input(scope: AgentChatTaskScope, request: RunInputRequest
             raise AgentChatBackendUnavailableError("Agent chat queue is unavailable.") from exc
         except DifyAgentClientError as exc:
             raise AgentChatBackendUnavailableError("Agent chat queue is unavailable.") from exc
+
+
+class AgentChatSteeringOwner(Protocol):
+    """Read-only owner lookup resolving a roster Agent to its configuration app."""
+
+    def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
+
+
+class AgentChatSteeringService:
+    """Admission façade for Console steering calls on admitted roster Agents.
+
+    Each call rebuilds the ``AgentChatTaskScope`` from the admitted
+    ``RequestContext`` plus the server-side roster app resolution, so the
+    browser can address a task only inside its own workspace, account, and
+    roster app. No hidden inline App is resolved or created, and a queued
+    input is accepted by the run inbox, not yet delivered to the model.
+    """
+
+    def __init__(self, *, owners: AgentChatSteeringOwner) -> None:
+        self._owners = owners
+
+    def _scope(self, context: RequestContext, agent_id: UUID, task_id: UUID) -> AgentChatTaskScope:
+        """Build the task scope from the admitted caller and the roster app id.
+
+        Raises ``AgentAppNotFoundError`` when the Agent is not a roster member
+        of the caller's active workspace; no Redis or backend call happens.
+        """
+        tenant_id = context.active_workspace_id
+        app_id = self._owners.resolve_roster_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+        return AgentChatTaskScope(tenant_id=tenant_id, app_id=app_id, user_id=context.account_id, task_id=task_id)
+
+    def get_queue(self, context: RequestContext, agent_id: UUID, task_id: UUID) -> RunQueueResponse:
+        """Return the pending inbox snapshot for the scoped preview task."""
+        return get_agent_chat_queue(self._scope(context, agent_id, task_id))
+
+    def enqueue_input(
+        self, context: RequestContext, agent_id: UUID, task_id: UUID, request: RunInputRequest
+    ) -> RunInputResponse:
+        """Queue one steering input on the scoped run's inbox; 202 means accepted."""
+        return enqueue_agent_chat_input(self._scope(context, agent_id, task_id), request)

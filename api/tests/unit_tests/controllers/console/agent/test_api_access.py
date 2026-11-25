@@ -34,6 +34,7 @@ from controllers.console.agent.roster import (
     AgentRosterVersionsApi,
     AgentStatisticsSummaryApi,
 )
+from controllers.console.app.completion import AgentChatMessageInputApi, AgentChatMessageQueueApi
 from controllers.console.wraps import _is_setup_completed
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
@@ -118,6 +119,16 @@ class Harness:
             f"/console/api/agent/{agent_id}/api-enable", headers=self.headers, json={"enable_api": enabled}
         )
 
+    def get_queue(self, agent_id: str, task_id: str) -> TestResponse:
+        return self.client.get(f"/console/api/agent/{agent_id}/chat-messages/{task_id}/queue", headers=self.headers)
+
+    def enqueue_input(self, agent_id: str, task_id: str, text: str) -> TestResponse:
+        return self.client.post(
+            f"/console/api/agent/{agent_id}/chat-messages/{task_id}/inputs",
+            headers=self.headers,
+            json={"input_id": str(uuid4()), "text": text},
+        )
+
 
 @pytest.fixture
 def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[Harness]:
@@ -157,6 +168,8 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
         api.add_resource(AgentApiAccessApi, "/agent/<uuid:agent_id>/api-access")
         api.add_resource(AgentApiStatusApi, "/agent/<uuid:agent_id>/api-enable")
+        api.add_resource(AgentChatMessageQueueApi, "/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/queue")
+        api.add_resource(AgentChatMessageInputApi, "/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/inputs")
         api.add_resource(AgentAppListApi, "/agent")
         api.add_resource(AgentInviteOptionsApi, "/agent/invite-options")
         api.add_resource(AgentLogsApi, "/agent/<uuid:agent_id>/logs")
@@ -495,3 +508,20 @@ def test_agent_composer_can_save_incomplete_knowledge_configuration(harness: Har
     validated = harness.client.post(f"{path}/validate", headers=harness.headers, json=payload)
     assert validated.status_code == HTTPStatus.BAD_REQUEST
     assert validated.get_json()["code"] == "invalid_composer_config_error"
+
+
+def test_chat_steering_endpoints_resolve_roster_agent_and_require_binding(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent(published=True)
+    task_id = str(uuid4())
+    # Feature flag is off in this harness, so admitted roster calls stop at the
+    # task binding lookup without touching the Agent backend.
+    assert harness.get_queue(agent_id, task_id).status_code == HTTPStatus.NOT_FOUND
+    assert harness.enqueue_input(agent_id, task_id, "steer").status_code == HTTPStatus.NOT_FOUND
+
+
+def test_chat_steering_endpoints_hide_foreign_or_unknown_agents(harness: Harness) -> None:
+    foreign_id, _ = harness.create_agent(published=True, tenant_id=str(uuid4()))
+    task_id = str(uuid4())
+    assert harness.get_queue(foreign_id, task_id).status_code == HTTPStatus.NOT_FOUND
+    assert harness.enqueue_input(foreign_id, task_id, "steer").status_code == HTTPStatus.NOT_FOUND
+    assert harness.get_queue(str(uuid4()), task_id).status_code == HTTPStatus.NOT_FOUND

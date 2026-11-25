@@ -27,6 +27,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -47,25 +48,26 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.chat_steering import (
     AgentChatBackendUnavailableError,
     AgentChatInputConflictError,
     AgentChatTaskNotFoundError,
-    AgentChatTaskScope,
-    enqueue_agent_chat_input,
-    get_agent_chat_queue,
 )
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -727,6 +729,9 @@ def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
     return None
 
 
+_AGENT_CHAT_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+
+
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/queue")
 class AgentChatMessageQueueApi(Resource):
     @error_responses(AgentNotFoundError)
@@ -736,24 +741,15 @@ class AgentChatMessageQueueApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[AgentChatQueueResponse.__name__])
     @console_ns.response(404, "Agent, task, or opted-in preview run not found")
     @console_ns.response(503, "Agent backend unavailable")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: UUID):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=current_tenant_id, agent_id=agent_id)
-        scope = AgentChatTaskScope(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            user_id=current_user_id,
-            task_id=task_id,
-        )
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID, task_id: UUID) -> dict[str, object]:
         try:
-            result = get_agent_chat_queue(scope)
+            result = application_services().agent_apps.chat_steering.get_queue(request_context, agent_id, task_id)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except AgentChatTaskNotFoundError:
             raise NotFound("Agent chat task not found.") from None
         except AgentChatBackendUnavailableError:
@@ -773,33 +769,24 @@ class AgentChatMessageInputApi(Resource):
     @console_ns.response(404, "Agent, task, or opted-in preview run not found")
     @console_ns.response(409, "Run is not accepting this input")
     @console_ns.response(503, "Agent backend unavailable")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
     @model_validate(AgentChatInputPayload)
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
     def post(
         self,
-        session: Session,
-        current_tenant_id: str,
-        current_user_id: str,
         args: AgentChatInputPayload,
+        request_context: RequestContext,
         agent_id: UUID,
         task_id: UUID,
-    ):
-        app_model = resolve_agent_runtime_app_model(session=session, tenant_id=current_tenant_id, agent_id=agent_id)
-        scope = AgentChatTaskScope(
-            tenant_id=current_tenant_id,
-            app_id=app_model.id,
-            user_id=current_user_id,
-            task_id=task_id,
-        )
+    ) -> tuple[dict[str, object], int]:
         try:
-            result = enqueue_agent_chat_input(scope, args)
+            result = application_services().agent_apps.chat_steering.enqueue_input(
+                request_context, agent_id, task_id, args
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except AgentChatTaskNotFoundError:
             raise NotFound("Agent chat task not found.") from None
         except AgentChatInputConflictError:

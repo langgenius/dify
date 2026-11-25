@@ -8,10 +8,12 @@ from dify_agent.client import Client
 from dify_agent.protocol import RunInputRequest
 
 from configs import dify_config
+from machinery.context import RequestContext
 from services.agent import chat_steering
 from services.agent.chat_steering import (
     AgentChatBackendUnavailableError,
     AgentChatInputConflictError,
+    AgentChatSteeringService,
     AgentChatTaskNotFoundError,
     AgentChatTaskScope,
     agent_preview_async_loop_enabled,
@@ -19,6 +21,7 @@ from services.agent.chat_steering import (
     get_agent_chat_queue,
     register_agent_chat_task,
 )
+from services.app.agent_app_contracts import AgentAppNotFoundError
 
 
 @pytest.fixture
@@ -40,24 +43,22 @@ class _RedisCalls(TypedDict):
     value: object
 
 
+class _StubRedis:
+    def __init__(self, calls: _RedisCalls) -> None:
+        self._calls = calls
+
+    def setex(self, name: str, time: int, value: object) -> None:
+        self._calls["setex"].append((name, time, value))
+
+    def get(self, name: str) -> object:
+        self._calls["get"].append(name)
+        return self._calls["value"]
+
+
 @pytest.fixture
 def redis_calls(monkeypatch: pytest.MonkeyPatch) -> _RedisCalls:
-    calls: _RedisCalls = {"setex": [], "get": []}
-
-    def setex(name: str, time: int, value: object) -> None:
-        calls["setex"].append((name, time, value))
-
-    def get(name: str) -> object:
-        calls["get"].append(name)
-        return calls.get("value")
-
-    class _StubRedis:
-        pass
-
-    redis_stub = _StubRedis()
-    redis_stub.setex = setex
-    redis_stub.get = get
-    monkeypatch.setattr(chat_steering, "redis_client", redis_stub)
+    calls: _RedisCalls = {"setex": [], "get": [], "value": None}
+    monkeypatch.setattr(chat_steering, "redis_client", _StubRedis(calls))
     return calls
 
 
@@ -201,3 +202,64 @@ class TestQueueAndInput:
         monkeypatch.setattr(chat_steering, "_run_client", lambda: _client(httpx.MockTransport(handler)))
         with pytest.raises(AgentChatBackendUnavailableError):
             get_agent_chat_queue(_scope())
+
+
+class _StubOwners:
+    """Records owner lookups and resolves one configured app id."""
+
+    def __init__(self, app_id: str | None = "app-resolved") -> None:
+        self._app_id = app_id
+        self.calls: list[tuple[str, str]] = []
+
+    def resolve_roster_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        self.calls.append((tenant_id, agent_id))
+        if self._app_id is None:
+            raise AgentAppNotFoundError
+        return self._app_id
+
+
+def _context(*, workspace: str = "tenant-ctx", account: str = "user-ctx") -> RequestContext:
+    return RequestContext(
+        request_id="req-1",
+        trace_id=None,
+        account_id=account,
+        active_workspace_id=workspace,
+    )
+
+
+@pytest.mark.usefixtures("enable_feature", "bound_run")
+class TestSteeringService:
+    def test_scope_uses_context_identity_and_resolved_app(
+        self,
+        redis_calls: _RedisCalls,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        owners = _StubOwners()
+        service = AgentChatSteeringService(owners=owners)
+        agent_id, task_id = uuid4(), uuid4()
+        monkeypatch.setattr(chat_steering, "_run_client", lambda: _client(_queue_transport()))
+        response = service.get_queue(_context(), agent_id, task_id)
+        assert response.accepting_inputs
+        assert owners.calls == [("tenant-ctx", str(agent_id))]
+        expected = AgentChatTaskScope(
+            tenant_id="tenant-ctx", app_id="app-resolved", user_id="user-ctx", task_id=task_id
+        )
+        assert redis_calls["get"] == [expected.cache_key()]
+
+    def test_unknown_agent_never_touches_storage_or_backend(
+        self,
+        redis_calls: _RedisCalls,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            chat_steering,
+            "_run_client",
+            lambda: pytest.fail("backend client must not be built for an unknown agent"),
+        )
+        service = AgentChatSteeringService(owners=_StubOwners(app_id=None))
+        with pytest.raises(AgentAppNotFoundError):
+            service.get_queue(_context(), uuid4(), uuid4())
+        with pytest.raises(AgentAppNotFoundError):
+            service.enqueue_input(_context(), uuid4(), uuid4(), RunInputRequest(input_id=uuid4(), text="x"))
+        assert redis_calls["get"] == []
+        assert redis_calls["setex"] == []
