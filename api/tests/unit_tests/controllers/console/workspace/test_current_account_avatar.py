@@ -9,6 +9,7 @@ from constants import COOKIE_NAME_ACCESS_TOKEN
 from controllers.console import bp as console_bp
 from dify_app import DifyApp
 from enums import DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_login import bind_account_loader, bind_account_only_loader, login_manager
 from libs.datetime_utils import naive_utc_now
 from libs.passport import PassportService
@@ -65,7 +66,14 @@ class _Harness:
 def harness(
     sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
+    account_application_services: ApplicationServices,
 ) -> _Harness:
+    """Build the authenticated avatar surface with every required delivery port.
+
+    Pre: the SQL fixture and application services are available. Post: avatar
+    reads exercise actual account/file queries and streaming storage without
+    weakening the scoped signed-preview access contract on the shared service.
+    """
     config_overrides(
         DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
         LOGIN_DISABLED=False,
@@ -92,6 +100,7 @@ def harness(
     delivery = UploadFileDeliveryService(
         files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory),
         storage=storage,
+        access=account_application_services.external_agents.test_file_access,
     )
     app = DifyApp(__name__)
     app.config["TESTING"] = True
