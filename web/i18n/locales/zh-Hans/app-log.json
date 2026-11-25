@@ -56,7 +56,7 @@
   "export.all": "此应用的全部日志",
   "export.annotated": "已标注",
   "export.failed": "导出失败，请重试。",
-  "export.identitiesAll": "全部用户和账户",
+  "export.identitiesAll": "全部",
   "export.last": "上一次导出",
   "export.limitReached": "此工作区的导出任务已达上限。请等待一个导出任务完成后再试。",
   "export.noIdentities": "没有匹配的结果。",

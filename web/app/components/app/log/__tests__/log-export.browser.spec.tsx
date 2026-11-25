@@ -93,6 +93,22 @@ it('defaults the list to all identities and clears specific selections from the 
   await expect.element(clear).not.toBeInTheDocument()
 })
 
+it('resets specific export identities from the All option', async () => {
+  const { trigger, dialog } = await openExport(false, 'advanced-chat')
+  const allOption = page.getByRole('option', { name: 'appLog.export.identitiesAll' })
+
+  await trigger.click()
+  const exportIdentity = dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' })
+  await exportIdentity.click()
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Conversation 1 · CSV rows 2.')
+  await allOption.click()
+  await expect
+    .element(dialog.getByRole('status'))
+    .toHaveTextContent('Conversations 2 · CSV rows 4.')
+  await expect.element(allOption).toHaveAttribute('aria-selected', 'true')
+})
+
 it('previews CSV rows and submits a Completion export with the list identities', async () => {
   const { screen, trigger, dialog, lastExport, listQueries, requests } = await openExport(
     false,
@@ -444,7 +460,7 @@ it('shares the Chatflow list filters with export while keeping a separate export
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
   expect(listQueries.at(-1)?.has('start')).toBe(true)
 
-  await dialog.getByRole('combobox', { name: 'appAnnotation.title' }).click()
+  await dialog.getByRole('combobox', { name: 'appLog.table.header.status' }).click()
   await page.getByRole('option', { name: 'appLog.filter.annotation.not_annotated' }).click()
   await expect.poll(() => previews.at(-1)?.get('annotation_status')).toBe('not_annotated')
   expect(listQueries.at(-1)?.get('annotation_status')).toBe('all')

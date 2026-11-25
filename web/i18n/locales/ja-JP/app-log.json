@@ -56,7 +56,7 @@
   "export.all": "このアプリのすべてのログ",
   "export.annotated": "注釈あり",
   "export.failed": "エクスポートに失敗しました。再試行してください。",
-  "export.identitiesAll": "すべてのユーザーとアカウント",
+  "export.identitiesAll": "すべて",
   "export.last": "前回のエクスポート",
   "export.limitReached": "このワークスペースはエクスポートの上限に達しました。いずれかのエクスポートが完了してから、もう一度お試しください。",
   "export.noIdentities": "一致する結果がありません。",

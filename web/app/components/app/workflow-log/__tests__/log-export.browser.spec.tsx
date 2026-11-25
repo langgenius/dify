@@ -123,9 +123,22 @@ async function renderLogs({
 }
 
 it('uses the Workflow list filters for CSV preview, restores the task, and downloads from the Workflow endpoint', async () => {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-11-24T12:00:00Z'))
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
   await page.viewport(1024, 800)
   const { screen, listQueries, previews, requests } = await renderLogs()
   await expect.element(screen.getByText('Mia Chen', { exact: true })).toBeVisible()
+  await screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }).click()
+  await page.getByRole('option', { name: 'appLog.filter.period.custom' }).click()
+  await screen.getByRole('button', { name: /time\.picker\.startDate/ }).click()
+  await page.getByRole('button', { name: /November 12th, 2026/ }).click()
+  await screen.getByRole('button', { name: /time\.picker\.endDate/ }).click()
+  await page.getByRole('button', { name: /November 23rd, 2026/ }).click()
+  await expect.element(screen.getByText('Nov 12', { exact: true })).toBeVisible()
+  await expect.element(screen.getByText('Nov 23', { exact: true })).toBeVisible()
   await screen
     .getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' })
     .click()
@@ -145,6 +158,8 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   expect(listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
   const listFilters = listQueries.at(-1)!
+  expect(listFilters.get('created_at__after')).toBe('2026-11-12T00:00:00+00:00')
+  expect(listFilters.get('created_at__before')).toBe('2026-11-23T23:59:59.999999+00:00')
 
   const trigger = screen.getByRole('button', { name: 'appLog.export.title' })
   await trigger.click()
@@ -157,8 +172,15 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(previews.at(-1)?.get('created_at__after')).toBe(listFilters.get('created_at__after'))
+  expect(previews.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
   expect(previews.at(-1)?.has('keyword')).toBe(false)
   expect(previews.at(-1)?.has('page')).toBe(false)
+
+  await dialog.getByRole('button', { name: /time\.picker\.endDate/ }).click()
+  await page.getByRole('button', { name: /November 24th, 2026/ }).click()
+  const exportEnd = '2026-11-24T23:59:59.999999+00:00'
+  await expect.poll(() => previews.at(-1)?.get('created_at__before')).toBe(exportEnd)
+  expect(listQueries.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
 
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await status.click()
@@ -176,7 +198,7 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
       {
         status: 'succeeded',
         created_at__after: listFilters.get('created_at__after'),
-        created_at__before: listFilters.get('created_at__before'),
+        created_at__before: exportEnd,
         end_user_ids: [olderEndUserId],
         account_ids: [accountId],
         identity_labels: [

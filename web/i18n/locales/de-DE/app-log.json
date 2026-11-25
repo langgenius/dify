@@ -56,7 +56,7 @@
   "export.all": "Alle Protokolle dieser App",
   "export.annotated": "Annotiert",
   "export.failed": "Export fehlgeschlagen. Bitte erneut versuchen.",
-  "export.identitiesAll": "Alle Nutzer und Konten",
+  "export.identitiesAll": "Alle",
   "export.last": "Letzter Export",
   "export.limitReached": "Dieser Arbeitsbereich hat das Exportlimit erreicht. Warten Sie, bis ein Export abgeschlossen ist, und versuchen Sie es erneut.",
   "export.noIdentities": "Keine passenden Ergebnisse.",

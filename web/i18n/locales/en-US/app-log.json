@@ -56,7 +56,7 @@
   "export.all": "All logs in this app",
   "export.annotated": "Annotated",
   "export.failed": "Export failed. Please try again.",
-  "export.identitiesAll": "All end users and accounts",
+  "export.identitiesAll": "All",
   "export.last": "Last export",
   "export.limitReached": "This workspace has reached its export limit. Wait for an export to finish before trying again.",
   "export.noIdentities": "No matches found.",

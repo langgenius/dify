@@ -56,7 +56,7 @@
   "export.all": "Tất cả nhật ký trong ứng dụng này",
   "export.annotated": "Đã chú thích",
   "export.failed": "Xuất không thành công. Vui lòng thử lại.",
-  "export.identitiesAll": "Tất cả người dùng và tài khoản",
+  "export.identitiesAll": "Tất cả",
   "export.last": "Lần xuất gần nhất",
   "export.limitReached": "Không gian làm việc này đã đạt giới hạn xuất dữ liệu. Hãy đợi một tác vụ xuất hoàn tất rồi thử lại.",
   "export.noIdentities": "Không tìm thấy kết quả phù hợp.",

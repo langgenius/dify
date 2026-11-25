@@ -56,7 +56,7 @@
   "export.all": "Todos os logs deste aplicativo",
   "export.annotated": "Anotado",
   "export.failed": "Falha na exportação. Tente novamente.",
-  "export.identitiesAll": "Todos os usuários e contas",
+  "export.identitiesAll": "Todos",
   "export.last": "Última exportação",
   "export.limitReached": "Este espaço de trabalho atingiu o limite de exportações. Aguarde a conclusão de uma exportação antes de tentar novamente.",
   "export.noIdentities": "Nenhum resultado correspondente.",

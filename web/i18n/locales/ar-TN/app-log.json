@@ -56,7 +56,7 @@
   "export.all": "كل سجلات هذا التطبيق",
   "export.annotated": "موصوفة",
   "export.failed": "فشل التصدير. حاول مجددًا.",
-  "export.identitiesAll": "جميع المستخدمين والحسابات",
+  "export.identitiesAll": "الكل",
   "export.last": "آخر تصدير",
   "export.limitReached": "بلغت مساحة العمل الحد الأقصى لعمليات التصدير. انتظر حتى تنتهي إحدى عمليات التصدير قبل المحاولة مجددًا.",
   "export.noIdentities": "لا توجد نتائج مطابقة.",

@@ -56,7 +56,7 @@
   "export.all": "Vsi dnevniki te aplikacije",
   "export.annotated": "Označene",
   "export.failed": "Izvoz ni uspel. Poskusite znova.",
-  "export.identitiesAll": "Vsi uporabniki in računi",
+  "export.identitiesAll": "Vse",
   "export.last": "Zadnji izvoz",
   "export.limitReached": "Ta delovni prostor je dosegel omejitev izvozov. Pred ponovnim poskusom počakajte, da se eden od izvozov konča.",
   "export.noIdentities": "Ni ujemajočih se rezultatov.",

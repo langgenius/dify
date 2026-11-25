@@ -56,7 +56,7 @@
   "export.all": "Bu uygulamanın tüm günlükleri",
   "export.annotated": "Açıklamalı",
   "export.failed": "Dışa aktarma başarısız oldu. Tekrar deneyin.",
-  "export.identitiesAll": "Tüm kullanıcılar ve hesaplar",
+  "export.identitiesAll": "Tümü",
   "export.last": "Son dışa aktarma",
   "export.limitReached": "Bu çalışma alanı dışa aktarma sınırına ulaştı. Yeniden denemeden önce bir dışa aktarmanın tamamlanmasını bekleyin.",
   "export.noIdentities": "Eşleşen sonuç bulunamadı.",

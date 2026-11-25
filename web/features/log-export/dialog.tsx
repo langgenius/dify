@@ -272,7 +272,7 @@ export function LogExportDialog({
             }}
           >
             <DialogBody className="space-y-4">
-              <fieldset disabled={phase !== 'selecting'} className="space-y-4">
+              <fieldset disabled={phase !== 'selecting'} className="min-w-0 space-y-4">
                 {children}
               </fieldset>
               {!taskInProgress && !retryStatus && (

@@ -176,7 +176,7 @@ export function LogIdentityField(
   const label = t(($) => $['table.header.endUser'], { ns: 'appLog' })
   const allLabel = t(($) => $[showLabel ? 'export.identitiesAll' : 'status.all'], { ns: 'appLog' })
   const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
-  const items: LogIdentityOption[] = showLabel || search.trim() ? matches : ['all', ...matches]
+  const items: LogIdentityOption[] = search.trim() ? matches : ['all', ...matches]
   const optionLabel = (option: LogIdentityOption) => (option === 'all' ? allLabel : option.label)
   const selectionDescription =
     selected.length > 1
@@ -195,11 +195,11 @@ export function LogIdentityField(
         if (eventDetails.isItemPress) eventDetails.cancel()
         else setSearch(next)
       }}
-      value={showLabel || hasSelection ? selected : ['all']}
+      value={hasSelection ? selected : ['all']}
       onValueChange={(next) => {
         const identities =
           hasSelection && next.includes('all') ? [] : next.filter((item) => item !== 'all')
-        if (!showLabel && !identities.length && !hasSelection) return
+        if (!identities.length && !hasSelection) return
         if (draft) setDraft(identities)
         else onChange(identities)
       }}
@@ -231,13 +231,13 @@ export function LogIdentityField(
         {showLabel && <ComboboxLabel>{label}</ComboboxLabel>}
         <div className="relative">
           <ComboboxTrigger
-            ref={showLabel ? undefined : triggerRef}
+            ref={triggerRef}
             aria-label={showLabel ? undefined : label}
             aria-description={selectionDescription}
             className={cn(
               'flex h-8 w-full min-w-0 items-center gap-1 rounded-lg text-start system-sm-regular disabled:cursor-not-allowed disabled:bg-components-input-bg-disabled disabled:text-components-input-text-disabled',
               showLabel
-                ? 'bg-components-input-bg-normal px-2 text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt'
+                ? 'bg-components-input-bg-normal ps-3 pe-2 text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt'
                 : 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover',
             )}
           >
@@ -248,21 +248,26 @@ export function LogIdentityField(
             {!showLabel && !hasSelection && (
               <span className="shrink-0 system-sm-medium whitespace-nowrap">{allLabel}</span>
             )}
-            {!showLabel && hasSelection && <span className="size-5 shrink-0" aria-hidden />}
+            {hasSelection && <span className="size-5 shrink-0" aria-hidden />}
             {(showLabel || !hasSelection) && <ComboboxIcon />}
           </ComboboxTrigger>
-          {!showLabel && hasSelection && (
+          {hasSelection && (
             <ComboboxClear
               keepMounted
               tabIndex={0}
-              className="group/clear absolute inset-e-1.5 top-1/2 -translate-y-1/2"
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2',
+                showLabel ? 'inset-e-7' : 'group/clear inset-e-1.5',
+              )}
               aria-label={`${t(($) => $['operation.clear'], { ns: 'common' })} ${label}`}
               onClick={() => triggerRef.current?.focus()}
             >
-              <span
-                aria-hidden
-                className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
-              />
+              {showLabel ? undefined : (
+                <span
+                  aria-hidden
+                  className="i-ri-close-circle-fill size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
+                />
+              )}
             </ComboboxClear>
           )}
         </div>

@@ -56,7 +56,7 @@
   "export.all": "Tous les journaux de cette application",
   "export.annotated": "Annoté",
   "export.failed": "Échec de l’export. Réessayez.",
-  "export.identitiesAll": "Tous les utilisateurs et comptes",
+  "export.identitiesAll": "Tous",
   "export.last": "Dernière exportation",
   "export.limitReached": "Cet espace de travail a atteint sa limite d’exportations. Attendez la fin d’une exportation avant de réessayer.",
   "export.noIdentities": "Aucun résultat correspondant.",

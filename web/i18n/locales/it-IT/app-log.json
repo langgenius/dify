@@ -56,7 +56,7 @@
   "export.all": "Tutti i registri di questa app",
   "export.annotated": "Annotati",
   "export.failed": "Esportazione non riuscita. Riprova.",
-  "export.identitiesAll": "Tutti gli utenti e gli account",
+  "export.identitiesAll": "Tutti",
   "export.last": "Ultima esportazione",
   "export.limitReached": "Questo spazio di lavoro ha raggiunto il limite di esportazioni. Attendi che termini un’esportazione prima di riprovare.",
   "export.noIdentities": "Nessun risultato corrispondente.",

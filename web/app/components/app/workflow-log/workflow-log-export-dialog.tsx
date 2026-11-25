@@ -7,6 +7,7 @@ import { API_PREFIX } from '@/config'
 import { LogExportDialog, LogExportSelect } from '@/features/log-export/dialog'
 import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
 import { consoleQuery } from '@/service/console'
 import { toWorkflowLogFilters } from './log-filters'
@@ -33,9 +34,13 @@ export function WorkflowLogExportDialog({
   const { t } = useTranslation(['appLog'])
   const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(currentQueryParams)
-  const { period, status, identities } = selection
+  const { period, customRange, status, identities } = selection
   const params = { app_id: appId }
-  const query = toWorkflowLogFilters({ period, status, identities }, planState, timezone)
+  const query = toWorkflowLogFilters(
+    { period, customRange, status, identities },
+    planState,
+    timezone,
+  )
   const { create, reset, latest, preview, dialogState } = useLogExport({
     enabled: open && planState === 'unrestricted',
     latestOptions: exportsApi.latest.get.queryOptions({ ...logExportRequest, input: { params } }),
@@ -85,11 +90,13 @@ export function WorkflowLogExportDialog({
         })
       }
     >
-      <LogExportSelect
-        label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
-        value={period}
+      <LogTimeRangePicker
+        value={selection}
         options={filterOptions.periods}
-        onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
+        timezone={timezone}
+        onChange={({ period, customRange }) =>
+          setSelection((previous) => ({ ...previous, period, customRange }))
+        }
         disabled={disabled}
       />
       <LogExportSelect

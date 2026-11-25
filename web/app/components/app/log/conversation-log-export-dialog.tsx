@@ -8,6 +8,7 @@ import { API_PREFIX } from '@/config'
 import { LogExportDialog, LogExportSelect } from '@/features/log-export/dialog'
 import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
 import { consoleQuery } from '@/service/console'
 import { toLogFilters } from './log-filters'
@@ -33,13 +34,13 @@ export function ConversationLogExportDialog({
   planState: CloudSandboxPlanState
   timezone: string
 }) {
-  const { t } = useTranslation(['appLog', 'appAnnotation'])
+  const { t } = useTranslation(['appLog'])
   const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(currentQueryParams)
-  const { period, annotation_status, identities, sort_by } = selection
+  const { period, customRange, annotation_status, identities, sort_by } = selection
   const params = { app_id: appId }
   const query = toLogFilters(
-    { period, annotation_status, identities, sort_by },
+    { period, customRange, annotation_status, identities, sort_by },
     planState,
     timezone,
   )
@@ -110,15 +111,15 @@ export function ConversationLogExportDialog({
         })
       }
     >
-      <LogExportSelect
-        label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
-        value={period}
+      <LogTimeRangePicker
+        value={selection}
         options={filterOptions.periods}
-        onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
+        onChange={(timeRange) => setSelection((previous) => ({ ...previous, ...timeRange }))}
+        timezone={timezone}
         disabled={disabled}
       />
       <LogExportSelect
-        label={t(($) => $.title, { ns: 'appAnnotation' })}
+        label={t(($) => $['table.header.status'], { ns: 'appLog' })}
         value={annotation_status ?? 'all'}
         options={filterOptions.annotations}
         onChange={(annotation_status) =>

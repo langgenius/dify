@@ -56,7 +56,7 @@
   "export.all": "Wszystkie dzienniki tej aplikacji",
   "export.annotated": "Zanotowane",
   "export.failed": "Eksport nie powiódł się. Spróbuj ponownie.",
-  "export.identitiesAll": "Wszyscy użytkownicy i konta",
+  "export.identitiesAll": "Wszystkie",
   "export.last": "Ostatni eksport",
   "export.limitReached": "Ten obszar roboczy osiągnął limit eksportów. Poczekaj na zakończenie jednego z eksportów i spróbuj ponownie.",
   "export.noIdentities": "Brak pasujących wyników.",

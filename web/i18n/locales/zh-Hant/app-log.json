@@ -56,7 +56,7 @@
   "export.all": "此應用程式的所有日誌",
   "export.annotated": "已標註",
   "export.failed": "匯出失敗，請再試一次。",
-  "export.identitiesAll": "所有使用者和帳戶",
+  "export.identitiesAll": "全部",
   "export.last": "上一次匯出",
   "export.limitReached": "此工作區的匯出任務已達上限。請等待一項匯出任務完成後再試。",
   "export.noIdentities": "找不到相符的結果。",

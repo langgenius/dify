@@ -56,7 +56,7 @@
   "export.all": "Semua log di aplikasi ini",
   "export.annotated": "Beranotasi",
   "export.failed": "Ekspor gagal. Coba lagi.",
-  "export.identitiesAll": "Semua pengguna dan akun",
+  "export.identitiesAll": "Semua",
   "export.last": "Ekspor terakhir",
   "export.limitReached": "Ruang kerja ini telah mencapai batas ekspor. Tunggu hingga salah satu ekspor selesai sebelum mencoba lagi.",
   "export.noIdentities": "Tidak ada hasil yang cocok.",

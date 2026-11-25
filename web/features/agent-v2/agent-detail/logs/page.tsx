@@ -155,15 +155,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
             <AgentLogExportDialog
               key={agentId}
               agentId={agentId}
-              currentFilters={
-                effectiveFilters.period === 'custom'
-                  ? {
-                      ...effectiveFilters,
-                      period: defaultAgentLogFilters.period,
-                      customRange: undefined,
-                    }
-                  : effectiveFilters
-              }
+              currentFilters={effectiveFilters}
               sourcePicker={sourcePicker}
               identityOptions={identityOptions}
               timezone={timezone}

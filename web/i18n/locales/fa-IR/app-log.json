@@ -56,7 +56,7 @@
   "export.all": "همهٔ گزارش‌های این برنامه",
   "export.annotated": "حاشیه‌نویسی شده",
   "export.failed": "خروجی گرفتن ناموفق بود. دوباره تلاش کنید.",
-  "export.identitiesAll": "همه کاربران و حساب‌ها",
+  "export.identitiesAll": "همه",
   "export.last": "آخرین خروجی",
   "export.limitReached": "این فضای کاری به سقف صادرات رسیده است. صبر کنید یکی از خروجی‌ها آماده شود و سپس دوباره تلاش کنید.",
   "export.noIdentities": "نتیجه‌ای یافت نشد.",

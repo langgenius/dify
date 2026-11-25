@@ -56,7 +56,7 @@
   "export.all": "Toate jurnalele acestei aplicații",
   "export.annotated": "Adnotat",
   "export.failed": "Exportul a eșuat. Încearcă din nou.",
-  "export.identitiesAll": "Toți utilizatorii și toate conturile",
+  "export.identitiesAll": "Toate",
   "export.last": "Ultimul export",
   "export.limitReached": "Acest spațiu de lucru a atins limita de exporturi. Așteaptă să se termine un export înainte de a încerca din nou.",
   "export.noIdentities": "Niciun rezultat potrivit.",

@@ -56,7 +56,7 @@
   "export.all": "이 앱의 모든 로그",
   "export.annotated": "주석 있음",
   "export.failed": "내보내지 못했습니다. 다시 시도해 주세요.",
-  "export.identitiesAll": "모든 사용자 및 계정",
+  "export.identitiesAll": "전체",
   "export.last": "마지막 내보내기",
   "export.limitReached": "이 워크스페이스의 내보내기 한도에 도달했습니다. 내보내기 작업 하나가 완료된 후 다시 시도하세요.",
   "export.noIdentities": "일치하는 결과가 없습니다.",

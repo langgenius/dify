@@ -13,6 +13,7 @@ import {
   DatePickerValue,
 } from '@/app/components/base/date-time-picker/date-picker'
 import { formatToLocalTime } from '@/utils/format'
+import { LogExportSelect } from './dialog'
 import './log-time-range'
 
 type LogTimeSelection<T extends string> = { period: T | 'custom'; customRange?: LogCustomDateRange }
@@ -31,11 +32,12 @@ export function LogTimeRangePicker<T extends string>({
   onChange: (value: LogTimeSelection<T>) => void
   timezone?: string
   disabled?: boolean
-  clearedPeriod: T
+  clearedPeriod?: T
   allowCustom?: boolean
 }) {
   const { t } = useTranslation(['appLog', 'time'])
   const locale = useLocale()
+  const label = t(($) => $['export.timeRange'], { ns: 'appLog' })
   const items = allowCustom
     ? [
         ...options,
@@ -45,9 +47,11 @@ export function LogTimeRangePicker<T extends string>({
   const today = dayjs().tz(timezone)
   const todayDate = today.format('YYYY-MM-DD')
   const range = allowCustom && value.period === 'custom' ? value.customRange : undefined
-  const dateTriggerClassName = 'h-8 w-auto gap-1 px-2'
+  const dateTriggerClassName =
+    clearedPeriod === undefined ? 'min-w-0 flex-1' : 'h-8 w-auto gap-1 px-2'
 
   function dateLabel(value: string) {
+    if (clearedPeriod === undefined) return undefined
     const date = dayjs(value)
     return formatToLocalTime(date, locale, date.year() === today.year() ? 'MMM D' : 'MMM D, YYYY')
   }
@@ -67,18 +71,30 @@ export function LogTimeRangePicker<T extends string>({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Chip
-        className={range ? undefined : 'min-w-37.5'}
-        panelClassName="w-67.5"
-        listClassName="max-h-none"
-        leftIcon={<span className="i-ri-calendar-line size-4 text-text-secondary" aria-hidden />}
-        value={value.period}
-        items={items.map(({ value, label }) => ({ value, name: label }))}
-        onSelect={({ value }) => selectPeriod(value)}
-        onClear={() => selectPeriod(clearedPeriod)}
-        disabled={disabled}
-      />
+    <div
+      className={clearedPeriod === undefined ? 'space-y-2' : 'flex flex-wrap items-center gap-2'}
+    >
+      {clearedPeriod === undefined ? (
+        <LogExportSelect
+          label={label}
+          value={value.period}
+          options={items}
+          onChange={selectPeriod}
+          disabled={disabled}
+        />
+      ) : (
+        <Chip
+          className={range ? undefined : 'min-w-37.5'}
+          panelClassName="w-67.5"
+          listClassName="max-h-none"
+          leftIcon={<span className="i-ri-calendar-line size-4 text-text-secondary" aria-hidden />}
+          value={value.period}
+          items={items.map(({ value, label }) => ({ value, name: label }))}
+          onSelect={({ value }) => selectPeriod(value)}
+          onClear={() => selectPeriod(clearedPeriod)}
+          disabled={disabled}
+        />
+      )}
       {range && (
         <div className="flex min-w-0 items-center gap-2">
           <DatePicker

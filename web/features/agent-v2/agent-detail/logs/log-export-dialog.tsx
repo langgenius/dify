@@ -6,9 +6,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
 import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
-import { LogExportDialog, LogExportSelect } from '@/features/log-export/dialog'
+import { LogExportDialog } from '@/features/log-export/dialog'
 import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
 import { consoleQuery } from '@/service/console'
 import { AgentLogSourcePicker } from './components/source-picker'
@@ -97,14 +98,16 @@ export function AgentLogExportDialog({
         })
       }
     >
-      <LogExportSelect
-        label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
-        value={selection.period}
+      <LogTimeRangePicker
+        value={selection}
         options={agentLogPeriods.map((period) => ({
           value: period,
           label: t(($) => $[`agentDetail.logs.filters.period.${period}`], { ns: 'agentV2' }),
         }))}
-        onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
+        timezone={timezone}
+        onChange={({ period, customRange }) =>
+          setSelection((previous) => ({ ...previous, period, customRange }))
+        }
         disabled={disabled}
       />
       <AgentLogSourcePicker

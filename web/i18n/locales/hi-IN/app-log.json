@@ -56,7 +56,7 @@
   "export.all": "इस ऐप के सभी लॉग",
   "export.annotated": "एनोटेट किया गया",
   "export.failed": "निर्यात विफल रहा। फिर से कोशिश करें।",
-  "export.identitiesAll": "सभी उपयोगकर्ता और खाते",
+  "export.identitiesAll": "सभी",
   "export.last": "पिछला निर्यात",
   "export.limitReached": "इस कार्यस्थान में निर्यात की सीमा पूरी हो गई है। फिर से कोशिश करने से पहले किसी एक निर्यात के पूरा होने की प्रतीक्षा करें।",
   "export.noIdentities": "कोई मिलान नहीं मिला।",

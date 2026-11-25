@@ -56,7 +56,7 @@
   "export.all": "Alle logboeken van deze app",
   "export.annotated": "Geannoteerd",
   "export.failed": "Exporteren mislukt. Probeer het opnieuw.",
-  "export.identitiesAll": "Alle gebruikers en accounts",
+  "export.identitiesAll": "Alle",
   "export.last": "Laatste export",
   "export.limitReached": "Deze werkruimte heeft de exportlimiet bereikt. Wacht tot een export is voltooid en probeer het opnieuw.",
   "export.noIdentities": "Geen overeenkomende resultaten.",
