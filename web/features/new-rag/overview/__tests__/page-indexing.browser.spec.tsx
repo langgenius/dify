@@ -170,10 +170,7 @@ describe('KnowledgeOverviewPage indexing', () => {
     vi.restoreAllMocks()
   })
 
-  // TODO(https://github.com/langgenius/dify/issues/46699): the overview keeps polling after tasks
-  // finish, so this fails over HTTP; https://github.com/langgenius/dify/pull/46747 fixes the
-  // polling and turns it back on.
-  it.skip('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
+  it('keeps refreshing visible metrics until the snapshot catches up with the completed task', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.tasks[0]!.state = 'running'
     queryData.tasks[0]!.updated_at = '2026-07-29T10:00:00Z'
@@ -197,6 +194,25 @@ describe('KnowledgeOverviewPage indexing', () => {
     await vi.advanceTimersByTimeAsync(6000)
     expect(stats).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+  })
+
+  it('resumes refreshing visible metrics when a task starts after polling stopped', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    queryData.stats.generated_at = '2026-07-29T10:01:00Z'
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    const stats = fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get
+    const idle = stats.mock.calls.length
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(stats).toHaveBeenCalledTimes(idle)
+    queryData.tasks[0]!.state = 'running'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+    queryData.stats.queries.value = 12
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect.element(page.getByText('12', { exact: true })).toBeVisible()
   })
 
   it('keeps failed first-source tasks in Needs attention without a duplicate banner', async () => {
