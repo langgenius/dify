@@ -37,12 +37,18 @@ export function OverviewTaskSync() {
   const hadActiveTasksRef = useRef<boolean | undefined>(undefined)
   const terminalVersionRef = useRef<string | undefined>(undefined)
   useEffect(() => {
+    if (terminalVersion === undefined) {
+      // A failed task request stops snapshot polling; count it as an empty list, so finished
+      // tasks in the recovered list refresh the snapshots.
+      if (isError) terminalVersionRef.current = ''
+      return
+    }
     // A terminal task seen for the first time may finish after the snapshots stopped polling.
     const changed =
       terminalVersionRef.current !== undefined && terminalVersionRef.current !== terminalVersion
     terminalVersionRef.current = terminalVersion
     if (terminalVersion) void reconcile({ refreshSnapshots: changed })
-  }, [terminalVersion, reconcile])
+  }, [terminalVersion, isError, reconcile])
   useEffect(() => {
     if (hasActiveTasks === undefined) {
       // A failed task request stops snapshot polling, so a later active result must resume it.

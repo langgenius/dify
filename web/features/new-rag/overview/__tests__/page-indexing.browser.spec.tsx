@@ -230,6 +230,21 @@ describe('KnowledgeOverviewPage indexing', () => {
     await expect.element(page.getByText('12', { exact: true })).toBeVisible()
   })
 
+  it('refreshes stopped metrics when tasks recover with only finished tasks', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const tasks = fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get
+    tasks.mockImplementationOnce(async () => {
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+    })
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    queryData.tasks[0]!.state = 'completed'
+    queryData.tasks[0]!.updated_at = '2026-07-29T10:02:00Z'
+    queryData.stats.queries.value = 11
+    await queryClient.invalidateQueries({ queryKey: overviewKeys.tasks() })
+    await expect.element(page.getByText('11', { exact: true })).toBeVisible()
+  })
+
   it('refreshes stopped metrics when a task is first seen after it finished', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     queryData.stats.generated_at = '2026-07-29T10:01:00Z'
