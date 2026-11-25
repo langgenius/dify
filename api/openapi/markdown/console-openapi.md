@@ -28102,6 +28102,13 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | protocol | string |  | Yes |
 | transport | string |  | Yes |
 
+#### ExternalAgentCardFieldErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Safe validation code: missing or invalid. Ignore unknown future codes. | Yes |
+| path | string |  | Yes |
+
 #### ExternalAgentConnectionPayload
 
 | Name | Type | Description | Required |
@@ -28226,7 +28233,9 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| card_errors | [ [ExternalAgentCardFieldErrorResponse](#externalagentcardfielderrorresponse) ] |  | No |
 | reason | [VerificationFailureReason](#verificationfailurereason) |  | Yes |
+| subreason | string | Optional evidence-backed refinement. Unknown values fall back to reason. | No |
 
 #### ExternalAgentVerificationResponse
 
