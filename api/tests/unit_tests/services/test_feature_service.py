@@ -64,13 +64,16 @@ def test_workflow_collaboration_feature_and_upgrade_use_the_loaded_plan(
 
 
 @pytest.mark.parametrize(
-    ("edition", "plan", "expected", "upgrade_available"),
+    ("edition", "plan", "enabled", "expected", "upgrade_available"),
     [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, True),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, False),
-        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, False),
-        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, False),
-        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False, True),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True, False),
+        (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, False, False, False),
+        (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, False, False),
     ],
 )
 def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
@@ -78,10 +81,11 @@ def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     plan: CloudPlan,
+    enabled: bool,
     expected: bool,
     upgrade_available: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
 
     def fill_billing(features: FeatureModel, *_args: object, **_kwargs: object) -> None:
         features.billing.subscription.plan = plan
@@ -97,26 +101,28 @@ def test_evaluation_feature_and_upgrade_use_the_loaded_plan(
 
     assert features.evaluation_enabled is expected
     assert features.evaluation_upgrade_available is upgrade_available
-    assert FeatureService.is_evaluation_supported() is (edition != DeploymentEdition.COMMUNITY)
+    assert FeatureService.is_evaluation_supported() is (enabled and edition != DeploymentEdition.COMMUNITY)
 
 
 @pytest.mark.parametrize(
-    ("edition", "plan", "expected"),
+    ("edition", "plan", "enabled", "expected"),
     [
-        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
-        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
-        (DeploymentEdition.ENTERPRISE, None, True),
-        (DeploymentEdition.COMMUNITY, None, False),
+        (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
+        (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, False, False),
+        (DeploymentEdition.ENTERPRISE, None, True, True),
+        (DeploymentEdition.COMMUNITY, None, True, False),
     ],
 )
-def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
+def test_can_use_evaluation_looks_up_the_plan_only_when_enabled_on_cloud(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     edition: DeploymentEdition,
     plan: CloudPlan | None,
+    enabled: bool,
     expected: bool,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=edition)
+    config_overrides(DEPLOYMENT_EDITION=edition, ENABLE_EVALUATION=enabled)
     plan_lookups: list[str] = []
 
     def get_workspace_plan(tenant_id: str) -> CloudPlan:
@@ -127,7 +133,7 @@ def test_can_use_evaluation_looks_up_the_plan_only_on_cloud(
     monkeypatch.setattr(FeatureService, "get_workspace_plan", get_workspace_plan)
 
     assert FeatureService.can_use_evaluation("tenant-1") is expected
-    assert plan_lookups == (["tenant-1"] if edition == DeploymentEdition.CLOUD else [])
+    assert plan_lookups == (["tenant-1"] if enabled and edition == DeploymentEdition.CLOUD else [])
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
