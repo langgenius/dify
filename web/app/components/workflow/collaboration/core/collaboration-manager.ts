@@ -136,6 +136,7 @@ type GraphSyncDiagnosticEvent = {
   }
 }
 
+const MISSING_UPDATES_REQUEST_INTERVAL = 1000
 const GRAPH_IMPORT_LOG_LIMIT = 20
 const SET_NODES_ANOMALY_LOG_LIMIT = 100
 const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
@@ -216,6 +217,10 @@ export class CollaborationManager {
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
+  private lastMissingUpdatesRequestAt = 0
+  private importFailureCount = 0
+  private missingUpdatesRequestTimer: ReturnType<typeof setTimeout> | null = null
+  private lastImportFailureBroadcastAt = 0
   private pendingImportLog: {
     timestamp: number
     sources: Set<'nodes' | 'edges'>
@@ -685,19 +690,101 @@ export class CollaborationManager {
       },
     })
 
-    this.provider = new CRDTProvider(
-      socket,
-      this.doc,
-      this.handleSessionUnauthorized,
-      this.handleSnapshotImported,
-      this.shouldImportSnapshot,
-    )
+    this.provider = new CRDTProvider(socket, this.doc, {
+      onUnauthorized: this.handleSessionUnauthorized,
+      onSnapshotImported: this.handleSnapshotImported,
+      shouldImportSnapshot: this.shouldImportSnapshot,
+      onMissingDependencies: this.handleMissingDependencies,
+      onImportFailed: this.handleImportFailed,
+    })
     this.setupSubscriptions()
+  }
+
+  /**
+   * An imported update depends on operations this replica never received, for example after the
+   * relay dropped a message. Ask peers for everything after this replica's version; a peer that
+   * holds more answers with exactly that range.
+   */
+  private handleMissingDependencies = (): void => {
+    const doc = this.doc
+    if (!doc) return
+
+    const now = Date.now()
+    const wait = this.lastMissingUpdatesRequestAt + MISSING_UPDATES_REQUEST_INTERVAL - now
+    if (wait > 0) {
+      // Send once more when the interval ends, so a request made meanwhile is not lost.
+      this.missingUpdatesRequestTimer ??= setTimeout(() => {
+        this.missingUpdatesRequestTimer = null
+        this.handleMissingDependencies()
+      }, wait)
+      return
+    }
+    this.lastMissingUpdatesRequestAt = now
+
+    this.sendCollaborationEvent({
+      type: 'graph_missing_request',
+      data: { version: doc.oplogVersion().encode() },
+      timestamp: now,
+    })
+  }
+
+  /**
+   * Answers with the operations the requester lacks, and asks back when the requester holds
+   * operations this replica lacks, such as a local update the relay dropped.
+   */
+  private answerMissingUpdatesRequest(data: Record<string, unknown>): void {
+    const doc = this.doc
+    const encodedVersion = toUint8Array(data.version)
+    if (!doc || !encodedVersion || !this.crdtTrusted) return
+
+    try {
+      const { VersionVector } = this.getCrdtRuntime()
+      const peerVersion = VersionVector.decode(encodedVersion)
+      const comparison = doc.oplogVersion().compare(peerVersion)
+      if (comparison === 1 || comparison === undefined)
+        this.sendGraphEvent(doc.export({ mode: 'update', from: peerVersion }))
+      if (comparison === -1 || comparison === undefined) this.handleMissingDependencies()
+    } catch (error) {
+      console.error('Failed to answer missing graph updates request:', error)
+    }
+  }
+
+  /**
+   * Loro rejected an update and left the document unchanged, so this replica may have diverged.
+   * A follower discards its document and waits for the leader snapshot; the leader keeps the
+   * authoritative document and republishes it.
+   */
+  private handleImportFailed = (error: unknown): void => {
+    console.error('Error importing graph update:', error)
+    const socket = this.getActiveSocket()
+    if (!socket?.connected || !this.doc) return
+
+    // A failure that repeats deterministically must not turn into a snapshot loop, so each
+    // recovery waits longer than the previous one.
+    const failures = this.importFailureCount
+    this.importFailureCount += 1
+
+    if (this.isLeader) {
+      const now = Date.now()
+      if (now - this.lastImportFailureBroadcastAt < GRAPH_RESYNC_RETRY_MAX_DELAY) return
+      this.lastImportFailureBroadcastAt = now
+      this.broadcastCurrentGraph()
+      return
+    }
+
+    this.initializeCrdt(socket)
+    this.crdtTrusted = false
+    this.awaitingSnapshotImport = true
+    this.emitGraphReadyState()
+    this.clearInitialSyncRetry()
+    this.initialSyncRetryAttempt = failures
+    this.scheduleInitialSyncRetry()
   }
 
   private handleSnapshotImported = (): void => {
     if (!this.awaitingSnapshotImport) return
 
+    this.importFailureCount = 0
     const shouldBroadcastSnapshot = this.isLeader && this.pendingGraphResyncBroadcast
     this.clearInitialSyncRetry()
     this.refreshGraphSynchronously()
@@ -807,6 +894,9 @@ export class CollaborationManager {
     this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
     this.undoManager = null
+    this.importFailureCount = 0
+    if (this.missingUpdatesRequestTimer) clearTimeout(this.missingUpdatesRequestTimer)
+    this.missingUpdatesRequestTimer = null
     this.doc = null
     this.provider = null
     this.nodesMap = null
@@ -1623,7 +1713,7 @@ export class CollaborationManager {
     const payload = {
       appId: this.currentAppId,
       generatedAt: new Date().toISOString(),
-      entries: this.graphImportLogs,
+      entries: this.getGraphImportLog(),
       setNodesAnomalies: this.setNodesAnomalyLogs,
       syncDiagnostics: this.graphSyncDiagnostics,
       summary: {
@@ -1747,10 +1837,12 @@ export class CollaborationManager {
       }
     }
 
+    // React Flow replaces node and edge objects on change, so keeping references records the
+    // graph at this moment without copying it on every import. Readers clone on export.
     const state = this.reactFlowStore.getState()
     return {
-      nodes: cloneDeep(state.getNodes()),
-      edges: cloneDeep(state.getEdges()),
+      nodes: [...state.getNodes()],
+      edges: [...state.getEdges()],
     }
   }
 
@@ -1763,10 +1855,7 @@ export class CollaborationManager {
       this.pendingImportLog = {
         timestamp: Date.now(),
         sources: new Set([source]),
-        before: {
-          nodes: cloneDeep(snapshot.nodes),
-          edges: cloneDeep(snapshot.edges),
-        },
+        before: snapshot,
       }
       this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'created', {
         source,
@@ -1797,10 +1886,7 @@ export class CollaborationManager {
         nodes: this.pendingImportLog.before.nodes,
         edges: this.pendingImportLog.before.edges,
       },
-      after: {
-        nodes: cloneDeep(afterSnapshot.nodes),
-        edges: cloneDeep(afterSnapshot.edges),
-      },
+      after: afterSnapshot,
       meta: {
         leaderId: this.leaderId,
         isLeader: this.isLeader,
@@ -1888,6 +1974,8 @@ export class CollaborationManager {
             requestId,
             acknowledge,
           } satisfies WorkflowSyncRequest)
+        } else if (update.type === 'graph_missing_request') {
+          this.answerMissingUpdatesRequest(update.data)
         } else if (update.type === 'graph_resync_request') {
           // The server sends this only to its selected snapshot source. Its routing decision is
           // authoritative even if the preceding local leader status event is still in flight.
@@ -1981,6 +2069,9 @@ export class CollaborationManager {
         if (wasLeader !== this.isLeader) this.eventEmitter.emit('leaderChange', this.isLeader)
 
         this.emitGraphReadyState()
+        // A rejoin keeps a trusted document; updates sent while the session was lost may be
+        // missing on either side, so compare versions with the room.
+        if (this.crdtTrusted) this.handleMissingDependencies()
 
         // The server recreates the session on every (re)join. Re-report both visible and hidden
         // states with a monotonically increasing sequence so stale deliveries cannot win.
@@ -2007,6 +2098,7 @@ export class CollaborationManager {
     })
 
     socket.on('disconnect', (reason) => {
+      this.importFailureCount = 0
       this.joinPending = false
       this.rejoinInProgress = false
       this.joinAttempt += 1

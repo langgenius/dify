@@ -100,3 +100,13 @@ export const createCollaborationTestEnvironment = () => {
 
   return { createSession, connect, transports, setup, cleanup }
 }
+
+export const withData = (node: Node, data: Record<string, unknown>): Node => ({
+  ...node,
+  data: { ...node.data, ...data },
+})
+
+export const graphUpdates = (emit: { mock: { calls: unknown[][] } }) =>
+  emit.mock.calls
+    .filter(([event]) => event === 'graph_event')
+    .map(([, payload]) => payload as Uint8Array)

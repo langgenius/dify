@@ -642,8 +642,8 @@ catalogs:
       specifier: 1.0.4
       version: 1.0.4
     loro-crdt:
-      specifier: 1.17.1
-      version: 1.17.1
+      specifier: 1.19.1
+      version: 1.19.1
     mediabunny:
       specifier: 1.66.0
       version: 1.66.0
@@ -1690,7 +1690,7 @@ importers:
         version: 0.53.0(@typescript/typescript6@6.0.2)
       loro-crdt:
         specifier: 'catalog:'
-        version: 1.17.1
+        version: 1.19.1
       mediabunny:
         specifier: 'catalog:'
         version: 1.66.0
@@ -7386,8 +7386,8 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  loro-crdt@1.17.1:
-    resolution: {integrity: sha512-83hWRYG6eMMpPezm+yXWlOqCuUsC0BYY1MVCPW9x2zlikgkHhL7GC7Q6JFH+Hjvauyn287Q1MiwTuRW0lUOUag==}
+  loro-crdt@1.19.1:
+    resolution: {integrity: sha512-i0CO94+fJEbmdsl2FrJQXmH/5MzvsTmzH8nrHK6BU0IZSZlbnFaWQ7nzZPKAGxUW3avTzxCVN8w1MJ6lrtIkmQ==}
 
   loupe@3.2.1:
     resolution: {integrity: sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==}
@@ -14426,7 +14426,7 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  loro-crdt@1.17.1: {}
+  loro-crdt@1.19.1: {}
 
   loupe@3.2.1: {}
 
@@ -16979,7 +16979,7 @@ time:
   ky@2.2.0: '2026-10-09T06:32:47.556Z'
   lexical@0.53.0: '2026-10-28T15:51:00.845Z'
   lockfile@1.0.4: '2018-04-17T00:36:12.565Z'
-  loro-crdt@1.17.1: '2026-10-22T16:52:09.593Z'
+  loro-crdt@1.19.1: '2026-11-24T15:57:48.796Z'
   mediabunny@1.66.0: '2026-11-13T16:21:06.252Z'
   mime@4.1.2: '2026-10-27T14:15:05.422Z'
   mitt@3.0.1: '2023-07-04T17:31:47.638Z'
