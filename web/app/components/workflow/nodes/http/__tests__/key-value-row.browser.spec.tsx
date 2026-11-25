@@ -21,6 +21,8 @@ import { AuthorizationType, BodyType, Method } from '../types'
 it.each([
   { field: 'headers', keyIndex: 1, valueIndex: 2, key: 'x-token', value: 'abc123' },
   { field: 'params', keyIndex: 3, valueIndex: 4, key: 'page', value: '12345' },
+  { field: BodyType.formData, keyIndex: 5, valueIndex: 6, key: 'name', value: 'Alice' },
+  { field: BodyType.xWwwFormUrlencoded, keyIndex: 5, valueIndex: 6, key: 'count', value: '123' },
 ] as const)(
   'keeps the $field row focused and saves the complete value while typing',
   async ({ field, keyIndex, valueIndex, key, value }) => {
@@ -38,7 +40,7 @@ it.each([
       desc: '',
       type: BlockEnum.HttpRequest,
       variables: [],
-      method: Method.get,
+      method: Method.post,
       url: 'https://api.example.com',
       authorization: { type: AuthorizationType.none },
       headers: '',
@@ -85,6 +87,8 @@ it.each([
         </EditorResourceScope>
       </QueryProvider>,
     )
+    const isBody = field === BodyType.formData || field === BodyType.xWwwFormUrlencoded
+    if (isBody) await screen.getByRole('radio', { name: field, exact: true }).click()
     const keyInput = screen.getByRole('textbox').nth(keyIndex)
     const valueInput = screen.getByRole('textbox').nth(valueIndex)
     await keyInput.click()
@@ -93,12 +97,29 @@ it.each([
     await valueInput.click()
     await expect.element(valueInput).toHaveFocus()
     await userEvent.keyboard(value[0]!)
+    if (isBody) {
+      await expect
+        .poll(() => flow.getNode('http-node')!.data.body.data)
+        .toMatchObject([
+          { key, value: value[0]! },
+          { key: '', value: '' },
+        ])
+    }
     await expect.element(valueInput).toHaveFocus()
     await userEvent.keyboard(value.slice(1))
     await expect.element(valueInput).toHaveTextContent(value)
     await expect.element(valueInput).toHaveFocus()
     await expect.element(keyInput).toHaveTextContent(key)
-    await expect.poll(() => flow.getNode('http-node')!.data[field]).toBe(`${key}:${value}`)
+    if (isBody) {
+      await expect
+        .poll(() => flow.getNode('http-node')!.data.body.data)
+        .toMatchObject([
+          { key, value, type: 'text' },
+          { key: '', value: '', type: 'text' },
+        ])
+    } else {
+      await expect.poll(() => flow.getNode('http-node')!.data[field]).toBe(`${key}:${value}`)
+    }
     queryClient.clear()
   },
 )
