@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import DSLImportWarningDescription from '../dsl-import-warning-description'
+import DSLImportWarningDescription from '../warning-description'
 
 describe('DSLImportWarningDescription', () => {
   it('should render each distinct warning on its own row', () => {
