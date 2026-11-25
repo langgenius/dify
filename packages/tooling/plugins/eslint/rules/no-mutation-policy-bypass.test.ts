@@ -65,3 +65,28 @@ it('reports policy callbacks called by hand', () => {
     ),
   ).toEqual([1, 3])
 })
+
+it('ignores unrelated bindings that share a name with mutation options', () => {
+  expect(
+    lintFixture(
+      [
+        'function save() {',
+        '  const options = query.a.mutationOptions()',
+        '  return useMutation(options)',
+        '}',
+        'function notify(options) {',
+        '  options.onSuccess?.()',
+        '  return { ...options, onError() {} }',
+        '}',
+        'function shadowed() {',
+        '  const options = query.b.mutationOptions()',
+        '  {',
+        '    const options = {}',
+        '    options.onSettled?.()',
+        '  }',
+        '  options.onSettled?.()',
+        '}',
+      ].join('\n'),
+    ),
+  ).toEqual([15])
+})

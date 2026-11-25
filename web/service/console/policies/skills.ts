@@ -58,7 +58,13 @@ export function skillPolicies(
         // Metadata writes return the full detail: write it instead of refetching it.
         patch: {
           mutationOptions: {
-            onSuccess: (detail, { params, body }, _result, { client }) => {
+            onSuccess: async (detail, { params, body }, _result, { client }) => {
+              // A detail refetch started before the save must not overwrite it.
+              await client.cancelQueries({
+                queryKey: consoleQuery.workspaces.current.skills.bySkillId.get.key({
+                  input: { params: { skill_id: params.skill_id } },
+                }),
+              })
               setSkillDetailCache(consoleQuery, client, params.skill_id, detail)
               const input = { params: { skill_id: params.skill_id } }
               void invalidateQueryKeys(client, [
