@@ -15,7 +15,7 @@ from typing import ClassVar, Final, override
 
 from flask import request
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, ServiceUnavailable
+from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable
 
 from configs import dify_config
 from constants.oauth_bearer import Scope, TokenType
@@ -39,8 +39,15 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
+from controllers.openapi.auth.loaders import (
+    load_app,
+    load_caller,
+    load_workspace,
+    load_workspace_role,
+    route_has_app,
+    route_has_workspace,
+)
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from models import AppMode
@@ -122,15 +129,20 @@ class CheckWorkspaceMember(Requirement):
 
     Which workspace that is follows from the route — the app's on an app-scoped
     one, the path or query parameter otherwise — so this one requirement serves
-    both. It cannot be inferred and left implicit: `GET /apps` takes its
-    workspace from the query string, and `GET /workspaces/<workspace_id>` has
-    the path parameter but gets no membership check.
+    both. A request that addresses no workspace (`get.console_app` without
+    `workspace_id`) is not checked. An external SSO login belongs to no
+    workspace, so a workspace it names is refused as a non-member's is.
     """
 
     rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if not route_has_workspace(ctx):
+            return
+        if isinstance(subject, ExternalSsoSubject):
+            if not route_has_app(ctx):
+                raise NotFound("workspace not found")
         if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         load_workspace_role(ctx)
