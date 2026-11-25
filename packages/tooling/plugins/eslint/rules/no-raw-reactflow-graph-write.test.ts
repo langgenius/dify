@@ -163,3 +163,24 @@ it('reports graph writes chained directly off useStoreApi()', () => {
     ),
   ).toEqual([2, 3, 4, 6])
 })
+
+it('reports graph keys returned from any branch of a functional setState update', () => {
+  expect(
+    lintFixture(
+      [
+        'function useHook(id: string) {',
+        '  const store = useStoreApi()',
+        '  store.setState((state) => {',
+        '    if (!state.nodes.length) return {}',
+        '    for (const node of state.nodes) {',
+        '      if (node.id === id) return { nodes: [node] }',
+        '    }',
+        '    const pick = () => ({ edges: [] })',
+        '    return state.userSelectionActive ? { edges: [] } : { transform: pick() }',
+        '  })',
+        '  store.setState((state) => (state.nodes.length ? { nodes: [] } : {}))',
+        '}',
+      ].join('\n'),
+    ),
+  ).toEqual([6, 9, 11])
+})

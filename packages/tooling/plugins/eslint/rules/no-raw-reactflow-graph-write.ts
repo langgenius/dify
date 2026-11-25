@@ -40,15 +40,42 @@ function propertyName(node: Node) {
   return undefined
 }
 
+const FUNCTION_TYPES = new Set([
+  'ArrowFunctionExpression',
+  'FunctionDeclaration',
+  'FunctionExpression',
+])
+
+function objectsIn(expression: Node | null | undefined): Node[] {
+  if (!expression) return []
+  if (expression.type === 'ObjectExpression') return [expression]
+  if (expression.type === 'ConditionalExpression')
+    return [...objectsIn(expression.consequent as Node), ...objectsIn(expression.alternate as Node)]
+  if (expression.type === 'LogicalExpression')
+    return [...objectsIn(expression.left as Node), ...objectsIn(expression.right as Node)]
+  return []
+}
+
+function returnStatementsIn(node: Node): Node[] {
+  if (node.type === 'ReturnStatement') return [node]
+  const returns: Node[] = []
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'parent') continue
+    for (const child of Array.isArray(value) ? value : [value]) {
+      if (!child || typeof child !== 'object' || typeof child.type !== 'string') continue
+      if (FUNCTION_TYPES.has(child.type)) continue
+      returns.push(...returnStatementsIn(child as Node))
+    }
+  }
+  return returns
+}
+
 function returnedObjects(fn: Node): Node[] {
   if (fn.type !== 'ArrowFunctionExpression' && fn.type !== 'FunctionExpression') return []
   const body = fn.body as Node
-  if (body.type === 'ObjectExpression') return [body]
-  if (body.type !== 'BlockStatement') return []
-  return body.body.flatMap((statement) =>
-    statement.type === 'ReturnStatement' && statement.argument?.type === 'ObjectExpression'
-      ? [statement.argument as Node]
-      : [],
+  if (body.type !== 'BlockStatement') return objectsIn(body)
+  return returnStatementsIn(body).flatMap((statement) =>
+    statement.type === 'ReturnStatement' ? objectsIn(statement.argument as Node) : [],
   )
 }
 
