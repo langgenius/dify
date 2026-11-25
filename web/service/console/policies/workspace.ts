@@ -182,7 +182,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             },
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+              void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
             },
           },
         },
@@ -191,7 +191,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
-                return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
               },
             },
           },
@@ -199,7 +199,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
-                return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
+                void invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
               },
             },
           },
@@ -210,23 +210,23 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         roles: {
           post: {
             mutationOptions: {
-              onSettled: (_data, error, _variables, _result, context) =>
-                error
-                  ? undefined
-                  : context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                    }),
+              onSettled: (_data, error, _variables, _result, { client }) => {
+                if (error) return
+                void invalidateQueryKeys(client, [
+                  consoleQuery.workspaces.current.rbac.roles.get.key(),
+                ])
+              },
             },
           },
           byRoleId: {
             put: {
               mutationOptions: {
-                onSettled: (_data, error, _variables, _result, context) =>
-                  error
-                    ? undefined
-                    : context.client.invalidateQueries({
-                        queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                      }),
+                onSettled: (_data, error, _variables, _result, { client }) => {
+                  if (error) return
+                  void invalidateQueryKeys(client, [
+                    consoleQuery.workspaces.current.rbac.roles.get.key(),
+                  ])
+                },
               },
             },
             delete: {
@@ -259,18 +259,15 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             copy: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, variables, _result, context) =>
-                    error
-                      ? undefined
-                      : Promise.all([
-                          context.client.invalidateQueries({
-                            queryKey: consoleQuery.workspaces.current.rbac.roles.get.key(),
-                          }),
-                          variables.body?.copy_member &&
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.workspaces.current.members.get.key(),
-                            }),
-                        ]),
+                  onSettled: (_data, error, variables, _result, { client }) => {
+                    if (error) return
+                    void invalidateQueryKeys(client, [
+                      consoleQuery.workspaces.current.rbac.roles.get.key(),
+                      ...(variables.body?.copy_member
+                        ? [consoleQuery.workspaces.current.members.get.key()]
+                        : []),
+                    ])
+                  },
                 },
               },
             },
@@ -281,20 +278,15 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             rbacRoles: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, error, variables, _result, context) =>
-                    error
-                      ? undefined
-                      : Promise.all([
-                          context.client.invalidateQueries({
-                            queryKey:
-                              consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.key(
-                                { input: { params: variables.params } },
-                              ),
-                          }),
-                          context.client.invalidateQueries({
-                            queryKey: consoleQuery.workspaces.current.members.get.key(),
-                          }),
-                        ]),
+                  onSettled: (_data, error, variables, _result, { client }) => {
+                    if (error) return
+                    void invalidateQueryKeys(client, [
+                      consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.key({
+                        input: { params: variables.params },
+                      }),
+                      consoleQuery.workspaces.current.members.get.key(),
+                    ])
+                  },
                 },
               },
             },
@@ -305,7 +297,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
-                return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                void invalidateAccessPolicyQueries(consoleQuery, context.client)
               },
             },
           },
@@ -314,7 +306,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               mutationOptions: {
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
-                  return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                  void invalidateAccessPolicyQueries(consoleQuery, context.client)
                 },
               },
             },
@@ -331,7 +323,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
                     if (error) return
-                    return invalidateAccessPolicyQueries(consoleQuery, context.client)
+                    void invalidateAccessPolicyQueries(consoleQuery, context.client)
                   },
                 },
               },
@@ -345,6 +337,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 mutationOptions: {
                   onSettled: (_data, error, variables, _result, context) => {
                     if (error) return
+                    // The access page shows the pending scope toggle until the refreshed config lands.
                     return invalidateAgentAccessQueries(
                       consoleQuery,
                       context.client,
@@ -361,6 +354,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                     mutationOptions: {
                       onSettled: (_data, error, variables, _result, context) => {
                         if (error) return
+                        // The access page keeps the member row and add menu busy until the refreshed list lands.
                         return invalidateAgentAccessQueries(
                           consoleQuery,
                           context.client,
@@ -379,6 +373,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                     mutationOptions: {
                       onSettled: (_data, error, variables, _result, context) => {
                         if (error) return
+                        // The access page keeps removed rows busy until the refreshed list lands.
                         return invalidateAgentAccessQueries(
                           consoleQuery,
                           context.client,
@@ -400,6 +395,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
     customConfig: {
       post: {
         mutationOptions: {
+          // The web app brand switch and logo read the refreshed config once the save resolves.
           onSuccess: (_data, _variables, _result, { client }) =>
             client.invalidateQueries({
               queryKey: consoleQuery.workspaces.customConfig.get.key(),
@@ -420,18 +416,22 @@ function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client
   ])
 }
 
+// Returns once the agent's access settings have refreshed; permissions and agent
+// lists refresh in the background.
 function invalidateAgentAccessQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   agentId: string,
 ) {
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.rbac.agents.byAgentId.key({
-      input: { params: { agent_id: agentId } },
-    }),
+  void invalidateQueryKeys(client, [
     query.workspaces.current.rbac.myPermissions.get.key(),
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.rbac.agents.byAgentId.key({
+      input: { params: { agent_id: agentId } },
+    }),
   ])
 }

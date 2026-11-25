@@ -1,7 +1,8 @@
-import type { MutationFunctionContext } from '@tanstack/react-query'
-import { QueryClient } from '@tanstack/react-query'
+import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
+import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 
 const clients: QueryClient[] = []
 const setup = () => {
@@ -166,5 +167,156 @@ describe('workflow publish policies', () => {
       consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
       consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
     ])
+  })
+})
+
+describe('mutations and the refetches they start', () => {
+  type Callback = (...args: unknown[]) => unknown
+  const workspace = consoleQuery.workspaces.current
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+  const unsubscribers: Array<() => void> = []
+
+  afterEach(() => {
+    for (const unsubscribe of unsubscribers.splice(0)) unsubscribe()
+  })
+
+  /** Mounts a loaded query whose next response resolves only when the test says so. */
+  async function mountLoaded(client: QueryClient, queryKey: QueryKey) {
+    const refetch = createDeferred<unknown>()
+    const queryFn = vi
+      .fn<() => Promise<unknown>>()
+      .mockResolvedValueOnce({ loaded: true })
+      .mockReturnValue(refetch.promise)
+    const observer = new QueryObserver(client, { queryKey, queryFn })
+    unsubscribers.push(observer.subscribe(() => undefined))
+    await settle()
+    return { queryFn, refetch }
+  }
+
+  /** Runs a policy callback and reports whether the promise it returned has settled. */
+  function track(result: unknown) {
+    const state = { done: false }
+    void Promise.resolve(result).then(() => {
+      state.done = true
+    })
+    return state
+  }
+
+  const provider = { provider: 'provider-1' }
+  it.each<[string, QueryKey, () => Callback, unknown[]]>([
+    [
+      'builtin tool credential add',
+      workspace.toolProvider.builtin.byProvider.credential.info.get.key({
+        input: { params: provider },
+      }),
+      () =>
+        workspace.toolProvider.builtin.byProvider.add.post.mutationOptions().onSuccess as Callback,
+      [{}, { params: provider }, undefined],
+    ],
+    [
+      'builtin tool OAuth client save',
+      workspace.toolProvider.builtin.byProvider.oauth.customClient.get.key({
+        input: { params: provider },
+      }),
+      () =>
+        workspace.toolProvider.builtin.byProvider.oauth.customClient.post.mutationOptions()
+          .onSuccess as Callback,
+      [{}, { params: provider }, undefined],
+    ],
+    [
+      'endpoint delete',
+      workspace.endpoints.list.key(),
+      () => workspace.endpoints.byId.delete.mutationOptions().onSettled as Callback,
+      [{}, null, { params: { id: 'endpoint-1' } }, undefined],
+    ],
+    [
+      'network access group update',
+      workspace.networkAccessGroups.get.key(),
+      () => workspace.networkAccessGroups.byGroupId.put.mutationOptions().onSettled as Callback,
+      [{}, null, { params: { group_id: 'group-1' } }, undefined],
+    ],
+    [
+      'role creation',
+      workspace.rbac.roles.get.key(),
+      () => workspace.rbac.roles.post.mutationOptions().onSettled as Callback,
+      [{}, null, { body: {} }, undefined],
+    ],
+    [
+      'external contact creation',
+      workspace.humanInput.v2.contacts.key(),
+      () => workspace.humanInput.v2.contacts.external.post.mutationOptions().onSuccess as Callback,
+      [{}, { body: {} }, undefined],
+    ],
+    [
+      'IM channel update',
+      workspace.humanInput.v2.channels.get.key(),
+      () =>
+        workspace.humanInput.v2.channels.im.byChannelId.put.mutationOptions().onSettled as Callback,
+      [{}, null, { params: { channel_id: 'channel-1' } }, undefined],
+    ],
+  ])('%s starts the refetch without waiting for it', async (_, queryKey, policy, args) => {
+    const { client, context } = setup()
+    const { queryFn, refetch } = await mountLoaded(client, queryKey)
+
+    const result = policy()(...args, context)
+    await settle()
+
+    expect(result).toBeUndefined()
+    expect(queryFn).toHaveBeenCalledTimes(2)
+    refetch.resolve({ loaded: true })
+  })
+
+  it('waits for the endpoint list, not plugin counts, after toggling an endpoint', async () => {
+    const { client, context } = setup()
+    const list = await mountLoaded(client, workspace.endpoints.list.key())
+    const plugins = await mountLoaded(client, workspace.plugin.list.get.key())
+    const { onSettled } = workspace.endpoints.enable.post.mutationOptions()
+
+    const state = track(
+      (onSettled as Callback)(
+        {},
+        null,
+        { body: { endpoint_id: 'endpoint-1' } },
+        undefined,
+        context,
+      ),
+    )
+    await settle()
+    expect(plugins.queryFn).toHaveBeenCalledTimes(2)
+    expect(state.done).toBe(false)
+
+    list.refetch.resolve({ loaded: true })
+    await settle()
+    expect(state.done).toBe(true)
+    plugins.refetch.resolve({ loaded: true })
+  })
+
+  it('waits for the agent access settings, not agent lists, after changing the scope', async () => {
+    const { client, context } = setup()
+    const params = { agent_id: 'agent-1' }
+    const settings = await mountLoaded(
+      client,
+      workspace.rbac.agents.byAgentId.key({ input: { params } }),
+    )
+    const agents = await mountLoaded(client, consoleQuery.agent.get.key())
+    const { onSettled } = workspace.rbac.agents.byAgentId.whitelist.put.mutationOptions()
+
+    const state = track(
+      (onSettled as Callback)(
+        {},
+        null,
+        { params, body: { automatic_include_workspace_members: true } },
+        undefined,
+        context,
+      ),
+    )
+    await settle()
+    expect(agents.queryFn).toHaveBeenCalledTimes(2)
+    expect(state.done).toBe(false)
+
+    settings.refetch.resolve({ loaded: true })
+    await settle()
+    expect(state.done).toBe(true)
+    agents.refetch.resolve({ loaded: true })
   })
 })

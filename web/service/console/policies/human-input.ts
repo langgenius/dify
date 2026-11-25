@@ -14,8 +14,9 @@ export function humanInputPolicies(
           platform: {
             post: {
               mutationOptions: {
-                onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                  void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                },
               },
             },
           },
@@ -23,28 +24,32 @@ export function humanInputPolicies(
             imBindings: {
               put: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
                 },
               },
             },
             imOverride: {
               put: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
                 },
               },
             },
@@ -52,15 +57,17 @@ export function humanInputPolicies(
           external: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                },
               },
             },
             byContactId: {
               patch: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputContactQueries(consoleQuery, context.client),
+                  onSuccess: (_data, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                  },
                 },
               },
             },
@@ -68,8 +75,9 @@ export function humanInputPolicies(
           remove: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputContactQueries(consoleQuery, context.client),
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void invalidateHumanInputContactQueries(consoleQuery, context.client)
+                },
               },
             },
           },
@@ -82,7 +90,7 @@ export function humanInputPolicies(
                   consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.get.queryKey(),
                   data,
                 )
-                return context.client.resetQueries({
+                void context.client.resetQueries({
                   queryKey:
                     consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest.results.key(),
                 })
@@ -94,21 +102,24 @@ export function humanInputPolicies(
           email: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                },
               },
             },
             byChannelId: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                  },
                 },
               },
             },
@@ -116,28 +127,32 @@ export function humanInputPolicies(
           im: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, _variables, _onMutateResult, context) =>
-                  invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                },
               },
             },
             byChannelId: {
               put: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                    invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                  onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                    void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                  },
                 },
               },
               replacement: {
                 post: {
                   mutationOptions: {
-                    onSettled: (_data, _error, _variables, _onMutateResult, context) =>
-                      invalidateHumanInputChannelQueries(consoleQuery, context.client),
+                    onSettled: (_data, _error, _variables, _onMutateResult, context) => {
+                      void invalidateHumanInputChannelQueries(consoleQuery, context.client)
+                    },
                   },
                 },
               },

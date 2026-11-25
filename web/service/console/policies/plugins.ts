@@ -91,48 +91,18 @@ export function workspacePluginPolicies(
           add: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
-                  Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
-                    }),
-                  ]),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
+                },
               },
             },
           },
           update: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
-                  Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
-                    }),
-                  ]),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
+                },
               },
             },
           },
@@ -140,40 +110,16 @@ export function workspacePluginPolicies(
             customClient: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey:
-                          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key(
-                            { input: { params: { provider: variables.params.provider } } },
-                          ),
-                      }),
-                      context.client.invalidateQueries({
-                        queryKey:
-                          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.customClient.get.key(
-                            { input: { params: { provider: variables.params.provider } } },
-                          ),
-                      }),
-                    ]),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider)
+                  },
                 },
               },
               delete: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey:
-                          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get.key(
-                            { input: { params: { provider: variables.params.provider } } },
-                          ),
-                      }),
-                      context.client.invalidateQueries({
-                        queryKey:
-                          consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.customClient.get.key(
-                            { input: { params: { provider: variables.params.provider } } },
-                          ),
-                      }),
-                    ]),
+                  onSuccess: (_data, { params }, _result, { client }) => {
+                    void invalidateBuiltinOAuthClientQueries(consoleQuery, client, params.provider)
+                  },
                 },
               },
             },
@@ -181,48 +127,18 @@ export function workspacePluginPolicies(
           defaultCredential: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
-                  Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
-                    }),
-                  ]),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
+                },
               },
             },
           },
           delete: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, variables, _result, context) =>
-                  Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.info.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credentials.get.key(
-                          { input: { params: { provider: variables.params.provider } } },
-                        ),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.workspaces.current.tools.builtin.get.key(),
-                    }),
-                  ]),
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
+                },
               },
             },
           },
@@ -254,11 +170,11 @@ export function workspacePluginPolicies(
             mutationOptions: {
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
                     input: { query: { category: variables.body.category } },
                   }),
-                })
+                ])
               },
             },
           },
@@ -309,37 +225,42 @@ export function workspacePluginPolicies(
     endpoints: {
       post: {
         mutationOptions: {
-          onSettled: (_data, _error, _variables, _result, { client }) =>
-            invalidateEndpointQueries(consoleQuery, client),
+          onSettled: (_data, _error, _variables, _result, { client }) => {
+            void invalidateEndpointQueries(consoleQuery, client)
+          },
         },
       },
       byId: {
         patch: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            onSettled: (_data, _error, _variables, _result, { client }) => {
+              void invalidateEndpointQueries(consoleQuery, client)
+            },
           },
         },
         delete: {
           mutationOptions: {
-            onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+            onSettled: (_data, _error, _variables, _result, { client }) => {
+              void invalidateEndpointQueries(consoleQuery, client)
+            },
           },
         },
       },
       enable: {
         post: {
           mutationOptions: {
+            // The endpoint switch reads the refreshed list and stays disabled until it lands.
             onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+              invalidateEndpointToggleQueries(consoleQuery, client),
           },
         },
       },
       disable: {
         post: {
           mutationOptions: {
+            // The endpoint switch reads the refreshed list and stays disabled until it lands.
             onSettled: (_data, _error, _variables, _result, { client }) =>
-              invalidateEndpointQueries(consoleQuery, client),
+              invalidateEndpointToggleQueries(consoleQuery, client),
           },
         },
       },
@@ -352,5 +273,41 @@ function invalidateEndpointQueries(query: ConsoleQuery, client: QueryClient) {
     query.workspaces.current.endpoints.list.key(),
     query.workspaces.current.plugin.list.get.key(),
     query.workspaces.current.plugin.byCategory.list.get.key(),
+  ])
+}
+
+// Returns once the endpoint list has refreshed; plugin list counts refresh in the background.
+function invalidateEndpointToggleQueries(query: ConsoleQuery, client: QueryClient) {
+  void invalidateQueryKeys(client, [
+    query.workspaces.current.plugin.list.get.key(),
+    query.workspaces.current.plugin.byCategory.list.get.key(),
+  ])
+  return invalidateQueryKeys(client, [query.workspaces.current.endpoints.list.key()])
+}
+
+function invalidateBuiltinCredentialQueries(
+  query: ConsoleQuery,
+  client: QueryClient,
+  provider: string,
+) {
+  const input = { input: { params: { provider } } }
+  const builtin = query.workspaces.current.toolProvider.builtin.byProvider
+  return invalidateQueryKeys(client, [
+    builtin.credential.info.get.key(input),
+    builtin.credentials.get.key(input),
+    query.workspaces.current.tools.builtin.get.key(),
+  ])
+}
+
+function invalidateBuiltinOAuthClientQueries(
+  query: ConsoleQuery,
+  client: QueryClient,
+  provider: string,
+) {
+  const input = { input: { params: { provider } } }
+  const oauth = query.workspaces.current.toolProvider.builtin.byProvider.oauth
+  return invalidateQueryKeys(client, [
+    oauth.clientSchema.get.key(input),
+    oauth.customClient.get.key(input),
   ])
 }
