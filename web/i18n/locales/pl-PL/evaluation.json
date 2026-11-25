@@ -170,5 +170,7 @@
   "results.status.passed": "Zaliczone",
   "results.title": "Szczegóły testu",
   "title": "Ewaluacja",
-  "unavailableUntilPublished": "Najpierw opublikuj, aby skonfigurować ocenę."
+  "unavailableUntilPublished": "Najpierw opublikuj, aby skonfigurować ocenę.",
+  "upgradePreview.description": "Przejdź na plan Professional lub Team, aby konfigurować metryki i uruchamiać testy wsadowe na własnych danych.",
+  "upgradePreview.title": "Przeglądasz podgląd ewaluacji z przykładowymi danymi"
 }

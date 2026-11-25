@@ -168,5 +168,7 @@
   "results.status.passed": "통과",
   "results.title": "테스트 상세 정보",
   "title": "평가",
-  "unavailableUntilPublished": "평가를 설정하려면 먼저 게시하세요."
+  "unavailableUntilPublished": "평가를 설정하려면 먼저 게시하세요.",
+  "upgradePreview.description": "Professional 또는 Team 플랜으로 업그레이드하면 지표를 구성하고 자체 데이터로 배치 테스트를 실행할 수 있습니다.",
+  "upgradePreview.title": "샘플 데이터로 평가를 미리 보고 있습니다"
 }

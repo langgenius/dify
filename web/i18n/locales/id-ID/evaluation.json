@@ -168,5 +168,7 @@
   "results.status.passed": "Lulus",
   "results.title": "Detail Pengujian",
   "title": "Evaluasi",
-  "unavailableUntilPublished": "Terbitkan terlebih dahulu untuk menyiapkan evaluasi."
+  "unavailableUntilPublished": "Terbitkan terlebih dahulu untuk menyiapkan evaluasi.",
+  "upgradePreview.description": "Tingkatkan ke paket Professional atau Team untuk mengonfigurasi metrik dan menjalankan pengujian batch pada data Anda sendiri.",
+  "upgradePreview.title": "Anda sedang melihat pratinjau Evaluasi dengan data contoh"
 }

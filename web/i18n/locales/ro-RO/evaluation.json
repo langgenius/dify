@@ -169,5 +169,7 @@
   "results.status.passed": "Trecut",
   "results.title": "Detaliile testului",
   "title": "Evaluare",
-  "unavailableUntilPublished": "Publicați mai întâi pentru a configura evaluarea."
+  "unavailableUntilPublished": "Publicați mai întâi pentru a configura evaluarea.",
+  "upgradePreview.description": "Faceți upgrade la un plan Professional sau Team pentru a configura metrici și a rula teste în lot pe propriile date.",
+  "upgradePreview.title": "Previzualizați evaluarea cu date exemplu"
 }

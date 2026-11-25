@@ -168,5 +168,7 @@
   "results.status.passed": "पास",
   "results.title": "परीक्षण विवरण",
   "title": "मूल्यांकन",
-  "unavailableUntilPublished": "मूल्यांकन सेट करने के लिए पहले प्रकाशित करें।"
+  "unavailableUntilPublished": "मूल्यांकन सेट करने के लिए पहले प्रकाशित करें।",
+  "upgradePreview.description": "मेट्रिक्स कॉन्फ़िगर करने और अपने डेटा पर बैच टेस्ट चलाने के लिए Professional या Team प्लान में अपग्रेड करें।",
+  "upgradePreview.title": "आप नमूना डेटा के साथ मूल्यांकन का पूर्वावलोकन कर रहे हैं"
 }

@@ -169,5 +169,7 @@
   "results.status.passed": "Aprovado",
   "results.title": "Detalhes do teste",
   "title": "Avaliação",
-  "unavailableUntilPublished": "Publique primeiro para configurar a avaliação."
+  "unavailableUntilPublished": "Publique primeiro para configurar a avaliação.",
+  "upgradePreview.description": "Faça upgrade para um plano Professional ou Team para configurar métricas e executar testes em lote com seus próprios dados.",
+  "upgradePreview.title": "Você está visualizando a avaliação com dados de exemplo"
 }

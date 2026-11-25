@@ -3602,6 +3602,8 @@ export default interface Resources {
     'results.title': 'Test Details'
     title: 'Evaluation'
     unavailableUntilPublished: 'Publish first to set up evaluation.'
+    'upgradePreview.description': 'Upgrade to a Professional or Team plan to configure metrics and run batch tests on your own data.'
+    'upgradePreview.title': "You're previewing Evaluation with sample data"
   }
   explore: {
     'appCard.try': 'Details'

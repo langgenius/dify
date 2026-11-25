@@ -168,5 +168,7 @@
   "results.status.passed": "Đạt",
   "results.title": "Chi tiết kiểm thử",
   "title": "Đánh giá",
-  "unavailableUntilPublished": "Hãy xuất bản trước để thiết lập đánh giá."
+  "unavailableUntilPublished": "Hãy xuất bản trước để thiết lập đánh giá.",
+  "upgradePreview.description": "Nâng cấp lên gói Professional hoặc Team để cấu hình chỉ số và chạy kiểm thử hàng loạt trên dữ liệu của bạn.",
+  "upgradePreview.title": "Bạn đang xem trước tính năng Đánh giá với dữ liệu mẫu"
 }

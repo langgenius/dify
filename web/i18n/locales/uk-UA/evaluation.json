@@ -170,5 +170,7 @@
   "results.status.passed": "Пройдено",
   "results.title": "Деталі тесту",
   "title": "Оцінювання",
-  "unavailableUntilPublished": "Спершу опублікуйте, щоб налаштувати оцінювання."
+  "unavailableUntilPublished": "Спершу опублікуйте, щоб налаштувати оцінювання.",
+  "upgradePreview.description": "Перейдіть на план Professional або Team, щоб налаштовувати метрики й запускати пакетні тести на власних даних.",
+  "upgradePreview.title": "Ви переглядаєте оцінювання на прикладі даних"
 }
