@@ -50,7 +50,7 @@
   "scanner.lastTested": "Zadnji preizkus: {{time}}",
   "scanner.loadFailed": "Pregledovalnikov ni bilo mogoče naložiti.",
   "scanner.neverTested": "Še ni preizkušen",
-  "scanner.readOnly": "Pregledovalnike lahko upravljajo samo lastniki in skrbniki delovnega prostora.",
+  "scanner.readOnly": "Nimate dovoljenja za upravljanje pregledovalnikov.",
   "scanner.status.active": "Aktiven",
   "scanner.status.error": "Napaka",
   "scanner.test": "Preizkusi",
