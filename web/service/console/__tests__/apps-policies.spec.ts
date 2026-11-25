@@ -253,11 +253,14 @@ describe('agent mutation policies', () => {
       { params: { agent_id: 'agent-1', version_id: 'version-1' } },
     )
 
-    expect(invalidatedKeys()).toEqual([
-      consoleQuery.agent.byAgentId.get.queryKey({ input }),
-      consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
-      consoleQuery.agent.byAgentId.versions.get.key({ input }),
-    ])
+    expect(invalidatedKeys()).toHaveLength(3)
+    expect(invalidatedKeys()).toEqual(
+      expect.arrayContaining([
+        consoleQuery.agent.byAgentId.get.queryKey({ input }),
+        consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
+        consoleQuery.agent.byAgentId.versions.get.key({ input }),
+      ]),
+    )
   })
 
   it('writes the saved or checked-out build draft and refreshes the agent after applying it', async () => {

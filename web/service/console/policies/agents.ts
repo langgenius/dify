@@ -222,8 +222,8 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
           },
         },
       },
-      // Restoring rewrites the agent's config. The restore dialog refetches the composer
-      // itself before it rebases, so the policy does not wait for these reloads.
+      // Restoring rewrites the agent's config. `AgentVersionRestore` rebases the editor
+      // in its per-call success callback, so the agent and composer reloads stay awaited.
       versions: {
         byVersionId: {
           restore: {
@@ -232,9 +232,11 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const input = { params: { agent_id: params.agent_id } }
                   void invalidateQueryKeys(client, [
+                    consoleQuery.agent.byAgentId.versions.get.key({ input }),
+                  ])
+                  return invalidateQueryKeys(client, [
                     consoleQuery.agent.byAgentId.get.queryKey({ input }),
                     consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
-                    consoleQuery.agent.byAgentId.versions.get.key({ input }),
                   ])
                 },
               },
