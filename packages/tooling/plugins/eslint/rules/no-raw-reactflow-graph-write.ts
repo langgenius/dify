@@ -91,13 +91,19 @@ const rule: Rule.RuleModule = {
       if (isCallTo(init, 'useStoreApi')) return 'store'
       if (isCallTo(init, 'useReactFlow')) return 'reactFlow'
       const stateTarget = getStateTarget(init)
-      if (stateTarget && bindingKind(stateTarget) === 'store') return 'state'
+      if (
+        stateTarget &&
+        (isCallTo(stateTarget, 'useStoreApi') || bindingKind(stateTarget) === 'store')
+      )
+        return 'state'
       return undefined
     }
 
+    const isStore = (node: Node) => isCallTo(node, 'useStoreApi') || bindingKind(node) === 'store'
+
     const isRawGetState = (node: Node) => {
       const stateTarget = getStateTarget(node)
-      return !!stateTarget && bindingKind(stateTarget) === 'store'
+      return !!stateTarget && isStore(stateTarget)
     }
 
     const settersFor = (node: Node) => {
@@ -135,7 +141,7 @@ const rule: Rule.RuleModule = {
         const { callee } = node
         if (callee.computed || callee.property.type !== 'Identifier') return
         if (callee.property.name !== 'setState') return
-        if (bindingKind(callee.object as Node) !== 'store') return
+        if (!isStore(callee.object as Node)) return
         const [argument] = node.arguments as Node[]
         if (!argument) return
         const objects =

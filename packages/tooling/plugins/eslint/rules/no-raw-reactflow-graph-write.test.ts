@@ -146,3 +146,20 @@ it('resolves each name to its own binding instead of matching names across scope
     ),
   ).toEqual([])
 })
+
+it('reports graph writes chained directly off useStoreApi()', () => {
+  expect(
+    lintFixture(
+      [
+        'function useHook(nodes: Node[]) {',
+        '  useStoreApi().getState().setNodes(nodes)',
+        '  useStoreApi().setState({ edges: [] })',
+        '  const { setEdges } = useStoreApi().getState()',
+        '  const state = useStoreApi().getState()',
+        '  state.setNodes(nodes)',
+        '  useStoreApi().getState().getNodes()',
+        '}',
+      ].join('\n'),
+    ),
+  ).toEqual([2, 3, 4, 6])
+})
