@@ -611,10 +611,16 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
+  // Plugin installs and updates can change a provider's actions and their parameter schemas.
   const invalidateAllBuiltInTools = () =>
-    queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
-    })
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.key(),
+      }),
+    ])
   return (category?: PluginCategoryEnum) => {
     if (category) {
       const invalidateCategoryPluginList = queryClient.invalidateQueries({
