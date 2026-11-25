@@ -248,6 +248,7 @@ const MetricSelector = ({ resourceType, resourceId, triggerClassName }: MetricSe
                   title={t(($) => $['metrics.custom.footerTitle'])}
                   infoLabel={t(($) => $['metrics.custom.title'])}
                   infoDescription={t(($) => $['metrics.custom.info'])}
+                  infoDocPath="/use-dify/evaluate/custom-evaluators"
                   createLabel={t(($) => $['metrics.custom.createWorkflow'])}
                   createHref={canCreateWorkflowApp ? createWorkflowAppHref : undefined}
                   description={
