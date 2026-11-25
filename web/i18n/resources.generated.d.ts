@@ -3531,6 +3531,7 @@ export default interface Resources {
     'history.status.cancelled': 'Cancelled'
     'history.status.completed': 'Completed'
     'history.status.failed': 'Failed'
+    'history.status.notCompleted': 'Task could not be completed'
     'history.status.partiallyFailed': 'Completed with failures'
     'history.status.pending': 'Pending'
     'history.status.running': 'Running'

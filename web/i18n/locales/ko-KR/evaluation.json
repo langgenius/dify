@@ -97,6 +97,7 @@
   "history.status.cancelled": "취소됨",
   "history.status.completed": "완료됨",
   "history.status.failed": "실패",
+  "history.status.notCompleted": "작업을 완료하지 못했습니다",
   "history.status.partiallyFailed": "일부 실패",
   "history.status.pending": "대기 중",
   "history.status.running": "실행 중",

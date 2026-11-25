@@ -97,6 +97,7 @@
   "history.status.cancelled": "İptal edildi",
   "history.status.completed": "Tamamlandı",
   "history.status.failed": "Başarısız",
+  "history.status.notCompleted": "Görev tamamlanamadı",
   "history.status.partiallyFailed": "Hatalarla tamamlandı",
   "history.status.pending": "Beklemede",
   "history.status.running": "Çalışıyor",
