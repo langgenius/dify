@@ -232,7 +232,9 @@ def external_call[T](operation: Callable[[], T]) -> T:
     except ExternalAgentConflictError as error:
         raise Conflict(str(error)) from error
     except ExternalAgentVerificationFailedError as error:
-        raise ExternalAgentVerificationHTTPError(str(error), reason=error.reason) from error
+        raise ExternalAgentVerificationHTTPError(
+            str(error), reason=error.reason, subreason=error.subreason, card_errors=error.card_errors
+        ) from error
     except ExternalAgentError as error:
         raise BadRequest(str(error)) from error
 

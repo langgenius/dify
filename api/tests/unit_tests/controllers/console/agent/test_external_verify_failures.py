@@ -7,6 +7,7 @@ keeps its existing independent coverage. No successful gateway receipt is inject
 import inspect
 from dataclasses import replace
 
+import httpx
 import pytest
 from flask import Flask
 from flask_restx import Namespace, Resource
@@ -33,24 +34,48 @@ control = control_fixtures.control
 
 
 @pytest.mark.parametrize(
-    ("failure", "reason"),
+    ("failure", "reason", "subreason"),
     [
-        ("service_unavailable", "connection_failed"),
-        ("unauthorized", "authentication_failed"),
-        ("forbidden", "authentication_failed"),
-        ("old_protocol", "unsupported_protocol"),
-        ("invalid_card", "invalid_agent_card"),
-        ("wrong_content_type", "invalid_agent_card"),
+        ("service_unavailable", "connection_failed", "remote_service_error"),
+        ("bad_request", "connection_failed", None),
+        ("not_found", "connection_failed", "invalid_a2a_endpoint"),
+        ("gone", "connection_failed", "invalid_a2a_endpoint"),
+        ("redirect", "connection_failed", "invalid_a2a_endpoint"),
+        ("rate_limited", "connection_failed", "rate_limited"),
+        ("unauthorized", "authentication_failed", "authentication_required"),
+        ("forbidden", "authentication_failed", "access_denied"),
+        ("old_protocol", "unsupported_protocol", "unsupported_protocol_version"),
+        ("invalid_card", "invalid_agent_card", "agent_card_field_invalid"),
+        ("wrong_content_type", "invalid_agent_card", "invalid_a2a_endpoint"),
+        ("invalid_json", "invalid_agent_card", "invalid_a2a_endpoint"),
     ],
 )
 def test_verify_serves_a_documented_stable_reason_without_peer_content_or_a_proof(
-    control: ControlPlane, account_application_services: ApplicationServices, failure: str, reason: str
+    control: ControlPlane,
+    account_application_services: ApplicationServices,
+    failure: str,
+    reason: str,
+    subreason: str | None,
 ) -> None:
     marker = "private-peer-payload-must-not-be-visible"
     body = {"protocolVersion": "0.3.0", "description": marker} if failure == "old_protocol" else {"description": marker}
-    status = {"service_unavailable": 503, "unauthorized": 401, "forbidden": 403}.get(failure, 200)
+    status = {
+        "service_unavailable": 503,
+        "bad_request": 400,
+        "not_found": 404,
+        "gone": 410,
+        "redirect": 302,
+        "rate_limited": 429,
+        "unauthorized": 401,
+        "forbidden": 403,
+    }.get(failure, 200)
     content_type = "text/html" if failure == "wrong_content_type" else "application/a2a+json"
-    with wire([response(body, status=status, content_type=content_type)]) as (gateway, connection, peer):
+    reply = (
+        httpx.Response(200, content=b"not-json", headers={"content-type": "application/json"})
+        if failure == "invalid_json"
+        else response(body, status=status, content_type=content_type)
+    )
+    with wire([reply]) as (gateway, connection, peer):
         assets = ExternalAssetService(
             store=control.store,
             access=control.access,
@@ -88,7 +113,13 @@ def test_verify_serves_a_documented_stable_reason_without_peer_content_or_a_proo
         assert result.status_code == 400
         payload = result.get_json()
         assert payload["code"] == "verification_failed"
-        assert payload["details"] == {"reason": reason}
+        assert payload["details"]["reason"] == reason
+        assert payload["details"].get("subreason") == subreason
+        if subreason == "agent_card_field_invalid":
+            assert {"path": "name", "code": "missing"} in payload["details"]["card_errors"]
+            assert len(payload["details"]["card_errors"]) <= 10
+        else:
+            assert "card_errors" not in payload["details"]
         assert payload["status"] == 400
         assert marker not in result.get_data(as_text=True)
         assert "verification_id" not in payload

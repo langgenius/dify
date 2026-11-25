@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal, Protocol
 
+from .contracts import AgentCardFieldError, VerificationFailureSubreason
 from .io_contracts import JsonObject, JsonValue
 
 PROFILE_VERSION = "a2a-1.0-http-json.v1"
@@ -144,13 +145,23 @@ class GatewayError(ValueError):
         known_receipt: GatewayReceipt | None = None,
         retryable: bool = False,
         retry_after_seconds: float | None = None,
+        verification_subreason: VerificationFailureSubreason | None = None,
+        card_errors: tuple[AgentCardFieldError, ...] = (),
     ) -> None:
+        """Retain safe gateway facts without changing runtime dispatch semantics.
+
+        Pre: verification diagnostics contain only validated fixed identifiers.
+        Post: omitted diagnostics mean no reliable refinement; runtime codes,
+        acceptance uncertainty and retry policy remain independent of them.
+        """
         super().__init__(message)
         self.code = code
         self.submission_unknown = submission_unknown
         self.known_receipt = known_receipt
         self.retryable = retryable
         self.retry_after_seconds = retry_after_seconds
+        self.verification_subreason = verification_subreason
+        self.card_errors = card_errors
 
 
 class GatewayPort(Protocol):

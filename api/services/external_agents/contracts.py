@@ -40,13 +40,57 @@ class VerificationFailureReason(StrEnum):
     INVALID_AGENT_CARD = "invalid_agent_card"
 
 
+class VerificationFailureSubreason(StrEnum):
+    """Evidence-backed refinements; unknown/missing refinements keep the reason fallback."""
+
+    INVALID_A2A_ENDPOINT = "invalid_a2a_endpoint"
+    AUTHENTICATION_REQUIRED = "authentication_required"
+    TOKEN_INVALID_OR_EXPIRED = "token_invalid_or_expired"
+    ACCESS_DENIED = "access_denied"
+    UNSUPPORTED_AUTHENTICATION = "unsupported_authentication"
+    AGENT_CARD_FIELD_INVALID = "agent_card_field_invalid"
+    UNSUPPORTED_PROTOCOL_VERSION = "unsupported_protocol_version"
+    UNSUPPORTED_TRANSPORT = "unsupported_transport"
+    UNSUPPORTED_REQUIRED_EXTENSION = "unsupported_required_extension"
+    CONNECTION_TIMEOUT = "connection_timeout"
+    TLS_ERROR = "tls_error"
+    RATE_LIMITED = "rate_limited"
+    REMOTE_SERVICE_ERROR = "remote_service_error"
+
+
+class AgentCardFieldErrorCode(StrEnum):
+    MISSING = "missing"
+    INVALID = "invalid"
+
+
+@dataclass(frozen=True, slots=True)
+class AgentCardFieldError:
+    """Only fixed schema paths and safe codes; never remote values or arbitrary keys."""
+
+    path: str
+    code: AgentCardFieldErrorCode
+
+
 class ExternalAgentVerificationFailedError(ExternalAgentError):
     code = "verification_failed"
 
-    def __init__(self, message: str, *, reason: VerificationFailureReason) -> None:
-        """Carry a stable failure category and a safe message, never peer content."""
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: VerificationFailureReason,
+        subreason: VerificationFailureSubreason | None = None,
+        card_errors: tuple[AgentCardFieldError, ...] = (),
+    ) -> None:
+        """Carry a safe reason and optional diagnostics, never raw peer content.
+
+        Pre: refinements and field paths are validated by the gateway boundary.
+        Post: absent refinements preserve the existing reason-only fallback.
+        """
         super().__init__(message)
         self.reason = reason
+        self.subreason = subreason
+        self.card_errors = card_errors
 
 
 class ExternalAgentIdempotencyConflictError(ExternalAgentConflictError):
