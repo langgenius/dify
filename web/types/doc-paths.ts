@@ -27,6 +27,9 @@ type CloudPath =
   | '/cloud/use-dify/debug/history-and-logs'
   | '/cloud/use-dify/debug/step-run'
   | '/cloud/use-dify/debug/variable-inspect'
+  | '/cloud/use-dify/evaluate/custom-evaluators'
+  | '/cloud/use-dify/evaluate/metrics'
+  | '/cloud/use-dify/evaluate/run-evaluations'
   | '/cloud/use-dify/getting-started/introduction'
   | '/cloud/use-dify/knowledge-base/overview'
   | '/cloud/use-dify/knowledge-base/upgrade-from-classic'
@@ -129,6 +132,9 @@ type UseDifyPath =
   | '/use-dify/debug/history-and-logs'
   | '/use-dify/debug/step-run'
   | '/use-dify/debug/variable-inspect'
+  | '/use-dify/evaluate/custom-evaluators'
+  | '/use-dify/evaluate/metrics'
+  | '/use-dify/evaluate/run-evaluations'
   | '/use-dify/getting-started/introduction'
   | '/use-dify/knowledge/connect-external-knowledge-base'
   | '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
@@ -581,6 +587,9 @@ export const docPathProductAvailability = {
   '/use-dify/debug/history-and-logs': ['cloud', 'self-host'],
   '/use-dify/debug/step-run': ['cloud', 'self-host'],
   '/use-dify/debug/variable-inspect': ['cloud', 'self-host'],
+  '/use-dify/evaluate/custom-evaluators': ['cloud'],
+  '/use-dify/evaluate/metrics': ['cloud'],
+  '/use-dify/evaluate/run-evaluations': ['cloud'],
   '/use-dify/getting-started/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge/connect-external-knowledge-base': ['cloud', 'self-host'],
   '/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text': ['cloud', 'self-host'],
