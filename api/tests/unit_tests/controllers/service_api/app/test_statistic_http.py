@@ -200,11 +200,7 @@ class TestStatisticHTTP:
     ):
         """The statistics query uses the authenticated app."""
 
-        expected_app = (
-            http_harness.app_a
-            if app_attribute == "app_a"
-            else http_harness.app_b
-        )
+        expected_app = http_harness.app_a if app_attribute == "app_a" else http_harness.app_b
 
         response = http_harness.client.get(
             "/v1/statistics/daily-messages",

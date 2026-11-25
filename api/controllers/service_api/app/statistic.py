@@ -27,14 +27,14 @@ class StatisticQuery(BaseModel):
         default=None,
         description=(
             "Start of the statistics period in YYYY-MM-DD HH:MM format. "
-            "If omitted, the existing Dify default time range is used."
+            "If omitted, no explicit time bound is passed to the statistics service."
         ),
     )
     end: str | None = Field(
         default=None,
         description=(
             "End of the statistics period in YYYY-MM-DD HH:MM format. "
-            "If omitted, the existing Dify default time range is used."
+            "If omitted, no explicit time bound is passed to the statistics service."
         ),
     )
     timezone: str = Field(

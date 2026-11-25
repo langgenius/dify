@@ -3914,6 +3914,193 @@ Retrieve the WebApp settings of this application, including site configuration, 
 ---
 ## default
 
+### [GET] /statistics/average-response-time
+**Get Average Response Time Statistics**
+
+Retrieve average response times for the authenticated application. This statistic is supported for completion applications.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Average response time statistics retrieved successfully. | **application/json**: [ResponseTimeResponse](#responsetimeresponse)<br> |
+| 400 | Invalid time range, timezone, or unsupported application mode. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/average-session-interactions
+**Get Average Session Interactions**
+
+Retrieve average interactions per session for the authenticated application. Supported application modes include chat, agent chat, advanced chat, and agent.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Average session interaction statistics retrieved successfully. | **application/json**: [SessionInteractionResponse](#sessioninteractionresponse)<br> |
+| 400 | Invalid time range, timezone, or unsupported application mode. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/daily-conversations
+**Get Daily Conversation Statistics**
+
+Retrieve daily conversation counts for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily conversation statistics retrieved successfully. | **application/json**: [DailyConversationResponse](#dailyconversationresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/daily-end-users
+**Get Daily End User Statistics**
+
+Retrieve daily end-user counts for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily end-user statistics retrieved successfully. | **application/json**: [DailyEndUserResponse](#dailyenduserresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/daily-messages
+**Get Daily Message Statistics**
+
+Retrieve daily message counts for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily message statistics retrieved successfully. | **application/json**: [DailyMessageResponse](#dailymessageresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/token-costs
+**Get Token Usage and Cost Statistics**
+
+Retrieve daily token consumption and cost statistics for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Token usage and cost statistics retrieved successfully. | **application/json**: [TokenCostResponse](#tokencostresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/tokens-per-second
+**Get Tokens Per Second Statistics**
+
+Retrieve token generation throughput statistics for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tokens per second statistics retrieved successfully. | **application/json**: [TokensPerSecondResponse](#tokenspersecondresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /statistics/user-satisfaction-rate
+**Get User Satisfaction Statistics**
+
+Retrieve user satisfaction rates for the authenticated application.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| start | query | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No | string |
+| timezone | query | IANA timezone name used for the statistics period. Defaults to UTC. | No | string, <br>**Default:** UTC |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | User satisfaction statistics retrieved successfully. | **application/json**: [UserSatisfactionResponse](#usersatisfactionresponse)<br> |
+| 400 | Invalid time range or timezone. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+---
+## default
+
 ### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
 
@@ -4678,6 +4865,45 @@ Enum class for custom configuration status.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CustomConfigurationStatus | string | Enum class for custom configuration status. |  |
+
+#### DailyConversationItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| date | string |  | Yes |
+
+#### DailyConversationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyConversationItem](#dailyconversationitem) ] |  | Yes |
+
+#### DailyEndUserItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| terminal_count | integer |  | Yes |
+
+#### DailyEndUserResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyEndUserItem](#dailyenduseritem) ] |  | Yes |
+
+#### DailyMessageItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| message_count | integer |  | Yes |
+
+#### DailyMessageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyMessageItem](#dailymessageitem) ] |  | Yes |
 
 #### DatasetBoundTagListResponse
 
@@ -7641,6 +7867,19 @@ Rate Limit Error
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
 
+#### ResponseTimeItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| latency | number |  | Yes |
+
+#### ResponseTimeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResponseTimeItem](#responsetimeitem) ] |  | Yes |
+
 #### ResultResponse
 
 | Name | Type | Description | Required |
@@ -7840,6 +8079,19 @@ Rate Limit Error
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
+#### SessionInteractionItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| interactions | number |  | Yes |
+
+#### SessionInteractionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SessionInteractionItem](#sessioninteractionitem) ] |  | Yes |
+
 #### SimpleAccountResponse
 
 | Name | Type | Description | Required |
@@ -7915,6 +8167,14 @@ Speech to text is disabled.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | SpeechToTextDisabledError |  | Speech to text is disabled. |  |
+
+#### StatisticQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end | string | End of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No |
+| start | string | Start of the statistics period in YYYY-MM-DD HH:MM format. If omitted, no explicit time bound is passed to the statistics service. | No |
+| timezone | string, <br>**Default:** UTC | IANA timezone name used for the statistics period. Defaults to UTC. | No |
 
 #### StringListSource
 
@@ -7997,6 +8257,34 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### TokenCostItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | No |
+| date | string |  | Yes |
+| token_count | integer |  | No |
+| total_price | string |  | No |
+
+#### TokenCostResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TokenCostItem](#tokencostitem) ] |  | Yes |
+
+#### TokensPerSecondItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| tps | number |  | Yes |
+
+#### TokensPerSecondResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TokensPerSecondItem](#tokensperseconditem) ] |  | Yes |
+
 #### TooManyFilesError
 
 Only one file is allowed.
@@ -8051,6 +8339,19 @@ User action configuration.
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
 | id | string |  | Yes |
 | title | string |  | Yes |
+
+#### UserSatisfactionItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| rate | number |  | Yes |
+
+#### UserSatisfactionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [UserSatisfactionItem](#usersatisfactionitem) ] |  | Yes |
 
 #### ValueSourceType
 
