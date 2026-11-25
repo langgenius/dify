@@ -19,7 +19,6 @@ import { GoldenQuestionDialog } from './golden-question-dialog'
 import {
   formatQualityUpdatedAt,
   goldenQuestionPayload,
-  goldenQuestionQueriesKey,
   qualityPageSize,
   visibleQualityTags,
 } from './quality-model'
@@ -168,17 +167,12 @@ function BadCasePromotionDialog({
         }
         throw mutationError
       }
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+          input: { params: { control_space_id: knowledgeSpaceId } },
+          type: 'infinite',
         }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-            input: { params: { control_space_id: knowledgeSpaceId } },
-            type: 'infinite',
-          }),
-        }),
-      ])
+      })
       toast.success(t(($) => $['qualityPage.promotedToast'], { ns: 'knowledgeQuality' }))
       close()
     } catch (error) {

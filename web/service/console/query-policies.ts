@@ -281,8 +281,79 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           templates: {
             byTemplateId: { get: { queryOptions: { staleTime: 0 } } },
           },
+          customized: {
+            templates: {
+              byTemplateId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, { client }) => {
+                      void client.invalidateQueries({
+                        queryKey: customizedPipelineTemplatesKey(consoleQuery),
+                      })
+                    },
+                  },
+                },
+                delete: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const queryKey = customizedPipelineTemplatesKey(consoleQuery)
+                      client.setQueryData(
+                        queryKey,
+                        (current) =>
+                          current && {
+                            ...current,
+                            pipeline_templates: current.pipeline_templates.filter(
+                              (template) => template.id !== params.template_id,
+                            ),
+                          },
+                      )
+                      void client.invalidateQueries({ queryKey, exact: true })
+                    },
+                  },
+                },
+              },
+            },
+          },
+          // A new pipeline dataset joins the dataset list.
+          emptyDataset: {
+            post: {
+              mutationOptions: {
+                onSuccess: (data, _variables, _result, { client }) => {
+                  if (!data) return
+                  void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+                },
+              },
+            },
+          },
+          dataset: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, { client }) => {
+                  void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+                },
+              },
+            },
+          },
         },
         pipelines: {
+          transform: {
+            datasets: {
+              byDatasetId: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (data, { params }, _result, { client }) => {
+                      if (data.status !== 'success') return
+                      void client.invalidateQueries({
+                        queryKey: consoleQuery.datasets.byDatasetId.get.queryKey({
+                          input: { params: { dataset_id: params.dataset_id } },
+                        }),
+                      })
+                    },
+                  },
+                },
+              },
+            },
+          },
           datasourcePlugins: {
             get: {
               queryOptions: { staleTime: 0, retry: false },
@@ -296,6 +367,19 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           byPipelineId: {
+            customized: {
+              publish: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, { client }) => {
+                      void client.invalidateQueries({
+                        queryKey: customizedPipelineTemplatesKey(consoleQuery),
+                      })
+                    },
+                  },
+                },
+              },
+            },
             workflowRuns: {
               tasks: {
                 byTaskId: {
@@ -2227,8 +2311,114 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            patch: {
+              mutationOptions: {
+                onSuccess: async (space, { params }, _result, { client }) => {
+                  const queryKey = consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryKey({
+                    input: { params: { control_space_id: params.control_space_id } },
+                  })
+                  await client.cancelQueries({ queryKey })
+                  client.setQueryData(queryKey, space)
+                  // List cards render the same name, icon and visibility; refresh every list variant.
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
+                  })
+                },
+              },
+            },
+            members: {
+              put: {
+                mutationOptions: {
+                  onSuccess: async (permissions, { params }, _result, { client }) => {
+                    const queryKey =
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.permissions.get.queryKey({
+                        input: { params: { control_space_id: params.control_space_id } },
+                      })
+                    await client.cancelQueries({ queryKey })
+                    client.setQueryData(queryKey, permissions)
+                  },
+                },
+              },
+            },
+            externalAccess: {
+              put: {
+                mutationOptions: {
+                  onSuccess: async (externalAccess, { params }, _result, { client }) => {
+                    const queryKey =
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.get.queryKey({
+                        input: { params: { control_space_id: params.control_space_id } },
+                      })
+                    await client.cancelQueries({ queryKey })
+                    client.setQueryData(queryKey, externalAccess)
+                  },
+                },
+              },
+            },
+            settings: {
+              patch: {
+                mutationOptions: {
+                  onSuccess: async (response, { params }, _result, { client }) => {
+                    const queryKey =
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryKey({
+                        input: { params: { control_space_id: params.control_space_id } },
+                      })
+                    await client.cancelQueries({ queryKey })
+                    client.setQueryData(queryKey, response.settings)
+                  },
+                },
+              },
+            },
+            quality: {
+              replayRuns: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (run, { params }, _result, { client }) => {
+                      const replayRuns =
+                        consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns
+                      client.setQueryData(
+                        replayRuns.byRunId.get.queryKey({
+                          input: {
+                            params: { control_space_id: params.control_space_id, run_id: run.id },
+                          },
+                        }),
+                        // Polling may already hold a newer revision of the run.
+                        (current) => (current && current.revision >= run.revision ? current : run),
+                      )
+                      void client.invalidateQueries({
+                        queryKey: replayRuns.get.key({
+                          input: { params: { control_space_id: params.control_space_id } },
+                          type: 'infinite',
+                        }),
+                        refetchType: 'none',
+                      })
+                    },
+                  },
+                },
+              },
+            },
             goldenQuestions: {
+              // Creating, importing or deleting questions changes the space's question list.
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                },
+              },
+              bulkImport: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) =>
+                      invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                  },
+                },
+              },
               byQuestionId: {
+                delete: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) =>
+                      invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                  },
+                },
                 patch: {
                   mutationOptions: {
                     onSuccess: async (question, { params }, _result, { client }) => {
@@ -2257,6 +2447,28 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
             documents: {
+              // Queued re-index tasks change document status and the space's task list.
+              reindex: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      void Promise.allSettled([
+                        client.invalidateQueries({
+                          queryKey: space.logicalDocuments.get.key({ input }),
+                        }),
+                        client.invalidateQueries({
+                          queryKey: space.backgroundTasks.get.key({ input }),
+                        }),
+                        client.invalidateQueries({
+                          queryKey: space.goldenQuestions.get.key({ input }),
+                        }),
+                      ])
+                    },
+                  },
+                },
+              },
               byDocumentId: {
                 patch: {
                   mutationOptions: {
@@ -2417,7 +2629,38 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           // The upgrade dialog reports start failures, including model issues, inline.
           knowledgeFsUpgrades: {
-            post: { mutationOptions: { context: { silent: true } } },
+            post: {
+              mutationOptions: {
+                context: { silent: true },
+                // An upgrade job changes the dataset card and the list of running upgrades.
+                onSuccess: (_job, _variables, _result, { client }) => {
+                  void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+                  })
+                },
+              },
+            },
+            byJobId: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_job, { params }, _result, { client }) => {
+                    void client.invalidateQueries({
+                      queryKey:
+                        consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
+                          input: {
+                            params: { dataset_id: params.dataset_id, job_id: params.job_id },
+                          },
+                        }),
+                    })
+                    void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+                    void client.invalidateQueries({
+                      queryKey: consoleQuery.datasets.knowledgeFsUpgradeJobs.get.key(),
+                    })
+                  },
+                },
+              },
+            },
           },
           evaluation: {
             put: {
@@ -2521,6 +2764,43 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           documents: {
+            // Creating or re-saving a document changes the dataset card, the document list and
+            // the document's detail.
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  const input = { params: { dataset_id: params.dataset_id } }
+                  void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({ input }),
+                  })
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                      input,
+                    }),
+                  })
+                },
+              },
+            },
+            status: {
+              byAction: {
+                batch: {
+                  patch: {
+                    mutationOptions: {
+                      onSuccess: (_data, { params }, _result, { client }) => {
+                        // Enabled documents leave the auto-disabled notice.
+                        if (params.action !== 'enable') return
+                        void client.invalidateQueries({
+                          queryKey: consoleQuery.datasets.byDatasetId.autoDisableLogs.get.queryKey({
+                            input: { params: { dataset_id: params.dataset_id } },
+                          }),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
             delete: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -2675,6 +2955,40 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       })
                     },
                   },
+                },
+              },
+            },
+          },
+        },
+        // A dataset created with its first document joins the dataset list.
+        init: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, { client }) => {
+                void client.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
+              },
+            },
+          },
+        },
+        externalKnowledgeApi: {
+          byExternalKnowledgeApiId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  const queryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryKey({
+                    input: {},
+                  })
+                  client.setQueryData(
+                    queryKey,
+                    (previous) =>
+                      previous && {
+                        ...previous,
+                        data: previous.data.filter(
+                          (api) => api.id !== params.external_knowledge_api_id,
+                        ),
+                      },
+                  )
+                  void client.invalidateQueries({ queryKey, exact: true })
                 },
               },
             },
@@ -3935,4 +4249,22 @@ export function invalidateSkillVersionQueries(
     query.workspaces.current.skills.bySkillId.versions.get.key({ input }),
     query.workspaces.current.agents.byAgentId.skills.get.key(),
   ])
+}
+
+// knowledge helpers
+
+function customizedPipelineTemplatesKey(query: RouterUtils<ConsoleClient>) {
+  return query.rag.pipeline.templates.get.queryKey({ input: { query: { type: 'customized' } } })
+}
+
+function invalidateGoldenQuestionList(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  controlSpaceId: string,
+) {
+  return client.invalidateQueries({
+    queryKey: query.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key({
+      input: { params: { control_space_id: controlSpaceId } },
+    }),
+  })
 }
