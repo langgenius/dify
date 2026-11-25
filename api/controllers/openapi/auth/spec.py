@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from constants.oauth_bearer import TokenType
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi.auth.requirements import Requirement
 from enums import DeploymentEdition
@@ -114,6 +115,14 @@ class EndpointSpec:
         catalog leaves the op out, so both read the gate from here.
         """
         return self.edition is None or edition in self.edition
+
+    def admits(self, token_type: TokenType) -> bool:
+        """Whether a token of this kind can ever reach the handler: the PAT policy admits it and so does every
+        requirement. The MCP tools hide the ops this answers False for."""
+        if token_type is TokenType.PERSONAL_ACCESS:
+            if self.pat_policy is None:
+                return False
+        return all(requirement.admits(token_type) for requirement in self.requirements)
 
 
 def spec_of(view: Any) -> EndpointSpec | None:
