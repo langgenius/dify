@@ -30,10 +30,10 @@ const {
   installedPlugins: vi.fn(),
   upgrade: vi.fn(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginsByVersions: marketplace })
+})
 vi.mock('@/service/plugins', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/plugins')>()),
   checkTaskStatus: checkTask,
@@ -45,10 +45,6 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: PermissionType.everyone,
-        debug_permission: PermissionType.everyone,
-      }),
       'workspaces.current.plugin.upload.github.post': uploadGithub,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -59,6 +55,10 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.install.github.post': installGithub,
       'workspaces.current.plugin.install.pkg.post': installPackage,
       'workspaces.current.plugin.upgrade.marketplace.post': upgrade,
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
+      }),
     }),
   }
 })

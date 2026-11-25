@@ -9,13 +9,13 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
+import { webAppLogout } from '@/service/common'
 import {
   webAppInfoQueryOptions,
   webAppMetaQueryOptions,
   webAppParamsQueryOptions,
 } from '@/service/share-queries'
 import { resolveWebAppAddress } from '@/service/webapp-address'
-import { webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation(['common'])

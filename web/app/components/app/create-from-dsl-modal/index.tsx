@@ -28,6 +28,8 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { Uploader } from '@/features/dsl-import/uploader'
+import DSLImportWarningDescription from '@/features/dsl-import/warning-description'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -36,9 +38,7 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
-import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
-import { Uploader } from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean

@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "एजेंट संस्करण प्रकाशित और प्रबंधित करें",
   "agent.acl.test_and_run": "एजेंट का परीक्षण करें और चलाएं",
   "agent.create": "एजेंट बनाएं",
+  "agent.tag.manage": "एजेंट टैग प्रबंधित करें",
   "api_extension.manage": "API एक्सटेंशन कॉन्फ़िगरेशन प्रबंधित करें",
   "app.access_config": "ऐप एक्सेस अनुमतियाँ कॉन्फ़िगर करें",
   "app.acl.access_config": "एक्सेस अनुमतियाँ देखें और प्रबंधित करें",

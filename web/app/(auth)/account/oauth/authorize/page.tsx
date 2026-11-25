@@ -20,9 +20,9 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
-import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
@@ -94,7 +94,7 @@ export default function OAuthAuthorize() {
   )
   const returnUrl = buildReturnUrl('/account/oauth/authorize', `?${searchParams.toString()}`)
   const signInUrl = `/signin?redirect_url=${encodeURIComponent(returnUrl)}`
-  const { mutateAsync: logout } = useLogout({ redirectTo: signInUrl })
+  const { mutateAsync: logout } = useMutation(logoutMutationOptions({ redirectTo: signInUrl }))
   const { isAutoAuthorizing } = useSilentAuthorize({
     authAppInfo,
     authorize,

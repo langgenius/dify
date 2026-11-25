@@ -27,11 +27,13 @@ function renderModal(
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
+const notifications = () => page.getByRole('region', { name: 'Notifications' })
 const fake = setupFakeApi(() => ({
   console: {
     tags: {
       get: () => tags,
       post: ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }),
+      byTagId: { patch: ({ params, body }) => ({ id: params.tag_id, ...body }) },
     },
   },
 }))
@@ -43,7 +45,7 @@ it.each(['app', 'knowledge', 'snippet'] as const)(
   'creates a %s tag and clears the successful draft',
   async (type) => {
     await renderModal(type)
-    await input().fill('NewTag')
+    await input().fill('  NewTag  ')
     await userEvent.keyboard('{Enter}')
     await expect.element(input()).toHaveValue('')
     expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
@@ -89,12 +91,29 @@ it('keeps a failed draft available for correction and retry', async () => {
   })
 })
 
-it('ignores empty submissions through Enter and blur', async () => {
+it('translates a server-side name length error without displaying its JSON', async () => {
+  const message = JSON.stringify([{ loc: ['name'], type: 'string_too_long' }])
+  fake.console.tags.post.mockRejectedValueOnce(apiError({ status: 422, message }))
   await renderModal()
-  await input().click()
+  await input().fill('Research')
   await userEvent.keyboard('{Enter}')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameTooLong:{"max":50}' }))
+    .toBeVisible()
+  await expect.element(input()).toHaveValue('Research')
+  await expect.element(page.getByText(message, { exact: true })).not.toBeInTheDocument()
+})
+
+it('rejects whitespace-only names and lets the user correct the draft', async () => {
+  await renderModal()
+  await input().fill('   ')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(notifications().getByRole('dialog', { name: 'common.tag.nameRequired' }))
+    .toBeVisible()
   await userEvent.tab()
-  await expect.element(dialog()).toBeVisible()
+  expect(notifications().getByRole('dialog').all()).toHaveLength(1)
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
   // The next real submission goes through the same path, so an empty request would precede it.
   await input().fill('NextTag')
   await userEvent.keyboard('{Enter}')
@@ -102,6 +121,41 @@ it('ignores empty submissions through Enter and blur', async () => {
   expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
     body: { name: 'NextTag', type: 'app' },
   })
+})
+
+it('checks normalized names against other loaded Agent tags on create and rename', async () => {
+  const research = {
+    id: '6c1f5d0a-8e2b-4c3d-9f7a-1b2c3d4e5f60',
+    type: 'agent',
+    name: '  Research  ',
+  }
+  const finance = { ...research, id: '7d2e6f1b-9f3c-4d4e-8a8b-2c3d4e5f6071', name: 'Finance' }
+  const catalog = [research, finance]
+  fake.console.tags.get.mockReturnValue(catalog)
+  await renderWithTags(<TagManagementDialog type="agent" show onClose={() => {}} />, catalog, [
+    'agent.tag.manage',
+  ])
+  await input().fill('Research')
+  await userEvent.keyboard('{Enter}')
+  const conflicts = notifications().getByRole('dialog', { name: 'common.tag.nameAlreadyExists' })
+  await expect.element(conflicts).toBeVisible()
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Finance' }).click()
+  const rename = dialog().getByRole('textbox', { name: 'common.operation.rename Finance' })
+  await rename.fill(' Research ')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(rename).toHaveAttribute('aria-invalid', 'true')
+  expect(conflicts.all()).toHaveLength(2)
+  expect(fake.console.tags.byTagId.patch).not.toHaveBeenCalled()
+
+  await dialog().getByRole('button', { name: 'common.operation.edit Research' }).click()
+  const ownName = dialog().getByRole('textbox', { name: 'common.operation.rename Research' })
+  await ownName.fill('Research')
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .poll(() => fake.console.tags.byTagId.patch.mock.calls)
+    .toEqual([[{ params: { tag_id: research.id }, body: { name: 'Research' } }]])
 })
 
 it.each(['button', 'Escape'])('dismisses management with %s', async (method) => {

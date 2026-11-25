@@ -16,12 +16,13 @@ export const getFileExtension = (fileName: string) => {
   return extension && extension !== fileName ? extension.toUpperCase() : ''
 }
 
-export const getExampleValue = (field: InputField, booleanLabel: string) => {
+// Examples show raw dataset cell values, so they must stay parseable by the backend in every locale.
+export const getExampleValue = (field: InputField) => {
   if (field.name === INDEX_FIELD_NAME) return '1'
 
   if (field.type === 'number') return '0.7'
 
-  if (field.type === 'boolean') return booleanLabel
+  if (field.type === 'boolean') return 'true'
 
   return field.name
 }

@@ -39,12 +39,9 @@ describe('Webapp Reset Password Set Password Page', () => {
     )
     await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
     expect(changeWebAppPasswordWithToken).toHaveBeenCalledWith({
-      url: '/forgot-password/resets',
-      body: {
-        token: 'reset-token',
-        new_password: 'ValidPass123!',
-        password_confirm: 'ValidPass123!',
-      },
+      token: 'reset-token',
+      new_password: 'ValidPass123!',
+      password_confirm: 'ValidPass123!',
     })
 
     await waitFor(() => {

@@ -18,7 +18,7 @@ import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
+import { snippetPublishedWorkflowQueryOptions } from '@/service/snippet-queries'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { isCustomMetricConfigured, useEvaluationStore } from '../../store'
 import MappingRow from './mapping-row'
@@ -110,8 +110,8 @@ const CustomMetricEditorCard = ({
   const { data: currentAppWorkflow } = useQuery(
     appWorkflowQueryOptions(resourceType === 'apps' ? resourceId : ''),
   )
-  const { data: currentSnippetWorkflow } = useSnippetPublishedWorkflow(
-    resourceType === 'snippets' ? resourceId : '',
+  const { data: currentSnippetWorkflow } = useQuery(
+    snippetPublishedWorkflowQueryOptions(resourceType === 'snippets' ? resourceId : ''),
   )
   const selectedWorkflowNodes = useMemo(
     () => getGraphNodes(selectedWorkflow?.graph),

@@ -76,7 +76,7 @@ const useRefreshPluginList = () => {
             input: { query: { type: 'tool' } },
           }),
         })
-        // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
+        // TODO: refresh the suggested marketplace tools (useMarketplacePlugins in marketplace/query.ts).
       }
 
       if ((manifest && PluginCategoryEnum.trigger.includes(manifest.category)) || refreshAllType) {

@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "انتشار و مدیریت نسخه‌های عامل",
   "agent.acl.test_and_run": "آزمایش و اجرای عامل",
   "agent.create": "ایجاد عامل‌ها",
+  "agent.tag.manage": "مدیریت برچسب‌های عامل‌ها",
   "api_extension.manage": "مدیریت پیکربندی افزونه API",
   "app.access_config": "پیکربندی مجوزهای دسترسی برنامه",
   "app.acl.access_config": "مشاهده و مدیریت مجوزهای دسترسی",

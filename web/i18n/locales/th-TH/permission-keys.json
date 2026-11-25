@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "เผยแพร่และจัดการเวอร์ชันตัวแทน",
   "agent.acl.test_and_run": "ทดสอบและเรียกใช้ตัวแทน",
   "agent.create": "สร้างตัวแทน",
+  "agent.tag.manage": "จัดการแท็กตัวแทน",
   "api_extension.manage": "จัดการการกําหนดค่าส่วนขยาย API",
   "app.access_config": "กําหนดค่าสิทธิ์การเข้าถึงแอป",
   "app.acl.access_config": "ดูและจัดการสิทธิ์การเข้าถึง",

@@ -68,6 +68,7 @@ import {
   zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse,
   zPatchInstalledAppsByInstalledAppIdPath,
   zPatchInstalledAppsByInstalledAppIdResponse,
+  zPostInstalledAppsByInstalledAppIdAudioToTextBody,
   zPostInstalledAppsByInstalledAppIdAudioToTextPath,
   zPostInstalledAppsByInstalledAppIdAudioToTextResponse,
   zPostInstalledAppsByInstalledAppIdChatMessagesBody,
@@ -107,7 +108,12 @@ export const post = oc
     path: '/installed-apps/{installed_app_id}/audio-to-text',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostInstalledAppsByInstalledAppIdAudioToTextPath }))
+  .input(
+    z.object({
+      body: zPostInstalledAppsByInstalledAppIdAudioToTextBody,
+      params: zPostInstalledAppsByInstalledAppIdAudioToTextPath,
+    }),
+  )
   .output(zPostInstalledAppsByInstalledAppIdAudioToTextResponse)
   .errors({
     access_denied: { status: 403, data: zAccessDeniedError },

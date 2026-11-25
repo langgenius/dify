@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "发布与管理 Agent 版本",
   "agent.acl.test_and_run": "测试与运行 Agent",
   "agent.create": "创建 Agent",
+  "agent.tag.manage": "管理 Agent 标签",
   "api_extension.manage": "管理API扩展",
   "app.access_config": "配置应用访问权限",
   "app.acl.access_config": "查看与管理访问权限",

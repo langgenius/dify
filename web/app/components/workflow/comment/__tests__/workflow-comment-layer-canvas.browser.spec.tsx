@@ -71,6 +71,9 @@ describe('markers and the composer', () => {
     await userEvent.keyboard('{Tab}')
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x + 5)
 
+    await expect
+      .poll(() => api.update.mock.calls[0]?.[0])
+      .toMatchObject({ params: { comment_id: 'first' } })
     move.reject(networkError())
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)
@@ -300,6 +303,10 @@ describe('keyboard and hover', () => {
 
     await pointerToEmptyCanvas()
     await userEvent.tab()
+    await expect.element(screen.getByRole('region', { name: 'app.types.workflow' })).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(screen.getByRole('link', { name: 'React Flow attribution' })).toHaveFocus()
+    await userEvent.tab()
     await expect.element(markers(screen).first()).toHaveFocus()
     await expect.element(preview).toBeVisible()
     await userEvent.keyboard('{Escape}')
@@ -325,9 +332,7 @@ describe('keyboard and hover', () => {
 
   it('opens from the keyboard and gives focus back to its marker, which still moves with the arrow keys', async () => {
     const screen = await renderLayer()
-    await expect.element(markers(screen).first()).toBeVisible()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
 
     await userEvent.keyboard('{Escape}')
@@ -340,9 +345,7 @@ describe('keyboard and hover', () => {
 
   it('keeps focus on Next as it moves the thread, and gives focus to the comment shown last on close', async () => {
     const screen = await renderLayer()
-    await expect.element(markers(screen).first()).toBeVisible()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
     const next = thread(screen).getByRole('button', {
       name: 'workflowComments.comments.aria.nextComment',
@@ -360,9 +363,7 @@ describe('keyboard and hover', () => {
 
   it('closes from the keyboard after comment markers were hidden', async () => {
     const screen = await renderLayer()
-    await expect.element(markers(screen).first()).toBeVisible()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
 
     screen.store.getState().setShowUserComments(false)
