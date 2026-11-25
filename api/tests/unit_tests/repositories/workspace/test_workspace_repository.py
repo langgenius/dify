@@ -403,6 +403,59 @@ class TestWorkspaceMembersCases:
 
 class TestWorkspaceRepositoryCases:
     @staticmethod
+    def _memberships(sqlite_session_factory: sessionmaker[Session], status: AccountStatus) -> WorkspaceRepository:
+        """Workspaces w-old, w-tie-a, w-tie-b (same creation time), an archived one and another account's one."""
+        now = datetime(2026, 1, 1)
+        with sqlite_session_factory.begin() as session:
+            session.add_all(
+                [
+                    make_account("member", status=status, created_at=now),
+                    make_account("other", status=AccountStatus.ACTIVE, created_at=now),
+                ]
+            )
+            for tenant_id, created, tenant_status in (
+                ("w-tie-b", now, TenantStatus.NORMAL),
+                ("w-old", now - timedelta(days=1), TenantStatus.NORMAL),
+                ("w-tie-a", now, TenantStatus.NORMAL),
+                ("w-archived", now - timedelta(days=2), TenantStatus.ARCHIVE),
+                ("w-other", now - timedelta(days=3), TenantStatus.NORMAL),
+            ):
+                tenant = make_tenant(tenant_id)
+                tenant.created_at, tenant.status = created, tenant_status
+                session.add(tenant)
+            session.add_all(
+                [
+                    TenantAccountJoin(tenant_id=tenant_id, account_id="member", role=role)
+                    for tenant_id, role in (
+                        ("w-tie-b", TenantAccountRole.NORMAL),
+                        ("w-old", TenantAccountRole.EDITOR),
+                        ("w-tie-a", TenantAccountRole.OWNER),
+                        ("w-archived", TenantAccountRole.OWNER),
+                    )
+                ]
+                + [TenantAccountJoin(tenant_id="w-other", account_id="other", role=TenantAccountRole.OWNER)]
+            )
+        return WorkspaceRepository(sqlite_session_factory)
+
+    @staticmethod
+    def test_member_workspace_ids_are_the_admitted_workspaces_oldest_first(
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        repository = TestWorkspaceRepositoryCases._memberships(sqlite_session_factory, AccountStatus.ACTIVE)
+
+        assert repository.member_workspace_ids("member") == ["w-old", "w-tie-a", "w-tie-b"]
+        assert repository.member_workspace_ids("nobody") == []
+
+    @staticmethod
+    @pytest.mark.parametrize("status", [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.PENDING])
+    def test_member_workspace_ids_are_empty_for_an_account_the_membership_check_refuses(
+        sqlite_session_factory: sessionmaker[Session], status: AccountStatus
+    ) -> None:
+        repository = TestWorkspaceRepositoryCases._memberships(sqlite_session_factory, status)
+
+        assert repository.member_workspace_ids("member") == []
+
+    @staticmethod
     @pytest.fixture
     def seeded(sqlite_session_factory: sessionmaker[Session]) -> WorkspaceRepository:
         with sqlite_session_factory() as session:

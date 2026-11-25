@@ -30,6 +30,18 @@ def route_has_app(ctx: Context) -> bool:
     return PathParam.APP_ID in ctx.view_args
 
 
+def route_has_workspace(ctx: Context) -> bool:
+    """Whether the request addresses a workspace: an app-scoped route through its app, any other by naming one in
+    its path or query (an empty value still names one, and then answers 404). `get.console_app` is the one route
+    whose workspace is optional.
+    """
+    if route_has_app(ctx):
+        return True
+    if PathParam.WORKSPACE_ID in ctx.view_args:
+        return True
+    return PathParam.WORKSPACE_ID in request.args
+
+
 def load_app(ctx: Context) -> App:
     """The boundary where an unset field becomes a value: fetched once per
     request, and non-optional from here on, so nothing downstream re-checks.

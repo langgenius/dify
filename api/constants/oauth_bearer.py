@@ -32,7 +32,11 @@ class SubjectType(StrEnum):
 
     RESOURCE_ACCESS = ("resource_access", frozenset({Scope.WORKSPACE_READ, Scope.APPS_READ, Scope.APPS_RUN}), False)
     ACCOUNT = ("account", frozenset({Scope.FULL}), True)
-    EXTERNAL_SSO = ("external_sso", frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL}), False)
+    EXTERNAL_SSO = (
+        "external_sso",
+        frozenset({Scope.APPS_RUN, Scope.APPS_READ_PERMITTED_EXTERNAL, Scope.APPS_READ}),
+        False,
+    )
     KNOWLEDGE_AGENT = ("knowledge_agent", frozenset({Scope.KNOWLEDGE_READ}), True)
 
     def __new__(cls, value: str, scopes: frozenset[Scope], bound_to_account: bool) -> SubjectType:
