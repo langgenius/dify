@@ -4961,7 +4961,7 @@ export const get80 = oc
   })
 
 /**
- * Sync draft workflow
+ * Save the admitted application's draft or report a stale draft hash
  *
  * Sync draft workflow configuration
  */
@@ -4972,7 +4972,7 @@ export const post66 = oc
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraft',
     path: '/apps/{app_id}/workflows/draft',
-    summary: 'Sync draft workflow',
+    summary: "Save the admitted application's draft or report a stale draft hash",
     tags: ['console'],
   })
   .input(
