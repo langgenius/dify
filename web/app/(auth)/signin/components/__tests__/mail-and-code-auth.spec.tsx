@@ -61,10 +61,10 @@ vi.mock('@/config', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'emailCodeLogin.post': mocks.sendEMailLoginCode,
     }),
   }
