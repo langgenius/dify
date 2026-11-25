@@ -1938,5 +1938,18 @@ export const lintConfig = {
         'dify/no-module-scope-clock': 'error',
       },
     },
+    {
+      ...handwrittenApiScope,
+      files: ['web/app/components/{workflow,workflow-app}/**/*.{ts,tsx}'],
+      excludeFiles: [
+        ...handwrittenApiScope.excludeFiles,
+        'web/app/components/workflow/collaboration/**',
+        'web/app/components/workflow/hooks/use-collaborative-workflow.ts',
+        'web/app/components/workflow/workflow-preview/**',
+      ],
+      rules: {
+        'dify/no-raw-reactflow-graph-write': 'error',
+      },
+    },
   ],
 } satisfies OxlintConfig
