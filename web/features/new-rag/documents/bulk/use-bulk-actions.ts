@@ -99,7 +99,7 @@ export function useBulkReindexAction() {
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('reindex')
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
       context: { silent: true },
@@ -149,7 +149,6 @@ export function useBulkReindexAction() {
           }),
         )
       else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
-      invalidateDocumentsAndTasks()
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
       else {
@@ -168,7 +167,6 @@ export function useBulkReindexAction() {
     canWrite,
     ensureModelReady,
     finish,
-    invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
     reindexDisabled,
