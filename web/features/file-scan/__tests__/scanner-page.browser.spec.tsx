@@ -53,14 +53,19 @@ function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanPro
 
 async function renderPage({
   providers = [scanner()],
-  role = 'owner',
+  canManage = true,
+  role = 'normal',
 }: {
+  canManage?: boolean
   providers?: FileScanProviderResponse[]
   role?: 'normal' | 'owner'
 } = {}) {
   api.listProviders.mockResolvedValue({ data: providers })
   api.listProviderTypes.mockResolvedValue({ data: providerTypes })
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({ currentWorkspace: { role } })
+  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+    currentWorkspace: { role },
+    workspacePermissionKeys: canManage ? ['credential.manage'] : [],
+  })
   await render(
     <ConsoleProvider>
       <FileScanProvidersPage
@@ -112,8 +117,9 @@ it('tells an empty workspace that no scanner is configured', async () => {
   await expect.element(page.getByText('fileScan.scanner.empty')).toBeVisible()
 })
 
-it('is read-only for members who cannot manage the workspace', async () => {
-  await renderPage({ role: 'normal' })
+// The legacy role is not consulted: with RBAC it no longer says who may manage credentials.
+it('is read-only for an owner who lacks the credential permission', async () => {
+  await renderPage({ canManage: false, role: 'owner' })
 
   await expect.element(page.getByText('fileScan.scanner.readOnly')).toBeVisible()
   await expect.element(page.getByText('Office scanner')).toBeVisible()
@@ -129,6 +135,7 @@ it('offers a retry when the list cannot be loaded', async () => {
   api.listProviderTypes.mockResolvedValue({ data: providerTypes })
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner' },
+    workspacePermissionKeys: ['credential.manage'],
   })
   await render(
     <ConsoleProvider>
