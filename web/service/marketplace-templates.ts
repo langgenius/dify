@@ -1,14 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { getMarketplaceApiUrl } from '@/features/marketplace/api'
 import { marketplaceQuery } from '@/service/marketplace'
 
 export const useMarketplaceTemplateDetail = (templateId: string | null) => {
-  return useQuery({
-    ...marketplaceQuery.templateDetail.queryOptions({
-      input: { params: { templateId: templateId ?? '' } },
+  return useQuery(
+    marketplaceQuery.templateDetail.queryOptions({
+      input: templateId ? { params: { templateId } } : skipToken,
     }),
-    enabled: !!templateId,
-  })
+  )
 }
 
 export const fetchMarketplaceTemplateDSL = async (templateId: string): Promise<string> => {

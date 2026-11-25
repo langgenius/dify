@@ -911,7 +911,10 @@ def build_application_services(
         workspaces=workspace_services,
         triggers=triggers,
         workflow_app_logs=WorkflowAppLogQueryService(
-            logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+            logs=WorkflowAppLogQueryRepository(
+                session_factory=database_client,
+                include_evaluation=dify_config.ENABLE_EVALUATION,
+            ),
         ),
         workflow_comments=WorkflowCommentService(
             threads=workflow_comment_repository,

@@ -9,7 +9,7 @@ const isUnfinishedStatus = (status: PluginStatus['status']) =>
   status === TaskStatus.pending || status === TaskStatus.running
 
 export const usePluginTaskStatus = () => {
-  const { pluginTasks, handleRefetch } = usePluginTaskList()
+  const { pluginTasks, invalidatePluginTasks } = usePluginTaskList()
   const { mutateAsync } = useMutation(
     consoleQuery.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post.mutationOptions(),
   )
@@ -36,9 +36,9 @@ export const usePluginTaskStatus = () => {
   const handleClearErrorPlugin = useCallback(
     async (taskId: string, pluginId: string) => {
       await mutateAsync({ params: { task_id: taskId, identifier: pluginId } })
-      handleRefetch()
+      void invalidatePluginTasks()
     },
-    [mutateAsync, handleRefetch],
+    [mutateAsync, invalidatePluginTasks],
   )
   const totalPluginsLength = allPlugins.length
   const runningPluginsLength = runningPlugins.length
