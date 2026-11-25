@@ -1474,6 +1474,16 @@ class OpenApiAgentConfig(BaseSettings):
         default=24 * 60 * 60,
     )
 
+    OPENAPI_MCP_FIND_PAGE_SIZE: PositiveInt = Field(
+        description="Operations one dify_find search answers over MCP; the agent reads on with next_offset.",
+        default=20,
+    )
+
+    OPENAPI_MCP_RESULT_MAX_CHARS: PositiveInt = Field(
+        description="Characters of one MCP tool result. A longer result is cut there, with a note that says so.",
+        default=40_000,
+    )
+
 
 class SkillConfig(BaseSettings):
     ENABLE_SKILL: bool = Field(

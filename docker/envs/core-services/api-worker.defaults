@@ -156,6 +156,9 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # RUN_JOB_MAX_WAITERS=2
 # How long a job's state is kept after its last change.
 # RUN_JOB_TTL_SECONDS=86400
+# Operations one dify_find search answers, and characters of one MCP tool result.
+# OPENAPI_MCP_FIND_PAGE_SIZE=20
+# OPENAPI_MCP_RESULT_MAX_CHARS=40000
 
 # ------------------------------
 # File malware scanning
