@@ -1,8 +1,7 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback } from 'react'
-import { editorAppIdAtom } from '../editor-resource/state'
-import { useHooksStore } from '../hooks-store'
+import { editorAppIdAtom, editorResourceAtom } from '../editor-resource/state'
 import { useWorkflowUpdate } from '../hooks/use-workflow-update'
 import Run from '../run'
 import { useStore } from '../store'
@@ -12,7 +11,7 @@ const Record = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
-  const getWorkflowRunAndTraceUrl = useHooksStore((s) => s.getWorkflowRunAndTraceUrl)
+  const editorResource = useAtomValue(editorResourceAtom)
 
   const handleResultCallback = useCallback(
     (res: WorkflowRunDetailResponse) => {
@@ -33,8 +32,8 @@ const Record = () => {
       </div>
       <Run
         appId={appId}
-        runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
-        tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
+        runOwner={editorResource}
+        runId={historyWorkflowData?.id}
         getResultCallback={handleResultCallback}
       />
     </div>

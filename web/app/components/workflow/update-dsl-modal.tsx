@@ -26,7 +26,7 @@ import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getErrorMessage } from '@/utils/error-message'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
@@ -38,7 +38,7 @@ import {
 } from './update-dsl-modal.helpers'
 import { initialEdges, initialNodes } from './utils'
 
-type UpdateDSLModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+type UpdateDSLModalProps = Pick<DialogProps, 'handle' | 'open' | 'onOpenChange'> & {
   children?: ReactNode
   appId: string
   appMode: AppDetailWithSite['mode']
@@ -47,6 +47,7 @@ type UpdateDSLModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
 }
 
 function UpdateDSLModal({
+  handle,
   open,
   onOpenChange,
   children,
@@ -64,7 +65,7 @@ function UpdateDSLModal({
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
       const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchWorkflowDraft(`/apps/${app_id}/workflows/draft`)
+        await fetchAppWorkflowDraft(app_id)
 
       const { nodes, edges, viewport } = graph
       const importedNodes = initialNodes(nodes, edges)
@@ -203,6 +204,7 @@ function UpdateDSLModal({
   return (
     <Dialog
       actionsRef={actionsRef}
+      handle={handle}
       open={open}
       onOpenChange={(nextOpen, details) => {
         if (!nextOpen && isImporting && details.reason !== 'imperative-action') details.cancel()

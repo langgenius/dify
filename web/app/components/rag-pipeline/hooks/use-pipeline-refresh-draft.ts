@@ -4,7 +4,7 @@ import { useCallback } from 'react'
 import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { processNodesWithoutDataSource } from '../utils'
 
 export const usePipelineRefreshDraft = () => {
@@ -21,7 +21,7 @@ export const usePipelineRefreshDraft = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/rag/pipelines/${pipelineId}/workflows/draft`)
+    fetchPipelineWorkflowDraft(pipelineId)
       .then((response) => {
         const { nodes: processedNodes, viewport } = processNodesWithoutDataSource(
           response.graph.nodes,

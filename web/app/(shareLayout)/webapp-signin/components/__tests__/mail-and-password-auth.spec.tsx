@@ -5,6 +5,7 @@ import MailAndPasswordAuth from '../mail-and-password-auth'
 const replaceMock = vi.fn()
 const webAppLoginMock = vi.fn()
 const fetchAccessTokenMock = vi.fn()
+const toastErrorMock = vi.fn()
 const searchParams = new URLSearchParams({
   redirect_url: encodeURIComponent('/chatbot/test-app'),
 })
@@ -21,6 +22,10 @@ vi.mock('@/context/web-app-context', () => ({
 
 vi.mock('@/service/common', () => ({
   webAppLogin: (...args: unknown[]) => webAppLoginMock(...args),
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: (...args: unknown[]) => toastErrorMock(...args) },
 }))
 
 vi.mock('@/service/share', () => ({
@@ -65,14 +70,46 @@ describe('MailAndPasswordAuth', () => {
 
     await waitFor(() => {
       expect(webAppLoginMock).toHaveBeenCalledWith({
-        url: '/login',
-        body: {
-          email: 'user@example.com',
-          password: 'c3Ryb25nLXBhc3N3b3Jk',
-          remember_me: true,
-        },
+        email: 'user@example.com',
+        password: 'c3Ryb25nLXBhc3N3b3Jk',
+        remember_me: true,
       })
     })
+  })
+
+  it('stores the tokens and redirects after a successful login', async () => {
+    const user = userEvent.setup()
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+    await user.type(screen.getByLabelText('login.password', { exact: true }), 'valid-password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+    await waitFor(() => expect(replaceMock).toHaveBeenCalled())
+    expect(localStorage.getItem('access_token')).toBe('login-token')
+    expect(fetchAccessTokenMock).toHaveBeenCalledWith({
+      appCode: 'test-app',
+      userId: 'embedded-user-99',
+    })
+    expect(toastErrorMock).not.toHaveBeenCalled()
+  })
+
+  it('shows the authentication error and stays on the page when login is rejected', async () => {
+    const user = userEvent.setup()
+    webAppLoginMock.mockRejectedValue({
+      code: 'authentication_failed',
+      message: 'Invalid email or password.',
+    })
+    render(<MailAndPasswordAuth isEmailSetup />)
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+    await user.type(screen.getByLabelText('login.password', { exact: true }), 'wrong-password')
+    await user.click(screen.getByRole('button', { name: 'login.signBtn' }))
+
+    await waitFor(() => expect(toastErrorMock).toHaveBeenCalledWith('Invalid email or password.'))
+    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+    expect(replaceMock).not.toHaveBeenCalled()
   })
 
   it('initializes the email from the login link', () => {
@@ -104,12 +141,9 @@ describe('MailAndPasswordAuth', () => {
     await user.click(submit)
     await waitFor(() =>
       expect(webAppLoginMock).toHaveBeenCalledWith({
-        url: '/login',
-        body: {
-          email: 'autofill@example.com',
-          password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
-          remember_me: true,
-        },
+        email: 'autofill@example.com',
+        password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
+        remember_me: true,
       }),
     )
   })

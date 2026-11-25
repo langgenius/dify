@@ -30,9 +30,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: async () => ({ data: { plugins: [], total: 0 } }),
+  })
+})
 
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
   zAgentStrategyParameter.parse({

@@ -77,7 +77,7 @@ function AvatarGroup({ size, className, ...props }: AvatarGroupProps) {
   return (
     <span
       className={cn(
-        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle',
+        'group/avatar-group isolate inline-flex items-center -space-x-1 align-middle *:z-[calc(sibling-count()-sibling-index()+1)]',
         avatarSizeVariants({ size }),
         className,
       )}

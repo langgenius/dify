@@ -860,6 +860,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
+**Return the Agent's effective shared configuration without creating a draft**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -875,6 +877,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
+**Save the shared draft and return the committed state with validation findings**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -897,6 +901,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
+**Return mention candidates from tenant-scoped configuration and workspace tools**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -912,6 +918,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
+**Check publish rules for the supplied configuration and report findings without writing**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2898,6 +2906,12 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -6746,7 +6760,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | ZIP archive downloaded successfully |  |
+| 200 | ZIP archive downloaded successfully | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -8459,6 +8473,12 @@ No installation state changes on success or failure.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -14513,6 +14533,12 @@ Remove one or more tag bindings from a target.
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -17287,6 +17313,12 @@ performs no writes or provider I/O. Storage failures propagate normally.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"bundle"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18486,7 +18518,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft Skill zip archive |  |
+| 200 | Draft Skill zip archive | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
@@ -39902,6 +39934,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| continue_agent_session | boolean, <br>**Default:** true | Reuse this node's Agent history and working resources across messages in the same Chatflow chat. | No |
 | declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
@@ -39909,6 +39942,7 @@ tenant's default model. The underlying generator never raises — an empty
 | output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
+| session_generation | string | Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes. | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata

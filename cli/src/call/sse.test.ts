@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process'
+import { setImmediate } from 'node:timers/promises'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vite-plus/test'
 import { parseSSE } from './sse'
@@ -66,6 +67,38 @@ describe('parseSSE', () => {
       },
     })
     expect((await collect(s))[0]?.data).toBe('😀')
+  })
+
+  it('applies backpressure while the consumer handles a yielded event', async () => {
+    let pulls = 0
+    let cancelled = false
+    const encoder = new TextEncoder()
+    const body = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulls++
+          controller.enqueue(encoder.encode(`data: event ${pulls}\n\n`))
+          if (pulls === 100) controller.close()
+        },
+        cancel() {
+          cancelled = true
+        },
+      },
+      { highWaterMark: 0 },
+    )
+    const events = parseSSE(body)
+
+    try {
+      const first = await events.next()
+      expect(new TextDecoder().decode(first.value?.data)).toBe('event 1')
+      await setImmediate()
+      expect(pulls).toBe(1)
+    } finally {
+      await events.return()
+    }
+
+    expect(cancelled).toBe(true)
+    expect(body.locked).toBe(false)
   })
 
   it('propagates a response body error to the consumer', async () => {

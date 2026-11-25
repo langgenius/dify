@@ -138,18 +138,19 @@ export default function DeleteExternalApiDialog({
       onOpenChange={(open, details) => {
         if (open) {
           finalFocusRef.current = null
-          deletion.reset()
           onOpen()
         } else if (details.reason !== 'imperative-action' && client.isMutating(filter)) {
           details.cancel()
         }
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) deletion.reset()
       }}
     >
       {({ payload }) =>
         payload && (
           <AlertDialogContent finalFocus={finalFocusRef}>
             <DeleteExternalApiConfirmation
-              key={payload.id}
               api={payload}
               canManage={canManage}
               deleting={deletion.isPending}

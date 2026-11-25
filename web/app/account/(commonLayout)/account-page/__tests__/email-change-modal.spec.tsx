@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EmailChangeModal from '../email-change-modal'
 
 const mockLogout = vi.fn()
@@ -25,8 +26,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: mockLogout }),
+vi.mock('@/service/common-queries', () => ({
+  logoutMutationOptions: () => ({ mutationFn: () => mockLogout() }),
 }))
 
 describe('EmailChangeModal', () => {
@@ -48,7 +49,7 @@ describe('EmailChangeModal', () => {
 
   it('submits the labeled verification fields with Enter through both email phases', async () => {
     const user = userEvent.setup()
-    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+    renderWithConsoleQuery(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
       screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
@@ -113,7 +114,7 @@ describe('EmailChangeModal', () => {
       createHttpError(new Response(null, { status: 400 }), { code: 'email_already_in_use' }),
     )
     const user = userEvent.setup()
-    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+    renderWithConsoleQuery(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
       screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
@@ -145,7 +146,7 @@ describe('EmailChangeModal', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+    renderWithConsoleQuery(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
       screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
@@ -168,7 +169,7 @@ describe('EmailChangeModal', () => {
       }),
     )
     const user = userEvent.setup()
-    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+    renderWithConsoleQuery(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 
     await user.click(
       screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),

@@ -88,3 +88,49 @@ export function pluginDynamicOptionsMutationOptions(
         .then(({ options }) => ({ options: options.map(toDynamicOption) })),
   })
 }
+
+export function marketplacePluginsByIdsQueryOptions(uniqueIdentifiers: string[]) {
+  return marketplaceQuery.pluginsByIdentifiers.queryOptions({
+    input: { body: { unique_identifiers: uniqueIdentifiers } },
+    enabled: uniqueIdentifiers.filter((id) => !!id).length > 0,
+    retry: 0,
+  })
+}
+
+type MarketplacePluginInfoRequest = {
+  organization?: string
+  plugin?: string
+  version?: string
+}
+
+export function marketplacePluginsByInfoQueryOptions(infos: MarketplacePluginInfoRequest[]) {
+  return marketplaceQuery.pluginsByVersions.queryOptions({
+    input: {
+      body: {
+        plugin_tuples: infos.map((info) => ({
+          org: info.organization,
+          name: info.plugin,
+          version: info.version,
+        })),
+      },
+    },
+    enabled: infos.filter((info) => !!info).length > 0,
+    retry: 0,
+  })
+}
+
+// Marketplace plugin ids are `organization/name`, which is the plugin detail route's path.
+export function marketplacePluginManifestQueryOptions(pluginUID: string) {
+  const separatorIndex = pluginUID.indexOf('/')
+  return marketplaceQuery.pluginDetail.queryOptions({
+    input: pluginUID
+      ? {
+          params: {
+            organization: separatorIndex === -1 ? pluginUID : pluginUID.slice(0, separatorIndex),
+            pluginName: separatorIndex === -1 ? '' : pluginUID.slice(separatorIndex + 1),
+          },
+        }
+      : skipToken,
+    retry: 0,
+  })
+}

@@ -262,7 +262,6 @@ export function List({
             >
               {payload && (
                 <AnnotationDetails
-                  key={payload.id}
                   appId={appId}
                   item={payload}
                   isPending={update.isPending}

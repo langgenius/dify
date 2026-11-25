@@ -54,18 +54,6 @@ export function createHttpError(
   })
 }
 
-export function httpErrorFromXhr(xhr: XMLHttpRequest) {
-  const headers = new Headers()
-  for (const line of xhr
-    .getAllResponseHeaders()
-    .trim()
-    .split(/[\r\n]+/)) {
-    const separator = line.indexOf(':')
-    if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
-  }
-  return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
-}
-
 export async function httpErrorFromResponse(response: Response) {
   let body: unknown
   try {
