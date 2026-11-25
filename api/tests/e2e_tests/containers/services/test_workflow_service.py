@@ -6,22 +6,23 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
-import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from queue import Queue
+from threading import Event
 
 import pytest
 from faker import Faker
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from events.app_event import app_draft_workflow_was_synced
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.errors.app import WorkflowHashNotEqualError
+from services.workflow.draft_creation_lock import lock_draft_creation
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.core.model_fixtures import make_model_instance
@@ -748,7 +749,7 @@ class TestWorkflowService:
 
     @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     def test_competing_first_saves_create_one_draft(self, db_session_with_containers: Session, mode: AppMode) -> None:
-        """An initializer holds the owner through commit and a competing save then sees its draft."""
+        """The Redis lease covers commit and the next save sees the committed first draft."""
         account = self._create_test_account(db_session_with_containers)
         app = self._create_test_app(db_session_with_containers)
         app.mode = mode
@@ -756,9 +757,9 @@ class TestWorkflowService:
         app_id, tenant_id, account_id = app.id, app.tenant_id, account.id
         sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
         service = WorkflowService(sessions)
-        contender_pid: Queue[int] = Queue()
+        started = Event()
 
-        def sync(session: Session, title: str) -> Workflow:
+        def sync(session: Session, title: str, *, commit: bool) -> Workflow:
             admitted_app = session.get(App, app_id)
             actor = session.get(Account, account_id)
             assert admitted_app is not None
@@ -772,41 +773,34 @@ class TestWorkflowService:
                 environment_variables=[],
                 conversation_variables=[],
                 session=session,
-                commit=False,
+                commit=commit,
                 sync_agent_bindings=False,
             )
 
         def compete() -> bool:
-            with sessions.begin() as session:
-                session.execute(text("SET LOCAL lock_timeout = '10s'"))
-                pid = session.scalar(text("SELECT pg_backend_pid()"))
-                assert isinstance(pid, int)
-                contender_pid.put(pid)
+            with sessions() as session:
+                assert service.get_draft_workflow(app, session=session) is None
+                started.set()
                 try:
-                    sync(session, "Competing save")
+                    sync(session, "Competing save", commit=True)
                 except WorkflowHashNotEqualError:
                     return False
                 return True
 
-        with ThreadPoolExecutor(max_workers=1) as executor, sessions() as initializer, sessions() as observer:
-            first = sync(initializer, "First save")
-            initializer_pid = initializer.scalar(text("SELECT pg_backend_pid()"))
-            contender = executor.submit(compete)
-            pid = contender_pid.get(timeout=5)
-            deadline = time.monotonic() + 5
-            waiting_for_initializer = False
-            while not waiting_for_initializer and not contender.done() and time.monotonic() < deadline:
-                waiting_for_initializer = bool(
-                    observer.scalar(
-                        text("SELECT :initializer = ANY(pg_blocking_pids(:contender))"),
-                        {"initializer": initializer_pid, "contender": pid},
-                    )
-                )
-                if not waiting_for_initializer:
-                    time.sleep(0.01)
-            assert waiting_for_initializer
+        with (
+            app_draft_workflow_was_synced.muted(),
+            ThreadPoolExecutor(max_workers=1) as executor,
+            sessions() as initializer,
+            sessions() as observer,
+        ):
+            with lock_draft_creation(tenant_id=tenant_id, app_id=app_id, session=initializer):
+                first = sync(initializer, "First save", commit=False)
+                contender = executor.submit(compete)
+                assert started.wait(timeout=5)
+                with pytest.raises(TimeoutError):
+                    contender.result(timeout=0.25)
+                initializer.commit()
 
-            initializer.commit()
             assert contender.result(timeout=5) is False
             stored = observer.scalars(
                 select(Workflow).where(

@@ -45,7 +45,6 @@ from models.agent_soul_state import build_initial_agent_soul
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow, resolve_workflow_kind
-from repositories.app.workflow_app_lock import lock_workflow_app
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
@@ -601,7 +600,7 @@ class AppService:
 
         Omit account_id to use the logged-in actor; pass None for system cleanup.
 
-        The transaction locks a Workflow App before releasing its binding owners across
+        The transaction releases all of a Workflow App's binding owners across
         draft and published versions, archives a backing Roster Agent, retires
         its resources, and deletes the App. Deleting a Roster Agent's backing
         App does not remove bindings owned by external Workflows.
@@ -610,9 +609,6 @@ class AppService:
         workflow-only Agent retirement and the Roster resource collector. Any
         publication failure propagates.
         """
-        if app.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT) and not lock_workflow_app(app=app, session=session):
-            return
-
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent(app, session=session)

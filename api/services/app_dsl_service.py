@@ -4,6 +4,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping
+from contextlib import ExitStack
 from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -56,7 +57,6 @@ from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNode
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
-from repositories.app.workflow_app_lock import lock_workflow_app
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -686,241 +686,251 @@ class AppDslService:
     ) -> App:
         """Create an App or apply validated DSL to an admitted existing App.
 
-        Workflow imports lock the App before inspecting the draft and before
-        changing metadata. A failed draft guard leaves metadata and the
-        dependency cache untouched.
+        Existing workflow imports read the draft under its row lock before
+        updating App metadata. If the draft is missing, hold its Redis creation
+        lease through the import commit, including package bindings. A refused
+        draft guard leaves metadata and the dependency cache untouched.
         """
         app_data = data.get("app", {})
         app_mode = app_data.get("mode")
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
-        if (
-            app is not None
-            and app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
-            and not lock_workflow_app(app=app, session=self._session)
-        ):
+        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+            workflow_data = data.get("workflow")
+            if not workflow_data or not isinstance(workflow_data, dict):
+                raise ValueError("Missing workflow data for workflow/advanced chat app")
+
+        app_is_new = app is None
+        with ExitStack() as draft_scope:
             if draft_hash is not None:
-                raise DraftChangedError()
-            raise WorkflowNotFoundError("App not found for draft import.")
-        locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
-        site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
-        if app_mode == AppMode.AGENT:
-            self._ensure_agent_import_permission(account, app=app)
+                locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash)
+            elif app is not None and app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
+                locked_draft = draft_scope.enter_context(
+                    WorkflowService().draft_for_update_or_creation(app, session=self._session)
+                )
+            else:
+                locked_draft = None
+            site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
+            if app_mode == AppMode.AGENT:
+                self._ensure_agent_import_permission(account, app=app)
 
-        target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
-        if target_tenant_id is None:
-            raise ValueError("Current tenant is not set")
+            target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
+            if target_tenant_id is None:
+                raise ValueError("Current tenant is not set")
 
-        # Set icon type
-        icon_type_value = icon_type or app_data.get("icon_type")
-        resolved_icon_type: IconType
-        if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
-            resolved_icon_type = IconType(icon_type_value)
-        else:
-            resolved_icon_type = IconType.EMOJI
-        icon = icon or str(app_data.get("icon", ""))
-        if not is_valid_image_icon(
-            session=self._session,
-            tenant_id=target_tenant_id,
-            icon_type=resolved_icon_type,
-            icon=icon,
-        ):
-            resolved_icon_type = DEFAULT_ICON_TYPE
-            icon = DEFAULT_ICON
-
-        if app:
-            # Update existing app
-            app.name = name or app_data.get("name", app.name)
-            app.description = description or app_data.get("description", app.description)
-            app.icon_type = resolved_icon_type
-            app.icon = icon
-            app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
-            app.updated_by = account.id
-            app.updated_at = naive_utc_now()
-        else:
-            # Create new app
-            app = App()
-            app.id = import_app_id or str(uuid4())
-            app.tenant_id = target_tenant_id
-            app.mode = app_mode
-            app.name = name or app_data.get("name", "")
-            app.description = description or app_data.get("description", "")
-            app.icon_type = resolved_icon_type
-            app.icon = icon
-            app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
-            app.enable_site = app_mode != AppMode.AGENT
-            app.enable_api = app_mode != AppMode.AGENT
-            app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
-            app.created_by = account.id
-            app.maintainer = account.id
-            app.updated_by = account.id
-
-            self._session.add(app)
-            self._session.flush()
-            app_was_created.send(app, account=account, session=self._session)
-
-        if site_data is not None:
-            site = app.site_with_session(session=self._session)
-            if site is None:
-                raise ValueError("App Site is unavailable")
-            apply_site_dsl(
-                site=site,
-                app=app,
-                data=site_data,
+            # Set icon type
+            icon_type_value = icon_type or app_data.get("icon_type")
+            resolved_icon_type: IconType
+            if icon_type_value in [IconType.EMOJI, IconType.IMAGE, IconType.LINK]:
+                resolved_icon_type = IconType(icon_type_value)
+            else:
+                resolved_icon_type = IconType.EMOJI
+            icon = icon or str(app_data.get("icon", ""))
+            if not is_valid_image_icon(
                 session=self._session,
-                allow_premium_settings=allow_premium_site_settings,
-            )
+                tenant_id=target_tenant_id,
+                icon_type=resolved_icon_type,
+                icon=icon,
+            ):
+                resolved_icon_type = DEFAULT_ICON_TYPE
+                icon = DEFAULT_ICON
 
-        # save dependencies
-        if dependencies:
-            self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
+            if app:
+                # Update existing app
+                app.name = name or app_data.get("name", app.name)
+                app.description = description or app_data.get("description", app.description)
+                app.icon_type = resolved_icon_type
+                app.icon = icon
+                app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
+                app.updated_by = account.id
+                app.updated_at = naive_utc_now()
+            else:
+                # Create new app
+                app = App()
+                app.id = import_app_id or str(uuid4())
+                app.tenant_id = target_tenant_id
+                app.mode = app_mode
+                app.name = name or app_data.get("name", "")
+                app.description = description or app_data.get("description", "")
+                app.icon_type = resolved_icon_type
+                app.icon = icon
+                app.icon_background = icon_background or app_data.get("icon_background", "#FFFFFF")
+                app.enable_site = app_mode != AppMode.AGENT
+                app.enable_api = app_mode != AppMode.AGENT
+                app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
+                app.created_by = account.id
+                app.maintainer = account.id
+                app.updated_by = account.id
 
-        # Initialize app based on mode
-        match app_mode:
-            case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
-                workflow_data = data.get("workflow")
-                if not workflow_data or not isinstance(workflow_data, dict):
-                    raise ValueError("Missing workflow data for workflow/advanced chat app")
+                self._session.add(app)
+                self._session.flush()
+                app_was_created.send(app, account=account, session=self._session)
 
-                environment_variables_list = workflow_data.get("environment_variables", [])
-                environment_variables = [
-                    variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
-                ]
-                conversation_variables_list = workflow_data.get("conversation_variables", [])
-                conversation_variables = [
-                    variable_factory.build_conversation_variable_from_mapping(obj)
-                    for obj in conversation_variables_list
-                ]
-
-                workflow_service = WorkflowService()
-                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow_for_update(
-                    app_model=app, session=self._session
-                )
-                unique_hash = current_draft_workflow.unique_hash if current_draft_workflow else None
-                graph = workflow_data.get("graph", {})
-                if not isinstance(graph, dict):
-                    raise ValueError("Workflow graph must be a mapping")
-                # The source canvas position should not determine the imported app's initial view.
-                graph = graph.copy()
-                graph.pop("viewport", None)
-                for node in graph.get("nodes", []):
-                    if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
-                        dataset_ids = node["data"].get("dataset_ids", [])
-                        node["data"]["dataset_ids"] = [
-                            decrypted_id
-                            for dataset_id in dataset_ids
-                            if (
-                                decrypted_id := self.decrypt_dataset_id(
-                                    encrypted_data=dataset_id, tenant_id=app.tenant_id
-                                )
-                            )
-                        ]
-                missing_knowledge_fs_spaces = missing_control_space_ids(
-                    session=self._session,
-                    tenant_id=app.tenant_id,
-                    graph=graph,
-                )
-                for control_space_id in missing_knowledge_fs_spaces:
-                    self._warnings.append(
-                        DslImportWarning(
-                            code="knowledge_fs_space_unresolved",
-                            path="workflow.graph.nodes",
-                            message=(
-                                "A KnowledgeFS Space reference is unavailable in the target workspace "
-                                "and must be reselected before publishing."
-                            ),
-                            details={"control_space_id": control_space_id},
-                        )
-                    )
-                raw_agent_packages = data.get("agent_packages") or {}
-                if not isinstance(raw_agent_packages, Mapping):
-                    raise ValueError("agent_packages must be a mapping")
-                import_agent_bindings = bool(raw_agent_packages) or (
-                    preserve_agent_bindings and is_agent_v2_graph(graph)
-                )
-                graph_for_sync = AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
-                draft_workflow = workflow_service.sync_draft_workflow(
-                    app_model=app,
-                    graph=graph_for_sync,
-                    features=workflow_data.get("features", {}),
-                    unique_hash=unique_hash,
-                    account=account,
-                    environment_variables=environment_variables,
-                    conversation_variables=conversation_variables,
-                    session=self._session,
-                    commit=not import_agent_bindings,
-                    sync_agent_bindings=not import_agent_bindings,
-                )
-                if import_agent_bindings:
-                    retirement_candidates: set[str] = set()
-                    if raw_agent_packages:
-                        _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
-                            workflow=draft_workflow,
-                            portable_graph=graph,
-                            raw_packages=raw_agent_packages,
-                            account=account,
-                        )
-                        self._warnings.extend(warnings)
-                    if preserve_agent_bindings:
-                        retirement_candidates.update(
-                            self._sync_copied_workflow_bindings(workflow=draft_workflow, account_id=account.id)
-                        )
-                    WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                        session=self._session,
-                        draft_workflow=draft_workflow,
-                    )
-                    self._session.commit()
-                    WorkflowAgentRetirementService.retire_unowned(
-                        tenant_id=app.tenant_id,
-                        agent_ids=retirement_candidates,
-                        account_id=account.id,
-                    )
-            case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
-                # Initialize model config
-                model_config = data.get("model_config")
-                if not model_config or not isinstance(model_config, dict):
-                    raise ValueError("Missing model_config for chat/agent-chat/completion app")
-                SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
-                TextToSpeechConfigManager.validate_optional_fields(model_config)
-                # Initialize or update model config
-                app_model_config = (
-                    self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
-                )
-                if not app_model_config:
-                    app_model_config = AppModelConfig(
-                        app_id=app.id, created_by=account.id, updated_by=account.id
-                    ).from_model_config_dict(cast(AppModelConfigDict, model_config))
-                    app_model_config.id = str(uuid4())
-                    app.app_model_config_id = app_model_config.id
-
-                    self._session.add(app_model_config)
-                    # Persist the config and app FK before receivers query them in this transaction.
-                    self._session.flush()
-                    app_model_config_was_updated.send(
-                        app,
-                        app_model_config=app_model_config,
-                        session=self._session,
-                    )
-            case AppMode.AGENT:
-                if app.app_model_config_with_session(session=self._session) is not None:
-                    raise ValueError("Agent DSL import only supports creating a new Agent App")
-                agent_data = data.get("agent")
-                raw_agent_packages = data.get("agent_packages")
-                if not isinstance(agent_data, Mapping) or not isinstance(raw_agent_packages, Mapping):
-                    raise ValueError("Missing Agent package data")
-                package_ref = agent_data.get("package_ref")
-                if not isinstance(package_ref, str) or package_ref not in raw_agent_packages:
-                    raise ValueError("Agent package_ref is missing or invalid")
-                package = AgentPackage.model_validate(raw_agent_packages[package_ref])
-                imported = AgentDslService(self._session).import_agent_app_package(
+            if site_data is not None:
+                site = app.site_with_session(session=self._session)
+                if site is None:
+                    raise ValueError("App Site is unavailable")
+                apply_site_dsl(
+                    site=site,
                     app=app,
-                    account=account,
-                    package=package,
+                    data=site_data,
+                    session=self._session,
+                    allow_premium_settings=allow_premium_site_settings,
                 )
-                self._warnings.extend(imported.warnings)
-            case _:
-                raise ValueError("Invalid app mode")
+
+            # save dependencies
+            if dependencies:
+                self.cache_import_dependencies(app_id=app.id, dependencies=dependencies)
+
+            # Initialize app based on mode
+            match app_mode:
+                case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
+                    workflow_data = data["workflow"]
+                    environment_variables_list = workflow_data.get("environment_variables", [])
+                    environment_variables = [
+                        variable_factory.build_environment_variable_from_mapping(obj)
+                        for obj in environment_variables_list
+                    ]
+                    conversation_variables_list = workflow_data.get("conversation_variables", [])
+                    conversation_variables = [
+                        variable_factory.build_conversation_variable_from_mapping(obj)
+                        for obj in conversation_variables_list
+                    ]
+
+                    workflow_service = WorkflowService()
+                    if app_is_new:
+                        locked_draft = draft_scope.enter_context(
+                            workflow_service.draft_for_update_or_creation(app, session=self._session)
+                        )
+                    unique_hash = locked_draft.unique_hash if locked_draft is not None else None
+                    graph = workflow_data.get("graph", {})
+                    if not isinstance(graph, dict):
+                        raise ValueError("Workflow graph must be a mapping")
+                    # The source canvas position should not determine the imported app's initial view.
+                    graph = graph.copy()
+                    graph.pop("viewport", None)
+                    for node in graph.get("nodes", []):
+                        if node.get("data", {}).get("type", "") == BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL:
+                            dataset_ids = node["data"].get("dataset_ids", [])
+                            node["data"]["dataset_ids"] = [
+                                decrypted_id
+                                for dataset_id in dataset_ids
+                                if (
+                                    decrypted_id := self.decrypt_dataset_id(
+                                        encrypted_data=dataset_id, tenant_id=app.tenant_id
+                                    )
+                                )
+                            ]
+                    missing_knowledge_fs_spaces = missing_control_space_ids(
+                        session=self._session,
+                        tenant_id=app.tenant_id,
+                        graph=graph,
+                    )
+                    for control_space_id in missing_knowledge_fs_spaces:
+                        self._warnings.append(
+                            DslImportWarning(
+                                code="knowledge_fs_space_unresolved",
+                                path="workflow.graph.nodes",
+                                message=(
+                                    "A KnowledgeFS Space reference is unavailable in the target workspace "
+                                    "and must be reselected before publishing."
+                                ),
+                                details={"control_space_id": control_space_id},
+                            )
+                        )
+                    raw_agent_packages = data.get("agent_packages") or {}
+                    if not isinstance(raw_agent_packages, Mapping):
+                        raise ValueError("agent_packages must be a mapping")
+                    import_agent_bindings = bool(raw_agent_packages) or (
+                        preserve_agent_bindings and is_agent_v2_graph(graph)
+                    )
+                    graph_for_sync = (
+                        AgentDslService.graph_without_package_bindings(graph) if raw_agent_packages else graph
+                    )
+                    draft_workflow = workflow_service.sync_draft_workflow(
+                        app_model=app,
+                        graph=graph_for_sync,
+                        features=workflow_data.get("features", {}),
+                        unique_hash=unique_hash,
+                        account=account,
+                        environment_variables=environment_variables,
+                        conversation_variables=conversation_variables,
+                        session=self._session,
+                        commit=not import_agent_bindings,
+                        sync_agent_bindings=not import_agent_bindings,
+                    )
+                    if import_agent_bindings:
+                        retirement_candidates: set[str] = set()
+                        if raw_agent_packages:
+                            _, warnings, retirement_candidates = AgentDslService(
+                                self._session
+                            ).import_workflow_packages(
+                                workflow=draft_workflow,
+                                portable_graph=graph,
+                                raw_packages=raw_agent_packages,
+                                account=account,
+                            )
+                            self._warnings.extend(warnings)
+                        if preserve_agent_bindings:
+                            retirement_candidates.update(
+                                self._sync_copied_workflow_bindings(workflow=draft_workflow, account_id=account.id)
+                            )
+                        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                            session=self._session,
+                            draft_workflow=draft_workflow,
+                        )
+                        self._session.commit()
+                        WorkflowAgentRetirementService.retire_unowned(
+                            tenant_id=app.tenant_id,
+                            agent_ids=retirement_candidates,
+                            account_id=account.id,
+                        )
+                case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
+                    # Initialize model config
+                    model_config = data.get("model_config")
+                    if not model_config or not isinstance(model_config, dict):
+                        raise ValueError("Missing model_config for chat/agent-chat/completion app")
+                    SuggestedQuestionsAfterAnswerConfigManager.validate_optional_fields(model_config)
+                    TextToSpeechConfigManager.validate_optional_fields(model_config)
+                    # Initialize or update model config
+                    app_model_config = (
+                        self._session.get(AppModelConfig, app.app_model_config_id) if app.app_model_config_id else None
+                    )
+                    if not app_model_config:
+                        app_model_config = AppModelConfig(
+                            app_id=app.id, created_by=account.id, updated_by=account.id
+                        ).from_model_config_dict(cast(AppModelConfigDict, model_config))
+                        app_model_config.id = str(uuid4())
+                        app.app_model_config_id = app_model_config.id
+
+                        self._session.add(app_model_config)
+                        # Persist the config and app FK before receivers query them in this transaction.
+                        self._session.flush()
+                        app_model_config_was_updated.send(
+                            app,
+                            app_model_config=app_model_config,
+                            session=self._session,
+                        )
+                case AppMode.AGENT:
+                    if app.app_model_config_with_session(session=self._session) is not None:
+                        raise ValueError("Agent DSL import only supports creating a new Agent App")
+                    agent_data = data.get("agent")
+                    raw_agent_packages = data.get("agent_packages")
+                    if not isinstance(agent_data, Mapping) or not isinstance(raw_agent_packages, Mapping):
+                        raise ValueError("Missing Agent package data")
+                    package_ref = agent_data.get("package_ref")
+                    if not isinstance(package_ref, str) or package_ref not in raw_agent_packages:
+                        raise ValueError("Agent package_ref is missing or invalid")
+                    package = AgentPackage.model_validate(raw_agent_packages[package_ref])
+                    imported = AgentDslService(self._session).import_agent_app_package(
+                        app=app,
+                        account=account,
+                        package=package,
+                    )
+                    self._warnings.extend(imported.warnings)
+                case _:
+                    raise ValueError("Invalid app mode")
         return app
 
     @staticmethod

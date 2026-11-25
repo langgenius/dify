@@ -42,7 +42,6 @@ from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.response import app_record, app_summary
-from repositories.app.workflow_app_lock import lock_workflow_app
 from repositories.app_definition_query_repository import load_app_parameter_config
 from repositories.tag_repository import TagRepository
 from services.agent.errors import (
@@ -1084,12 +1083,8 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         archived Agents retain no Agent tag bindings, target evaluation records
         are staged for cleanup and resources are retired in this transaction.
         Independent Studio tags and other Agents' bindings remain unchanged.
-        Workflow Apps are locked before their bindings are released.
         Never commits or performs external effects before the caller commits.
         """
-        if app.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT) and not lock_workflow_app(app=app, session=session):
-            raise ConsoleAppNotFoundError()
-
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
         if backing_agent is not None:

@@ -37,6 +37,7 @@ from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
+from extensions.ext_redis import RedisClientWrapper
 from extensions.logstore.repositories.logstore_workflow_node_execution_repository import (
     LogstoreWorkflowNodeExecutionRepository,
 )
@@ -81,7 +82,12 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services import workflow_service as workflow_service_module
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
-from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.errors.workflow_service import (
+    DraftWorkflowDeletionError,
+    WorkflowDraftInitializationBusyError,
+    WorkflowInUseError,
+)
+from services.workflow import draft_creation_lock
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
@@ -155,12 +161,11 @@ def test_publish_locks_and_refreshes_the_latest_draft_graph(
         event.remove(sqlite_session, "do_orm_execute", record_lock)
     assert published.graph_dict == new_graph
     assert draft.graph_dict == new_graph
-    app_lock, draft_lock = locking_reads
-    assert "FROM apps" in app_lock
+    (draft_lock,) = locking_reads
     assert "FROM workflows" in draft_lock
 
 
-def test_restore_locks_app_before_the_source_and_destination_draft(
+def test_restore_locks_the_source_and_existing_destination_draft(
     sqlite_session: Session, sqlite_engine: _workflow_service_Engine
 ) -> None:
     service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
@@ -188,8 +193,7 @@ def test_restore_locks_app_before_the_source_and_destination_draft(
         event.remove(sqlite_session, "do_orm_execute", record_lock)
     assert restored.id == draft.id
     assert restored.graph_dict == source.graph_dict
-    app_lock, source_lock, draft_lock = locking_reads
-    assert "FROM apps" in app_lock
+    source_lock, draft_lock = locking_reads
     assert "FROM workflows" in source_lock
     assert "FROM workflows" in draft_lock
 
@@ -215,6 +219,40 @@ def test_draft_sync_rejects_a_hash_when_the_draft_is_missing(sqlite_session_fact
                 sync_agent_bindings=False,
             )
         assert service.get_draft_workflow(app, session=session) is None
+
+
+def test_first_draft_save_aborts_when_redis_lock_times_out(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """An expired wait returns a retryable failure and leaves the draft absent."""
+    service = WorkflowService(sqlite_session_factory)
+    redis, commands = redis_transport
+    monkeypatch.setattr(draft_creation_lock, "redis_client", redis)
+    monkeypatch.setattr(draft_creation_lock, "_DRAFT_CREATION_WAIT_SECONDS", 0)
+    with sqlite_session_factory.begin() as session:
+        app = make_app(mode=AppMode.WORKFLOW)
+        session.add(app)
+        session.flush()
+        with pytest.raises(WorkflowDraftInitializationBusyError):
+            service.sync_draft_workflow(
+                app_model=app,
+                graph={"nodes": [], "edges": []},
+                features={},
+                unique_hash=None,
+                account=make_account(),
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+            )
+        assert service.get_draft_workflow(app, session=session) is None
+        commands.assert_called_once()
+        command, key, *_token_and_options = commands.call_args.args
+        assert command == "SET"
+        assert key == f"workflow:draft-create:{app.tenant_id}:{app.id}"
+        assert "NX" in _token_and_options
+        assert 60_000 in _token_and_options
 
 
 def test_draft_sync_checks_the_hash_against_the_refreshed_draft(
@@ -251,6 +289,44 @@ def test_draft_sync_checks_the_hash_against_the_refreshed_draft(
             )
         assert cached_draft.graph_dict == latest_graph
         assert not stale_session.is_modified(cached_draft)
+
+
+def test_first_draft_save_rechecks_after_taking_the_redis_lock(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """A draft committed while this request was waiting wins the first save."""
+    service = WorkflowService(sqlite_session_factory)
+    app = make_app(mode=AppMode.WORKFLOW)
+    winner = make_workflow(workflow_id="winner", app_id=app.id, tenant_id=app.tenant_id)
+    with sqlite_session_factory.begin() as seed_session:
+        seed_session.add(app)
+
+    redis, commands = redis_transport
+    monkeypatch.setattr(draft_creation_lock, "redis_client", redis)
+
+    def dispatch_redis(command: str, *_args: object, **_kwargs: object) -> int:
+        if command == "SET":
+            with sqlite_session_factory.begin() as other_writer:
+                other_writer.add(winner)
+        return 1
+
+    commands.side_effect = dispatch_redis
+    with sqlite_session_factory() as session, pytest.raises(WorkflowHashNotEqualError):
+        service.sync_draft_workflow(
+            app_model=app,
+            graph={"nodes": [], "edges": []},
+            features={},
+            unique_hash=None,
+            account=make_account(),
+            environment_variables=[],
+            conversation_variables=[],
+            session=session,
+        )
+    with sqlite_session_factory() as reader:
+        assert list(reader.scalars(select(Workflow.id))) == [winner.id]
+    assert [call.args[0] for call in commands.call_args_list] == ["SET", "EVALSHA"]
 
 
 class TestWorkflowAssociatedDataFactory:

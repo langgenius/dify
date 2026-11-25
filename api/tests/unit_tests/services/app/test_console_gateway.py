@@ -842,7 +842,7 @@ def test_create_draft_keeps_an_existing_first_save(
     copy_source: tuple[RequestContext, str],
 ) -> None:
     context, app_id = copy_source
-    graph = {"nodes": [{"id": "existing-start", "data": {"type": "start"}}], "edges": []}
+    graph: dict[str, object] = {"nodes": [{"id": "existing-start", "data": {"type": "start"}}], "edges": []}
     with sqlite_session_factory.begin() as session:
         app = session.get(App, app_id)
         assert app is not None

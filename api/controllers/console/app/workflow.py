@@ -34,7 +34,6 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.error import (
-    AppNotFoundError,
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
@@ -100,6 +99,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
@@ -722,8 +722,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
-        except WorkflowNotFoundError as exc:
-            raise AppNotFoundError() from exc
+        except WorkflowDraftInitializationBusyError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         except VariableError as e:
             raise InvalidArgumentError(description=str(e)) from e
 
@@ -1699,6 +1699,8 @@ class DraftWorkflowRestoreApi(Resource):
             )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
+        except WorkflowDraftInitializationBusyError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except ValueError as exc:

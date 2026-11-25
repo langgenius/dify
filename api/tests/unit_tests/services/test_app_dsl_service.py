@@ -1259,10 +1259,10 @@ def _workflow_draft(app: App) -> Workflow:
 
 
 @pytest.mark.parametrize("guarded", [False, True], ids=["unconditional-import", "hash-guarded-import"])
-def test_overwrite_locks_app_before_draft_and_updates_it_in_place(
+def test_overwrite_locks_existing_draft_and_updates_it_in_place(
     sqlite_session: Session, workflow_dsl_service: AppDslService, guarded: bool
 ) -> None:
-    """Both overwrite paths acquire the App before the draft so metadata writes can safely follow."""
+    """Both overwrite paths lock the existing draft before changing App metadata."""
     app = _app(mode=AppMode.WORKFLOW)
     draft = _workflow_draft(app)
     sqlite_session.add_all([app, draft])
@@ -1275,7 +1275,7 @@ def test_overwrite_locks_app_before_draft_and_updates_it_in_place(
             if "FOR UPDATE" in statement:
                 locking_reads.append(statement)
 
-    graph = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    graph: dict[str, object] = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
     event.listen(sqlite_session, "do_orm_execute", record_lock)
     try:
         with app_draft_workflow_was_synced.muted():
@@ -1287,8 +1287,7 @@ def test_overwrite_locks_app_before_draft_and_updates_it_in_place(
             )
     finally:
         event.remove(sqlite_session, "do_orm_execute", record_lock)
-    app_lock, initial_draft_lock, sync_draft_lock = locking_reads
-    assert "FROM apps" in app_lock
+    initial_draft_lock, sync_draft_lock = locking_reads
     assert "FROM workflows" in initial_draft_lock
     assert "FROM workflows" in sync_draft_lock
     assert app.name == "Imported"
@@ -1403,7 +1402,11 @@ def test_pending_data_without_a_draft_hash_still_reads() -> None:
 @pytest.mark.parametrize("confirmed", [False, True])
 @pytest.mark.parametrize("overwrite", [False, True])
 def test_import_creation_marker_tracks_persisted_app(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
+    sqlite_session: Session,
+    workflow_dsl_service: AppDslService,
+    monkeypatch: pytest.MonkeyPatch,
+    confirmed: bool,
+    overwrite: bool,
 ) -> None:
     account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
     _persist_overwrite_target(sqlite_session) if overwrite else None
@@ -1415,25 +1418,24 @@ def test_import_creation_marker_tracks_persisted_app(
             "workflow": {"graph": {"nodes": [], "edges": []}, "features": {}},
         }
     )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock())
-    service = AppDslService(sqlite_session)
-    if confirmed:
-        pending = PendingData(
-            tenant_id=_TENANT_ID,
-            account_id=_CALLER_ID,
-            import_mode="yaml-content",
-            yaml_content=data,
-            app_id=_OVERWRITE_APP_ID if overwrite else None,
-        )
-        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
-        result = service.confirm_import(import_id="pending", account=account)
-    else:
-        result = service.import_app(
-            account=account,
-            import_mode="yaml-content",
-            yaml_content=data,
-            app_id=_OVERWRITE_APP_ID if overwrite else None,
-        )
+    with app_draft_workflow_was_synced.muted():
+        if confirmed:
+            pending = PendingData(
+                tenant_id=_TENANT_ID,
+                account_id=_CALLER_ID,
+                import_mode="yaml-content",
+                yaml_content=data,
+                app_id=_OVERWRITE_APP_ID if overwrite else None,
+            )
+            monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+            result = workflow_dsl_service.confirm_import(import_id="pending", account=account)
+        else:
+            result = workflow_dsl_service.import_app(
+                account=account,
+                import_mode="yaml-content",
+                yaml_content=data,
+                app_id=_OVERWRITE_APP_ID if overwrite else None,
+            )
     assert result.status == ImportStatus.COMPLETED, result.error
     assert result.app_created is (not overwrite)
     assert sqlite_session.get(App, result.app_id) is not None
