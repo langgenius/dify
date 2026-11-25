@@ -1,6 +1,6 @@
 import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
-import { QueryClient } from '@tanstack/react-query'
+import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 
 type MutationPolicy<TVariables> = {
   onSuccess?: (
@@ -302,7 +302,6 @@ describe('knowledge space mutation policies', () => {
   it.each([
     ['creating', () => space().goldenQuestions.post.mutationOptions()],
     ['importing', () => space().goldenQuestions.bulkImport.post.mutationOptions()],
-    ['deleting', () => space().goldenQuestions.byQuestionId.delete.mutationOptions()],
   ] as const)('refreshes the space golden questions after %s questions', async (_, options) => {
     const questions = (control_space_id: string) =>
       space().goldenQuestions.get.queryKey({
@@ -321,6 +320,32 @@ describe('knowledge space mutation policies', () => {
 
     expect(isInvalidated(questions('space-1'))).toBe(true)
     expect(isInvalidated(questions('space-2'))).toBe(false)
+  })
+
+  it('refreshes the golden question list once after a bulk delete settles', async () => {
+    const listKey = space().goldenQuestions.get.queryKey({ input: { params, query: {} } })
+    const queryFn = vi.fn(async () => ({ data: [] }))
+    const observer = new QueryObserver(queryClient, { queryKey: listKey, queryFn })
+    const unsubscribe = observer.subscribe(() => undefined)
+    await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(1))
+
+    const deleted = Array.from({ length: 5 }, (_, index) =>
+      new MutationObserver(
+        queryClient,
+        space().goldenQuestions.byQuestionId.delete.mutationOptions({
+          mutationFn: async () => {
+            await new Promise((resolve) => setTimeout(resolve, index))
+            if (index === 4) throw new Error('failed')
+            return {} as never
+          },
+        }),
+      ).mutate({ params: { ...params, question_id: `question-${index}` } }),
+    )
+    await Promise.allSettled(deleted)
+    unsubscribe()
+
+    // One refresh for the batch, even though the last delete failed.
+    expect(queryFn).toHaveBeenCalledTimes(2)
   })
 
   it('refreshes documents, tasks and golden questions of the re-indexed space', async () => {

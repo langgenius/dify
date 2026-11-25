@@ -1232,7 +1232,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               // Metadata writes return the full detail: write it instead of refetching it.
               patch: {
                 mutationOptions: {
-                  onSuccess: (detail, { params, body }, _result, { client }) => {
+                  onSuccess: async (detail, { params, body }, _result, { client }) => {
+                    // A detail refetch started before the save must not overwrite it.
+                    await client.cancelQueries({
+                      queryKey: consoleQuery.workspaces.current.skills.bySkillId.get.key({
+                        input: { params: { skill_id: params.skill_id } },
+                      }),
+                    })
                     setSkillDetailCache(consoleQuery, client, params.skill_id, detail)
                     const input = { params: { skill_id: params.skill_id } }
                     void invalidateQueryKeys(client, [
@@ -2682,10 +2688,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
               },
               byQuestionId: {
+                // Bulk deletes run one mutation per question: refresh the list once,
+                // after the last pending delete of the space settles.
                 delete: {
                   mutationOptions: {
-                    onSuccess: (_data, { params }, _result, { client }) =>
-                      invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id),
+                    onMutate: ({ params }, { client }) => {
+                      startGoldenQuestionDelete(client, params.control_space_id)
+                    },
+                    onSettled: (_data, _error, { params }, _result, { client }) => {
+                      if (!finishGoldenQuestionDelete(client, params.control_space_id)) return
+                      return invalidateGoldenQuestionList(
+                        consoleQuery,
+                        client,
+                        params.control_space_id,
+                      )
+                    },
                   },
                 },
                 patch: {
@@ -4698,6 +4715,26 @@ export function invalidateSkillVersionQueries(
 
 function customizedPipelineTemplatesKey(query: RouterUtils<ConsoleClient>) {
   return query.rag.pipeline.templates.get.queryKey({ input: { query: { type: 'customized' } } })
+}
+
+const pendingGoldenQuestionDeletes = new WeakMap<QueryClient, Map<string, number>>()
+
+function startGoldenQuestionDelete(client: QueryClient, controlSpaceId: string) {
+  const pending = pendingGoldenQuestionDeletes.get(client) ?? new Map<string, number>()
+  pendingGoldenQuestionDeletes.set(client, pending)
+  pending.set(controlSpaceId, (pending.get(controlSpaceId) ?? 0) + 1)
+}
+
+/** Returns true when no other delete of the space is still pending. */
+function finishGoldenQuestionDelete(client: QueryClient, controlSpaceId: string) {
+  const pending = pendingGoldenQuestionDeletes.get(client)
+  const remaining = (pending?.get(controlSpaceId) ?? 1) - 1
+  if (remaining > 0) {
+    pending!.set(controlSpaceId, remaining)
+    return false
+  }
+  pending?.delete(controlSpaceId)
+  return true
 }
 
 function invalidateGoldenQuestionList(
