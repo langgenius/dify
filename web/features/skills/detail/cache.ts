@@ -1,7 +1,7 @@
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { invalidateSkillVersionQueries } from '@/service/console/query-policies'
+import { invalidateSkillVersionQueries } from '@/service/console/policies/skills'
 import { setSkillDetailCache as writeSkillDetailCache } from '@/service/console/skill-cache'
 
 export function invalidateSkillDetail(queryClient: QueryClient, skillId: string) {

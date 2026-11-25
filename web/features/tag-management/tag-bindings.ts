@@ -1,10 +1,8 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-import {
-  invalidateTaggedResources,
-  refreshAgentTagCatalogs,
-} from '@/service/console/query-policies'
+import { refreshAgentTagCatalogs } from '@/service/console/policies/shared'
+import { invalidateTaggedResources } from '@/service/console/policies/tags'
 
 type ApplyTagBindingsInput = {
   currentTagIds: string[]
