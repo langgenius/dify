@@ -8,7 +8,11 @@ from io import StringIO
 from typing import override
 
 import pytest
-from sqlalchemy import Engine, event
+from psycopg2 import InterfaceError as PostgresInterfaceError
+from psycopg2 import OperationalError as PostgresOperationalError
+from psycopg2 import errors as postgres_errors
+from sqlalchemy import Connection, Engine, event
+from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -27,7 +31,7 @@ from models.model import AppMode, EndUser, MessageFeedback
 from models.workflow import WorkflowRun, WorkflowType
 from repositories import conversation_repository
 from repositories.conversation_repository import ConversationRepository
-from services.entities.conversation_entities import ConsoleConversationLogFilters
+from services.entities.conversation_entities import ConsoleConversationLogFilters, ConsoleConversationScope
 from services.retention import log_export_adapters
 from services.retention.conversation.log_export_service import (
     ConversationLogExportService,
@@ -37,6 +41,10 @@ from services.retention.log_export_task import LogExportKind, LogExportLeaseBusy
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+
+_RECOVERY_CANCELLED = "canceling statement due to conflict with recovery"
+_RECOVERY_TERMINATED = "terminating connection due to conflict with recovery"
+_MESSAGE_PAGE_QUERY = "FROM messages JOIN conversations"
 
 
 @pytest.fixture
@@ -379,3 +387,180 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
     assert account_row["account_id"] == account.id
     assert account_row["account_name"] == "Alex, Morgan"
     assert account_row["status"] == ""
+
+
+@pytest.fixture
+def paged_chatflow(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> tuple[ConsoleConversationScope, ConsoleConversationLogFilters]:
+    """Seed two small conversation pages, with two timestamp-tied messages on the first page."""
+    monkeypatch.setattr(conversation_repository, "_LOG_EXPORT_BATCH_SIZE", 1)
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    created_at = datetime(2026, 1, 15, 6)
+    conversations = [
+        make_conversation(
+            conversation_id=f"conversation-{index}",
+            app_id=app.id,
+            mode=app.mode,
+            from_source=ConversationFromSource.API,
+            invoke_from=InvokeFrom.SERVICE_API,
+        )
+        for index in (1, 2)
+    ]
+    for conversation in conversations:
+        conversation.created_at = created_at
+    messages = [
+        make_message(
+            message_id=f"message-{message_id}",
+            app_id=app.id,
+            conversation_id=conversations[conversation_index].id,
+            query="Question",
+            message=[],
+            answer="Answer",
+            from_source=ConversationFromSource.API,
+            created_at=created_at,
+        )
+        for message_id, conversation_index in ((2, 0), (1, 0), (3, 1))
+    ]
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, *conversations, *messages])
+    scope = ConsoleConversationScope(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode, timezone="UTC")
+    filters = ConsoleConversationLogFilters(
+        keyword=None, start=None, end=None, annotation_status="all", sort_by="-created_at"
+    )
+    return scope, filters
+
+
+@pytest.mark.parametrize(
+    ("query", "message", "sqlstate", "fail_rollback", "rows_before_retry"),
+    [
+        ("SELECT conversations.created_at", _RECOVERY_CANCELLED, "40001", False, 2),
+        (_MESSAGE_PAGE_QUERY, _RECOVERY_TERMINATED, None, False, 1),
+        ("FROM messages LEFT OUTER JOIN workflow_runs", _RECOVERY_CANCELLED, "40001", True, 2),
+    ],
+    ids=("conversation-page", "message-page", "status-and-rollback"),
+)
+def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
+    query: str,
+    message: str,
+    sqlstate: str | None,
+    fail_rollback: bool,
+    rows_before_retry: int,
+    paged_chatflow: tuple[ConsoleConversationScope, ConsoleConversationLogFilters],
+    export: ConversationLogExportService,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Replay the same bound query after a recovery conflict, keeping existing CSV rows intact."""
+    scope, filters = paged_chatflow
+    baseline = StringIO(newline="")
+    output = StringIO(newline="")
+    assert export.write_scoped_csv(scope=scope, filters=filters, output=baseline) == 3
+    reader = csv.DictReader(StringIO(baseline.getvalue().removeprefix("\ufeff")))
+    assert [row["message_id"] for row in reader] == ["message-1", "message-2", "message-3"]
+
+    progress: list[int] = []
+    attempts: list[tuple[str, tuple[object, ...], int]] = []
+    rollback_failed = False
+    connections_held_during_retry: list[int] = []
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+
+    def record_sleep(_delay: float) -> None:
+        connections_held_during_retry.append(pool.checkedout())
+
+    def interrupt_page(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        parameters: tuple[object, ...],
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        if query in statement:
+            attempts.append((statement, parameters, len(progress)))
+            if len(attempts) == 2:
+                error: PostgresOperationalError
+                if sqlstate is None:
+                    error = PostgresOperationalError(message)
+                else:
+                    error = postgres_errors.SerializationFailure(message)
+                    # Restore the native diagnostic field that libpq normally populates.
+                    error.__setstate__({"pgcode": sqlstate})
+                raise OperationalError(statement, parameters, error, connection_invalidated=sqlstate is None)
+
+    def interrupt_rollback(_connection: Connection) -> None:
+        nonlocal rollback_failed
+        if fail_rollback and len(attempts) == 2 and not rollback_failed:
+            rollback_failed = True
+            raise InterfaceError(None, None, PostgresInterfaceError("rollback failed"))
+
+    monkeypatch.setattr(conversation_repository, "sleep", record_sleep)
+    event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
+    event.listen(sqlite_engine, "rollback", interrupt_rollback)
+    try:
+        assert export.write_scoped_csv(scope=scope, filters=filters, output=output, report_rows=progress.append) == 3
+    finally:
+        event.remove(sqlite_engine, "rollback", interrupt_rollback)
+        event.remove(sqlite_engine, "before_cursor_execute", interrupt_page)
+
+    assert connections_held_during_retry == [0]
+    assert rollback_failed is fail_rollback
+    assert attempts[1] == attempts[2]
+    _, _, written_rows = attempts[1]
+    assert written_rows == rows_before_retry
+    assert progress == [1, 2, 3]
+    assert output.getvalue() == baseline.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("error_type", "message", "sqlstate", "expected_attempts"),
+    [
+        (postgres_errors.SerializationFailure, _RECOVERY_CANCELLED, "40001", 4),
+        (postgres_errors.SerializationFailure, "could not serialize access due to concurrent update", "40001", 1),
+        (postgres_errors.QueryCanceled, "canceling statement due to statement timeout", "57014", 1),
+        (postgres_errors.DatabaseDropped, _RECOVERY_TERMINATED, "57P04", 1),
+    ],
+    ids=("recovery-budget-exhausted", "ordinary-serialization-failure", "statement-timeout", "database-dropped"),
+)
+def test_chatflow_csv_propagates_unretryable_or_exhausted_page_errors(
+    error_type: type[PostgresOperationalError],
+    message: str,
+    sqlstate: str,
+    expected_attempts: int,
+    paged_chatflow: tuple[ConsoleConversationScope, ConsoleConversationLogFilters],
+    export: ConversationLogExportService,
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Leave the last database error visible when a page cannot be recovered."""
+    scope, filters = paged_chatflow
+    errors: list[OperationalError] = []
+    retry_delays: list[float] = []
+
+    def interrupt_page(
+        _connection: Connection,
+        _cursor: object,
+        statement: str,
+        parameters: tuple[object, ...],
+        _context: object,
+        _executemany: object,
+    ) -> None:
+        if _MESSAGE_PAGE_QUERY in statement:
+            error = error_type(message)
+            error.__setstate__({"pgcode": sqlstate})
+            wrapped = OperationalError(statement, parameters, error, connection_invalidated=sqlstate == "57P04")
+            errors.append(wrapped)
+            raise wrapped
+
+    monkeypatch.setattr(conversation_repository, "sleep", retry_delays.append)
+    event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
+    try:
+        with pytest.raises(OperationalError, match=message) as failure:
+            export.write_scoped_csv(scope=scope, filters=filters, output=StringIO(newline=""))
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", interrupt_page)
+
+    assert len(errors) == expected_attempts
+    assert len(retry_delays) == expected_attempts - 1
+    assert failure.value is errors[-1]
