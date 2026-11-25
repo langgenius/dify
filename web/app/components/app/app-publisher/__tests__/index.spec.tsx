@@ -132,7 +132,7 @@ function renderPublisher({
     }),
   )
   const store = createWorkflowStore({})
-  renderWithConsoleQuery(
+  const { unmount } = renderWithConsoleQuery(
     <WorkflowContext value={store}>
       <button type="button">Outside control</button>
       <AppPublisher appId="app-1" publishedAt={1_710_000_100_000} {...props} />
@@ -143,7 +143,7 @@ function renderPublisher({
       systemFeatures: { webapp_auth: { enabled: true }, ...systemFeatures },
     },
   )
-  return { queryClient, store }
+  return { queryClient, store, unmount }
 }
 const trigger = () => screen.getByRole('button', { name: 'workflow.common.publish' })
 const publishUpdate = () => screen.getByRole('button', { name: 'workflow.common.publishUpdate' })
@@ -466,6 +466,38 @@ it('shows a marketplace error and lets the user retry', async () => {
   expect(window.open).not.toHaveBeenCalled()
   await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
   await waitFor(() => expect(window.open).toHaveBeenCalledOnce())
+})
+
+it('still opens the marketplace redirect when the editor unmounts before publishing finishes', async () => {
+  const user = userEvent.setup()
+  const response = createDeferred<{ redirect_url: string }>()
+  api.marketplace.mockReturnValueOnce(response.promise)
+  const { unmount } = renderPublisher({ systemFeatures: { enable_creators_platform: true } })
+  await user.click(trigger())
+  await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
+  await waitFor(() => expect(api.marketplace).toHaveBeenCalledOnce())
+  unmount()
+  response.resolve({ redirect_url: 'https://marketplace.example.com/publish?code=late' })
+  await waitFor(() =>
+    expect(window.open).toHaveBeenCalledWith(
+      'https://marketplace.example.com/publish?code=late',
+      '_blank',
+    ),
+  )
+})
+
+it('still reports a marketplace failure when the editor unmounts before publishing finishes', async () => {
+  const user = userEvent.setup()
+  const error = vi.spyOn(toast, 'error')
+  const response = createDeferred<{ redirect_url: string }>()
+  api.marketplace.mockReturnValueOnce(response.promise)
+  const { unmount } = renderPublisher({ systemFeatures: { enable_creators_platform: true } })
+  await user.click(trigger())
+  await user.click(screen.getByRole('button', { name: 'workflow.common.publishToMarketplace' }))
+  await waitFor(() => expect(api.marketplace).toHaveBeenCalledOnce())
+  unmount()
+  response.reject(new Error('network error'))
+  await waitFor(() => expect(error).toHaveBeenCalledWith('network error'))
 })
 
 it('disables marketplace submission until a version is published', async () => {

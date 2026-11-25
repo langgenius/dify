@@ -6,29 +6,26 @@ import { getErrorMessage } from '@/utils/error-message'
 
 export function useMarketplacePublish(appId?: string) {
   const { t } = useTranslation(['workflow'])
-  const { isPending: isPublishing, mutate } = useMutation(
-    consoleQuery.apps.byAppId.publishToCreatorsPlatform.post.mutationOptions({
+  // Hook-level handlers keep running if the editor unmounts before the request settles.
+  const { isPending: isPublishing, mutate } = useMutation({
+    ...consoleQuery.apps.byAppId.publishToCreatorsPlatform.post.mutationOptions({
       context: { silent: true },
     }),
-  )
+    onSuccess: (response) => {
+      if (response.redirect_url) window.open(response.redirect_url, '_blank')
+    },
+    onError: (error) => {
+      toast.error(
+        getErrorMessage(error) ??
+          t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }),
+      )
+    },
+  })
 
   function publish() {
     if (!appId || isPublishing) return
 
-    mutate(
-      { params: { app_id: appId } },
-      {
-        onSuccess: (response) => {
-          if (response.redirect_url) window.open(response.redirect_url, '_blank')
-        },
-        onError: (error) => {
-          toast.error(
-            getErrorMessage(error) ??
-              t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }),
-          )
-        },
-      },
-    )
+    mutate({ params: { app_id: appId } })
   }
 
   return {
