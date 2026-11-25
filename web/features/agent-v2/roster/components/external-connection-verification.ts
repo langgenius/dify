@@ -1,9 +1,9 @@
 'use client'
 
 import type {
+  ExternalAgentVerificationFailureDetailsResponse,
   ExternalAgentVerificationResponse,
   ExternalAgentVerifyPayload,
-  VerificationFailureReason,
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -23,7 +23,7 @@ export type ExternalConnectionSettings = {
 export type ExternalConnectionVerificationState =
   | { status: 'unverified' | 'verifying' | 'expired' }
   | { status: 'verified'; evidence: ExternalAgentVerificationResponse }
-  | { status: 'failed'; reason?: VerificationFailureReason; message?: string }
+  | { status: 'failed'; details?: ExternalAgentVerificationFailureDetailsResponse }
 
 export function externalAgentErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
@@ -47,6 +47,7 @@ export function useExternalConnectionVerification(edit?: {
     evidence: ExternalAgentVerificationResponse
   }>()
   const [expiredScope, setExpiredScope] = useState<string>()
+  const [failureScope, setFailureScope] = useState<string>()
   const epochRef = useRef(0)
   const verification = useMutation(
     consoleQuery.externalAgents.verify.post.mutationOptions({
@@ -81,6 +82,7 @@ export function useExternalConnectionVerification(edit?: {
     epochRef.current += 1
     setProof(undefined)
     setExpiredScope(undefined)
+    setFailureScope(undefined)
     resetVerification()
   }, [resetVerification])
   const verify = (
@@ -92,6 +94,7 @@ export function useExternalConnectionVerification(edit?: {
     const requestEpoch = ++epochRef.current
     setProof(undefined)
     setExpiredScope(undefined)
+    setFailureScope(undefined)
     const body: ExternalAgentVerifyPayload = {
       endpoint: settings.endpoint.trim(),
       auth_type: settings.authentication,
@@ -119,7 +122,10 @@ export function useExternalConnectionVerification(edit?: {
           onVerified(result)
         },
         onError: (error) => {
-          if (requestEpoch === epochRef.current && getHttpErrorStatus(error) === 409) onConflict?.()
+          if (requestEpoch !== epochRef.current) return
+          const status = getHttpErrorStatus(error)
+          if (status === 409) onConflict?.()
+          else if (status !== 401 && status !== 403) setFailureScope(scope)
         },
       },
     )
@@ -130,15 +136,14 @@ export function useExternalConnectionVerification(edit?: {
       ? { status: 'verified', evidence }
       : expired
         ? { status: 'expired' }
-        : verification.error
+        : failureScope === scope && verification.error
           ? {
               status: 'failed',
-              reason:
+              details:
                 isDefinedError(verification.error) &&
                 verification.error.code === 'verification_failed'
-                  ? verification.error.data.details?.reason
+                  ? verification.error.data.details
                   : undefined,
-              message: externalAgentErrorMessage(verification.error, ''),
             }
           : { status: 'unverified' }
   return {

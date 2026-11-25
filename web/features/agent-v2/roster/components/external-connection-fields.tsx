@@ -89,41 +89,43 @@ export function ExternalConnectionFields({
         />
         {endpointDescription && <FieldDescription>{endpointDescription}</FieldDescription>}
         <FieldValidity>
-          {({ validity, error }) => (
-            <FieldError>
-              {validity.valueMissing
-                ? t(($) => $['external.connection.endpointRequired'])
-                : validity.typeMismatch
-                  ? t(($) => $['external.connection.endpointInvalid'])
-                  : error}
-            </FieldError>
-          )}
+          {({ validity, error }) => {
+            const message = validity.valueMissing
+              ? t(($) => $['external.connection.endpointRequired'])
+              : validity.typeMismatch
+                ? t(($) => $['external.connection.endpointInvalid'])
+                : error
+            return message ? <FieldError>{message}</FieldError> : <FieldError />
+          }}
         </FieldValidity>
       </Field>
       {showEndpointDivider && <div className="h-px bg-divider-subtle" />}
-      <Select<'none' | 'bearer'>
-        disabled={disabled}
-        items={options}
-        value={settings.authentication}
-        onValueChange={(value) => {
-          if (value) updateSetting('authentication', value)
-        }}
-      >
-        <div className="flex flex-col gap-1">
-          <SelectLabel>{t(($) => $['external.connection.authentication'])}</SelectLabel>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-        </div>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              <SelectItemText>{option.label}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Field name="authentication" disabled={disabled} className="flex flex-col gap-1.5">
+        <Select<'none' | 'bearer'>
+          disabled={disabled}
+          items={options}
+          value={settings.authentication}
+          onValueChange={(value) => {
+            if (value) updateSetting('authentication', value)
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <SelectLabel>{t(($) => $['external.connection.authentication'])}</SelectLabel>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+          </div>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                <SelectItemText>{option.label}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <FieldError />
+      </Field>
       {settings.authentication === 'bearer' && (
         <Field
           name="token"
@@ -158,11 +160,12 @@ export function ExternalConnectionFields({
             <FieldDescription>{t(($) => $['external.connection.keepToken'])}</FieldDescription>
           )}
           <FieldValidity>
-            {({ validity, error }) => (
-              <FieldError>
-                {validity.valueMissing ? t(($) => $['external.connection.tokenRequired']) : error}
-              </FieldError>
-            )}
+            {({ validity, error }) => {
+              const message = validity.valueMissing
+                ? t(($) => $['external.connection.tokenRequired'])
+                : error
+              return message ? <FieldError>{message}</FieldError> : <FieldError />
+            }}
           </FieldValidity>
         </Field>
       )}

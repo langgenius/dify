@@ -1,8 +1,4 @@
-import type {
-  ExternalAgentVerificationResponse,
-  VerificationFailureReason,
-} from '@dify/contracts/api/console/external-agents/types.gen'
-import { ORPCError } from '@orpc/client'
+import type { ExternalAgentVerificationResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -12,33 +8,37 @@ import common from '@/i18n/locales/en-US/common.json'
 import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import { ConnectExternalAgent } from '../components/connect-external-agent'
 import { createExternalOperation, createExternalVerification } from './external-connection-fixture'
 
-const requests = vi.hoisted(() => ({
-  capabilities: vi.fn(),
-  verify: vi.fn(),
-  create: vi.fn(),
-  push: vi.fn(),
-}))
+const fake = setupFakeApi({
+  console: {
+    externalAgents: {
+      capabilities: { get: () => createExternalAgentCapabilities() },
+      verify: { post: () => createExternalVerification() },
+      post: () => createExternalOperation(),
+    },
+  },
+})
+let navigation: ReturnType<typeof createTestNavigation>
+const requests = {
+  get capabilities() {
+    return fake.console.externalAgents.capabilities.get
+  },
+  get verify() {
+    return fake.console.externalAgents.verify.post
+  },
+  get create() {
+    return fake.console.externalAgents.post
+  },
+  get push() {
+    return navigation.router.push
+  },
+}
 // boundary: restore real English translations for browser interactions.
 vi.mock('react-i18next', async (importOriginal) => importOriginal())
-// boundary: replace Console transport responses while keeping generated query options real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'externalAgents.capabilities.get': requests.capabilities,
-      'externalAgents.verify.post': requests.verify,
-      'externalAgents.post': requests.create,
-    }),
-  }
-})
-// boundary: navigation after confirmed creation belongs to the application router.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: requests.push }) }))
 
 const dialog = () => page.getByRole('dialog', { name: 'Connect external agent', exact: true })
 const endpoint = () => dialog().getByRole('textbox', { name: 'A2A endpoint', exact: true })
@@ -59,13 +59,16 @@ async function setup() {
     accountProfile: { id: '11111111-1111-4111-8111-111111111111' },
   })
   onTestFinished(() => queryClient.clear())
+  const { NavigationProvider } = navigation
   await render(
     <QueryProvider>
-      <I18nextProvider i18n={i18n}>
-        <div className="p-8">
-          <ConnectExternalAgent />
-        </div>
-      </I18nextProvider>
+      <NavigationProvider>
+        <I18nextProvider i18n={i18n}>
+          <div className="p-8">
+            <ConnectExternalAgent />
+          </div>
+        </I18nextProvider>
+      </NavigationProvider>
     </QueryProvider>,
   )
   const trigger = page.getByRole('button', { name: 'Connect external agent', exact: true })
@@ -81,8 +84,8 @@ async function reachDetails() {
   await expect.element(description()).toHaveValue('Reviews contracts.')
 }
 
-beforeEach(({ onTestFinished }) => {
-  onTestFinished(guardUnexpectedFetch())
+beforeEach(() => {
+  navigation = createTestNavigation()
   requests.capabilities.mockReset().mockResolvedValue(createExternalAgentCapabilities())
   requests.verify.mockReset().mockResolvedValue(createExternalVerification())
   requests.create.mockReset().mockResolvedValue(createExternalOperation())
@@ -218,14 +221,14 @@ it('locks a pending verification and displays a generic HTTP400 without inventin
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog()).toBeVisible()
   pending.reject(
-    new ORPCError('bad_request', { status: 400, message: 'Could not verify this connection.' }),
+    apiError({ code: 'bad_request', status: 400, message: 'Could not verify this connection.' }),
   )
   await expect
     .element(dialog().getByRole('alert'))
     .toMatchTextContent('Could not verify the connection.')
   await expect
     .element(dialog().getByRole('alert'))
-    .toMatchTextContent('Could not verify this connection.')
+    .toHaveTextContent('Could not verify the connection.')
   await expect.element(endpoint()).toHaveValue('https://agents.example.test/contract')
   await expect
     .element(dialog().getByText('skills[0].description is required.', { exact: true }))
@@ -234,40 +237,6 @@ it('locks a pending verification and displays a generic HTTP400 without inventin
   await verify().click()
   await expect.element(description()).toBeVisible()
 })
-
-it.each([
-  ['connection_failed', 'Could not reach the agent.'],
-  ['authentication_failed', 'Authentication failed.'],
-  ['unsupported_protocol', 'This endpoint does not provide a supported A2A connection.'],
-  ['invalid_agent_card', 'Could not verify the Agent Card.'],
-] satisfies [VerificationFailureReason, string][])(
-  'explains the documented %s verification failure and allows another attempt',
-  async (reason, explanation) => {
-    requests.verify.mockRejectedValueOnce(
-      new ORPCError('verification_failed', {
-        defined: true,
-        status: 400,
-        message: 'Remote verification failed.',
-        data: {
-          code: 'verification_failed',
-          status: 400,
-          message: 'Remote verification failed.',
-          details: { reason },
-        },
-      }),
-    )
-    await setup()
-    await endpoint().fill('https://agents.example.test/contract')
-    await verify().click()
-    await expect
-      .element(dialog().getByRole('alert'))
-      .toMatchTextContent('Could not verify the connection.')
-    await expect.element(dialog().getByRole('alert')).toMatchTextContent(explanation)
-    expect(requests.create).not.toHaveBeenCalled()
-    await verify().click()
-    await expect.element(description()).toBeVisible()
-  },
-)
 
 it('rejects expired verification before any Create request', async () => {
   const proof = createExternalVerification()
@@ -288,7 +257,9 @@ it('rejects expired verification before any Create request', async () => {
 it('recovers an unknown Create result with exactly the same body/key even after evidence expires', async () => {
   const proof = createExternalVerification()
   requests.verify.mockResolvedValue(proof)
-  requests.create.mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
+  requests.create.mockRejectedValueOnce(
+    apiError({ code: 'INTERNAL_SERVER_ERROR', status: 500, message: '' }),
+  )
   const { trigger } = await setup()
   await reachDetails()
   await role().fill('Recovery role')

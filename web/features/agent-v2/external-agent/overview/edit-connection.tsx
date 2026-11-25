@@ -31,6 +31,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { externalConnectionFailure } from '../../roster/components/external-connection-errors'
 import { ExternalConnectionFeedback } from '../../roster/components/external-connection-feedback'
 import { ExternalConnectionFields } from '../../roster/components/external-connection-fields'
 import {
@@ -296,6 +297,9 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
     verification.verify(draft, setReview, () => showConflict(undefined, draft))
   }
   const latest = conflictDraft && detail.data && !detail.isError ? detail.data : undefined
+  const failure =
+    settings &&
+    externalConnectionFailure(verification.state, settings, base?.hasCredential ?? false, t)
 
   return (
     <Dialog
@@ -376,6 +380,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           <Form<Pick<ExternalConnectionSettings, 'endpoint' | 'token'>>
             key={base.connectionRevisionId}
             className="contents"
+            errors={failure?.field ? { [failure.field]: failure.message } : undefined}
             onFormSubmit={verifyOrSave}
           >
             <DialogBody className="flex flex-col gap-4">
@@ -408,8 +413,8 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               {!saveUnknown && (
                 <ExternalConnectionFeedback
                   verification={verification.state}
+                  failure={failure}
                   executionEnabled={executionEnabled}
-                  editing
                   showVerifiedStatus={false}
                 />
               )}
@@ -430,6 +435,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               </DialogClose>
               <Button
                 type="submit"
+                onClick={(event) => {
+                  if (verification.state.status !== 'failed') return
+                  event.preventDefault()
+                  const form = event.currentTarget.form
+                  verification.invalidate()
+                  // The next native submission must validate after the old server errors clear.
+                  queueMicrotask(() => form?.requestSubmit())
+                }}
                 variant="primary"
                 loading={pending}
                 disabled={!canSubmit}

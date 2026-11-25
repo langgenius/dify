@@ -1,18 +1,19 @@
+import type { ExternalConnectionFailure } from './external-connection-errors'
 import type { ExternalConnectionVerificationState } from './external-connection-verification'
 import { Alert, AlertDescription, AlertTitle } from '@langgenius/dify-ui/alert'
 import { useTranslation } from 'react-i18next'
 
 type ExternalConnectionFeedbackProps = {
   verification: ExternalConnectionVerificationState
+  failure?: ExternalConnectionFailure
   executionEnabled?: boolean
-  editing?: boolean
   showVerifiedStatus?: boolean
 }
 
 export function ExternalConnectionFeedback({
   verification,
+  failure,
   executionEnabled = true,
-  editing = false,
   showVerifiedStatus = true,
 }: ExternalConnectionFeedbackProps) {
   const { t } = useTranslation(['agentRoster'])
@@ -21,23 +22,7 @@ export function ExternalConnectionFeedback({
     verified && verification.evidence.auth_check === 'passed_for_read_endpoint'
       ? t(($) => $['external.connection.authReadPassed'])
       : t(($) => $['external.connection.authNotExercised'])
-  const verificationErrors = {
-    authentication_failed: t(($) => $['external.connection.errors.authentication']),
-    connection_failed: t(($) => $['external.connection.errors.unreachable']),
-    unsupported_protocol: t(($) => $['external.connection.errors.unsupported']),
-    invalid_agent_card: t(($) => $['external.connection.errors.invalidAgentCard']),
-  }
   const failureTitle = t(($) => $['external.connection.errors.unknown'])
-  const failureReason =
-    verification.status === 'failed'
-      ? verification.reason
-        ? verificationErrors[verification.reason]
-        : verification.message
-      : undefined
-  const genericFailure =
-    !failureReason ||
-    failureReason === failureTitle ||
-    /^could not verify the connection\.?$/i.test(failureReason.trim())
 
   return (
     <>
@@ -46,14 +31,19 @@ export function ExternalConnectionFeedback({
           {verifiedLabel}
         </p>
       )}
-      {verification.status === 'failed' && (
+      {verification.status === 'failed' && !failure?.field && (
         <Alert type="error">
           <AlertTitle>{failureTitle}</AlertTitle>
-          {(!editing || !genericFailure) && (
+          {failure && failure.message !== failureTitle && (
             <AlertDescription>
-              {genericFailure
-                ? t(($) => $['external.connection.errors.changesKept'])
-                : failureReason}
+              {failure.message}
+              {failure.details && failure.details.length > 0 && (
+                <ul className="list-disc ps-4">
+                  {failure.details.map((detail) => (
+                    <li key={detail}>{detail}</li>
+                  ))}
+                </ul>
+              )}
             </AlertDescription>
           )}
         </Alert>
