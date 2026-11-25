@@ -136,7 +136,7 @@ def _translate_service_errors() -> Generator[None]:
         raise InternalServerError() from caught_error
 
 
-_RUN_GUARDS: Final = (
+RUN_GUARDS: Final = (
     CheckSubject(allowed=(AccountSubject, ExternalSsoSubject, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
@@ -158,7 +158,7 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
     )
 
 
-def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
@@ -168,26 +168,30 @@ def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection
     return args
 
 
-def _stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
+def run_stream(ctx: Context, args: dict[str, Any], invoke_from: InvokeFrom):
     with _translate_service_errors():
         return _generate(ctx.app, ctx.caller, args, ctx.session, invoke_from)
 
 
-def _require_mode(app: App, *modes: AppMode) -> None:
+def require_mode(app: App, *modes: AppMode) -> None:
     """In the handler, not a guard: an external caller the access check refuses must not learn the app's mode."""
     if app.mode not in modes:
         raise AppModeMismatch()
 
 
-def _respond(ctx: Context, stream: Any):
-    app_model = ctx.app
+def emit_run_audit(ctx: Context) -> None:
+    """Postcondition: the app run audit event for ctx's app and caller is emitted."""
     emit_app_run(
-        app_id=app_model.id,
-        tenant_id=app_model.tenant_id,
+        app_id=ctx.app.id,
+        tenant_id=ctx.app.tenant_id,
         caller_kind=ctx.subject.caller_role,
-        mode=str(app_model.mode),
+        mode=str(ctx.app.mode),
         surface="apps",
     )
+
+
+def _respond(ctx: Context, stream: Any):
+    emit_run_audit(ctx)
     # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(stream)
 
@@ -249,7 +253,7 @@ class _RunRoute:
             return account_app_guards(
                 RBACPermission.APP_TEST_AND_RUN, scope=Scope.APPS_RUN, roles=EDITOR_ROLES, modes=self.modes
             )
-        return _RUN_GUARDS
+        return RUN_GUARDS
 
 
 _RUN_ROUTES: Final = (
@@ -422,8 +426,8 @@ def _run_api(route: _RunRoute) -> type[Resource]:
     )
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
         if not route.draft:
-            _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
+            require_mode(ctx.app, *route.modes)
+        stream = run_stream(ctx, generate_args(ctx, body), route.invoke_from)
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)
         return _respond(ctx, stream)
@@ -451,11 +455,11 @@ class AppRunStopApi(Resource):
         effect=Effect.DESTRUCTIVE,
         summary="Stop a running or paused run of a workflow or advanced-chat app",
         examples=(Example(title="Stop a run", input={"app_id": "<app_id>", "run_id": "<run_id>"}),),
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         returns=(200, TaskStopResponse, "Run stopped"),
     )
     def post(self, ctx: Context, app_id: str, run_id: str):
-        _require_mode(ctx.app, *GRAPH_MODES)
+        require_mode(ctx.app, *GRAPH_MODES)
         outcome = application_services().app_tasks.stop_workflow_run(
             tenant_id=ctx.app.tenant_id,
             app_id=ctx.app.id,
@@ -483,11 +487,11 @@ class AppTaskStopApi(Resource):
             "`task_id` is the stream's task_id. An unknown task id is accepted"
         ),
         examples=(Example(title="Stop a streaming reply", input={"app_id": "<app_id>", "task_id": "<task_id>"}),),
-        requirements=_RUN_GUARDS,
+        requirements=RUN_GUARDS,
         returns=(200, TaskStopResponse, "Task stopped"),
     )
     def post(self, ctx: Context, app_id: str, task_id: str):
-        _require_mode(ctx.app, *MESSAGE_MODES)
+        require_mode(ctx.app, *MESSAGE_MODES)
         if not application_services().app_tasks.stop_message_task(
             task_id=task_id, caller_role=ctx.subject.caller_role, caller_id=ctx.caller.id
         ):

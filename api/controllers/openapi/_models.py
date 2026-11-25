@@ -38,6 +38,7 @@ from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
 from services.knowledge.entities.knowledge_entities import RetrievalModel
+from services.run_job import JobResult, JobStartFields
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -413,10 +414,30 @@ class AdvancedChatRunPayload(ChatRunPayload, _WorkflowVersionFields):
     model_config = ConfigDict(extra="forbid")
 
 
+class WorkflowStartPayload(WorkflowRunPayload, JobStartFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class AdvancedChatStartPayload(AdvancedChatRunPayload, JobStartFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ChatStartPayload(ChatRunPayload, JobStartFields):
+    model_config = ConfigDict(extra="forbid")
+
+
+class JobState(JobResult, Hinted):
+    pass
+
+
 class CompletionRunPayload(RunPayloadBase):
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(default="", description="Prompt text; most completion apps take their input through `inputs`")
+
+
+class CompletionStartPayload(CompletionRunPayload, JobStartFields):
+    model_config = ConfigDict(extra="forbid")
 
 
 class FileUploadPayload(BaseModel):

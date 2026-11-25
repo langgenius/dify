@@ -9,7 +9,6 @@ the caller passes it.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping
 from typing import Any, Final, Protocol, runtime_checkable
@@ -17,11 +16,11 @@ from typing import Any, Final, Protocol, runtime_checkable
 from pydantic import BaseModel, ValidationError
 
 from controllers.openapi._models import Hint, Hinted, PageQuery
+from libs.stream import decode_data_frame, encode_data_frame
 
 logger = logging.getLogger(__name__)
 
-# The core's SSE framing and its event key; it exports no name for either.
-_DATA_PREFIX: Final = "data: "
+# The core's event key; it exports no name for it.
 _EVENT_FIELD: Final = "event"
 
 HintBuilder = Callable[[Mapping[str, Any]], list[Hint]]
@@ -61,13 +60,12 @@ def _wanted_event(chunk: str, event: str) -> dict[str, Any] | None:
     passes on a substring test. A frame that is not JSON, or not an object, is not the
     wanted event either; the stream owns its bytes and this layer never breaks it.
     """
-    if not chunk.startswith(_DATA_PREFIX) or event not in chunk:
+    if event not in chunk:
         return None
-    try:
-        parsed = json.loads(chunk[len(_DATA_PREFIX) :])
-    except ValueError:
+    parsed = decode_data_frame(chunk)
+    if parsed is None:
         return None
-    if not isinstance(parsed, dict) or parsed.get(_EVENT_FIELD) != event:
+    if parsed.get(_EVENT_FIELD) != event:
         return None
     return parsed
 
@@ -96,7 +94,7 @@ def attach_stream_hints(events: Iterable[str], *, event: str, build: HintBuilder
                 yield chunk
                 continue
             parsed |= Hinted(hints=hints).model_dump(exclude_none=True)
-            yield f"{_DATA_PREFIX}{json.dumps(parsed, ensure_ascii=False)}\n\n"
+            yield encode_data_frame(parsed)
     finally:
         if isinstance(events, _ClosableStream):
             events.close()

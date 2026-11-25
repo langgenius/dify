@@ -1,0 +1,151 @@
+"""Start routes on /openapi/v1: begin a run as a background job and answer with its state."""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping
+from types import MappingProxyType
+from typing import Final
+
+from flask_restx import Resource
+
+from constants.personal_access_token import PersonalAccessTokenPolicy
+from controllers.openapi import openapi_ns
+from controllers.openapi._contract import Effect, Example, Kind, endpoint
+from controllers.openapi._errors import JobCapacityReached
+from controllers.openapi._files import end_read_transaction
+from controllers.openapi._models import (
+    AdvancedChatStartPayload,
+    ChatStartPayload,
+    CompletionStartPayload,
+    JobState,
+    WorkflowStartPayload,
+)
+from controllers.openapi.app_run import RUN_GUARDS, emit_run_audit, generate_args, require_mode, run_stream
+from controllers.openapi.auth.context import Context
+from controllers.openapi.jobs import JOB_STATE_RESPONSE, job_owner, job_state_from
+from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import application_services
+from models.model import AppMode
+from services.run_job import JobCapacityError, JobOpening
+
+START_OP_PREFIX: Final = "start.console_app."
+WORKFLOW_START_OP: Final = f"{START_OP_PREFIX}workflow"
+ADVANCED_CHAT_START_OP: Final = f"{START_OP_PREFIX}advanced_chat"
+CHAT_START_OP: Final = f"{START_OP_PREFIX}chat"
+COMPLETION_START_OP: Final = f"{START_OP_PREFIX}completion"
+# The app modes each start op runs: every mode a job can run has exactly one.
+START_MODES: Final[Mapping[str, tuple[AppMode, ...]]] = MappingProxyType(
+    {
+        WORKFLOW_START_OP: (AppMode.WORKFLOW,),
+        ADVANCED_CHAT_START_OP: (AppMode.ADVANCED_CHAT,),
+        CHAT_START_OP: (AppMode.CHAT, AppMode.AGENT_CHAT),
+        COMPLETION_START_OP: (AppMode.COMPLETION,),
+    }
+)
+_START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
+
+
+type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload | ChatStartPayload | CompletionStartPayload
+
+
+def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
+    """Start the run and audit it, as the run route does.
+
+    Precondition: the guards admitted the caller and the app's mode was checked.
+    Postcondition: the run's SSE frames; errors of the run service propagate.
+    """
+    stream = run_stream(ctx, generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
+    emit_run_audit(ctx)
+    return stream
+
+
+def start_job(ctx: Context, body: StartPayload, *, op: str) -> JobState:
+    """Start a run as a background job and wait for its first result.
+
+    Precondition: the guards admitted the caller, body is a start payload (wait_seconds, idempotency_key) and op is
+    a key of START_MODES.
+    Postcondition: a job exists and its run was accepted by the service, or the service's error was raised and no
+    job remains. A repeated idempotency key returns the first job and starts nothing.
+    """
+    require_mode(ctx.app, *START_MODES[op])
+    owner = job_owner(ctx)
+    opening = JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=body.idempotency_key)
+    run_jobs = application_services().run_jobs
+    try:
+        job_id = run_jobs.start(opening, lambda: _launch(ctx, body))
+    except JobCapacityError as ex:
+        raise JobCapacityReached() from ex
+    end_read_transaction(ctx.session)
+    return job_state_from(lambda: run_jobs.wait(owner, job_id, wait_seconds=body.wait_seconds), app_id=ctx.app.id)
+
+
+@openapi_ns.route("/apps/<string:app_id>/workflow:start")
+class WorkflowStartApi(Resource):
+    @endpoint(
+        op=WORKFLOW_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Run a workflow app: start it as a background job and wait for its result",
+        requirements=RUN_GUARDS,
+        body=WorkflowStartPayload,
+        examples=(Example(title="Start a workflow", input={"app_id": "<app_id>", "inputs": {"topic": "report"}}),),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: WorkflowStartPayload):
+        return start_job(ctx, body, op=WORKFLOW_START_OP)
+
+
+@openapi_ns.route("/apps/<string:app_id>/advanced-chat:start")
+class AdvancedChatStartApi(Resource):
+    @endpoint(
+        op=ADVANCED_CHAT_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Run an advanced-chat (chatflow) app: start it as a background job and wait for its result",
+        requirements=RUN_GUARDS,
+        body=AdvancedChatStartPayload,
+        examples=(Example(title="Start a chatflow reply", input={"app_id": "<app_id>", "query": "Summarise it"}),),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: AdvancedChatStartPayload):
+        return start_job(ctx, body, op=ADVANCED_CHAT_START_OP)
+
+
+@openapi_ns.route("/apps/<string:app_id>/chat:start")
+class ChatStartApi(Resource):
+    @endpoint(
+        op=CHAT_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Run a chat or agent-chat app: start it as a background job and wait for its reply",
+        requirements=RUN_GUARDS,
+        body=ChatStartPayload,
+        examples=(
+            Example(
+                title="Start a new conversation", input={"app_id": "<app_id>", "query": "Summarise the latest release"}
+            ),
+        ),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: ChatStartPayload):
+        return start_job(ctx, body, op=CHAT_START_OP)
+
+
+@openapi_ns.route("/apps/<string:app_id>/completion:start")
+class CompletionStartApi(Resource):
+    @endpoint(
+        op=COMPLETION_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Run a completion app: start it as a background job and wait for its result",
+        requirements=RUN_GUARDS,
+        body=CompletionStartPayload,
+        examples=(Example(title="Start a completion", input={"app_id": "<app_id>", "inputs": {"topic": "report"}}),),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: CompletionStartPayload):
+        return start_job(ctx, body, op=COMPLETION_START_OP)
