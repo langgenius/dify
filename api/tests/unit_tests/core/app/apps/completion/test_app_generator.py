@@ -281,9 +281,7 @@ class TestCompletionAppGenerator:
             "load_annotation_reply_config",
             return_value=annotation_reply,
         )
-        mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
-        build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings")
-        assert isinstance(build_from_mappings, MagicMock)
+        build_from_mappings = mocker.spy(module.file_factory, "build_from_mappings")
 
         app_config = _build_app_config()
         get_app_config = mocker.patch.object(
@@ -343,6 +341,8 @@ class TestCompletionAppGenerator:
         assert scope_requests == [
             {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
         ]
+        assert generate_entity.file_upload_config is None
+        assert generate_entity.files == []
         build_from_mappings.assert_not_called()
         load_annotation_reply_config.assert_called_once_with(sqlite_session, "app1")
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
