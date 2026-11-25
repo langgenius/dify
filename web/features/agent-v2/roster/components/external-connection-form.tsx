@@ -8,6 +8,7 @@ import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialo
 import { Form } from '@langgenius/dify-ui/form'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { externalConnectionFailure } from './external-connection-errors'
 import { ExternalConnectionFeedback } from './external-connection-feedback'
 import { ExternalConnectionFields } from './external-connection-fields'
 import { ExternalConnectionSteps } from './external-connection-steps'
@@ -47,10 +48,12 @@ export function ExternalConnectionForm({
     draft.endpoint.trim() !== savedSettings.endpoint.trim() ||
     draft.authentication !== savedSettings.authentication ||
     (draft.authentication === 'bearer' && draft.token !== '')
+  const failure = externalConnectionFailure(verification, draft, hasCredential, t)
 
   return (
     <Form<Pick<ExternalConnectionSettings, 'endpoint' | 'token'>>
       className="contents"
+      errors={failure?.field ? { [failure.field]: failure.message } : undefined}
       onFormSubmit={(values) => {
         if (pending) return
         if (verified) {
@@ -83,8 +86,8 @@ export function ExternalConnectionForm({
         />
         <ExternalConnectionFeedback
           verification={verification}
+          failure={failure}
           executionEnabled={executionEnabled}
-          editing={Boolean(savedSettings)}
         />
       </DialogBody>
       <DialogFooter>
@@ -93,6 +96,14 @@ export function ExternalConnectionForm({
         </DialogClose>
         <Button
           type="submit"
+          onClick={(event) => {
+            if (verification.status !== 'failed') return
+            event.preventDefault()
+            const form = event.currentTarget.form
+            onInvalidate()
+            // Let the field errors clear before native submission validates the unchanged values.
+            queueMicrotask(() => form?.requestSubmit())
+          }}
           variant="primary"
           loading={pending}
           disabled={!verified && (!executionEnabled || !changed)}

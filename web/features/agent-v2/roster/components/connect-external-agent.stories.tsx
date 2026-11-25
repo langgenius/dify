@@ -51,7 +51,15 @@ export const VerificationFailed: Story = {
   args: {
     verification: {
       status: 'failed',
-      message: 'Could not verify this connection. Check the endpoint and authentication.',
+      details: { reason: 'connection_failed' },
+    },
+  },
+}
+export const InvalidA2AEndpoint: Story = {
+  args: {
+    verification: {
+      status: 'failed',
+      details: { reason: 'invalid_agent_card', subreason: 'invalid_a2a_endpoint' },
     },
   },
 }
