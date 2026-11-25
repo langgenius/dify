@@ -1,8 +1,10 @@
 'use client'
 
 import type { GetExternalAgentsData } from '@dify/contracts/api/console/external-agents/types.gen'
-import type { ExternalAgentConfirmationRequest } from './components/external-agent-actions'
-import type { ExternalAgentListItem } from './components/external-agent-list'
+import type {
+  ExternalAgentConfirmationRequest,
+  ExternalAgentEditRequest,
+} from './components/external-agent-actions'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -64,7 +66,7 @@ function ExternalRosterSession() {
   const profile = useQuery(userProfileQueryOptions())
   const canManage = !workspaceLoading && (workspace.role === 'owner' || workspace.role === 'admin')
   const canReadDetails = !workspaceLoading && (canManage || workspace.role === 'editor')
-  const [editDialog] = useState(() => createDialogHandle<ExternalAgentListItem>())
+  const [editDialog] = useState(() => createDialogHandle<ExternalAgentEditRequest>())
   const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentConfirmationRequest>())
   const update = useMutation(
     consoleQuery.externalAgents.byAgentId.info.patch.mutationOptions({
@@ -85,7 +87,8 @@ function ExternalRosterSession() {
     }),
   )
   const searchRef = useRef<HTMLInputElement>(null)
-  const removalFocusRef = useRef<HTMLElement[] | null>(null)
+  const editFocusRef = useRef<ExternalAgentEditRequest | null>(null)
+  const confirmationFocusRef = useRef<ExternalAgentEditRequest | null>(null)
   const allStatusRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagManagementDialog] = useState(() => createDialogHandle())
@@ -145,15 +148,27 @@ function ExternalRosterSession() {
     })
     viewportRef.current?.scrollTo({ top: 0 })
   }
-  const list = useInfiniteQuery({
-    ...consoleQuery.externalAgents.get.infiniteOptions({
-      input: (page) => rosterQueryInput(Number(page), tagIds),
-      initialPageParam: 1,
-      getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
-      enabled: capabilities.isSuccess && !workspaceLoading,
-    }),
-    placeholderData: keepPreviousData,
+  const listOptions = consoleQuery.externalAgents.get.infiniteOptions({
+    input: (page) => rosterQueryInput(Number(page), tagIds),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
+    enabled: capabilities.isSuccess && !workspaceLoading,
   })
+  const list = useInfiniteQuery({ ...listOptions, placeholderData: keepPreviousData })
+  function restoreRemovedOpener(request: ExternalAgentEditRequest) {
+    // The updated query cache is authoritative before React commits the removed card.
+    const currentList = queryClient.getQueryData(listOptions.queryKey)
+    if (
+      currentList?.pages.some((page) => page.items.some((asset) => asset.id === request.agent.key))
+    )
+      return
+    requestAnimationFrame(() => {
+      if (editDialog.isOpen || confirmation.isOpen) return
+      const target =
+        request.adjacentFocusTargets.find((element) => element.isConnected) ?? searchRef.current
+      target?.focus({ preventScroll: true })
+    })
+  }
   const counts = list.data?.pages[0] ?? EMPTY_STATUS_COUNTS
   const agents =
     list.data?.pages.flatMap((page) =>
@@ -323,17 +338,29 @@ function ExternalRosterSession() {
           if (!open && update.isPending && details.reason !== 'imperative-action') details.cancel()
         }}
         onOpenChangeComplete={(open) => {
-          if (!open) update.reset()
+          if (!open) {
+            update.reset()
+            const request = editFocusRef.current
+            editFocusRef.current = null
+            if (request) restoreRemovedOpener(request)
+          }
         }}
       >
         {({ payload }) =>
           payload && (
             <ExternalAgentEditDialogContent
-              agent={payload}
+              agent={payload.agent}
               pending={update.isPending}
               error={update.error}
               onReset={update.reset}
-              onSubmit={(input) => update.mutate(input, { onSuccess: () => editDialog.close() })}
+              onSubmit={(input) =>
+                update.mutate(input, {
+                  onSuccess: () => {
+                    editFocusRef.current = payload
+                    editDialog.close()
+                  },
+                })
+              }
             />
           )
         }
@@ -352,12 +379,9 @@ function ExternalRosterSession() {
           if (!open) {
             toggle.reset()
             deletion.reset()
-            if (removalFocusRef.current) {
-              const target =
-                removalFocusRef.current.find((element) => element.isConnected) ?? searchRef.current
-              removalFocusRef.current = null
-              requestAnimationFrame(() => target?.focus({ preventScroll: true }))
-            }
+            const request = confirmationFocusRef.current
+            confirmationFocusRef.current = null
+            if (request) restoreRemovedOpener(request)
           }
         }}
       >
@@ -375,7 +399,7 @@ function ExternalRosterSession() {
                     { params: { agent_id: payload.agent.key } },
                     {
                       onSuccess: () => {
-                        removalFocusRef.current = payload.adjacentFocusTargets
+                        confirmationFocusRef.current = payload
                         confirmation.close()
                       },
                     },
@@ -386,7 +410,12 @@ function ExternalRosterSession() {
                       params: { agent_id: payload.agent.key },
                       body: { enabled: !payload.agent.enabled },
                     },
-                    { onSuccess: () => confirmation.close() },
+                    {
+                      onSuccess: () => {
+                        confirmationFocusRef.current = payload
+                        confirmation.close()
+                      },
+                    },
                   )
               }}
             />

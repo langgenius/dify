@@ -33,7 +33,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { skipToken, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
@@ -43,11 +43,14 @@ import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { externalAgentErrorMessage } from './external-connection-verification'
 
-export type ExternalAgentConfirmationRequest = {
-  kind: 'toggle' | 'delete'
+export type ExternalAgentEditRequest = {
   agent: ExternalAgentListItem
   trigger: HTMLButtonElement | null
   adjacentFocusTargets: HTMLElement[]
+}
+
+export type ExternalAgentConfirmationRequest = ExternalAgentEditRequest & {
+  kind: 'toggle' | 'delete'
 }
 
 type AgentInfo = Pick<ExternalAgentAssetResponse, 'name' | 'role' | 'description'> &
@@ -217,6 +220,13 @@ function EditAgentInfoLoader({
     }),
   )
   const [reload, setReload] = useState(0)
+  const activeRef = useRef(false)
+  useEffect(() => {
+    activeRef.current = true
+    return () => {
+      activeRef.current = false
+    }
+  }, [])
   if (!detail.data)
     return <DialogBody>{detail.isPending && <LoadingPlaceholder className="h-40" />}</DialogBody>
   return (
@@ -228,7 +238,7 @@ function EditAgentInfoLoader({
       onSubmit={onSubmit}
       onReload={() => {
         void detail.refetch().then((result) => {
-          if (result.data && !result.error) {
+          if (activeRef.current && result.data && !result.error) {
             onReset()
             setReload((current) => current + 1)
           }
