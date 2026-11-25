@@ -9,6 +9,7 @@ import {
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
   captureAppAccessScope,
@@ -57,7 +58,12 @@ function Splash({ children }: PropsWithChildren) {
       return
     }
 
-    await webAppLogout(address)
+    try {
+      await webAppLogout(address, { silent: true })
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const url = getSigninUrl()
     router.replace(url)
   }, [getSigninUrl, pathname, redirectUrl, router])

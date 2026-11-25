@@ -18,6 +18,7 @@ import type {
   ModelProvider,
   TypeWithI18N,
 } from './declarations'
+import type { ConsoleClientContext } from '@/service/console'
 import { skipToken } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
@@ -329,8 +330,11 @@ const normalizeModelProvider = (provider: ProviderResponse): ModelProvider => {
 }
 
 // ModelProvider is the UI's view of the provider list, with credential schemas as form schemas.
-export const modelProviderDetailsQueryOptions = () =>
+export const modelProviderDetailsQueryOptions = ({
+  context,
+}: { context?: ConsoleClientContext } = {}) =>
   consoleQuery.workspaces.current.modelProviders.get.queryOptions({
     input: {},
+    context,
     select: (response) => ({ data: response.data.map(normalizeModelProvider) }),
   })

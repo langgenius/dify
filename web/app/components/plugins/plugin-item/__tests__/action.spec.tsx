@@ -127,7 +127,7 @@ describe('installed plugin actions', () => {
     await user.click(confirmButton())
     expectLoadingButton(confirmButton())
     await user.click(confirmButton())
-    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
+    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation', { silent: true })
     expect(requests.invalidate).not.toHaveBeenCalled()
     expect(props.onDelete).not.toHaveBeenCalled()
     pending.resolve({ success: true })

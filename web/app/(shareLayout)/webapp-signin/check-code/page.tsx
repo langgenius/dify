@@ -12,6 +12,7 @@ import {
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
@@ -55,11 +56,14 @@ export default function CheckCode() {
         return
       }
       setLoading(true)
-      const ret = await webAppEmailLoginWithCode({
-        email,
-        code: encryptVerificationCode(code),
-        token,
-      })
+      const ret = await webAppEmailLoginWithCode(
+        {
+          email,
+          code: encryptVerificationCode(code),
+          token,
+        },
+        { silent: true },
+      )
       if (ret.result === 'success') {
         if (ret?.data?.access_token) {
           setWebAppAccessToken(ret.data.access_token)
@@ -67,12 +71,13 @@ export default function CheckCode() {
         const { access_token } = await fetchAccessToken({
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
+          silent: true,
         })
         setWebAppPassport(loginRedirect.address, access_token)
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setLoading(false)
     }
@@ -90,7 +95,7 @@ export default function CheckCode() {
       return
     }
     try {
-      const ret = await sendWebAppEMailLoginCode(email, locale)
+      const ret = await sendWebAppEMailLoginCode(email, locale, { silent: true })
       if (ret.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))
@@ -98,7 +103,7 @@ export default function CheckCode() {
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }
 

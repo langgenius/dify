@@ -8,6 +8,7 @@ import { ORPCError } from '@orpc/client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 
@@ -15,8 +16,8 @@ type SSOAuthProps = {
   protocol: SsoProtocol
 }
 
-// The request layer already toasts HTTP errors whose JSON body carries a message.
-const hasNotifiedRequestError = (error: unknown) =>
+// A server message is more specific than the generic SSO failure.
+const hasServerErrorMessage = (error: unknown) =>
   error instanceof ORPCError &&
   error.status !== 401 &&
   ((typeof error.data?.message === 'string' && !!error.data.message) ||
@@ -31,14 +32,17 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSSOError = (error: unknown) => {
-    if (hasNotifiedRequestError(error)) return
+    if (hasServerErrorMessage(error)) {
+      toastRequestError(error)
+      return
+    }
     toast.error(t(($) => $['error.ssoFailed'], { ns: 'login' }))
   }
 
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
-      getUserSAMLSSOUrl(invite_token)
+      getUserSAMLSSOUrl(invite_token, { silent: true })
         .then((res) => {
           router.push(res.url)
         })
@@ -47,7 +51,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oidc) {
-      getUserOIDCSSOUrl(invite_token)
+      getUserOIDCSSOUrl(invite_token, { silent: true })
         .then((res) => {
           document.cookie = `user-oidc-state=${res.state};Path=/`
           router.push(res.url)
@@ -57,7 +61,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oauth2) {
-      getUserOAuth2SSOUrl(invite_token)
+      getUserOAuth2SSOUrl(invite_token, { silent: true })
         .then((res) => {
           document.cookie = `user-oauth2-state=${res.state};Path=/`
           router.push(res.url)

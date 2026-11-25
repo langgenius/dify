@@ -54,6 +54,7 @@ export default function ResourceAccessTokenPage() {
   const deletion = useMutation(
     deleteToken.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onError: (error) => {
         if (!deleteDialogActionsRef.current) toast.error(deleteErrorMessage(error))
       },

@@ -247,10 +247,13 @@ describe('Splash', () => {
 
     screen.getByRole('button', { name: 'share.login.backToHome' }).focus()
     await user.keyboard('{Enter}')
-    expect(webAppAuthMocks.webAppLogout).toHaveBeenCalledWith({
-      kind: 'default',
-      code: 'share-app',
-    })
+    expect(webAppAuthMocks.webAppLogout).toHaveBeenCalledWith(
+      {
+        kind: 'default',
+        code: 'share-app',
+      },
+      { silent: true },
+    )
     expect(navigationMocks.replace).toHaveBeenCalledWith('/webapp-signin?')
   })
 

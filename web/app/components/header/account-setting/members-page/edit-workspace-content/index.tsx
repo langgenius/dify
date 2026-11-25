@@ -32,6 +32,7 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
   const { isPending: isSubmitting, mutate: updateWorkspaceInfo } = useMutation(
     consoleQuery.workspaces.info.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => {
         location.assign(`${location.origin}`)
       },

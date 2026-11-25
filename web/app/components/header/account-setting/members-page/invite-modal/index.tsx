@@ -255,6 +255,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
   const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
         const results = response.invitation_results
         onSend(results.map(({ email }) => email.toLowerCase()))

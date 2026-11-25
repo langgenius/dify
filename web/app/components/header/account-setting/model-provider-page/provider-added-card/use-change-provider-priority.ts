@@ -18,6 +18,7 @@ export function useChangeProviderPriority(
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
         context: { silent: true },
+        meta: { errorToast: false },
         onSuccess: () => {
           provider?.configurate_methods.forEach((method) => {
             if (method === ConfigurationMethodEnum.predefinedModel)

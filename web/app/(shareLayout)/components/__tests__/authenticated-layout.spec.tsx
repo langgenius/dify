@@ -181,7 +181,7 @@ describe('AuthenticatedLayout', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.userProfile.logout' }))
 
-    expect(webAppLogout).toHaveBeenCalledWith(webAppAddress)
+    expect(webAppLogout).toHaveBeenCalledWith(webAppAddress, { silent: true })
     expect(replace).toHaveBeenCalledWith('/webapp-signin?redirect_url=%2Fworkflow%2Fshare-code')
   })
 })

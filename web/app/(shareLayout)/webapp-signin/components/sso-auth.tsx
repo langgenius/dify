@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resolveWebAppLoginRedirect } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import {
   fetchMembersOAuth2SSOUrl,
@@ -42,26 +43,29 @@ function SSOAuth({ protocol }: SSOAuthProps) {
     }
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
-      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
         .then((res) => {
           router.push(res.url)
         })
+        .catch(toastRequestError)
         .finally(() => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oidc) {
-      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
         .then((res) => {
           router.push(res.url)
         })
+        .catch(toastRequestError)
         .finally(() => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oauth2) {
-      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href)
+      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
         .then((res) => {
           router.push(res.url)
         })
+        .catch(toastRequestError)
         .finally(() => {
           setIsLoading(false)
         })

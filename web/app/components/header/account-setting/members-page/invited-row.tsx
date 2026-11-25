@@ -64,6 +64,7 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
   const resend = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
         const result = response.invitation_results.find(
           ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),

@@ -279,7 +279,9 @@ describe('useTextGenerationAppState', () => {
       await result.current.handleSaveMessage('message-1')
     })
 
-    expect(saveMessageMock).toHaveBeenCalledWith('message-1', AppSourceType.webApp, 'app-123')
+    expect(saveMessageMock).toHaveBeenCalledWith('message-1', AppSourceType.webApp, 'app-123', {
+      silent: true,
+    })
     expect(fetchSavedMessageMock).toHaveBeenCalledWith(AppSourceType.webApp, 'app-123')
     expect(notifyMock).toHaveBeenCalledWith({
       type: 'success',
@@ -293,7 +295,9 @@ describe('useTextGenerationAppState', () => {
       await result.current.handleRemoveSavedMessage('message-1')
     })
 
-    expect(removeMessageMock).toHaveBeenCalledWith('message-1', AppSourceType.webApp, 'app-123')
+    expect(removeMessageMock).toHaveBeenCalledWith('message-1', AppSourceType.webApp, 'app-123', {
+      silent: true,
+    })
     expect(fetchSavedMessageMock).toHaveBeenCalledWith(AppSourceType.webApp, 'app-123')
     expect(notifyMock).toHaveBeenCalledWith({
       type: 'success',

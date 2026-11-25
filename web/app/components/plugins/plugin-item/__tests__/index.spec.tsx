@@ -381,7 +381,7 @@ describe('Installed plugin card', () => {
     await user.click(screen.getByRole('button', { name: 'plugin.action.delete' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
+    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation', { silent: true })
     await waitFor(() =>
       expect(screen.getByRole('status', { name: 'installed plugin ids' })).toHaveTextContent(
         'none',

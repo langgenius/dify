@@ -88,6 +88,7 @@ function AgentLogContent({
         query: { conversation_id: conversationID, message_id: messageID },
       },
       context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
       refetchOnWindowFocus: false,
     }),
@@ -104,7 +105,7 @@ function AgentLogContent({
     [runDetail],
   )
 
-  // The request is silent, so its failure is reported here once per error.
+  // The request is silent and the query opts out of the cache toast, so its failure is reported here once per error.
   useEffect(() => {
     if (error) toast.error(error.message)
   }, [error])

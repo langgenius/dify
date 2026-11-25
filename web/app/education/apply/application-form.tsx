@@ -77,7 +77,10 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     isPending,
     mutate: educationAdd,
   } = useMutation(
-    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.education.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -90,7 +93,10 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
 
   const appliedEducationCase = (() => {

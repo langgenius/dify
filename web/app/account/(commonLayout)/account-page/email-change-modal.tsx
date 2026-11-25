@@ -49,18 +49,28 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const latestEmailRef = useRef<string>('')
   const { mutateAsync: sendChangeEmailCode } = useMutation(
-    consoleQuery.account.changeEmail.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.changeEmail.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: verifyChangeEmailCode } = useMutation(
-    consoleQuery.account.changeEmail.validity.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.changeEmail.validity.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: checkEmailUnique } = useMutation(
     consoleQuery.account.changeEmail.checkEmailUnique.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: resetEmail } = useMutation(
-    consoleQuery.account.changeEmail.reset.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.changeEmail.reset.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
 
   const clearCountdown = useCallback(() => {
@@ -182,7 +192,10 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
     setStep(STEP.verifyNew)
   }
 
-  const { mutateAsync: logout } = useMutation(logoutMutationOptions())
+  const { mutateAsync: logout } = useMutation({
+    ...logoutMutationOptions({ context: { silent: true } }),
+    meta: { errorToast: false },
+  })
   const updateEmail = async (lastToken: string) => {
     try {
       await resetEmail({ body: { new_email: mail.trim(), token: lastToken } })

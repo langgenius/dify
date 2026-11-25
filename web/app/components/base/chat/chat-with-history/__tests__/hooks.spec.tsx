@@ -835,6 +835,7 @@ describe('useChatWithHistory', () => {
         AppSourceType.webApp,
         'app-1',
         conversation.id,
+        { silent: true },
       )
       await waitFor(() => {
         expect(result.current.pinnedConversationList).toEqual([conversation])
@@ -847,6 +848,7 @@ describe('useChatWithHistory', () => {
         AppSourceType.webApp,
         'app-1',
         conversation.id,
+        { silent: true },
       )
       await waitFor(() => {
         expect(result.current.pinnedConversationList).toEqual([])
@@ -875,6 +877,7 @@ describe('useChatWithHistory', () => {
         AppSourceType.webApp,
         'app-1',
         'other-conversation',
+        { silent: true },
       )
       expect(onSuccess).toHaveBeenCalledTimes(1)
     })
@@ -962,6 +965,7 @@ describe('useChatWithHistory', () => {
         'app-1',
         'conversation-1',
         'New Name',
+        { silent: true },
       )
       expect(onSuccess).toHaveBeenCalledTimes(1)
       await waitFor(() => {
@@ -1037,6 +1041,7 @@ describe('useChatWithHistory', () => {
         { messageId: 'message-1', body: { rating: 'like', content: 'Great!' } },
         AppSourceType.webApp,
         'app-1',
+        { silent: true },
       )
     })
   })

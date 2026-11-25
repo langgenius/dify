@@ -77,12 +77,15 @@ export const checkTaskStatus = async (taskId: string) => {
 
 export const uninstallPlugin = async (
   pluginId: string,
-  options: { preserveCredentials?: boolean } = {},
+  options: { preserveCredentials?: boolean; silent?: boolean } = {},
 ) => {
-  return consoleClient.workspaces.current.plugin.uninstall.post({
-    body: {
-      plugin_installation_id: pluginId,
-      preserve_credentials: options.preserveCredentials ?? false,
+  return consoleClient.workspaces.current.plugin.uninstall.post(
+    {
+      body: {
+        plugin_installation_id: pluginId,
+        preserve_credentials: options.preserveCredentials ?? false,
+      },
     },
-  })
+    { context: { silent: options.silent } },
+  )
 }

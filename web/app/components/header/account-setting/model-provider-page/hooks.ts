@@ -15,6 +15,7 @@ import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { toastRequestError } from '@/app/query-error-toast'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
@@ -185,9 +186,12 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.query(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query(
+        modelProviderDetailsQueryOptions({ context: { silent: true } }),
+      )
       return response.data.find((provider) => provider.provider === providerName)
-    } catch {
+    } catch (error) {
+      toastRequestError(error)
       return undefined
     }
   }, [providerName, queryClient])

@@ -42,6 +42,7 @@ export function DeleteAccessRuleDialog({
   const deletion = useMutation({
     ...deletePolicy.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       networkMode: 'always',
       onError: (error) => {
         if (!handle.isOpen) toast.error(deletionErrorMessage(error))

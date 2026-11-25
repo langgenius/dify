@@ -3,33 +3,51 @@ import { resolveWebAppAddress } from './webapp-address'
 import { clearWebAppAccessToken, clearWebAppPassport } from './webapp-auth'
 import { webAppClient } from './webapp-client'
 
-export const webAppLogin = (body: { email: string; password: string; remember_me?: boolean }) =>
-  webAppClient.login.post({ body })
+type RequestOptions = { silent?: boolean }
 
-export const changeWebAppPasswordWithToken = (body: {
-  token: string
-  new_password: string
-  password_confirm: string
-}) => webAppClient.forgotPassword.resets.post({ body })
+export const webAppLogin = (
+  body: { email: string; password: string; remember_me?: boolean },
+  options?: RequestOptions,
+) => webAppClient.login.post({ body }, { context: options })
+
+export const changeWebAppPasswordWithToken = (
+  body: {
+    token: string
+    new_password: string
+    password_confirm: string
+  },
+  options?: RequestOptions,
+) => webAppClient.forgotPassword.resets.post({ body }, { context: options })
 
 export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
   return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options })
 }
 
-export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
-  webAppClient.emailCodeLogin.post({ body: { email, language } })
+export const sendWebAppEMailLoginCode = (
+  email: string,
+  language = 'en-US',
+  options?: RequestOptions,
+) => webAppClient.emailCodeLogin.post({ body: { email, language } }, { context: options })
 
-export const webAppEmailLoginWithCode = (body: { email: string; code: string; token: string }) =>
-  webAppClient.emailCodeLogin.validity.post({ body })
+export const webAppEmailLoginWithCode = (
+  body: { email: string; code: string; token: string },
+  options?: RequestOptions,
+) => webAppClient.emailCodeLogin.validity.post({ body }, { context: options })
 
-export const sendWebAppResetPasswordCode = (email: string, language = 'en-US') =>
-  webAppClient.forgotPassword.post({ body: { email, language } })
+export const sendWebAppResetPasswordCode = (
+  email: string,
+  language = 'en-US',
+  options?: RequestOptions,
+) => webAppClient.forgotPassword.post({ body: { email, language } }, { context: options })
 
-export const verifyWebAppResetPasswordCode = (body: {
-  email: string
-  code: string
-  token: string
-}) => webAppClient.forgotPassword.validity.post({ body })
+export const verifyWebAppResetPasswordCode = (
+  body: {
+    email: string
+    code: string
+    token: string
+  },
+  options?: RequestOptions,
+) => webAppClient.forgotPassword.validity.post({ body }, { context: options })
 
 export async function webAppLoginStatus(shareCode: string, userId?: string) {
   // always need to check login to prevent passport from being outdated
@@ -45,8 +63,8 @@ export async function webAppLoginStatus(shareCode: string, userId?: string) {
   }
 }
 
-export async function webAppLogout(address: WebAppAddress | null) {
+export async function webAppLogout(address: WebAppAddress | null, options?: RequestOptions) {
   clearWebAppAccessToken()
   clearWebAppPassport(address)
-  await webAppClient.logout.post()
+  await webAppClient.logout.post(undefined, { context: options })
 }
