@@ -16,9 +16,7 @@ permissions:
 
 concurrency:
   group: knowledge-fs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # Let active PR runs finish so duplicate events cannot cancel their checks
-  # before the status job reports the result.
-  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
+  cancel-in-progress: true
 
 env:
   CI: true
@@ -438,7 +436,7 @@ jobs:
 
   final:
     name: KnowledgeFS CI
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     needs:
       - check-changes
       - quality
