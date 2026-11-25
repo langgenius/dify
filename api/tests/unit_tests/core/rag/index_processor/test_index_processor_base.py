@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import override
@@ -13,11 +13,12 @@ from sqlalchemy.orm import Session
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -78,39 +79,63 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     """Forwards every abstract method to ``BaseIndexProcessor`` so the abstract bodies can be exercised."""
 
     @override
-    def extract[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[Document]:
-        forwarded: Callable[..., list[Document]] = BaseIndexProcessor.extract
-        return forwarded(self, *args, **kwargs)
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: object) -> list[Document]:
+        return BaseIndexProcessor.extract(self, extract_setting, session=session, **kwargs)
 
     @override
-    def transform[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[Document]:
-        forwarded: Callable[..., list[Document]] = BaseIndexProcessor.transform
-        return forwarded(self, *args, **kwargs)
+    def transform(
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs: object
+    ) -> list[Document]:
+        return BaseIndexProcessor.transform(self, documents, current_user, session=session, **kwargs)
 
     @override
-    def generate_summary_preview[**P](self, *args: P.args, **kwargs: P.kwargs) -> list[PreviewDetail]:
-        forwarded: Callable[..., list[PreviewDetail]] = BaseIndexProcessor.generate_summary_preview
-        return forwarded(self, *args, **kwargs)
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: SummaryIndexSettingDict,
+        doc_language: str | None = None,
+        *,
+        session: Session,
+    ) -> list[PreviewDetail]:
+        return BaseIndexProcessor.generate_summary_preview(
+            self, tenant_id, preview_texts, summary_index_setting, doc_language, session=session
+        )
 
     @override
-    def load[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
-        forwarded: Callable[..., None] = BaseIndexProcessor.load
-        return forwarded(self, *args, **kwargs)
+    def load(
+        self,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        **kwargs: object,
+    ) -> None:
+        BaseIndexProcessor.load(
+            self, dataset, documents, multimodal_documents, with_keywords, session=session, **kwargs
+        )
 
     @override
-    def clean[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
-        forwarded: Callable[..., None] = BaseIndexProcessor.clean
-        return forwarded(self, *args, **kwargs)
+    def clean(
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        **kwargs: object,
+    ) -> None:
+        BaseIndexProcessor.clean(self, dataset, node_ids, with_keywords, session=session, **kwargs)
 
     @override
-    def index[**P](self, *args: P.args, **kwargs: P.kwargs) -> None:
-        forwarded: Callable[..., None] = BaseIndexProcessor.index
-        return forwarded(self, *args, **kwargs)
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: object, session: Session) -> None:
+        BaseIndexProcessor.index(self, dataset, document, chunks, session)
 
     @override
-    def format_preview[**P](self, *args: P.args, **kwargs: P.kwargs) -> Mapping[str, object]:
-        forwarded: Callable[..., Mapping[str, object]] = BaseIndexProcessor.format_preview
-        return forwarded(self, *args, **kwargs)
+    def format_preview(self, chunks: object) -> Mapping[str, object]:
+        return BaseIndexProcessor.format_preview(self, chunks)
 
 
 class TestBaseIndexProcessor:
