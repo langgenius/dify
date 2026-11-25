@@ -60,6 +60,8 @@ function Annotation({ appDetail }: AnnotationProps) {
     consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
       input: annotationSettingInput,
       enabled: isChatApp,
+      // The app editor saves these settings without touching this cache, so reload on every visit.
+      staleTime: 0,
       select: (data) => data as AnnotationReplyConfig,
     }),
   )
@@ -92,7 +94,9 @@ function Annotation({ appDetail }: AnnotationProps) {
   const total = annotationPage?.total ?? 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
   // A removal can empty the last page; show the new last page instead.
-  if (annotationPage && !isPlaceholderData && currPage + 1 > totalPages) setCurrPage(totalPages - 1)
+  // Wait for the fetch so a stale cached total cannot hide a page that has rows again.
+  if (annotationPage && !isPlaceholderData && !isLoading && currPage + 1 > totalPages)
+    setCurrPage(totalPages - 1)
 
   // Bulk deletes and CSV imports have no cache policy, so the list and export are refreshed here.
   const invalidateAnnotations = () =>

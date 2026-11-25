@@ -3,7 +3,7 @@ import type {
   AnnotationSettingResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { consoleClient } from '@/service/console'
-import { screen, waitFor, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
@@ -86,8 +86,7 @@ const initialConfig: AnnotationSettingResponse = {
 let annotations: AnnotationData[]
 let config: AnnotationSettingResponse
 
-function setup(quota = { size: 0, limit: 10 }) {
-  const queryClient = createConsoleQueryClient()
+function setup(quota = { size: 0, limit: 10 }, queryClient = createConsoleQueryClient()) {
   seedModelProviderQueries(queryClient, [
     createModelCatalogFixture({
       models: [
@@ -470,4 +469,65 @@ it('moves back a page when a removal empties the last one', async () => {
     params: { app_id: 'app-id' },
     query: { page: 1, limit: 10, keyword: '' },
   })
+})
+
+it('opens a page that has rows again after a removal emptied it', async () => {
+  annotations = Array.from({ length: 11 }, (_, index) => ({
+    ...item,
+    id: `annotation-${index + 1}`,
+    question: `Question ${index + 1}`,
+  }))
+  api.remove.mockImplementation(async ({ params }) => {
+    annotations = annotations.filter(({ id }) => id !== params.annotation_id)
+    return { result: 'success' }
+  })
+  const user = setup()
+  await screen.findByRole('checkbox', { name: 'Question 1' })
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+  await user.click(
+    within((await screen.findByRole('checkbox', { name: 'Question 11' })).closest('tr')!).getByRole(
+      'button',
+      { name: 'appDebug.feature.annotation.remove' },
+    ),
+  )
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.confirm',
+    }),
+  )
+  await screen.findByRole('checkbox', { name: 'Question 1' })
+
+  await user.click(screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' }))
+  const dialog = await screen.findByRole('dialog', { name: 'appAnnotation.addModal.title' })
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.addModal.queryName' }),
+    'New question',
+  )
+  await user.type(
+    within(dialog).getByRole('textbox', { name: 'appAnnotation.addModal.answerName' }),
+    'New answer',
+  )
+  await user.click(within(dialog).getByRole('button', { name: 'common.operation.add' }))
+  await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'common.pagination.next' })).toBeEnabled(),
+  )
+  await user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+
+  expect(await screen.findByRole('checkbox', { name: 'New question' })).toBeVisible()
+  expect(screen.queryByRole('checkbox', { name: 'Question 1' })).not.toBeInTheDocument()
+})
+
+it('reloads annotated-reply settings saved elsewhere when the page is opened again', async () => {
+  const queryClient = createConsoleQueryClient()
+  setup(undefined, queryClient)
+  expect(await screen.findByRole('switch')).not.toBeChecked()
+  expect(api.config).toHaveBeenCalledTimes(1)
+  cleanup()
+
+  config = { ...initialConfig, enabled: true }
+  setup(undefined, queryClient)
+
+  await waitFor(async () => expect(await screen.findByRole('switch')).toBeChecked())
+  expect(api.config).toHaveBeenCalledTimes(2)
 })
