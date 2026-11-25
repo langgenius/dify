@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Iterator
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 import socketio
@@ -18,7 +19,7 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowPageResume
 
 
 @pytest.fixture
@@ -147,6 +148,54 @@ def test_user_connect_distinguishes_plan_rejection_from_missing_access(
 
     monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", lambda *_args, **_kw: None)
     assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "unauthorized"}, 401)
+
+
+@pytest.mark.parametrize("with_resume", [False, True])
+def test_user_connect_accepts_legacy_and_page_resume_payloads(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+    with_resume: bool,
+) -> None:
+    server, _, _ = collaboration_server
+    page_id = uuid4()
+    payload: dict[str, object] = {"workflow_id": "wf-1"}
+    if with_resume:
+        payload["resume"] = {"page_id": str(page_id), "sequence": 2}
+    expected_resume = WorkflowPageResume(page_id.hex, 2) if with_resume else None
+
+    def admit(workflow_id: str, sid: str, *, session: Session, resume: WorkflowPageResume | None) -> tuple[str, bool]:
+        assert isinstance(session, Session)
+        assert (workflow_id, sid, resume) == ("wf-1", "sid-1", expected_resume)
+        return "u-1", True
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", admit)
+
+    assert server.handlers["/"]["user_connect"]("sid-1", payload) == {
+        "msg": "connected",
+        "user_id": "u-1",
+        "sid": "sid-1",
+        "isLeader": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("page_id", "sequence"),
+    [("invalid", 1), (str(uuid4()), 0), (str(uuid4()), "1"), (str(uuid4()), True)],
+)
+def test_user_connect_rejects_invalid_page_resume_before_admission(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+    page_id: str,
+    sequence: object,
+) -> None:
+    server, _, _ = collaboration_server
+    admit = MagicMock()
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", admit)
+    payload = {"workflow_id": "wf-1", "resume": {"page_id": page_id, "sequence": sequence}}
+
+    assert server.handlers["/"]["user_connect"]("sid-1", payload) == ({"msg": "invalid resume"}, 400)
+    admit.assert_not_called()
 
 
 def test_user_connect_does_not_hide_unrelated_errors(
