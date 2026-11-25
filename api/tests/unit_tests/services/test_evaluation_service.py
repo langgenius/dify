@@ -45,6 +45,7 @@ from models.evaluation import (
     EvaluationTargetType,
 )
 from models.model import App, AppMode
+from models.snippet import CustomizedSnippet
 from models.workflow import (
     Workflow,
     WorkflowKind,
@@ -871,6 +872,78 @@ def test_validate_config_rejects_node_type_spoofing(monkeypatch: pytest.MonkeyPa
         )
 
 
+def test_trigger_target_config_is_rejected_before_saving(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    trigger_workflow = _workflow_with_nodes(
+        [
+            ("webhook-1", {"type": "trigger-webhook"}),
+            ("llm-1", {"type": "llm", "title": "Answer"}),
+        ]
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: trigger_workflow)
+    monkeypatch.setattr(EvaluationService, "_validate_default_embedding_model", lambda **_kwargs: None)
+    config = EvaluationConfigData(
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(
+                metric="answer_correctness",
+                node_info_list=[NodeInfo(node_id="llm-1", type="llm", title="Answer")],
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="Trigger-started workflows cannot be evaluated"):
+        EvaluationService.save_evaluation_config(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            account_id="account-1",
+            data=config,
+        )
+
+    assert sqlite_session.scalars(select(EvaluationConfiguration)).all() == []
+
+
+def test_trigger_target_template_is_rejected_even_with_snippet_input_fields(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    trigger_workflow = _workflow_with_nodes([("schedule-1", {"type": "trigger-schedule"})])
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "get_published_workflow", lambda *_args, **_kwargs: trigger_workflow)
+    app = make_app(mode=AppMode.WORKFLOW)
+    snippet = CustomizedSnippet(
+        tenant_id="tenant-1",
+        name="Trigger Snippet",
+        input_fields=json.dumps([{"variable": "query", "type": "text-input"}]),
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.SnippetService.get_published_workflow",
+        lambda *_args, **_kwargs: trigger_workflow,
+    )
+
+    for target, target_type in [(app, "apps"), (snippet, "snippets")]:
+        with pytest.raises(ValueError, match="Trigger-started workflows cannot be evaluated"):
+            EvaluationService.get_dataset_column_names(target, target_type, EvaluationConfigData(), sqlite_session)
+
+
+def test_start_workflow_without_input_variables_still_has_a_template(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    start_workflow = _workflow_with_nodes([("start-1", {"type": "start", "variables": []})])
+    monkeypatch.setattr(WorkflowService, "__init__", lambda _self: None)
+    monkeypatch.setattr(WorkflowService, "get_published_workflow", lambda *_args, **_kwargs: start_workflow)
+
+    columns = EvaluationService.get_dataset_column_names(
+        make_app(mode=AppMode.WORKFLOW), "apps", EvaluationConfigData(), sqlite_session
+    )
+
+    assert columns == [{"name": "index", "type": "number"}]
+
+
 def test_validate_config_accepts_native_metric_for_agent_v2_node(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -1459,6 +1532,55 @@ def test_pin_target_workflow_returns_published_snapshot_id(
     assert version_id == "workflow-version-7"
     assert resolved_workflow is workflow
     assert input_fields == []
+
+
+def test_trigger_target_run_is_rejected_before_creating_or_dispatching(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_app(sqlite_session)
+    published_trigger_workflow = make_workflow(
+        workflow_id="published-trigger-version",
+        graph={
+            "nodes": [
+                {"id": "webhook-1", "data": {"type": "trigger-webhook"}},
+                {"id": "llm-1", "data": {"type": "llm", "title": "Answer"}},
+            ],
+            "edges": [],
+        },
+    )
+    monkeypatch.setattr(EvaluationService, "_resolve_published_workflow", lambda *_args: published_trigger_workflow)
+    dispatched_tasks: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "tasks.evaluation_task.run_evaluation.apply_async",
+        lambda **kwargs: dispatched_tasks.append(kwargs),
+    )
+
+    with pytest.raises(ValueError, match="Trigger-started workflows cannot be evaluated"):
+        EvaluationService.start_evaluation_run(
+            session=sqlite_session,
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            account_id="account-1",
+            dataset_file_content=b"index\n1\n",
+            dataset_filename="dataset.csv",
+            run_request=EvaluationRunRequest(
+                file_id="file-1",
+                evaluation_framework=EvaluationFrameworkEnum.DEEPEVAL,
+                evaluation_model_provider="provider",
+                evaluation_model="model",
+                default_metrics=[
+                    DefaultMetric(
+                        metric="answer_correctness",
+                        node_info_list=[NodeInfo(node_id="llm-1", type="llm", title="Answer")],
+                    )
+                ],
+            ),
+        )
+
+    assert sqlite_session.scalars(select(EvaluationRun)).all() == []
+    assert sqlite_session.scalars(select(EvaluationConfiguration)).all() == []
+    assert dispatched_tasks == []
 
 
 def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> None:

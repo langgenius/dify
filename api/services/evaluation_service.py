@@ -220,7 +220,11 @@ class EvaluationService:
         :param session: Database session used to resolve target inputs
         :param language: The current interface language; unsupported values use English
         :return: Tuple of (xlsx_content_bytes, filename)
-        :raises ValueError: If target type is not supported or app mode is excluded
+        :raises ValueError: If the target type, app mode, or workflow entry is unsupported
+
+        Precondition: the target belongs to the caller's permitted evaluation scope.
+        Postcondition: a template is returned for a supported entry, or no file is
+        generated for a trigger workflow.
         """
         columns = cls.get_dataset_column_names(target, target_type, data, session)
         retrieval_output_columns = frozenset(
@@ -244,6 +248,11 @@ class EvaluationService:
 
         :param app: App instance
         :return: List of input field definitions
+        :raises ValueError: If the resolved workflow starts from a trigger.
+
+        Precondition: ``app`` is the target being evaluated.
+        Postcondition: published (or draft fallback) Start inputs are returned;
+        trigger workflows are rejected without changing the target.
         """
         cls._validate_app_mode(app)
         workflow_service = WorkflowService()
@@ -254,6 +263,7 @@ class EvaluationService:
         if not workflow:
             return []
 
+        cls._require_evaluable_target_workflow(workflow)
         # Get user input form from workflow
         user_input_form = workflow.user_input_form()
         return user_input_form
@@ -263,23 +273,27 @@ class EvaluationService:
         """
         Get input fields from Snippet.
 
-        Tries to get from snippet's own input_fields first,
-        then falls back to workflow's user_input_form.
+        Checks the workflow entry before using the snippet's own input_fields,
+        then falls back to the workflow's user_input_form.
 
         :param snippet: CustomizedSnippet instance
         :return: List of input field definitions
-        """
-        # Try snippet's own input_fields first
-        input_fields = snippet.input_fields_list
-        if input_fields:
-            return input_fields
+        :raises ValueError: If the resolved workflow starts from a trigger.
 
-        # Fallback to workflow's user_input_form
+        Precondition: ``snippet`` is the target being evaluated.
+        Postcondition: saved input fields or workflow Start inputs are returned;
+        trigger workflows are rejected even when saved input fields exist.
+        """
         snippet_service = SnippetService(session=session)
         workflow = snippet_service.get_published_workflow(snippet=snippet)
         if not workflow:
             workflow = snippet_service.get_draft_workflow(snippet=snippet)
+        if workflow:
+            cls._require_evaluable_target_workflow(workflow)
 
+        input_fields = snippet.input_fields_list
+        if input_fields:
+            return input_fields
         if workflow:
             return workflow.user_input_form()
 
@@ -565,7 +579,12 @@ class EvaluationService:
         data: EvaluationConfigData,
         target_workflow: Workflow | None = None,
     ) -> None:
-        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator."""
+        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator.
+
+        Precondition: ``data`` is a parsed configuration for the supplied tenant and target.
+        Postcondition: the published target has no trigger entry and selected workflow
+        nodes exist; an unsupported entry or missing node raises ``ValueError``.
+        """
         normalized_target_type = EvaluationTargetType(target_type)
         if not data.default_metrics and data.customized_metrics is None:
             raise ValueError("At least one default or customized metric is required.")
@@ -630,6 +649,7 @@ class EvaluationService:
             )
             if published_workflow is None:
                 raise ValueError("The evaluation target must have a published workflow.")
+            cls._require_evaluable_target_workflow(published_workflow)
             target_input_fields = (
                 target.input_fields_list
                 if isinstance(target, CustomizedSnippet) and target.input_fields_list
@@ -752,6 +772,19 @@ class EvaluationService:
         app_mode = AppMode.value_of(app.mode)
         if app_mode not in cls.ALLOWED_APP_MODES:
             raise ValueError("Only workflow apps support evaluation.")
+
+    @staticmethod
+    def _require_evaluable_target_workflow(workflow: Workflow) -> None:
+        """Reject trigger entries in the target's resolved workflow version.
+
+        Precondition: ``workflow`` is the version used by this evaluation operation.
+        Postcondition: a trigger entry raises ``ValueError`` without side effects;
+        other entries, including a Start with zero input variables, remain valid.
+        """
+        if workflow.has_trigger_node():
+            raise ValueError(
+                "Trigger-started workflows cannot be evaluated. Publish a workflow with a User Input start node."
+            )
 
     @staticmethod
     def _validate_evaluation_model(*, tenant_id: str, provider: str, model_name: str) -> None:
@@ -957,7 +990,13 @@ class EvaluationService:
         target_type: str,
         target_id: str,
     ) -> tuple[str | None, Workflow | None, list[Mapping[str, Any]]]:
-        """Resolve the target's immutable workflow and dataset input schema."""
+        """Resolve the target's immutable workflow and dataset input schema.
+
+        Precondition: the target is tenant-scoped; App and Snippet targets have
+        a published workflow for successful admission.
+        Postcondition: the published version and its input fields (or the knowledge
+        base query field) are returned, or a trigger entry is rejected before a run exists.
+        """
         normalized_target_type = EvaluationTargetType(target_type)
         if normalized_target_type == EvaluationTargetType.KNOWLEDGE_BASE:
             return None, None, [{"variable": "query", "type": "string"}]
@@ -986,6 +1025,7 @@ class EvaluationService:
         workflow = cls._resolve_published_workflow(target, normalized_target_type.value, session)
         if workflow is None:
             raise ValueError("The evaluation target must have a published workflow.")
+        cls._require_evaluable_target_workflow(workflow)
         if isinstance(target, CustomizedSnippet) and target.input_fields_list:
             input_fields = target.input_fields_list
         else:

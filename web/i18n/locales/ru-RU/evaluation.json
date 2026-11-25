@@ -77,6 +77,7 @@
   "entry.checkFailed": "Не удалось проверить опубликованную версию. Повторите попытку.",
   "entry.duplicateNodeNames": "В опубликованной версии есть узлы с одинаковыми именами ({{names}}). Оценивание можно продолжить, но переименование узлов и публикация новой версии помогут легче различать результаты.",
   "entry.duplicateNodeNamesTitle": "Повторяющиеся имена узлов",
+  "entry.triggerUnsupported": "Нельзя оценивать рабочие процессы, запускаемые триггером. Опубликуйте процесс с начальным узлом пользовательского ввода.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

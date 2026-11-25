@@ -77,6 +77,7 @@
   "entry.checkFailed": "Nie udało się sprawdzić opublikowanej wersji. Spróbuj ponownie.",
   "entry.duplicateNodeNames": "Opublikowana wersja zawiera węzły o tej samej nazwie ({{names}}). Możesz kontynuować ewaluację, ale zmiana nazw i opublikowanie nowej wersji ułatwi odróżnianie wyników.",
   "entry.duplicateNodeNamesTitle": "Zduplikowane nazwy węzłów",
+  "entry.triggerUnsupported": "Nie można oceniać przepływów pracy uruchamianych wyzwalaczem. Opublikuj przepływ z węzłem startowym danych wejściowych użytkownika.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

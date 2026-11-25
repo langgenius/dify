@@ -77,6 +77,7 @@
   "entry.checkFailed": "Versiunea publicată nu a putut fi verificată. Încercați din nou.",
   "entry.duplicateNodeNames": "Versiunea publicată conține noduri cu același nume ({{names}}). Puteți continua evaluarea, dar redenumirea lor și publicarea unei versiuni noi vor face rezultatele mai ușor de deosebit.",
   "entry.duplicateNodeNamesTitle": "Nume de noduri duplicate",
+  "entry.triggerUnsupported": "Fluxurile de lucru pornite de un declanșator nu pot fi evaluate. Publicați un flux cu un nod de pornire pentru introducerea datelor de către utilizator.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

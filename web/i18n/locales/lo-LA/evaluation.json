@@ -77,6 +77,7 @@
   "entry.checkFailed": "ບໍ່ສາມາດກວດສອບເວີຊັນທີ່ເຜີຍແຜ່ໄດ້. ກະລຸນາລອງອີກຄັ້ງ.",
   "entry.duplicateNodeNames": "ເວີຊັນທີ່ເຜີຍແຜ່ມີໂນດຊື່ຊ້ຳກັນ ({{names}}). ທ່ານສາມາດປະເມີນຕໍ່ໄດ້, ແຕ່ການປ່ຽນຊື່ແລະເຜີຍແຜ່ເວີຊັນໃໝ່ຈະຊ່ວຍໃຫ້ແຍກຜົນລັບໄດ້ງ່າຍຂຶ້ນ.",
   "entry.duplicateNodeNamesTitle": "ຊື່ໂນດຊ້ຳກັນ",
+  "entry.triggerUnsupported": "ບໍ່ສາມາດປະເມີນເວີກໂຟລທີ່ເລີ່ມດ້ວຍຕົວກະຕຸ້ນໄດ້. ໃຫ້ເຜີຍແຜ່ເວີກໂຟລທີ່ມີໂນດເລີ່ມຕົ້ນຮັບຂໍ້ມູນຜູ້ໃຊ້.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

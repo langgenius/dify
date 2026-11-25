@@ -77,6 +77,7 @@
   "entry.checkFailed": "Não foi possível verificar a versão publicada. Tente novamente.",
   "entry.duplicateNodeNames": "A versão publicada contém nós com o mesmo nome ({{names}}). Você pode continuar a avaliação, mas renomeá-los e publicar uma nova versão facilitará a distinção dos resultados.",
   "entry.duplicateNodeNamesTitle": "Nomes de nós duplicados",
+  "entry.triggerUnsupported": "Fluxos de trabalho iniciados por um gatilho não podem ser avaliados. Publique um fluxo com um nó inicial de entrada do usuário.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

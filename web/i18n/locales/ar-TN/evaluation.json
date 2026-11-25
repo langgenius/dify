@@ -77,6 +77,7 @@
   "entry.checkFailed": "تعذّر التحقق من الإصدار المنشور. يُرجى المحاولة مرة أخرى.",
   "entry.duplicateNodeNames": "تحتوي النسخة المنشورة على عقد تحمل الاسم نفسه ({{names}}). يمكنك متابعة التقييم، لكن يُنصح بإعادة تسميتها ونشر نسخة جديدة لتسهيل التمييز بين النتائج.",
   "entry.duplicateNodeNamesTitle": "أسماء عقد مكررة",
+  "entry.triggerUnsupported": "لا يمكن تقييم تدفقات العمل التي تبدأ بمُشغِّل. انشر تدفق عمل يبدأ بعقدة إدخال المستخدم.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",

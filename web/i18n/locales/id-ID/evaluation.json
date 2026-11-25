@@ -77,6 +77,7 @@
   "entry.checkFailed": "Versi yang dipublikasikan tidak dapat diperiksa. Silakan coba lagi.",
   "entry.duplicateNodeNames": "Versi yang dipublikasikan memiliki node dengan nama yang sama ({{names}}). Anda dapat melanjutkan Evaluasi, tetapi mengganti namanya dan menerbitkan versi baru akan memudahkan pembedaan hasil.",
   "entry.duplicateNodeNamesTitle": "Nama node duplikat",
+  "entry.triggerUnsupported": "Alur kerja yang dimulai oleh pemicu tidak dapat dievaluasi. Publikasikan alur kerja dengan node awal Input Pengguna.",
   "history.actions.cancel": "Cancel run",
   "history.actions.downloadFailed": "Failed to download the evaluation file.",
   "history.actions.downloadResultFile": "Download result",
