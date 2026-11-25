@@ -295,9 +295,10 @@ class MCPAppApi(Resource):
                         code=mcp_types.INVALID_REQUEST, message=f"Forwarded identity rejected: {e}"
                     ),
                 )
-            end_user = self._retrieve_end_user(app.tenant_id, app.id, email) or self._create_end_user(
-                email, app.tenant_id, app.id, email, session
-            )
+            end_user = self._retrieve_end_user(app.tenant_id, app.id, email)
+            if not end_user:
+                with sessionmaker(db.engine, expire_on_commit=False).begin() as end_user_session:
+                    end_user = self._create_end_user(email, app.tenant_id, app.id, email, end_user_session)
         else:
             end_user = self._retrieve_end_user(mcp_server.tenant_id, app.id, mcp_server.id)
 

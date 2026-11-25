@@ -13,6 +13,7 @@ import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -776,6 +777,22 @@ class TestMCPForwardedIdentity:
         assert end_users[0].app_id == _APP_ID
         assert end_users[0].tenant_id == _TENANT_ID
         assert end_users[0].name == "alice@example.com"
+
+    def test_forwarded_end_user_does_not_wait_for_the_request_transaction(self, app: Flask) -> None:
+        visible_to_app: list[bool] = []
+
+        def generate(*, session: Session, user: EndUser, **_: object) -> dict[str, str]:
+            session.rollback()
+            visible_to_app.append(db.session.get(EndUser, user.id) is not None)
+            return {"answer": "ok"}
+
+        with (
+            patch.object(module.EnterpriseService, "verify_mcp_identity_token", return_value="alice@example.com"),
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            self._post(app, _tools_call_payload(), headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"})
+
+        assert visible_to_app == [True]
 
     def test_rejected_forwarded_identity_does_not_run_tool(self, app: Flask) -> None:
         with (
