@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import zipfile
 from collections.abc import Callable
 from datetime import datetime
@@ -1044,6 +1045,7 @@ def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
     assert result["source"] == "config_skill_zip"
     assert result["skill_md"]["text"] == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
     assert [item["path"] for item in result["files"]] == ["SKILL.md", "references", "references/policy.md"]
+    assert json.dumps([item["type"] for item in result["files"]]) == '["file", "directory", "file"]'
 
 
 def test_manifest_uses_items_shape_without_download_urls() -> None:

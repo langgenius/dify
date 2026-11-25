@@ -220,12 +220,19 @@ class AgentConfigNamedFilePreviewPayload(TypedDict, closed=True):
     text: str | None
 
 
+class AgentConfigSkillArchiveEntryType(StrEnum):
+    """File or directory in a skill archive, serialized using the existing wire values."""
+
+    FILE = "file"
+    DIRECTORY = "directory"
+
+
 class AgentConfigSkillArchiveEntryPayload(TypedDict, closed=True):
     """One entry of a skill archive file tree."""
 
     path: str
     name: str
-    type: Literal["file", "directory"]
+    type: AgentConfigSkillArchiveEntryType
     previewable: bool
     downloadable: bool
 
@@ -1706,7 +1713,7 @@ class AgentConfigService:
                     {
                         "path": normalized_path,
                         "name": segments[-1],
-                        "type": "file",
+                        "type": AgentConfigSkillArchiveEntryType.FILE,
                         "previewable": True,
                         "downloadable": True,
                     }
@@ -1721,7 +1728,7 @@ class AgentConfigService:
             {
                 "path": path,
                 "name": path.rsplit("/", 1)[-1],
-                "type": "directory",
+                "type": AgentConfigSkillArchiveEntryType.DIRECTORY,
                 "previewable": False,
                 "downloadable": False,
             }
