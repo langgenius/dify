@@ -76,10 +76,13 @@ export function composeMutationOptions<TOptions extends object>(
       continue
     }
     composed[name] = async (...args: unknown[]) => {
-      await Promise.all([
+      // Wait for both even when one rejects, so the mutation never settles while
+      // the other side is still refreshing the cache.
+      const results = await Promise.allSettled([
         policyCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'policy') : args)),
         callerCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'caller') : args)),
       ])
+      for (const result of results) if (result.status === 'rejected') throw result.reason
     }
   }
 
