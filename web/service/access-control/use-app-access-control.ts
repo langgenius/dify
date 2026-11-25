@@ -3,7 +3,7 @@ import type {
   WebAppAuthSearchForWhilteListCandidatesData,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Subject } from '@/models/access-control'
-import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { SubjectType } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
@@ -118,10 +118,11 @@ export const useGetUserCanAccessApp = ({
   const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, webappAuthEnabled, isInstalledApp],
-    queryFn: () => {
-      if (webappAuthEnabled) return getUserCanAccess(appId!, isInstalledApp)
-      else return { result: true }
-    },
+    queryFn: !webappAuthEnabled
+      ? () => ({ result: true })
+      : appId
+        ? () => getUserCanAccess(appId, isInstalledApp)
+        : skipToken,
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,
     gcTime: 0,

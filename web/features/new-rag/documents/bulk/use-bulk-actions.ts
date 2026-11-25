@@ -230,6 +230,11 @@ export function useBulkAvailabilityAction() {
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('availability')
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: updateDocuments } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
   const run = useCallback(async () => {
     if (
@@ -242,19 +247,16 @@ export function useBulkAvailabilityAction() {
     )
       return
     try {
-      const result = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch(
-        {
-          body: {
-            documents: selectedDocuments.map((document) => ({
-              documentId: document.id,
-              expectedRowVersion: document.rowVersion,
-            })),
-            enabled: availabilityTargetEnabled,
-          },
-          params: { control_space_id: knowledgeSpaceId },
+      const result = await updateDocuments({
+        body: {
+          documents: selectedDocuments.map((document) => ({
+            documentId: document.id,
+            expectedRowVersion: document.rowVersion,
+          })),
+          enabled: availabilityTargetEnabled,
         },
-        { context: { silent: true } },
-      )
+        params: { control_space_id: knowledgeSpaceId },
+      })
       const failedIds = result.items.flatMap((item) =>
         item.status === 'conflict' || item.status === 'not_found' ? [item.document_id] : [],
       )
@@ -281,6 +283,7 @@ export function useBulkAvailabilityAction() {
     selectedDocuments,
     selectionDisabled,
     t,
+    updateDocuments,
   ])
 
   return { busy, pending, run }
@@ -297,6 +300,11 @@ export function useBulkRemoveAction() {
   const replaceSelection = useSetAtom(replaceDocumentSelectionAtom)
   const { begin, busy, finish, pending } = useBulkActionLock('remove')
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const { mutateAsync: removeDocuments } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
   const run = useCallback(async () => {
     if (
@@ -309,20 +317,16 @@ export function useBulkRemoveAction() {
     )
       return false
     try {
-      const result =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete(
-          {
-            body: {
-              documents: selectedDocuments.map((document) => ({
-                documentId: document.id,
-                expectedRevision: document.rowVersion,
-              })),
-            },
-            headers: { 'Idempotency-Key': createRequestId() },
-            params: { control_space_id: knowledgeSpaceId },
-          },
-          { context: { silent: true } },
-        )
+      const result = await removeDocuments({
+        body: {
+          documents: selectedDocuments.map((document) => ({
+            documentId: document.id,
+            expectedRevision: document.rowVersion,
+          })),
+        },
+        headers: { 'Idempotency-Key': createRequestId() },
+        params: { control_space_id: knowledgeSpaceId },
+      })
       const rejectedIds = (result.results ?? []).flatMap((item) =>
         item.status === 'rejected' ? [item.document_id] : [],
       )
@@ -352,6 +356,7 @@ export function useBulkRemoveAction() {
     invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
+    removeDocuments,
     replaceSelection,
     selectedDocumentIds,
     selectedDocuments,

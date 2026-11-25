@@ -3464,9 +3464,7 @@ export default interface Resources {
     'batch.templateDownloadError': 'Failed to download the XLSX template.'
     'batch.title': 'Batch Test'
     'batch.uploadAndRun': 'Upload & Run Test'
-    'batch.uploadDropzoneEmphasis': 'completed'
-    'batch.uploadDropzonePrefix': 'Drag and drop your'
-    'batch.uploadDropzoneSuffix': 'XLSX or CSV file'
+    'batch.uploadDropzone': 'Drag and drop your <strong>completed</strong> XLSX or CSV file'
     'batch.uploadDropzoneUploadButton': 'Upload file'
     'batch.uploadError': 'Failed to upload file.'
     'batch.uploadHint': 'Select a .xlsx or .csv file'
@@ -3533,6 +3531,7 @@ export default interface Resources {
     'history.status.cancelled': 'Cancelled'
     'history.status.completed': 'Completed'
     'history.status.failed': 'Failed'
+    'history.status.notCompleted': 'Task could not be completed'
     'history.status.partiallyFailed': 'Completed with failures'
     'history.status.pending': 'Pending'
     'history.status.running': 'Running'
@@ -3603,6 +3602,8 @@ export default interface Resources {
     'results.title': 'Test Details'
     title: 'Evaluation'
     unavailableUntilPublished: 'Publish first to set up evaluation.'
+    'upgradePreview.description': 'Upgrade to a Professional or Team plan to configure metrics and run batch tests on your own data.'
+    'upgradePreview.title': "You're previewing Evaluation with sample data"
   }
   explore: {
     'appCard.try': 'Details'
@@ -3702,7 +3703,7 @@ export default interface Resources {
     'scanner.lastTested': 'Last tested {{time}}'
     'scanner.loadFailed': 'The scanners could not be loaded.'
     'scanner.neverTested': 'Not tested yet'
-    'scanner.readOnly': 'Only workspace owners and admins can manage scanners.'
+    'scanner.readOnly': "You don't have permission to manage scanners."
     'scanner.status.active': 'Active'
     'scanner.status.error': 'Error'
     'scanner.test': 'Test'
@@ -6876,6 +6877,8 @@ export default interface Resources {
     'nodes.agent.roster.more': 'More agent actions'
     'nodes.agent.roster.openPanel': 'Open {{name}} details'
     'nodes.agent.roster.panelLabel': '{{name}} details'
+    'nodes.agent.sessionContinuity.description': 'When on, the agent retains its history within this chat. When off, it starts a new session for each user message.'
+    'nodes.agent.sessionContinuity.title': 'Continue agent session'
     'nodes.agent.strategy.configureTip': 'Please configure agentic strategy.'
     'nodes.agent.strategy.configureTipDesc': 'After configuring the agentic strategy, this node will automatically load the remaining configurations. The strategy will affect the mechanism of multi-step tool reasoning. '
     'nodes.agent.strategy.label': 'Agentic Strategy'

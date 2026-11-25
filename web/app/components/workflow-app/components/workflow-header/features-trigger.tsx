@@ -57,7 +57,6 @@ const FeaturesTrigger = () => {
   )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
   const { data: evaluationEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({ select: (features) => features.evaluation_enabled }),
   )
@@ -86,6 +85,11 @@ const FeaturesTrigger = () => {
     )
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
+  // An ordinary publish keeps the active workflow's kind.
+  const canPublishWorkflow =
+    hasWorkflowNodes &&
+    canReleaseAndVersion &&
+    (appDetail?.workflow_kind !== 'evaluation' || evaluationEnabled)
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -329,7 +333,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded: triggerNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || !canReleaseAndVersion,
+          publishDisabled: !canPublishWorkflow,
         }}
       />
     </>
