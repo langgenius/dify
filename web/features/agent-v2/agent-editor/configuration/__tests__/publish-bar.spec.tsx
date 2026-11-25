@@ -60,6 +60,7 @@ const agentDetail = vi.hoisted(() => ({ data: {} as Partial<AgentAppDetailWithSi
 const composerQuery = vi.hoisted(() => ({
   data: undefined as unknown,
   shouldFail: false,
+  pending: undefined as Promise<void> | undefined,
 }))
 
 vi.mock('@/app/notifications', () => ({
@@ -86,6 +87,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'agent.byAgentId.get': async () => agentDetail.data,
       'agent.byAgentId.composer.get': async () => {
         if (composerQuery.shouldFail) throw new Error('Composer query failed')
+        if (composerQuery.pending) await composerQuery.pending
         return composerQuery.data
       },
       'agent.byAgentId.referencingWorkflows.get': async () => {
@@ -300,6 +302,7 @@ describe('AgentConfigurePublishBar', () => {
     workflowReferences.fetchCount = 0
     workflowReferences.shouldFail = false
     composerQuery.data = undefined
+    composerQuery.pending = undefined
     composerQuery.shouldFail = false
     vi.spyOn(console, 'log').mockImplementation(() => {})
   })
@@ -388,6 +391,32 @@ describe('AgentConfigurePublishBar', () => {
       onExitVersions.mock.invocationCallOrder[0]!,
     )
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('rebases the editor only after the restored composer has loaded', async () => {
+    const selectedVersionSnapshot = { ...activeConfigSnapshot, id: 'snapshot-2', version: 2 }
+    const onVersionRestored = vi.fn()
+    const { onExitVersions } = renderPublishBar({ onVersionRestored, selectedVersionSnapshot })
+    const user = userEvent.setup()
+    await user.click(
+      screen.getByRole('button', { name: /agentV2.agentDetail.versionHistory.restore/ }),
+    )
+    let releaseComposer!: () => void
+    composerQuery.pending = new Promise((resolve) => {
+      releaseComposer = resolve
+    })
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /restore/i }),
+    )
+
+    await waitFor(() => expect(restoreVersionMutation).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(onVersionRestored).not.toHaveBeenCalled()
+    expect(onExitVersions).not.toHaveBeenCalled()
+
+    releaseComposer()
+    await waitFor(() => expect(onVersionRestored).toHaveBeenCalled())
+    expect(onExitVersions).toHaveBeenCalled()
   })
 
   it('starts a fresh restore confirmation after leaving and re-entering version view', async () => {
