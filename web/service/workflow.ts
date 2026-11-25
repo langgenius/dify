@@ -136,30 +136,42 @@ export const updateEnvironmentVariables = (
   )
 }
 
-export const updateConversationVariables = ({
-  appId,
-  conversationVariables,
-}: {
-  appId: string
-  conversationVariables: ConversationVariable[]
-}) => {
-  return consoleClient.apps.byAppId.workflows.draft.conversationVariables.post({
-    params: { app_id: appId },
-    body: { conversation_variables: conversationVariables },
-  })
+export const updateConversationVariables = (
+  {
+    appId,
+    conversationVariables,
+  }: {
+    appId: string
+    conversationVariables: ConversationVariable[]
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.apps.byAppId.workflows.draft.conversationVariables.post(
+    {
+      params: { app_id: appId },
+      body: { conversation_variables: conversationVariables },
+    },
+    { context },
+  )
 }
 
-export const updateFeatures = ({
-  appId,
-  features,
-}: {
-  appId: string
-  features: WorkflowFeaturesConfigPayload
-}) => {
-  return consoleClient.apps.byAppId.workflows.draft.features.post({
-    params: { app_id: appId },
-    body: { features },
-  })
+export const updateFeatures = (
+  {
+    appId,
+    features,
+  }: {
+    appId: string
+    features: WorkflowFeaturesConfigPayload
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.apps.byAppId.workflows.draft.features.post(
+    {
+      params: { app_id: appId },
+      body: { features },
+    },
+    { context },
+  )
 }
 
 export const submitHumanInputForm = (

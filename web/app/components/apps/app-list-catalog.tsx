@@ -129,7 +129,10 @@ function AppListCatalogContent({
     exportSecrets: createAlertDialogHandle(),
   }))
   const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      meta: { errorToast: false },
+      context: { silent: true },
+    }),
   )
   const openDeleteDialog = useCallback(
     (app: Pick<AppPartial, 'id' | 'name'>, item: HTMLLIElement | null) =>

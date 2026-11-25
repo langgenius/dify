@@ -203,6 +203,8 @@ export function sysVarValuesQueryOptions(resource: EditorResource | undefined) {
 
 export function restoreWorkflowMutationOptions(resource: EditorResource) {
   return mutationOptions({
+    // Callers show their own restore failure message.
+    meta: { errorToast: false },
     mutationFn: (versionId: string) => {
       switch (resource.kind) {
         case 'app':

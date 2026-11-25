@@ -101,18 +101,21 @@ describe('PromptGeneratorBtn', () => {
     )
 
     expect(await within(dialog).findByText('Generated prompt')).toBeInTheDocument()
-    expect(generateRule).toHaveBeenCalledExactlyOnceWith({
-      flow_id: 'app-1',
-      node_id: 'node-1',
-      current: 'Original prompt',
-      instruction: 'Make the prompt concise',
-      ideal_output: '',
-      model_config: expect.objectContaining({
-        name: 'gpt-4o-mini',
-        provider: 'openai',
-        mode: 'chat',
-      }),
-    })
+    expect(generateRule).toHaveBeenCalledExactlyOnceWith(
+      {
+        flow_id: 'app-1',
+        node_id: 'node-1',
+        current: 'Original prompt',
+        instruction: 'Make the prompt concise',
+        ideal_output: '',
+        model_config: expect.objectContaining({
+          name: 'gpt-4o-mini',
+          provider: 'openai',
+          mode: 'chat',
+        }),
+      },
+      { silent: true },
+    )
     await user.click(within(dialog).getByRole('button', { name: 'appGeneration.generate.apply' }))
     await user.click(
       within(await screen.findByRole('alertdialog')).getByRole('button', {

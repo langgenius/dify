@@ -65,11 +65,12 @@ function Annotation({ appDetail }: AnnotationProps) {
       select: (data) => data as AnnotationReplyConfig,
     }),
   )
-  // Reloads after a settings change are silent; the first load reports its errors.
+  // Reloads after a settings change are reported by their callers.
   const fetchAnnotationConfig = async () => {
     const res = await queryClient.query(
       consoleQuery.apps.byAppId.annotationSetting.get.queryOptions({
         input: annotationSettingInput,
+        meta: { errorToast: false },
         context: { silent: true },
         staleTime: 0,
       }),

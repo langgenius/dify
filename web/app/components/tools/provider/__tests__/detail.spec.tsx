@@ -224,16 +224,19 @@ it('persists custom tool labels when the refreshed parent still has the old labe
   await user.keyboard('{Escape}')
   await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
-    expect(api.customUpdate).toHaveBeenCalledWith({
-      body: expect.objectContaining({
-        provider: 'Search API',
-        original_provider: 'Search API',
-        labels: ['productivity'],
-        schema,
-        schema_type: 'openapi',
-        credentials: { auth_type: 'none' },
-      }),
-    }),
+    expect(api.customUpdate).toHaveBeenCalledWith(
+      {
+        body: expect.objectContaining({
+          provider: 'Search API',
+          original_provider: 'Search API',
+          labels: ['productivity'],
+          schema,
+          schema_type: 'openapi',
+          credentials: { auth_type: 'none' },
+        }),
+      },
+      { context: { silent: true } },
+    ),
   )
   await waitFor(() =>
     expect(
@@ -313,7 +316,7 @@ it('updates a workflow tool only after confirmation and reloads the saved config
           parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
         }),
       },
-      { context: undefined },
+      { context: { silent: true } },
     ),
   )
   await waitFor(() =>

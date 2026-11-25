@@ -56,25 +56,35 @@ export const fetchCustomCollection = (collectionName: string) => {
     .then(selectCustomCollection)
 }
 
-export const createCustomCollection = (collection: CustomCollectionBackend) => {
-  return toolProvider.api.add.post({
-    body: { ...collection, schema_type: toSchemaType(collection.schema_type) },
-  })
+export const createCustomCollection = (
+  collection: CustomCollectionBackend,
+  context?: ConsoleClientContext,
+) => {
+  return toolProvider.api.add.post(
+    { body: { ...collection, schema_type: toSchemaType(collection.schema_type) } },
+    { context },
+  )
 }
 
-export const updateCustomCollection = (collection: CustomCollectionBackend) => {
-  return toolProvider.api.update.post({
-    body: {
-      ...collection,
-      // A collection that was not renamed keeps its current name as the original one.
-      original_provider: collection.original_provider ?? collection.provider,
-      schema_type: toSchemaType(collection.schema_type),
+export const updateCustomCollection = (
+  collection: CustomCollectionBackend,
+  context?: ConsoleClientContext,
+) => {
+  return toolProvider.api.update.post(
+    {
+      body: {
+        ...collection,
+        // A collection that was not renamed keeps its current name as the original one.
+        original_provider: collection.original_provider ?? collection.provider,
+        schema_type: toSchemaType(collection.schema_type),
+      },
     },
-  })
+    { context },
+  )
 }
 
-export const importSchemaFromURL = (url: string) => {
-  return toolProvider.api.remote.get({ query: { url } })
+export const importSchemaFromURL = (url: string, context?: ConsoleClientContext) => {
+  return toolProvider.api.remote.get({ query: { url } }, { context })
 }
 
 export const createWorkflowToolProvider = (

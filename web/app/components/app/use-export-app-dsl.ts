@@ -53,6 +53,7 @@ async function getSecretEnvironmentVariables(
     : await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input,
+          meta: { errorToast: false },
           context,
         }),
       )
@@ -87,6 +88,7 @@ export async function exportAppDslFile(
     : await queryClient.query(
         consoleQuery.apps.byAppId.export.get.queryOptions({
           input,
+          meta: { errorToast: false },
           context,
         }),
       )
