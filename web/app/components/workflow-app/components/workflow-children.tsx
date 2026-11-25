@@ -102,6 +102,12 @@ const WorkflowChildren = () => {
     (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
       if (!canEdit) return
 
+      const { nodes, setNodes, setEdges } = collaborativeWorkflow.getState()
+      if (nodes.some((node) => node.data.type !== BlockEnum.StartPlaceholder)) {
+        handleOnboardingClose()
+        return
+      }
+
       const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
       if (!nodeDefault?.defaultValue) return
 
@@ -138,7 +144,6 @@ const WorkflowChildren = () => {
         position: START_INITIAL_POSITION,
       })
 
-      const { setNodes, setEdges } = collaborativeWorkflow.getState()
       if (!setNodes([newNode])) return
       setEdges([])
 
@@ -160,6 +165,7 @@ const WorkflowChildren = () => {
       autoGenerateWebhookUrl,
       canEdit,
       collaborativeWorkflow,
+      handleOnboardingClose,
       handleSyncWorkflowDraft,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,

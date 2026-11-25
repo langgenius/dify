@@ -843,6 +843,29 @@ it('keeps onboarding open while the collaborative graph is not ready', async () 
   expect(api.saveDraft).not.toHaveBeenCalled()
 })
 
+it('closes onboarding without replacing a graph that a collaborator already created', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  onTestFinished(() => collabSetNodes.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(collabSetNodes).not.toHaveBeenCalled()
+  expect(store.getState()).toMatchObject({ showOnboarding: false, hasSelectedStartNode: false })
+  expect(screen.getByText('Workflow entry')).toBeInTheDocument()
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
 it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
   const user = userEvent.setup()
   const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
