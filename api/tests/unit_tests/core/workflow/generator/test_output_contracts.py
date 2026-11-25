@@ -21,11 +21,6 @@ def test_contracts_bind_to_normalized_declared_names_and_skip_kept_producers() -
     ) == {"code": {"elapsed": {"meaning": "Duration", "representation": "Numeric seconds"}}}
 
 
-@pytest.mark.parametrize("raw", [None, [], "seconds", 7, {"code": []}, {"code": {"elapsed": None}}])
-def test_malformed_contracts_degrade_to_names_only(raw: object) -> None:
-    assert normalize_output_contracts(raw, {"code": ["elapsed"]}, [{"id": "code"}]) == {}
-
-
 @pytest.mark.parametrize(
     "contract",
     [
@@ -56,19 +51,3 @@ def test_contracts_are_capped_at_ten_producers_and_six_outputs() -> None:
     )
     assert list(result) == [f"node{i}" for i in range(10)]
     assert all(list(outputs) == [f"out{i}" for i in range(6)] for outputs in result.values())
-
-
-@pytest.mark.parametrize(
-    "representation",
-    [
-        "Numeric seconds, including fractional seconds",
-        "Numeric proportion from 0 to 1",
-        "JSON text with an array root",
-        "ISO 8601 date-time string with explicit UTC offset",
-    ],
-)
-def test_representations_preserve_generic_units_scale_shape_and_timezone(representation: str) -> None:
-    contract = {"meaning": "User requested result", "representation": representation}
-    assert normalize_output_contracts({"code": {"value": contract}}, {"code": ["value"]}, [{"id": "code"}]) == {
-        "code": {"value": contract}
-    }

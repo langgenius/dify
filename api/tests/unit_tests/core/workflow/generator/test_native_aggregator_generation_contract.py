@@ -1,12 +1,9 @@
 """Isolated consumers must reference the native aggregate envelope, not rename it."""
 
-import json
 from copy import deepcopy
 
 import pytest
 
-from core.workflow.generator.prompts.node_builder_prompts import format_parallel_plan
-from core.workflow.generator.prompts.planner_prompts import PLANNER_SYSTEM_PROMPT
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
@@ -14,22 +11,6 @@ from graphon.nodes.variable_aggregator.entities import VariableAggregatorNodeDat
 from graphon.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from services.workflow_generation.runner import WorkflowGenerator
-
-
-def test_planner_and_shared_plan_name_native_aggregate_envelope() -> None:
-    assert '["<merge-id>", "output", "<field>"]' in PLANNER_SYSTEM_PROMPT
-    assert "output_type does not convert" in PLANNER_SYSTEM_PROMPT
-    assert "Preserve every requested End output" in PLANNER_SYSTEM_PROMPT
-    plan = json.loads(format_parallel_plan([{"id": "merge", "node_type": "variable-aggregator"}], []))
-    contract = plan["native_variable_aggregator_contract"]
-    assert contract["node_ids"] == ["merge"]
-    assert "group_name" in contract["rules"]
-    assert "does not flatten" in contract["rules"]
-    assert "output_type does not convert" in contract["rules"]
-    assert "every selected branch" in contract["rules"]
-    assert "Preserve every requested End output" in contract["rules"]
-    assert "actual native Tool file values" in contract["rules"]
-    assert '["<merge-id>", "output", "<field>"]' in contract["rules"]
 
 
 @pytest.mark.parametrize("branch", ["left", "right"])

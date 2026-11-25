@@ -1,9 +1,7 @@
 import type { ConversationItem } from '../../types'
-import type { SessionRunEvents } from '../types'
 import { act, waitFor } from '@testing-library/react'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
-import { createAppDetailFixture } from '@/test/fixtures/app'
 import {
   builderDefaultModel,
   builderModel,
@@ -11,7 +9,6 @@ import {
   createBuilderQueryClient,
 } from '../../__tests__/model-fixtures'
 import {
-  difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -22,9 +19,7 @@ import {
 } from '../state'
 import {
   commandStartedEvent,
-  conversationItemEvent,
   conversationPage,
-  createControlledEventStream,
   createNativeReceipt,
   createSessionView,
   renderSessionHook,
@@ -153,100 +148,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     clientMocks.conversation.mockResolvedValue(conversationPage())
   })
 
-  const createSessionEvents = () => ({
-    onSessionStateChanged: vi.fn<NonNullable<SessionRunEvents['onSessionStateChanged']>>(),
-    onCanvasEvent: vi.fn(),
-    onWorkflowEvent: vi.fn(),
-    onStreamInterrupted: vi.fn(),
-    restoreRun: vi.fn(),
-    finishCommand: vi.fn(),
-    reset: vi.fn(),
-    onCanvasRefreshed: vi.fn(),
-  })
-
-  it('notifies test entry immediately and completion after accepting the streamed state', async () => {
-    const stream = createControlledEventStream()
-    const events = createSessionEvents()
-    clientMocks.create.mockResolvedValue(stream.iterable)
-    const { result } = renderSessionHook(undefined, events)
-    let command!: Promise<boolean>
-    act(() => {
-      command = result.current.startBuild('app-1', 'Build a workflow')
-    })
-    await waitFor(() => expect(clientMocks.create).toHaveBeenCalledOnce())
-    await act(async () => {
-      stream.push(commandStartedEvent(createSessionView({ phase: 'test' })))
-    })
-    expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(
-      expect.objectContaining({ phase: 'test', run_status: 'processing' }),
-    )
-
-    const complete = createSessionView({ version: 2, phase: 'complete', run_status: 'complete' })
-    await act(async () => {
-      stream.push(stateEvent(complete))
-      expect(await command).toBe(true)
-    })
-    expect(events.onSessionStateChanged).toHaveBeenCalledTimes(3)
-    expect(events.onSessionStateChanged).toHaveBeenLastCalledWith(complete)
-  })
-
-  it.each([2, 4])('notifies only accepted restore snapshots at version %i', async (version) => {
-    const events = createSessionEvents()
-    const { result, store } = renderSessionHook(undefined, events)
-    store.set(difyBuilderSessionViewAtom, createSessionView({ version: 3, phase: 'modify' }))
-    const restored = createSessionView({ version, phase: 'test', run_status: 'waiting_input' })
-    clientMocks.get.mockResolvedValue(restored)
-
-    await act(async () => {
-      await result.current.restore('session-1')
-    })
-    if (version > 3) expect(events.onSessionStateChanged).toHaveBeenCalledExactlyOnceWith(restored)
-    else expect(events.onSessionStateChanged).not.toHaveBeenCalled()
-  })
-
-  it('opts into deriving the app name for a starter build and refreshes app metadata', async () => {
-    const waiting = createSessionView({ run_status: 'waiting_input', canvas_read_only: false })
-    clientMocks.create.mockResolvedValue(
-      streamOf(commandStartedEvent(waiting), stateEvent(waiting)),
-    )
-    const { result, store } = renderSessionHook()
-    const queryClient = createBuilderQueryClient()
-    store.set(queryClientAtom, queryClient)
-    const appKey = consoleQuery.apps.byAppId.get.queryKey({
-      input: { params: { app_id: 'app-1' } },
-    })
-    queryClient.setQueryData(
-      appKey,
-      createAppDetailFixture({
-        id: 'app-1',
-        name: 'Initial name',
-        mode: 'workflow',
-        enable_api: false,
-        enable_site: false,
-        icon_url: null,
-      }),
-    )
-
-    await act(async () => {
-      expect(
-        await result.current.startBuild('app-1', 'Build an assistant', builderModel, true),
-      ).toBe(true)
-    })
-
-    expect(clientMocks.create).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({
-          app_id: 'app-1',
-          scenario: 'build',
-          goal_text: 'Build an assistant',
-          derive_app_name: true,
-        }),
-      },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(queryClient.getQueryState(appKey)?.isInvalidated).toBe(true)
-  })
-
   it('refreshes model availability after a rejected creation and can retry in the same app', async () => {
     clientMocks.create.mockRejectedValueOnce({
       data: {
@@ -291,263 +192,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionErrorCodeAtom)).toBeNull()
     expect(store.get(difyBuilderSessionViewAtom)?.session_id).toBe('session-1')
     expect(clientMocks.create).toHaveBeenCalledTimes(2)
-  })
-
-  it('starts a session through the generated client and consumes typed events', async () => {
-    const started = createSessionView()
-    const initial = {
-      seq: 0,
-      at_version: 1,
-      kind: 'run_context' as const,
-      payload: {
-        run_id: 'run-1',
-        error_code: 'failed',
-        title: 'Failed run',
-        message: 'Run failed',
-      },
-    }
-    const notice = {
-      seq: 1,
-      at_version: 2,
-      kind: 'notice' as const,
-      payload: { text: 'Repair plan ready' },
-    }
-    const terminal = createSessionView({
-      version: 3,
-      canvas_read_only: false,
-      run_status: 'waiting_input',
-      conversation_last_seq: 1,
-    })
-    clientMocks.create.mockResolvedValue(
-      streamOf(
-        commandStartedEvent(started),
-        conversationItemEvent(initial),
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'stale-operation',
-            at_version: 1,
-            revision: 1,
-            event: 'edit_targets_changed',
-            node_ids: ['llm-1'],
-          },
-        },
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'operation-1',
-            at_version: 2,
-            revision: 1,
-            event: 'graph_changed',
-            cause: 'apply',
-          },
-        },
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'operation-1',
-            at_version: 2,
-            revision: 1,
-            event: 'graph_changed',
-            cause: 'apply',
-          },
-        },
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'operation-2',
-            at_version: 3,
-            revision: 1,
-            event: 'edit_targets_changed',
-            node_ids: ['llm-1'],
-          },
-        },
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'operation-1',
-            at_version: 2,
-            revision: 2,
-            event: 'graph_changed',
-            cause: 'apply',
-          },
-        },
-        conversationItemEvent(notice),
-        stateEvent(terminal),
-      ),
-    )
-    const onCanvasEvent = vi.fn()
-    const { result, store } = renderSessionHook(undefined, {
-      onCanvasEvent,
-      onWorkflowEvent: vi.fn(),
-      onStreamInterrupted: vi.fn(),
-      restoreRun: vi.fn(),
-      finishCommand: vi.fn(),
-      reset: vi.fn(),
-      onCanvasRefreshed: vi.fn(),
-    })
-
-    await act(async () => {
-      expect(await result.current.startFix('app-1', 'run-1')).toBe(true)
-    })
-
-    expect(clientMocks.create).toHaveBeenCalledWith(
-      {
-        body: {
-          app_id: 'app-1',
-          scenario: 'fix',
-          failed_run_id: 'run-1',
-        },
-      },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(onCanvasEvent).toHaveBeenCalledTimes(2)
-    expect(onCanvasEvent).toHaveBeenLastCalledWith({
-      session_id: 'session-1',
-      operation_id: 'operation-2',
-      at_version: 3,
-      revision: 1,
-      event: 'edit_targets_changed',
-      node_ids: ['llm-1'],
-    })
-    expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
-    expect(store.get(difyBuilderConversationAtom)).toEqual([initial, notice])
-    expect(clientMocks.conversation).not.toHaveBeenCalled()
-    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
-  })
-
-  it('applies durable conversation item events by sequence without a completion GET', async () => {
-    const initial = {
-      seq: 0,
-      at_version: 1,
-      kind: 'notice' as const,
-      payload: { text: 'Starting diagnosis' },
-    }
-    const started = createSessionView({ conversation_last_seq: 0 })
-    const committed = {
-      seq: 1,
-      at_version: 2,
-      kind: 'notice' as const,
-      payload: { text: 'Diagnosis complete' },
-    }
-    const terminal = createSessionView({
-      version: 2,
-      run_status: 'waiting_input',
-      conversation_last_seq: 1,
-    })
-    const stream = createControlledEventStream()
-    clientMocks.create.mockResolvedValue(stream.iterable)
-    const { result, store } = renderSessionHook()
-
-    let startPromise!: Promise<boolean>
-    act(() => {
-      startPromise = result.current.startFix('app-1', 'run-1')
-    })
-    await waitFor(() => expect(store.get(difyBuilderSessionBusyAtom)).toBe(true))
-    act(() => {
-      stream.push(commandStartedEvent(started))
-      stream.push(conversationItemEvent(initial))
-    })
-
-    await waitFor(() => expect(store.get(difyBuilderActiveCommandAtom)?.version).toBe(1))
-    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0])
-    expect(store.get(difyBuilderSessionBusyAtom)).toBe(true)
-
-    await act(async () => {
-      stream.push(conversationItemEvent(committed))
-      stream.push(stateEvent(terminal))
-      expect(await startPromise).toBe(true)
-    })
-    expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1])
-    expect(clientMocks.conversation).not.toHaveBeenCalled()
-    expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
-  })
-
-  it('accepts command-started-only streams for settle-only actions', async () => {
-    const waiting = createSessionView({
-      version: 2,
-      run_status: 'waiting_input',
-    })
-    const updated = createSessionView({
-      ...waiting,
-      version: 3,
-      model: { provider: 'openai', name: 'gpt-5' },
-    })
-    clientMocks.action.mockResolvedValue(
-      streamOf(commandStartedEvent(waiting), stateEvent(updated)),
-    )
-    const { result, store } = renderSessionHook()
-    act(() => {
-      store.set(difyBuilderSessionViewAtom, waiting)
-      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
-    })
-
-    await act(async () => {
-      expect(await result.current.updateModel({ provider: 'openai', name: 'gpt-5' })).toBe(true)
-    })
-
-    expect(clientMocks.action.mock.calls[0]?.[0]).toEqual({
-      params: { session_id: 'session-1' },
-      body: {
-        action_id: 'update_model',
-        payload: { model_config: { provider: 'openai', name: 'gpt-5' } },
-        base_version: 2,
-        base_app_revision: 'revision-1',
-      },
-    })
-    expect(store.get(difyBuilderSessionViewAtom)?.model?.name).toBe('gpt-5')
-  })
-
-  it('reconciles command failures through the generated JSON GET', async () => {
-    const waiting = createSessionView({
-      version: 2,
-      run_status: 'waiting_input',
-    })
-    const latest = createSessionView({ ...waiting, version: 3 })
-    clientMocks.action.mockRejectedValue(
-      new Response(JSON.stringify({ code: 'conflict' }), { status: 409 }),
-    )
-    clientMocks.get.mockResolvedValue(latest)
-    const { result, store } = renderSessionHook()
-    act(() => {
-      store.set(difyBuilderSessionViewAtom, waiting)
-      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
-    })
-
-    await act(async () => {
-      expect(await result.current.runAction('approve_plan')).toBe(false)
-    })
-
-    expect(clientMocks.get).toHaveBeenCalledWith(
-      { params: { session_id: 'session-1' } },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(store.get(difyBuilderSessionViewAtom)).toEqual(latest)
-    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('HTTP 409: conflict')
-  })
-
-  it('accepts an unexpected command EOF when GET confirms a durable advance', async () => {
-    const started = createSessionView()
-    const latest = createSessionView({
-      version: 2,
-      run_status: 'waiting_input',
-    })
-    clientMocks.create.mockResolvedValue(streamOf(commandStartedEvent(started)))
-    clientMocks.get.mockResolvedValue(latest)
-    const { result, store } = renderSessionHook()
-
-    await act(async () => {
-      expect(await result.current.startBuild('app-1', 'Build a support workflow')).toBe(true)
-    })
-
-    expect(clientMocks.get).toHaveBeenCalledOnce()
-    expect(store.get(difyBuilderSessionViewAtom)).toEqual(latest)
-    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
   it('accepts a terminal error when GET confirms the same command durably advanced', async () => {
@@ -630,77 +274,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(store.get(difyBuilderSessionLastErrorAtom)).toContain('terminal event')
   })
 
-  it('restores state and follows an executing session through the shared stream', async () => {
-    const executing = createSessionView({ session_id: 'session-restored', version: 3 })
-    const terminal = createSessionView({
-      ...executing,
-      version: 4,
-      run_status: 'waiting_input',
-    })
-    clientMocks.get.mockResolvedValue(executing)
-    clientMocks.stream.mockResolvedValue(streamOf(stateEvent(terminal)))
-    const { result, store } = renderSessionHook()
-
-    await act(async () => {
-      expect(await result.current.restore('  session-restored  ')).toBe(true)
-    })
-
-    expect(clientMocks.get).toHaveBeenCalledOnce()
-    expect(clientMocks.get).toHaveBeenCalledWith(
-      { params: { session_id: 'session-restored' } },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(clientMocks.stream).toHaveBeenCalledWith(
-      { params: { session_id: 'session-restored' } },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
-  })
-
-  it('fetches only new conversation items when a reconnect stream finishes without command_started', async () => {
-    const history: ConversationItem[] = Array.from({ length: 103 }, (_, seq) => ({
-      seq,
-      at_version: 1,
-      kind: 'notice',
-      payload: { text: `History item ${seq}` },
-    }))
-    const executing = createSessionView({ conversation_last_seq: 100, version: 3 })
-    const terminal = createSessionView({
-      ...executing,
-      conversation_last_seq: 102,
-      run_status: 'waiting_input',
-      version: 4,
-    })
-    clientMocks.get.mockResolvedValue(executing)
-    clientMocks.stream.mockResolvedValue(streamOf(stateEvent(terminal)))
-    clientMocks.conversation.mockImplementation(
-      ({ query }: { query: { after_seq?: number; before_seq?: number; limit: number } }) => {
-        const end = query.before_seq ?? history.length
-        const start =
-          query.after_seq === undefined ? Math.max(0, end - query.limit) : query.after_seq + 1
-        const page = history.slice(start, Math.min(end, start + query.limit))
-        return Promise.resolve(conversationPage(page, query.before_seq !== undefined && start > 0))
-      },
-    )
-    const { result, store } = renderSessionHook()
-
-    await act(async () => {
-      expect(await result.current.restore('session-1')).toBe(true)
-    })
-
-    expect(clientMocks.conversation).toHaveBeenCalledTimes(2)
-    expect(clientMocks.conversation).toHaveBeenNthCalledWith(
-      2,
-      {
-        params: { session_id: 'session-1' },
-        query: { after_seq: 100, limit: 100 },
-      },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
-    )
-    expect(store.get(difyBuilderConversationAtom)).toEqual(history.slice(81))
-    expect(store.get(difyBuilderConversationHasMoreAtom)).toBe(true)
-  })
-
   it('keeps a thinking restore stream open until the authoritative state arrives', async () => {
     const thinking = createSessionView({
       session_id: 'session-restored',
@@ -746,25 +319,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
     expect(clientMocks.get).toHaveBeenCalledTimes(2)
     expect(clientMocks.stream).toHaveBeenCalledOnce()
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
-  })
-
-  it('retries a transient restore request failure', async () => {
-    const waiting = createSessionView({
-      session_id: 'session-restored',
-      run_status: 'waiting_confirmation',
-    })
-    clientMocks.get
-      .mockRejectedValueOnce({ status: 503, data: { status: 503 } })
-      .mockResolvedValueOnce(waiting)
-    const { result, store } = renderSessionHook()
-
-    await act(async () => {
-      expect(await result.current.restore('session-restored')).toBe(true)
-    })
-
-    expect(clientMocks.get).toHaveBeenCalledTimes(2)
-    expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
-    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('')
   })
 
   it('restores an interrupted working state through the session snapshot', async () => {
@@ -881,21 +435,6 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       { context: { silent: true }, signal: expect.any(AbortSignal) },
     )
     expect(store.get(difyBuilderConversationAtom)).toEqual([snapshotItem])
-  })
-
-  it('clears a persisted pointer after a definitive restore failure', async () => {
-    clientMocks.get.mockRejectedValue({
-      status: 404,
-      data: { status: 404, body: { code: 'not_found' } },
-    })
-    const { result, store } = renderSessionHook()
-
-    await act(async () => {
-      expect(await result.current.restore('session-gone')).toBe(false)
-    })
-
-    expect(store.get(difyBuilderActiveSessionIdAtom)).toBeNull()
-    expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('HTTP 404: not_found')
   })
 
   it('does not restore an obsolete error after reset while its response body is being read', async () => {

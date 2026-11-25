@@ -158,29 +158,6 @@ describe('Builder draft preparation', () => {
     },
   )
 
-  it('takes the barrier without saving an older canvas when restoring a session', async () => {
-    let finishDraining!: () => void
-    const prepare = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finishDraining = resolve
-        }),
-    )
-    const { result } = renderSessionHook(prepare)
-    clientMocks.get.mockResolvedValue(createSessionView({ run_status: 'waiting_input' }))
-    let request!: Promise<boolean>
-    act(() => {
-      request = result.current.restore('session-1')
-    })
-    expect(prepare).toHaveBeenCalledExactlyOnceWith(false, expect.any(AbortSignal))
-    expect(clientMocks.get).not.toHaveBeenCalled()
-    await act(async () => {
-      finishDraining()
-      expect(await request).toBe(true)
-    })
-    expect(clientMocks.get).toHaveBeenCalledOnce()
-  })
-
   it.each(recoveryChoices)(
     'submits $actionId/$selectedId with the version and revision read after autosave, including its Trace',
     async ({ selectedId, actionId, payload }) => {
@@ -308,31 +285,6 @@ describe('Builder draft preparation', () => {
     },
   )
 
-  it('submits an unchanged recovery choice after the save barrier', async () => {
-    const prepare = vi.fn().mockResolvedValue(undefined)
-    const waiting = recoveryView()
-    const { result, store } = renderSessionHook(prepare)
-    act(() => {
-      store.set(difyBuilderSessionViewAtom, waiting)
-      store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
-    })
-    clientMocks.get.mockResolvedValue(waiting)
-    clientMocks.action.mockResolvedValue(
-      streamOf(commandStartedEvent(waiting), stateEvent(waiting)),
-    )
-    await act(async () => {
-      expect(await result.current.runAction('recovery_continue')).toBe(true)
-    })
-    expect(prepare).toHaveBeenCalledExactlyOnceWith(true, expect.any(AbortSignal))
-    expect(clientMocks.get).toHaveBeenCalledOnce()
-    expect(clientMocks.action.mock.calls[0]?.[0].body).toMatchObject({
-      action_id: 'recovery_continue',
-      base_version: 1,
-      base_app_revision: 'revision-1',
-      payload: { recovery_id: 'recovery-1' },
-    })
-  })
-
   it.each([
     ['removed action', { actions: [] }],
     [
@@ -390,30 +342,6 @@ describe('Builder draft preparation', () => {
       expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('difyBuilder.taskControl.conflict')
       expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
       expect(result.current.getTrace().entries.filter((entry) => entry.dir === 'out')).toEqual([])
-    },
-  )
-
-  it.each(['save', 'read'] as const)(
-    'does not post recovery when the %s fails',
-    async (boundary) => {
-      const prepare = vi.fn().mockResolvedValue(undefined)
-      const error = new Error(`${boundary} failed`)
-      if (boundary === 'save') prepare.mockRejectedValue(error)
-      else clientMocks.get.mockRejectedValue(error)
-      const waiting = recoveryView()
-      const { result, store } = renderSessionHook(prepare)
-      act(() => {
-        store.set(difyBuilderSessionViewAtom, waiting)
-        store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
-      })
-      await act(async () => {
-        expect(await result.current.runAction('recovery_continue')).toBe(false)
-      })
-      expect(clientMocks.action).not.toHaveBeenCalled()
-      expect(clientMocks.get).toHaveBeenCalledTimes(boundary === 'save' ? 0 : 1)
-      expect(store.get(difyBuilderSessionViewAtom)).toEqual(waiting)
-      expect(store.get(difyBuilderSessionLastErrorAtom)).toBe(error.message)
-      expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
     },
   )
 

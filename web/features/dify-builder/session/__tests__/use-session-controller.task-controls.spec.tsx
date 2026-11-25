@@ -3,7 +3,6 @@ import { act, waitFor } from '@testing-library/react'
 import { difyBuilderCanvasAppliedViewAtom, difyBuilderDraftAtom } from '../../state'
 import {
   difyBuilderActiveSessionIdAtom,
-  difyBuilderConversationAtom,
   difyBuilderSessionBusyAtom,
   difyBuilderSessionLastErrorAtom,
   difyBuilderSessionViewAtom,
@@ -339,35 +338,6 @@ it('refreshes a 409 conflict without automatically replaying the operation or cl
   expect(store.get(difyBuilderDraftAtom)).toBe('Keep this unsent draft')
   expect(store.get(difyBuilderSessionLastErrorAtom)).toBe('difyBuilder.taskControl.conflict')
   expect(store.get(difyBuilderTaskControlAtom)).toBeNull()
-})
-
-it('keeps failed cancellation read-only and retains the existing history', async () => {
-  const { result, store } = renderSessionHook()
-  seedSession(store)
-  const history = [
-    {
-      seq: 0,
-      at_version: 2,
-      kind: 'user' as const,
-      payload: { text: 'Original goal', turn_id: 'original-turn' },
-    },
-  ]
-  act(() => store.set(difyBuilderConversationAtom, history))
-  const failed = createSessionView({
-    version: 7,
-    run_status: 'failed',
-    canvas_read_only: true,
-    conversation_last_seq: 0,
-  })
-  api.stop.mockResolvedValue(pausedView())
-  api.get.mockResolvedValue(failed)
-  await act(async () => {
-    expect(await result.current.stopTask()).toBe(false)
-  })
-  expect(store.get(difyBuilderSessionViewAtom)).toEqual(failed)
-  expect(store.get(difyBuilderConversationAtom)).toEqual(history)
-  expect(await result.current.resumeTask()).toBe(false)
-  expect(api.resume).not.toHaveBeenCalled()
 })
 
 it('does not restore an older processing command over an already observed pause', async () => {

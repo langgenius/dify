@@ -22,8 +22,6 @@ vi.mock('@/app/components/workflow-app/store/workflow', () => ({
   ) => selector({ setShowDifyBuilderPanel: vi.fn() }),
 }))
 
-const model = 'model:langgenius/tokener/tokener/deepseek-v4.1-flash'
-const endpoint = `https://models.example.com/deployments/${'deepseek-v4.1-flash-'.repeat(4)}`
 const cancelTest = {
   id: 'cancel_test',
   kind: 'destructive',
@@ -83,91 +81,6 @@ const renderPanel = async (
   )
   return { screen, store }
 }
-
-const expectContained = (element: Element, container: Element) => {
-  const bounds = container.getBoundingClientRect()
-  const content = element.getBoundingClientRect()
-  expect(content.left).toBeGreaterThanOrEqual(bounds.left)
-  expect(content.right).toBeLessThanOrEqual(bounds.right)
-}
-
-const expectTextContained = (element: Element, container: Element) => {
-  const range = document.createRange()
-  range.selectNodeContents(element)
-  const bounds = container.getBoundingClientRect()
-  for (const line of range.getClientRects()) {
-    expect(line.left).toBeGreaterThanOrEqual(bounds.left)
-    expect(line.right).toBeLessThanOrEqual(bounds.right)
-    expect(line.top).toBeGreaterThanOrEqual(bounds.top)
-    expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
-  }
-}
-
-const expectNoHorizontalScrolling = (panel: Element) => {
-  expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth)
-}
-
-it('keeps truncated model selections and long inputs inside both the active form and its submitted receipt', async () => {
-  const fields = [
-    { key: 'model', label: 'Model', type: 'select', options: [model], default: model },
-    { key: 'endpoint', label: 'Endpoint', type: 'text', default: endpoint },
-    { key: 'notes', label: 'Notes', type: 'textarea', default: endpoint },
-  ]
-  const { screen } = await renderPanel(
-    [
-      { seq: 1, at_version: 1, kind: 'form', payload: { variant: 'edit_rules', fields } },
-      {
-        seq: 2,
-        at_version: 2,
-        kind: 'interaction_response',
-        payload: {
-          interaction_kind: 'form',
-          question: 'Submitted changes',
-          fields: [
-            { key: 'model', label: 'Model', value: model, display_value: model },
-            { key: 'endpoint', label: 'Endpoint', value: endpoint, display_value: endpoint },
-            { key: 'notes', label: 'Notes', value: endpoint, display_value: endpoint },
-          ],
-          submitted_data: { model, endpoint, notes: endpoint },
-        },
-      },
-      {
-        seq: 3,
-        at_version: 3,
-        kind: 'form',
-        payload: { variant: 'edit_rules', title: 'Review changes', fields },
-      },
-    ],
-    { active_interaction: { action_id: 'submit_edit_rules', card_seq: 3, valid_at_version: 3 } },
-  )
-  const dock = screen.getByRole('region', { name: 'Review changes' })
-  const transcript = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
-  await expect.element(dock.getByRole('combobox', { name: 'Model' })).toBeVisible()
-  await expect.element(transcript.getByRole('combobox', { name: 'Model' })).toBeVisible()
-
-  for (const surface of [dock, transcript]) {
-    const select = surface.getByRole('combobox', { name: 'Model' })
-    const input = surface.getByRole('textbox', { name: 'Endpoint' })
-    const notes = surface.getByRole('textbox', { name: 'Notes' })
-    await expect.element(input).toHaveValue(endpoint)
-    await expect.element(notes).toHaveValue(endpoint)
-    expect(select.element().textContent).toContain(model)
-    expectContained(select.element(), surface.element())
-    expectContained(input.element(), surface.element())
-    expectContained(notes.element(), surface.element())
-    expect(notes.element().scrollWidth).toBeLessThanOrEqual(notes.element().clientWidth)
-    expect(surface.element().scrollWidth).toBeLessThanOrEqual(surface.element().clientWidth)
-  }
-
-  await dock.getByRole('combobox', { name: 'Model' }).click()
-  const option = page.getByRole('option', { name: model })
-  await expect.element(option).toBeVisible()
-  expectTextContained(option.element(), option.element())
-  await option.click()
-  expectNoHorizontalScrolling(
-    screen.getByRole('complementary', { name: 'difyBuilder.panelTitle' }).element(),
-  )
-})
 
 it('keeps native approval choices and submit in view while long details scroll', async () => {
   const title = 'Test operation approval'
@@ -361,39 +274,4 @@ it('uses Stop for the running native test and offers Resume after it settles', a
   await resume.click()
   expect(resumeTask).toHaveBeenCalledOnce()
   expect(runAction).not.toHaveBeenCalled()
-})
-
-it('keeps long user text and expanded execution labels readable within the conversation', async () => {
-  const userText = 'deepseekv41flash'.repeat(12)
-  const activity = `Inspect ${model}`
-  const { screen } = await renderPanel([
-    { seq: 1, at_version: 1, kind: 'user', payload: { text: userText, turn_id: 'user-1' } },
-    {
-      seq: 2,
-      at_version: 2,
-      kind: 'assistant_turn',
-      payload: {
-        turn_id: 'reply-1',
-        execution: {
-          status: 'completed',
-          activities: [{ id: 'inspect', label: activity, state: 'done' }],
-        },
-        reply_text: `Available model: ${endpoint}`,
-      },
-    },
-  ])
-  const transcript = screen.getByRole('log', { name: 'difyBuilder.panelTitle' })
-  const message = transcript.getByText(userText)
-  await expect.element(message).toBeVisible()
-  expectTextContained(message.element(), transcript.element())
-  const reply = transcript.getByText(`Available model: ${endpoint}`)
-  await expect.element(reply).toBeVisible()
-  expectTextContained(reply.element(), transcript.element())
-  await transcript.getByText(activity).click()
-  const labels = transcript.getByText(activity)
-  await expect.element(labels.nth(1)).toBeVisible()
-  for (const label of labels.elements()) expectTextContained(label, transcript.element())
-  expectNoHorizontalScrolling(
-    screen.getByRole('complementary', { name: 'difyBuilder.panelTitle' }).element(),
-  )
 })

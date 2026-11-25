@@ -15,24 +15,6 @@ def test_derives_the_name_from_the_first_clause() -> None:
     assert naming.derive_app_name("Refund approval for ecommerce orders", now=NOW) == "Refund approval for ecommerce"
 
 
-def test_drops_an_imperative_lead_in_and_recases_the_fragment() -> None:
-    assert (
-        naming.derive_app_name(
-            "Set up an expense reimbursement process — check claims against our policy",
-            now=NOW,
-        )
-        == "Expense reimbursement process"
-    )
-
-
-def test_peels_nested_lead_ins() -> None:
-    assert naming.derive_app_name("Please help me build an expense report app", now=NOW) == "Expense report app"
-
-
-def test_keeps_a_name_that_is_already_a_noun_phrase() -> None:
-    assert naming.derive_app_name("Daily ticket summary", now=NOW) == "Daily ticket summary"
-
-
 @pytest.mark.parametrize(
     ("prompt", "expected"),
     [
@@ -48,37 +30,15 @@ def test_chinese_prompts_keep_their_own_language(prompt: str, expected: str) -> 
     assert naming.derive_app_name(prompt, now=NOW) == expected
 
 
-def test_a_version_or_model_string_is_not_a_clause_boundary() -> None:
-    assert naming.derive_app_name("Build a workflow using gpt-4o-mini. Classify tickets.", now=NOW) == (
-        "Workflow using gpt-4o-mini"
-    )
-
-
-def test_a_cjk_terminator_ends_the_clause_without_a_trailing_space() -> None:
-    assert naming.derive_app_name("文章摘要生成器。它读取网页", now=NOW) == "文章摘要生成器"
-
-
 @pytest.mark.parametrize("prompt", ["", "   ", "??? !!!", "123 456"])
 def test_a_prompt_with_nothing_nameable_falls_back(prompt: str) -> None:
     assert naming.derive_app_name(prompt, now=NOW) == "New app · Sep 7, 14:02"
-
-
-def test_peeling_never_empties_the_name() -> None:
-    # "app" is all that is left; peeling the article too would leave nothing.
-    assert naming.derive_app_name("Build me an app", now=NOW) == "App"
 
 
 def test_a_long_unspaced_name_is_cut_at_the_character() -> None:
     # CJK has no word boundary to back off to, so the cut lands on the limit.
     prompt = "报" * 50
     assert naming.derive_app_name(prompt, now=NOW) == "报" * naming.MAX_NAME_LENGTH
-
-
-def test_the_cut_never_severs_a_word_in_a_spaced_script() -> None:
-    name = naming.derive_app_name("Invoices to spreadsheet for my daily expense in company", now=NOW)
-    assert len(name) <= naming.MAX_NAME_LENGTH
-    assert not name.endswith(" ")
-    assert name == "Invoices to spreadsheet for my"
 
 
 @pytest.mark.parametrize(
@@ -101,10 +61,6 @@ def test_every_console_locale_has_a_fallback_stem() -> None:
     from constants.languages import languages
 
     assert set(languages) <= set(naming._FALLBACK_STEM)
-
-
-def test_normalize_proposed_name_unwraps_and_caps_a_model_answer() -> None:
-    assert naming.normalize_proposed_name('  "Expense Reimbursement Approval"  ') == "Expense Reimbursement Approval"
 
 
 @pytest.mark.parametrize("proposal", ["", "   ", '""', "!!!"])

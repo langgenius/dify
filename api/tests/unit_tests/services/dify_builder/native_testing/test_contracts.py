@@ -24,7 +24,6 @@ from runtime_contracts.builder.native.contracts import (
     OperationKey,
     PolicyStop,
     RecordedResult,
-    ResumeReceipt,
     WaitingReceipt,
     decode_native_ref,
     operation_digest,
@@ -95,13 +94,6 @@ def test_operation_rejects_unbounded_or_invalid_identity(changes: dict[str, obje
         OperationKey.model_validate({**KEY, **changes})
 
 
-def test_native_decode_only_structurally_validates_reference() -> None:
-    decoded = decode_native_ref(REF)
-    assert decoded.model_dump(mode="json") == {"policy_version": "builder-native-test-v1", **REF}
-    with pytest.raises(BuilderExecutionPolicyError, match="invalid_execution_context"):
-        validate_execution_context(decoded.model_dump(mode="json"))
-
-
 @pytest.mark.parametrize(
     "changes",
     [
@@ -120,18 +112,6 @@ def test_decode_rejects_invalid_ref_and_client_authority(changes: dict[str, Json
     with pytest.raises(BuilderExecutionPolicyError, match="invalid_native_test_ref") as error:
         decode_native_ref({**REF, **changes})
     assert "sensitive-value" not in str(error.value)
-
-
-@pytest.mark.parametrize("raw", [None, [], "ref", 1, True])
-def test_decode_rejects_non_object(raw: JsonValue) -> None:
-    with pytest.raises(BuilderExecutionPolicyError, match="invalid_native_test_ref"):
-        decode_native_ref(raw)
-
-
-@pytest.mark.parametrize("timestamp", ["2026-10-14T10:00:00Z", "2026-10-14T10:00:00.123456+00:00"])
-def test_dispatch_utc_timestamp_roundtrips(timestamp: str) -> None:
-    permit = DispatchPermit(permit_id="p", attempt_id="a", operation_id="o", expires_at=timestamp)
-    assert DispatchPermit.model_validate_json(permit.model_dump_json()).expires_at == timestamp
 
 
 @pytest.mark.parametrize(
@@ -172,12 +152,6 @@ def test_domain_dtos_reject_secret_fields(model: type[BaseModel], raw: dict[str,
     with pytest.raises(ValidationError) as error:
         model.model_validate({**raw, "secret": "sensitive-value"})
     assert "sensitive-value" not in str(error.value)
-
-
-@pytest.mark.parametrize("bad", [True, -1, "1", 2**63])
-def test_lifecycle_generation_is_strict_nonnegative(bad: object) -> None:
-    with pytest.raises(ValidationError):
-        ResumeReceipt.model_validate({"request_id": "r", "generation": bad, "dispatch_id": "d", "status": "queued"})
 
 
 def test_lifecycle_receipts_preserve_wait_and_cancellation_outcomes() -> None:

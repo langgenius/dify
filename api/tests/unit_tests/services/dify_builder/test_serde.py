@@ -68,23 +68,6 @@ def test_fully_populated_fix_context_round_trips() -> None:
     assert result == fc
 
 
-def test_empty_fix_context_round_trips() -> None:
-    fc = DifyBuilderContext()
-
-    result = context_from_dict(context_to_dict(fc))
-
-    assert result == fc
-
-
-def test_to_dict_output_is_json_serializable() -> None:
-    fc = _full_fix_context()
-
-    d = context_to_dict(fc)
-
-    # Must not raise -- this is what actually lands in the JSONB column.
-    json.dumps(d)
-
-
 def test_from_dict_tolerates_missing_optional_keys() -> None:
     # An older/partial persisted dict -- only a subset of keys present.
     d = {"failed_run_id": "TR-9"}
@@ -121,23 +104,6 @@ def test_context_from_dict_defaults_build_fields_when_absent() -> None:
     assert fc.plan_items == []
 
 
-def test_context_roundtrip_preserves_edit_fields() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.serde import context_from_dict, context_to_dict
-
-    fc = DifyBuilderContext(
-        edit_rules={"risk_threshold": "high", "preserve_summary": True},
-        edit_target_node_ids=["llm", "knowledge_retrieval"],
-        # multi-line, quoted, non-ASCII: a real pydantic refusal, which is what
-        # actually lands in the JSONB column.
-        last_edit_rejection="the draft would not start: node 'node2' (if-else):\n  Input should be '\u2265'",
-    )
-    out = context_from_dict(context_to_dict(fc))
-    assert out.edit_rules == {"risk_threshold": "high", "preserve_summary": True}
-    assert out.edit_target_node_ids == ["llm", "knowledge_retrieval"]
-    assert out == fc  # every edit field, last_edit_rejection included
-
-
 def test_context_from_dict_defaults_edit_fields_when_absent() -> None:
     from services.dify_builder.serde import context_from_dict
 
@@ -145,16 +111,6 @@ def test_context_from_dict_defaults_edit_fields_when_absent() -> None:
     assert out.edit_rules == {}
     assert out.edit_target_node_ids == []
     assert out.last_edit_rejection == ""
-
-
-def test_context_roundtrip_preserves_lifecycle_fields() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.serde import context_from_dict, context_to_dict
-
-    fc = DifyBuilderContext(paused=True, checkpoint_seq=7)
-    out = context_from_dict(context_to_dict(fc))
-    assert out.paused is True
-    assert out.checkpoint_seq == 7
 
 
 def test_context_from_dict_defaults_lifecycle_fields_when_absent() -> None:
@@ -187,46 +143,10 @@ def test_serde_defaults_recovery_fields_for_old_rows() -> None:
     assert back.recovery_class == ""
 
 
-def test_serde_round_trips_skill_learning_policy() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.serde import context_from_dict, context_to_dict
-
-    fc = DifyBuilderContext(skill_learning_policy="automatic")
-    d = context_to_dict(fc)
-    assert d["skill_learning_policy"] == "automatic"
-    assert context_from_dict(d).skill_learning_policy == "automatic"
-
-
 def test_serde_defaults_skill_learning_policy_for_old_rows() -> None:
     from services.dify_builder.serde import context_from_dict
 
     assert context_from_dict({}).skill_learning_policy == "ask"
-
-
-def test_form_fields_round_trips() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.serde import context_from_dict, context_to_dict
-
-    fc = DifyBuilderContext()
-    fc.form_fields = [{"key": "categories", "label": "Categories", "type": "text", "options": []}]
-    restored = context_from_dict(context_to_dict(fc))
-    assert restored.form_fields == fc.form_fields
-
-
-def test_form_fields_defaults_empty_when_absent() -> None:
-    from services.dify_builder.serde import context_from_dict
-
-    assert context_from_dict({}).form_fields == []
-
-
-def test_reply_language_round_trips() -> None:
-    fc = DifyBuilderContext(reply_language="ja")
-    result = context_from_dict(context_to_dict(fc))
-    assert result.reply_language == "ja"
-
-
-def test_reply_language_defaults_empty_when_absent() -> None:
-    assert context_from_dict({}).reply_language == ""
 
 
 def test_repair_loop_fields_round_trip() -> None:

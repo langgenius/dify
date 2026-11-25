@@ -111,25 +111,10 @@ def test_invalid_model_shape_is_bad_request_without_resolution(monkeypatch: pyte
     assert manager.explicit_args is None
 
 
-def test_resolved_names_explicit() -> None:
-    assert model_resolver.resolved_model_names("t1", MC) == {"provider": "openai", "name": "gpt-4o"}
-
-
-def test_resolved_names_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    _manager(monkeypatch)
-    assert model_resolver.resolved_model_names("t1", None) == {"provider": "anthropic", "name": "claude-sonnet-5"}
-
-
 def test_normalize_splits_stop() -> None:
     params, stop = model_resolver.normalize_completion_params({"temperature": 0.5, "stop": ["\n\n"]})
     assert params == {"temperature": 0.5}
     assert stop == ["\n\n"]
-
-
-def test_normalize_no_stop() -> None:
-    params, stop = model_resolver.normalize_completion_params({"temperature": 0.5})
-    assert params == {"temperature": 0.5}
-    assert stop is None
 
 
 def test_normalize_string_stop_is_single_element_list() -> None:

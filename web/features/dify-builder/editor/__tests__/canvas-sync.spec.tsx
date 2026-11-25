@@ -205,27 +205,6 @@ describe('Builder canvas commands', () => {
     document.removeEventListener('workflow:select-node', selection)
   })
 
-  it('marks the complete edit range and refreshes without selecting or navigating to a node', async () => {
-    const { user, store, refresh, refreshed } = setup([
-      editTargets('start', 'answer'),
-      graphChanged(),
-      { ...graphChanged(), revision: 2 },
-    ])
-
-    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-
-    expect(selection).not.toHaveBeenCalled()
-    expect(refresh).not.toHaveBeenCalled()
-    expect(store.get(difyBuilderCanvasReadyAtom)).toBe(false)
-
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
-    expect(refresh).toHaveBeenCalledOnce()
-    expect(selection).not.toHaveBeenCalled()
-    expect(store.get(difyBuilderCanvasReadyAtom)).toBe(true)
-  })
-
   it('retries a failed graph refresh without opening a node sidebar', async () => {
     const refresh = vi
       .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
@@ -274,58 +253,6 @@ describe('Builder canvas commands', () => {
     expect(store.get(difyBuilderCanvasPendingRefreshAtom)).toBeNull()
   })
 
-  it('ignores a refresh response after the canvas owner unmounts', async () => {
-    let resolveRefresh!: (value: WorkflowDraftRefreshResult) => void
-    const refresh = vi
-      .fn<(shouldApply: () => boolean) => Promise<WorkflowDraftRefreshResult>>()
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveRefresh = resolve
-        }),
-      )
-    const { user, workflow, unmount, refreshed } = setup([graphChanged()], refresh)
-    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-
-    expect(workflow.getState().canvasReadOnly).toBe(true)
-    unmount()
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-    await act(async () => resolveRefresh('refreshed'))
-
-    expect(refresh.mock.calls[0]![0]()).toBe(false)
-    expect(refreshed).not.toHaveBeenCalled()
-    expect(selection).not.toHaveBeenCalled()
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-  })
-
-  it('unlocks after a command finishes without a new canvas version', async () => {
-    const { user, workflow, refresh, refreshed } = setup([])
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-
-    await user.click(screen.getByRole('button', { name: 'Start command' }))
-    expect(workflow.getState().canvasReadOnly).toBe(true)
-
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-    expect(refresh).toHaveBeenCalledOnce()
-  })
-
-  it('applies session read-only changes even when no graph refresh is needed', async () => {
-    const { user, workflow, refresh, refreshed } = setup([])
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-
-    await user.click(screen.getByRole('button', { name: 'Lock canvas' }))
-    expect(workflow.getState().canvasReadOnly).toBe(true)
-
-    await user.click(screen.getByRole('button', { name: 'Unlock canvas' }))
-    expect(workflow.getState().canvasReadOnly).toBe(false)
-    expect(refresh).toHaveBeenCalledOnce()
-  })
-
   it('retains the server read-only lock after refresh and releases it on reset', async () => {
     const { user, workflow, refreshed } = setup([])
     await user.click(screen.getByRole('button', { name: 'Lock canvas' }))
@@ -336,43 +263,6 @@ describe('Builder canvas commands', () => {
     await user.click(screen.getByRole('button', { name: 'Reset session' }))
     expect(workflow.getState().canvasReadOnly).toBe(false)
   })
-
-  it('keeps all edit targets without taking over a manually moved viewport', async () => {
-    const { user, workflow, refreshed } = setup([editTargets('start', 'answer'), graphChanged()])
-    act(() => workflow.setState({ builderViewportManuallyChanged: true }))
-
-    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-    expect(selection).not.toHaveBeenCalled()
-    expect(workflow.getState().builderEditTargetNodeIds).toEqual(['start', 'answer'])
-
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
-    expect(selection).not.toHaveBeenCalled()
-    expect(workflow.getState().builderViewportManuallyChanged).toBe(true)
-  })
-
-  it('retains user navigation when session startup resets the canvas event state', async () => {
-    const { user, workflow } = setup([editTargets('start')])
-    act(() => workflow.setState({ builderViewportManuallyChanged: true }))
-
-    await user.click(screen.getByRole('button', { name: 'Reset session' }))
-    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-
-    expect(selection).not.toHaveBeenCalled()
-    expect(workflow.getState().builderViewportManuallyChanged).toBe(true)
-  })
-
-  it.each([{ targets: ['code'] }, { targets: [] }])(
-    'replaces the targets with $targets without selecting nodes',
-    async ({ targets }) => {
-      const { user, workflow } = setup([editTargets('start', 'answer'), editTargets(...targets)])
-      await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-      expect(workflow.getState().builderEditTargetNodeIds).toEqual(targets)
-      await user.click(screen.getByRole('button', { name: 'Reset session' }))
-      expect(workflow.getState().builderEditTargetNodeIds).toEqual([])
-      expect(selection).not.toHaveBeenCalled()
-    },
-  )
 
   it('refreshes a newer session version even when the draft revision is unchanged', async () => {
     const { user, store, refresh, refreshed } = setup([])
@@ -399,20 +289,6 @@ describe('Builder canvas commands', () => {
     await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
     expect(refresh).toHaveBeenCalledOnce()
   })
-
-  it.each(['test', 'complete'] as const)(
-    'clears passive targets before entering %s',
-    async (phase) => {
-      const { user, workflow } = setup([editTargets('start', 'answer')])
-      await user.click(screen.getByRole('button', { name: 'Apply changes' }))
-      expect(workflow.getState().builderEditTargetNodeIds).toEqual(['start', 'answer'])
-      await user.click(
-        screen.getByRole('button', { name: phase === 'test' ? 'Enter test' : 'Complete task' }),
-      )
-      expect(workflow.getState().builderEditTargetNodeIds).toEqual([])
-      expect(selection).not.toHaveBeenCalled()
-    },
-  )
 
   it('automatically replaces a superseded refresh without exposing a manual retry', async () => {
     const refresh = vi

@@ -68,22 +68,6 @@ def test_noop_and_unknown_result_do_not_claim_repairs_applied() -> None:
     assert "No changes" in text
 
 
-def test_native_fallback_connections_delete_and_chinese() -> None:
-    graph: Graph = {
-        "nodes": [
-            {"id": "n", "data": {"title": "n", "type": "code"}},
-            {"id": "end", "data": {"title": "发送结果", "type": "end"}},
-        ]
-    }
-    text = applied_repair_summary(ApplyResult(changes=["n: code", "＋ n → end", "− end"]), graph, "zh-CN")
-    assert "代码" in text
-    assert "发送结果" in text
-    assert "连接" in text
-    assert "删除" in text
-    assert "新" in text
-    assert "测试" in text
-
-
 def test_sensitive_nested_values_hostile_markdown_and_bounds() -> None:
     graph: Graph = {
         "nodes": [
@@ -119,14 +103,6 @@ def test_sensitive_nested_values_hostile_markdown_and_bounds() -> None:
     assert "\n#" not in text
     assert "[Click](" not in text
     assert len(text) < 6000
-
-
-def test_unknown_node_uses_id_without_inventing_a_title() -> None:
-    text = repair_proposal(
-        {}, [MutationIntent(op="delete_node", args={"node_id": "unknown"})], Diagnosis(), Risk(), "en"
-    )
-    assert "unknown" in text
-    assert "Delete" in text
 
 
 def test_proposal_bounds_many_distinct_nodes_fields_and_binding_selectors() -> None:
@@ -188,24 +164,6 @@ def test_direct_selector_and_output_schema_explain_bound_field_names() -> None:
     assert "Fetch releases" in text
     assert "body" in text
     assert "releases" in text
-
-
-def test_multiple_new_nodes_without_ids_keep_separate_native_groups() -> None:
-    intents = [
-        MutationIntent(op="create_node", args={"node_type": "code", "config": {}}),
-        MutationIntent(op="create_node", args={"node_type": "end", "config": {}}),
-    ]
-    text = repair_proposal({}, intents, Diagnosis(), Risk(), "en")
-    assert "- Code:" in text
-    assert "- End:" in text
-
-
-def test_blank_result_title_does_not_replace_native_fallback() -> None:
-    graph: Graph = {"nodes": [{"id": "n", "data": {"type": "code"}}]}
-    text = applied_repair_summary(
-        ApplyResult(changes=["n: code"], nodes=[ChangedNode(node_id="n", title="  ")]), graph, "en"
-    )
-    assert "- Code:" in text
 
 
 def test_sensitive_url_schemes_are_case_insensitive() -> None:

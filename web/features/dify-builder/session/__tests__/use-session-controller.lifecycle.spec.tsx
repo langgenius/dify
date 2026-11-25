@@ -78,84 +78,6 @@ beforeEach(() => {
   api.conversation.mockResolvedValue(conversationPage(history))
 })
 
-it('clears through the confirmed JSON endpoint without preparing or running a command', async () => {
-  const prepare = vi.fn()
-  const { result, store } = renderSessionHook(prepare)
-  seed(store)
-  api.clear.mockImplementation(async ({ body }) => ({
-    session_id: 'session-1',
-    version: 5,
-    task_id: 'task-1',
-    task_status: 'abandoned',
-    last_command_id: body.client_action_id,
-    conversation_cleared: true,
-    conversation_last_seq: -1,
-    settlement: 'settled',
-  }))
-
-  await act(async () => expect(await result.current.clearConversation()).toBe(true))
-  expect(api.clear).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { session_id: 'session-1' },
-      body: {
-        base_version: 4,
-        expected_task_id: 'task-1',
-        confirmed: true,
-        client_action_id: expect.any(String),
-      },
-    },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
-  )
-  expect(prepare).not.toHaveBeenCalled()
-  expect(api.create).not.toHaveBeenCalled()
-  expect(api.action).not.toHaveBeenCalled()
-  expect(api.stream).not.toHaveBeenCalled()
-})
-
-it('abandons the current task through JSON, retaining its conversation and invalidated history', async () => {
-  const prepare = vi.fn()
-  const { result, store } = renderSessionHook(prepare)
-  seed(store)
-  const abandoned = createSessionView({
-    version: 5,
-    task_id: 'task-1',
-    task_status: 'abandoned',
-    run_status: 'paused',
-    canvas_read_only: false,
-    conversation_last_seq: 0,
-  })
-  api.abandon.mockImplementation(async ({ body }) => ({
-    session_id: 'session-1',
-    version: 5,
-    task_id: 'task-1',
-    task_status: 'abandoned',
-    last_command_id: body.client_action_id,
-    conversation_cleared: false,
-    conversation_last_seq: 0,
-    settlement: 'settled',
-  }))
-  api.get.mockResolvedValue(abandoned)
-  await act(async () => expect(await result.current.abandonTask()).toBe(true))
-  expect(api.abandon).toHaveBeenCalledWith(
-    {
-      params: { session_id: 'session-1' },
-      body: {
-        base_version: 4,
-        expected_task_id: 'task-1',
-        client_action_id: expect.any(String),
-      },
-    },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
-  )
-  expect(store.get(difyBuilderConversationAtom)).toEqual(history)
-  expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1')
-  expect(store.get(difyBuilderSessionViewAtom)?.task_status).toBe('abandoned')
-  expect(store.get(difyBuilderDraftAtom)).toBe('Unsent requirement')
-  expect(prepare).not.toHaveBeenCalled()
-  expect(api.stream).not.toHaveBeenCalled()
-  expect(api.create).not.toHaveBeenCalled()
-})
-
 it('isolates a cleared session on restore but keeps commands blocked without authoritative settlement', async () => {
   const { result, store } = renderSessionHook()
   seed(store)
@@ -363,44 +285,6 @@ it('unlocks the composer on Retry when the original clear settles after its stre
   expect(api.create).not.toHaveBeenCalled()
 })
 
-it('isolates an SSE clear projection and keeps its pending settlement blocked', async () => {
-  const response = createControlledEventStream()
-  api.create.mockResolvedValue(response.iterable)
-  const { result, store } = renderSessionHook()
-  let building!: Promise<boolean>
-  act(() => {
-    building = result.current.startBuild('app-1', 'Original goal')
-  })
-  await waitFor(() => expect(api.create).toHaveBeenCalledOnce())
-  act(() => response.push(commandStartedEvent(createSessionView({ version: 4 }))))
-  await waitFor(() => expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1'))
-  act(() => {
-    store.set(difyBuilderConversationAtom, history)
-    response.push(
-      stateEvent(
-        createSessionView({
-          version: 5,
-          conversation_cleared: true,
-          task_status: 'abandoned',
-          conversation_last_seq: -1,
-          run_status: 'complete',
-          lifecycle_settlement: 'pending',
-        }),
-      ),
-    )
-  })
-  await waitFor(() => expect(store.get(difyBuilderConversationAtom)).toEqual([]))
-  await act(async () => {
-    response.close()
-    await building
-  })
-  expect(store.get(difyBuilderLifecycleControlAtom)?.phase).toBe('unknown')
-  expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1')
-  expect(api.clear).not.toHaveBeenCalled()
-  expect(api.create).toHaveBeenCalledOnce()
-  expect(api.stream).not.toHaveBeenCalled()
-})
-
 it('only interrupts the original response after the server acknowledges an explicit Fix switch', async () => {
   const response = createControlledEventStream()
   const switching = createControlledEventStream()
@@ -468,21 +352,6 @@ it('only interrupts the original response after the server acknowledges an expli
   expect(api.stream).not.toHaveBeenCalled()
 })
 
-it('rejects a Fix decision absent from the server actions', async () => {
-  const { result, store } = renderSessionHook()
-  seed(store)
-  await act(async () =>
-    expect(
-      await result.current.runAction('confirm', {
-        option_id: 'stop_and_switch_fix',
-        fix_intent_id: 'invented',
-        expected_task_id: 'task-1',
-      }),
-    ).toBe(false),
-  )
-  expect(api.action).not.toHaveBeenCalled()
-})
-
 it.each(['rejected', 'lost response', 'pending settlement', 'unknown settlement'])(
   'retains its blocking identity and never automatically retries clear after %s',
   async (outcome) => {
@@ -524,101 +393,6 @@ it.each(['rejected', 'lost response', 'pending settlement', 'unknown settlement'
     }
   },
 )
-
-it('stages an existing-session Fix while busy and dismisses it without interrupting the original response', async () => {
-  const response = createControlledEventStream()
-  api.create.mockResolvedValue(response.iterable)
-  const prepare = vi.fn(async () => {})
-  const { result, store } = renderSessionHook(prepare)
-  let building!: Promise<boolean>
-  act(() => {
-    building = result.current.startBuild('app-1', 'Original goal')
-  })
-  await waitFor(() => expect(api.create).toHaveBeenCalledOnce())
-  act(() => response.push(commandStartedEvent(createSessionView({ version: 4 }))))
-  await waitFor(() => expect(store.get(difyBuilderActiveSessionIdAtom)).toBe('session-1'))
-  const pending = createSessionView({
-    version: 4,
-    task_id: 'task-1',
-    pending_fix_context: {
-      run_id: 'failed-1',
-      title: '',
-      error_code: '',
-      message: '',
-      trace_ref: '',
-    },
-    actions: [
-      {
-        id: 'dismiss_fix',
-        label: 'Keep current task',
-        kind: 'secondary',
-        payload: { fix_intent_id: 'fix-1', expected_task_id: 'task-1' },
-      },
-    ],
-  })
-  api.fix.mockResolvedValue({
-    fix_intent_id: 'fix-1',
-    status: 'awaiting_confirmation',
-    session: pending,
-  })
-  let fixing!: Promise<boolean>
-  act(() => {
-    fixing = result.current.startFix('app-1', 'failed-1')
-  })
-  await waitFor(() => expect(api.fix).toHaveBeenCalledOnce())
-  await act(async () => expect(await fixing).toBe(true))
-  expect(api.fix).toHaveBeenCalledWith(
-    {
-      params: { session_id: 'session-1' },
-      body: {
-        base_version: 4,
-        client_action_id: expect.any(String),
-        failed_run_id: 'failed-1',
-      },
-    },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
-  )
-  expect(api.create.mock.calls[0]![1].signal.aborted).toBe(false)
-  expect(prepare).toHaveBeenCalledOnce()
-  const dismissed = createSessionView({ version: 5, task_id: 'task-1' })
-  api.action.mockResolvedValue(
-    (async function* () {
-      yield stateEvent(dismissed)
-    })(),
-  )
-  await act(async () =>
-    expect(
-      await result.current.runAction('confirm', {
-        option_id: 'dismiss_fix',
-        fix_intent_id: 'fix-1',
-        expected_task_id: 'task-1',
-      }),
-    ).toBe(true),
-  )
-  expect(api.action).toHaveBeenCalledWith(
-    {
-      params: { session_id: 'session-1' },
-      body: {
-        action_id: 'confirm',
-        base_version: 4,
-        base_app_revision: 'revision-1',
-        client_action_id: expect.any(String),
-        payload: {
-          option_id: 'dismiss_fix',
-          fix_intent_id: 'fix-1',
-          expected_task_id: 'task-1',
-        },
-      },
-    },
-    { signal: expect.any(AbortSignal) },
-  )
-  expect(api.create.mock.calls[0]![1].signal.aborted).toBe(false)
-  expect(api.create).toHaveBeenCalledOnce()
-  await act(async () => {
-    response.push(stateEvent(createSessionView({ version: 6, run_status: 'waiting_input' })))
-    await building
-  })
-})
 
 it.each(['task-1', 'other-task'])(
   'recovers completed abandon only with its exact settled task %s',

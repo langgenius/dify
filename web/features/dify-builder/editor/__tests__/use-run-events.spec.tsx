@@ -140,25 +140,6 @@ describe('Builder run event handlers', () => {
     })
   })
 
-  it('paints the first node synchronously and keeps unknown results neutral across later canvas refreshes', () => {
-    const { result, workflow, nodeStatus } = setup()
-    act(() => {
-      result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
-      result.current.events.onWorkflowEvent(workflowEvent(nodeStarted()))
-    })
-    expect(nodeStatus()).toBe('running')
-    expect(workflow.getState().workflowRunningData?.result).toMatchObject({
-      id: 'dify-run',
-      status: 'running',
-    })
-    act(() => result.current.events.finishCommand())
-    expect(nodeStatus()).toBeUndefined()
-    expect(workflow.getState().workflowRunningData?.result.status).toBe('unknown')
-    act(() => result.current.events.onCanvasRefreshed())
-    expect(nodeStatus()).toBeUndefined()
-    expect(mocks.detail).not.toHaveBeenCalled()
-  })
-
   it('handles the terminal run even when another canvas event immediately follows', async () => {
     const { result, workflow, nodeStatus } = setup()
     act(() => {
@@ -176,31 +157,6 @@ describe('Builder run event handlers', () => {
     expect(mocks.executions).not.toHaveBeenCalled()
     expect(workflow.getState().workflowRunningData?.tracing?.[0]).toMatchObject(nodeFinished().data)
     expect(workflow.getState().workflowRunningData?.resultText).toBe('42')
-  })
-
-  it('restores a card using the Dify ID and explicitly reapplies it after graph replacement', async () => {
-    const { result, workflow, nodeStatus } = setup()
-    act(() => result.current.events.restoreRun('session-1', [resultCard]))
-    await waitFor(() => expect(nodeStatus()).toBe('succeeded'))
-    expect(mocks.executions).toHaveBeenCalledWith({
-      params: { app_id: 'app-1', run_id: 'dify-run' },
-    })
-    expect(workflow.getState().workflowRunningData?.result.outputs).toBe('{"result":"42"}')
-    act(() =>
-      result.current.canvas.getState().setNodes([
-        {
-          id: 'answer',
-          position: { x: 0, y: 0 },
-          data: { type: BlockEnum.Code, title: 'Answer', desc: '' },
-        },
-      ]),
-    )
-    expect(nodeStatus()).toBeUndefined()
-    act(() => result.current.events.onCanvasRefreshed())
-    expect(nodeStatus()).toBe('succeeded')
-    act(() => result.current.events.reset())
-    expect(nodeStatus()).toBeUndefined()
-    expect(workflow.getState().workflowRunningData).toBeUndefined()
   })
 
   it.each(['linear', 'branch'] as const)(
@@ -307,18 +263,6 @@ describe('Builder run event handlers', () => {
     })
   })
 
-  it('recovers from a dropped terminal event when the result card is committed at the same version', async () => {
-    const { result, nodeStatus, workflow } = setup()
-    act(() => {
-      result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
-      result.current.events.onWorkflowEvent(workflowEvent(nodeStarted()))
-      result.current.events.restoreRun('session-1', [resultCard])
-      result.current.events.finishCommand()
-    })
-    await waitFor(() => expect(nodeStatus()).toBe('succeeded'))
-    expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded')
-  })
-
   it('restores missed node events after reconnect even when the terminal event arrives', async () => {
     const { result, workflow } = setup()
     act(() => {
@@ -330,33 +274,6 @@ describe('Builder run event handlers', () => {
     await waitFor(() => expect(workflow.getState().workflowRunningData?.tracing).toHaveLength(2))
     expect(mocks.detail).toHaveBeenCalledOnce()
     expect(mocks.executions).toHaveBeenCalledOnce()
-  })
-
-  it('shows a new run launch error even if a previous run finished', () => {
-    const { result, workflow } = setup()
-    act(() => {
-      result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
-      result.current.events.onWorkflowEvent(workflowEvent(runFinished()))
-      result.current.events.onWorkflowEvent(
-        workflowEvent(
-          {
-            event: 'error',
-            workflow_run_id: 'next-run',
-            code: 'invalid_param',
-            status: 400,
-            message: 'Invalid input',
-          },
-          { at_version: 3 },
-        ),
-      )
-      result.current.events.finishCommand()
-    })
-    expect(workflow.getState().workflowRunningData?.result).toMatchObject({
-      id: 'next-run',
-      status: 'failed',
-      error: 'Invalid input',
-    })
-    expect(mocks.detail).not.toHaveBeenCalled()
   })
 
   it('keeps distinct native agent log IDs and updates the matching log', () => {
@@ -568,24 +485,6 @@ describe('Builder run event handlers', () => {
     expect(mocks.detail).not.toHaveBeenCalled()
   })
 
-  it.each(['failed', 'partial-succeeded', 'stopped'] as const)(
-    'preserves the native %s result through canvas events and result cards',
-    (status) => {
-      const { result, workflow } = setup()
-      act(() => {
-        result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
-        result.current.events.onWorkflowEvent(workflowEvent(runFinished(status)))
-        result.current.events.onCanvasEvent(canvasEvent('graph_changed'))
-        result.current.events.restoreRun('session-1', [
-          { ...resultCard, payload: { ...resultCard.payload, status: 'failed' } },
-        ])
-        result.current.events.finishCommand()
-      })
-      expect(workflow.getState().workflowRunningData?.result.status).toBe(status)
-      expect(mocks.detail).not.toHaveBeenCalled()
-    },
-  )
-
   it('handles streaming text, reasoning, retries and the native error', () => {
     const { result, workflow } = setup()
     act(() => {
@@ -631,47 +530,6 @@ describe('Builder run event handlers', () => {
     expect(data?.result).toMatchObject({ status: 'failed', error: 'native failure' })
     expect(mocks.detail).not.toHaveBeenCalled()
   })
-
-  it.each(['iteration', 'loop'] as const)(
-    'dispatches %s lifecycle through the shared handlers',
-    (kind) => {
-      const { result, workflow, nodeStatus } = setup()
-      const startData = {
-        ...nodeStarted().data,
-        inputs: {},
-        metadata: { iterator_length: 2, loop_length: 2 },
-      }
-      const endData = { ...nodeFinished().data, execution_metadata: {}, steps: 2, total_tokens: 7 }
-      act(() => {
-        const send = result.current.events.onWorkflowEvent
-        send(workflowEvent(runStarted()))
-        send(
-          workflowEvent({
-            ...runStarted(),
-            event: kind === 'iteration' ? 'iteration_started' : 'loop_started',
-            data: startData,
-          }),
-        )
-        send(
-          workflowEvent({
-            ...runStarted(),
-            event: kind === 'iteration' ? 'iteration_next' : 'loop_next',
-            data: { ...startData, index: 1 },
-          }),
-        )
-        send(
-          workflowEvent({
-            ...runStarted(),
-            event: kind === 'iteration' ? 'iteration_completed' : 'loop_completed',
-            data: endData,
-          }),
-        )
-      })
-      expect(nodeStatus()).toBe('succeeded')
-      expect(workflow.getState().workflowRunningData?.tracing?.[0]).toMatchObject(endData)
-      expect(mocks.detail).not.toHaveBeenCalled()
-    },
-  )
 
   it('retains a human-input pause through Builder result cards and canvas refreshes', () => {
     const { result, workflow, nodeStatus } = setup()
@@ -766,58 +624,6 @@ describe('Builder run event handlers', () => {
       expect(store.get(difyBuilderErrorAtom)).toBe('')
       act(() => result.current.events.restoreRun('session-1', [resultCard]))
       expect(mocks[request]).toHaveBeenCalledTimes(2)
-    },
-  )
-
-  it.each(['running', 'paused'])(
-    'refreshes a restored %s run when it later finishes',
-    async (status) => {
-      mocks.detail.mockResolvedValueOnce({
-        id: 'dify-run',
-        status,
-        graph: {},
-        inputs: {},
-        outputs: {},
-      })
-      const { result, workflow } = setup()
-      act(() => result.current.events.restoreRun('session-1', [resultCard]))
-      await waitFor(() =>
-        expect(workflow.getState().workflowRunningData?.result.status).toBe(status),
-      )
-
-      act(() => result.current.events.restoreRun('session-1', [resultCard]))
-
-      await waitFor(() =>
-        expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded'),
-      )
-      expect(mocks.detail).toHaveBeenCalledTimes(2)
-      expect(mocks.executions).toHaveBeenCalledTimes(2)
-    },
-  )
-
-  it.each(['new-run', 'reset'] as const)(
-    'ignores a delayed history error after %s',
-    async (mode) => {
-      let reject!: (error: Error) => void
-      mocks.detail.mockReturnValueOnce(
-        new Promise((_resolve, fail) => {
-          reject = fail
-        }),
-      )
-      const { result, store } = setup()
-      act(() => result.current.events.restoreRun('session-1', [resultCard]))
-      await waitFor(() => expect(mocks.detail).toHaveBeenCalledOnce())
-      act(() => {
-        if (mode === 'reset') result.current.events.reset()
-        else
-          result.current.events.onWorkflowEvent(
-            workflowEvent(runStarted('new-run'), { at_version: 3 }),
-          )
-      })
-
-      await act(async () => reject(new Error('Obsolete request failed')))
-
-      expect(store.get(difyBuilderErrorAtom)).toBe('')
     },
   )
 

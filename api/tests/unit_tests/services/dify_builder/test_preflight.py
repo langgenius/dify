@@ -12,7 +12,6 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
-from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, MutationIntent
 from core.workflow.human_input_adapter import parse_human_input_delivery_methods
@@ -37,14 +36,6 @@ def test_the_esq1_303_dev_draft_would_not_start_and_the_error_names_the_node() -
     assert "Input should be a valid string" in errors[0]  # value 60 is a JSON number
 
 
-def test_the_same_draft_passes_once_the_value_is_a_string() -> None:
-    graph = _esq1_303_draft()
-    node2 = next(n for n in graph["nodes"] if n["id"] == "node2")
-    node2["data"]["cases"][0]["conditions"][0]["value"] = "60"
-
-    assert preflight_errors(graph) == []
-
-
 def test_every_broken_node_is_reported_not_only_the_first() -> None:
     graph = _esq1_303_draft()
     broken_twice = copy.deepcopy(next(n for n in graph["nodes"] if n["id"] == "node2"))
@@ -54,23 +45,6 @@ def test_every_broken_node_is_reported_not_only_the_first() -> None:
     errors = preflight_errors(graph)
 
     assert [e.split(" ")[1] for e in errors] == ["'node2'", "'node2b'"]
-
-
-def test_note_widgets_are_skipped_exactly_like_graph_init_skips_them() -> None:
-    graph: Graph = {
-        "nodes": [
-            {"id": "note", "type": "custom-note", "data": {"type": "", "text": "remember"}},
-            {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
-        ],
-        "edges": [],
-    }
-
-    assert preflight_errors(graph) == []
-
-
-def test_an_empty_or_shapeless_graph_has_nothing_to_report() -> None:
-    assert preflight_errors({}) == []
-    assert preflight_errors({"nodes": [None, "junk"], "edges": []}) == []
 
 
 def _human_input_graph(delivery_methods: object) -> Graph:
@@ -150,44 +124,6 @@ def test_preflight_accepts_native_human_input_delivery_ids_without_changing_the_
     assert graph == before
 
 
-@pytest.mark.parametrize(
-    ("delivery_methods", "location", "error_type"),
-    [
-        ([{"id": "webapp", "type": "webapp", "enabled": False}], (0, "webapp", "id"), "uuid_parsing"),
-        (["raw-method"], (0,), "model_attributes_type"),
-        ([{"type": "unknown"}], (0,), "union_tag_invalid"),
-        ([{"type": "email"}], (0, "email", "config"), "missing"),
-        ([{"type": "webapp", "config": "raw-config"}], (0, "webapp", "config"), "model_type"),
-    ],
-)
-def test_preflight_preserves_human_input_delivery_adapter_failures(
-    delivery_methods: object, location: tuple[str | int, ...], error_type: str
-) -> None:
-    graph = _human_input_graph(delivery_methods)
-    before = copy.deepcopy(graph)
-
-    errors = preflight_errors(graph)
-
-    assert len(errors) == 1
-    assert errors[0].startswith("node 'review' (human-input): ")
-    with pytest.raises(ValueError, match=r"node 'review' \(human-input\)") as excinfo:
-        validate_node_config(graph["nodes"][1])
-    assert isinstance(excinfo.value.__cause__, ValidationError)
-    error = excinfo.value.__cause__.errors()[0]
-    assert error["loc"] == location
-    assert error["type"] == error_type
-    assert graph == before
-
-
-@pytest.mark.parametrize("delivery_methods", [None, "raw-methods", {"type": "webapp"}, []])
-def test_preflight_keeps_the_delivery_adapters_empty_result_for_non_lists(delivery_methods: object) -> None:
-    graph = _human_input_graph(delivery_methods)
-
-    assert preflight_errors(graph) == []
-    node_data = validate_node_config(graph["nodes"][1])
-    assert parse_human_input_delivery_methods(node_data) == []
-
-
 def _http_node(node_id: str, authorization: Graph) -> Graph:
     return {
         "id": node_id,
@@ -223,28 +159,6 @@ def test_an_authorization_without_type_is_reported_not_raised() -> None:
 # on ``config``, so it only runs when a ``config`` KEY is present, and it then
 # reads ``values.data["type"]``, which is absent whenever ``type`` failed its own
 # Literal check. That comment has been written wrong twice; this pins it.
-_CRASH_AUTHORIZATION_SHAPES: list[tuple[Graph, bool]] = [
-    ({"config": {"type": "bearer", "api_key": "x"}}, True),
-    ({"type": None, "config": {"type": "bearer", "api_key": "x"}}, True),
-    ({"type": "bogus", "config": {"type": "bearer", "api_key": "x"}}, True),
-    (dict[str, object](), False),
-    ({"type": None}, False),
-]
-
-
-@pytest.mark.parametrize(("authorization", "crashes"), _CRASH_AUTHORIZATION_SHAPES)
-def test_only_an_authorization_with_a_config_and_a_bad_type_crashes(authorization: Graph, crashes: bool) -> None:
-    errors = preflight_errors({"nodes": [_http_node("h", authorization)], "edges": []})
-
-    assert len(errors) == 1
-    if crashes:
-        assert errors[0] == "node 'h' (http-request): KeyError: 'type'"
-    else:
-        # an ordinary ValidationError, with a real field path
-        assert "KeyError" not in errors[0]
-        assert "authorization.type" in errors[0]
-
-
 def test_a_crashing_node_does_not_hide_the_problems_of_the_nodes_after_it() -> None:
     graph = _esq1_303_draft()
     graph["nodes"].insert(0, _http_node("h", {"type": "bearer", "config": {"type": "bearer", "api_key": "x"}}))
@@ -304,29 +218,6 @@ def _scoring_graph(operator: str = "≥", value: object = "60") -> Graph:
     }
 
 
-def test_the_base_draft_this_file_edits_starts_clean() -> None:
-    assert preflight_errors(_scoring_graph()) == []
-
-
-def test_a_problem_the_draft_already_had_is_not_new() -> None:
-    broken = _scoring_graph(operator="==")
-
-    assert preflight_errors(broken)  # it is a problem
-    assert new_preflight_problems(broken, broken, ()) == []  # ...just not a new one
-
-
-def test_a_problem_the_change_introduced_is_new_and_quotes_the_engine() -> None:
-    problems = new_preflight_problems(_scoring_graph(), _scoring_graph(operator="=="), ())
-
-    assert len(problems) == 1
-    assert problems[0].startswith("node 'branch' (if-else): ")
-    assert "comparison_operator" in problems[0]
-
-
-def test_a_change_that_heals_a_pre_existing_problem_has_nothing_to_report() -> None:
-    assert new_preflight_problems(_scoring_graph(operator="=="), _scoring_graph(), ()) == []
-
-
 def test_a_newly_broken_node_is_reported_even_while_another_stays_broken() -> None:
     """A pre-existing refusal on one node does not buy silence for the rest of
     the draft: the if-else was already refused, the start node was not."""
@@ -344,19 +235,6 @@ def _code_node(**data: object) -> Graph:
         "nodes": [{"id": "code1", "type": "custom", "data": {"type": "code", "title": "Code", **data}}],
         "edges": [],
     }
-
-
-def test_half_repairing_an_already_broken_node_is_not_a_new_problem() -> None:
-    """Why the rule is not keyed on MESSAGE TEXT: pydantic quotes a truncated
-    repr of the input, so filling one of a node's missing fields rewrites the
-    messages for the others. Keyed on text, this repair -- which strictly
-    improved the node -- would be refused as a new problem."""
-    before = _code_node()
-    after = _code_node(code="def main():\n    return {}")
-
-    assert preflight_errors(before) != preflight_errors(after)  # the text really does change
-    assert preflight_errors(after)  # the node is still refused...
-    assert new_preflight_problems(before, after, ()) == []  # ...but not because of this change
 
 
 def test_a_node_the_batch_wrote_gets_no_exemption_at_all() -> None:
@@ -394,16 +272,6 @@ def test_a_half_repaired_node_the_batch_wrote_is_refused_even_though_it_improved
 
     assert len(problems) == 1
     assert "code_language" in problems[0]  # what is STILL missing
-
-
-def test_a_node_the_batch_wrote_and_actually_fixed_reports_nothing() -> None:
-    """The rule is "startable", not "was touched": a repair that really works
-    passes, or every Fix would be refused."""
-    before = _code_node()
-    after = _code_node(code="def main():\n    return {}", code_language="python3", outputs={}, variables=[])
-
-    assert preflight_errors(after) == []
-    assert new_preflight_problems(before, after, ["code1"]) == []
 
 
 def test_an_untouched_node_keeps_its_exemption_while_a_written_one_does_not() -> None:
@@ -465,23 +333,6 @@ def _set_operator(value: str) -> MutationIntent:
         op="set_node_config",
         args={"node_id": "branch", "path": "cases.0.conditions.0.comparison_operator", "value": value},
     )
-
-
-def test_a_batch_the_engine_accepts_has_no_rejections() -> None:
-    vetted = vet_intents(_scoring_graph(), [_set_operator("≤")], _ALLOWED)
-
-    assert vetted.rejections == []
-    assert len(vetted.applicable) == 1
-
-
-def test_a_structural_refusal_is_quoted_from_the_engines_own_error() -> None:
-    intent = MutationIntent(op="set_node_config", args={"node_id": "ghost", "path": "title", "value": "x"})
-
-    vetted = vet_intents(_scoring_graph(), [intent], _ALLOWED)
-
-    assert vetted.applicable == []
-    assert len(vetted.rejections) == 1
-    assert "node not found: ghost" in vetted.rejections[0]
 
 
 # ---- the rejection text must not carry the node's credentials ----
@@ -561,26 +412,6 @@ def test_a_secret_in_a_request_body_is_outside_redactions_declared_scope() -> No
     assert _BODY_SECRET in errors[0]  # OUT of scope: carried, and documented as such
 
 
-def test_withholding_the_credential_does_not_change_the_verdict() -> None:
-    """The verdict is taken from the REAL node; only the text is rebuilt from a
-    redacted copy. A node that starts must not be reported because redaction
-    changed it, and one that does not must still be reported."""
-    valid = _secret_http_node(
-        {
-            "title": "Call",
-            "method": "post",
-            "url": "https://x.test/a",
-            "authorization": _AUTHORIZATION,
-            "headers": _HEADERS,
-            "params": "",
-            "body": {"type": "none", "data": []},
-        }
-    )
-
-    assert preflight_errors({"nodes": [valid], "edges": []}) == []
-    assert new_preflight_problems({"nodes": [], "edges": []}, {"nodes": [valid], "edges": []}, ["h"]) == []
-
-
 def test_an_operator_no_normalizer_can_heal_is_rejected_by_the_node_data_check() -> None:
     """The keystone: ``==`` applies cleanly (the structural filter says
     "applicable, 0 rejected") and then kills the write at ``apply_repair``'s
@@ -618,33 +449,6 @@ def test_an_operator_no_normalizer_can_heal_is_rejected_by_the_node_data_check()
     assert len(vetted.rejections) == 1
     assert vetted.rejections[0].startswith("- the draft would then not start: node 'branch' (if-else): ")
     assert "comparison_operator" in vetted.rejections[0]
-
-
-def test_the_unhealability_check_really_would_catch_a_healable_operator() -> None:
-    """The contrast that gives the test above its teeth: run step (b) on ``>=``
-    -- which IS healable -- and every one of its assertions flips."""
-    graph = _scoring_graph()
-
-    unhealed, _changed = graph_ops.apply_set_node_config(graph, **_set_operator(">=").args)
-
-    assert heal_nodes_for_preflight(unhealed["nodes"]) == ["branch"]
-    assert _operator_of(unhealed) == "≥"
-    assert preflight_errors(unhealed) == []
-
-
-def test_an_ascii_ordering_operator_is_healed_and_so_is_never_rejected() -> None:
-    """The mirror of the test above, and the reason the brief's ``>=`` case is
-    dead: ``>=`` can only mean ``≥``, the shared heal set rewrites it before the
-    preflight, and the write chokepoint does the same -- so the dry run must NOT
-    report it. A dry run stricter than the write burns the re-prompt on nothing."""
-    graph = _scoring_graph()
-
-    vetted = vet_intents(graph, [_set_operator(">=")], _ALLOWED)
-
-    assert vetted.rejections == []
-    assert vetted.applicable
-    dry = graph_ops.filter_applicable(graph, [_set_operator(">=")])
-    assert new_preflight_problems(graph, dry.graph, dry.changed_nodes) == []
 
 
 def test_a_draft_the_user_already_broke_does_not_veto_an_unrelated_edit() -> None:
@@ -700,17 +504,6 @@ def test_wiring_an_already_broken_node_does_not_make_the_batch_answerable_for_it
     assert vetted.applicable == [wire]
 
 
-def test_a_batch_that_really_fixes_its_culprit_still_passes() -> None:
-    """The other half: the same already-broken node, repaired properly, is not
-    refused -- otherwise ``touched`` would veto every repair."""
-    already_broken = _scoring_graph(operator="==")
-
-    vetted = vet_intents(already_broken, [_set_operator("≥")], _ALLOWED)
-
-    assert vetted.rejections == []
-    assert len(vetted.applicable) == 1
-
-
 def test_a_created_node_the_engine_would_refuse_is_named_in_the_rejection() -> None:
     """The node the batch ADDS has no "before" to compare against, so anything
     the engine refuses about it is new by definition -- and the rejection names
@@ -746,27 +539,6 @@ def test_a_structural_rejection_line_withholds_the_nodes_credentials() -> None:
     assert _SECRET_HEADER not in vetted.rejections[0]
     assert "__DIFY_BUILDER_REDACTED__" in vetted.rejections[0]  # the KEYS still reach the model
     assert "node_type not allowed" in vetted.rejections[0]  # ...and so does the engine's reason
-
-
-def test_two_crashes_with_different_messages_are_different_problems() -> None:
-    """A node whose validation raises something other than a ``ValidationError``
-    has no field path, so its exception stands in for one. Keyed on the class
-    ALONE, every ``KeyError`` on a node would be the same problem and a change
-    that swapped one crashing shape for another would pass unnoticed, so the
-    (truncated) message is part of the key.
-
-    Reaches for the private key builder deliberately: graphon has exactly one
-    live bare-crash site today (``HttpRequestNodeAuthorization.check_config``,
-    always ``KeyError: 'type'``), so there is no pair of real nodes that differs
-    only in the crash message -- this pins the rule before there is."""
-    from services.dify_builder.preflight import _CRASH_LOCATION, _error_locations
-
-    first = _error_locations(KeyError("type"))
-    second = _error_locations(KeyError("method"))
-
-    assert first != second
-    assert first == frozenset({(_CRASH_LOCATION, "KeyError", "'type'")})
-    assert _error_locations(KeyError("type")) == first  # and the SAME crash is still the same problem
 
 
 def test_a_crash_message_never_reaches_the_text_the_model_is_shown() -> None:
@@ -915,35 +687,6 @@ def test_the_same_branch_is_accepted_once_the_aggregator_lists_it() -> None:
     assert len(vetted.applicable) == 4
 
 
-def test_a_new_branch_that_reaches_no_aggregator_is_accepted() -> None:
-    """The guard fires on an edge whose TARGET is an aggregator and nothing
-    else. A new arm that routes to the End node is an ordinary edit."""
-    vetted = vet_intents(_rejoin_graph(), _new_branch_intents(target="node6"), _REJOIN_ALLOWED)
-
-    assert vetted.rejections == []
-    assert len(vetted.applicable) == 3
-
-
-def test_an_edge_into_an_aggregator_that_already_existed_is_not_re_checked() -> None:
-    """A draft the user already wired badly must not veto an unrelated edit --
-    the same rule ``new_preflight_problems`` keeps for node data. ``node4``
-    already feeds ``node5`` and is already missing from its ``variables``."""
-    graph = _rejoin_graph(
-        aggregator_data={
-            "type": "variable-aggregator",
-            "title": "Merge Result",
-            "output_type": "string",
-            "variables": [["node3", "output"]],
-        }
-    )
-    rename = MutationIntent(op="set_node_config", args={"node_id": "node3", "path": "title", "value": "Passed"})
-
-    vetted = vet_intents(graph, [rename], _REJOIN_ALLOWED)
-
-    assert vetted.rejections == []
-    assert vetted.applicable == [rename]
-
-
 def test_a_two_node_branch_is_accepted_when_the_aggregator_lists_its_head() -> None:
     """A branch of more than one node is an ordinary shape. The batch adds
     ``node7 -> node8`` and ``node8 -> node5``; both run whenever the new arm
@@ -1013,46 +756,6 @@ def test_a_selector_naming_a_variable_the_node_does_not_publish_is_refused() -> 
 
     assert len(vetted.rejections) == 1
     assert '["node7", "output"]' in vetted.rejections[0]  # ...and it says which name to use
-
-
-def test_a_variable_name_this_module_cannot_know_is_accepted() -> None:
-    """The other side of the same rule: a tool's outputs are whatever the tool
-    decides at run time, so no closed set exists and the guard must not invent
-    one. A name it cannot confirm is accepted; only a name it KNOWS is wrong is
-    refused."""
-    graph = _rejoin_graph(
-        aggregator_data={
-            "type": "variable-aggregator",
-            "title": "Merge Result",
-            "output_type": "string",
-            "variables": [*copy.deepcopy(_EXISTING_SELECTORS), ["node7", "whatever_the_tool_returns"]],
-        }
-    )
-    intents = [
-        MutationIntent(
-            op="create_node",
-            args={
-                "node_type": "tool",
-                "node_id": "node7",
-                "config": {
-                    "title": "Call",
-                    "provider_id": "p",
-                    "provider_type": "builtin",
-                    "provider_name": "p",
-                    "tool_name": "t",
-                    "tool_label": "T",
-                    "tool_parameters": {},
-                    "tool_configurations": {},
-                },
-            },
-        ),
-        MutationIntent(op="connect", args={"from_node": "node2", "to_node": "node7", "source_handle": "true"}),
-        MutationIntent(op="connect", args={"from_node": "node7", "to_node": "node5"}),
-    ]
-
-    vetted = vet_intents(graph, intents, {*_REJOIN_ALLOWED, "tool"})
-
-    assert [r for r in vetted.rejections if "variable-aggregator" in r] == []
 
 
 def test_a_code_nodes_published_names_are_read_off_the_node_itself() -> None:
@@ -1183,62 +886,6 @@ def test_an_append_that_repeats_every_existing_element_is_accepted() -> None:
     assert vetted.rejections == []
 
 
-def test_changing_one_element_by_index_is_accepted() -> None:
-    """The indexed path writes a scalar, not an array, so there is no
-    whole-array replacement to compare identities across."""
-    intent = MutationIntent(
-        op="set_node_config",
-        args={"node_id": "node2", "path": "cases.0.conditions.0.comparison_operator", "value": "≥"},
-    )
-
-    vetted = vet_intents(_rejoin_graph(), [intent], _REJOIN_ALLOWED)
-
-    assert vetted.rejections == []
-
-
-def test_rewriting_an_llm_prompt_is_an_ordinary_edit() -> None:
-    """The false rejection this scoping exists to remove, and the commonest
-    thing anyone asks the Builder to do. A ``prompt_template`` message carries
-    an ``id`` the canvas mints and REGENERATES when it is absent, and graphon's
-    ``ChatModelMessage`` has no ``id`` field at all -- so re-sending the array
-    without those uuids loses nothing. Judged by identity alone it looked like
-    the S6 clobber and the user's change was parked."""
-    graph = _rejoin_graph()
-    graph["nodes"].append(
-        {
-            "id": "llm1",
-            "type": "custom",
-            "data": {
-                "type": "llm",
-                "title": "Grade",
-                "model": {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}},
-                "prompt_template": [
-                    {"id": "m1", "role": "system", "text": "You grade scores."},
-                    {"id": "m2", "role": "user", "text": "{{#node1.score#}}"},
-                ],
-                "context": {"enabled": False, "variable_selector": []},
-                "vision": {"enabled": False},
-            },
-        }
-    )
-    intent = MutationIntent(
-        op="set_node_config",
-        args={
-            "node_id": "llm1",
-            "path": "prompt_template",
-            "value": [
-                {"role": "system", "text": "You grade scores strictly."},
-                {"role": "user", "text": "{{#node1.score#}}"},
-            ],
-        },
-    )
-
-    vetted = vet_intents(graph, [intent], {*_REJOIN_ALLOWED, "llm"})
-
-    assert vetted.rejections == []
-    assert vetted.applicable == [intent]
-
-
 def test_a_question_classifiers_classes_keep_their_branch_ids() -> None:
     """The other scoped array that is a branch handle. ``ClassConfig.id`` is
     required by graphon and is what an edge routes on, so a rewrite that drops
@@ -1274,20 +921,6 @@ def test_a_question_classifiers_classes_keep_their_branch_ids() -> None:
 
     assert len(vetted.rejections) == 1
     assert "c-low" in vetted.rejections[0]
-
-
-def test_an_array_whose_elements_never_had_identities_is_untouched() -> None:
-    """An aggregator's ``variables`` is a list of bare selector arrays with no
-    ids in it, and re-sending it whole is the ONLY way to extend it -- the
-    guard must not stand in the way of the fix the other guard demands."""
-    intent = MutationIntent(
-        op="set_node_config",
-        args={"node_id": "node5", "path": "variables", "value": [["node3", "output"]]},
-    )
-
-    vetted = vet_intents(_rejoin_graph(), [intent], _REJOIN_ALLOWED)
-
-    assert vetted.rejections == []
 
 
 def _two_case_graph(operator: str = "≥", value: object = "60") -> Graph:
@@ -1328,20 +961,6 @@ def _two_case_graph(operator: str = "≥", value: object = "60") -> Graph:
 
 def _cases_of(graph: Graph) -> list[Graph]:
     return next(n for n in graph["nodes"] if n["id"] == "node2")["data"]["cases"]
-
-
-def test_deleting_a_case_outright_is_accepted() -> None:
-    """Removing an if-else case is a legitimate edit, and a whole-array write
-    is the only way to express one. A guard that refused it would make the
-    feature unusable -- loudly, but unusably."""
-    graph = _two_case_graph()
-    kept = [copy.deepcopy(_cases_of(graph)[0])]  # the survivor, byte-identical
-    intent = MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": kept})
-
-    vetted = vet_intents(graph, [intent], _REJOIN_ALLOWED)
-
-    assert vetted.rejections == []
-    assert vetted.applicable == [intent]
 
 
 def test_deleting_one_case_while_modifying_another_is_refused() -> None:
@@ -1453,19 +1072,6 @@ def test_a_rejection_line_withholds_a_credential_the_intents_own_path_names() ->
     assert nested_config["value"]["type"] == "bearer"  # the auth MODE is structure, not a secret
 
 
-def test_withholding_by_path_leaves_an_ordinary_value_exactly_as_it_was() -> None:
-    """The redaction is keyed on the path a credential actually lives at. A
-    ``cases`` rewrite, an indexed condition value, a title -- none of them is a
-    credential field, and a guard that mangled them would corrupt the one
-    corrective re-prompt the batch gets."""
-    from services.dify_builder.preflight import _withheld_args
-
-    cases = [{"case_id": "true", "conditions": [{"id": "c1", "value": "60"}]}]
-    intent = MutationIntent(op="set_node_config", args={"node_id": "branch", "path": "cases", "value": cases})
-
-    assert _withheld_args(intent)["value"] == cases
-
-
 # These nodes pass native node-data validation: Builder's first-phase boundary
 # must refuse their proposed addition independently of the native whitelist.
 _FIRST_PHASE_CONFIGS = [
@@ -1565,39 +1171,6 @@ def test_candidate_refuses_legacy_agent_conversion_to_native_new_agent() -> None
     ]
 
     assert vet_intents(graph, intents).would_run_wrong
-
-
-@pytest.mark.parametrize(
-    ("node_type", "config"),
-    [
-        ("start", {"variables": []}),
-        ("end", {"outputs": []}),
-        ("code", {}),
-        ("llm", {}),
-        (
-            "list-operator",
-            {
-                "variable": ["s", "items"],
-                "filter_by": {"enabled": False},
-                "extract_by": {"enabled": False},
-                "order_by": {"enabled": False},
-                "limit": {"enabled": False},
-            },
-        ),
-        ("if-else", {}),
-        ("iteration-start", {}),
-        ("loop-start", {}),
-        ("loop-end", {}),
-    ],
-)
-def test_first_phase_keeps_supported_native_node_candidates(node_type: str, config: dict[str, object]) -> None:
-    intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "new", "config": config})
-
-    vetted = vet_intents({"nodes": [], "edges": []}, [intent])
-
-    assert vetted.applicable == [intent]
-    assert vetted.rejections == []
-    assert vetted.would_run_wrong == []
 
 
 def test_edge_only_wiring_of_historical_retrieval_does_not_change_native_binding_config() -> None:

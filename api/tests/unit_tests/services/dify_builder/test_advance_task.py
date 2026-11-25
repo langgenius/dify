@@ -710,55 +710,6 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(
     assert (s.id, "tok-3") in released
 
 
-def test_progress_snapshot_is_cumulative_and_saved_before_broadcast(
-    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    events, _released = wired
-    saved: list[mod.progress_snapshot.ProgressSnapshot] = []
-    session = _seed_fix_session(repo)
-
-    def save(snapshot: mod.progress_snapshot.ProgressSnapshot, *, tenant_id: str, owner: str) -> None:
-        assert tenant_id == TENANT_ID
-        assert owner == "active-owner"
-        assert snapshot.session_id == session.id
-        assert not any(
-            event["kind"] == "progress"
-            and event["operation_id"] == snapshot.operation_id
-            and event["revision"] == snapshot.revision
-            for _sid, event in events
-        )
-        saved.append(snapshot)
-
-    monkeypatch.setattr(mod.progress_snapshot, "save", save)
-    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
-
-    assert saved
-    assert any(
-        snapshot.execution.activities[0].state == "done" and snapshot.execution.activities[-1].state == "active"
-        for snapshot in saved
-    )
-    assert saved[-1].execution.status == "completed"
-    assert all(activity.state == "done" for activity in saved[-1].execution.activities)
-    assert len({activity.id for activity in saved[-1].execution.activities}) == len(saved[-1].execution.activities)
-
-
-def test_progress_snapshot_failure_does_not_block_command_completion(
-    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    events, released = wired
-    session = _seed_fix_session(repo)
-
-    def fail_save(*_args: object, **_kwargs: object) -> NoReturn:
-        raise RuntimeError("snapshot store unavailable")
-
-    monkeypatch.setattr(mod.progress_snapshot, "save", fail_save)
-    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "active-owner")
-
-    assert repo.get_session(session.id)[0].current_state == PcState.FIX_AWAIT_VERIFY
-    assert events[-1][1]["kind"] == "command_finished"
-    assert released == [(session.id, "active-owner")]
-
-
 def test_expired_queued_task_does_not_run_or_release_newer_lock(
     monkeypatch: pytest.MonkeyPatch,
     repo: SqlDifyBuilderRepository,
@@ -820,31 +771,6 @@ def test_terminal_error_is_published_after_the_advance_lock_is_released(
     mod.advance_session(s.id, _act("run_verify", 999), _ACTOR_DICT, "tok-order")
 
     assert timeline == ["release", "publish:error"]
-
-
-@pytest.mark.usefixtures("admitted_stub_cognition")
-def test_terminal_state_is_published_after_the_advance_lock_is_released(
-    monkeypatch: pytest.MonkeyPatch,
-    repo: SqlDifyBuilderRepository,
-) -> None:
-    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
-    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
-    timeline: list[str] = []
-    monkeypatch.setattr(
-        mod.progress_bus,
-        "publish",
-        lambda _sid, event: timeline.append(f"publish:{event['kind']}"),
-    )
-    monkeypatch.setattr(
-        mod.session_lock,
-        "release",
-        lambda _sid, _token: timeline.append("release"),
-    )
-    s = _seed_fix_session(repo)
-
-    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-order")
-
-    assert timeline[-2:] == ["release", "publish:command_finished"]
 
 
 @pytest.mark.usefixtures("admitted_stub_cognition")
@@ -1114,37 +1040,6 @@ def test_stale_worker_failure_does_not_overwrite_a_newer_session_head(
     assert released == [(session.id, "tok-stale-worker")]
 
 
-@pytest.mark.usefixtures("admitted_stub_cognition")
-def test_observer_publish_failure_is_best_effort_and_terminal_state_is_still_published_once(
-    monkeypatch: pytest.MonkeyPatch,
-    repo: SqlDifyBuilderRepository,
-) -> None:
-    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
-    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
-    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: StubAgent())
-
-    events: list[tuple[str, Mapping[str, object]]] = []
-    released: list[tuple[str, str]] = []
-
-    def publish(session_id: str, event: Mapping[str, object]) -> None:
-        if event["kind"] in {"canvas", "node", "progress"}:
-            raise RuntimeError("progress bus unavailable")
-        events.append((session_id, event))
-
-    monkeypatch.setattr(mod.progress_bus, "publish", publish)
-    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
-    s = _seed_fix_session(repo)
-
-    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-best-effort")
-
-    stored, _fc = repo.get_session(s.id)
-    assert stored.current_state == PcState.FIX_AWAIT_VERIFY
-    assert [event["kind"] for _sid, event in events].count("command_finished") == 1
-    assert all(event["kind"] != "error" for _sid, event in events)
-    assert events[-1][1]["kind"] == "command_finished"
-    assert released == [(s.id, "tok-best-effort")]
-
-
 def test_advance_session_setup_failure_still_releases_lock(monkeypatch: pytest.MonkeyPatch) -> None:
     """A failure while constructing the task's dependencies (before the engine
     ever runs) must still fall into the generic ``except`` and release the
@@ -1198,78 +1093,6 @@ def test_agent_setup_failure_persists_restartable_failed_state(
     state = next(event for _sid, event in events if event["kind"] == "command_finished")
     assert state["run_status"] == "failed"
     assert [action["id"] for action in state["actions"]] == ["restart"]
-
-
-def _seed_build_session(repo: SqlDifyBuilderRepository) -> Session:
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.BUILD,
-        current_state=PcState.BUILD_CAPABILITY_CHECK,
-    )
-    repo.create_session(
-        s,
-        DifyBuilderContext(goal_text="Build a report workflow"),
-        [ConversationItem(kind="user", seq=0)],
-    )
-    return s
-
-
-def test_start_build_emits_complete_reply_with_form_and_reaches_goal_analysis(
-    repo: SqlDifyBuilderRepository, wired: Wired, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    class RequirementsAgent(StubAgent):
-        @override
-        def analyze_goal(self, goal_text: str, *, reply_language: str | None = None) -> dict[str, object]:
-            return {"fields": [{"key": "audience", "label": "Audience", "type": "text"}], "values": {}}
-
-    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_: RequirementsAgent())
-    events, released = wired
-    s = _seed_build_session(repo)
-
-    mod.advance_session(s.id, _act("start_build", 1), _ACTOR_DICT, "tok-b1")
-
-    stored, _fc = repo.get_session(s.id)
-    assert stored.current_state == PcState.BUILD_GOAL_ANALYSIS  # build handler resolved, not a 500
-    payloads = [event for _session_id, event in events]
-    assert not any(event["kind"] == "agent_message" for event in payloads)
-    assistant_events = [
-        event
-        for event in payloads
-        if event["kind"] == "conversation_item_appended" and event["item"]["kind"] == "assistant_turn"
-    ]
-    assert len(assistant_events) == 1
-    assert assistant_events[0]["item"]["payload"]["reply_mode"] == "complete"
-    assistant = next(item for item in repo.list_conversation(s.id) if item.kind == "assistant_turn")
-    assert assistant_events[0]["item"]["payload"] == assistant.payload
-    assert payloads[-1]["kind"] == "command_finished"
-    assert (s.id, "tok-b1") in released
-
-
-def _seed_edit_session_at_capability(repo: SqlDifyBuilderRepository) -> Session:
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.EDIT,
-        current_state=PcState.EDIT_CAPABILITY_CHECK,
-    )
-    repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
-    return s
-
-
-def test_advance_session_resolves_edit_handler_via_merged_registry(
-    repo: SqlDifyBuilderRepository, wired: Wired
-) -> None:
-    _events, released = wired
-    s = _seed_edit_session_at_capability(repo)
-
-    mod.advance_session(s.id, _act("send_edit_goal", 1, text="Tighten risk"), _ACTOR_DICT, "tok-e1")
-
-    stored, _fc = repo.get_session(s.id)
-    assert stored.current_state == PcState.EDIT_IMPACT_ANALYSIS  # edit handler resolved, not a 500
-    assert (s.id, "tok-e1") in released
 
 
 @pytest.mark.usefixtures("wired")

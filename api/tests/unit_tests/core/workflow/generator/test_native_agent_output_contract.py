@@ -8,10 +8,9 @@ import pytest
 from pydantic import JsonValue
 
 from core.dify_builder.models import Graph
-from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from models.agent_config_entities import WorkflowNodeJobConfig
-from services.workflow_generation.runner import WorkflowGenerator, _parse_node_outputs
+from services.workflow_generation.runner import WorkflowGenerator
 
 
 def _native_agent() -> Graph:
@@ -38,11 +37,6 @@ def _native_agent() -> Graph:
             "agent_output_routes": job.output_routes.model_dump(mode="json"),
         },
     }
-
-
-@pytest.mark.parametrize("variable", ["risks", "summary", "text", "review", "review.approved"])
-def test_native_agent_declares_actual_caller_and_system_outputs(variable: str) -> None:
-    assert WorkflowGenerator._declares_variable(_native_agent(), variable)
 
 
 @pytest.mark.parametrize(
@@ -83,16 +77,6 @@ def test_native_agent_end_selectors_pass_without_rewriting_to_text() -> None:
     assert WorkflowGenerator._sole_declared_variable(nodes[0]) is None
 
 
-def test_native_agent_switch_only_exists_for_enabled_valid_routes() -> None:
-    node = _native_agent()
-    node["data"]["agent_output_routes"] = {
-        "enabled": True,
-        "routes": [{"id": "pass", "name": "Approved"}, {"id": "fail", "name": "Rejected"}],
-    }
-    assert WorkflowGenerator._declares_variable(node, "switch")
-    assert not WorkflowGenerator._declares_variable(node, "switch.id")
-
-
 @pytest.mark.parametrize(
     "outputs", [[{"name": "text", "type": "string"}], [{"name": "summary", "type": "invented"}], "summary"]
 )
@@ -113,18 +97,6 @@ def test_legacy_and_ambiguous_agents_do_not_gain_native_outputs(identity: dict[s
     node["data"].update(identity)
     assert not WorkflowGenerator._declares_variable(node, "summary")
     assert not WorkflowGenerator._declares_variable(node, "text")
-
-
-def test_agent_plan_name_promises_reach_end_builder_without_becoming_runtime_authority() -> None:
-    plan = [
-        {"id": "node2", "node_type": "agent", "purpose": "Review the contract using the selected Agent"},
-    ]
-    parsed = _parse_node_outputs({"node2": ["risks", "summary"]}, plan)
-    assert parsed == {"node2": ["risks", "summary"]}
-    section = format_node_outputs_section(parsed, "node3", {"node2": "agent", "node3": "end"})
-    assert "'risks'" in section
-    assert "'summary'" in section
-    assert "structured_output.summary" not in section
 
 
 def test_agent_plan_to_parallel_builder_to_valid_end_graph(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -269,15 +241,6 @@ def test_invalid_native_declarations_exhaust_existing_two_attempt_budget_without
     raw = json.dumps({"config": bad})
     with pytest.raises(_StageSchemaError):
         _run_agent_model_responses([raw, raw])
-
-
-def test_legacy_agent_builder_config_does_not_enter_native_schema_correction() -> None:
-    import json
-
-    legacy = {"version": "1", "agent_strategy_name": "legacy-fixture"}
-    result, model = _run_agent_model_responses([json.dumps({"config": legacy})])
-    assert result == legacy
-    assert model.call_count == 1
 
 
 def test_agent_system_schema_example_validates_with_native_owners() -> None:

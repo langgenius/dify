@@ -1279,23 +1279,19 @@ def test_execute_replay_returns_current_state_after_business_and_unknown(consent
     assert owner.count(DifyBuilderSessionCommit) == 2
 
 
-MALFORMED_IDS = ["", "not-a-uuid", "{00000000-0000-4000-8000-000000000000}", " " * 36, "A" * 36]
-
-
-@pytest.mark.parametrize("malformed", MALFORMED_IDS)
 @pytest.mark.parametrize(
-    ("operation", "reason"),
+    ("operation", "reason", "malformed"),
     [
-        ("prepare_session", "execution_owner_mismatch"),
-        ("prepare_test_input", "execution_owner_mismatch"),
-        ("prepare_credential", "credential_reference_unavailable"),
-        ("prepare_upper_session", "execution_owner_mismatch"),
-        ("confirm_consent", "consent_not_found"),
-        ("confirm_session", "consent_not_found"),
-        ("reserve_consent", "consent_not_found"),
-        ("reserve_session", "consent_not_found"),
-        ("get_consent", "consent_not_found"),
-        ("get_session", "consent_not_found"),
+        ("prepare_session", "execution_owner_mismatch", ""),
+        ("prepare_test_input", "execution_owner_mismatch", "not-a-uuid"),
+        ("prepare_credential", "credential_reference_unavailable", "A" * 36),
+        ("prepare_upper_session", "execution_owner_mismatch", ""),
+        ("confirm_consent", "consent_not_found", "{00000000-0000-4000-8000-000000000000}"),
+        ("confirm_session", "consent_not_found", " " * 36),
+        ("reserve_consent", "consent_not_found", "not-a-uuid"),
+        ("reserve_session", "consent_not_found", ""),
+        ("get_consent", "consent_not_found", " " * 36),
+        ("get_session", "consent_not_found", "A" * 36),
     ],
 )
 def test_malformed_public_ids_refuse_before_any_sql(

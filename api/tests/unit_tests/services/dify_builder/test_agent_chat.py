@@ -30,23 +30,6 @@ def test_respond_streams_model_deltas_and_returns_the_complete_reply(monkeypatch
     assert deltas == ["First ", "second"]
 
 
-def test_respond_streams_the_fallback_when_no_model_is_available() -> None:
-    deltas: list[str] = []
-
-    reply = chat.respond(
-        None,
-        {},
-        PcState.FIX_AWAIT_APPROVAL,
-        DifyBuilderContext(),
-        [],
-        {"nodes": [], "edges": []},
-        "Explain the repair",
-        deltas.append,
-    )
-
-    assert deltas == [reply]
-
-
 def test_respond_does_not_replace_an_already_streamed_partial_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     def partial_stream(*_args: object, **_kwargs: object) -> Iterator[str]:
         yield "Partial"

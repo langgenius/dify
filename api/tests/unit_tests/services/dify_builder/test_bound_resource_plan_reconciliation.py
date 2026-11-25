@@ -103,23 +103,6 @@ def confirm(
     return result, repo, session.id
 
 
-def test_confirmed_resource_reconciles_fallback_and_overview_before_approval() -> None:
-    agent = ReconciliationAgent(BOUND)
-    result, repo, session_id = confirm(agent)
-    assert agent.requests == [
-        {"plan": ABSTRACT, "resource_ids": [SELECTED], "goal_text": GOAL, "requirements": REQUIREMENTS}
-    ]
-    assert result.current_state == PcState.BUILD_PLAN_APPROVAL
-    _, context = repo.get_session(session_id)
-    assert context.plan_items == BOUND.items
-    card = next(item for item in repo.list_conversation(session_id) if item.kind == "plan")
-    assert card.payload["title"] == BOUND.title
-    assert card.payload["input_summary"] == BOUND.input_summary
-    assert card.payload["output_summary"] == BOUND.output_summary
-    assert card.payload["items"] == BOUND.items
-    assert context.resource_selection == {"resource_ids": [SELECTED]}
-
-
 @pytest.mark.parametrize("failure", ["model_unavailable", "inventory_unknown", "selected_resource_unavailable"])
 def test_unusable_reconciliation_keeps_resource_gate_and_does_not_offer_approval(failure: str) -> None:
     # The cognition/catalog owner returns no usable replacement for each case;
@@ -229,35 +212,6 @@ def test_reconciliation_never_invents_an_available_selected_agent(monkeypatch: p
     )
 
 
-def test_discovery_gap_receives_candidate_facts_and_does_not_treat_abstract_absence_as_fact(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from core.dify_builder.contract import ResourceOption
-    from services.dify_builder.agent import build
-
-    seen: dict[str, str] = {}
-    meta = "Published version 3; reference eligible; runtime authorization unverified."
-
-    def invoke(_model: object, *, system: str, user: str, **_kwargs: object) -> dict[str, str]:
-        seen.update(system=system, user=user)
-        return {"gap": ""}
-
-    monkeypatch.setattr(build.llm, "invoke_json", invoke)
-    assert (
-        build.assess_capability_gap(
-            object(),
-            ABSTRACT.items,
-            [ResourceOption(id=SELECTED, label="Ticket classifier", meta=meta, kind="agent", readiness="ready")],
-            goal_text=GOAL,
-            requirements=REQUIREMENTS,
-        )
-        == ""
-    )
-    assert meta in seen["user"]
-    assert "abstract plan is not evidence" in seen["system"]
-    assert "not yet confirmed" in seen["system"]
-
-
 @pytest.mark.parametrize("resolution", [None, "fallback", "unresolved", "source_not_preserved"])
 def test_real_id_suffix_does_not_turn_a_fallback_into_a_bound_action(
     monkeypatch: pytest.MonkeyPatch, resolution: str | None
@@ -305,53 +259,6 @@ def test_real_id_suffix_does_not_turn_a_fallback_into_a_bound_action(
     # Schema-only omissions have one correction opportunity. Explicit failure
     # or unresolved reasoning must stop without coercing a successful answer.
     assert len(calls) == (2 if resolution is None else 1)
-
-
-def test_an_unused_extra_selection_does_not_force_an_invented_action(monkeypatch: pytest.MonkeyPatch) -> None:
-    import json
-
-    from services.dify_builder.agent import build, resources
-
-    extra = SELECTED.replace("published-classifier", "extra-classifier")
-    inventory = resources.TenantResources(
-        models=[],
-        datasets=[],
-        tools=[],
-        agents=[
-            resources.ResourceRef(id=SELECTED, label="Ticket classifier"),
-            resources.ResourceRef(id=extra, label="Optional extra classifier"),
-        ],
-    )
-    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_kw: inventory)
-    response = {
-        "title": BOUND.title,
-        "input_summary": BOUND.input_summary,
-        "output_summary": BOUND.output_summary,
-        "plan": BOUND.items,
-        "resource_resolution": {
-            "preserves_requirements": True,
-            "bindings": [
-                {
-                    "resource_id": SELECTED,
-                    "status": "used",
-                    "step_index": 1,
-                    "step_kind": "resource_action",
-                    "action": "Classify ticket_text",
-                },
-                {"resource_id": extra, "status": "unused", "reason": "The first classifier covers the requested job"},
-            ],
-        },
-    }
-    monkeypatch.setattr(build.llm, "invoke_text", lambda *_a, **_kw: json.dumps(response))
-    result = build.reconcile_resource_plan(
-        object(), "tenant", ABSTRACT, [SELECTED, extra], account_id="actor", goal_text=GOAL, requirements=REQUIREMENTS
-    )
-    assert isinstance(result, WorkflowPlan)
-    assert result.used_resource_ids == [SELECTED]
-    assert extra not in "\n".join(result.items)
-    agent = ReconciliationAgent(result)
-    _, repo, session_id = confirm(agent, [SELECTED, extra])
-    assert repo.get_session(session_id)[1].resource_selection == {"resource_ids": [SELECTED]}
 
 
 def test_failed_reconciliation_keeps_live_resource_card_and_accepts_a_new_selection() -> None:

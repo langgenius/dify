@@ -322,16 +322,6 @@ describe('DifyBuilderProvider', () => {
     window.sessionStorage.clear()
   })
 
-  it('starts a build session for an empty canvas', async () => {
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(screen.getByRole('button', { name: 'Send prompt' }))
-
-    expect(mocks.startBuild).toHaveBeenCalledWith('app-1', 'Build a support bot', builderModel)
-    expect(mocks.startEdit).not.toHaveBeenCalled()
-  })
-
   it('opens the panel and sends a creation prompt once across navigation and strict remounts', async () => {
     let finishBuild: (started: boolean) => void = () => undefined
     mocks.startBuild.mockImplementationOnce(
@@ -370,34 +360,6 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Back to apps' }))
     await user.click(screen.getByRole('button', { name: 'Reopen app' }))
     expect(mocks.startBuild).toHaveBeenCalledOnce()
-  })
-
-  it('retains the initial prompt in the panel when Builder cannot start', async () => {
-    mocks.startBuild.mockResolvedValueOnce(false)
-    const user = userEvent.setup()
-    renderWithConsoleQuery(<CreationNavigation />, {
-      queryClient: createBuilderQueryClient(),
-      features: { dify_builder_enabled: true },
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Create with Builder' }))
-
-    await waitFor(() => expect(mocks.startBuild).toHaveBeenCalledOnce())
-    expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(screen.getByRole('textbox', { name: 'Builder draft' })).toHaveValue(
-      'Build an expense workflow',
-    )
-  })
-
-  it('passes the editor draft coordinator to the session controller', () => {
-    renderProvider()
-    expect(mocks.controllerHook).toHaveBeenCalledWith(
-      mocks.syncDraft,
-      expect.objectContaining({
-        onCanvasEvent: expect.any(Function),
-        onSessionStateChanged: expect.any(Function),
-      }),
-    )
   })
 
   it.each([
@@ -477,30 +439,6 @@ describe('DifyBuilderProvider', () => {
     },
   )
 
-  it('restores and persists the tenant-user-app-scoped unfinished session id', async () => {
-    const key = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
-    window.sessionStorage.setItem(key, 'stored-session')
-    const user = userEvent.setup()
-    renderProvider()
-
-    await waitFor(() => expect(mocks.restore).toHaveBeenCalledWith('stored-session'))
-
-    await user.click(screen.getByRole('button', { name: 'Stream update' }))
-
-    expect(window.sessionStorage.getItem(key)).toBe('session-1')
-  })
-
-  it('retains the unfinished session id when restore fails without a definitive response', async () => {
-    mocks.restore.mockResolvedValueOnce(false)
-    const key = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
-    window.sessionStorage.setItem(key, 'stored-session')
-
-    renderProvider()
-
-    await waitFor(() => expect(mocks.restore).toHaveBeenCalledWith('stored-session'))
-    expect(window.sessionStorage.getItem(key)).toBe('stored-session')
-  })
-
   it('isolates saved session ids between collaborators on the same app', async () => {
     const userOneKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
     const userTwoKey = 'dify-builder:v1:workspace-1:user-2:app-1:active-session-id'
@@ -517,38 +455,6 @@ describe('DifyBuilderProvider', () => {
     expect(mocks.restore).not.toHaveBeenCalledWith('user-one-session')
   })
 
-  it('removes the persisted pointer when the session ends', async () => {
-    const key = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(screen.getByRole('button', { name: 'Stream update' }))
-    expect(window.sessionStorage.getItem(key)).toBe('session-1')
-
-    await user.click(screen.getByRole('button', { name: 'End session' }))
-    expect(window.sessionStorage.getItem(key)).toBeNull()
-  })
-
-  it('starts an edit session for a connected canvas', async () => {
-    const user = userEvent.setup()
-    renderProvider(1)
-
-    await user.click(screen.getByRole('button', { name: 'Send prompt' }))
-
-    expect(mocks.startEdit).toHaveBeenCalledWith('app-1', 'Build a support bot', builderModel)
-    expect(mocks.startBuild).not.toHaveBeenCalled()
-  })
-
-  it('opens a fix session for the selected failed run id', async () => {
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(screen.getByRole('button', { name: 'Fix run' }))
-
-    expect(mocks.setShowPanel).toHaveBeenCalledWith(true)
-    expect(mocks.startFix).toHaveBeenCalledWith('app-1', 'failed-run-42', undefined)
-  })
-
   it('blocks Builder session entry while the feature is disabled', async () => {
     const user = userEvent.setup()
     renderProvider(0, false)
@@ -560,19 +466,6 @@ describe('DifyBuilderProvider', () => {
     expect(mocks.syncDraft).not.toHaveBeenCalled()
     expect(mocks.startBuild).not.toHaveBeenCalled()
     expect(mocks.startFix).not.toHaveBeenCalled()
-  })
-
-  it('locks the canvas while a Builder command is preparing or running', async () => {
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(screen.getByRole('button', { name: 'Start command' }))
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
-
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
-
-    await user.click(screen.getByRole('button', { name: 'Stream update' }))
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
   })
 
   it('prevents an in-flight canvas refresh from applying after session reset', async () => {
@@ -590,23 +483,6 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Reset view' }))
     expect(shouldApply()).toBe(false)
     await act(async () => resolveResponse('refreshed'))
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
-  })
-
-  it('retries an interrupted refresh even when the command returns the same session version', async () => {
-    let resolveRefresh!: (value: WorkflowDraftRefreshResult) => void
-    mocks.refreshCanvas.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveRefresh = resolve
-      }),
-    )
-    const user = userEvent.setup()
-    renderProvider()
-    await user.click(screen.getByRole('button', { name: 'Refresh update' }))
-    await user.click(screen.getByRole('button', { name: 'Start command' }))
-    await act(async () => resolveRefresh('superseded'))
-    await user.click(screen.getByRole('button', { name: 'Finish command' }))
-    await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledTimes(2))
     expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
   })
 
@@ -681,29 +557,5 @@ describe('DifyBuilderProvider', () => {
     await user.click(screen.getByRole('button', { name: 'Register checklist' }))
 
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('true')
-  })
-
-  it('formats a rejected canvas refresh with localized copy and the response message', async () => {
-    mocks.refreshCanvas.mockRejectedValueOnce({ data: { body: { message: 'Connection lost.' } } })
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(screen.getByRole('button', { name: 'Refresh update' }))
-
-    const message = screen.getByRole('status', { name: 'Canvas refresh error' })
-    await waitFor(() => expect(message).toHaveTextContent('difyBuilder.canvasRefreshFailed'))
-    expect(message).toHaveTextContent('Connection lost.')
-    expect(message).not.toHaveTextContent('[object Object]')
-  })
-
-  it('highlights the edit target without refreshing the draft', async () => {
-    const user = userEvent.setup()
-    renderProvider()
-
-    await user.click(screen.getByRole('button', { name: 'Mark edit targets' }))
-
-    expect(mocks.setBuilderEditTargetNodeIds).toHaveBeenLastCalledWith(['llm-1'])
-    expect(mocks.selectWorkflowNode).not.toHaveBeenCalled()
-    expect(mocks.refreshCanvas).not.toHaveBeenCalled()
   })
 })

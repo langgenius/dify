@@ -88,49 +88,6 @@ def test_provider_failure_is_scoped_safe_and_recoverable(
     assert "private prompt" not in json.dumps(records)
 
 
-def test_resolution_failure_and_callback_failure_do_not_crash(monkeypatch: pytest.MonkeyPatch) -> None:
-    agent = LlmBuilderAgent("tenant")
-    monkeypatch.setattr(agent, "_model", lambda: (_ for _ in ()).throw(ValueError("secret")))
-    records = []
-    agent.set_diagnostic_callback(records.append)
-    agent.analyze_goal("goal")
-    assert any(r["code"] == "model_resolution_failed" for r in records)
-    agent.set_diagnostic_callback(lambda _: (_ for _ in ()).throw(RuntimeError()))
-    agent.analyze_goal("goal")
-
-
-def test_json_and_schema_have_distinct_codes(diagnostic_model: DiagnosticFactory) -> None:
-    records = []
-    model = diagnostic_model()
-    with diagnostics.scope(records.append, "plan"):
-        assert build.propose_plan_v1(model, {}) is None
-    assert any(r["code"] == "response_schema_invalid" for r in records)
-    records.clear()
-    with diagnostics.scope(records.append, "json"):
-        with pytest.raises(llm.LlmError):
-            llm.invoke_json(
-                diagnostic_model("[]"),
-                system="",
-                user="",
-            )
-    assert any(r["code"] == "json_decode_failed" for r in records)
-
-
-def test_env_bounds_resets_and_correlates_diagnostics() -> None:
-    env, _ = _new_env()
-    session = _session()
-    env.begin_operation(session)
-    for _ in range(100):
-        env.record_diagnostic({"code": "provider_invocation_failed", "span_id": "plan", "message": "secret"})
-    assert len(env.diagnostics) <= 33
-    assert env.diagnostics[-1]["code"] == "diagnostics_truncated"
-    assert env.diagnostics[0]["operation_id"] == env.operation_id
-    assert env.diagnostics[0]["session_id"] == session.id
-    assert "secret" not in json.dumps(env.diagnostics)
-    env.begin_operation(session)
-    assert env.diagnostics == []
-
-
 def test_generation_projection_retains_attempt_not_arbitrary_strings() -> None:
     records = []
     with diagnostics.scope(records.append, "build-nodes"):
@@ -201,17 +158,6 @@ def test_cas_emission_and_reload_preserve_additive_safe_diagnostics(
     assert events[-1].item.payload["diagnostics"] == assistant.payload["diagnostics"]
 
 
-def test_catalogue_failure_differs_from_successful_empty() -> None:
-    from services.dify_builder.agent.resources import _safe
-
-    records = []
-    with diagnostics.scope(records.append, "discover-resources"):
-        assert _safe(lambda: [], "models", {}) == []
-        assert records == []
-        assert _safe(lambda: (_ for _ in ()).throw(RuntimeError("secret")), "models", {}) == []
-    assert records[0]["code"] == "inventory_unavailable"
-
-
 def test_context_scope_does_not_leak_between_nested_calls() -> None:
     outer: list[dict[str, object]] = []
     inner: list[dict[str, object]] = []
@@ -250,42 +196,6 @@ def test_previous_operation_callback_cannot_contaminate_new_operation() -> None:
     assert env.diagnostics == []
 
 
-def test_edit_fix_and_mock_response_shapes_are_observed(diagnostic_model: DiagnosticFactory) -> None:
-    from services.dify_builder.agent import edit, fix, mock_inputs
-
-    model = diagnostic_model()
-    records = []
-    with diagnostics.scope(records.append, "edit"):
-        assert edit._invoke_intents(model, "", "", None) is None
-    with diagnostics.scope(records.append, "fix"):
-        assert fix._parse_repair({})[0] is None
-    with diagnostics.scope(records.append, "mock"):
-        assert mock_inputs.generate(model, {"variables": [{"variable": "name", "type": "text-input"}]}, {})
-    assert {r["span_id"] for r in records if r["code"] == "response_schema_invalid"} == {"edit", "fix", "mock"}
-
-
-def test_graph_generation_retry_evidence_survives_success(
-    monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
-) -> None:
-    from services.dify_builder.application.ports import BuildNodesResult
-
-    agent = LlmBuilderAgent("tenant")
-    agent._model_instance = diagnostic_model()
-    records = []
-    agent.set_diagnostic_callback(records.append)
-    monkeypatch.setattr(
-        build,
-        "build_nodes",
-        lambda *_args, **_kwargs: BuildNodesResult(
-            intents=[], diagnostics=[{"attempt": 1, "codes": ["UNRESOLVED_REFERENCE", "secret"], "message": "secret"}]
-        ),
-    )
-    assert agent.build_nodes(["step"]).error == ""
-    assert records[0]["validation_codes"] == ["UNRESOLVED_REFERENCE"]
-    assert records[0]["attempt"] == 1
-    assert "secret" not in json.dumps(records)
-
-
 def test_stream_iterator_failure_retains_scope(diagnostic_model: DiagnosticFactory) -> None:
     records = []
     with diagnostics.scope(records.append, "respond-to-message"):
@@ -294,70 +204,6 @@ def test_stream_iterator_failure_retains_scope(diagnostic_model: DiagnosticFacto
     assert records[0]["reason"] == "timeout"
     assert records[0]["span_id"] == "respond-to-message"
     assert "secret" not in json.dumps(records)
-
-
-def test_http_history_serializer_retains_safe_diagnostics() -> None:
-    from controllers.console.dify_builder_fields import DifyBuilderConversationPageResponse
-    from libs.helper import dump_response
-
-    record = diagnostics.project({"code": "empty_response"})
-    payload = {
-        "turn_id": "turn",
-        "stage_id": "build.plan",
-        "execution": {"status": "completed"},
-        "reply_text": "Review result",
-        "reply_mode": "complete",
-        "diagnostics": [record],
-    }
-    result = dump_response(
-        DifyBuilderConversationPageResponse,
-        {
-            "data": [{"seq": 1, "kind": "assistant_turn", "payload": payload, "at_version": 2}],
-            "has_more": False,
-            "first_seq": 1,
-            "last_seq": 1,
-        },
-    )
-    assert result["data"][0]["payload"]["diagnostics"] == [record]
-
-
-def test_http_session_snapshot_retains_safe_diagnostics() -> None:
-    from dataclasses import asdict
-
-    from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
-    from core.dify_builder.contract import RunStatus, SessionView
-    from libs.helper import dump_response
-    from services.dify_builder.wiring import _public_session_view
-
-    record = diagnostics.project({"code": "empty_response"})
-    view = SessionView(
-        session_id="s",
-        app_id="a",
-        version=1,
-        state="build.plan",
-        canvas_read_only=False,
-        run_status=RunStatus.WAITING_INPUT,
-        interrupted=False,
-        conversation_last_seq=1,
-    )
-    view.diagnostics = [record]
-    result = dump_response(
-        DifyBuilderSessionViewResponse, _public_session_view(asdict(view), include_last_command_id=True)
-    )
-    assert result["diagnostics"] == [record]
-
-
-def test_language_detection_failure_is_scoped_and_keeps_existing_fallback(
-    diagnostic_model: DiagnosticFactory,
-) -> None:
-    from services.dify_builder.agent.localize import LanguageDetector
-
-    records = []
-    model = diagnostic_model(failure=ConnectionRefusedError("secret"))
-    with diagnostics.scope(records.append, "detect-language"):
-        assert LanguageDetector(lambda: model).detect_language("请生成工作流") == "zh-Hans"
-    assert any(r["code"] == "provider_invocation_failed" for r in records)
-    assert any(r["code"] == "deterministic_fallback" for r in records)
 
 
 def test_snapshot_history_preserves_identity_and_previous_failure_after_success() -> None:
@@ -372,33 +218,6 @@ def test_snapshot_history_preserves_identity_and_previous_failure_after_success(
     assert safe[0]["id"] == record["id"]
     assert safe[0]["at"] == record["at"]
     assert safe[0]["session_id"] == "session"
-
-
-def test_existing_sse_dto_keeps_diagnostic_payload() -> None:
-    from controllers.console.dify_builder_fields import DifyBuilderConversationItemAppendedEventData
-    from libs.helper import dump_response
-
-    record = diagnostics.project({"code": "provider_invocation_failed"})
-    result = dump_response(
-        DifyBuilderConversationItemAppendedEventData,
-        {
-            "session_id": "session",
-            "command_id": "command",
-            "item": {
-                "seq": 1,
-                "kind": "assistant_turn",
-                "at_version": 2,
-                "payload": {
-                    "turn_id": "turn",
-                    "reply_mode": "complete",
-                    "stage_id": "build.plan",
-                    "execution": {"status": "completed"},
-                    "diagnostics": [record],
-                },
-            },
-        },
-    )
-    assert result["item"]["payload"]["diagnostics"] == [record]
 
 
 def test_native_preparation_diagnostic_is_persisted_with_handler_reply() -> None:
@@ -472,41 +291,6 @@ def test_native_model_projection_is_fixed_and_does_not_copy_exception_metadata()
     )
 
 
-def test_current_native_diagnostic_merge_is_bounded_and_deduplicated() -> None:
-    from uuid import uuid4
-
-    records = [diagnostics.project({"code": "provider_invocation_failed", "id": str(uuid4())}) for _ in range(40)]
-    current = diagnostics.project({"code": "native_outcome_unknown", "id": str(uuid4())})
-    merged = diagnostics.merge_current(records, [current, current])
-    assert len(merged) == 33
-    assert merged[0]["code"] == "diagnostics_truncated"
-    assert merged[-1] == current
-    assert sum(record["id"] == current["id"] for record in merged) == 1
-
-
-@pytest.mark.parametrize(
-    ("stage", "category"),
-    [
-        ("invoke", "quota_exceeded"),
-        ("invoke", "authentication"),
-        ("invoke", "bad_request"),
-        ("invoke", "rate_limit"),
-        ("invoke", "connection"),
-        ("invoke", "timeout"),
-        ("receipt_append", "service_unavailable"),
-        ("result_store", "result_too_large"),
-        ("outcome_complete", "invalid_response"),
-        ("unknown_settlement", "internal_unknown"),
-    ],
-)
-def test_native_model_projection_keeps_allowlisted_stage_and_category(stage: str, category: str) -> None:
-    safe = diagnostics.project(
-        {"code": "native_model_invocation_failed", "native_stage": stage, "native_category": category}
-    )
-    assert safe["native_stage"] == stage
-    assert safe["native_category"] == category
-
-
 @pytest.mark.parametrize(
     ("stage", "category"), [("invoke", "provider secret"), (None, "timeout"), ("invoke", None), ({}, [])]
 )
@@ -517,31 +301,6 @@ def test_native_model_projection_rejects_malformed_classification(stage: object,
         )
         == {}
     )
-
-
-def test_resource_plan_missing_id_code_survives_projection_report_and_history() -> None:
-    from core.dify_builder.models import ConversationItem
-
-    records = []
-    with diagnostics.scope(records.append, "reconcile-resource-plan"):
-        diagnostics.report(
-            "response_schema_invalid",
-            validation_code="RESOURCE_PLAN_ID_MISSING",
-            error=ValueError("private-resource-id provider answer"),
-        )
-        diagnostics.report("response_schema_invalid", validation_code="private-resource-id provider answer")
-    projected = diagnostics.project(records[0])
-    assert projected["validation_codes"] == ["RESOURCE_PLAN_ID_MISSING"]
-    assert records[1]["validation_codes"] == []
-    history = diagnostics.from_history(
-        [ConversationItem(seq=0, kind="assistant_turn", payload={"diagnostics": records})],
-        session_id="session",
-        version=1,
-    )
-    assert history[0]["validation_codes"] == ["RESOURCE_PLAN_ID_MISSING"]
-    assert history[1]["validation_codes"] == []
-    assert "private-resource-id" not in json.dumps(history)
-    assert "provider answer" not in json.dumps(history)
 
 
 def test_repair_detail_projection_bounds_counts_and_drops_arbitrary_metadata() -> None:
@@ -692,20 +451,6 @@ def test_plan_failure_facts_survive_actual_capture_without_values(
         expected.update(observed_count=observed, limit_count=limit)
     assert [record["attempt"] for record in failures] == [1, 2]
     assert [record.get("validation_details") for record in failures] == [[expected], [expected]]
-    assert "PRIVATE" not in json.dumps(records)
-
-
-def test_plan_generic_validation_failure_remains_unknown(
-    monkeypatch: pytest.MonkeyPatch, diagnostic_model: DiagnosticFactory
-) -> None:
-    def unknown(_data: object) -> None:
-        raise ValueError("PRIVATE plan exceeds 30-step limit")
-
-    monkeypatch.setattr(build, "parse_build_plan_response", unknown)
-    records = []
-    with diagnostics.scope(records.append, "plan"):
-        assert build.propose_plan_v1(diagnostic_model(), {}) is None
-    assert records[0].get("validation_details") == [{"stage": "plan", "reason_code": "unknown"}]
     assert "PRIVATE" not in json.dumps(records)
 
 

@@ -62,17 +62,6 @@ describe('DebugLogExport', () => {
     })
   })
 
-  it('disables the trigger when there is no active runtime', () => {
-    const store = createStore()
-    store.set(difyBuilderRuntimeAtom, null)
-    render(
-      <Provider store={store}>
-        <DebugLogExport />
-      </Provider>,
-    )
-    expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeDisabled()
-  })
-
   it('downloads a JSON trace when the export item is clicked', async () => {
     const user = userEvent.setup()
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})

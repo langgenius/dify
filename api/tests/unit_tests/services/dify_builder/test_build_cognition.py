@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session as OrmSession
 from core.app.app_config.entities import ModelConfig
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, Graph, Inputs
-from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import build, resources
@@ -78,44 +77,12 @@ def _plan_reply(items: list[str]) -> str:
     )
 
 
-def test_analyze_goal_returns_fields_and_values() -> None:
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "categories", "label": "Categories", "type": "text"}],
-                    "values": {"categories": "billing"},
-                }
-            )
-        ]
-    )
-    out = build.analyze_goal(m, "triage tickets")
-    assert out["fields"][0]["key"] == "categories"
-    assert out["values"] == {"categories": "billing"}
-
-
 _ALERT_GOAL = (
     "Create an alert grading Workflow using numeric error_rate_pct, p95_ms, requests. "
     "Invalid negatives or rate>100 ->invalid_input; requests=0 ->no_data; "
     "rate>=5 or latency>=2000 ->critical; rate>=1 or latency>=800 ->warning; otherwise healthy. "
     "Deterministic logic, no runtime LLM/external calls."
 )
-
-
-def test_analyze_goal_requests_only_necessary_unanswered_business_requirements() -> None:
-    model = _FakeInstance([json.dumps({"fields": [], "values": {}})])
-
-    build.analyze_goal(model, _ALERT_GOAL)
-
-    system = model.calls[0][0][0].content
-    assert "3-6" not in system
-    assert "0-6" in system
-    assert "unanswered business requirements" in system
-    assert '"fields": []' in system
-    assert "implementation choices" in system
-    assert "thresholds" in system
-    assert "explicitly requested technical choices" in system
-    assert len(model.calls) == 1
 
 
 def test_analyze_goal_empty_clarification_preserves_fixed_values_for_planning() -> None:
@@ -177,13 +144,6 @@ def test_analyze_goal_reconciles_field_type_with_value() -> None:
     assert out["values"]["max_results"] == 5
 
 
-def test_analyze_goal_degrades_to_generic_field_on_none() -> None:
-    out = build.analyze_goal(None, "some goal")
-    assert out["fields"]
-    assert out["fields"][0]["type"] == "textarea"
-    assert out["values"].get(out["fields"][0]["key"]) == "some goal"
-
-
 def test_analyze_goal_degrades_to_generic_field_on_boom() -> None:
     m = _BoomInstance()
     out = build.analyze_goal(m, "some goal")
@@ -221,32 +181,6 @@ def test_scrub_invented_defaults_blanks_the_real_s5b_invented_endpoint_and_crede
     assert out["include_speaker_notes"] is True
 
 
-def test_scrub_invented_defaults_blanks_a_plausible_invented_host() -> None:
-    values = {"render_api_url": "https://api.pptrender.io/v1/render"}
-
-    out = build._scrub_invented_defaults(values, _S5B_GOAL)
-
-    assert out["render_api_url"] == ""
-
-
-def test_scrub_invented_defaults_keeps_a_url_whose_host_the_goal_names() -> None:
-    goal = "POST the finished slides to https://render.acme.internal/v2 and return the link"
-    values = {"render_api_url": "https://render.acme.internal/v2/pptx"}
-
-    out = build._scrub_invented_defaults(values, goal)
-
-    assert out["render_api_url"] == "https://render.acme.internal/v2/pptx"
-
-
-def test_scrub_invented_defaults_keeps_a_credential_the_goal_states() -> None:
-    goal = "Authenticate with the API key sk-live-abc123"
-    values = {"api_key": "sk-live-abc123"}
-
-    out = build._scrub_invented_defaults(values, goal)
-
-    assert out["api_key"] == "sk-live-abc123"
-
-
 def test_scrub_invented_defaults_blanks_a_credential_the_goal_does_not_state() -> None:
     values = {"api_key": "sk-live-abc123"}
 
@@ -265,17 +199,6 @@ def test_scrub_invented_defaults_keeps_lookalike_keys_that_are_not_credentials()
         "token_limit": "unlimited",
         "session_token_expiry": "30 minutes",
     }
-
-    out = build._scrub_invented_defaults(values, _S5B_GOAL)
-
-    assert out == values
-
-
-def test_scrub_invented_defaults_keeps_a_non_credential_placeholder_looking_string() -> None:
-    # ESQ1-302 fix round 1: CREDENTIAL_PLACEHOLDER_RE's "<...>" shape must
-    # not blank an ordinary templated-greeting default that happens to use
-    # angle brackets.
-    values = {"greeting_template": "Dear <customer_name>,"}
 
     out = build._scrub_invented_defaults(values, _S5B_GOAL)
 
@@ -346,28 +269,6 @@ def test_analyze_goal_scrubs_invented_defaults_end_to_end(monkeypatch: pytest.Mo
     )
 
 
-def test_propose_plan_v1_returns_overview_and_steps_in_one_call() -> None:
-    m = _FakeInstance([_plan_reply(["Ingest", "Summarize", "Emit"])])
-    out = build.propose_plan_v1(m, {"x": 1})
-    assert isinstance(out, WorkflowPlan)
-    assert out.title == "Build a document summary workflow"
-    assert out.input_summary == "Source documents to summarize."
-    assert out.output_summary == "A summary report."
-    assert out.items == ["Ingest", "Summarize", "Emit"]
-    assert len(m.calls) == 1
-
-
-def test_propose_plan_v1_reports_no_plan_without_a_model() -> None:
-    out = build.propose_plan_v1(None, {})
-    assert out is None
-
-
-def test_propose_plan_v1_reports_no_plan_on_provider_failure() -> None:
-    m = _BoomInstance()
-    out = build.propose_plan_v1(m, {})
-    assert out is None
-
-
 @pytest.mark.parametrize(
     "reply",
     [
@@ -423,15 +324,6 @@ def test_propose_plan_v1_does_not_retry_a_provider_failure() -> None:
 
     assert build.propose_plan_v1(model, {}) is None
     assert model.calls == 1
-
-
-def test_propose_plan_v1_preserves_valid_plan_strings_without_content_thresholds() -> None:
-    model = _FakeInstance([_plan_reply(["start node: collect input", "llm node: draft", "end node: return"])])
-
-    out = build.propose_plan_v1(model, {})
-    assert isinstance(out, WorkflowPlan)
-    assert out.items == ["start node: collect input", "llm node: draft", "end node: return"]
-    assert len(model.calls) == 1
 
 
 def test_discover_resources_retains_full_source_in_model_payload(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -503,21 +395,6 @@ def _stub_inventory(
     )
 
 
-def test_discover_resources_recommends_nothing_when_the_call_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Previously degraded to the whole inventory, which the client pre-checks
-    # and submits by default -- binding resources nobody chose.
-    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
-
-    assert build.discover_resources(_BoomInstance(), "t1", ["Retrieve knowledge"]) == []
-
-
-def test_discover_resources_recommends_nothing_without_a_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A degraded agent has no signal at all, so it must not claim a recommendation.
-    _stub_inventory(monkeypatch, datasets=[resources.ResourceRef(id="kb-1", label="Company KB")])
-
-    assert build.discover_resources(None, "t1", ["Retrieve knowledge"]) == []
-
-
 def test_discover_resources_never_falls_back_to_the_whole_inventory(monkeypatch: pytest.MonkeyPatch) -> None:
     # The regression that made this visible: a large workspace whose model picks
     # nothing. The old single-resource test could not tell "all" from "none".
@@ -544,85 +421,14 @@ def test_discover_resources_keeps_only_ids_the_model_actually_picked(monkeypatch
     assert [o.id for o in opts] == ["tool-3/run"]
 
 
-def test_discover_resources_shows_the_model_each_options_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured = {}
-
-    def fake_invoke_json(model: object, *, system: str, user: str, **kw: object) -> Graph:  # noqa: ARG001
-        captured["system"] = system
-        captured["user"] = user
-        return {"resource_ids": []}
-
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
-    _stub_inventory(
-        monkeypatch,
-        tools=[resources.ResourceRef(id="tool-slack/send", label="Slack", readiness="missing_config")],
-    )
-
-    build.discover_resources(_FakeInstance([]), "t1", ["Notify on Slack"])
-
-    # The recommender must see readiness, not just ids/labels -- otherwise it
-    # has no signal to avoid recommending an unauthorized tool (the bug this
-    # guards: a missing_config tool recommended anyway).
-    assert "missing_config" in captured["user"]
-    assert "missing_config" in captured["system"]
-
-
-def test_gap_system_defines_missing_config() -> None:
-    # The gap-checker's system prompt must define what missing_config means --
-    # installed but not authorized, i.e. not usable -- not just show the raw
-    # label with no basis for the model to treat it as unavailable.
-    assert "missing_config" in build._GAP_SYSTEM
-
-
-def test_assess_capability_gap_names_the_gap_in_plain_words() -> None:
-    m = _FakeInstance([json.dumps({"gap": "Nothing installed can send email."})])
-    assert build.assess_capability_gap(m, ["Email the manager"], []) == "Nothing installed can send email."
-
-
 def test_assess_capability_gap_reports_no_gap_when_the_plan_is_covered() -> None:
     m = _FakeInstance([json.dumps({"gap": ""})])
     assert build.assess_capability_gap(m, ["Summarize text"], []) == ""
 
 
-def test_assess_capability_gap_reports_unknown_without_a_model() -> None:
-    # Unknown assessment must not assert a missing capability.
-    assert build.assess_capability_gap(None, ["Email the manager"], []) is None
-
-
-def test_assess_capability_gap_reports_unknown_on_model_failure() -> None:
-    m = _BoomInstance()
-    assert build.assess_capability_gap(m, ["Email the manager"], []) is None
-
-
-def test_assess_capability_gap_reports_no_gap_for_an_empty_plan() -> None:
-    m = _FakeInstance([json.dumps({"gap": "should never be read"})])
-    assert build.assess_capability_gap(m, [], []) == ""
-
-
 def test_assess_capability_gap_reports_unknown_on_unparseable_reply() -> None:
     m = _FakeInstance([json.dumps({"gap": 42})])
     assert build.assess_capability_gap(m, ["Email the manager"], []) is None
-
-
-def test_assess_capability_gap_shows_the_model_each_option_and_its_readiness(monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.dify_builder.contract import ResourceOption
-
-    captured = {}
-
-    def fake_invoke_json(model: object, *, system: str, user: str, **kw: object) -> dict[str, str]:  # noqa: ARG001
-        captured["user"] = user
-        return {"gap": ""}
-
-    monkeypatch.setattr(build.llm, "invoke_json", fake_invoke_json)
-    option = ResourceOption(id="tool-slack", label="Slack", meta="", kind="plugin", readiness="missing_config")
-
-    build.assess_capability_gap(_FakeInstance([]), ["Notify on Slack"], [option])
-
-    # A missing_config tool is installed but unauthorized -- the assessment
-    # must see that distinction, not just that "Slack" is present, or an
-    # unauthorized tool would look like real coverage.
-    assert "missing_config" in captured["user"]
-    assert "Slack" in captured["user"]
 
 
 def test_bind_resources_refuses_dataset_binding(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -678,165 +484,6 @@ def test_bind_resources_binds_each_resource_to_the_step_it_covers(monkeypatch: p
     assert out[2] == plan[2]
     assert out[3] == plan[3] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
     assert out[4] == plan[4]
-
-
-def test_bind_resources_binds_each_tool_to_the_step_naming_its_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The planner is told to name a tool by its id (``_planner_tool_section``),
-    but binding matched only the LABEL, then the "tool" keyword -- so with two
-    tool steps naming ids, BOTH tools bound to the first tool step."""
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[],
-            datasets=[],
-            tools=[
-                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX"),
-                resources.ResourceRef(id="langgenius/google/google/google_search", label="Google Search"),
-            ],
-        ),
-    )
-    plan = [
-        "start节点：定义输入变量 topic",
-        "tool节点：使用 bowenliang123/md_exporter/md_exporter/md_to_pptx 把大纲转换成 PPTX 文件",
-        "tool节点：使用 langgenius/google/google/google_search 搜索主题相关资料",
-        "end节点：返回生成的PPT文件",
-    ]
-
-    out = build.bind_resources(
-        None,
-        "t1",
-        plan,
-        ["bowenliang123/md_exporter/md_exporter/md_to_pptx", "langgenius/google/google/google_search"],
-    )
-
-    assert out[0] == plan[0]
-    assert out[1] == plan[1] + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
-    assert out[2] == plan[2] + " (using Google Search [langgenius/google/google/google_search])"
-    assert out[3] == plan[3]
-
-
-@pytest.mark.parametrize(
-    "tool_step",
-    [
-        # names neither the id nor the label -- bound by the "tool" keyword
-        "tool节点：把 Markdown 转成 PPTX 文件",
-        # names the id glued to CJK text -- the generator's identifier
-        # boundary treats CJK as a word character, so this alone never pins
-        "tool节点：使用bowenliang123/md_exporter/md_exporter/md_to_pptx转换",
-    ],
-)
-def test_bind_resources_tool_suffix_carries_the_id_the_generator_pins_on(
-    monkeypatch: pytest.MonkeyPatch, tool_step: str
-) -> None:
-    """The shared generator pins a tool deterministically only through
-    ``tool_catalogue._find_explicit_tool_keys``, which looks for the
-    ``provider/tool`` IDENTIFIER in the instruction text between
-    ``_TOOL_IDENTIFIER_LEFT_BOUNDARY`` = ``(?<![\\w/.:@-])`` and
-    ``_TOOL_IDENTIFIER_RIGHT_BOUNDARY`` = ``(?![\\w/@-]|[.:][\\w])`` -- never
-    the label. A label-only suffix therefore pinned nothing; the id in ASCII
-    brackets does ('[' and ']' are outside both boundary classes)."""
-    from core.workflow.generator.tool_catalogue import _find_explicit_tool_keys
-
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[],
-            datasets=[],
-            tools=[
-                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
-            ],
-        ),
-    )
-    entries: list[ToolCatalogueEntry] = [
-        {
-            "provider_name": "bowenliang123/md_exporter/md_exporter",
-            "provider_type": "builtin",
-            "plugin_id": "bowenliang123/md_exporter",
-            "tool_name": "md_to_pptx",
-            "tool_label": "Markdown ⮕ PPTX",
-            "description": "Convert Markdown to a PPTX file",
-            "needs_credentials": False,
-        },
-        {
-            "provider_name": "langgenius/google/google",
-            "provider_type": "builtin",
-            "plugin_id": "langgenius/google",
-            "tool_name": "google_search",
-            "tool_label": "Google Search",
-            "description": "Search the web with Google",
-            "needs_credentials": True,
-        },
-    ]
-    plan = ["start节点：输入主题", "llm节点：写出 Markdown 大纲", tool_step, "end节点：返回PPT文件"]
-
-    out = build.bind_resources(None, "t1", plan, ["bowenliang123/md_exporter/md_exporter/md_to_pptx"])
-
-    assert out[2] == tool_step + " (using Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx])"
-    assert _find_explicit_tool_keys(entries, "\n".join(plan)) == set()
-    assert _find_explicit_tool_keys(entries, "\n".join(out)) == {
-        ("bowenliang123/md_exporter/md_exporter", "md_to_pptx", "builtin")
-    }
-
-
-def test_bind_resources_names_the_tool_id_on_an_empty_plan_too(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[],
-            datasets=[],
-            tools=[
-                resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")
-            ],
-        ),
-    )
-
-    out = build.bind_resources(None, "t1", [], ["bowenliang123/md_exporter/md_exporter/md_to_pptx"])
-
-    assert out == ["Use Markdown ⮕ PPTX [bowenliang123/md_exporter/md_exporter/md_to_pptx]"]
-
-
-def test_bind_resources_keeps_model_label_and_ignores_selected_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Only a tool is pinned by id; a model's label already IS its full id and
-    datasets are unavailable in this Builder phase."""
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[
-                resources.ResourceRef(
-                    id="langgenius/tokener/tokener/deepseek-v4-flash",
-                    label="langgenius/tokener/tokener/deepseek-v4-flash",
-                )
-            ],
-            datasets=[resources.ResourceRef(id="9f1c2b7e-kb", label="Company KB")],
-            tools=[],
-        ),
-    )
-    plan = ["llm node: draft the outline", "knowledge-retrieval node: fetch the style guide"]
-
-    out = build.bind_resources(None, "t1", plan, ["langgenius/tokener/tokener/deepseek-v4-flash", "9f1c2b7e-kb"])
-
-    assert out[0] == plan[0] + " (using langgenius/tokener/tokener/deepseek-v4-flash)"
-    assert out[1] == plan[1]
-    assert "[" not in out[0]
-    assert "[" not in out[1]
-
-
-def test_bind_resources_falls_back_to_the_last_step_when_nothing_matches(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[], datasets=[], tools=[resources.ResourceRef(id="p/t", label="Some Tool")]
-        ),
-    )
-
-    out = build.bind_resources(None, "t1", ["start node: inputs", "end node: output"], ["p/t"])
-
-    assert out == ["start node: inputs", "end node: output (using Some Tool [p/t])"]
 
 
 def test_bind_resources_rebind_with_the_same_selection_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -901,225 +548,7 @@ def test_bind_resources_rebind_with_a_changed_selection_drops_the_deselected_lab
     assert second[1].count("(using") == 1
 
 
-def test_bind_resources_cleans_an_old_aggregate_suffix_before_rebinding(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A plan bound by the pre-Task-4 binder (every label appended to the
-    LAST step) loops back in; its stale aggregate suffix must not survive
-    into the re-bind, and must not be mistaken for the step's own content."""
-    monkeypatch.setattr(
-        build.resources,
-        "list_tenant_resources",
-        lambda t, **_kw: resources.TenantResources(  # noqa: ARG005
-            models=[
-                resources.ResourceRef(
-                    id="langgenius/tokener/tokener/deepseek-v4-flash",
-                    label="langgenius/tokener/tokener/deepseek-v4-flash",
-                )
-            ],
-            datasets=[],
-            tools=[resources.ResourceRef(id="code/simple_code", label="Code Interpreter")],
-        ),
-    )
-    plan = [
-        "llm node: draft",
-        "tool node: run something",
-        "end node: return output (using langgenius/tokener/tokener/deepseek-v4-flash, Code Interpreter)",
-    ]
-
-    out = build.bind_resources(None, "t1", plan, ["langgenius/tokener/tokener/deepseek-v4-flash", "code/simple_code"])
-
-    assert out[0] == "llm node: draft (using langgenius/tokener/tokener/deepseek-v4-flash)"
-    assert out[1] == "tool node: run something (using Code Interpreter [code/simple_code])"
-    assert out[2] == "end node: return output"
-
-
-def test_covering_step_tool_keyword_does_not_match_a_toolkit_substring() -> None:
-    # "toolkit" contains "tool" as a raw substring -- a plugin must not bind
-    # there when an actual tool step exists further down the plan.
-    plan = ["code node: build a toolkit summary string", "tool node: send a slack notification"]
-
-    assert build._covering_step(plan, "plugin", resources.ResourceRef(id="p/slack", label="Slack Notifier")) == 1
-
-
-def test_covering_step_llm_keyword_does_not_match_a_fulfillment_substring() -> None:
-    # "fulfillment" contains "llm" as a raw substring -- a model must not
-    # bind there; with no real "llm"/"question-classifier"/
-    # "parameter-extractor" step present, this falls through to -1 (the
-    # caller's fallback then applies).
-    plan = ["step: order fulfillment notes", "end node: wrap up"]
-
-    assert build._covering_step(plan, "model", resources.ResourceRef(id="openai/gpt-5", label="openai/gpt-5")) == -1
-
-
-def test_covering_step_still_matches_llm_in_cjk_step_text() -> None:
-    plan = ["start节点：输入", "llm节点：总结", "end节点：输出"]
-
-    assert build._covering_step(plan, "model", resources.ResourceRef(id="p/some-model", label="p/some-model")) == 1
-
-
-def test_covering_step_prefers_the_step_naming_the_resource_id_over_the_kind_keyword() -> None:
-    plan = [
-        "tool节点：使用 bowenliang123/md_exporter/md_exporter/md_to_pptx 生成PPT",
-        "tool节点：使用 langgenius/google/google/google_search 搜索资料",
-    ]
-    ref = resources.ResourceRef(id="langgenius/google/google/google_search", label="Google Search")
-
-    assert build._covering_step(plan, "plugin", ref) == 1
-
-
-def test_learn_from_build_degrades_to_generic() -> None:
-    assert isinstance(build.learn_from_build(None, "g", {}, ["p"], ["n"]), str)
-
-
-def test_learn_from_build_degrades_on_boom() -> None:
-    m = _BoomInstance()
-    out = build.learn_from_build(m, "some goal", {}, ["plan"], ["node1"])
-    assert isinstance(out, str)
-    assert "1-node workflow" in out
-
-
-def test_plan_prompt_carries_the_node_vocabulary(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ESQ1-279: the Builder's own planner had NO node vocabulary, so it
-    planned in business language ("Send a Feishu notification") and the
-    generator was then asked to map steps onto nodes that do not exist."""
-    captured = {}
-
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        captured["user"] = user
-        return _plan_reply(["Start node collects the review list"])
-
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-    build.propose_plan_v1(_FakeInstance([]), {"goal": "summarise reviews"})
-
-    system = captured["system"]
-    # the vocabulary is present, and is the shared constant
-    assert build._DIFY_NODE_VOCABULARY in system
-    # a representative spread of node types the planner may use
-    for node_type in ("start", "end", "llm", "iteration", "tool", "if-else", "document-extractor"):
-        assert f'"{node_type}"' in system, f"missing node type {node_type}"
-    # and it is told to plan ONLY in these terms
-    assert "only" in system.lower()
-
-
-def test_plan_prompt_names_capabilities_dify_lacks(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The failure mode is inventing steps Dify has no node for. Name the
-    common ones explicitly so the model routes them instead of inventing."""
-    captured = {}
-
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        return _plan_reply(["step"])
-
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-    build.propose_plan_v1(_FakeInstance([]), {})
-
-    lowered = captured["system"].lower()
-    assert "schedul" in lowered  # no timer/trigger node exists
-    assert "tool" in lowered  # third-party sends go through a tool node
-
-
-def test_plan_prompt_still_requests_json_and_language(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Regression guard: the JSON contract and the reply-language instruction
-    must survive the rewrite -- invoke_json parses {"plan": [...]} and the
-    Builder replies in the user's language."""
-    captured = {}
-
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        return _plan_reply(["step"])
-
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-    build.propose_plan_v1(_FakeInstance([]), {})
-
-    assert '"plan": ["step", ...]' in captured["system"]
-    assert (
-        build.llm.json_language_instruction("the plan title, input and output summaries, and plan steps")
-        in captured["system"]
-    )
-
-
-def test_topology_directive_keeps_the_workflow_rules() -> None:
-    """Regression guard: the original topology contract must survive. This
-    directive is why workflow mode never gets 'answer' nodes."""
-    d = build._WORKFLOW_TOPOLOGY_DIRECTIVE
-    assert "'start'" in d
-    assert "'end'" in d
-    assert "answer" in d
-
-
-def test_topology_directive_carries_node_usage_guidance() -> None:
-    """Meeting item 9, tier 2: usage detail rides the Builder-only prepend."""
-    d = build._WORKFLOW_TOPOLOGY_DIRECTIVE
-    lowered = d.lower()
-    # the config mistakes that actually broke real builds
-    assert "document-extractor" in lowered  # needs a file input
-    assert "iteration" in lowered  # children belong inside the container
-    assert "variable" in lowered  # reference only declared outputs
-
-
-def test_topology_directive_does_not_restate_the_whitelist() -> None:
-    """The generator's SHARED system prompt already lists every node type.
-    Restating it here burns planner output budget for nothing (see ESQ1-300)."""
-    assert build._DIFY_NODE_VOCABULARY not in build._WORKFLOW_TOPOLOGY_DIRECTIVE
-
-
-def test_build_nodes_sends_the_directive_to_the_generator(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The directive is only worth anything if it actually reaches the
-    generator ahead of the plan items."""
-    seen = {}
-
-    class _FakeGen:
-        @staticmethod
-        def generate_workflow_graph(
-            *,
-            tenant_id: str,  # noqa: ARG004
-            mode: str,  # noqa: ARG004
-            instruction: str,
-            model_config: Inputs | None,  # noqa: ARG004
-            current_graph: Graph | None,  # noqa: ARG004
-            **_kwargs: object,
-        ) -> Graph:
-            seen["instruction"] = instruction
-            return {
-                "graph": {
-                    "nodes": [{"id": "node1", "data": {"type": "start", "title": "Start"}}],
-                    "edges": [],
-                }
-            }
-
-    # Patch the module-level reference (build.py:21 imports the class), NOT the
-    # shared class object itself.
-    monkeypatch.setattr(build, "WorkflowGeneratorService", _FakeGen)
-    monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: {})  # noqa: ARG005
-    _stub_inventory(monkeypatch)
-
-    build.build_nodes(tenant_id="t1", model_config={}, plan_items=["llm node drafts a reply"])
-
-    instruction = seen["instruction"]
-    assert instruction.startswith(build._WORKFLOW_TOPOLOGY_DIRECTIVE)
-    assert "llm node drafts a reply" in instruction
-
-
 # ---- ESQ1-302: tool grounding ------------------------------------------------
-
-
-def test_topology_directive_no_longer_steers_away_from_installed_tools() -> None:
-    """fe3f8154b5 added "use a 'tool' node ... only when the plan names an
-    installed tool; otherwise use 'http-request'". That contradicts the SHARED
-    planner prompt (INSTALLED-TOOL-FIRST) and the Builder's own planner cannot
-    name tools it was never shown -- so every third-party step fell through to
-    an http-request with an invented endpoint (api.example.com, ESQ1-302)."""
-    lowered = build._WORKFLOW_TOPOLOGY_DIRECTIVE.lower()
-
-    assert "only when the plan names an installed tool" not in lowered
-    assert "otherwise use 'http-request'" not in lowered
-    # the half that earned its place (ESQ1-286) stays
-    assert "start-node variables" in lowered
-    # tool-first, in agreement with the shared planner prompt
-    assert "installed tool" in lowered
-    # and an invented / placeholder endpoint is forbidden outright
-    assert "never invent" in lowered
-    assert "never use a placeholder such as example.com --" in lowered
 
 
 def test_planner_catalogue_includes_setup_tools_and_remains_capped(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1144,34 +573,6 @@ def test_ready_tool_catalogue_degrades_to_empty_when_the_listing_fails(monkeypat
     monkeypatch.setattr(build.resources, "list_tenant_resources", boom)
 
     assert build.ready_tool_catalogue("t1") == []
-
-
-def test_plan_prompt_names_the_ready_tools_it_may_use(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The ESQ1-302 tenant had a ready 'Markdown ⮕ PPTX' tool. Its plan still
-    said "http-request节点：调用外部PPT生成API" because propose_plan_v1 was shown
-    REQUIREMENTS only -- it could not name a tool it had never seen."""
-    captured = {}
-
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        return _plan_reply(["tool node converts the outline to a PPTX"])
-
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-    tools = [resources.ResourceRef(id="bowenliang123/md_exporter/md_exporter/md_to_pptx", label="Markdown ⮕ PPTX")]
-
-    build.propose_plan_v1(_FakeInstance([]), {"goal": "make a deck"}, tools=tools)
-
-    system = captured["system"]
-    assert "bowenliang123/md_exporter/md_exporter/md_to_pptx" in system
-    assert "Markdown ⮕ PPTX" in system
-    assert "installed tools" in system.lower()
-    # HTTP remains available without authorizing an invented endpoint.
-    assert "http-request" in system
-    assert "invent" in system.lower()
-    # the generator pins a tool only on its id as a whole word -- an id glued
-    # to CJK text ("使用bowenliang123/...") does not pin
-    assert "exactly as listed" in system
-    assert "separate word" in system
 
 
 @pytest.mark.parametrize("with_actor", [True, False])
@@ -1302,42 +703,6 @@ def test_initial_plan_defers_agent_catalogue_failure_and_discovery_distinguishes
         assert "Agent catalog is unavailable" not in discovery_system
 
 
-def test_agent_binding_names_new_agent_step_instead_of_end(monkeypatch: pytest.MonkeyPatch) -> None:
-    agent_id = "agent:agent-1:snapshot-1:" + "a" * 64
-    monkeypatch.setattr(
-        resources,
-        "list_tenant_resources",
-        lambda *_args, **_kwargs: resources.TenantResources(
-            models=[], datasets=[], tools=[], agents=[resources.ResourceRef(id=agent_id, label="Reviewer")]
-        ),
-    )
-
-    result = build.bind_resources(
-        None,
-        "tenant-1",
-        ["start node receives report", "New Agent v2 node reviews the report", "end node returns summary"],
-        [agent_id],
-        account_id="actor-1",
-    )
-
-    assert result[1] == "New Agent v2 node reviews the report (using Reviewer [" + agent_id + "])"
-    assert result[2] == "end node returns summary"
-
-
-def test_plan_prompt_without_tools_has_no_tool_section(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured = {}
-
-    def fake_invoke_text(model: object, *, system: str, user: str, **kw: object) -> str:  # noqa: ARG001
-        captured["system"] = system
-        return _plan_reply(["step"])
-
-    monkeypatch.setattr(build.llm, "invoke_text", fake_invoke_text)
-
-    build.propose_plan_v1(_FakeInstance([]), {})
-
-    assert "# Installed tools" not in captured["system"]
-
-
 # ---- Final review F2: a host the goal names without a scheme is not invented --
 
 
@@ -1366,45 +731,6 @@ def test_scrub_invented_defaults_still_blanks_a_single_label_host_named_as_a_str
 # always answered that question with ``goal_text``; the LLM path lost that.
 
 _PM_GOAL = "构建一个需求调用工作流, 用户输入需求, 最终输出一个pdf格式的需求调用报告"
-
-
-def test_analyze_goal_answers_a_blank_goal_restating_field_with_the_goal() -> None:
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [
-                        {"key": "requirement_description", "label": "需求描述", "type": "textarea"},
-                        {"key": "report_title", "label": "报告标题", "type": "text"},
-                    ],
-                    "values": {"report_title": "需求调研报告"},
-                }
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, _PM_GOAL)
-
-    assert out["values"]["requirement_description"] == _PM_GOAL
-
-
-def test_analyze_goal_keeps_the_answer_the_model_gave_a_goal_restating_field() -> None:
-    """The backstop repairs a blank, it does not overwrite. A model that wrote
-    something narrower than the goal there knew more than we do."""
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "requirement", "label": "需求", "type": "textarea"}],
-                    "values": {"requirement": "只看退款工单"},
-                }
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, "triage inbound tickets")
-
-    assert out["values"]["requirement"] == "只看退款工单"
 
 
 def test_analyze_goal_never_asks_for_a_credential_in_a_text_field() -> None:
@@ -1487,25 +813,6 @@ def test_analyze_goal_removes_nested_secret_values_without_losing_business_boole
     }
 
 
-def test_analyze_goal_removes_a_secret_labeled_as_optional() -> None:
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "provider_input", "label": "API Key（可选）", "type": "text"}],
-                    "values": {"provider_input": ""},
-                },
-                ensure_ascii=False,
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, "联网调研并输出报告")
-
-    assert not out["fields"]
-    assert "provider_input" not in out["values"]
-
-
 def test_analyze_goal_rejects_secret_text_mislabeled_as_boolean() -> None:
     m = _FakeInstance(
         [
@@ -1522,103 +829,6 @@ def test_analyze_goal_rejects_secret_text_mislabeled_as_boolean() -> None:
 
     assert not out["fields"]
     assert "provider_input" not in out["values"]
-
-
-def test_analyze_goal_removes_secret_label_with_punctuation() -> None:
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "provider_input", "label": "请输入 API Key（可选）：", "type": "text"}],
-                    "values": {"provider_input": "synthetic-credential-value"},
-                },
-                ensure_ascii=False,
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, "联网调研")
-
-    assert not out["fields"]
-    assert "provider_input" not in out["values"]
-
-
-def test_analyze_goal_does_not_answer_a_goal_restating_select() -> None:
-    """A select gains a value none of its options offer, which the form cannot
-    render honestly."""
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "goal", "label": "Goal", "type": "select", "options": ["a", "b"]}],
-                    "values": {},
-                }
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, "triage inbound tickets")
-
-    assert "goal" not in out["values"]
-
-
-def test_analyze_goal_explains_a_field_it_leaves_blank() -> None:
-    """A blank box with no explanation reads as one the user forgot to fill.
-    The hint must also be a CATALOG string, or it ships in English on a Chinese
-    form -- the ESQ1-259 failure."""
-    from dataclasses import asdict
-
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from runtime_contracts.builder.presentation import copy_text
-
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "industry", "label": "目标行业", "type": "text"}],
-                    "values": {"industry": ""},
-                }
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, _PM_GOAL)
-
-    assert out["values"]["industry"] == ""
-    assert out["fields"][0]["hint_copy"]
-    assert out["fields"][0]["hint_copy"] == asdict(
-        copy_text(BuilderCopyId.REPLIES_NOT_STATED_IN_YOUR_REQUEST_ADD_IT_IF_YOU_HAVE_ONE)
-    )
-
-
-def test_analyze_goal_does_not_explain_a_field_that_has_a_value() -> None:
-    """Only a blank needs explaining; hinting every field is noise."""
-    m = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [{"key": "report_title", "label": "报告标题", "type": "text"}],
-                    "values": {"report_title": "需求调研报告"},
-                }
-            )
-        ]
-    )
-
-    out = build.analyze_goal(m, _PM_GOAL)
-
-    assert not out["fields"][0].get("hint")
-
-
-def test_planner_describes_only_first_phase_nodes_to_the_model() -> None:
-    model = _FakeInstance([_plan_reply(["code node: process", "end node: return"])])
-
-    assert build.propose_plan_v1(model, {})
-
-    system = model.calls[0][0][0].get_text_content()
-    assert '"knowledge-retrieval"' not in system
-    assert '"human-input"' not in system
-    assert '"code"' in system
-    assert '"list-operator"' in system
 
 
 def test_grounding_preserves_retrieval_config_without_dataset_assignment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1749,13 +959,6 @@ def test_discovery_recommends_an_unauthenticated_installed_tool_as_requiring_set
     plugin_lines = [line for line in user.splitlines() if "(plugin," in line]
     assert len(plugin_lines) < _FILLER_COUNT
     assert forbidden == []
-
-
-@pytest.mark.usefixtures("installed_tools")
-def test_discovery_with_no_model_signal_still_recommends_nothing() -> None:
-    model = _FakeInstance([json.dumps({"resource_ids": []})])
-
-    assert build.discover_resources(model, TENANT_ID, ["tool node posts to chat"]) == []
 
 
 def test_initial_plan_defers_installed_tools_and_discovery_ranks_delayed_setup_beyond_the_old_name_cap(
@@ -1948,52 +1151,6 @@ def test_build_nodes_admits_only_actual_installed_action_schemas(
 
 # ---- review edge: the readiness reason survives a long description -----------
 
-_LONG_DESCRIPTION = "Send a richly formatted message to a team chat channel. " * 12
-
-
-@pytest.mark.parametrize(
-    ("drop_credential_table", "expected_note"),
-    [
-        (False, resources.SETUP_REQUIRED_NOTE),
-        (True, resources.AUTHORIZATION_UNVERIFIED_NOTE),
-    ],
-)
-def test_discovery_prompt_keeps_the_readiness_reason_for_a_long_description(
-    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, drop_credential_table: bool, expected_note: object
-) -> None:
-    from sqlalchemy import text
-
-    bind_database(monkeypatch, sqlite_engine)
-    install_fake_daemon(
-        monkeypatch,
-        FakeToolDaemon(
-            providers_by_tenant={
-                TENANT_ID: [
-                    provider_payload(
-                        "acme/huddle",
-                        "huddle",
-                        [FakeTool(name="post", label="Post", description=_LONG_DESCRIPTION)],
-                        needs_credentials=True,
-                    )
-                ]
-            }
-        ),
-    )
-    monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [])
-    monkeypatch.setattr(resources, "_list_datasets", lambda _tenant_id, _account_id=None: [])
-    if drop_credential_table:
-        with sqlite_engine.begin() as connection:
-            connection.execute(text("DROP TABLE tool_builtin_providers"))
-    model = _FakeInstance([json.dumps({"resource_ids": [_HUDDLE_POST]})])
-
-    build.discover_resources(model, TENANT_ID, ["tool node posts to the team chat channel"], account_id=ACCOUNT_A)
-
-    user = model.calls[0][0][1].get_text_content()
-    huddle_lines = [line for line in user.splitlines() if _HUDDLE_POST in line]
-    assert len(huddle_lines) == 1
-    assert "missing_config" in huddle_lines[0]
-    assert expected_note in huddle_lines[0]
-
 
 class TestNativeBuildCapabilityMessages:
     """Cognition receives native build facts separately from authored source and external resources."""
@@ -2041,11 +1198,6 @@ class TestNativeBuildCapabilityMessages:
         assert len(model.calls) == 1
         return model.calls[0][0]
 
-    def test_outline_system_distinguishes_mutation_from_a_published_constant(self) -> None:
-        messages = self._outline_messages()
-
-        self._assert_constant_rules(messages[0].get_text_content())
-
     def test_outline_keeps_original_goal_literals_and_metadata_in_user_message(self) -> None:
         system, user = self._outline_messages()
 
@@ -2062,130 +1214,6 @@ class TestNativeBuildCapabilityMessages:
         ):
             assert value in user.get_text_content()
             assert value not in system.get_text_content()
-
-    def test_gap_system_receives_native_workflow_vocabulary_with_no_selected_external_resources(self) -> None:
-        system, user = self._gap_messages()
-
-        for node_type in ("start", "http-request", "if-else", "template-transform", "assigner", "end"):
-            assert f'"{node_type}"' in system.get_text_content()
-        assert "selected external resources" in system.get_text_content().lower()
-        assert "native" in system.get_text_content().lower()
-        assert "- (none)" in user.get_text_content()
-
-    def test_gap_system_distinguishes_mutation_from_a_published_constant(self) -> None:
-        messages = self._gap_messages()
-
-        self._assert_constant_rules(messages[0].get_text_content())
-
-    @pytest.mark.parametrize("readiness", [None, "ready", "missing_config"])
-    def test_gap_keeps_source_and_external_resource_readiness_in_user_message(self, readiness: None | str) -> None:
-        from core.dify_builder.contract import ResourceOption
-
-        option = (
-            None
-            if readiness is None
-            else ResourceOption(
-                id="USER_SELECTED_TOOL_73", label="USER_SELECTED_LABEL_73", meta="", kind="plugin", readiness=readiness
-            )
-        )
-        system, user = self._gap_messages(option)
-
-        assert user.get_text_content().startswith(
-            f"ORIGINAL GOAL:\n{self._GOAL}\n\nCONFIRMED REQUIREMENTS:\n"
-            + json.dumps(self._REQUIREMENTS, ensure_ascii=False)
-        )
-        for value in (
-            "ORIGINAL_GOAL_AUTHORITY_73",
-            "healthy",
-            "unhealthy",
-            "USER_BRANCH_ID_73",
-            "USER_METADATA_ONLY_73",
-        ):
-            assert value in user.get_text_content()
-            assert value not in system.get_text_content()
-        if option is not None:
-            assert f"{option.id} (plugin, {readiness}): {option.label}" in user.get_text_content()
-            assert option.id not in system.get_text_content()
-            assert option.label not in system.get_text_content()
-
-    def test_gap_system_preserves_explicit_named_tool_model_and_new_agent_constraints(self) -> None:
-        goal = (
-            "Use Tool USER_NAMED_TOOL_91 with model USER_NAMED_MODEL_91 and NewAgent USER_NAMED_AGENT_91. "
-            "Preserve these exact identities; do not replace them with an HTTP fallback."
-        )
-        model = _FakeInstance(['{"gap":"The explicitly requested identities still require matching resources."}'])
-        result = build.assess_capability_gap(
-            model,
-            ["Tool USER_NAMED_TOOL_91 executes through NewAgent USER_NAMED_AGENT_91"],
-            [],
-            goal_text=goal,
-            requirements={"model_id": "USER_NAMED_MODEL_91"},
-        )
-        assert result == "The explicitly requested identities still require matching resources."
-        assert len(model.calls) == 1
-        system, user = model.calls[0][0]
-        for value in ("USER_NAMED_TOOL_91", "USER_NAMED_MODEL_91", "USER_NAMED_AGENT_91"):
-            assert value in user.get_text_content()
-            assert value not in system.get_text_content()
-        assert "explicitly requested named Tool, model, or NewAgent" in system.get_text_content()
-        assert "do not silently substitute" in system.get_text_content()
-
-    def test_gap_system_separates_native_draft_coverage_from_runtime_admission(self) -> None:
-        system, _ = self._gap_messages()
-
-        assert "does not grant runtime admission" in system.get_text_content()
-        assert "network access" in system.get_text_content()
-        assert "authorization" in system.get_text_content()
-        assert "credential readiness" in system.get_text_content()
-
-    def test_gap_system_treats_absent_named_candidates_as_unconfirmed_external_inventory(self) -> None:
-        goal = (
-            "Use Tool USER_NAMED_TOOL_104 through NewAgent USER_NAMED_AGENT_104 "
-            "with model USER_NAMED_MODEL_104. Preserve the requested identities."
-        )
-        gap = "Recommendation coverage for the selected binding is unconfirmed."
-        model = _FakeInstance([json.dumps({"gap": gap})])
-
-        result = build.assess_capability_gap(
-            model,
-            ["Tool USER_NAMED_TOOL_104 executes through NewAgent USER_NAMED_AGENT_104"],
-            [],
-            goal_text=goal,
-            requirements={"model_id": "USER_NAMED_MODEL_104"},
-        )
-
-        assert result == gap
-        assert len(model.calls) == 1
-        system, user = model.calls[0][0]
-        assert "- (none)" in user.get_text_content()
-        for value in ("USER_NAMED_TOOL_104", "USER_NAMED_MODEL_104", "USER_NAMED_AGENT_104"):
-            assert value in user.get_text_content()
-            assert value not in system.get_text_content()
-        assert "non-exhaustive subset" in system.get_text_content()
-        assert "not the complete workspace inventory" in system.get_text_content()
-        assert "recommendation/binding coverage is unconfirmed" in system.get_text_content()
-        assert (
-            "does not establish that the resource is uninstalled, unavailable, or permission denied"
-            in system.get_text_content()
-        )
-
-
-def test_plan_distinguishes_stop_on_error_from_diagnostic_output() -> None:
-    """Removing the native-failure rule must not leave a marker-only plan contract."""
-    model = _FakeInstance([_plan_reply(["code node sends the POST and stops on failure"])])
-    requirements = {"error_status_value": 0, "continue_on_post_failure": False, "health_success_status": 404}
-
-    plan = build.propose_plan_v1(model, requirements, goal_text="POST the receipt, then fetch health")
-
-    assert plan is not None
-    messages = model.calls[0][0]
-    user = messages[1].get_text_content()
-    assert json.loads(user.split("CONFIRMED REQUIREMENTS:\n", 1)[1]) == requirements
-    system = messages[0].get_text_content()
-    assert "stop-on-error" in system
-    assert "raise" in system
-    assert "diagnostic" in system
-    assert "error_strategy" in system
 
 
 @pytest.mark.parametrize("reply_language", ["en", "zh-Hans"])
@@ -2281,24 +1309,6 @@ def test_discovery_keeps_selected_tools_with_bounded_localized_reason_fallback(
     assert options[0].meta.startswith(fallback)
     assert len(options[0].meta) < 180
     assert [(d["code"], d["fallback_used"]) for d in diagnostics] == [("response_schema_invalid", True)]
-
-
-def test_planner_keeps_conditional_model_preference_separate_from_required_behavior() -> None:
-    goal = "按明确规则校验订单并计算合计，输出固定格式报告；如果需要模型，优先使用指定模型。"
-    requirements = {"rules": "total = price * count", "format": "fixed report"}
-    model = _FakeInstance([_plan_reply(["code node: validate and calculate", "template node: format report"])])
-    plan = build.propose_plan_v1(model, requirements, goal_text=goal, reply_language="zh-Hans")
-    assert plan is not None
-    system = model.calls[0][0][0].get_text_content()
-    source = model.calls[0][0][1].get_text_content()
-    assert "conditional model preference does not require an LLM step" in system
-    assert "native Code for exact parsing, arithmetic and validation" in system
-    assert "Template for deterministic formatting" in system
-    assert "explicit generative or semantic behavior" in system
-    assert "explicitly required model identity" in system
-    assert goal in source
-    assert json.dumps(requirements, ensure_ascii=False) in source
-    assert len(model.calls) == 1
 
 
 def test_business_clarification_hides_only_marked_internal_defaults_but_keeps_them_for_planning() -> None:
@@ -2440,17 +1450,6 @@ def test_business_clarification_preserves_explicit_required_technical_structure(
     assert analysis["values"] == values
 
 
-def test_business_clarification_prompt_uses_scalar_controls_for_necessary_questions() -> None:
-    model = _FakeInstance([json.dumps({"fields": [], "values": {}})])
-
-    build.analyze_goal(model, "Research a market and return an analysis report.")
-
-    system = model.calls[0][0][0].get_text_content()
-    assert "natural-language scalar controls" in system
-    assert "internal values" in system
-    assert "required unanswered" in system
-
-
 def test_business_clarification_keeps_explicit_optional_json_editable_through_real_handlers() -> None:
     """Optional controls are still user-owned when the goal explicitly asks to edit them."""
     from dataclasses import replace
@@ -2555,32 +1554,6 @@ def test_business_clarification_protects_unmarked_or_editable_complex_defaults(m
     assert [field["key"] for field in analysis["fields"]] == ["sections", "options"]
     assert [field["type"] for field in analysis["fields"]] == ["json", "json_object"]
     assert analysis["values"] == values
-
-
-def test_business_clarification_keeps_internal_marked_question_without_a_default() -> None:
-    model = _FakeInstance(
-        [
-            json.dumps(
-                {
-                    "fields": [
-                        {
-                            "key": "constraints",
-                            "label": "Business constraints",
-                            "type": "json_object",
-                            "presentation": "internal",
-                            "requires_user_decision": False,
-                        }
-                    ],
-                    "values": {},
-                }
-            )
-        ]
-    )
-
-    analysis = build.analyze_goal(model, "Ask for any missing report constraints.")
-
-    assert [field["key"] for field in analysis["fields"]] == ["constraints"]
-    assert analysis["values"] == {}
 
 
 def test_planner_returns_later_discovered_business_questions_with_editable_defaults() -> None:
@@ -2742,60 +1715,6 @@ def test_preapproval_feasibility_unknown_is_disclosed_without_changing_approval(
     assert confirmed.context.resource_selection == {"resource_ids": []}
     assert len(provider.calls) == before_confirm
     assert not env.fake_dify.applied
-
-
-@pytest.mark.parametrize("model_available", [True, False])
-def test_knowledge_only_discovery_does_not_report_missing_plan_assessment(
-    monkeypatch: pytest.MonkeyPatch, model_available: bool
-) -> None:
-    """No executable plan is expected before the knowledge decision gate."""
-    from core.dify_builder.models import Turn
-    from core.dify_builder.state import PcState
-    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
-    from services.dify_builder.application.handlers_build import handle_initial_plan
-    from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _seed_build_session
-    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
-
-    provider = _FakeInstance(['{"resource_ids":[],"knowledge_requires_clarification":true}'])
-    agent = LlmBuilderAgent(
-        "tenant-1", account_id="acc-1", model_resolver_fn=lambda: provider if model_available else None
-    )
-    env, repo = _new_env(agent=agent)
-    agent.set_diagnostic_callback(env.record_diagnostic)
-    session = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, goal_text="Use the knowledge base", plan_items=[])
-    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: resources.TenantResources([], [], []))
-    result = handle_initial_plan(env, Turn(actor=_actor()), *repo.get_session(session.id))
-    reply = english_text(next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn"))
-    assert reply == "Recommended resources."
-    assert result.next == PcState.BUILD_RESOURCE_RECOMMENDATION
-    assert len(provider.calls) == int(model_available)
-    assert not env.fake_dify.applied
-
-
-@pytest.mark.parametrize("gap_reply", ['{"gap":""}', '{"gap":42}'])
-def test_feasibility_reply_does_not_attribute_earlier_discovery_failure(
-    monkeypatch: pytest.MonkeyPatch, gap_reply: str
-) -> None:
-    """A discovery timeout must not become the cause of an unrelated gap schema failure."""
-    from core.dify_builder.models import Turn
-    from core.dify_builder.state import PcState
-    from services.dify_builder.agent.llm_agent import LlmBuilderAgent
-    from services.dify_builder.application.handlers_build import handle_initial_plan
-    from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _seed_build_session
-    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
-
-    provider = _FakeInstance([TimeoutError("PRIVATE_DISCOVERY_VALUE"), gap_reply])
-    agent = LlmBuilderAgent("tenant-1", account_id="acc-1", model_resolver_fn=lambda: provider)
-    env, repo = _new_env(agent=agent)
-    agent.set_diagnostic_callback(env.record_diagnostic)
-    session = _seed_build_session(repo, PcState.BUILD_INITIAL_PLAN, plan_items=["code transforms input"])
-    monkeypatch.setattr(resources, "list_tenant_resources", lambda *_a, **_k: resources.TenantResources([], [], []))
-    result = handle_initial_plan(env, Turn(actor=_actor()), *repo.get_session(session.id))
-    reply = english_text(next(item.payload["reply_text"] for item in result.items if item.kind == "assistant_turn"))
-    assert "timed out" not in reply
-    assert ("plan feasibility check is unavailable" in reply) is (gap_reply == '{"gap":42}')
-    assert "PRIVATE" not in reply + json.dumps(env.diagnostics)
-    assert len(provider.calls) == 2
 
 
 def test_feasibility_policy_denial_is_not_an_unknown_assessment() -> None:

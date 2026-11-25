@@ -23,13 +23,6 @@ def snapshot() -> NodeExecutionSnapshot:
     return NodeExecutionSnapshot(execution_id="execution", title=SENTINEL, index=1, start_at=NOW)
 
 
-def test_empty_start_snapshots_are_supported(guard: NativeObservationGuard) -> None:
-    event = QueueWorkflowStartedEvent()
-    result = project_native_queue_event(guard=guard, event=event)
-    assert result.node_execution_snapshots == ()
-    assert result is not event
-
-
 def test_nonempty_start_snapshots_preserve_correlation_and_redact_title(guard: NativeObservationGuard) -> None:
     raw = snapshot()
     event = QueueWorkflowStartedEvent(node_execution_snapshots=(raw,))

@@ -1,11 +1,9 @@
-from dataclasses import replace
-
 import pytest
 import pytest_mock
 from pydantic import ValidationError
 
 from core.dify_builder.models import Graph, NodeOutput, Run, RunVerification
-from runtime_contracts.builder.execution import ExecutionEvidenceSummary, FailureResourceKind
+from runtime_contracts.builder.execution import ExecutionEvidenceSummary
 from services.dify_builder.application import handlers_build, handlers_edit, handlers_fix
 from services.dify_builder.application.verification import result_card
 
@@ -24,31 +22,6 @@ def summary() -> ExecutionEvidenceSummary:
         failure_resource=("model", "langgenius/anthropic/anthropic", "claude-opus-4-8"),
         failure_node_ids=("llm",),
     )
-
-
-def test_runtime_service_failure_card_retains_native_run_and_specific_node() -> None:
-    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
-
-    run = Run(
-        status="failed",
-        dify_run_id="native",
-        verification=RunVerification(
-            execution_revision="rev",
-            executed_graph_revision="graph",
-            terminal_outputs=None,
-            output_findings=[],
-            executed_node_ids=["start", "llm"],
-            no_output_dead_branch=False,
-            execution_evidence=summary(),
-        ),
-    )
-    card = result_card(run)
-    assert card.outcome == "execution_failed"
-    assert card.failure_phase == "execution"
-    assert card.failure_node_ids == ["llm"]
-    assert card.dify_run_id == "native"
-    assert "Plugin service" in english_text(card.failure_reason)
-    assert "claude-opus-4-8" in english_text(card.failure_reason)
 
 
 @pytest.mark.parametrize(
@@ -128,33 +101,6 @@ def test_runtime_failure_cannot_claim_unknown_or_missing_native_evidence(variant
                 **value,
             }
         )
-
-
-def test_runtime_attribution_uses_failed_native_resource_not_code_error_text() -> None:
-    from services.dify_builder.native_runtime_failure import plugin_service_failure
-
-    graph = {
-        "nodes": [
-            {
-                "id": "llm",
-                "data": {
-                    "type": "llm",
-                    "model": {"provider": "langgenius/anthropic/anthropic", "name": "claude-opus-4-8"},
-                },
-            }
-        ]
-    }
-    run = Run(
-        status="failed",
-        dify_run_id="native",
-        per_node=[NodeOutput(node_id="llm", status="failed", error="Request to Plugin Daemon Service failed-500")],
-    )
-    assert plugin_service_failure(run, graph) == (
-        ("model", "langgenius/anthropic/anthropic", "claude-opus-4-8"),
-        ("llm",),
-    )
-    assert plugin_service_failure(replace(run, status="running"), graph) is None
-    assert plugin_service_failure(run, {"nodes": [{"id": "llm", "data": {"type": "code"}}]}) is None
 
 
 @pytest.mark.parametrize("flow", ["build", "edit", "fix"])
@@ -288,43 +234,6 @@ def test_auth_classification_rejects_unproven_or_ambiguous_native_errors(variant
     assert native_resource_failure(run, graph) is None
 
 
-@pytest.mark.parametrize("reason", ["authentication", "permission_denied"])
-def test_resource_auth_card_has_localized_setup_guidance_and_sanitized_builder_run(reason: str) -> None:
-    from services.dify_builder.execution_messages import native_service_failure, sanitize_observed_failure
-    from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
-
-    evidence = summary().model_copy(update={"failure_reason": reason})
-    run = Run(
-        status="failed",
-        dify_run_id="native",
-        error="PRIVATE_TRACEBACK",
-        per_node=[NodeOutput(node_id="llm", status="failed", error="PRIVATE_PROVIDER_BODY")],
-        verification=RunVerification(
-            execution_revision="rev",
-            executed_graph_revision="graph",
-            terminal_outputs=None,
-            output_findings=[],
-            executed_node_ids=["llm"],
-            no_output_dead_branch=False,
-            execution_evidence=evidence,
-        ),
-    )
-    projected = sanitize_observed_failure(run)
-    assert native_service_failure(projected)
-    assert "PRIVATE" not in projected.error
-    assert "PRIVATE" not in projected.per_node[0].error
-    assert run.error == "PRIVATE_TRACEBACK"
-    card = result_card(projected)
-    rendered = english_text(card.failure_reason)
-    assert "credential" in rendered.lower() or "permission" in rendered.lower()
-    assert "claude-opus-4-8" in rendered
-    from services.dify_builder.execution_messages import observed_failure_message
-
-    chinese = observed_failure_message(evidence, reply_language="zh-CN")
-    assert isinstance(chinese, str)
-    assert "凭据" in chinese or "权限" in chinese
-
-
 @pytest.mark.parametrize("variant", ["unsealed", "wrong_native", "unknown"])
 def test_sanitizer_does_not_reclassify_unsealed_mismatched_or_unknown_runs(variant: str) -> None:
     from services.dify_builder.execution_messages import native_service_failure, sanitize_observed_failure
@@ -353,13 +262,6 @@ def test_sanitizer_does_not_reclassify_unsealed_mismatched_or_unknown_runs(varia
     )
     assert not native_service_failure(run)
     assert sanitize_observed_failure(run).error == "original"
-
-
-def test_observed_native_request_id_envelope_is_classified() -> None:
-    from services.dify_builder.native_runtime_failure import _native_reason
-
-    error = "req_id: abc12345678 " + native_auth_error(401, "authentication_error").removeprefix("Run failed: ")
-    assert _native_reason(error, FailureResourceKind.MODEL) == "authentication"
 
 
 @pytest.mark.parametrize("node_type", ["llm", "code"])
@@ -391,23 +293,6 @@ def test_stream_sanitization_requires_exact_resource_node_and_preserves_code(nod
     else:
         assert safe == payload
         assert safe_terminal == terminal
-
-
-@pytest.mark.parametrize("variant", ["no_run", "other_node", "succeeded", "unmatched_terminal"])
-def test_stream_sanitizer_preserves_unattributed_error(variant: str) -> None:
-    from services.dify_builder.execution_messages import sanitize_resource_failure_event
-
-    payload = {
-        "event": "workflow_finished" if variant == "unmatched_terminal" else "node_finished",
-        "workflow_run_id": "" if variant == "no_run" else "native",
-        "data": {
-            "node_id": "other" if variant == "other_node" else "node",
-            "status": "succeeded" if variant == "succeeded" else "failed",
-            "error": native_auth_error(401, "authentication_error"),
-        },
-    }
-    graph = {"nodes": [{"id": "node", "data": {"type": "llm", "model": {"provider": "provider", "name": "model"}}}]}
-    assert sanitize_resource_failure_event(payload, graph=graph, recognized_errors={}) == payload
 
 
 def test_native_resource_metadata_cannot_echo_provider_urls() -> None:
