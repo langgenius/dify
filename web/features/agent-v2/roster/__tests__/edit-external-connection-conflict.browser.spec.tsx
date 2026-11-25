@@ -619,3 +619,51 @@ it('recovers an older connection response without audit fields without inventing
   expect(requests.verify).toHaveBeenCalledTimes(1)
   expect(requests.save).not.toHaveBeenCalled()
 })
+
+it('rebases a recovered Save conflict using the submitted credential comparison without retaining its token', async () => {
+  current = createExternalAgentDetail({
+    connection: { ...current.connection, auth_type: 'none', has_credential: false },
+  })
+  const proof = createExternalVerification()
+  requests.verify.mockResolvedValue(proof)
+  requests.save
+    .mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 }))
+    .mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  const { trigger } = await setup()
+  await endpoint().fill('https://my-change.example.test/agent')
+  await dialog().getByRole('combobox', { name: 'Authentication', exact: true }).click()
+  await page.getByRole('option', { name: 'Bearer token', exact: true }).click()
+  await token().fill('replacement-test-token')
+  await verify().click()
+  await dialog().getByRole('button', { name: 'Save changes', exact: true }).click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Check save status', exact: true }))
+    .toBeVisible()
+  await dialog().getByRole('button', { name: 'Close', exact: true }).last().click()
+  await expect.element(dialog()).not.toBeInTheDocument()
+  advanceConnection(revision2, 'New saver', {
+    endpoint: 'https://my-change.example.test/agent',
+    auth_type: 'bearer',
+    has_credential: true,
+    interface_url: proof.interface_url,
+    auth_check: proof.auth_check,
+    card: proof.card,
+    capabilities: proof.capabilities,
+  })
+  await trigger.click()
+  await expect.element(token()).toHaveValue('')
+  await dialog().getByRole('button', { name: 'Check save status', exact: true }).click()
+  await expect.element(verify()).toBeEnabled()
+  await expect.element(comparison()).not.toBeInTheDocument()
+  expect(requests.save.mock.calls[1]![0]).toEqual(requests.save.mock.calls[0]![0])
+  await verify().click()
+  await expect
+    .element(dialog().getByRole('button', { name: 'Save changes', exact: true }))
+    .toBeEnabled()
+  expect(requests.verify.mock.calls[1]![0].body).toMatchObject({
+    auth_type: 'bearer',
+    credential_action: 'keep',
+    expected_connection_revision_id: revision2,
+  })
+  expect(requests.verify.mock.calls[1]![0].body).not.toHaveProperty('credential')
+})

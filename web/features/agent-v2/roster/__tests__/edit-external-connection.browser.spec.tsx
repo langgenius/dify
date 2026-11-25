@@ -573,3 +573,17 @@ it('recovers an unknown connection Save with the original proof, revision and ke
   expect(requests.save.mock.calls[1]![0]).toEqual(original)
   expect(requests.verify).toHaveBeenCalledTimes(1)
 })
+
+it('discards an ordinary edit session and loads the latest saved connection on reopen', async () => {
+  const { trigger } = await setup()
+  await endpoint().fill('https://discarded.example.test/agent')
+  await dialog().getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(dialog()).not.toBeInTheDocument()
+  current = createExternalAgentDetail({
+    connection: { ...current.connection, endpoint: 'https://latest.example.test/agent' },
+  })
+  await trigger.click()
+  await expect.element(endpoint()).toHaveValue('https://latest.example.test/agent')
+  await expect.element(verify()).toBeDisabled()
+  expect(requests.detail).toHaveBeenCalledTimes(2)
+})
