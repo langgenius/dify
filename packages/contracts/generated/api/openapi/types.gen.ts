@@ -288,7 +288,7 @@ export type AppListQuery = {
   mode?: SupportedAppType | null
   name?: string | null
   page?: number
-  workspace_id: string
+  workspace_id?: string | null
 }
 
 export type AppListResponse = {
@@ -1536,6 +1536,7 @@ export type OpenApiErrorCode =
   | 'plugin_install_forbidden'
   | 'plugin_not_installed'
   | 'plugin_service_unavailable'
+  | 'private_app_access_denied'
   | 'provider_not_found'
   | 'provider_not_initialize'
   | 'provider_quota_exceeded'
@@ -2584,12 +2585,12 @@ export type DeleteAccountSessionsBySessionIdResponse =
 export type GetAppsData = {
   body?: never
   path?: never
-  query: {
+  query?: {
     limit?: number
     mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
-    workspace_id: string
+    workspace_id?: string
   }
   url: '/apps'
 }
@@ -4215,6 +4216,27 @@ export type PostAppsByAppIdPublishResponses = {
 
 export type PostAppsByAppIdPublishResponse =
   PostAppsByAppIdPublishResponses[keyof PostAppsByAppIdPublishResponses]
+
+export type PostMcpData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/mcp'
+}
+
+export type PostMcpErrors = {
+  default: ErrorBody
+}
+
+export type PostMcpError = PostMcpErrors[keyof PostMcpErrors]
+
+export type PostMcpResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostMcpResponse = PostMcpResponses[keyof PostMcpResponses]
 
 export type GetNodeTypesData = {
   body?: never
