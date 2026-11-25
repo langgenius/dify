@@ -1,6 +1,7 @@
-import type { Rule } from 'eslint'
+import type { Rule, Scope } from 'eslint'
 
 type Node = Rule.Node
+type BindingKind = 'store' | 'reactFlow' | 'state'
 
 const STORE_SETTERS = new Set(['setNodes', 'setEdges'])
 const REACT_FLOW_SETTERS = new Set([
@@ -20,16 +21,16 @@ function isCallTo(node: Node | null | undefined, name: string) {
   )
 }
 
-function isMethodCallOn(node: Node | null | undefined, method: string, objectNames: Set<string>) {
-  return (
-    node?.type === 'CallExpression' &&
-    node.callee.type === 'MemberExpression' &&
-    !node.callee.computed &&
-    node.callee.property.type === 'Identifier' &&
-    node.callee.property.name === method &&
-    node.callee.object.type === 'Identifier' &&
-    objectNames.has(node.callee.object.name)
+function getStateTarget(node: Node | null | undefined) {
+  if (
+    node?.type !== 'CallExpression' ||
+    node.callee.type !== 'MemberExpression' ||
+    node.callee.computed ||
+    node.callee.property.type !== 'Identifier' ||
+    node.callee.property.name !== 'getState'
   )
+    return undefined
+  return node.callee.object as Node
 }
 
 function propertyName(node: Node) {
@@ -37,6 +38,18 @@ function propertyName(node: Node) {
   if (node.key.type === 'Identifier') return node.key.name
   if (node.key.type === 'Literal' && typeof node.key.value === 'string') return node.key.value
   return undefined
+}
+
+function returnedObjects(fn: Node): Node[] {
+  if (fn.type !== 'ArrowFunctionExpression' && fn.type !== 'FunctionExpression') return []
+  const body = fn.body as Node
+  if (body.type === 'ObjectExpression') return [body]
+  if (body.type !== 'BlockStatement') return []
+  return body.body.flatMap((statement) =>
+    statement.type === 'ReturnStatement' && statement.argument?.type === 'ObjectExpression'
+      ? [statement.argument as Node]
+      : [],
+  )
 }
 
 const rule: Rule.RuleModule = {
@@ -53,73 +66,83 @@ const rule: Rule.RuleModule = {
     },
   },
   create(context) {
-    const storeNames = new Set<string>()
-    const reactFlowNames = new Set<string>()
-    const stateNames = new Set<string>()
-    const destructures: Array<{ pattern: Node; init: Node }> = []
-    const stateCandidates: Array<{ name: string; init: Node }> = []
-    const members: Array<{ node: Node; object: Node; name: string }> = []
-    const calls: Node[] = []
+    const { sourceCode } = context
 
-    const isRawState = (node: Node) =>
-      isMethodCallOn(node, 'getState', storeNames) ||
-      (node.type === 'Identifier' && stateNames.has(node.name))
-    const isReactFlow = (node: Node) =>
-      isCallTo(node, 'useReactFlow') ||
-      (node.type === 'Identifier' && reactFlowNames.has(node.name))
-    const settersFor = (node: Node) => {
-      if (isRawState(node)) return STORE_SETTERS
-      if (isReactFlow(node)) return REACT_FLOW_SETTERS
+    const findVariable = (identifier: Node & { name: string }) => {
+      for (
+        let scope: Scope.Scope | null = sourceCode.getScope(identifier);
+        scope;
+        scope = scope.upper
+      ) {
+        const variable = scope.set.get(identifier.name)
+        if (variable) return variable
+      }
       return undefined
     }
+
+    const bindingKind = (node: Node): BindingKind | undefined => {
+      if (node.type !== 'Identifier') return undefined
+      const definition = findVariable(node)?.defs[0]
+      if (definition?.type !== 'Variable') return undefined
+      const declarator = definition.node as Node
+      if (declarator.type !== 'VariableDeclarator' || declarator.id.type !== 'Identifier')
+        return undefined
+      const init = declarator.init as Node | null | undefined
+      if (isCallTo(init, 'useStoreApi')) return 'store'
+      if (isCallTo(init, 'useReactFlow')) return 'reactFlow'
+      const stateTarget = getStateTarget(init)
+      if (stateTarget && bindingKind(stateTarget) === 'store') return 'state'
+      return undefined
+    }
+
+    const isRawGetState = (node: Node) => {
+      const stateTarget = getStateTarget(node)
+      return !!stateTarget && bindingKind(stateTarget) === 'store'
+    }
+
+    const settersFor = (node: Node) => {
+      if (isRawGetState(node)) return STORE_SETTERS
+      if (isCallTo(node, 'useReactFlow')) return REACT_FLOW_SETTERS
+      const kind = bindingKind(node)
+      if (kind === 'state') return STORE_SETTERS
+      if (kind === 'reactFlow') return REACT_FLOW_SETTERS
+      return undefined
+    }
+
     const report = (node: Node, setter: string) =>
       context.report({ node, messageId: 'rawGraphWrite', data: { setter } })
 
     return {
       VariableDeclarator(node: Node) {
-        if (node.type !== 'VariableDeclarator' || !node.init) return
-        const init = node.init as Node
-        if (node.id.type === 'ObjectPattern') {
-          destructures.push({ pattern: node.id as Node, init })
+        if (node.type !== 'VariableDeclarator' || node.id.type !== 'ObjectPattern' || !node.init)
           return
+        const setters = settersFor(node.init as Node)
+        if (!setters) return
+        for (const property of node.id.properties) {
+          const name = propertyName(property as Node)
+          if (name && setters.has(name)) report(property as Node, name)
         }
-        if (node.id.type !== 'Identifier') return
-        if (isCallTo(init, 'useStoreApi')) storeNames.add(node.id.name)
-        else if (isCallTo(init, 'useReactFlow')) reactFlowNames.add(node.id.name)
-        else stateCandidates.push({ name: node.id.name, init })
       },
       MemberExpression(node: Node) {
         if (node.type !== 'MemberExpression' || node.computed) return
         if (node.property.type !== 'Identifier') return
-        if (!REACT_FLOW_SETTERS.has(node.property.name)) return
-        members.push({ node, object: node.object as Node, name: node.property.name })
+        const name = node.property.name
+        if (!REACT_FLOW_SETTERS.has(name)) return
+        if (settersFor(node.object as Node)?.has(name)) report(node, name)
       },
       CallExpression(node: Node) {
-        calls.push(node)
-      },
-      'Program:exit': () => {
-        for (const { name, init } of stateCandidates)
-          if (isMethodCallOn(init, 'getState', storeNames)) stateNames.add(name)
-
-        for (const { pattern, init } of destructures) {
-          const setters = settersFor(init)
-          if (!setters || pattern.type !== 'ObjectPattern') continue
-          for (const property of pattern.properties) {
-            const name = propertyName(property as Node)
-            if (name && setters.has(name)) report(property as Node, name)
-          }
-        }
-
-        for (const { node, object, name } of members) {
-          if (settersFor(object)?.has(name)) report(node, name)
-        }
-
-        for (const call of calls) {
-          if (call.type !== 'CallExpression') continue
-          if (!isMethodCallOn(call, 'setState', storeNames)) continue
-          const [argument] = call.arguments
-          if (argument?.type !== 'ObjectExpression') continue
-          for (const property of argument.properties) {
+        if (node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') return
+        const { callee } = node
+        if (callee.computed || callee.property.type !== 'Identifier') return
+        if (callee.property.name !== 'setState') return
+        if (bindingKind(callee.object as Node) !== 'store') return
+        const [argument] = node.arguments as Node[]
+        if (!argument) return
+        const objects =
+          argument.type === 'ObjectExpression' ? [argument] : returnedObjects(argument)
+        for (const object of objects) {
+          if (object.type !== 'ObjectExpression') continue
+          for (const property of object.properties) {
             const name = propertyName(property as Node)
             if (name && GRAPH_STATE_KEYS.has(name))
               report(property as Node, `setState({ ${name} })`)

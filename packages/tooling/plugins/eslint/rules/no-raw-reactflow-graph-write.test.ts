@@ -102,3 +102,47 @@ it('allows collaborative setters, reads, and non-graph store updates', () => {
     ),
   ).toEqual([])
 })
+
+it('reports graph keys returned from functional setState updates', () => {
+  expect(
+    lintFixture(
+      [
+        'function useHook() {',
+        '  const store = useStoreApi()',
+        '  return () => {',
+        '    store.setState((state) => ({ nodes: state.nodes.slice(1) }))',
+        '    store.setState(function (state) {',
+        '      return { edges: [], transform: state.transform }',
+        '    })',
+        '    store.setState((state) => ({ userSelectionActive: !state.userSelectionActive }))',
+        '  }',
+        '}',
+      ].join('\n'),
+    ),
+  ).toEqual([4, 6])
+})
+
+it('resolves each name to its own binding instead of matching names across scopes', () => {
+  expect(
+    lintFixture(
+      [
+        'function useRaw() {',
+        '  const store = useStoreApi()',
+        '  return store.getState().getNodes()',
+        '}',
+        'function useCollaborative() {',
+        '  const store = useCollaborativeWorkflow()',
+        '  const { setNodes } = store.getState()',
+        '  return () => {',
+        '    const reactflow = useCollaborativeWorkflow()',
+        '    reactflow.setNodes([])',
+        '  }',
+        '}',
+        'function useShadowed() {',
+        '  const store = useStoreApi()',
+        '  return (store: Store) => store.getState().setNodes([])',
+        '}',
+      ].join('\n'),
+    ),
+  ).toEqual([])
+})
