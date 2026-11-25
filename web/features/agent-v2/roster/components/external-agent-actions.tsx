@@ -9,7 +9,6 @@ import type { ExternalAgentListItem } from './external-agent-list'
 import type { IconPickerInputValue } from '@/app/components/base/icon-picker'
 import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
 import {
-  AlertDialog,
   AlertDialogBody,
   AlertDialogCancelButton,
   AlertDialogContent,
@@ -20,7 +19,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
   DialogBody,
   DialogClose,
   DialogContent,
@@ -34,8 +32,8 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { skipToken, useQuery } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { IconPicker, IconPickerContent, IconPickerTrigger } from '@/app/components/base/icon-picker'
@@ -45,11 +43,14 @@ import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { externalAgentErrorMessage } from './external-connection-verification'
 
-export type ExternalAgentActionRequest = {
-  kind: 'edit' | 'toggle' | 'delete'
+export type ExternalAgentEditRequest = {
   agent: ExternalAgentListItem
   trigger: HTMLButtonElement | null
   adjacentFocusTargets: HTMLElement[]
+}
+
+export type ExternalAgentConfirmationRequest = ExternalAgentEditRequest & {
+  kind: 'toggle' | 'delete'
 }
 
 type AgentInfo = Pick<ExternalAgentAssetResponse, 'name' | 'role' | 'description'> &
@@ -219,6 +220,13 @@ function EditAgentInfoLoader({
     }),
   )
   const [reload, setReload] = useState(0)
+  const activeRef = useRef(false)
+  useEffect(() => {
+    activeRef.current = true
+    return () => {
+      activeRef.current = false
+    }
+  }, [])
   if (!detail.data)
     return <DialogBody>{detail.isPending && <LoadingPlaceholder className="h-40" />}</DialogBody>
   return (
@@ -230,7 +238,7 @@ function EditAgentInfoLoader({
       onSubmit={onSubmit}
       onReload={() => {
         void detail.refetch().then((result) => {
-          if (result.data && !result.error) {
+          if (activeRef.current && result.data && !result.error) {
             onReset()
             setReload((current) => current + 1)
           }
@@ -240,64 +248,113 @@ function EditAgentInfoLoader({
   )
 }
 
-type ExternalAgentActionsProps = {
-  request: ExternalAgentActionRequest | undefined
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  fallbackFocus: RefObject<HTMLElement | null>
-  onRequest: (request: ExternalAgentActionRequest) => void
-  onDeleted?: () => void
+export function ExternalAgentEditDialogContent({
+  agent,
+  pending,
+  error,
+  onReset,
+  onSubmit,
+}: {
+  agent: ExternalAgentListItem
+  pending: boolean
+  error: unknown
+  onReset: () => void
+  onSubmit: (input: { params: { agent_id: string }; body: ExternalAgentInfoPayload }) => void
+}) {
+  const { t } = useTranslation(['agentRoster', 'common'])
+  return (
+    <DialogContent className="w-150">
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['external.editInfo'])}</DialogTitle>
+        <DialogDescription className="sr-only">
+          {t(($) => $['roster.editDialog.description'])}
+        </DialogDescription>
+        <DialogHeaderCloseButton
+          disabled={pending}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        />
+      </DialogHeader>
+      <EditAgentInfoLoader
+        agentId={agent.key}
+        pending={pending}
+        error={error}
+        onReset={onReset}
+        onSubmit={(base, fields) => {
+          const changes: ExternalAgentInfoPayload['changes'] = {}
+          for (const key of ['name', 'role', 'description'] as const)
+            if (fields[key] !== base[key]) changes[key] = fields[key]
+          for (const key of ['icon_type', 'icon', 'icon_background'] as const) {
+            const value = fields.icon?.[key] ?? null
+            if (value !== base[key]) changes[key] = value
+          }
+          onSubmit({
+            params: { agent_id: base.id },
+            body: { expected_revision: base.metadata_revision, changes },
+          })
+        }}
+      />
+    </DialogContent>
+  )
 }
 
-export function ExternalAgentActions({
+export function ExternalAgentConfirmationContent({
   request,
-  open,
-  onOpenChange,
+  pending,
+  error,
   fallbackFocus,
-  onRequest,
-  onDeleted,
-}: ExternalAgentActionsProps) {
+  onConfirm,
+  onPauseInstead,
+}: {
+  request: ExternalAgentConfirmationRequest
+  pending: boolean
+  error: unknown
+  fallbackFocus: RefObject<HTMLElement | null>
+  onConfirm: () => void
+  onPauseInstead: () => void
+}) {
+  const finalFocus = () => {
+    if (request.trigger?.isConnected) return true
+    const target =
+      request.adjacentFocusTargets.find((target) => target.isConnected) ?? fallbackFocus.current
+    if (!target) return true
+    target.focus({ preventScroll: true })
+    return false
+  }
+  return (
+    <AlertDialogContent finalFocus={finalFocus}>
+      <ExternalAgentConfirmationSession
+        request={request}
+        pending={pending}
+        error={error}
+        onConfirm={onConfirm}
+        onPauseInstead={onPauseInstead}
+      />
+    </AlertDialogContent>
+  )
+}
+
+function ExternalAgentConfirmationSession({
+  request,
+  pending,
+  error,
+  onConfirm,
+  onPauseInstead,
+}: {
+  request: ExternalAgentConfirmationRequest
+  pending: boolean
+  error: unknown
+  onConfirm: () => void
+  onPauseInstead: () => void
+}) {
   const { t } = useTranslation(['agentRoster', 'common'])
-  const update = useMutation(
-    consoleQuery.externalAgents.byAgentId.info.patch.mutationOptions({
-      context: { silent: true },
-      retry: false,
-    }),
-  )
-  const toggle = useMutation(
-    consoleQuery.externalAgents.byAgentId.enabled.put.mutationOptions({
-      context: { silent: true },
-      retry: false,
-    }),
-  )
-  const deletion = useMutation(
-    consoleQuery.externalAgents.byAgentId.delete.mutationOptions({
-      context: { silent: true },
-      retry: false,
-      onSuccess: () => onDeleted?.(),
-    }),
-  )
+  const { agent, kind } = request
+  const deleting = kind === 'delete'
   const references = useQuery(
     consoleQuery.externalAgents.byAgentId.references.get.queryOptions({
-      input:
-        request && request.kind === 'delete'
-          ? { params: { agent_id: request.agent.key } }
-          : skipToken,
-      enabled: open && request?.kind === 'delete',
+      input: deleting ? { params: { agent_id: agent.key } } : skipToken,
       retry: false,
     }),
   )
-  if (!request) return null
-  const { agent, kind: action } = request
-  const deleting = action === 'delete'
-  const pending = update.isPending || toggle.isPending || deletion.isPending
-  const error = deleting ? deletion.error : toggle.error
-  const finalFocus = () =>
-    (request.trigger?.isConnected
-      ? request.trigger
-      : request.adjacentFocusTargets.find((target) => target.isConnected)) ??
-    fallbackFocus.current ??
-    true
   const title = deleting
     ? t(($) => $['external.deleteDialog.title'])
     : agent.enabled
@@ -308,173 +365,101 @@ export function ExternalAgentActions({
     : agent.enabled
       ? t(($) => $['external.disable'])
       : t(($) => $['external.enable'])
-  const changeOpen = (next: boolean, details: { cancel: () => void }) => {
-    if (pending) details.cancel()
-    else onOpenChange(next)
-  }
-  const reset = (next: boolean) => {
-    if (!next) {
-      update.reset()
-      toggle.reset()
-      deletion.reset()
-    }
-  }
-
   return (
     <>
-      <Dialog
-        disablePointerDismissal
-        open={open && action === 'edit'}
-        onOpenChange={changeOpen}
-        onOpenChangeComplete={reset}
-      >
-        <DialogContent className="w-150" finalFocus={finalFocus}>
-          <DialogHeader>
-            <DialogTitle>{t(($) => $['external.editInfo'])}</DialogTitle>
-            <DialogDescription className="sr-only">
-              {t(($) => $['roster.editDialog.description'])}
-            </DialogDescription>
-            <DialogHeaderCloseButton
-              disabled={pending}
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
-          </DialogHeader>
-          <EditAgentInfoLoader
-            agentId={agent.key}
-            pending={update.isPending}
-            error={update.error}
-            onReset={update.reset}
-            onSubmit={(base, fields) => {
-              const changes: ExternalAgentInfoPayload['changes'] = {}
-              for (const key of ['name', 'role', 'description'] as const)
-                if (fields[key] !== base[key]) changes[key] = fields[key]
-              for (const key of ['icon_type', 'icon', 'icon_background'] as const) {
-                const value = fields.icon?.[key] ?? null
-                if (value !== base[key]) changes[key] = value
-              }
-              update.mutate(
-                {
-                  params: { agent_id: base.id },
-                  body: { expected_revision: base.metadata_revision, changes },
-                },
-                { onSuccess: () => onOpenChange(false) },
-              )
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-      <AlertDialog
-        open={open && action !== 'edit'}
-        onOpenChange={changeOpen}
-        onOpenChangeComplete={reset}
-      >
-        <AlertDialogContent finalFocus={finalFocus}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-            {deleting && <p className="system-xs-regular text-text-tertiary">{agent.name}</p>}
-          </AlertDialogHeader>
-          <AlertDialogBody>
-            {deleting ? (
-              <>
-                {references.isError ? (
-                  <Alert type="error">
-                    <AlertTitle>{t(($) => $['external.deleteDialog.impactLoadFailed'])}</AlertTitle>
-                    <AlertActions>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        loading={references.isFetching}
-                        onClick={() => void references.refetch()}
-                      >
-                        {t(($) => $['operation.retry'], { ns: 'common' })}
-                      </Button>
-                    </AlertActions>
-                  </Alert>
-                ) : references.data ? (
-                  <AlertDialogDescription render={<div />}>
-                    <p>
-                      <Trans
-                        i18nKey={($) => $['external.deleteDialog.usage']}
-                        ns="agentRoster"
-                        count={references.data.apps.length}
-                        values={{ count: references.data.apps.length }}
-                        components={{ apps: <span className="system-md-semibold" /> }}
-                      />
-                      {references.data.may_have_in_flight && (
-                        <> {t(($) => $['external.api.inFlight'])}</>
-                      )}
-                    </p>
-                    <p className="mt-2 text-text-tertiary">
-                      {t(($) => $['external.deleteDialog.retention'])}
-                    </p>
-                  </AlertDialogDescription>
-                ) : (
-                  references.isPending && <LoadingPlaceholder className="h-20" />
-                )}
-              </>
-            ) : (
-              <AlertDialogDescription>
-                {agent.enabled
-                  ? t(($) => $['external.disableDialog.description'])
-                  : t(($) => $['external.enableDialog.description'])}
-              </AlertDialogDescription>
-            )}
-            {Boolean(error) && (
+      <AlertDialogHeader>
+        <AlertDialogTitle>{title}</AlertDialogTitle>
+        {deleting && <p className="system-xs-regular text-text-tertiary">{agent.name}</p>}
+      </AlertDialogHeader>
+      <AlertDialogBody>
+        {deleting ? (
+          <>
+            {references.isError ? (
               <Alert type="error">
-                <AlertTitle>
-                  {externalAgentErrorMessage(
-                    error,
-                    t(($) => $['external.api.saveFailed']),
-                  )}
-                </AlertTitle>
+                <AlertTitle>{t(($) => $['external.deleteDialog.impactLoadFailed'])}</AlertTitle>
+                <AlertActions>
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    loading={references.isFetching}
+                    onClick={() => void references.refetch()}
+                  >
+                    {t(($) => $['operation.retry'], { ns: 'common' })}
+                  </Button>
+                </AlertActions>
               </Alert>
+            ) : references.data ? (
+              <AlertDialogDescription render={<div />}>
+                <p>
+                  <Trans
+                    i18nKey={($) => $['external.deleteDialog.usage']}
+                    ns="agentRoster"
+                    count={references.data.apps.length}
+                    values={{ count: references.data.apps.length }}
+                    components={{ apps: <span className="system-md-semibold" /> }}
+                  />
+                  {references.data.may_have_in_flight && (
+                    <> {t(($) => $['external.api.inFlight'])}</>
+                  )}
+                </p>
+                <p className="mt-2 text-text-tertiary">
+                  {t(($) => $['external.deleteDialog.retention'])}
+                </p>
+              </AlertDialogDescription>
+            ) : (
+              references.isPending && <LoadingPlaceholder className="h-20" />
             )}
-          </AlertDialogBody>
-          <AlertDialogFooter spacing={deleting ? 'compact' : 'default'}>
-            <AlertDialogCancelButton disabled={pending} variant="secondary" size="large">
-              {t(($) => $['operation.cancel'], { ns: 'common' })}
-            </AlertDialogCancelButton>
-            <Button
-              variant="primary"
-              size="large"
-              tone={deleting ? 'destructive' : undefined}
-              loading={pending}
-              disabled={
-                deleting && (!references.data || references.isFetching || references.isError)
-              }
-              onClick={() => {
-                if (pending) return
-                if (deleting)
-                  deletion.mutate(
-                    { params: { agent_id: agent.key } },
-                    { onSuccess: () => onOpenChange(false) },
-                  )
-                else
-                  toggle.mutate(
-                    { params: { agent_id: agent.key }, body: { enabled: !agent.enabled } },
-                    { onSuccess: () => onOpenChange(false) },
-                  )
-              }}
-            >
-              {confirmLabel}
-            </Button>
-          </AlertDialogFooter>
-          {deleting && agent.enabled && (
-            <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
-              <span>{t(($) => $['external.deleteDialog.pauseInstead'])}</span>
-              <Button
-                variant="ghost"
-                size="small"
-                disabled={pending}
-                className="h-auto p-0 system-xs-regular text-text-accent"
-                onClick={() => onRequest({ ...request, kind: 'toggle' })}
-              >
-                {t(($) => $['external.disable'])}
-              </Button>
-            </div>
-          )}
-        </AlertDialogContent>
-      </AlertDialog>
+          </>
+        ) : (
+          <AlertDialogDescription>
+            {agent.enabled
+              ? t(($) => $['external.disableDialog.description'])
+              : t(($) => $['external.enableDialog.description'])}
+          </AlertDialogDescription>
+        )}
+        {Boolean(error) && (
+          <Alert type="error">
+            <AlertTitle>
+              {externalAgentErrorMessage(
+                error,
+                t(($) => $['external.api.saveFailed']),
+              )}
+            </AlertTitle>
+          </Alert>
+        )}
+      </AlertDialogBody>
+      <AlertDialogFooter spacing={deleting ? 'compact' : 'default'}>
+        <AlertDialogCancelButton disabled={pending} variant="secondary" size="large">
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </AlertDialogCancelButton>
+        <Button
+          variant="primary"
+          size="large"
+          tone={deleting ? 'destructive' : undefined}
+          loading={pending}
+          disabled={deleting && (!references.data || references.isFetching || references.isError)}
+          onClick={() => {
+            if (pending) return
+            onConfirm()
+          }}
+        >
+          {confirmLabel}
+        </Button>
+      </AlertDialogFooter>
+      {deleting && agent.enabled && (
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-1 rounded-b-2xl border-t border-divider-subtle bg-background-soft px-2 py-3 system-xs-regular text-text-tertiary">
+          <span>{t(($) => $['external.deleteDialog.pauseInstead'])}</span>
+          <Button
+            variant="ghost"
+            size="small"
+            disabled={pending}
+            className="h-auto p-0 system-xs-regular text-text-accent"
+            onClick={() => onPauseInstead()}
+          >
+            {t(($) => $['external.disable'])}
+          </Button>
+        </div>
+      )}
     </>
   )
 }

@@ -1,10 +1,15 @@
 'use client'
 
 import type { GetExternalAgentsData } from '@dify/contracts/api/console/external-agents/types.gen'
-import type { ExternalAgentActionRequest } from './components/external-agent-actions'
+import type {
+  ExternalAgentConfirmationRequest,
+  ExternalAgentEditRequest,
+} from './components/external-agent-actions'
 import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import {
   Select,
@@ -15,7 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useQueryStates } from 'nuqs'
@@ -30,7 +41,10 @@ import { TagManagementDialog } from '@/features/tag-management/tag-management-di
 import { consoleQuery } from '@/service/console'
 import { AgentRosterSkeleton } from './components/agent-roster-skeleton'
 import { ConnectExternalAgent } from './components/connect-external-agent'
-import { ExternalAgentActions } from './components/external-agent-actions'
+import {
+  ExternalAgentConfirmationContent,
+  ExternalAgentEditDialogContent,
+} from './components/external-agent-actions'
 import { ExternalAgentList } from './components/external-agent-list'
 import { externalRosterQueryParsers } from './query-params'
 
@@ -40,6 +54,11 @@ const EMPTY_STATUS_COUNTS = {
 } as const
 
 export function ExternalRoster() {
+  const workspace = useAtomValue(currentWorkspaceAtom)
+  return <ExternalRosterSession key={workspace.id} />
+}
+
+function ExternalRosterSession() {
   const { t } = useTranslation(['agentRoster'])
   const queryClient = useQueryClient()
   const workspace = useAtomValue(currentWorkspaceAtom)
@@ -47,9 +66,29 @@ export function ExternalRoster() {
   const profile = useQuery(userProfileQueryOptions())
   const canManage = !workspaceLoading && (workspace.role === 'owner' || workspace.role === 'admin')
   const canReadDetails = !workspaceLoading && (canManage || workspace.role === 'editor')
-  const [actionRequest, setActionRequest] = useState<ExternalAgentActionRequest>()
-  const [actionOpen, setActionOpen] = useState(false)
+  const [editDialog] = useState(() => createDialogHandle<ExternalAgentEditRequest>())
+  const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentConfirmationRequest>())
+  const update = useMutation(
+    consoleQuery.externalAgents.byAgentId.info.patch.mutationOptions({
+      context: { silent: true },
+      retry: false,
+    }),
+  )
+  const toggle = useMutation(
+    consoleQuery.externalAgents.byAgentId.enabled.put.mutationOptions({
+      context: { silent: true },
+      retry: false,
+    }),
+  )
+  const deletion = useMutation(
+    consoleQuery.externalAgents.byAgentId.delete.mutationOptions({
+      context: { silent: true },
+      retry: false,
+    }),
+  )
   const searchRef = useRef<HTMLInputElement>(null)
+  const editFocusRef = useRef<ExternalAgentEditRequest | null>(null)
+  const confirmationFocusRef = useRef<ExternalAgentEditRequest | null>(null)
   const allStatusRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
   const [tagManagementOpen, setTagManagementOpen] = useState(false)
@@ -109,15 +148,27 @@ export function ExternalRoster() {
     })
     viewportRef.current?.scrollTo({ top: 0 })
   }
-  const list = useInfiniteQuery({
-    ...consoleQuery.externalAgents.get.infiniteOptions({
-      input: (page) => rosterQueryInput(Number(page), tagIds),
-      initialPageParam: 1,
-      getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
-      enabled: capabilities.isSuccess && !workspaceLoading,
-    }),
-    placeholderData: keepPreviousData,
+  const listOptions = consoleQuery.externalAgents.get.infiniteOptions({
+    input: (page) => rosterQueryInput(Number(page), tagIds),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.page * last.limit < last.total ? last.page + 1 : undefined),
+    enabled: capabilities.isSuccess && !workspaceLoading,
   })
+  const list = useInfiniteQuery({ ...listOptions, placeholderData: keepPreviousData })
+  function restoreRemovedOpener(request: ExternalAgentEditRequest) {
+    // The updated query cache is authoritative before React commits the removed card.
+    const currentList = queryClient.getQueryData(listOptions.queryKey)
+    if (
+      currentList?.pages.some((page) => page.items.some((asset) => asset.id === request.agent.key))
+    )
+      return
+    requestAnimationFrame(() => {
+      if (editDialog.isOpen || confirmation.isOpen) return
+      const target =
+        request.adjacentFocusTargets.find((element) => element.isConnected) ?? searchRef.current
+      target?.focus({ preventScroll: true })
+    })
+  }
   const counts = list.data?.pages[0] ?? EMPTY_STATUS_COUNTS
   const agents =
     list.data?.pages.flatMap((page) =>
@@ -247,14 +298,8 @@ export function ExternalRoster() {
               canReadDetails={canReadDetails}
               viewportRef={viewportRef}
               onOpenTagManagement={() => setTagManagementOpen(true)}
-              onAction={
-                canManage
-                  ? (request) => {
-                      setActionRequest(request)
-                      setActionOpen(true)
-                    }
-                  : undefined
-              }
+              editDialog={canManage ? editDialog : undefined}
+              confirmation={canManage ? confirmation : undefined}
               onClearFilters={() => {
                 resetRosterPagination({ query: firstUnfilteredPage })
                 void setFilters({
@@ -286,17 +331,97 @@ export function ExternalRoster() {
           </div>
         )}
       </div>
-      <ExternalAgentActions
-        key={workspace.id}
-        request={actionRequest}
-        open={actionOpen}
-        onOpenChange={setActionOpen}
-        onRequest={(request) => {
-          setActionRequest(request)
-          setActionOpen(true)
+      <Dialog
+        handle={editDialog}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && update.isPending && details.reason !== 'imperative-action') details.cancel()
         }}
-        fallbackFocus={searchRef}
-      />
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            update.reset()
+            const request = editFocusRef.current
+            editFocusRef.current = null
+            if (request) restoreRemovedOpener(request)
+          }
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <ExternalAgentEditDialogContent
+              agent={payload.agent}
+              pending={update.isPending}
+              error={update.error}
+              onReset={update.reset}
+              onSubmit={(input) =>
+                update.mutate(input, {
+                  onSuccess: () => {
+                    editFocusRef.current = payload
+                    editDialog.close()
+                  },
+                })
+              }
+            />
+          )
+        }
+      </Dialog>
+      <AlertDialog
+        handle={confirmation}
+        onOpenChange={(open, details) => {
+          if (
+            !open &&
+            (toggle.isPending || deletion.isPending) &&
+            details.reason !== 'imperative-action'
+          )
+            details.cancel()
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open) {
+            toggle.reset()
+            deletion.reset()
+            const request = confirmationFocusRef.current
+            confirmationFocusRef.current = null
+            if (request) restoreRemovedOpener(request)
+          }
+        }}
+      >
+        {({ payload }) =>
+          payload && (
+            <ExternalAgentConfirmationContent
+              request={payload}
+              pending={toggle.isPending || deletion.isPending}
+              error={payload.kind === 'delete' ? deletion.error : toggle.error}
+              fallbackFocus={searchRef}
+              onPauseInstead={() => confirmation.openWithPayload({ ...payload, kind: 'toggle' })}
+              onConfirm={() => {
+                if (payload.kind === 'delete')
+                  deletion.mutate(
+                    { params: { agent_id: payload.agent.key } },
+                    {
+                      onSuccess: () => {
+                        confirmationFocusRef.current = payload
+                        confirmation.close()
+                      },
+                    },
+                  )
+                else
+                  toggle.mutate(
+                    {
+                      params: { agent_id: payload.agent.key },
+                      body: { enabled: !payload.agent.enabled },
+                    },
+                    {
+                      onSuccess: () => {
+                        confirmationFocusRef.current = payload
+                        confirmation.close()
+                      },
+                    },
+                  )
+              }}
+            />
+          )
+        }
+      </AlertDialog>
       <TagManagementDialog
         type="agent"
         show={tagManagementOpen}
