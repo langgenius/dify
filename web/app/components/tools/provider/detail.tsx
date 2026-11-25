@@ -135,6 +135,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     await updateCustomCollection(data)
+    // Schema edits change the actions the settings drawer reads from this query.
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.api.tools.get.key(),
+    })
     onRefreshData()
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
@@ -175,6 +179,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     await saveWorkflowToolProvider(data)
     queryClient.invalidateQueries({
       queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.workflow.tools.get.key(),
     })
     onRefreshData()
     getWorkflowToolProvider()

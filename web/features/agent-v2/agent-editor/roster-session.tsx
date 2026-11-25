@@ -498,10 +498,8 @@ function AgentRosterEditorContent({
             setShowPreviewVersions(true)
           }}
           onExitVersions={() => selectVersion(null)}
-          onVersionRestored={async () => {
-            await composerQuery.refetch()
-            onComposerRebase()
-          }}
+          // The restore mutation has already refreshed the composer.
+          onVersionRestored={onComposerRebase}
         />
         <div className="flex min-w-105 flex-1 gap-1 overflow-hidden max-xl:w-full max-xl:min-w-0 max-xl:flex-none max-xl:flex-col max-xl:overflow-visible">
           <AgentConfigurePreviewSurface className="min-w-105 flex-1 max-xl:h-100 max-xl:w-full max-xl:min-w-0 max-xl:flex-none">
@@ -580,10 +578,8 @@ function AgentRosterEditorContent({
                   await saveDraft()
                 }
               }}
-              onVersionRestored={async () => {
-                await composerQuery.refetch()
-                onComposerRebase()
-              }}
+              // The restore mutation has already refreshed the composer.
+              onVersionRestored={onComposerRebase}
               onClose={() => setShowPreviewVersions(false)}
             />
           )}

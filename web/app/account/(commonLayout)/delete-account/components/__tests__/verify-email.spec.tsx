@@ -8,12 +8,17 @@ import VerifyEmail from '../verify-email'
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const confirmDeleteAccount = vi.fn()
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'account.delete.verify.get': vi.fn(),
-      'account.delete.post': vi.fn(),
+      'account.delete.post': confirmDeleteAccount,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'account.delete.post': confirmDeleteAccount,
     }),
   }
 })
