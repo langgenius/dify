@@ -44,6 +44,14 @@ one domain live in `policies/shared.ts`. Whether invalidation runs after an erro
 depends on the write contract: a rejected request does not imply the server
 rolled back. Record that decision per module.
 
+Invalidate through `invalidateQueryKeys` (`policies/shared.ts`) rather than
+`client.invalidateQueries`. TanStack Query joins an invalidation onto a first
+load that is already in flight, so a page that started loading before the write
+would keep the pre-write response, and an unobserved query's read keeps running.
+The helper cancels those fetches before invalidating, so the refetch starts after
+the write. Observed queries with data are left to `invalidateQueries`, which
+restarts them without showing earlier data.
+
 ## Freshness
 
 The QueryClient default `staleTime` is five minutes. When a procedure needs

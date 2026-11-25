@@ -1,0 +1,168 @@
+import type { MutationFunctionContext, QueryKey } from '@tanstack/react-query'
+import { QueryClient, QueryObserver } from '@tanstack/react-query'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
+import { invalidateQueryKeys } from '../policies/shared'
+
+type List = { data: string[] }
+
+const clients: QueryClient[] = []
+const unsubscribers: Array<() => void> = []
+
+afterEach(() => {
+  for (const unsubscribe of unsubscribers.splice(0)) unsubscribe()
+  for (const client of clients.splice(0)) client.clear()
+  vi.restoreAllMocks()
+})
+
+const annotationListKey = (): QueryKey =>
+  consoleQuery.apps.byAppId.annotations.get.queryKey({
+    input: { params: { app_id: 'app-1' }, query: { page: 1, limit: 10 } },
+  })
+
+/**
+ * Mounts a list whose responses resolve only when the test says so, in the
+ * order the test chooses.
+ */
+function mountList(queryKey: QueryKey) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  clients.push(client)
+  const responses: Array<ReturnType<typeof createDeferred<List>>> = []
+  const queryFn = vi.fn(() => {
+    const response = createDeferred<List>()
+    responses.push(response)
+    return response.promise
+  })
+  const observer = new QueryObserver<List>(client, { queryKey, queryFn })
+  unsubscribers.push(observer.subscribe(() => undefined))
+  const context: MutationFunctionContext = { client, meta: undefined }
+  return { client, observer, queryFn, responses, context }
+}
+
+const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+describe('invalidation during a first load', () => {
+  it('reproduces the race: invalidateQueries alone keeps the response read before the write', async () => {
+    const { client, observer, queryFn, responses } = mountList(annotationListKey())
+    expect(queryFn).toHaveBeenCalledTimes(1)
+
+    const invalidation = client.invalidateQueries({ queryKey: annotationListKey() })
+    responses[0]!.resolve({ data: ['before write'] })
+    await invalidation
+
+    // The invalidation joined the in-flight first load instead of starting a new one.
+    expect(queryFn).toHaveBeenCalledTimes(1)
+    expect(observer.getCurrentResult().data).toEqual({ data: ['before write'] })
+    expect(client.getQueryState(annotationListKey())?.isInvalidated).toBe(false)
+  })
+
+  it('restarts the first load so the list shows the write', async () => {
+    const { observer, queryFn, responses, client } = mountList(annotationListKey())
+
+    const invalidation = invalidateQueryKeys(client, [annotationListKey()])
+    await settle()
+    expect(queryFn).toHaveBeenCalledTimes(2)
+
+    // The pre-write response arrives last and must not win.
+    responses[1]!.resolve({ data: ['after write'] })
+    responses[0]!.resolve({ data: ['before write'] })
+    await invalidation
+    await settle()
+
+    expect(observer.getCurrentResult().data).toEqual({ data: ['after write'] })
+  })
+
+  it('keeps showing loaded data while a refetch restarts, without reverting', async () => {
+    const { observer, queryFn, responses, client } = mountList(annotationListKey())
+    responses[0]!.resolve({ data: ['loaded'] })
+    await settle()
+    const seen: Array<List | undefined> = []
+    unsubscribers.push(observer.subscribe((result) => seen.push(result.data)))
+
+    const invalidation = invalidateQueryKeys(client, [annotationListKey()])
+    await settle()
+    responses[1]!.resolve({ data: ['after write'] })
+    await invalidation
+    await settle()
+
+    expect(queryFn).toHaveBeenCalledTimes(2)
+    expect(seen.every((data) => data !== undefined)).toBe(true)
+    expect(observer.getCurrentResult().data).toEqual({ data: ['after write'] })
+  })
+})
+
+describe('annotation policies', () => {
+  const params = { app_id: 'app-1' }
+
+  it.each([
+    ['create', () => consoleQuery.apps.byAppId.annotations.post.mutationOptions()],
+    ['edit', () => consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions()],
+    ['delete', () => consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions()],
+    ['batch delete', () => consoleQuery.apps.byAppId.annotations.delete.mutationOptions()],
+  ])(
+    '%s refreshes a list still on its first load with a post-write request',
+    async (_, options) => {
+      const { observer, queryFn, responses, context } = mountList(annotationListKey())
+      const { onSettled } = options()
+
+      const refresh = Promise.resolve(
+        (onSettled as (...args: unknown[]) => unknown)(
+          undefined,
+          null,
+          { params: { ...params, annotation_id: 'annotation-1' } },
+          undefined,
+          context,
+        ),
+      )
+      await settle()
+      responses[1]!.resolve({ data: ['after write'] })
+      responses[0]!.resolve({ data: ['before write'] })
+      await refresh
+      await settle()
+
+      expect(queryFn).toHaveBeenCalledTimes(2)
+      expect(observer.getCurrentResult().data).toEqual({ data: ['after write'] })
+    },
+  )
+
+  it.each([
+    ['create', () => consoleQuery.apps.byAppId.annotations.post.mutationOptions()],
+    ['delete', () => consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions()],
+    ['batch delete', () => consoleQuery.apps.byAppId.annotations.delete.mutationOptions()],
+  ])('%s refreshes the annotation quota', async (_, options) => {
+    const client = new QueryClient()
+    clients.push(client)
+    const invalidated = vi.spyOn(client, 'invalidateQueries')
+    const { onSettled } = options()
+
+    await (onSettled as (...args: unknown[]) => unknown)(
+      undefined,
+      null,
+      { params: { ...params, annotation_id: 'annotation-1' } },
+      undefined,
+      { client, meta: undefined },
+    )
+
+    expect(invalidated.mock.calls.map(([filters]) => filters?.queryKey)).toContainEqual(
+      consoleQuery.features.get.key(),
+    )
+  })
+
+  it('does not refresh after a failed write', async () => {
+    const client = new QueryClient()
+    clients.push(client)
+    const invalidated = vi.spyOn(client, 'invalidateQueries')
+    const { onSettled } = consoleQuery.apps.byAppId.annotations.delete.mutationOptions()
+
+    await (onSettled as (...args: unknown[]) => unknown)(
+      undefined,
+      new Error('failed'),
+      { params },
+      undefined,
+      { client, meta: undefined },
+    )
+
+    expect(invalidated).not.toHaveBeenCalled()
+  })
+})

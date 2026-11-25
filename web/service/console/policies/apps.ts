@@ -130,33 +130,25 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
           },
         },
       },
+      // An annotation added from a chat answer can land while the annotation page is
+      // still loading its first list, so refreshes cancel that pre-write load.
       annotations: {
         byAnnotationId: {
           post: {
             mutationOptions: {
-              onSettled: (_data, error, variables, _result, context) => {
+              onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.annotations.key({
-                    input: { params: { app_id: variables.params.app_id } },
-                  }),
-                })
+                return invalidateQueryKeys(client, [annotationListKey(consoleQuery, params.app_id)])
               },
             },
           },
           delete: {
             mutationOptions: {
-              onSettled: (_data, error, variables, _result, context) => {
+              onSettled: (_data, error, { params }, _result, { client }) => {
                 if (error) return
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.apps.byAppId.annotations.key({
-                      input: { params: { app_id: variables.params.app_id } },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.features.get.key(),
-                  }),
+                return invalidateQueryKeys(client, [
+                  annotationListKey(consoleQuery, params.app_id),
+                  consoleQuery.features.get.key(),
                 ])
               },
             },
@@ -164,15 +156,23 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         },
         post: {
           mutationOptions: {
-            onSettled: (_data, error, variables, _result, context) => {
+            onSettled: (_data, error, { params }, _result, { client }) => {
               if (error) return
-              return Promise.all([
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.apps.byAppId.annotations.key({
-                    input: { params: { app_id: variables.params.app_id } },
-                  }),
-                }),
-                context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() }),
+              return invalidateQueryKeys(client, [
+                annotationListKey(consoleQuery, params.app_id),
+                consoleQuery.features.get.key(),
+              ])
+            },
+          },
+        },
+        // Batch delete and clear all free annotation quota, like a single delete.
+        delete: {
+          mutationOptions: {
+            onSettled: (_data, error, { params }, _result, { client }) => {
+              if (error) return
+              return invalidateQueryKeys(client, [
+                annotationListKey(consoleQuery, params.app_id),
+                consoleQuery.features.get.key(),
               ])
             },
           },
@@ -896,4 +896,8 @@ function invalidateEvaluationDefaultMetrics(
       input: { params: { evaluate_target_id: appId, evaluate_target_type: 'apps' } },
     }),
   })
+}
+
+function annotationListKey(query: ConsoleQuery, appId: string) {
+  return query.apps.byAppId.annotations.key({ input: { params: { app_id: appId } } })
 }
