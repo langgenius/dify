@@ -139,7 +139,7 @@ const WorkflowChildren = () => {
       })
 
       const { setNodes, setEdges } = collaborativeWorkflow.getState()
-      setNodes([newNode])
+      if (!setNodes([newNode])) return
       setEdges([])
 
       setShowOnboarding?.(false)

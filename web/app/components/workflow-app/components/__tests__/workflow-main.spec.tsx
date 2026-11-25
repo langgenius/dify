@@ -823,6 +823,26 @@ it('writes the onboarding entry through the collaborative graph', async () => {
   expect(collabSetEdges).toHaveBeenCalledWith([], [])
 })
 
+it('keeps onboarding open while the collaborative graph is not ready', async () => {
+  const user = userEvent.setup()
+  const canApply = vi
+    .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+    .mockReturnValue(false)
+  onTestFinished(() => canApply.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    nodes: [],
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(dialog).toBeInTheDocument()
+  expect(store.getState()).toMatchObject({ showOnboarding: true, hasSelectedStartNode: false })
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
 it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
   const user = userEvent.setup()
   const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()
