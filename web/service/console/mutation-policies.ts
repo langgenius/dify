@@ -46,10 +46,12 @@ function withOwnMutateResult(
 }
 
 /**
- * Chains a procedure's policy callbacks with the caller's. The policy runs first
- * and is awaited, so the caller sees the cache it settled, and the mutation stays
- * pending until both finish. Other options keep oRPC's shallow merge: the
- * caller's value wins.
+ * Runs a procedure's policy callbacks together with the caller's. `onMutate` runs
+ * the policy first, so its query cancellation lands before the caller's optimistic
+ * write. `onSuccess`, `onError`, and `onSettled` start both at once, so caller
+ * feedback (toasts, navigation, locale switches) does not wait for a refetch, and
+ * the mutation stays pending until both finish. Other options keep oRPC's shallow
+ * merge: the caller's value wins.
  */
 export function composeMutationOptions<TOptions extends object>(
   policy: object | undefined,
@@ -74,12 +76,10 @@ export function composeMutationOptions<TOptions extends object>(
       continue
     }
     composed[name] = async (...args: unknown[]) => {
-      await policyCallback(
-        ...(splitMutateResult ? withOwnMutateResult(name, args, 'policy') : args),
-      )
-      return callerCallback(
-        ...(splitMutateResult ? withOwnMutateResult(name, args, 'caller') : args),
-      )
+      await Promise.all([
+        policyCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'policy') : args)),
+        callerCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'caller') : args)),
+      ])
     }
   }
 
