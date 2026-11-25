@@ -591,30 +591,36 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
         publish: {
           post: {
             mutationOptions: {
-              // The publisher reads the publish response, so it does not wait for these.
+              // "Deploy latest" stores the published version from `publish.get` in its
+              // flow, so publishing waits for it; the other refreshes run in the background.
               onSuccess: (_data, { params }, _result, { client }) => {
                 void invalidateEvaluationDefaultMetrics(consoleQuery, client, params.app_id)
                 void invalidateQueryKeys(client, [
-                  consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
                   consoleQuery.apps.byAppId.workflows.get.key({ input: { params } }),
                   consoleQuery.apps.byAppId.get.key({ input: { params } }),
                   consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
                 ])
+                return invalidateQueryKeys(client, [
+                  consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
+                ])
               },
             },
           },
-          // Not awaited: the publisher reports the result before the refresh finishes.
+          // Same as the default publish: "Deploy latest" and "Edit version" read the published
+          // version from `publish.get`, so that one is awaited; the rest refresh in the background.
           evaluation: {
             post: {
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   void invalidateQueryKeys(client, [
-                    consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
                     consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
                     consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
                     consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
                   ])
                   void invalidateEvaluationDefaultMetrics(consoleQuery, client, params.app_id)
+                  return invalidateQueryKeys(client, [
+                    consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
+                  ])
                 },
               },
             },

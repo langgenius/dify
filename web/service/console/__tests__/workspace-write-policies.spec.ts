@@ -493,6 +493,56 @@ describe('saves whose editor reopens from the refreshed data', () => {
       }),
       { params: { snippet_id: 'snippet-1', workflow_id: 'version-1' }, body: {} },
     ],
+    [
+      'workflow publish (deploy latest reads the published version)',
+      () => consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions,
+      consoleQuery.apps.byAppId.workflows.publish.get.key({
+        input: { params: { app_id: 'app-1' } },
+      }),
+      { params: { app_id: 'app-1' }, body: {} },
+    ],
+    [
+      'evaluation workflow publish (deploy latest reads the published version)',
+      () => consoleQuery.apps.byAppId.workflows.publish.evaluation.post.mutationOptions,
+      consoleQuery.apps.byAppId.workflows.publish.get.key({
+        input: { params: { app_id: 'app-1' } },
+      }),
+      { params: { app_id: 'app-1' }, body: {} },
+    ],
+    [
+      'metadata field delete (the batch editor reads the document list)',
+      () => consoleQuery.datasets.byDatasetId.metadata.byMetadataId.delete.mutationOptions,
+      consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: 'dataset-1' } },
+      }),
+      { params: { dataset_id: 'dataset-1', metadata_id: 'field-1' } },
+    ],
+    ...(['dataset', 'target'] as const).flatMap((owner): Case[] => {
+      const evaluation =
+        owner === 'dataset'
+          ? consoleQuery.datasets.byDatasetId.evaluation
+          : consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation
+      const target =
+        owner === 'dataset'
+          ? { dataset_id: 'dataset-1' }
+          : { evaluate_target_type: 'apps', evaluate_target_id: 'app-1' }
+      const logsKey = evaluation.logs.get.queryKey({ input: { params: target } } as never)
+      const params = { ...target, run_id: 'run-1' }
+      return [
+        [
+          `${owner} evaluation run cancel`,
+          () => evaluation.runs.byRunId.cancel.post.mutationOptions,
+          logsKey,
+          { params },
+        ],
+        [
+          `${owner} evaluation run retry`,
+          () => evaluation.runs.byRunId.retry.post.mutationOptions,
+          logsKey,
+          { params },
+        ],
+      ]
+    }),
     ...(['apps', 'agent'] as const).flatMap((owner): Case[] => {
       const trace =
         owner === 'apps'

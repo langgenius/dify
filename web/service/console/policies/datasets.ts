@@ -151,7 +151,7 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    void invalidateQueryKeys(context.client, [
+                    return invalidateQueryKeys(context.client, [
                       consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
                         type: 'query',
                         input: { params: targetParams },
@@ -173,7 +173,7 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    void invalidateQueryKeys(context.client, [
+                    return invalidateQueryKeys(context.client, [
                       consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
                         type: 'query',
                         input: { params: targetParams },
@@ -349,7 +349,9 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                void invalidateQueryKeys(context.client, [
+                // The batch editor and the field picker read these right after a delete; a
+                // stale copy would send the deleted field back and fail the whole batch.
+                return invalidateQueryKeys(context.client, [
                   consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
                   consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
                   consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
