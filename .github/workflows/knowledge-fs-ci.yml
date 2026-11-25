@@ -16,7 +16,9 @@ permissions:
 
 concurrency:
   group: knowledge-fs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Let active PR runs finish so duplicate events cannot cancel their checks
+  # before the status job reports the result.
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 env:
   CI: true
