@@ -3,7 +3,11 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { consoleQuery } from '@/service/console'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  createFeaturesFixture,
+  renderWithConsoleQuery,
+} from '@/test/console/query-data'
 import { mockEmojiData } from '@/test/emoji-picker'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createAppInfoDialogHandles } from '../app-info-dialog-handles'
@@ -292,8 +296,27 @@ it.each(['duplicate', 'delete'] as const)(
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
-    service.request.mockResolvedValueOnce(
-      Response.json(operation === 'duplicate' ? app : { result: 'success' }),
+    const refetchFeatures = vi.fn(() => Response.json(createFeaturesFixture()))
+    // Copy invalidates the mounted quota query. Finish its refetch here so a cold
+    // features contract cannot consume the next test's one-shot mutation response.
+    service.request.mockImplementation(
+      (url: string, _init: unknown, { request }: { request: Request }) => {
+        const path = new URL(url).pathname
+        if (request.method === 'GET' && path === '/console/api/features') return refetchFeatures()
+        if (
+          operation === 'duplicate' &&
+          request.method === 'POST' &&
+          path === `/console/api/apps/${app.id}/copy`
+        )
+          return Response.json(app)
+        if (
+          operation === 'delete' &&
+          request.method === 'DELETE' &&
+          path === `/console/api/apps/${app.id}`
+        )
+          return Response.json({ result: 'success' })
+        throw new Error(`Unexpected request: ${request.method} ${path}`)
+      },
     )
     renderWithConsoleQuery(<OperationsEntry operation={operation} />, {
       queryClient,
@@ -312,6 +335,8 @@ it.each(['duplicate', 'delete'] as const)(
         operation === 'delete' ? '/apps' : `/app/${app.id}/workflow`,
       ),
     )
+    if (operation === 'duplicate')
+      await waitFor(() => expect(refetchFeatures).toHaveBeenCalledOnce())
     for (const queryKey of [
       consoleQuery.apps.get.key(),
       consoleQuery.apps.starred.get.key(),
