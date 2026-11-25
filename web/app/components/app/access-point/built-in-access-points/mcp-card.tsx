@@ -87,12 +87,7 @@ export function MCPAccessPointCard({
   const { mutate: refreshServerCode } = useMutation(
     rotateServerCode.mutationOptions({
       context: { silent: true },
-      onSuccess: (server, { params }) => {
-        const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({ input: { params } })
-        queryClient.setQueryData(queryKey, (previous) =>
-          previous?.id === server.id ? { ...previous, server_code: server.server_code } : server,
-        )
-        void queryClient.invalidateQueries({ queryKey, exact: true })
+      onSuccess: (_server, { params }) => {
         setRegenerationAppId((current) => (current === params.app_id ? null : current))
       },
       onError: (error) => {

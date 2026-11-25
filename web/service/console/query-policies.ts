@@ -1184,7 +1184,51 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           skills: {
+            // A new skill shows in the lists; the caller navigates without waiting for them.
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _result, { client }) => {
+                  void invalidateSkillListQueries(consoleQuery, client)
+                },
+              },
+            },
+            import: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, _variables, _result, { client }) => {
+                    void invalidateSkillListQueries(consoleQuery, client)
+                  },
+                },
+              },
+            },
             bySkillId: {
+              duplicate: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, _variables, _result, { client }) => {
+                      void invalidateSkillListQueries(consoleQuery, client)
+                    },
+                  },
+                },
+              },
+              // The publisher writes the published detail itself and waits for it; versions and
+              // lists refresh in the background.
+              publish: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({
+                          type: 'query',
+                          input: { params: { skill_id: params.skill_id } },
+                        }),
+                        consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+                        consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
+                      ])
+                    },
+                  },
+                },
+              },
               // Metadata writes return the full detail: write it instead of refetching it.
               patch: {
                 mutationOptions: {
@@ -1250,9 +1294,30 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
                     if (error) return
+                    void invalidateSkillListQueries(consoleQuery, context.client)
                     return context.client.invalidateQueries({
                       queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
                     })
+                  },
+                },
+              },
+            },
+          },
+          agents: {
+            byAgentId: {
+              skills: {
+                put: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const input = { params: { agent_id: params.agent_id } }
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({
+                          type: 'query',
+                          input,
+                        }),
+                        consoleQuery.agent.byAgentId.composer.get.key({ type: 'query', input }),
+                      ])
+                    },
                   },
                 },
               },
@@ -1444,6 +1509,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   },
                 },
               },
+            },
+          },
+        },
+        customConfig: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _result, { client }) =>
+                client.invalidateQueries({
+                  queryKey: consoleQuery.workspaces.customConfig.get.key(),
+                }),
             },
           },
         },
@@ -2119,6 +2194,50 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // Trigger and MCP toggles keep their pending value until the refreshed state lands.
+          triggerEnable: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                  }),
+              },
+            },
+          },
+          server: {
+            refresh: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (server, { params }, _result, { client }) => {
+                    const queryKey = consoleQuery.apps.byAppId.server.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    })
+                    client.setQueryData(queryKey, (previous) =>
+                      previous?.id === server.id
+                        ? { ...previous, server_code: server.server_code }
+                        : server,
+                    )
+                    void client.invalidateQueries({ queryKey, exact: true })
+                  },
+                },
+              },
+            },
+          },
+          modelConfig: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                  }),
+              },
+            },
+          },
           workflows: {
             publish: {
               post: {
@@ -2200,6 +2319,12 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       variables.params.app_id,
                       data,
                     )
+                    // Callers do not wait for the published workflow to reload.
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byAppId.workflows.publish.get.queryKey({
+                        input: { params: { app_id: variables.params.app_id } },
+                      }),
+                    })
                     return Promise.all([
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.workflows.get.key({
@@ -3189,8 +3314,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             publish: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _onMutateResult, context) =>
-                    Promise.all([
+                  onSuccess: (_data, variables, _onMutateResult, context) => {
+                    context.client.setQueryData(
+                      consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.queryKey({
+                        input: { params: { snippet_id: variables.params.snippet_id } },
+                      }),
+                      (snippet) => (snippet ? { ...snippet, is_published: true } : snippet),
+                    )
+                    // The version list reloads from its first page; the publisher does not wait.
+                    void context.client.resetQueries({
+                      queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
+                        type: 'infinite',
+                        input: { params: { snippet_id: variables.params.snippet_id } },
+                      }),
+                    })
+                    return Promise.all([
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
                           type: 'query',
@@ -3214,7 +3352,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                             { type: 'query' },
                           ),
                       }),
-                    ]),
+                    ])
+                  },
                 },
               },
             },
@@ -3357,6 +3496,22 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     },
                   }),
                 })
+              },
+            },
+          },
+        },
+      },
+      onboarding: {
+        stepByStepTour: {
+          state: {
+            patch: {
+              mutationOptions: {
+                onSuccess: (state, _variables, _result, { client }) => {
+                  client.setQueryData(
+                    consoleQuery.onboarding.stepByStepTour.state.get.queryKey(),
+                    state,
+                  )
+                },
               },
             },
           },
@@ -3625,6 +3780,108 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // Restoring rewrites the agent's config; the restore dialog waits for it to reload.
+          versions: {
+            byVersionId: {
+              restore: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const input = { params: { agent_id: params.agent_id } }
+                      return invalidateQueryKeys(client, [
+                        consoleQuery.agent.byAgentId.get.queryKey({ input }),
+                        consoleQuery.agent.byAgentId.composer.get.queryKey({ input }),
+                        consoleQuery.agent.byAgentId.versions.get.key({ input }),
+                      ])
+                    },
+                  },
+                },
+              },
+            },
+          },
+          buildDraft: {
+            put: {
+              mutationOptions: {
+                onSuccess: (buildDraft, { params }, _result, { client }) => {
+                  client.setQueryData(
+                    consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
+                      input: { params: { agent_id: params.agent_id } },
+                    }),
+                    buildDraft,
+                  )
+                },
+              },
+            },
+            checkout: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (buildDraft, { params }, _result, { client }) => {
+                    client.setQueryData(
+                      consoleQuery.agent.byAgentId.buildDraft.get.queryKey({
+                        input: { params: { agent_id: params.agent_id } },
+                      }),
+                      buildDraft,
+                    )
+                  },
+                },
+              },
+            },
+            // Applying the build draft rewrites the agent; the editor waits for it to reload.
+            apply: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateQueryKeys(client, [
+                      consoleQuery.agent.byAgentId.get.queryKey({
+                        input: { params: { agent_id: params.agent_id } },
+                      }),
+                      consoleQuery.agent.get.key(),
+                    ]),
+                },
+              },
+            },
+          },
+          debugConversation: {
+            refresh: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (conversation, { params }, _result, { client }) => {
+                    client.setQueryData(
+                      consoleQuery.agent.byAgentId.get.queryKey({
+                        input: { params: { agent_id: params.agent_id } },
+                      }),
+                      (agentDetail) =>
+                        agentDetail && {
+                          ...agentDetail,
+                          debug_conversation_id: conversation.debug_conversation_id,
+                          debug_conversation_has_messages:
+                            conversation.debug_conversation_has_messages ?? false,
+                          debug_conversation_message_count:
+                            conversation.debug_conversation_message_count ?? 0,
+                        },
+                    )
+                  },
+                },
+              },
+            },
+          },
+          apiEnable: {
+            post: {
+              mutationOptions: {
+                onSuccess: (apiAccess, { params, body }, _result, { client }) => {
+                  const input = { params: { agent_id: params.agent_id } }
+                  client.setQueryData(
+                    consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
+                    apiAccess,
+                  )
+                  client.setQueryData(
+                    consoleQuery.agent.byAgentId.get.queryKey({ input }),
+                    (agentDetail) => agentDetail && { ...agentDetail, enable_api: body.enable_api },
+                  )
+                },
+              },
+            },
+          },
           composer: {
             put: {
               mutationOptions: {
@@ -3693,6 +3950,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   context.client.removeQueries({
                     queryKey: consoleQuery.agent.inviteOptions.get.key(),
                   })
+                  // The publisher waits for the new version, detail, and API access.
+                  const input = { params: { agent_id: variables.params.agent_id } }
+                  return invalidateQueryKeys(context.client, [
+                    consoleQuery.agent.byAgentId.versions.get.key({ input }),
+                    consoleQuery.agent.byAgentId.get.queryKey({ input }),
+                    consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
+                  ])
                 },
               },
             },
@@ -4099,6 +4363,41 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 },
               },
             },
+            updateEnvironmentWebAppAccessMode: {
+              mutationOptions: {
+                onSuccess: (site, { params }, _result, { client }) => {
+                  const input = {
+                    params: { app_id: params.app_id, environment_id: params.environment_id },
+                  }
+                  client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({
+                      input,
+                    }),
+                    site,
+                  )
+                  void client.invalidateQueries({
+                    queryKey:
+                      consoleQuery.enterprise.appDeploy.accessService.getEnvironmentWebAppSubjects.queryKey(
+                        { input },
+                      ),
+                  })
+                },
+              },
+            },
+            resetEnvironmentSiteAccessToken: {
+              mutationOptions: {
+                onSuccess: (site, { params }, _result, { client }) => {
+                  client.setQueryData(
+                    consoleQuery.enterprise.appDeploy.accessService.getEnvironmentSite.queryKey({
+                      input: {
+                        params: { app_id: params.app_id, environment_id: params.environment_id },
+                      },
+                    }),
+                    site,
+                  )
+                },
+              },
+            },
             createEnvironmentApiKey: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -4413,4 +4712,14 @@ function invalidateGoldenQuestionList(
       input: { params: { control_space_id: controlSpaceId } },
     }),
   })
+}
+
+// apps, workflow, agent, and skills helpers
+
+function invalidateSkillListQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.skills.get.key({ type: 'query' }),
+    query.workspaces.current.skills.get.key({ type: 'infinite' }),
+    query.workspaces.current.skills.tags.get.key({ type: 'query' }),
+  ])
 }
