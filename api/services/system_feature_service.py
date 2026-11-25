@@ -149,6 +149,11 @@ class SystemFeatureService:
         # Self-hosted S3 endpoints can be private to the API container.
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.STORAGE_TYPE == StorageType.S3
 
+    @staticmethod
+    def is_log_export_notification_enabled() -> bool:
+        """Allow export completion notifications where the Console has a SaaS notification provider."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel) -> None:
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN

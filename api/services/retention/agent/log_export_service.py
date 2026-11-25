@@ -87,10 +87,10 @@ class AgentLogExportService:
         task = self.get_task(context, agent_id, task_id=task_id)
         return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
-    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Load the workspace's task by its Agent ID and prepare the CSV if it is still pending."""
+    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> AgentLogExportTask | None:
+        """Load the task by its scoped Agent ID and return it if this attempt publishes its CSV."""
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        prepare_log_export_task(
+        return prepare_log_export_task(
             task,
             tasks=self._tasks,
             storage_prefix="agent-log-exports",

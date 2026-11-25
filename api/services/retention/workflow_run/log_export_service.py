@@ -102,10 +102,10 @@ class WorkflowLogExportService:
         task = self.get_task(scope=scope, task_id=task_id)
         return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
-    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Load the task for the workspace and app and prepare its CSV if it is still pending."""
+    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> WorkflowLogExportTask | None:
+        """Load the task in the workspace and return it if this attempt publishes its CSV."""
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        prepare_log_export_task(
+        return prepare_log_export_task(
             task,
             tasks=self._tasks,
             storage_prefix="workflow-log-exports",

@@ -178,10 +178,12 @@ class LogExportTaskStore[FiltersT](Protocol):
         """
         ...
 
-    def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
+    def finish(
+        self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None
+    ) -> LogExportTask[FiltersT] | None:
         """Publish and release capacity if owned, extending the lifetime of a ready task.
 
-        Return False on lease loss or raise on a write error.
+        Return the published task, return None on lease loss, or raise on a write error.
         """
         ...
 
@@ -224,13 +226,13 @@ def prepare_log_export_task[FiltersT](
     storage_prefix: str,
     store_csv: StoreLogExportFile,
     write_csv: WriteLogExportCsv[FiltersT],
-) -> None:
-    """Publish an attempt's CSV while it owns the lease and propagate transient state write errors."""
+) -> LogExportTask[FiltersT] | None:
+    """Return the ready task only after this attempt publishes its CSV while owning the lease."""
     if task is None or task.status not in (LogExportStatus.PENDING, LogExportStatus.PROCESSING):
-        return
+        return None
     processing = tasks.claim(task)
     if processing is None:
-        return
+        return None
 
     context = RequestContext(
         request_id=task.task_id, trace_id=None, account_id=task.requested_by, active_workspace_id=task.tenant_id
@@ -269,14 +271,16 @@ def prepare_log_export_task[FiltersT](
                     task.task_id,
                 )
             else:
-                if not failure_recorded:
+                if failure_recorded is None:
                     raise LogExportLeaseBusyError("The log export attempt no longer owns its lease.") from exc
             raise
         completed = processing.model_copy(
             update={"progress": LogExportProgress(stage=LogExportStage.UPLOADING, rows_written=count)}
         )
-        if not tasks.finish(completed, status=LogExportStatus.READY, storage_key=storage_key):
+        ready = tasks.finish(completed, status=LogExportStatus.READY, storage_key=storage_key)
+        if ready is None:
             raise LogExportLeaseBusyError("The log export lease expired before publication.")
+        return ready
 
 
 @contextmanager

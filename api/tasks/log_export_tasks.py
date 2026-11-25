@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 
 from extensions.ext_application_services import application_services
+from services.retention.log_export_adapters import notify_log_export_ready
 from services.retention.log_export_task import LogExportKind, LogExportLeaseBusyError
 
 logger = logging.getLogger(__name__)
@@ -21,17 +22,23 @@ logger = logging.getLogger(__name__)
     max_retries=None,
 )
 def prepare_log_export_task(*, tenant_id: str, app_id: str, task_id: str, export_kind: str) -> None:
-    """Route a saved export to the service for its log type."""
+    """Prepare a saved export and notify its requester after this attempt publishes the ready CSV."""
     services = application_services()
-    match export_kind:
+    kind = LogExportKind(export_kind)
+    match kind:
         case LogExportKind.CONVERSATION:
             exports = services.conversation_log_exports
         case LogExportKind.WORKFLOW:
             exports = services.workflow_log_exports
         case LogExportKind.AGENT:
             exports = services.agent_log_exports
-        case _:
-            raise ValueError(f"Unsupported log export kind: {export_kind}")
 
     logger.info("Preparing %s log export: tenant=%s app=%s task=%s", export_kind, tenant_id, app_id, task_id)
-    exports.prepare_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
+    ready_task = exports.prepare_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
+    if ready_task is not None:
+        try:
+            notify_log_export_ready(ready_task, export_kind=kind)
+        except Exception:
+            logger.exception(
+                "Could not notify requester after exporting logs: tenant=%s app=%s task=%s", tenant_id, app_id, task_id
+            )

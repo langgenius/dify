@@ -1,8 +1,10 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
 from typing import TextIO
 from unittest.mock import call, create_autospec
+from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from redis.exceptions import (
@@ -20,11 +22,18 @@ from redis.exceptions import (
     TryAgainError,
 )
 
+from graphon.enums import WorkflowExecutionStatus
 from machinery.context import RequestContext
+from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention import log_export_task
-from services.retention.log_export_adapters import store_log_export_csv
+from services.retention.log_export_adapters import (
+    _LOG_EXPORT_NOTIFICATION_COPY,
+    _log_export_notice_markdown,
+    store_log_export_csv,
+)
 from services.retention.log_export_csv import CsvRowProgress, write_log_export_csv
 from services.retention.log_export_task import (
+    LogExportIdentityLabel,
     LogExportLeaseBusyError,
     LogExportProgress,
     LogExportStage,
@@ -33,6 +42,7 @@ from services.retention.log_export_task import (
     LogExportTaskStore,
 )
 from services.retention.log_export_task_cache import RedisLogExportTasks
+from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportTask
 from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 
 
@@ -82,7 +92,7 @@ def test_worker_records_total_rows_before_upload(
         assert path.read_text(encoding="utf-8-sig").splitlines() == ['"query"', '"all"']
 
     log_export_storage.save_from_path.side_effect = check_upload
-    log_export_task.prepare_log_export_task(
+    ready = log_export_task.prepare_log_export_task(
         task, tasks=tasks, storage_prefix="exports", store_csv=store_log_export_csv, write_csv=_write_csv
     )
 
@@ -92,6 +102,52 @@ def test_worker_records_total_rows_before_upload(
     assert current.status is LogExportStatus.READY
     assert current.expires_at > task.created_at + timedelta(days=7)
     assert current.progress == uploading
+    assert ready == current
+    assert (
+        log_export_task.prepare_log_export_task(
+            current, tasks=tasks, storage_prefix="exports", store_csv=store_log_export_csv, write_csv=_write_csv
+        )
+        is None
+    )
+    log_export_storage.save_from_path.assert_called_once()
+
+
+def test_notification_markdown_formats_workflow_filters_as_literal_text() -> None:
+    """Render Workflow filters in the account timezone, escaping values and using the actual row count."""
+    identity_id = uuid4()
+    task = WorkflowLogExportTask.pending(
+        tenant_id="tenant",
+        app_id="app",
+        requested_by="owner",
+        filters=WorkflowLogExportFilters(
+            keyword="::card [customer](https://example.com) <label>",
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            created_at_after=datetime(2026, 11, 20),
+            account_ids=(str(identity_id),),
+        ),
+        identity_labels=(
+            LogExportIdentityLabel(id=identity_id, source=ConsoleLogIdentitySource.ACCOUNT, label="Review\naccount"),
+        ),
+        estimated_rows=12,
+    ).model_copy(
+        update={
+            "status": LogExportStatus.READY,
+            "progress": LogExportProgress(stage=LogExportStage.UPLOADING, rows_written=10),
+            "expires_at": datetime(2026, 11, 27, 9, 30, tzinfo=UTC),
+        }
+    )
+
+    markdown = _log_export_notice_markdown(
+        task, sources=[], timezone=ZoneInfo("Asia/Shanghai"), copy=_LOG_EXPORT_NOTIFICATION_COPY["en-US"]
+    )
+    assert markdown.split("\n\n") == [
+        r"**Time range** — From 2026\-11\-20 08\:00",
+        "**Status** — Success",
+        r"**Search** — \:\:card \[customer\]\(https\:\/\/example\.com\) &lt;label&gt;",
+        "**End user or account** — Review account",
+        "**CSV rows** — 10",
+        r"**Expires** — 2026\-11\-27 17\:30",
+    ]
 
 
 @pytest.mark.parametrize(

@@ -270,8 +270,10 @@ class RedisLogExportTasks[FiltersT]:
             renew = self._redis.register_script(_RENEW_LOG_EXPORT_TASK)
             return bool(renew(keys=[task_key, lease_key], args=args))
 
-    def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
-        """Publish the expected task state and retain a ready CSV for seven days after completion."""
+    def finish(
+        self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None
+    ) -> LogExportTask[FiltersT] | None:
+        """Return the published state with its final deadline, or None if the write lost its lease."""
         ready = status is LogExportStatus.READY
         expires_at = utc_now() + _READY_TASK_TTL if ready else task.expires_at
         updated = task.model_copy(
@@ -280,6 +282,7 @@ class RedisLogExportTasks[FiltersT]:
                 "storage_key": storage_key,
                 "progress": task.progress if ready else None,
                 "expires_at": expires_at,
+                "claim_token": None,
             }
         )
         args = [
@@ -294,4 +297,4 @@ class RedisLogExportTasks[FiltersT]:
         latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
         with _translate_transient_redis_errors():
             finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
-            return bool(finish(keys=(*self._execution_keys(task), latest_key), args=args))
+            return updated if finish(keys=(*self._execution_keys(task), latest_key), args=args) else None

@@ -50,7 +50,10 @@ def test_conversation_log_export_uses_shared_task(
     assert worker.reject_on_worker_lost
     log_export_publish.assert_called_once_with(kwargs=message, task_id=task.task_id, expires=task.expires_at)
 
-    with app.app_context(), patch.object(application_services().conversation_log_exports, "prepare_task") as prepare:
+    with (
+        app.app_context(),
+        patch.object(application_services().conversation_log_exports, "prepare_task", return_value=None) as prepare,
+    ):
         worker.run(**message)
         prepare.assert_called_once_with(**args)
 

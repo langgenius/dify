@@ -14,10 +14,12 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
+import { useObserveLogExportProgress } from './notification-visibility'
 
 export function LogExportProgressDialog({
   appName,
   open,
+  taskId,
   task,
   statusError,
   fileUrl,
@@ -27,6 +29,7 @@ export function LogExportProgressDialog({
 }: {
   appName: string
   open: boolean
+  taskId: string
   task?: ConversationLogExportStatusResponse
   statusError: boolean
   fileUrl: string
@@ -38,6 +41,7 @@ export function LogExportProgressDialog({
   const title = t(($) => $['export.progressTitle'], { ns: 'appLog' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
   const ready = !statusError && task?.status === 'ready'
+  useObserveLogExportProgress(open ? taskId : null, ready && task.task_id === taskId)
   const failed = !statusError && task?.status === 'failed'
   const active = !statusError && !ready && !failed
   const progress = task?.progress
