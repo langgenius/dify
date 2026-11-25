@@ -200,7 +200,7 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     account_domain.policy.is_workspace_creation_allowed.return_value = scenario != "creation_disabled"
     account_domain.policy.has_workspace_capacity.return_value = scenario != "workspace_limit"
     effects = create_autospec(WorkspaceProvisioningEffects, instance=True)
-    effects.prepare.return_value = WorkspaceCreation("workspace", "My workspace", "key", 123, 0, {})
+    effects.prepare.return_value = WorkspaceCreation("workspace", "My workspace", "key", 123, {})
     monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
     services = SimpleNamespace(
         workspaces=SimpleNamespace(

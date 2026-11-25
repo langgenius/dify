@@ -423,9 +423,7 @@ export function streamEvents(request: StreamRequest, callbacks: StreamCallbacks)
       void consumeFrames(toFrames(output), callbacks, isRequestCurrent, abortController)
     },
     (error: unknown) => {
-      if (!isRequestCurrent()) return
-      if (callbacks.isPublicAPI && abortController.signal.aborted && error instanceof ORPCError)
-        return
+      if (!isRequestCurrent() || (callbacks.isPublicAPI && abortController.signal.aborted)) return
       handleRequestError(error, callbacks)
     },
   )

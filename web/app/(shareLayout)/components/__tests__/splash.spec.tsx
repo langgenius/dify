@@ -62,14 +62,7 @@ vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: unknown[]) => fetchAccessTokenMock(...args),
 }))
 
-vi.mock('@/service/webapp-auth', () => ({
-  setWebAppAccessToken: webAppAuthMocks.setWebAppAccessToken,
-  setWebAppPassport: webAppAuthMocks.setWebAppPassport,
-  getWebAppAccessToken: webAppAuthMocks.getWebAppAccessToken,
-  getWebAppLoginMode: webAppAuthMocks.getWebAppLoginMode,
-  expireWebAppAccountSession: webAppAuthMocks.expireWebAppAccountSession,
-  captureWebAppAuthSession: webAppAuthMocks.captureWebAppAuthSession,
-}))
+vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
 
 vi.mock('@/service/common', () => ({
   webAppLoginStatus: webAppAuthMocks.webAppLoginStatus,

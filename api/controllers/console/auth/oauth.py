@@ -23,6 +23,7 @@ from libs.oauth import (
     ACCOUNT_OAUTH_STATE_MAX_AGE,
     ACCOUNT_OAUTH_STATE_PREFIX,
     AccountOAuthState,
+    OAuthState,
     decode_account_oauth_state,
     decode_oauth_state,
     encode_account_oauth_state,
@@ -228,7 +229,7 @@ class OAuthLogin(Resource):
         elif req_data.mode == LoginMode.END_USER:
             redirect_url = _end_user_return_target(redirect_url)
         nonce = secrets.token_urlsafe(32)
-        context = {}
+        context: OAuthState = {}
         if redirect_url:
             context["redirect_url"] = redirect_url
         if req_data.invite_token:

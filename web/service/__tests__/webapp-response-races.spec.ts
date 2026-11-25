@@ -138,6 +138,7 @@ describe.each([
       const onNotifyError = vi.fn()
       run({ isPublicAPI: true, onError, onCompleted, onNotifyError })
       await pending.reading
+      await waitFor(() => expect(readBody).toHaveBeenCalled())
       setWebAppAccessToken('account-b', 'end_user')
       setWebAppPassport(address, 'account-b-passport')
       pending.complete(body)
@@ -191,6 +192,7 @@ describe.each([
       getAbortController: controller.resolve,
     })
     await pending.reading
+    await waitFor(() => expect(readBody).toHaveBeenCalled())
     ;(await controller.promise).abort()
     pending.complete(body)
     await waitFor(() => expect(readBody).toHaveResolvedWith(body))
