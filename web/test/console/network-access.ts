@@ -5,13 +5,14 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
+import { TEST_NETWORK_ACCESS_GROUP_ID, TEST_WORKSPACE_ID } from '@/test/console/ids'
 
 export function createNetworkAccessGroupFixture(
   overrides: Partial<NetworkAccessGroupResponse> = {},
 ): NetworkAccessGroupResponse {
   return {
-    id: 'group-1',
-    tenant_id: 'workspace-1',
+    id: TEST_NETWORK_ACCESS_GROUP_ID,
+    tenant_id: TEST_WORKSPACE_ID,
     name: 'Internal Network',
     description: '',
     allowed_cidrs: ['203.0.113.42/32', '198.51.100.0/24'],
@@ -32,7 +33,7 @@ export function seedNetworkAccessGroups(
   overrides: Partial<NetworkAccessGroupListResponse> = {},
 ): NetworkAccessGroupListResponse {
   const data: NetworkAccessGroupListResponse = {
-    tenant_id: 'workspace-1',
+    tenant_id: TEST_WORKSPACE_ID,
     entitled: true,
     groups: [],
     ...overrides,
@@ -50,7 +51,7 @@ export function seedAppNetworkAccessGroup(
   overrides: Partial<AppNetworkAccessGroupResponse> = {},
 ): AppNetworkAccessGroupResponse {
   const data: AppNetworkAccessGroupResponse = {
-    tenant_id: 'workspace-1',
+    tenant_id: TEST_WORKSPACE_ID,
     app_id: appId,
     entitled: true,
     effective_enabled: (overrides.entitled ?? true) && (overrides.binding?.enabled ?? false),

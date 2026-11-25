@@ -4,13 +4,11 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowBrowserComponent as render } from '@/app/components/workflow/__tests__/workflow-browser-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Item from '../item'
 
-const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
 
 function SelectedNodes() {

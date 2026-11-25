@@ -15,6 +15,7 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { appCompletionMessagesSender } from '@/service/debug'
 import { AppSourceType } from '@/service/share'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
@@ -122,7 +123,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
       })
     }
 
-    handleSend(`apps/${appId}/completion-messages`, data, {
+    handleSend(appCompletionMessagesSender(appId), data, {
       onNotifyError: (message) => toast.error(message),
     })
   }

@@ -5,6 +5,7 @@ import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { FileResponse } from '@/types/workflow'
 import { gzipSync } from 'node:zlib'
+import { zParameters } from '@dify/contracts/api/console/trial-apps/zod.gen'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -17,7 +18,6 @@ import {
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
-import * as tryAppService from '@/service/try-app'
 import {
   createChatConfigFixture,
   createChatFileFixture,
@@ -82,8 +82,28 @@ const seedTryApp = (client: QueryClient, id: string) => {
     consoleQuery.trialApps.byAppId.get.queryKey({ input }),
     createTryAppDetail(id, 'Try App'),
   )
-  vi.spyOn(tryAppService, 'fetchTryAppParams').mockResolvedValue(
-    createChatConfigFixture({ opening_statement: 'Try a conversation' }),
+  client.setQueryData(
+    consoleQuery.trialApps.byAppId.parameters.get.queryKey({ input }),
+    zParameters.parse({
+      annotation_reply: {},
+      file_upload: {},
+      more_like_this: {},
+      retriever_resource: {},
+      sensitive_word_avoidance: {},
+      speech_to_text: {},
+      suggested_questions: [],
+      suggested_questions_after_answer: {},
+      text_to_speech: {},
+      user_input_form: [],
+      opening_statement: 'Try a conversation',
+      system_parameters: {
+        audio_file_size_limit: 10,
+        file_size_limit: 10,
+        image_file_size_limit: 10,
+        video_file_size_limit: 10,
+        workflow_file_upload_limit: 10,
+      },
+    }),
   )
 }
 

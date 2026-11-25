@@ -63,10 +63,16 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 
 Use a Trigger under its Root for a dedicated opener. Child components and portals preserve that
 React relationship. When a Trigger must live outside the Root, connect it with the Root’s shared
-handle. A [menu command] opens a sibling dialog from its action. Use local controlled `open`
-when the Root already knows the target, or `openWithPayload` when the action supplies the target
-to a shared dialog. For an anchored overlay such as a [`Popover`], an imperative `open(triggerId)`
-identifies its registered Trigger.
+handle. A [menu command] opens a sibling dialog through the handle: `open(null)` when the Root
+already knows the target, `openWithPayload` when the action supplies it. Controlled `open` is for
+open state another owner must observe. For an anchored overlay such as a [`Popover`], an
+imperative `open(triggerId)` identifies its registered Trigger.
+
+A dialog that items of a collection open has one Root at the collection, and the payload is the
+session's snapshot of its target. Triggers carry the payload; a handle is needed only when a
+Trigger sits outside the Root or a menu command opens the dialog. Focus returns to the element
+focused before opening, or the last connected one, so set `finalFocus` only when the outcome
+needs another target.
 
 ## Primitive semantics
 

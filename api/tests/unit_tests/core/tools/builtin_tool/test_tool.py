@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -46,7 +46,7 @@ def test_builtin_tool_fork_and_provider_type() -> None:
     assert tool.tool_provider_type() == ToolProviderType.BUILT_IN
 
 
-def test_invoke_model_calls_model_invocation_utils_invoke() -> None:
+def test_invoke_model_calls_model_invocation_utils_invoke(sqlite_session_factory: sessionmaker[Session]) -> None:
     tool = _build_tool(user_id="runtime-user")
     with patch("core.tools.builtin_tool.tool.ModelInvocationUtils.invoke", return_value="result") as mock_invoke:
         assert (
@@ -64,6 +64,7 @@ def test_invoke_model_calls_model_invocation_utils_invoke() -> None:
         tool_name="tool-a",
         prompt_messages=[UserPromptMessage(content="hello")],
         caller_user_id="runtime-user",
+        session_maker=sqlite_session_factory,
     )
 
 

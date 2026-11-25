@@ -304,14 +304,6 @@ export const zAgentSoulLockedError = zErrorResponse.and(
 )
 
 /**
- * AgentBuildDraftApplyResponse
- */
-export const zAgentBuildDraftApplyResponse = z.object({
-  draft: z.record(z.string(), z.unknown()),
-  result: z.string(),
-})
-
-/**
  * InvalidComposerConfigError
  *
  * Invalid agent composer config.
@@ -324,6 +316,14 @@ export const zInvalidComposerConfigError = zErrorResponse.and(
 )
 
 /**
+ * AgentBuildDraftApplyResponse
+ */
+export const zAgentBuildDraftApplyResponse = z.object({
+  draft: z.record(z.string(), z.unknown()),
+  result: z.string(),
+})
+
+/**
  * PlaintextSecretNotAllowedError
  *
  * Plaintext secret values are not allowed in Agent config.
@@ -332,6 +332,18 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('plaintext_secret_not_allowed_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
   }),
 )
 
@@ -1593,6 +1605,7 @@ export const zAgentInviteOptionResponse = z.object({
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
+  tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   workflow_id: z.string().nullish(),
@@ -3358,6 +3371,7 @@ export const zDeclaredOutputConfig = z.object({
  * WorkflowNodeJobConfig
  */
 export const zWorkflowNodeJobConfig = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
   declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
@@ -3365,6 +3379,13 @@ export const zWorkflowNodeJobConfig = z.object({
   output_routes: zWorkflowOutputRoutes.optional(),
   previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
   schema_version: z.int().optional().default(1),
+  session_generation: z
+    .string()
+    .max(36)
+    .regex(/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/)
+    .readonly()
+    .optional()
+    .default(''),
   workflow_prompt: z.string().optional().default(''),
 })
 
@@ -3912,6 +3933,42 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   workflow_type: z.string().nullish(),
 })
 
+/**
+ * WorkflowNodeJobConfig
+ */
+export const zWorkflowNodeJobConfigWritable = z.object({
+  continue_agent_session: z.boolean().optional().default(true),
+  declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  human_contacts: z.array(zAgentHumanContactConfig).optional(),
+  metadata: zWorkflowNodeJobMetadata.optional(),
+  mode: zWorkflowNodeJobMode.optional().default('tell_agent_what_to_do'),
+  output_routes: zWorkflowOutputRoutes.optional(),
+  previous_node_output_refs: z.array(zWorkflowPreviousNodeOutputRef).optional(),
+  schema_version: z.int().optional().default(1),
+  workflow_prompt: z.string().optional().default(''),
+})
+
+/**
+ * ComposerSavePayload
+ */
+export const zComposerSavePayloadWritable = z.object({
+  agent_soul: zAgentSoulConfig.nullish(),
+  binding: zComposerBindingPayload.nullish(),
+  client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  idempotency_key: z.string().nullish(),
+  new_agent_name: z.string().min(1).max(255).nullish(),
+  node_job: zWorkflowNodeJobConfigWritable.nullish(),
+  role: z.string().max(255).nullish(),
+  save_strategy: zComposerSaveStrategy,
+  soul_lock: zComposerSoulLockPayload.optional(),
+  variant: zComposerVariant,
+  version_note: z.string().nullish(),
+})
+
 export const zGetAgentQuery = z.object({
   creator_ids: z.array(z.string()).optional(),
   is_created_by_me: z.boolean().optional(),
@@ -3957,6 +4014,7 @@ export const zGetAgentInviteOptionsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).optional().default(1),
+  tag_ids: z.array(z.uuid()).optional(),
 })
 
 /**
@@ -4082,7 +4140,7 @@ export const zGetAgentByAgentIdBuildDraftPath = z.object({
  */
 export const zGetAgentByAgentIdBuildDraftResponse = zAgentBuildDraftResponse
 
-export const zPutAgentByAgentIdBuildDraftBody = zComposerSavePayload
+export const zPutAgentByAgentIdBuildDraftBody = zComposerSavePayloadWritable
 
 export const zPutAgentByAgentIdBuildDraftPath = z.object({
   agent_id: z.uuid(),
@@ -4158,7 +4216,7 @@ export const zGetAgentByAgentIdComposerPath = z.object({
  */
 export const zGetAgentByAgentIdComposerResponse = zAgentAppComposerResponse
 
-export const zPutAgentByAgentIdComposerBody = zComposerSavePayload
+export const zPutAgentByAgentIdComposerBody = zComposerSavePayloadWritable
 
 export const zPutAgentByAgentIdComposerPath = z.object({
   agent_id: z.uuid(),
@@ -4178,7 +4236,7 @@ export const zGetAgentByAgentIdComposerCandidatesPath = z.object({
  */
 export const zGetAgentByAgentIdComposerCandidatesResponse = zAgentComposerCandidatesResponse
 
-export const zPostAgentByAgentIdComposerValidateBody = zComposerSavePayload
+export const zPostAgentByAgentIdComposerValidateBody = zComposerSavePayloadWritable
 
 export const zPostAgentByAgentIdComposerValidatePath = z.object({
   agent_id: z.uuid(),

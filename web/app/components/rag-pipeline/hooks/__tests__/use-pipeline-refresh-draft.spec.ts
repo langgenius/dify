@@ -17,7 +17,7 @@ vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
+  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
 }))
 
 const createDraft = (overrides: Record<string, unknown> = {}) => ({
@@ -50,9 +50,7 @@ describe('usePipelineRefreshDraft', () => {
 
     act(() => result.current.handleRefreshWorkflowDraft())
 
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/test-pipeline-id/workflows/draft',
-    )
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith('test-pipeline-id')
     expect(store.getState().isSyncingWorkflowDraft).toBe(true)
     expect(mockHandleUpdateWorkflowCanvas).not.toHaveBeenCalled()
 

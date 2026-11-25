@@ -5,7 +5,7 @@ import { renderBaseField } from './base-field-test-env'
 
 const mockCopy = vi.fn()
 
-// boundary: the system clipboard is outside Browser Mode; the real copy action remains rendered.
+// boundary: the system clipboard is shared by spec files running in parallel; the real copy action remains rendered.
 vi.mock('foxact/use-clipboard', () => ({
   useClipboard: () => ({ copy: mockCopy, copied: false }),
 }))
