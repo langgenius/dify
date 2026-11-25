@@ -261,11 +261,15 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   return ret
 }
 
-/** Puts a new conversation with its generated name into a loaded conversation list. */
+/**
+ * Puts a new conversation with its generated name into the conversation list,
+ * starting one when the list has not loaded (for example after its request failed).
+ */
 function withGeneratedConversation(
-  data: AppConversationData,
+  data: AppConversationData | undefined,
   conversation: ConversationItem,
 ): AppConversationData {
+  if (!data) return { data: [conversation], has_more: false, limit: 100 }
   const list = data.data.slice()
   const index = list.findIndex((item) => item.id === conversation.id)
   if (index > -1) list[index] = conversation

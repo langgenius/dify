@@ -425,9 +425,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           }),
         )
         .then((conversation) =>
-          queryClient.setQueryData(
-            conversationListQueryOptions.queryKey,
-            (data) => data && withGeneratedConversation(data, conversation),
+          queryClient.setQueryData(conversationListQueryOptions.queryKey, (data) =>
+            withGeneratedConversation(data, conversation),
           ),
         )
         .catch(noop)

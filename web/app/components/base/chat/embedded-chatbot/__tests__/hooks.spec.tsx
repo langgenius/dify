@@ -346,6 +346,25 @@ describe('useEmbeddedChatbot', () => {
       )
     })
 
+    it('should show the generated conversation when the conversation list fails to load', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      await waitFor(() =>
+        expect(result.current.conversationList.map(({ id, name }) => ({ id, name }))).toEqual([
+          { id: 'conversation-new', name: 'Generated' },
+        ]),
+      )
+    })
+
     it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
       mockFetchChatList.mockResolvedValue({ data: [] })

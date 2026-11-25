@@ -592,9 +592,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           }),
         )
         .then((conversation) =>
-          queryClient.setQueryData(
-            conversationListQueryOptions.queryKey,
-            (data) => data && withGeneratedConversation(data, conversation),
+          queryClient.setQueryData(conversationListQueryOptions.queryKey, (data) =>
+            withGeneratedConversation(data, conversation),
           ),
         )
         .catch(noop)
