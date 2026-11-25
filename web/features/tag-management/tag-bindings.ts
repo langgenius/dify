@@ -16,6 +16,7 @@ export const useApplyTagBindingsMutation = () => {
 
   return useMutation({
     mutationKey: ['tag-bindings', 'apply'],
+    meta: { errorToast: false },
     mutationFn: async ({ currentTagIds, nextTagIds, targetId, type }: ApplyTagBindingsInput) => {
       const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
       const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))

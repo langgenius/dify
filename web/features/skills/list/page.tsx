@@ -46,11 +46,13 @@ export default function SkillsPage() {
   const createMutation = useMutation(
     consoleQuery.workspaces.current.skills.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const skillsQuery = useInfiniteQuery({

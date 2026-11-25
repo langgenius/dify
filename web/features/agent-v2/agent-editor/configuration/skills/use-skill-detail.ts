@@ -399,6 +399,7 @@ export function useAgentSkillDetail({
             ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
                 context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: { app_id: apiContext.trialAppId, name: skill.name },
                   query: { path, version_id: apiContext.versionId },
@@ -415,6 +416,7 @@ export function useAgentSkillDetail({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
                 context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: {
                     app_id: apiContext.workflow.appId,
@@ -438,6 +440,7 @@ export function useAgentSkillDetail({
         const result = await queryClient.query({
           ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
             context: { silent: true },
+            meta: { errorToast: false },
             input: {
               params: {
                 agent_id: apiContext.agentId,

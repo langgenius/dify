@@ -133,10 +133,16 @@ export function ContactsImPlatformManagementSurface() {
     }),
   )
   const deleteEmail = useMutation(
-    api.channels.email.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+    api.channels.email.byChannelId.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const deleteIM = useMutation(
-    api.channels.im.byChannelId.delete.mutationOptions({ context: { silent: true } }),
+    api.channels.im.byChannelId.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const pendingCredentials = useIsMutating({ mutationKey: api.channels.key() }) > 0
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)

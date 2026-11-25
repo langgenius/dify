@@ -113,7 +113,10 @@ export const TagSelector = ({
   const { isPending: isCreatingTag, mutateAsync: createTag } = useMutation(
     consoleQuery.tags.post.mutationOptions({
       context: { silent: true },
-      meta: { deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags },
+      meta: {
+        errorToast: false,
+        deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags,
+      },
     }),
   )
   const { data: tagList = EMPTY_TAGS, isSuccess: hasLoadedTags } = useQuery({

@@ -46,7 +46,10 @@ export const TagManagementDialog = ({
     }),
   )
   const createTagMutation = useMutation(
-    consoleQuery.tags.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.tags.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   if (!canManageTags) return null
 

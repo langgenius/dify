@@ -174,10 +174,13 @@ function AccessControlSession({
           ? { params: { group_id: selectedPolicyId } }
           : skipToken,
       context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
-  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
+  const saveCheck = useMutation(
+    checkCurrentIp.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
+  )
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
