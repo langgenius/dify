@@ -15,15 +15,23 @@ vi.mock('@/app/notifications', () => ({
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const responses = {
+    'account.changeEmail.checkEmailUnique.post': vi.fn(),
+    'account.changeEmail.reset.post': vi.fn(),
+    'account.changeEmail.post': vi.fn(),
+    'account.changeEmail.validity.post': vi.fn(),
+  }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, responses)
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'account.changeEmail.checkEmailUnique.post': vi.fn(),
-      'account.changeEmail.reset.post': vi.fn(),
-      'account.changeEmail.post': vi.fn(),
-      'account.changeEmail.validity.post': vi.fn(),
-    }),
+    consoleClient,
+    consoleQuery: createConsoleQuery(consoleClient),
   }
+})
+
+const silentRequest = expect.objectContaining({
+  context: expect.objectContaining({ silent: true }),
 })
 
 vi.mock('@/service/common-queries', () => ({
@@ -66,7 +74,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      { context: { silent: true } },
+      silentRequest,
     )
 
     const email = await screen.findByRole('textbox', {
@@ -87,7 +95,7 @@ describe('EmailChangeModal', () => {
           token: 'verified-token',
         },
       },
-      { context: { silent: true } },
+      silentRequest,
     )
 
     const newCode = await screen.findByRole('textbox', {
@@ -103,7 +111,7 @@ describe('EmailChangeModal', () => {
             token: 'verified-token',
           },
         },
-        { context: { silent: true } },
+        silentRequest,
       ),
     )
     expect(mockLogout).toHaveBeenCalledOnce()
@@ -205,7 +213,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      { context: { silent: true } },
+      silentRequest,
     )
   })
 })
