@@ -41,7 +41,7 @@ from graphon.nodes.variable_assigner.v1.node import (
 from graphon.nodes.variable_assigner.v2.node import (
     VariableAssignerNode as VariableAssignerV2,
 )
-from graphon.runtime import InitParams, RuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
