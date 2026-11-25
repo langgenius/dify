@@ -1284,8 +1284,20 @@ class DatasetRetrieval:
         cancel_event: threading.Event | None,
         thread_exceptions: list[Exception] | None,
         skip_on_error: bool = False,
+        skipped_exceptions: list[Exception] | None = None,
     ) -> None:
-        """Collect errors after tracing, or skip dataset-level failures when requested."""
+        """Collect errors after tracing, or skip dataset-level failures when requested.
+
+        Preconditions: ``thread_exceptions`` and ``skipped_exceptions`` are
+        caller-owned lists that outlive this call when provided.
+        Postconditions: on success the retrieved documents are appended to
+        ``all_documents``. On failure with ``skip_on_error`` the error is
+        logged and recorded as a span event, appended to
+        ``skipped_exceptions`` when provided, and neither
+        ``thread_exceptions`` nor ``cancel_event`` is touched. On failure
+        without ``skip_on_error`` the error is appended to
+        ``thread_exceptions`` and ``cancel_event`` is set when provided.
+        """
         try:
             self._run_retriever_thread(
                 flask_app=flask_app,
@@ -1315,6 +1327,8 @@ class DatasetRetrieval:
                             "error.message": str(exc),
                         },
                     )
+                if skipped_exceptions is not None:
+                    skipped_exceptions.append(exc)
                 return
 
             if cancel_event:
@@ -1961,6 +1975,7 @@ class DatasetRetrieval:
             with flask_app.app_context():
                 threads = []
                 retrieval_thread_exceptions: list[Exception] = []
+                retrieval_skipped_exceptions: list[Exception] = []
                 all_documents_item: list[Document] = []
                 index_type = None
                 for dataset in available_datasets:
@@ -1992,6 +2007,7 @@ class DatasetRetrieval:
                             "cancel_event": cancel_event,
                             "thread_exceptions": retrieval_thread_exceptions,
                             "skip_on_error": True,
+                            "skipped_exceptions": retrieval_skipped_exceptions,
                         },
                     )
                     threads.append(retrieval_thread)
@@ -2008,6 +2024,19 @@ class DatasetRetrieval:
 
                 if retrieval_thread_exceptions:
                     raise retrieval_thread_exceptions[0]
+
+                # If every dataset that was actually attempted failed, surface
+                # the first error instead of returning an empty result: callers
+                # treat an empty result as a successful retrieval, so a total
+                # failure would otherwise be reported as success. Partial
+                # failures keep the successful results, and datasets that
+                # succeed but return no documents still return [].
+                if (
+                    threads
+                    and len(retrieval_skipped_exceptions) == len(threads)
+                    and not (cancel_event and cancel_event.is_set())
+                ):
+                    raise retrieval_skipped_exceptions[0]
 
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:

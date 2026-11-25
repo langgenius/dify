@@ -4052,6 +4052,149 @@ class TestDatasetRetrievalCases:
             assert f"dataset_id={mock_dataset.id}" in caplog.text
             assert "Skipping dataset retrieval because retriever failed" in caplog.text
 
+        def test_multiple_retrieve_thread_raises_when_all_datasets_fail(self, mock_dataset):
+            dataset_retrieval = DatasetRetrieval()
+            flask_app = Flask(__name__)
+            failing_dataset = Dataset(
+                id=str(uuid4()),
+                provider="dify",
+                indexing_technique="high_quality",
+            )
+
+            def fake_retriever(
+                flask_app,
+                session,
+                dataset_id,
+                query,
+                top_k,
+                all_documents,
+                document_ids_filter,
+                metadata_condition,
+                attachment_ids,
+            ):
+                raise RuntimeError("dataset unavailable")
+
+            all_documents: list[_dataset_retrieval_Document] = []
+
+            with (
+                patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever),
+                pytest.raises(RuntimeError, match="dataset unavailable"),
+            ):
+                dataset_retrieval._multiple_retrieve_thread(
+                    flask_app=flask_app,
+                    available_datasets=[mock_dataset, failing_dataset],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=all_documents,
+                    tenant_id=str(uuid4()),
+                    reranking_enable=False,
+                    reranking_mode="reranking_model",
+                    reranking_model=None,
+                    weights=None,
+                    top_k=3,
+                    score_threshold=0.0,
+                    query="test query",
+                    attachment_id=None,
+                    dataset_count=2,
+                )
+
+            assert all_documents == []
+
+        def test_multiple_retrieve_thread_returns_empty_when_all_datasets_return_nothing(self, mock_dataset):
+            dataset_retrieval = DatasetRetrieval()
+            flask_app = Flask(__name__)
+            empty_dataset = Dataset(
+                id=str(uuid4()),
+                provider="dify",
+                indexing_technique="high_quality",
+            )
+
+            def fake_retriever(
+                flask_app,
+                session,
+                dataset_id,
+                query,
+                top_k,
+                all_documents,
+                document_ids_filter,
+                metadata_condition,
+                attachment_ids,
+            ):
+                return None
+
+            all_documents: list[_dataset_retrieval_Document] = []
+
+            with patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever):
+                dataset_retrieval._multiple_retrieve_thread(
+                    flask_app=flask_app,
+                    available_datasets=[mock_dataset, empty_dataset],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=all_documents,
+                    tenant_id=str(uuid4()),
+                    reranking_enable=False,
+                    reranking_mode="reranking_model",
+                    reranking_model=None,
+                    weights=None,
+                    top_k=3,
+                    score_threshold=0.0,
+                    query="test query",
+                    attachment_id=None,
+                    dataset_count=2,
+                )
+
+            assert all_documents == []
+
+        def test_multiple_retrieve_thread_returns_empty_when_one_dataset_fails_and_other_returns_nothing(
+            self, mock_dataset, caplog
+        ):
+            dataset_retrieval = DatasetRetrieval()
+            flask_app = Flask(__name__)
+            empty_dataset = Dataset(
+                id=str(uuid4()),
+                provider="dify",
+                indexing_technique="high_quality",
+            )
+
+            def fake_retriever(
+                flask_app,
+                session,
+                dataset_id,
+                query,
+                top_k,
+                all_documents,
+                document_ids_filter,
+                metadata_condition,
+                attachment_ids,
+            ):
+                if dataset_id == mock_dataset.id:
+                    raise RuntimeError("dataset unavailable")
+
+            all_documents: list[_dataset_retrieval_Document] = []
+
+            with patch.object(dataset_retrieval, "_retriever", side_effect=fake_retriever):
+                dataset_retrieval._multiple_retrieve_thread(
+                    flask_app=flask_app,
+                    available_datasets=[mock_dataset, empty_dataset],
+                    metadata_condition=None,
+                    metadata_filter_document_ids=None,
+                    all_documents=all_documents,
+                    tenant_id=str(uuid4()),
+                    reranking_enable=False,
+                    reranking_mode="reranking_model",
+                    reranking_model=None,
+                    weights=None,
+                    top_k=3,
+                    score_threshold=0.0,
+                    query="test query",
+                    attachment_id=None,
+                    dataset_count=2,
+                )
+
+            assert all_documents == []
+            assert f"dataset_id={mock_dataset.id}" in caplog.text
+            assert "Skipping dataset retrieval because retriever failed" in caplog.text
+
     class TestDatasetRetrievalAdditionalHelpers:
         @pytest.fixture
         def retrieval(self) -> DatasetRetrieval:
