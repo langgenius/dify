@@ -36,7 +36,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
   const queryClient = useQueryClient()
   const [filters, setFilters] = useQueryStates(rosterFilters)
   const { keyword, filter: rosterFilter, created_by_me: createdByMe, tag_ids: urlTagIds } = filters
-  const searchRef = useRef<HTMLInputElement>(null)
+  const allStatusRef = useRef<HTMLButtonElement>(null)
   const tagCatalog = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: { query: { type: 'agent' } },
@@ -116,7 +116,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
                   onClearFilters: () => {
                     resetRosterPagination({ query: firstUnfilteredPage })
                     void setFilters(null)
-                    searchRef.current?.focus()
+                    allStatusRef.current?.focus()
                   },
                 }
               : 'roster',
@@ -142,7 +142,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
     >
       <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-3.5 pb-2 sm:px-8">
         <RosterToolbar
-          searchRef={searchRef}
+          allStatusRef={allStatusRef}
           publicationCounts={publicationCounts}
           tagIds={tagIds}
           onTagIdsChange={(nextIds) => {
