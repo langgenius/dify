@@ -163,3 +163,32 @@ def test_an_unknown_mcp_switch_value_is_refused(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(ValidationError, match="OPENAPI_MCP_ENABLED"):
         OpenApiAgentConfig(_env_file=None)
+
+
+class _IsolatedOpenApiAgentConfig(InitSettingsOnly, OpenApiAgentConfig):
+    pass
+
+
+def test_file_transfers_are_on_by_default() -> None:
+    config = _IsolatedOpenApiAgentConfig()
+
+    assert config.FILE_TRANSFER_ENABLED is True
+    assert config.file_transfers_on is True
+
+
+@pytest.mark.parametrize(
+    ("mcp", "transfers", "on"),
+    [(True, True, True), (True, False, False), (False, True, False), (False, False, False)],
+    ids=["both on", "transfers off", "mcp off, transfers on", "both off"],
+)
+def test_file_transfers_are_on_only_while_both_switches_are_on(mcp: bool, transfers: bool, on: bool) -> None:
+    config = _IsolatedOpenApiAgentConfig(OPENAPI_MCP_ENABLED=mcp, FILE_TRANSFER_ENABLED=transfers)
+
+    assert config.file_transfers_on is on
+
+
+def test_an_unknown_file_transfer_switch_value_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FILE_TRANSFER_ENABLED", "sometimes")
+
+    with pytest.raises(ValidationError, match="FILE_TRANSFER_ENABLED"):
+        OpenApiAgentConfig(_env_file=None)

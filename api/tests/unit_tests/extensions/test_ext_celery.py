@@ -354,6 +354,7 @@ class TestCelerySslCases:
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
             mock_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK = False
             mock_config.ENABLE_CLEAN_MESSAGES = False
+            mock_config.file_transfers_on = False
             mock_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK = False
             mock_config.ENABLE_DATASETS_QUEUE_MONITOR = False
             mock_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK = False
@@ -412,6 +413,7 @@ class TestCelerySslCases:
             mock_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK = False
             mock_config.ENABLE_UPDATE_TIDB_SERVERLESS_STATUS_TASK = False
             mock_config.ENABLE_CLEAN_MESSAGES = False
+            mock_config.file_transfers_on = False
             mock_config.ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK = False
             mock_config.ENABLE_DATASETS_QUEUE_MONITOR = False
             mock_config.ENABLE_HUMAN_INPUT_TIMEOUT_TASK = False
