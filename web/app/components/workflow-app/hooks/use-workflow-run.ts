@@ -1,11 +1,7 @@
-import type {
-  WorkflowRunDetailResponse,
-  WorkflowRunNodeExecutionResponse,
-} from '@dify/contracts/api/console/apps/types.gen'
 import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
+import type { WorkflowRunCallbacks } from '@/app/components/workflow/hooks-store'
 import type { Node } from '@/app/components/workflow/types'
-import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -55,13 +51,6 @@ import {
   runTriggerDebug,
   validateWorkflowRunRequest,
 } from './use-workflow-run-utils'
-
-type WorkflowRunCallbacks = StreamCallbacks & {
-  onExternalWorkflowSnapshot?: (
-    run: WorkflowRunDetailResponse,
-    executions: WorkflowRunNodeExecutionResponse[],
-  ) => void
-}
 
 type WorkflowRunParams = Record<string, unknown> & {
   token?: string
