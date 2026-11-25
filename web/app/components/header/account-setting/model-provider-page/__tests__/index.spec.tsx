@@ -58,10 +58,13 @@ const { mockSaveAutoUpgrade } = vi.hoisted(() => ({
   mockSaveAutoUpgrade: vi.fn(),
 }))
 
-const { mockDefaultModelQuery, mockPluginSettingsAccess } = vi.hoisted(() => ({
-  mockDefaultModelQuery: vi.fn(),
-  mockPluginSettingsAccess: { canSetPluginPreferences: true },
-}))
+const { mockDefaultModelQuery, mockPluginSettingsAccess, mockModelConfigAccess } = vi.hoisted(
+  () => ({
+    mockDefaultModelQuery: vi.fn(),
+    mockPluginSettingsAccess: { canSetPluginPreferences: true },
+    mockModelConfigAccess: { granted: true },
+  }),
+)
 
 const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
   mockReferenceSetting: {
@@ -197,7 +200,7 @@ const renderModelProviderPage = (
     }),
     { data: [] },
   )
-  if (mockPluginSettingsAccess.canSetPluginPreferences) {
+  if (mockModelConfigAccess.granted) {
     for (const [type, state] of Object.entries(mockDefaultModels)) {
       if (!state.isLoading)
         queryClient.setQueryData(
@@ -254,6 +257,7 @@ const renderModelProviderPage = (
     {
       queryClient,
       systemFeatures: { enable_marketplace: enableMarketplace },
+      workspacePermissionKeys: mockModelConfigAccess.granted ? ['plugin.model_config'] : [],
     },
   )
 }
@@ -339,6 +343,7 @@ describe('ModelProviderPage', () => {
     mockSummaryState.isLoading = false
     mockSummaryState.plugins = {}
     mockPluginSettingsAccess.canSetPluginPreferences = true
+    mockModelConfigAccess.granted = true
     mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
@@ -396,8 +401,8 @@ describe('ModelProviderPage', () => {
     expect(screen.getByTestId('install-from-marketplace')).toBeInTheDocument()
   })
 
-  it('should skip system model settings without plugin preference access', () => {
-    mockPluginSettingsAccess.canSetPluginPreferences = false
+  it('should skip system model settings without configure-models access', () => {
+    mockModelConfigAccess.granted = false
 
     renderModelProviderPage()
 
@@ -405,6 +410,16 @@ describe('ModelProviderPage', () => {
     expect(
       screen.queryByRole('button', { name: /modelProvider.systemModelSettings/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should skip auto-update settings without plugin preference access', () => {
+    mockPluginSettingsAccess.canSetPluginPreferences = false
+
+    renderModelProviderPage()
+
+    expect(
+      screen.getByRole('button', { name: /modelProvider.systemModelSettings/ }),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /plugin\.autoUpdate\.autoUpdate/ }),
     ).not.toBeInTheDocument()

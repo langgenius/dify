@@ -9,10 +9,9 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { hasPermission } from '@/utils/permission'
+import { canConfigureModelsAtom } from '../atoms'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
 import { ConfigModel } from '../model-auth'
@@ -49,9 +48,8 @@ const ModelListItem = ({
       }),
     }),
   )
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const configurableStatuses: ModelStatusEnum[] = [ModelStatusEnum.active, ModelStatusEnum.disabled]
-  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const { mutateAsync: enableModel } = useMutation(
