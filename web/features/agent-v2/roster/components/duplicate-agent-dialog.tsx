@@ -1,10 +1,10 @@
 'use client'
 import type { AgentAppCopyPayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
-import type { AgentFormSource, AgentFormValues, AgentIconSelection } from './agent-form'
+import type { AgentFormSource, AgentFormValues } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -13,25 +13,21 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
-type DuplicateAgentDialogProps = {
+type DuplicateAgentDialogContentProps = {
   agent: AgentFormSource
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  pending: boolean
+  onSubmit: (body: AgentAppCopyPayload) => void
 }
 
-type DuplicateAgentFormSessionProps = {
-  agent: AgentFormSource
+type DuplicateAgentFormSessionProps = DuplicateAgentDialogContentProps & {
   nameInputRef: Ref<HTMLInputElement>
-  pending: boolean
-  onCancel: () => void
-  onSubmit: (formValues: AgentFormValues, agentIcon: AgentIconSelection) => void
 }
 
 const getDefaultCopyName = (name: string) => {
@@ -40,23 +36,31 @@ const getDefaultCopyName = (name: string) => {
 }
 
 function DuplicateAgentFormSession({
-  agent,
+  agent: listedAgent,
   nameInputRef,
   pending,
-  onCancel,
   onSubmit,
 }: DuplicateAgentFormSessionProps) {
   const { t } = useTranslation(['agentRoster'])
   const { t: tCommon } = useTranslation(['common'])
-  const [initialValues] = useState(() => ({
-    fields: {
-      description: agent.description ?? '',
-      name: getDefaultCopyName(agent.name),
-      role: agent.role ?? '',
-    } satisfies AgentFormValues,
-    icon: createAgentIconSelection(agent),
-    sourceName: agent.name,
-  }))
+  const queryClient = useQueryClient()
+  const [initialValues] = useState(() => {
+    const agent =
+      queryClient.getQueryData<AgentFormSource>(
+        consoleQuery.agent.byAgentId.get.queryKey({
+          input: { params: { agent_id: listedAgent.id } },
+        }),
+      ) ?? listedAgent
+    return {
+      fields: {
+        description: agent.description ?? '',
+        name: getDefaultCopyName(agent.name),
+        role: agent.role ?? '',
+      } satisfies AgentFormValues,
+      icon: createAgentIconSelection(agent),
+      sourceName: agent.name,
+    }
+  })
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
 
   return (
@@ -78,7 +82,16 @@ function DuplicateAgentFormSession({
       </DialogHeader>
       <Form<AgentFormValues>
         className="contents"
-        onFormSubmit={(formValues) => onSubmit(formValues, agentIcon)}
+        onFormSubmit={(formValues) =>
+          onSubmit({
+            name: formValues.name.trim(),
+            description: formValues.description.trim(),
+            role: formValues.role.trim(),
+            icon_type: agentIcon.type,
+            icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
+            icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
+          })
+        }
       >
         <AgentFormFields
           ref={nameInputRef}
@@ -91,9 +104,9 @@ function DuplicateAgentFormSession({
           onIconChange={setAgentIcon}
         />
         <DialogFooter>
-          <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
+          <DialogClose disabled={pending} render={<Button type="button" className="min-w-18" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button type="submit" variant="primary" className="min-w-18" loading={pending}>
             {tCommon(($) => $['operation.duplicate'])}
           </Button>
@@ -103,68 +116,21 @@ function DuplicateAgentFormSession({
   )
 }
 
-export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAgentDialogProps) {
-  const queryClient = useQueryClient()
-  const latestAgent =
-    queryClient.getQueryData<AgentFormSource>(
-      consoleQuery.agent.byAgentId.get.queryKey({
-        input: {
-          params: {
-            agent_id: agent.id,
-          },
-        },
-      }),
-    ) ?? agent
+export function DuplicateAgentDialogContent({
+  agent,
+  pending,
+  onSubmit,
+}: DuplicateAgentDialogContentProps) {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const duplicateAgentMutation = useMutation(
-    consoleQuery.agent.byAgentId.copy.post.mutationOptions(),
-  )
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && duplicateAgentMutation.isPending) return
-    onOpenChange(nextOpen)
-  }
-
-  const handleSubmit = (formValues: AgentFormValues, agentIcon: AgentIconSelection) => {
-    if (duplicateAgentMutation.isPending) return
-
-    const body: AgentAppCopyPayload = {
-      name: formValues.name.trim(),
-      description: formValues.description.trim(),
-      role: formValues.role.trim(),
-      icon_type: agentIcon.type,
-      icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-      icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-    }
-
-    duplicateAgentMutation.mutate(
-      {
-        params: {
-          agent_id: agent.id,
-        },
-        body,
-      },
-      {
-        onSuccess: () => {
-          onOpenChange(false)
-        },
-      },
-    )
-  }
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogContent initialFocus={nameInputRef} className="w-130">
-          <DuplicateAgentFormSession
-            key={latestAgent.id}
-            agent={latestAgent}
-            nameInputRef={nameInputRef}
-            pending={duplicateAgentMutation.isPending}
-            onCancel={() => onOpenChange(false)}
-            onSubmit={handleSubmit}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+    <DialogContent initialFocus={nameInputRef} className="w-130">
+      <DuplicateAgentFormSession
+        agent={agent}
+        nameInputRef={nameInputRef}
+        pending={pending}
+        onSubmit={onSubmit}
+      />
+    </DialogContent>
   )
 }

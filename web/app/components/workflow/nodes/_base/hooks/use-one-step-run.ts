@@ -9,6 +9,7 @@ import type {
   Var,
   Variable,
 } from '@/app/components/workflow/types'
+import type { StreamRequest } from '@/service/event-stream'
 import type { NodeTracing } from '@/types/workflow'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { unionBy } from 'es-toolkit/compat'
@@ -59,8 +60,8 @@ import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
-import { ssePost } from '@/service/base'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
@@ -68,19 +69,69 @@ import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useWorkflow } from '../../../hooks/use-workflow'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 
-// Iteration and loop runs use the SSE event callbacks that the JSON client does not expose.
-function getContainerNodeRunUrl(
+// Iteration and loop runs report their progress as an event stream.
+function getContainerNodeRunRequest(
   resource: EditorResource,
   type: 'iteration' | 'loop',
   nodeId: string,
-) {
+  inputs: Record<string, unknown>,
+): StreamRequest {
+  const body = { inputs }
   switch (resource.kind) {
-    case 'app':
-      return `apps/${resource.appId}/${resource.mode === 'advanced-chat' ? 'advanced-chat/' : ''}workflows/draft/${type}/nodes/${nodeId}/run`
-    case 'knowledge-pipeline':
-      return `rag/pipelines/${resource.pipelineId}/workflows/draft/${type}/nodes/${nodeId}/run`
-    case 'snippet':
-      return `snippets/${resource.snippetId}/workflows/draft/${type}/nodes/${nodeId}/run`
+    case 'app': {
+      const params = { app_id: resource.appId, node_id: nodeId }
+      if (resource.mode === 'advanced-chat')
+        return type === 'iteration'
+          ? (options) =>
+              consoleClient.apps.byAppId.advancedChat.workflows.draft.iteration.nodes.byNodeId.run.post(
+                { params, body },
+                options,
+              )
+          : (options) =>
+              consoleClient.apps.byAppId.advancedChat.workflows.draft.loop.nodes.byNodeId.run.post(
+                { params, body },
+                options,
+              )
+      return type === 'iteration'
+        ? (options) =>
+            consoleClient.apps.byAppId.workflows.draft.iteration.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+        : (options) =>
+            consoleClient.apps.byAppId.workflows.draft.loop.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+    }
+    case 'knowledge-pipeline': {
+      const params = { pipeline_id: resource.pipelineId, node_id: nodeId }
+      return type === 'iteration'
+        ? (options) =>
+            consoleClient.rag.pipelines.byPipelineId.workflows.draft.iteration.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+        : (options) =>
+            consoleClient.rag.pipelines.byPipelineId.workflows.draft.loop.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+    }
+    case 'snippet': {
+      const params = { snippet_id: resource.snippetId, node_id: nodeId }
+      return type === 'iteration'
+        ? (options) =>
+            consoleClient.snippets.bySnippetId.workflows.draft.iteration.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+        : (options) =>
+            consoleClient.snippets.bySnippetId.workflows.draft.loop.nodes.byNodeId.run.post(
+              { params, body },
+              options,
+            )
+    }
   }
 }
 
@@ -884,210 +935,202 @@ const useOneStepRun = <T>({
         setIterationRunResult([])
         let _iterationResult: NodeTracing[] = []
         let _runResult: any = null
-        ssePost(
-          getContainerNodeRunUrl(resource, 'iteration', id),
-          { body: { inputs: submitData } },
-          {
-            onWorkflowStarted: noop,
-            onWorkflowFinished: (params) => {
-              if (isPausedRef.current) return
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Succeeded,
-                },
-              })
-              const { data: iterationData } = params
-              _runResult.created_by = iterationData.created_by.name
-              setRunResult(_runResult)
-            },
-            onIterationStart: (params) => {
-              const newIterationRunResult = produce(_iterationResult, (draft) => {
-                draft.push({
-                  ...params.data,
-                  status: NodeRunningStatus.Running,
-                })
-              })
-              _iterationResult = newIterationRunResult
-              setIterationRunResult(newIterationRunResult)
-            },
-            onIterationNext: () => {
-              // iteration next trigger time is triggered one more time than iterationTimes
-              if (_iterationResult.length >= iterationTimes!)
-                return _iterationResult.length >= iterationTimes!
-            },
-            onIterationFinish: (params) => {
-              _runResult = params.data
-              setRunResult(_runResult)
-              const iterationRunResult = _iterationResult
-              const currentIndex = iterationRunResult.findIndex(
-                (trace) => trace.id === params.data.id,
-              )
-              const newIterationRunResult = produce(iterationRunResult, (draft) => {
-                if (currentIndex > -1) {
-                  draft[currentIndex] = {
-                    ...draft[currentIndex]!,
-                    ...data,
-                  }
-                }
-              })
-              _iterationResult = newIterationRunResult
-              setIterationRunResult(newIterationRunResult)
-            },
-            onNodeStarted: (params) => {
-              const newIterationRunResult = produce(_iterationResult, (draft) => {
-                draft.push({
-                  ...params.data,
-                  status: NodeRunningStatus.Running,
-                })
-              })
-              _iterationResult = newIterationRunResult
-              setIterationRunResult(newIterationRunResult)
-            },
-            onNodeFinished: (params) => {
-              const iterationRunResult = _iterationResult
-
-              const { data } = params
-              const currentIndex = iterationRunResult.findIndex((trace) => trace.id === data.id)
-              const newIterationRunResult = produce(iterationRunResult, (draft) => {
-                if (currentIndex > -1) {
-                  draft[currentIndex] = {
-                    ...draft[currentIndex],
-                    ...data,
-                  }
-                }
-              })
-              _iterationResult = newIterationRunResult
-              setIterationRunResult(newIterationRunResult)
-            },
-            onNodeRetry: (params) => {
-              const newIterationRunResult = produce(_iterationResult, (draft) => {
-                draft.push(params.data)
-              })
-              _iterationResult = newIterationRunResult
-              setIterationRunResult(newIterationRunResult)
-            },
-            onError: () => {
-              if (isPausedRef.current) return
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Failed,
-                },
-              })
-            },
+        streamEvents(getContainerNodeRunRequest(resource, 'iteration', id, submitData), {
+          onWorkflowStarted: noop,
+          onWorkflowFinished: (params) => {
+            if (isPausedRef.current) return
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Succeeded,
+              },
+            })
+            const { data: iterationData } = params
+            _runResult.created_by = iterationData.created_by.name
+            setRunResult(_runResult)
           },
-        )
+          onIterationStart: (params) => {
+            const newIterationRunResult = produce(_iterationResult, (draft) => {
+              draft.push({
+                ...params.data,
+                status: NodeRunningStatus.Running,
+              })
+            })
+            _iterationResult = newIterationRunResult
+            setIterationRunResult(newIterationRunResult)
+          },
+          onIterationNext: () => {
+            // iteration next trigger time is triggered one more time than iterationTimes
+            if (_iterationResult.length >= iterationTimes!)
+              return _iterationResult.length >= iterationTimes!
+          },
+          onIterationFinish: (params) => {
+            _runResult = params.data
+            setRunResult(_runResult)
+            const iterationRunResult = _iterationResult
+            const currentIndex = iterationRunResult.findIndex(
+              (trace) => trace.id === params.data.id,
+            )
+            const newIterationRunResult = produce(iterationRunResult, (draft) => {
+              if (currentIndex > -1) {
+                draft[currentIndex] = {
+                  ...draft[currentIndex]!,
+                  ...data,
+                }
+              }
+            })
+            _iterationResult = newIterationRunResult
+            setIterationRunResult(newIterationRunResult)
+          },
+          onNodeStarted: (params) => {
+            const newIterationRunResult = produce(_iterationResult, (draft) => {
+              draft.push({
+                ...params.data,
+                status: NodeRunningStatus.Running,
+              })
+            })
+            _iterationResult = newIterationRunResult
+            setIterationRunResult(newIterationRunResult)
+          },
+          onNodeFinished: (params) => {
+            const iterationRunResult = _iterationResult
+
+            const { data } = params
+            const currentIndex = iterationRunResult.findIndex((trace) => trace.id === data.id)
+            const newIterationRunResult = produce(iterationRunResult, (draft) => {
+              if (currentIndex > -1) {
+                draft[currentIndex] = {
+                  ...draft[currentIndex],
+                  ...data,
+                }
+              }
+            })
+            _iterationResult = newIterationRunResult
+            setIterationRunResult(newIterationRunResult)
+          },
+          onNodeRetry: (params) => {
+            const newIterationRunResult = produce(_iterationResult, (draft) => {
+              draft.push(params.data)
+            })
+            _iterationResult = newIterationRunResult
+            setIterationRunResult(newIterationRunResult)
+          },
+          onError: () => {
+            if (isPausedRef.current) return
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Failed,
+              },
+            })
+          },
+        })
       } else if (isLoop) {
         setLoopRunResult([])
         let _loopResult: NodeTracing[] = []
         let _runResult: any = null
-        ssePost(
-          getContainerNodeRunUrl(resource, 'loop', id),
-          { body: { inputs: submitData } },
-          {
-            onWorkflowStarted: noop,
-            onWorkflowFinished: (params) => {
-              if (isPausedRef.current) return
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Succeeded,
-                },
-              })
-              const { data: loopData } = params
-              _runResult.created_by = loopData.created_by.name
-              setRunResult(_runResult)
-            },
-            onLoopStart: (params) => {
-              const newLoopRunResult = produce(_loopResult, (draft) => {
-                draft.push({
-                  ...params.data,
-                  status: NodeRunningStatus.Running,
-                })
-              })
-              _loopResult = newLoopRunResult
-              setLoopRunResult(newLoopRunResult)
-            },
-            onLoopNext: () => {
-              // loop next trigger time is triggered one more time than loopTimes
-              if (_loopResult.length >= loopTimes!) return _loopResult.length >= loopTimes!
-            },
-            onLoopFinish: (params) => {
-              _runResult = params.data
-              setRunResult(_runResult)
-
-              const loopRunResult = _loopResult
-              const currentIndex = loopRunResult.findIndex((trace) => trace.id === params.data.id)
-              const newLoopRunResult = produce(loopRunResult, (draft) => {
-                if (currentIndex > -1) {
-                  draft[currentIndex] = {
-                    ...draft[currentIndex]!,
-                    ...data,
-                  }
-                }
-              })
-              _loopResult = newLoopRunResult
-              setLoopRunResult(newLoopRunResult)
-            },
-            onNodeStarted: (params) => {
-              const newLoopRunResult = produce(_loopResult, (draft) => {
-                draft.push({
-                  ...params.data,
-                  status: NodeRunningStatus.Running,
-                })
-              })
-              _loopResult = newLoopRunResult
-              setLoopRunResult(newLoopRunResult)
-            },
-            onNodeFinished: (params) => {
-              const loopRunResult = _loopResult
-
-              const { data } = params
-              const currentIndex = loopRunResult.findIndex((trace) => trace.id === data.id)
-              const newLoopRunResult = produce(loopRunResult, (draft) => {
-                if (currentIndex > -1) {
-                  draft[currentIndex] = {
-                    ...draft[currentIndex],
-                    ...data,
-                  }
-                }
-              })
-              _loopResult = newLoopRunResult
-              setLoopRunResult(newLoopRunResult)
-            },
-            onNodeRetry: (params) => {
-              const newLoopRunResult = produce(_loopResult, (draft) => {
-                draft.push(params.data)
-              })
-              _loopResult = newLoopRunResult
-              setLoopRunResult(newLoopRunResult)
-            },
-            onError: () => {
-              if (isPausedRef.current) return
-              handleNodeDataUpdate({
-                id,
-                data: {
-                  ...data,
-                  _isSingleRun: false,
-                  _singleRunningStatus: NodeRunningStatus.Failed,
-                },
-              })
-              trackEvent('workflow_run_failed', {
-                workflow_id: flowId,
-                node_id: id,
-                reason: res.error,
-                node_type: data?.type,
-              })
-            },
+        streamEvents(getContainerNodeRunRequest(resource, 'loop', id, submitData), {
+          onWorkflowStarted: noop,
+          onWorkflowFinished: (params) => {
+            if (isPausedRef.current) return
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Succeeded,
+              },
+            })
+            const { data: loopData } = params
+            _runResult.created_by = loopData.created_by.name
+            setRunResult(_runResult)
           },
-        )
+          onLoopStart: (params) => {
+            const newLoopRunResult = produce(_loopResult, (draft) => {
+              draft.push({
+                ...params.data,
+                status: NodeRunningStatus.Running,
+              })
+            })
+            _loopResult = newLoopRunResult
+            setLoopRunResult(newLoopRunResult)
+          },
+          onLoopNext: () => {
+            // loop next trigger time is triggered one more time than loopTimes
+            if (_loopResult.length >= loopTimes!) return _loopResult.length >= loopTimes!
+          },
+          onLoopFinish: (params) => {
+            _runResult = params.data
+            setRunResult(_runResult)
+
+            const loopRunResult = _loopResult
+            const currentIndex = loopRunResult.findIndex((trace) => trace.id === params.data.id)
+            const newLoopRunResult = produce(loopRunResult, (draft) => {
+              if (currentIndex > -1) {
+                draft[currentIndex] = {
+                  ...draft[currentIndex]!,
+                  ...data,
+                }
+              }
+            })
+            _loopResult = newLoopRunResult
+            setLoopRunResult(newLoopRunResult)
+          },
+          onNodeStarted: (params) => {
+            const newLoopRunResult = produce(_loopResult, (draft) => {
+              draft.push({
+                ...params.data,
+                status: NodeRunningStatus.Running,
+              })
+            })
+            _loopResult = newLoopRunResult
+            setLoopRunResult(newLoopRunResult)
+          },
+          onNodeFinished: (params) => {
+            const loopRunResult = _loopResult
+
+            const { data } = params
+            const currentIndex = loopRunResult.findIndex((trace) => trace.id === data.id)
+            const newLoopRunResult = produce(loopRunResult, (draft) => {
+              if (currentIndex > -1) {
+                draft[currentIndex] = {
+                  ...draft[currentIndex],
+                  ...data,
+                }
+              }
+            })
+            _loopResult = newLoopRunResult
+            setLoopRunResult(newLoopRunResult)
+          },
+          onNodeRetry: (params) => {
+            const newLoopRunResult = produce(_loopResult, (draft) => {
+              draft.push(params.data)
+            })
+            _loopResult = newLoopRunResult
+            setLoopRunResult(newLoopRunResult)
+          },
+          onError: () => {
+            if (isPausedRef.current) return
+            handleNodeDataUpdate({
+              id,
+              data: {
+                ...data,
+                _isSingleRun: false,
+                _singleRunningStatus: NodeRunningStatus.Failed,
+              },
+            })
+            trackEvent('workflow_run_failed', {
+              workflow_id: flowId,
+              node_id: id,
+              reason: res.error,
+              node_type: data?.type,
+            })
+          },
+        })
       }
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {

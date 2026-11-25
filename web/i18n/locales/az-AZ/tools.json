@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Alət kimi istifadə olunan bütün iş axınları",
   "auth.authorized": "İcazə verilib",
   "auth.setup": "İstifadə üçün icazələri konfiqurasiya et",
-  "auth.setupModalTitle": "İcazələrin konfiqurasiyası",
-  "auth.setupModalTitleDescription": "Giriş məlumatları konfiqurasiya edildikdən sonra iş sahəsindəki bütün üzvlər tətbiqləri qurarkən bu alətdən istifadə edə bilər.",
   "auth.unauthorized": "İcazə verilməyib",
   "author": "Müəllif",
   "builtInPromptTitle": "Təlimat",

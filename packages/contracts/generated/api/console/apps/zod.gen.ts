@@ -7371,6 +7371,10 @@ export const zPostAppsByAppIdAnnotationsPath = z.object({
  */
 export const zPostAppsByAppIdAnnotationsResponse = zAnnotation
 
+export const zPostAppsByAppIdAnnotationsBatchImportBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
   app_id: z.uuid(),
 })

@@ -340,6 +340,8 @@ describe('Blocks', () => {
     expect(
       await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
+    // Wait for the hover query to settle before the next test resets its request spy.
+    expect(await screen.findByText('agentRoster.roster.empty')).toBeInTheDocument()
   })
 
   it('opens the agent selector from the Agent block and selects an agent', async () => {
