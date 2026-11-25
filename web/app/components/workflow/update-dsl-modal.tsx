@@ -64,18 +64,14 @@ function UpdateDSLModal({
 
   const handleWorkflowUpdate = useCallback(
     async (app_id: string) => {
-      const { graph, features, hash, conversation_variables, environment_variables } =
-        await fetchAppWorkflowDraft(app_id)
+      if (collaborationManager.usesLoroDraft(app_id)) return
+      const draft = await fetchAppWorkflowDraft(app_id)
+      if (draft.loro_draft_epoch || collaborationManager.usesLoroDraft(app_id)) return
+      const { graph, features, hash, conversation_variables, environment_variables } = draft
 
       const { nodes, edges, viewport } = graph
       const importedNodes = initialNodes(nodes, edges)
       const importedEdges = initialEdges(edges, nodes)
-      if (
-        collaborationManager.isConnected() &&
-        !collaborationManager.replaceGraphFromCommittedDraft(app_id, importedNodes, importedEdges)
-      )
-        throw new Error('Collaborative graph is not ready to apply the imported draft.')
-
       eventEmitter?.emit({
         type: WORKFLOW_DATA_UPDATE,
         payload: {

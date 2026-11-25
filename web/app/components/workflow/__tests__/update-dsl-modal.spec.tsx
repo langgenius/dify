@@ -12,8 +12,7 @@ import UpdateDSLModal from '../update-dsl-modal'
 
 const mockEmit = vi.fn()
 const mockEmitWorkflowUpdate = vi.hoisted(() => vi.fn())
-const mockIsCollaborationConnected = vi.hoisted(() => vi.fn(() => true))
-const mockReplaceGraphFromCommittedDraft = vi.hoisted(() => vi.fn((..._args: unknown[]) => true))
+const mockUsesLoroDraft = vi.hoisted(() => vi.fn(() => false))
 
 vi.mock('@/app/notifications', () => ({
   toast: {
@@ -47,8 +46,7 @@ vi.mock('@/service/workflow', () => ({
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
     emitWorkflowUpdate: mockEmitWorkflowUpdate,
-    isConnected: mockIsCollaborationConnected,
-    replaceGraphFromCommittedDraft: mockReplaceGraphFromCommittedDraft,
+    usesLoroDraft: mockUsesLoroDraft,
   },
 }))
 
@@ -62,7 +60,7 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
   Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
-      data-testid="dsl-file-input"
+      aria-label="DSL file"
       type="file"
       onChange={(event) => updateFile(event.target.files?.[0])}
     />
@@ -104,8 +102,7 @@ describe('UpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
     })
-    mockIsCollaborationConnected.mockReturnValue(true)
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(true)
+    mockUsesLoroDraft.mockReturnValue(false)
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
   })
 
@@ -124,7 +121,7 @@ describe('UpdateDSLModal', () => {
     mockImportDSL.mockResolvedValue({ status: DSLImportStatus.COMPLETED, app_id: 'app-1' })
     render(<UpdateDSLModal {...defaultProps} />)
     const file = new File([new Uint8Array([0x50, 0x4b, 0xff])], 'workflow.IFPKG')
-    await user.upload(screen.getByTestId('dsl-file-input'), file)
+    await user.upload(screen.getByLabelText('DSL file'), file)
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
     await waitFor(() => expect(mockImportDSL).toHaveBeenCalledWith({ file, app_id: 'app-1' }))
     await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalled())
@@ -157,7 +154,7 @@ describe('UpdateDSLModal', () => {
     expect(onOpenChange).toHaveBeenCalledTimes(1)
   })
 
-  it('commits the imported graph to collaboration before updating the canvas or other clients', async () => {
+  it('shows the committed HTTP draft on the canvas before notifying other clients', async () => {
     const user = userEvent.setup()
     const importedNode = {
       id: 'imported-start',
@@ -175,64 +172,60 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
-    const [appId, nodes, edges] = mockReplaceGraphFromCommittedDraft.mock.calls[0]!
-    expect(appId).toBe('app-1')
-    expect(nodes).toEqual([expect.objectContaining({ id: 'imported-start' })])
-    expect(edges).toEqual([])
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(defaultProps.onImport).toHaveBeenCalledTimes(1)
     expect(mockEmit).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'WORKFLOW_DATA_UPDATE',
-        payload: expect.objectContaining({ nodes, edges, hash: 'imported-hash' }),
+        payload: expect.objectContaining({
+          nodes: [expect.objectContaining({ id: 'imported-start' })],
+          edges: [],
+          hash: 'imported-hash',
+        }),
       }),
-    )
-    expect(mockReplaceGraphFromCommittedDraft.mock.invocationCallOrder[0]).toBeLessThan(
-      mockEmit.mock.invocationCallOrder[0]!,
     )
     expect(mockEmit.mock.invocationCallOrder[0]).toBeLessThan(
       mockEmitWorkflowUpdate.mock.invocationCallOrder[0]!,
     )
   })
 
-  it('updates the imported canvas when collaboration is disconnected', async () => {
+  it('leaves canvas replacement to the collaborative epoch notification', async () => {
     const user = userEvent.setup()
-    mockIsCollaborationConnected.mockReturnValue(false)
+    mockUsesLoroDraft.mockReturnValue(true)
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({ type: 'WORKFLOW_DATA_UPDATE' }))
+    expect(mockFetchWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockEmit).not.toHaveBeenCalled()
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
   })
 
-  it('reloads instead of showing a graph that collaboration cannot accept', async () => {
+  it('honors a newly enabled collaborative epoch returned by the HTTP refresh', async () => {
     const user = userEvent.setup()
-    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    mockReplaceGraphFromCommittedDraft.mockReturnValue(false)
+    mockFetchWorkflowDraft.mockResolvedValueOnce({ loro_draft_epoch: 'new-epoch' })
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
-    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(defaultProps.onOpenChange).toHaveBeenCalledTimes(1))
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce()
     expect(mockEmit).not.toHaveBeenCalled()
-    expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
-    reload.mockRestore()
   })
 
   it('should show Agent package warnings returned by a completed import', async () => {
@@ -260,7 +253,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -284,7 +277,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['invalid'], 'workflow.yml', { type: 'text/yaml' }),
     )
 
@@ -309,7 +302,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
 
@@ -351,7 +344,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -378,7 +371,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -417,7 +410,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -443,7 +436,7 @@ describe('UpdateDSLModal', () => {
     mockFetchWorkflowDraft.mockRejectedValue(new Error('Draft refresh unavailable'))
     renderModal()
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -456,7 +449,6 @@ describe('UpdateDSLModal', () => {
     expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
     expect(defaultProps.onOpenChange).not.toHaveBeenCalled()
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
-    expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     reload.mockRestore()
@@ -471,10 +463,7 @@ describe('UpdateDSLModal', () => {
       }),
     )
     const original = renderModal()
-    await user.upload(
-      screen.getByTestId('dsl-file-input'),
-      new File(['workflow: {}'], 'workflow.yml'),
-    )
+    await user.upload(screen.getByLabelText('DSL file'), new File(['workflow: {}'], 'workflow.yml'))
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
     await waitFor(() => expect(mockHandleCheckPluginDependencies).toHaveBeenCalledOnce())
     original.unmount()
@@ -494,7 +483,7 @@ describe('UpdateDSLModal', () => {
     )
     renderModal()
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
     )
     const submit = screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' })
@@ -524,7 +513,7 @@ describe('UpdateDSLModal', () => {
     )
     renderModal()
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml'),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -554,7 +543,7 @@ describe('UpdateDSLModal', () => {
       }),
     )
     renderModal()
-    const input = screen.getByTestId('dsl-file-input')
+    const input = screen.getByLabelText('DSL file')
     await user.upload(input, file)
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
     expect(mockImportDSL).not.toHaveBeenCalled()
@@ -574,7 +563,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [{ data: { type: answer } }] } }'], 'workflow.yml', {
         type: 'text/yaml',
       }),
@@ -599,7 +588,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
 
@@ -622,7 +611,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -648,7 +637,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -683,7 +672,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
@@ -716,7 +705,7 @@ describe('UpdateDSLModal', () => {
     renderModal()
 
     await user.upload(
-      screen.getByTestId('dsl-file-input'),
+      screen.getByLabelText('DSL file'),
       new File(['workflow: { graph: { nodes: [] } }'], 'workflow.yml', { type: 'text/yaml' }),
     )
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))

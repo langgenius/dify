@@ -6,7 +6,10 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationEnabledAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
@@ -15,7 +18,8 @@ import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
-const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: boolean) => {
+  const collaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const { t } = useTranslation(['app'])
   const queryClient = useQueryClient()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -33,12 +37,12 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       if (!workflowId) {
         let syncFailed = false
-        await doSyncWorkflowDraft(undefined, {
+        const saved = await doSyncWorkflowDraft(undefined, {
           onError: () => {
             syncFailed = true
           },
         })
-        if (syncFailed) {
+        if (syncFailed || (!saved && collaborationEnabled && canEdit)) {
           toast.error(t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
@@ -112,5 +116,5 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 export const useDSLByCanEdit = (canEdit: boolean) => {
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
 
-  return useDSLBase(doSyncWorkflowDraft)
+  return useDSLBase(doSyncWorkflowDraft, canEdit)
 }

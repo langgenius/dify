@@ -6,11 +6,18 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
+import {
+  stepDraftHistory,
+  useCanvasDraftHistory,
+  useCollaborativeHistoryAppId,
+} from '../hooks/use-canvas-draft-history'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowHistory } from '../hooks/use-workflow-history'
 import TipPopup from '../operator/tip-popup'
 import { useStore } from '../store'
+import { useTemporalWorkflowHistory } from '../workflow-history-store'
 
 type ChangeHistoryEntry = {
   label: string
@@ -33,18 +40,27 @@ const ViewWorkflowHistory = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { store, getHistoryLabel } = useWorkflowHistory()
 
-  const { pastStates, futureStates, undo, redo, clear } = store.temporal.getState()
-  const [currentHistoryStateIndex, setCurrentHistoryStateIndex] = useState<number>(0)
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const historyAppId = useCollaborativeHistoryAppId()
+  const identity = useStore((s) => s.loroDraft)
+  const draftHistory = useCanvasDraftHistory()
+  const { pastStates, futureStates, undo, redo, clear } = useTemporalWorkflowHistory()
 
   const handleClearHistory = useCallback(() => {
-    clear()
-    setCurrentHistoryStateIndex(0)
-  }, [clear])
+    if (nodesReadOnly) return
+    if (historyAppId) {
+      if (identity && collaborationManager.isDraftHistoryReady(historyAppId, identity))
+        collaborationManager.clearUndoStack()
+    } else clear()
+  }, [clear, historyAppId, identity, nodesReadOnly])
 
   const handleSetState = useCallback(
-    ({ index }: ChangeHistoryEntry) => {
-      const diff = currentHistoryStateIndex + index
-      if (diff === 0) return
+    ({ index: diff }: ChangeHistoryEntry) => {
+      if (diff === 0 || nodesReadOnly) return
+      if (historyAppId) {
+        if (stepDraftHistory(historyAppId, identity, diff, 'jump')) handleSyncWorkflowDraft()
+        return
+      }
 
       if (diff < 0) undo(diff * -1)
       else redo(diff)
@@ -52,13 +68,20 @@ const ViewWorkflowHistory = () => {
       const { edges, nodes } = store.getState()
       if (edges.length === 0 && nodes.length === 0) return
 
-      const shouldBroadcast = collaborationManager.isConnected()
       const { setEdges, setNodes } = collaborativeWorkflow.getState()
-      setEdges(edges, shouldBroadcast)
-      setNodes(nodes, shouldBroadcast, 'history:jump')
-      if (collaborationManager.isConnected()) collaborationManager.emitHistoryAction('jump')
+      setEdges(edges, false)
+      setNodes(nodes, false)
     },
-    [collaborativeWorkflow, currentHistoryStateIndex, redo, store, undo],
+    [
+      collaborativeWorkflow,
+      handleSyncWorkflowDraft,
+      historyAppId,
+      identity,
+      nodesReadOnly,
+      redo,
+      store,
+      undo,
+    ],
   )
 
   const calculateStepLabel = useCallback(
@@ -72,6 +95,20 @@ const ViewWorkflowHistory = () => {
   )
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
+    if (draftHistory) {
+      const { undo, redo } = draftHistory
+      const statesCount = undo.length + redo.length
+      const timeline = [undefined, ...undo, ...[...redo].reverse()].map((event, i) => ({
+        label: event ? getHistoryLabel(event) : '',
+        index: i - undo.length,
+        state: {},
+      }))
+      return {
+        pastStates: timeline.slice(0, undo.length).reverse(),
+        futureStates: statesCount ? timeline.slice(undo.length).reverse() : [],
+        statesCount,
+      }
+    }
     const filterList = (
       list: Array<Partial<WorkflowHistoryState> | undefined>,
       startIndex = 0,
@@ -120,7 +157,7 @@ const ViewWorkflowHistory = () => {
       ...historyData,
       statesCount: pastStates.length + futureStates.length,
     }
-  }, [futureStates, getHistoryLabel, pastStates, store])
+  }, [draftHistory, futureStates, getHistoryLabel, pastStates, store])
 
   const composeHistoryItemLabel = useCallback(
     (nodeTitle: string | undefined, baseLabel: string) => {
@@ -205,7 +242,7 @@ const ViewWorkflowHistory = () => {
                   key={item?.index}
                   className={cn(
                     'mb-0.5 flex w-full cursor-pointer rounded-lg px-2 py-1.75 text-start text-text-secondary hover:bg-state-base-hover',
-                    item?.index === currentHistoryStateIndex && 'bg-state-base-hover',
+                    item?.index === 0 && 'bg-state-base-hover',
                   )}
                   onClick={() => {
                     handleSetState(item)
@@ -224,7 +261,7 @@ const ViewWorkflowHistory = () => {
                           t(($) => $['changeHistory.sessionStart'], { ns: 'workflowHistory' }),
                       )}{' '}
                       ({calculateStepLabel(item?.index)}
-                      {item?.index === currentHistoryStateIndex &&
+                      {item?.index === 0 &&
                         t(($) => $['changeHistory.currentState'], { ns: 'workflowHistory' })}
                       )
                     </div>

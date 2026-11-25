@@ -8,6 +8,7 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -27,6 +28,7 @@ import {
   toGraphEdges,
   toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
+import { toast } from '@/app/notifications'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
@@ -118,6 +120,7 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
@@ -219,7 +222,11 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      await doSyncWorkflowDraft()
+      const saved = await doSyncWorkflowDraft()
+      if (!saved && resource.kind === 'app' && resource.collaborationEnabled) {
+        toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+        return
+      }
 
       const {
         onWorkflowStarted,
@@ -452,7 +459,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     },
     [
       store,
+      resource,
       doSyncWorkflowDraft,
+      t,
       workflowStore,
       pathname,
       appDetail,
