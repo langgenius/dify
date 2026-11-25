@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Mai multe acțiuni pentru agent",
   "nodes.agent.roster.openPanel": "Deschide detaliile {{name}}",
   "nodes.agent.roster.panelLabel": "Detaliile {{name}}",
+  "nodes.agent.sessionContinuity.description": "Când este activat, agentul își păstrează istoricul în acest chat. Când este dezactivat, începe o sesiune nouă pentru fiecare mesaj al utilizatorului.",
+  "nodes.agent.sessionContinuity.title": "Continuă sesiunea agentului",
   "nodes.agent.strategy.configureTip": "Vă rugăm să configurați strategia agentică.",
   "nodes.agent.strategy.configureTipDesc": "După configurarea strategiei agentice, acest nod va încărca automat configurațiile rămase. Strategia va afecta mecanismul raționamentului instrumentelor în mai mulți pași.",
   "nodes.agent.strategy.label": "Strategia agentică",

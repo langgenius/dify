@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Більше дій з агентом",
   "nodes.agent.roster.openPanel": "Відкрити деталі {{name}}",
   "nodes.agent.roster.panelLabel": "Деталі {{name}}",
+  "nodes.agent.sessionContinuity.description": "Якщо увімкнено, агент зберігає свою історію в межах цього чату. Якщо вимкнено, він починає новий сеанс для кожного повідомлення користувача.",
+  "nodes.agent.sessionContinuity.title": "Продовжувати сеанс агента",
   "nodes.agent.strategy.configureTip": "Будь ласка, налаштуйте агентичну стратегію.",
   "nodes.agent.strategy.configureTipDesc": "Після налаштування агентної стратегії цей вузол автоматично завантажить решту конфігурацій. Стратегія вплине на механізм багатоступінчастого інструментального міркування.",
   "nodes.agent.strategy.label": "Агентична стратегія",

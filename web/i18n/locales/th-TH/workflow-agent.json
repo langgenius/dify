@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "การกระทำเพิ่มเติมของ Agent",
   "nodes.agent.roster.openPanel": "เปิดรายละเอียด {{name}}",
   "nodes.agent.roster.panelLabel": "รายละเอียด {{name}}",
+  "nodes.agent.sessionContinuity.description": "เมื่อเปิด Agent จะเก็บประวัติไว้ภายในแชทนี้ เมื่อปิด Agent จะเริ่มเซสชันใหม่สำหรับข้อความของผู้ใช้แต่ละข้อความ",
+  "nodes.agent.sessionContinuity.title": "ดำเนินเซสชัน Agent ต่อ",
   "nodes.agent.strategy.configureTip": "โปรดกําหนดค่ากลยุทธ์เอเจนต์",
   "nodes.agent.strategy.configureTipDesc": "หลังจากกําหนดค่ากลยุทธ์ตัวแทนโหนดนี้จะโหลดการกําหนดค่าที่เหลือโดยอัตโนมัติ กลยุทธ์จะส่งผลต่อกลไกการให้เหตุผลของเครื่องมือหลายขั้นตอน",
   "nodes.agent.strategy.label": "กลยุทธ์ตัวแทน",

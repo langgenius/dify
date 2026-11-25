@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "更多 Agent 操作",
   "nodes.agent.roster.openPanel": "開啟 {{name}} 詳情",
   "nodes.agent.roster.panelLabel": "{{name}} 詳情",
+  "nodes.agent.sessionContinuity.description": "開啟時，Agent 會保留目前聊天中的歷史。關閉時，每則使用者訊息都會開啟新的工作階段。",
+  "nodes.agent.sessionContinuity.title": "延續 Agent 工作階段",
   "nodes.agent.strategy.configureTip": "請配置 agentic 策略。",
   "nodes.agent.strategy.configureTipDesc": "配置代理策略后，該節點將自動載入剩餘的配置。該策略將影響多步驟工具推理的機制。",
   "nodes.agent.strategy.label": "代理策略",

@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "اقدامات بیشتر عامل",
   "nodes.agent.roster.openPanel": "باز کردن جزئیات {{name}}",
   "nodes.agent.roster.panelLabel": "جزئیات {{name}}",
+  "nodes.agent.sessionContinuity.description": "در صورت فعال بودن، عامل تاریخچه خود را در این گفتگو حفظ می‌کند. در صورت غیرفعال بودن، برای هر پیام کاربر یک جلسه جدید آغاز می‌کند.",
+  "nodes.agent.sessionContinuity.title": "ادامه جلسه عامل",
   "nodes.agent.strategy.configureTip": "لطفاً استراتژی عامل را پیکربندی کنید.",
   "nodes.agent.strategy.configureTipDesc": "پس از انتخاب استراتژی عامل، تنظیمات مربوطه به‌طور خودکار بارگذاری می‌شوند. این استراتژی بر مکانیسم استدلال چندمرحله‌ای ابزار تأثیر می‌گذارد.",
   "nodes.agent.strategy.label": "استراتژی عامل",

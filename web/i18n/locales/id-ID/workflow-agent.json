@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Tindakan agen lainnya",
   "nodes.agent.roster.openPanel": "Buka detail {{name}}",
   "nodes.agent.roster.panelLabel": "Detail {{name}}",
+  "nodes.agent.sessionContinuity.description": "Jika aktif, agen menyimpan riwayatnya dalam chat ini. Jika nonaktif, agen memulai sesi baru untuk setiap pesan pengguna.",
+  "nodes.agent.sessionContinuity.title": "Lanjutkan sesi agen",
   "nodes.agent.strategy.configureTip": "Silakan konfigurasikan strategi agen.",
   "nodes.agent.strategy.configureTipDesc": "Setelah mengonfigurasi strategi agen, node ini akan secara otomatis memuat konfigurasi yang tersisa. Strategi tersebut akan mempengaruhi mekanisme penalaran alat multi-langkah.",
   "nodes.agent.strategy.label": "Strategi Agen",

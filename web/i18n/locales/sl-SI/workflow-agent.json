@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Več dejanj agenta",
   "nodes.agent.roster.openPanel": "Odpri podrobnosti {{name}}",
   "nodes.agent.roster.panelLabel": "Podrobnosti {{name}}",
+  "nodes.agent.sessionContinuity.description": "Ko je vklopljeno, agent ohrani svojo zgodovino znotraj tega klepeta. Ko je izklopljeno, za vsako sporočilo uporabnika začne novo sejo.",
+  "nodes.agent.sessionContinuity.title": "Nadaljuj sejo agenta",
   "nodes.agent.strategy.configureTip": "Prosimo, konfigurirajte agentno strategijo.",
   "nodes.agent.strategy.configureTipDesc": "Po nastavitvi agentne strategije bo ta vozlišče samodejno naložilo preostale nastavitve. Strategija bo vplivala na mehanizem večstopenjskega razmišljanja o orodju.",
   "nodes.agent.strategy.label": "Agentična strategija",

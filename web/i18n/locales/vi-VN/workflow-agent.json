@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Thêm hành động tác nhân",
   "nodes.agent.roster.openPanel": "Mở chi tiết {{name}}",
   "nodes.agent.roster.panelLabel": "Chi tiết {{name}}",
+  "nodes.agent.sessionContinuity.description": "Khi bật, tác nhân giữ lại lịch sử của mình trong cuộc trò chuyện này. Khi tắt, tác nhân bắt đầu một phiên mới cho mỗi tin nhắn của người dùng.",
+  "nodes.agent.sessionContinuity.title": "Tiếp tục phiên tác nhân",
   "nodes.agent.strategy.configureTip": "Vui lòng định cấu hình chiến lược tác nhân.",
   "nodes.agent.strategy.configureTipDesc": "Sau khi cấu hình chiến lược tác nhân, nút này sẽ tự động tải các cấu hình còn lại. Chiến lược sẽ ảnh hưởng đến cơ chế suy luận công cụ nhiều bước.",
   "nodes.agent.strategy.label": "Chiến lược đại lý",

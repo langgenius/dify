@@ -50,6 +50,8 @@
   "nodes.agent.roster.more": "Más acciones del agente",
   "nodes.agent.roster.openPanel": "Abrir detalles de {{name}}",
   "nodes.agent.roster.panelLabel": "Detalles de {{name}}",
+  "nodes.agent.sessionContinuity.description": "Si está activado, el agente conserva su historial dentro de este chat. Si está desactivado, inicia una nueva sesión con cada mensaje del usuario.",
+  "nodes.agent.sessionContinuity.title": "Continuar la sesión del agente",
   "nodes.agent.strategy.configureTip": "Configure la estrategia de agentes.",
   "nodes.agent.strategy.configureTipDesc": "Después de configurar la estrategia agentica, este nodo cargará automáticamente las configuraciones restantes. La estrategia afectará el mecanismo de razonamiento de herramientas de varios pasos.",
   "nodes.agent.strategy.label": "Estrategia Agentica",
