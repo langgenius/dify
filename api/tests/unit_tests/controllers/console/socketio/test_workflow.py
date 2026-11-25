@@ -24,7 +24,7 @@ from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from models.account import TenantAccountJoin
 from models.model import App, AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowLoroDraft
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
 from services.workflow_service import WorkflowService
@@ -303,7 +303,7 @@ def test_loro_confirmation_matches_durable_history_and_duplicate_revision(
         assert durable.app_id == app.id
         assert durable.graph_dict["nodes"][0]["data"]["title"] == "Renamed"
         assert first["hash"] == durable.unique_hash
-        assert durable.loro_draft_snapshot is not None
+        assert session.get_one(WorkflowLoroDraft, draft.id).snapshot is not None
     duplicate, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
     assert status == 200
     confirmed_version = VersionVector.decode(first.pop("version"))
@@ -336,9 +336,10 @@ def test_loro_rejects_invalid_binary_without_changing_the_draft(
         durable = session.get(Workflow, draft.id)
         assert durable is not None
         assert durable.graph_dict == draft.graph_dict
-        assert durable.loro_draft_snapshot is not None
+        snapshot = session.get_one(WorkflowLoroDraft, draft.id).snapshot
+        assert snapshot is not None
         recovered = LoroDoc()
-        recovered.import_(durable.loro_draft_snapshot)
+        recovered.import_(snapshot)
         assert recovered.state_vv.distance_between(VersionVector.decode(baseline)) == 0
 
 
@@ -373,8 +374,7 @@ def test_loro_rechecks_editor_access_before_loading_history(
         expected = ({"msg": "forbidden"}, 403)
         assert server.handlers["/"]["user_connect"](sid, {"workflow_id": app.id}) == expected
     assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id}) == expected
-    sqlite_session.refresh(draft)
-    assert draft.loro_draft_snapshot is None
+    assert sqlite_session.get(WorkflowLoroDraft, draft.id) is None
 
 
 @pytest.mark.parametrize("unavailable", [False, True])
@@ -402,11 +402,13 @@ def test_loro_rejects_old_epochs_and_reports_a_missing_draft(loro_client: LoroCl
     """Old queued edits receive an epoch conflict; deleting the draft has a separate 404 outcome."""
     server, _, draft, sid = loro_client
     old_epoch = draft.id
-    draft.loro_draft_epoch = str(uuid4())
+    sqlite_session.add(WorkflowLoroDraft(workflow_id=draft.id, tenant_id=draft.tenant_id, epoch=str(uuid4())))
     sqlite_session.commit()
     assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": old_epoch}) == ({"msg": "epoch_changed"}, 409)
+    sqlite_session.connection().exec_driver_sql("PRAGMA foreign_keys=ON")
     sqlite_session.delete(draft)
     sqlite_session.commit()
+    assert sqlite_session.get(WorkflowLoroDraft, old_epoch) is None
     assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": old_epoch}) == (
         {"msg": "draft_workflow_not_exist"},
         404,

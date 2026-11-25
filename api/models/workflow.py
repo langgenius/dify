@@ -229,8 +229,6 @@ class Workflow(TypeBase):
     marked_name: Mapped[str] = mapped_column(String(255), default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="")
     graph: Mapped[str] = mapped_column(LongText, default=None)
-    loro_draft_epoch: Mapped[str | None] = mapped_column(StringUUID, default=None)
-    loro_draft_snapshot: Mapped[bytes | None] = mapped_column(BinaryData(), default=None, deferred=True)
     _features: Mapped[Any] = mapped_column("features", LongText, default=None)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False, default=None)
     created_at: Mapped[datetime] = mapped_column(
@@ -739,6 +737,20 @@ class Workflow(TypeBase):
     @staticmethod
     def version_from_datetime(d: datetime) -> str:
         return str(d)
+
+
+class WorkflowLoroDraft(TypeBase):
+    """Collaborative history owned by one workflow draft."""
+
+    __tablename__ = "workflow_loro_drafts"
+    __table_args__ = (sa.PrimaryKeyConstraint("workflow_id", name="workflow_loro_draft_pkey"),)
+
+    workflow_id: Mapped[str] = mapped_column(
+        StringUUID, sa.ForeignKey("workflows.id", name="workflow_loro_draft_workflow_fk", ondelete="CASCADE")
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID)
+    epoch: Mapped[str] = mapped_column(StringUUID)
+    snapshot: Mapped[bytes | None] = mapped_column(BinaryData(), default=None, deferred=True)
 
 
 class WorkflowVersionCounter(TypeBase):

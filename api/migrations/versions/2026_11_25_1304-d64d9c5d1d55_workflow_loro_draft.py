@@ -1,4 +1,4 @@
-"""Add the Loro epoch and snapshot to workflow drafts.
+"""Create the collaborative history table for workflow drafts.
 
 Revision ID: d64d9c5d1d55
 Revises: f8b6e2c4a901
@@ -18,14 +18,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """Leave existing drafts ready to initialize their Loro history on first sync."""
-    with op.batch_alter_table("workflows", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("loro_draft_epoch", StringUUID(), nullable=True))
-        batch_op.add_column(sa.Column("loro_draft_snapshot", BinaryData(), nullable=True))
+    op.create_table(
+        "workflow_loro_drafts",
+        sa.Column("workflow_id", StringUUID(), nullable=False),
+        sa.Column("tenant_id", StringUUID(), nullable=False),
+        sa.Column("epoch", StringUUID(), nullable=False),
+        sa.Column("snapshot", BinaryData(), nullable=True),
+        sa.ForeignKeyConstraint(
+            ["workflow_id"], ["workflows.id"], name="workflow_loro_draft_workflow_fk", ondelete="CASCADE"
+        ),
+        sa.PrimaryKeyConstraint("workflow_id", name="workflow_loro_draft_pkey"),
+    )
 
 
 def downgrade() -> None:
-    """Keep the saved workflow graph when removing the Loro fields."""
-    with op.batch_alter_table("workflows", schema=None) as batch_op:
-        batch_op.drop_column("loro_draft_snapshot")
-        batch_op.drop_column("loro_draft_epoch")
+    op.drop_table("workflow_loro_drafts")

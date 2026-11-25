@@ -634,12 +634,10 @@ class DraftWorkflowApi(Resource):
         """
         Get draft workflow
         """
-        # fetch draft workflow by app_model
-        workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
-
-        if not workflow:
+        draft = WorkflowService.get_draft_workflow_with_loro_epoch(app_model=app_model, session=session)
+        if draft is None:
             raise DraftWorkflowNotExist()
+        workflow, epoch = draft
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -653,9 +651,7 @@ class DraftWorkflowApi(Resource):
             draft_workflow=workflow,
         )
         response.loro_draft_epoch = (
-            (workflow.loro_draft_epoch or workflow.id)
-            if FeatureService.can_use_workflow_collaboration(app_model.tenant_id)
-            else None
+            (epoch or workflow.id) if FeatureService.can_use_workflow_collaboration(app_model.tenant_id) else None
         )
         return response.model_dump(mode="json")
 

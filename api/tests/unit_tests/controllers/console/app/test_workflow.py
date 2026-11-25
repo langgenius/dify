@@ -44,7 +44,7 @@ from models.account import Account as _workflow_human_input_debug_api_Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import App as _workflow_App
 from models.model import AppMode, IconType
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowLoroDraft, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
@@ -860,13 +860,14 @@ class TestWorkflowCases:
     def test_draft_workflow_get_serializes_response_model(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, collaboration_enabled: bool, stored_epoch: str | None
     ) -> None:
-        workflow = _make_workflow()
-        workflow.loro_draft_epoch = stored_epoch
+        workflow = _make_workflow(version=Workflow.VERSION_DRAFT)
         sqlite_session.add_all([_account(), workflow])
+        if stored_epoch:
+            sqlite_session.flush()
+            sqlite_session.add(
+                WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=stored_epoch)
+            )
         sqlite_session.commit()
-        monkeypatch.setattr(
-            workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_kwargs: workflow)
-        )
         monkeypatch.setattr(
             workflow_module.FeatureService, "can_use_workflow_collaboration", lambda _tenant_id: collaboration_enabled
         )
@@ -1076,22 +1077,19 @@ class TestWorkflowCases:
             )
 
     @staticmethod
-    def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
-        monkeypatch.setattr(
-            workflow_module, "WorkflowService", lambda: SimpleNamespace(get_draft_workflow=lambda **_k: None)
-        )
-
+    def test_draft_workflow_get_not_found(sqlite_session: Session) -> None:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.get)
 
         with pytest.raises(DraftWorkflowNotExist):
-            handler(api, unbound_session, app_model=_workflow_app())
+            handler(api, sqlite_session, app_model=_workflow_app())
 
     @staticmethod
     def test_draft_workflow_get_projects_agent_node_job_to_graph(
         monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         workflow = _make_workflow(
+            version=Workflow.VERSION_DRAFT,
             graph_dict={
                 "nodes": [
                     {
@@ -1104,7 +1102,7 @@ class TestWorkflowCases:
                     }
                 ],
                 "edges": [],
-            }
+            },
         )
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
@@ -1123,12 +1121,6 @@ class TestWorkflowCases:
             ],
             "edges": [],
         }
-
-        monkeypatch.setattr(
-            workflow_module,
-            "WorkflowService",
-            lambda: SimpleNamespace(get_draft_workflow=lambda **_k: workflow),
-        )
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 

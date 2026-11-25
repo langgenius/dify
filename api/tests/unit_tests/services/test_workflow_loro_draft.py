@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from libs.datetime_utils import naive_utc_now
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowLoroDraft, WorkflowType
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.workflow_loro_document import (
     LoroDraftEpochChangedError,
@@ -72,6 +72,40 @@ def _seed(service: WorkflowService, app: App, draft: Workflow, session: Session)
     return client, result.version
 
 
+def test_first_pull_creates_separate_history_without_changing_the_graph(
+    service: WorkflowService, sqlite_session: Session, draft: tuple[App, Workflow]
+) -> None:
+    app, row = draft
+    graph, updated_at = row.graph, row.updated_at
+    assert sqlite_session.get(WorkflowLoroDraft, row.id) is None
+
+    _seed(service, app, row, sqlite_session)
+
+    sqlite_session.refresh(row)
+    state = sqlite_session.get_one(WorkflowLoroDraft, row.id)
+    assert (state.tenant_id, state.epoch) == (row.tenant_id, row.id)
+    assert state.snapshot is not None
+    assert (row.graph, row.updated_at) == (graph, updated_at)
+
+
+def test_draft_read_returns_the_replaced_graph_and_epoch_together(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], draft: tuple[App, Workflow]
+) -> None:
+    app, cached = draft
+    new_epoch = str(uuid4())
+    new_graph = {"nodes": [], "edges": []}
+    with sqlite_session_factory.begin() as writer:
+        workflow = writer.get_one(Workflow, cached.id)
+        workflow.graph = json.dumps(new_graph)
+        writer.add(WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=new_epoch))
+
+    assert cached.graph_dict == GRAPH
+    result = WorkflowService.get_draft_workflow_with_loro_epoch(app, session=sqlite_session)
+    assert result is not None
+    workflow, epoch = result
+    assert (workflow.graph_dict, epoch) == (new_graph, new_epoch)
+
+
 def test_duplicate_loro_update_confirms_original_revision(
     service: WorkflowService, sqlite_session: Session, draft: tuple[App, Workflow]
 ) -> None:
@@ -100,9 +134,10 @@ def test_duplicate_loro_update_confirms_original_revision(
     assert VersionVector.decode(duplicate.version).distance_between(VersionVector.decode(first.version)) == 0
     assert duplicate.hash == first.hash
     assert row.updated_at == saved
-    assert row.loro_draft_snapshot is not None
+    snapshot = sqlite_session.get_one(WorkflowLoroDraft, row.id).snapshot
+    assert snapshot is not None
     durable = LoroDoc()
-    durable.import_(row.loro_draft_snapshot)
+    durable.import_(snapshot)
     assert project_loro_graph(durable) == row.graph_dict
     assert row.graph_dict["viewport"] == {"x": 32, "y": 0, "zoom": 1}
 
@@ -113,7 +148,7 @@ def test_failed_graph_validation_does_not_advance_history(
     """Failure after writing the projected graph rolls back both history and graph."""
     app, row = draft
     client, baseline = _seed(service, app, row, sqlite_session)
-    old_snapshot = row.loro_draft_snapshot
+    old_snapshot = sqlite_session.get_one(WorkflowLoroDraft, row.id).snapshot
     client.get_map("graph").insert("viewport", {"x": 32, "y": 0, "zoom": 1})
     delta = client.export(ExportMode.Updates(VersionVector.decode(baseline)))
 
@@ -133,7 +168,7 @@ def test_failed_graph_validation_does_not_advance_history(
         )
     sqlite_session.rollback()
     assert row.graph_dict == GRAPH
-    assert row.loro_draft_snapshot == old_snapshot
+    assert sqlite_session.get_one(WorkflowLoroDraft, row.id).snapshot == old_snapshot
 
 
 def test_missing_dependencies_do_not_advance_applied_version(
@@ -180,8 +215,9 @@ def test_ordinary_http_write_retires_old_loro_epoch(
         graph_writer="http",
     )
     assert row.graph_dict == updated
-    assert row.loro_draft_snapshot is None
-    assert row.loro_draft_epoch not in (None, row.id)
+    state = sqlite_session.get_one(WorkflowLoroDraft, row.id)
+    assert state.snapshot is None
+    assert state.epoch != row.id
     with pytest.raises(LoroDraftEpochChangedError):
         service.sync_loro_draft(
             app_model=app,
@@ -193,11 +229,10 @@ def test_ordinary_http_write_retires_old_loro_epoch(
             session=sqlite_session,
         )
 
-    assert row.loro_draft_epoch is not None
     fresh = service.sync_loro_draft(
         app_model=app,
         account_id=row.created_by,
-        epoch=row.loro_draft_epoch,
+        epoch=state.epoch,
         version=None,
         update=None,
         allow_empty=False,
@@ -268,8 +303,7 @@ def test_server_replacement_excludes_previous_epoch(
             session=sqlite_session,
         )
 
-    new_epoch = row.loro_draft_epoch
-    assert new_epoch is not None
+    new_epoch = sqlite_session.get_one(WorkflowLoroDraft, row.id).epoch
     assert new_epoch != old_epoch
     assert row.graph_dict == GRAPH
     with pytest.raises(LoroDraftEpochChangedError):
@@ -357,7 +391,7 @@ def test_http_initialization_cannot_replace_an_existing_collaborative_draft(
 
     app, row = draft
     _seed(service, app, row, sqlite_session)
-    snapshot = row.loro_draft_snapshot
+    snapshot = sqlite_session.get_one(WorkflowLoroDraft, row.id).snapshot
     with pytest.raises(WorkflowHashNotEqualError):
         service.sync_draft_workflow(
             app_model=app,
@@ -372,4 +406,4 @@ def test_http_initialization_cannot_replace_an_existing_collaborative_draft(
         )
     sqlite_session.rollback()
     assert row.graph_dict == GRAPH
-    assert row.loro_draft_snapshot == snapshot
+    assert sqlite_session.get_one(WorkflowLoroDraft, row.id).snapshot == snapshot

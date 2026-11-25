@@ -7,9 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, cast
 
-from sqlalchemy import and_, exists, inspect, or_, select
+from sqlalchemy import Select, and_, exists, inspect, or_, select
 from sqlalchemy.orm import Session, sessionmaker, undefer
-from sqlalchemy.orm.attributes import flag_modified
 
 from configs import dify_config
 from constants.trigger import is_trigger_node_type
@@ -102,6 +101,7 @@ from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowKind,
+    WorkflowLoroDraft,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
@@ -283,6 +283,20 @@ class WorkflowService:
         return session.execute(stmt).scalar_one()
 
     @staticmethod
+    def _draft_workflow_query(app_model: App, *, include_loro: bool = False) -> Select[tuple[Workflow]]:
+        stmt = select(Workflow).where(
+            Workflow.tenant_id == app_model.tenant_id,
+            Workflow.app_id == app_model.id,
+            Workflow.version == Workflow.VERSION_DRAFT,
+        )
+        if include_loro:
+            stmt = stmt.outerjoin(
+                WorkflowLoroDraft,
+                and_(WorkflowLoroDraft.workflow_id == Workflow.id, WorkflowLoroDraft.tenant_id == Workflow.tenant_id),
+            )
+        return stmt.limit(1)
+
+    @staticmethod
     def get_draft_workflow(app_model: App, *, session: Session) -> Workflow | None:
         """
         Return the app's draft workflow, or None if no draft exists.
@@ -291,15 +305,17 @@ class WorkflowService:
         transaction as the surrounding request or task. No service construction
         or Flask database binding is needed for this read.
         """
-        return session.scalar(
-            select(Workflow)
-            .where(
-                Workflow.tenant_id == app_model.tenant_id,
-                Workflow.app_id == app_model.id,
-                Workflow.version == Workflow.VERSION_DRAFT,
-            )
-            .limit(1)
+        return session.scalar(WorkflowService._draft_workflow_query(app_model))
+
+    @staticmethod
+    def get_draft_workflow_with_loro_epoch(app_model: App, *, session: Session) -> tuple[Workflow, str | None] | None:
+        """Read the graph and its collaboration epoch together without fetching the binary snapshot."""
+        stmt = (
+            WorkflowService._draft_workflow_query(app_model, include_loro=True)
+            .add_columns(WorkflowLoroDraft.epoch)
+            .execution_options(populate_existing=True)
         )
+        return session.execute(stmt).tuples().first()
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Lock and refresh the admitted App's draft for the caller's transaction.
@@ -311,13 +327,7 @@ class WorkflowService:
         boundary. A missing draft returns None; no state is written by this read.
         """
         return session.scalar(
-            select(Workflow)
-            .where(
-                Workflow.tenant_id == app_model.tenant_id,
-                Workflow.app_id == app_model.id,
-                Workflow.version == Workflow.VERSION_DRAFT,
-            )
-            .limit(1)
+            self._draft_workflow_query(app_model)
             .with_for_update()
             .execution_options(populate_existing=True, autoflush=False)
         )
@@ -638,6 +648,22 @@ class WorkflowService:
         return workflow
 
     @staticmethod
+    def _locked_loro_draft(workflow: Workflow, *, session: Session, load_snapshot: bool = False) -> WorkflowLoroDraft:
+        """After locking the workflow, read the current history or return an unsaved seed."""
+        stmt = (
+            select(WorkflowLoroDraft)
+            .where(WorkflowLoroDraft.workflow_id == workflow.id, WorkflowLoroDraft.tenant_id == workflow.tenant_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if load_snapshot:
+            stmt = stmt.options(undefer(WorkflowLoroDraft.snapshot))
+        state = session.scalar(stmt)
+        if state is None:
+            return WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=workflow.id)
+        return state
+
+    @staticmethod
     def align_loro_draft_after_graph_write(workflow: Workflow, *, replace: bool, session: Session) -> str | None:
         """Prepare a fresh collaborative history for a replacement while the draft is locked.
 
@@ -645,6 +671,7 @@ class WorkflowService:
         cannot merge into the new graph. Return the new epoch for notification after commit.
         An HTTP write retires existing Loro history without starting a collaborative session.
         """
+        snapshot = None
         if replace and FeatureService.can_use_workflow_collaboration(workflow.tenant_id):
             from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -652,13 +679,35 @@ class WorkflowService:
                 session=session, draft_workflow=workflow
             )
             doc = load_loro_draft(None, projected)
-            workflow.loro_draft_snapshot = export_loro_snapshot(doc)
-            workflow.loro_draft_epoch = str(uuid.uuid4())
-            return workflow.loro_draft_epoch
+            snapshot = export_loro_snapshot(doc)
 
-        workflow.loro_draft_epoch = str(uuid.uuid4())
-        workflow.loro_draft_snapshot = None
-        return None
+        state = WorkflowService._locked_loro_draft(workflow, session=session)
+        state.epoch = str(uuid.uuid4())
+        state.snapshot = snapshot
+        session.add(state)
+        return state.epoch if snapshot is not None else None
+
+    def _load_loro_draft_for_sync(
+        self, app_model: App, *, session: Session, read_only: bool
+    ) -> tuple[Workflow, WorkflowLoroDraft]:
+        if read_only:
+            stmt = (
+                self._draft_workflow_query(app_model, include_loro=True)
+                .add_columns(WorkflowLoroDraft)
+                .options(undefer(WorkflowLoroDraft.snapshot))
+                .execution_options(populate_existing=True)
+            )
+            row = session.execute(stmt).first()
+            if row is None:
+                raise WorkflowNotFoundError("Draft workflow not found.")
+            workflow, state = row
+            if state is not None and state.snapshot is not None:
+                return workflow, state
+
+        workflow = self.get_draft_workflow_for_update(app_model, session=session)
+        if workflow is None:
+            raise WorkflowNotFoundError("Draft workflow not found.")
+        return workflow, self._locked_loro_draft(workflow, session=session, load_snapshot=True)
 
     def sync_loro_draft(
         self,
@@ -676,30 +725,15 @@ class WorkflowService:
         The draft row lock serializes seed and merges across workers. A rejected or duplicate
         update neither changes the saved graph nor repeats its Agent binding side effects.
         """
-        workflow = None
-        if update is None:
-            workflow = session.scalar(
-                select(Workflow)
-                .options(undefer(Workflow.loro_draft_snapshot))
-                .where(
-                    Workflow.app_id == app_model.id,
-                    Workflow.tenant_id == app_model.tenant_id,
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                )
-                .limit(1)
-            )
-        if update is not None or (workflow is not None and workflow.loro_draft_snapshot is None):
-            workflow = self.get_draft_workflow_for_update(app_model, session=session)
-        if workflow is None:
-            raise WorkflowNotFoundError("Draft workflow not found.")
-        current_epoch = workflow.loro_draft_epoch or workflow.id
+        workflow, state = self._load_loro_draft_for_sync(app_model, session=session, read_only=update is None)
+        current_epoch = state.epoch
         if epoch != current_epoch:
             raise LoroDraftEpochChangedError("Draft epoch changed.")
 
         graph = workflow.graph_dict
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-        snapshot = workflow.loro_draft_snapshot
+        snapshot = state.snapshot
         seed = (
             WorkflowAgentPublishService.project_draft_bindings_to_graph(session=session, draft_workflow=workflow)
             if snapshot is None
@@ -713,8 +747,8 @@ class WorkflowService:
         changed = not before.includes_vv(doc.state_vv)
         needs_commit = changed or snapshot is None
         if needs_commit:
-            workflow.loro_draft_epoch = current_epoch
-            workflow.loro_draft_snapshot = export_loro_snapshot(doc)
+            state.snapshot = export_loro_snapshot(doc)
+            session.add(state)
         graph_changed = False
         retirement_candidates: set[str] = set()
         if changed:
@@ -737,8 +771,6 @@ class WorkflowService:
                     session=session, draft_workflow=workflow
                 )
 
-        if needs_commit and not graph_changed:
-            flag_modified(workflow, "updated_at")
         delta = export_loro_delta(doc, version)
         committed_update = export_loro_delta(doc, before.encode()) if changed else None
         if committed_update is not None and len(committed_update) > 64 * 1024:

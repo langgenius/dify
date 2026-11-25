@@ -20,7 +20,7 @@ from enums import DeploymentEdition
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowLoroDraft
 from services.agent.dsl_entities import AgentPackage
 from services.agent.roster_package_entities import PackageIcon
 from services.app_dsl_service import AppDslService, PendingData
@@ -1032,8 +1032,9 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(
         agent_ids={"retired-agent"},
         account_id="account-1",
     )
-    assert workflow.loro_draft_snapshot is not None
-    assert workflow.loro_draft_epoch not in (None, workflow.id)
+    state = sqlite_session.get_one(WorkflowLoroDraft, workflow.id)
+    assert state.snapshot is not None
+    assert state.epoch != workflow.id
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
