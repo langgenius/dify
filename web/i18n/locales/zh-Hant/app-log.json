@@ -55,6 +55,7 @@
   "detail.variables": "變數",
   "export.all": "此應用程式的所有日誌",
   "export.annotated": "已標註",
+  "export.expiresAt": "到期時間 {{date}}",
   "export.failed": "匯出失敗，請再試一次。",
   "export.identitiesAll": "全部",
   "export.last": "上一次匯出",

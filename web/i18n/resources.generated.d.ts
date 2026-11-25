@@ -1416,6 +1416,7 @@ export default interface Resources {
     'detail.variables': 'Variables'
     'export.all': 'All logs in this app'
     'export.annotated': 'Annotated'
+    'export.expiresAt': 'Expires {{date}}'
     'export.failed': 'Export failed. Please try again.'
     'export.identitiesAll': 'All'
     'export.last': 'Last export'

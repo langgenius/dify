@@ -82,6 +82,7 @@ export function AgentLogExportDialog({
         task && {
           status: task.status,
           fileUrl: fileUrl(task.task_id),
+          expiresAt: task.expires_at,
           onViewProgress,
           start: task.filters.start,
           end: task.filters.end,

@@ -55,6 +55,7 @@
   "detail.variables": "变量",
   "export.all": "此应用的全部日志",
   "export.annotated": "已标注",
+  "export.expiresAt": "到期时间 {{date}}",
   "export.failed": "导出失败，请重试。",
   "export.identitiesAll": "全部",
   "export.last": "上一次导出",

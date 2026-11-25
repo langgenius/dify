@@ -55,7 +55,7 @@ def log_export_redis() -> Iterator[LogExportRedisIo]:
         cache[key] = args[2]
         return 1
 
-    def finish(*, keys: tuple[str, str, str], args: list[Any]) -> int:
+    def finish(*, keys: tuple[str, str, str, str], args: list[Any]) -> int:
         if (error := io.finish_error) is not None:
             raise error
         cache[keys[0]] = args[2]

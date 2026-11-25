@@ -55,6 +55,7 @@
   "detail.variables": "متغیرها",
   "export.all": "همهٔ گزارش‌های این برنامه",
   "export.annotated": "حاشیه‌نویسی شده",
+  "export.expiresAt": "تاریخ انقضا {{date}}",
   "export.failed": "خروجی گرفتن ناموفق بود. دوباره تلاش کنید.",
   "export.identitiesAll": "همه",
   "export.last": "آخرین خروجی",

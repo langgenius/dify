@@ -424,6 +424,7 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     assert latest["status"] == "ready"
     assert latest["estimated_rows"] == 3
     assert latest["progress"] == ready.json["progress"]
+    assert latest["expires_at"] == task.expires_at.isoformat().replace("+00:00", "Z")
 
 
 def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
@@ -467,17 +468,20 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
         },
     )
     assert submitted.status_code == 202
+    task_id = submitted.get_json()["task_id"]
+    task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(export_client.task_key(task_id)))
 
     latest = export_client.get_latest()
     assert latest.status_code == 200
     assert latest.headers["Cache-Control"] == "no-store"
     assert latest.json == {
         "task": {
-            "task_id": submitted.get_json()["task_id"],
+            "task_id": task_id,
             "status": "pending",
             "estimated_rows": None,
             "progress": None,
             "identity_labels": labels,
+            "expires_at": task.expires_at.isoformat().replace("+00:00", "Z"),
             "filters": {
                 "keyword": "report",
                 "status": "succeeded",

@@ -55,6 +55,7 @@
   "detail.variables": "वेरिएबल्स",
   "export.all": "इस ऐप के सभी लॉग",
   "export.annotated": "एनोटेट किया गया",
+  "export.expiresAt": "समाप्ति का समय {{date}}",
   "export.failed": "निर्यात विफल रहा। फिर से कोशिश करें।",
   "export.identitiesAll": "सभी",
   "export.last": "पिछला निर्यात",

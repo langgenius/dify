@@ -55,6 +55,7 @@
   "detail.variables": "ຕົວປ່ຽນ",
   "export.all": "ບັນທຶກທັງໝົດໃນແອັບນີ້",
   "export.annotated": "ໝາຍເຫດໄວ້",
+  "export.expiresAt": "ໝົດອາຍຸໃນວັນທີ {{date}}",
   "export.failed": "ສົ່ງອອກບໍ່ສໍາເລັດ. ກະລຸນາລອງອີກຄັ້ງ.",
   "export.identitiesAll": "ທັງໝົດ",
   "export.last": "ການສົ່ງອອກຄັ້ງຫຼ້າສຸດ",

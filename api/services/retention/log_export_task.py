@@ -179,7 +179,10 @@ class LogExportTaskStore[FiltersT](Protocol):
         ...
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
-        """Publish and release capacity if owned, return False on loss, or raise on a write error."""
+        """Publish and release capacity if owned, extending the lifetime of a ready task.
+
+        Return False on lease loss or raise on a write error.
+        """
         ...
 
 

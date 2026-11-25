@@ -55,6 +55,7 @@
   "detail.variables": "Variablen",
   "export.all": "Alle Protokolle dieser App",
   "export.annotated": "Annotiert",
+  "export.expiresAt": "Läuft am {{date}} ab",
   "export.failed": "Export fehlgeschlagen. Bitte erneut versuchen.",
   "export.identitiesAll": "Alle",
   "export.last": "Letzter Export",

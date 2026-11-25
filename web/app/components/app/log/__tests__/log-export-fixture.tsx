@@ -58,6 +58,8 @@ export async function openExport(
     previewRows?: number
     previewFailure?: boolean
     createFailure?: 'response-lost' | 'active-export' | 'workspace-limit'
+    existingTaskExpiresAt?: string
+    timezone?: string
     getTaskStatus?: () => Pick<ConversationLogExportStatusResponse, 'status' | 'progress'>
   },
 ) {
@@ -70,6 +72,7 @@ export async function openExport(
     ? {
         task_id: previousTaskId,
         status: 'processing',
+        expires_at: responses?.existingTaskExpiresAt,
         identity_labels: [{ id: endUserId, label: 'user-1024', source: 'end-user' }],
         filters: {
           start: '2026-11-16T00:00:00Z',
@@ -189,7 +192,7 @@ export async function openExport(
   const lastExport = dialog.getByRole('group', { name: 'appLog.export.last' })
   const renderLogs = async () => {
     const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
-      accountProfile: { timezone: 'UTC' },
+      accountProfile: { timezone: responses?.timezone ?? 'UTC' },
       currentWorkspace: { role: 'admin' },
       systemFeatures: { deployment_edition: 'COMMUNITY' },
     })

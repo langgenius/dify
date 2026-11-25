@@ -1,10 +1,12 @@
 """Exercise export admission and worker recovery against a real Redis server."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 
 import pytest
 
 from extensions.ext_redis import RedisClientWrapper
+from libs.datetime_utils import utc_now
 from services.retention.log_export_task import (
     LogExportLeaseBusyError,
     LogExportLimitReachedError,
@@ -126,6 +128,92 @@ def test_finish_requires_the_lease_token_for_the_same_attempt(application_redis:
     result = store.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
     assert result is not None
     assert result.storage_key == "owned.csv"
+
+
+def test_ready_export_extends_task_and_latest_expiration(application_redis: RedisClientWrapper) -> None:
+    """Publish the seven-day download window at completion and keep the latest pointer for that window."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    store.save(task)
+    claim = store.claim(task)
+    assert claim is not None
+    assert claim.expires_at == task.expires_at
+
+    before_finish = utc_now()
+    assert store.finish(claim, status=LogExportStatus.READY, storage_key="logs.csv")
+    after_finish = utc_now()
+    ready = store.get_latest(tenant_id="tenant", app_id="app", requested_by="admin")
+    assert ready is not None
+    assert ready.status is LogExportStatus.READY
+    assert before_finish + timedelta(days=7) <= ready.expires_at <= after_finish + timedelta(days=7)
+
+    task_key = f"conversation_log_export:{{tenant}}:app:{task.task_id}"
+    latest_key = "conversation_log_export_latest:{tenant}:app:admin"
+    get_expiration_times = application_redis.register_script(
+        """
+        local clock = redis.call('TIME')
+        local now = tonumber(clock[1]) * 1000 + math.floor(tonumber(clock[2]) / 1000)
+        return {now + redis.call('PTTL', KEYS[1]), now + redis.call('PTTL', KEYS[2])}
+        """
+    )
+    task_expiration, latest_expiration = get_expiration_times(keys=[task_key, latest_key])
+    assert task_expiration == latest_expiration
+    assert abs(task_expiration - int(ready.expires_at.timestamp() * 1000)) <= 50
+    assert not store.finish(claim, status=LogExportStatus.READY, storage_key="logs.csv")
+    assert not store.finish(ready, status=LogExportStatus.READY, storage_key="logs.csv")
+    assert store.get(tenant_id="tenant", app_id="app", task_id=task.task_id) == ready
+    store.save(LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all"))
+
+
+@pytest.mark.parametrize("latest_id", ["newer-task", None])
+def test_ready_export_preserves_other_latest_state(
+    application_redis: RedisClientWrapper, latest_id: str | None
+) -> None:
+    """Finish an owned export without replacing or extending the latest pointer for another task."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    store.save(task)
+    claim = store.claim(task)
+    assert claim is not None
+    latest_key = "conversation_log_export_latest:{tenant}:app:admin"
+    if latest_id is None:
+        application_redis.delete(latest_key)
+    else:
+        application_redis.set(latest_key, latest_id, ex=60)
+    previous_value = application_redis.get(latest_key)
+    previous_ttl = application_redis.pttl(latest_key)
+
+    assert store.finish(claim, status=LogExportStatus.READY, storage_key="logs.csv")
+
+    assert application_redis.get(latest_key) == previous_value
+    assert application_redis.pttl(latest_key) <= previous_ttl
+
+
+def test_failed_export_preserves_task_and_latest_expiration(application_redis: RedisClientWrapper) -> None:
+    """Release the worker lease without extending task or latest retention after failure."""
+    store = RedisLogExportTasks(
+        redis=application_redis, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="admin", filters="all")
+    store.save(task)
+    claim = store.claim(task)
+    assert claim is not None
+    task_key = f"conversation_log_export:{{tenant}}:app:{task.task_id}"
+    latest_key = "conversation_log_export_latest:{tenant}:app:admin"
+    task_ttl, latest_ttl = application_redis.pttl(task_key), application_redis.pttl(latest_key)
+
+    assert store.finish(claim, status=LogExportStatus.FAILED)
+
+    failed = store.get_latest(tenant_id="tenant", app_id="app", requested_by="admin")
+    assert failed is not None
+    assert failed.status is LogExportStatus.FAILED
+    assert failed.expires_at == task.expires_at
+    assert 0 < application_redis.pttl(task_key) <= task_ttl
+    assert 0 < application_redis.pttl(latest_key) <= latest_ttl
 
 
 def test_progress_advances_only_for_the_owned_attempt(application_redis: RedisClientWrapper) -> None:

@@ -72,6 +72,7 @@ export function LogExportSelect<T extends string>({
 type LastLogExportProps = {
   status: 'pending' | 'processing' | 'ready' | 'failed'
   fileUrl: string
+  expiresAt?: string | null
   start?: string | null
   end?: string | null
   keyword?: string | null
@@ -83,6 +84,7 @@ type LastLogExportProps = {
 
 function LastLogExport({
   fileUrl,
+  expiresAt,
   status,
   start,
   end,
@@ -129,6 +131,14 @@ function LastLogExport({
         )}
         {identities.length > 0 && (
           <p className="truncate system-sm-regular text-text-secondary">{identities.join(', ')}</p>
+        )}
+        {status === 'ready' && expiresAt && (
+          <p className="system-sm-regular text-text-tertiary">
+            {t(($) => $['export.expiresAt'], {
+              ns: 'appLog',
+              date: formatDate(expiresAt, 'YYYY-MM-DD HH:mm'),
+            })}
+          </p>
         )}
         {(status === 'pending' || status === 'processing') && (
           <p role="status" className="system-sm-regular text-text-secondary">

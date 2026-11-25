@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 _MAX_ACTIVE_EXPORTS_PER_WORKSPACE = 3
 _MAX_EXPORT_ATTEMPTS = 3
 _LEASE_SECONDS = 120
+_READY_TASK_TTL = timedelta(days=7)
 
 _SAVE_LOG_EXPORT_TASK = """
 -- The task key identifies a previously admitted submission after a lost Redis response.
@@ -116,7 +118,19 @@ end
 if current.status == "processing" and redis.call("GET", KEYS[2]) ~= ARGV[5] then
     return 0
 end
-redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
+local expires = ARGV[6]
+if expires then
+    if current.status ~= "processing" then
+        return 0
+    end
+    local is_latest = redis.call("GET", KEYS[4]) == current.task_id
+    redis.call("SET", KEYS[1], ARGV[3], "PXAT", expires)
+    if is_latest then
+        redis.call("PEXPIREAT", KEYS[4], expires)
+    end
+else
+    redis.call("SET", KEYS[1], ARGV[3], "KEEPTTL")
+end
 redis.call("DEL", KEYS[2])
 redis.call("ZREM", KEYS[3], ARGV[4])
 return 1
@@ -257,12 +271,15 @@ class RedisLogExportTasks[FiltersT]:
             return bool(renew(keys=[task_key, lease_key], args=args))
 
     def finish(self, task: LogExportTask[FiltersT], *, status: LogExportStatus, storage_key: str | None = None) -> bool:
-        """Finish the expected pending state or the processing attempt that owns the lease token."""
+        """Publish the expected task state and retain a ready CSV for seven days after completion."""
+        ready = status is LogExportStatus.READY
+        expires_at = utc_now() + _READY_TASK_TTL if ready else task.expires_at
         updated = task.model_copy(
             update={
                 "status": status,
                 "storage_key": storage_key,
-                "progress": task.progress if status is LogExportStatus.READY else None,
+                "progress": task.progress if ready else None,
+                "expires_at": expires_at,
             }
         )
         args = [
@@ -272,6 +289,9 @@ class RedisLogExportTasks[FiltersT]:
             f"{task.app_id}:{task.requested_by}",
             task.claim_token or "",
         ]
+        if ready:
+            args.append(int(expires_at.timestamp() * 1000))
+        latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
         with _translate_transient_redis_errors():
             finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
-            return bool(finish(keys=self._execution_keys(task), args=args))
+            return bool(finish(keys=(*self._execution_keys(task), latest_key), args=args))

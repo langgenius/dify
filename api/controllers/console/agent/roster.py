@@ -1,5 +1,6 @@
 import json
 from dataclasses import replace
+from datetime import datetime
 from http import HTTPStatus
 from typing import Literal, override
 from uuid import UUID
@@ -391,6 +392,7 @@ class AgentLogExportStatusResponse(LogExportTaskResponse):
 class AgentLogExportLatestTaskResponse(AgentLogExportStatusResponse):
     filters: AgentLogExportFilters
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    expires_at: datetime | None = Field(default=None, description="UTC deadline for downloading the export")
 
 
 class AgentLogExportLatestResponse(ResponseModel):

@@ -55,6 +55,7 @@
   "detail.variables": "Variabili",
   "export.all": "Tutti i registri di questa app",
   "export.annotated": "Annotati",
+  "export.expiresAt": "Scade il {{date}}",
   "export.failed": "Esportazione non riuscita. Riprova.",
   "export.identitiesAll": "Tutti",
   "export.last": "Ultima esportazione",

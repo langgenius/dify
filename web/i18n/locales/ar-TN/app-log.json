@@ -55,6 +55,7 @@
   "detail.variables": "المتغيرات",
   "export.all": "كل سجلات هذا التطبيق",
   "export.annotated": "موصوفة",
+  "export.expiresAt": "تنتهي الصلاحية في {{date}}",
   "export.failed": "فشل التصدير. حاول مجددًا.",
   "export.identitiesAll": "الكل",
   "export.last": "آخر تصدير",

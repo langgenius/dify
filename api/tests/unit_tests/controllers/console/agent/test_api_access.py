@@ -550,6 +550,7 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
             "estimated_rows": None,
             "progress": None,
             "identity_labels": [],
+            "expires_at": task.expires_at.isoformat().replace("+00:00", "Z"),
             "filters": {
                 "sources": ["webapp"],
                 "end_user_ids": [end_user_id],

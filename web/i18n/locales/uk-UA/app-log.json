@@ -55,6 +55,7 @@
   "detail.variables": "Змінні",
   "export.all": "Усі журнали цього застосунку",
   "export.annotated": "З анотацією",
+  "export.expiresAt": "Доступно до {{date}}",
   "export.failed": "Не вдалося виконати експорт. Спробуйте ще раз.",
   "export.identitiesAll": "Усі",
   "export.last": "Останній експорт",

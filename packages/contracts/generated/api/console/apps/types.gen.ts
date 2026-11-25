@@ -2211,6 +2211,7 @@ export type LogExportIdentityLabel = {
 
 export type ConversationLogExportLatestTaskResponse = {
   estimated_rows?: number | null
+  expires_at?: string | null
   filters: ConversationLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
   progress?: LogExportProgressResponse | null
@@ -2627,6 +2628,7 @@ export type WorkflowExecutionStatus =
 
 export type WorkflowLogExportLatestTaskResponse = {
   estimated_rows?: number | null
+  expires_at?: string | null
   filters: WorkflowLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
   progress?: LogExportProgressResponse | null

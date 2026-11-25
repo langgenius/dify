@@ -21794,6 +21794,7 @@ Agent log export file not found.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
 | filters | [AgentLogExportFilters](#agentlogexportfilters) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
@@ -25507,6 +25508,7 @@ Submitted filters for the export, with any date bounds in UTC.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
 | filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
@@ -40124,6 +40126,7 @@ Submitted filters for the export, with log time bounds in UTC.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| expires_at | string | UTC deadline for downloading the export | No |
 | filters | [WorkflowLogExportFiltersResponse](#workflowlogexportfiltersresponse) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |

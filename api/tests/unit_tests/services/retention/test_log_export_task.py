@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 from threading import Event
 from typing import TextIO
@@ -76,6 +77,7 @@ def test_worker_records_total_rows_before_upload(
         current = tasks.get_latest(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
         assert current is not None
         assert current.status is LogExportStatus.PROCESSING
+        assert current.expires_at == task.expires_at
         assert current.progress == uploading
         assert path.read_text(encoding="utf-8-sig").splitlines() == ['"query"', '"all"']
 
@@ -88,6 +90,7 @@ def test_worker_records_total_rows_before_upload(
     current = tasks.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
     assert current is not None
     assert current.status is LogExportStatus.READY
+    assert current.expires_at > task.created_at + timedelta(days=7)
     assert current.progress == uploading
 
 

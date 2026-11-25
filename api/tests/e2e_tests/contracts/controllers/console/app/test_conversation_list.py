@@ -745,14 +745,17 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
         }
     )
     assert second.status_code == 202
-    assert second.get_json()["estimated_rows"] == 1_200
+    submitted = second.get_json()
+    assert submitted["estimated_rows"] == 1_200
+    task = ConversationLogExportTask.model_validate_json(harness.redis.get(harness.task_key(submitted["task_id"])))
     latest = harness.get("export-latest")
     assert latest.status_code == 200
     assert latest.get_json() == {
         "task": {
-            **second.get_json(),
+            **submitted,
             "progress": None,
             "identity_labels": labels,
+            "expires_at": task.expires_at.isoformat().replace("+00:00", "Z"),
             "filters": {
                 "keyword": "invoice",
                 "start": "2024-01-15T06:30:00Z",

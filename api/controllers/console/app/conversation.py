@@ -197,6 +197,7 @@ class ConversationLogExportFiltersResponse(ResponseModel):
 class ConversationLogExportLatestTaskResponse(ConversationLogExportStatusResponse):
     filters: ConversationLogExportFiltersResponse
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    expires_at: datetime | None = Field(default=None, description="UTC deadline for downloading the export")
 
 
 class ConversationLogExportLatestResponse(ResponseModel):

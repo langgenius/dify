@@ -4213,6 +4213,7 @@ export const zWorkflowLogExportFiltersResponse = z.object({
  */
 export const zWorkflowLogExportLatestTaskResponse = z.object({
   estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
   filters: zWorkflowLogExportFiltersResponse,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   progress: zLogExportProgressResponse.nullish(),
@@ -4903,6 +4904,7 @@ export const zConversationLogExportFiltersResponse = z.object({
  */
 export const zConversationLogExportLatestTaskResponse = z.object({
   estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
   filters: zConversationLogExportFiltersResponse,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   progress: zLogExportProgressResponse.nullish(),

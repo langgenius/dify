@@ -55,6 +55,7 @@
   "detail.variables": "Dəyişənlər",
   "export.all": "Bu tətbiqin bütün jurnalları",
   "export.annotated": "Qeyd edilib",
+  "export.expiresAt": "{{date}} tarixində bitir",
   "export.failed": "İxrac alınmadı. Yenidən cəhd edin.",
   "export.identitiesAll": "Hamısı",
   "export.last": "Son ixrac",

@@ -55,6 +55,7 @@
   "detail.variables": "Değişkenler",
   "export.all": "Bu uygulamanın tüm günlükleri",
   "export.annotated": "Açıklamalı",
+  "export.expiresAt": "{{date}} tarihinde sona erer",
   "export.failed": "Dışa aktarma başarısız oldu. Tekrar deneyin.",
   "export.identitiesAll": "Tümü",
   "export.last": "Son dışa aktarma",

@@ -55,6 +55,7 @@
   "detail.variables": "Variabel",
   "export.all": "Semua log di aplikasi ini",
   "export.annotated": "Beranotasi",
+  "export.expiresAt": "Kedaluwarsa pada {{date}}",
   "export.failed": "Ekspor gagal. Coba lagi.",
   "export.identitiesAll": "Semua",
   "export.last": "Ekspor terakhir",

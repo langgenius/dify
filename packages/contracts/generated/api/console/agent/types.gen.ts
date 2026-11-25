@@ -1235,6 +1235,7 @@ export type LogExportIdentityLabel = {
 
 export type AgentLogExportLatestTaskResponse = {
   estimated_rows?: number | null
+  expires_at?: string | null
   filters: AgentLogExportFilters
   identity_labels?: Array<LogExportIdentityLabel>
   progress?: LogExportProgressResponse | null

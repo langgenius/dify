@@ -55,6 +55,7 @@
   "detail.variables": "Переменные",
   "export.all": "Все журналы этого приложения",
   "export.annotated": "Аннотировано",
+  "export.expiresAt": "Срок действия до {{date}}",
   "export.failed": "Не удалось экспортировать. Попробуйте снова.",
   "export.identitiesAll": "Все",
   "export.last": "Последний экспорт",

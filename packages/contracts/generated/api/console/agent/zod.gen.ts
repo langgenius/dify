@@ -2003,6 +2003,7 @@ export const zAgentLogExportStatusResponse = z.object({
  */
 export const zAgentLogExportLatestTaskResponse = z.object({
   estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
   filters: zAgentLogExportFilters,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   progress: zLogExportProgressResponse.nullish(),

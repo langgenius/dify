@@ -55,6 +55,7 @@
   "detail.variables": "Spremenljivke",
   "export.all": "Vsi dnevniki te aplikacije",
   "export.annotated": "Označene",
+  "export.expiresAt": "Poteče {{date}}",
   "export.failed": "Izvoz ni uspel. Poskusite znova.",
   "export.identitiesAll": "Vse",
   "export.last": "Zadnji izvoz",

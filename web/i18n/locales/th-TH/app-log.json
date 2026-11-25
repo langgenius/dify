@@ -55,6 +55,7 @@
   "detail.variables": "ตัว แปร",
   "export.all": "บันทึกทั้งหมดในแอปนี้",
   "export.annotated": "มีคำอธิบายประกอบ",
+  "export.expiresAt": "หมดอายุวันที่ {{date}}",
   "export.failed": "ส่งออกไม่สำเร็จ โปรดลองอีกครั้ง",
   "export.identitiesAll": "ทั้งหมด",
   "export.last": "การส่งออกครั้งล่าสุด",

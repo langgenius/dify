@@ -55,6 +55,7 @@
   "detail.variables": "Variabile",
   "export.all": "Toate jurnalele acestei aplicații",
   "export.annotated": "Adnotat",
+  "export.expiresAt": "Expiră la {{date}}",
   "export.failed": "Exportul a eșuat. Încearcă din nou.",
   "export.identitiesAll": "Toate",
   "export.last": "Ultimul export",

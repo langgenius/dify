@@ -55,6 +55,7 @@
   "detail.variables": "Variables",
   "export.all": "Tous les journaux de cette application",
   "export.annotated": "Annoté",
+  "export.expiresAt": "Expire le {{date}}",
   "export.failed": "Échec de l’export. Réessayez.",
   "export.identitiesAll": "Tous",
   "export.last": "Dernière exportation",

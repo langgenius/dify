@@ -55,6 +55,7 @@
   "detail.variables": "Zmienne",
   "export.all": "Wszystkie dzienniki tej aplikacji",
   "export.annotated": "Zanotowane",
+  "export.expiresAt": "Wygasa {{date}}",
   "export.failed": "Eksport nie powiódł się. Spróbuj ponownie.",
   "export.identitiesAll": "Wszystkie",
   "export.last": "Ostatni eksport",

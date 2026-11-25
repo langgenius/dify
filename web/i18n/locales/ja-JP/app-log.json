@@ -55,6 +55,7 @@
   "detail.variables": "変数",
   "export.all": "このアプリのすべてのログ",
   "export.annotated": "注釈あり",
+  "export.expiresAt": "有効期限 {{date}}",
   "export.failed": "エクスポートに失敗しました。再試行してください。",
   "export.identitiesAll": "すべて",
   "export.last": "前回のエクスポート",

@@ -10,13 +10,14 @@ import {
   previousTaskId,
 } from './log-export-fixture'
 
-// boundary: Use the English preview text to assert rendered counts and description.
+// boundary: Use English copy to assert rendered counts, description, and expiration.
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
   function createMock(category: 'one' | 'other') {
     return createReactI18nextMock({
+      'export.expiresAt': copy['export.expiresAt'],
       'export.limitReached': copy['export.limitReached'],
       'export.previewRowCount': copy[`export.previewRowCount_${category}`],
       'export.previewConversationCount': copy[`export.previewConversationCount_${category}`],
@@ -135,13 +136,26 @@ it('previews CSV rows and submits a Completion export with the list identities',
 
 it('keeps the previous export and Download available while editing the form', async () => {
   const downloadPaths = observeDownloads()
-  const { appId, trigger, dialog, lastExport, requests } = await openExport(true)
+  const readyResponse = createDeferred()
+  let latestReads = 0
+  onTestFinished(() => readyResponse.resolve())
+  const { appId, trigger, dialog, lastExport, requests } = await openExport(true, 'chat', {
+    existingTaskExpiresAt: '2026-12-02T18:45:00Z',
+    timezone: 'Asia/Shanghai',
+    waitForLatest: () => (++latestReads > 1 ? readyResponse.promise : undefined),
+  })
   await trigger.click()
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
     .toBeDisabled()
+  await expect
+    .element(lastExport.getByRole('button', { name: 'appLog.export.viewProgress' }))
+    .toBeVisible()
+  await expect.element(lastExport.getByText(/^Expires /)).not.toBeInTheDocument()
+  readyResponse.resolve()
   const download = lastExport.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeEnabled()
+  await expect.element(lastExport.getByText('Expires 2026-12-03 02:45')).toBeVisible()
   await expect.element(lastExport.getByText(/invoice/)).toBeVisible()
   await expect.element(lastExport.getByText(/appLog\.export\.annotated/)).toBeVisible()
   await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
@@ -228,6 +242,7 @@ it('shows the workspace limit error even when a previous export is ready', async
   await expect
     .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
     .toBeEnabled()
+  await expect.element(lastExport.getByText(/^Expires /)).not.toBeInTheDocument()
 })
 
 it('shows the last export filters in its own row after the user leaves and returns', async () => {

@@ -55,6 +55,7 @@
   "detail.variables": "Biến",
   "export.all": "Tất cả nhật ký trong ứng dụng này",
   "export.annotated": "Đã chú thích",
+  "export.expiresAt": "Hết hạn vào {{date}}",
   "export.failed": "Xuất không thành công. Vui lòng thử lại.",
   "export.identitiesAll": "Tất cả",
   "export.last": "Lần xuất gần nhất",

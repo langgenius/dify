@@ -78,6 +78,7 @@ export function WorkflowLogExportDialog({
         task && {
           status: task.status,
           fileUrl: fileUrl(task.task_id),
+          expiresAt: task.expires_at,
           onViewProgress,
           start: task.filters.created_at__after,
           end: task.filters.created_at__before,

@@ -55,6 +55,7 @@
   "detail.variables": "Variables",
   "export.all": "Alle logboeken van deze app",
   "export.annotated": "Geannoteerd",
+  "export.expiresAt": "Verloopt op {{date}}",
   "export.failed": "Exporteren mislukt. Probeer het opnieuw.",
   "export.identitiesAll": "Alle",
   "export.last": "Laatste export",
