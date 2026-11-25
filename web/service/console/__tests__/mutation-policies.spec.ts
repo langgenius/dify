@@ -38,7 +38,7 @@ const profile = {
 }
 
 describe('composeMutationOptions', () => {
-  it('runs and awaits the policy callback before the caller callback', async () => {
+  it('starts the caller callback without waiting for the policy, and waits for both', async () => {
     const calls: string[] = []
     const policyDone = createDeferred<void>()
     const composed = composeMutationOptions(
@@ -56,13 +56,17 @@ describe('composeMutationOptions', () => {
       },
     )
 
-    const running = composed.onSuccess()
+    let settled = false
+    const running = Promise.resolve(composed.onSuccess()).then(() => {
+      settled = true
+    })
     await Promise.resolve()
-    expect(calls).toEqual(['policy:start'])
+    expect(calls).toEqual(['policy:start', 'caller'])
+    expect(settled).toBe(false)
 
     policyDone.resolve()
     await running
-    expect(calls).toEqual(['policy:start', 'policy:end', 'caller'])
+    expect(calls).toEqual(['policy:start', 'caller', 'policy:end'])
   })
 
   it('keeps each side on its own onMutate result when both define onMutate', async () => {
