@@ -213,10 +213,11 @@ def test_get_paginated_attaches_completed_evaluation_metrics_when_enabled(
         failed_items=0,
         created_by="actor-1",
     )
+    metric_details: dict[str, object] = {}
     metrics = {
         "name": "faithfulness",
         "value": 0.9,
-        "details": {},
+        "details": metric_details,
         "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
     }
     evaluation_item = EvaluationRunItem(
