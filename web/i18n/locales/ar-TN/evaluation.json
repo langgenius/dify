@@ -97,6 +97,7 @@
   "history.status.cancelled": "ملغى",
   "history.status.completed": "مكتمل",
   "history.status.failed": "فشل",
+  "history.status.notCompleted": "تعذّر إكمال المهمة",
   "history.status.partiallyFailed": "اكتمل مع إخفاقات",
   "history.status.pending": "قيد الانتظار",
   "history.status.running": "قيد التشغيل",
