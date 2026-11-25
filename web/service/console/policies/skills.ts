@@ -120,10 +120,11 @@ export function skillPolicies(
           mutationOptions: {
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
+              // Agent skill bindings live on other pages; the delete dialog does not wait.
               void invalidateSkillListQueries(consoleQuery, context.client)
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
-              })
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+              ])
             },
           },
         },

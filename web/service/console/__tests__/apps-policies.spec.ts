@@ -101,16 +101,16 @@ describe('skill mutation policies', () => {
 })
 
 describe('app mutation policies', () => {
-  it('waits for the refreshed triggers, app detail, and custom config', async () => {
+  it('waits for the refreshed triggers and custom config, and refreshes the app detail in the background', async () => {
     const { consoleQuery, invalidatedKeys, success } = await setup()
     const params = { app_id: 'app-1' }
 
     await expect(
       success(consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions(), {}, { params }),
     ).resolves.toBeUndefined()
-    await expect(
+    expect(
       success(consoleQuery.apps.byAppId.modelConfig.post.mutationOptions(), {}, { params }),
-    ).resolves.toBeUndefined()
+    ).toBeUndefined()
     await expect(
       success(consoleQuery.workspaces.customConfig.post.mutationOptions(), {}, { body: {} }),
     ).resolves.toBeUndefined()
@@ -222,15 +222,17 @@ describe('snippet mutation policies', () => {
 })
 
 describe('agent mutation policies', () => {
-  it('waits for the published agent versions, detail, and API access', async () => {
+  it('refreshes the published agent versions and API access, and waits for its detail', async () => {
     const { consoleQuery, invalidatedKeys, success } = await setup()
     const input = { params: { agent_id: 'agent-1' } }
 
-    await success(
-      consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
-      { active_config_snapshot_id: 'snapshot-2' },
-      { ...input, body: {} },
-    )
+    await expect(
+      success(
+        consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
+        { active_config_snapshot_id: 'snapshot-2' },
+        { ...input, body: {} },
+      ),
+    ).resolves.toBeDefined()
 
     expect(invalidatedKeys()).toEqual(
       expect.arrayContaining([

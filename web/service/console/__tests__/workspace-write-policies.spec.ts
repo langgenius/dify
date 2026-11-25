@@ -150,7 +150,7 @@ describe('workflow publish policies', () => {
     )
   })
 
-  it('awaits the refresh after converting the workflow kind', async () => {
+  it('awaits the app detail refresh after converting the workflow kind', async () => {
     const { context, invalidatedKeys } = setup()
     const convert = workflows.convertType.post.mutationOptions()
 
@@ -163,8 +163,8 @@ describe('workflow publish policies', () => {
 
     expect(invalidatedKeys()).toEqual([
       workflows.publish.get.key({ input: { params } }),
-      consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
       consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
     ])
   })
 })
