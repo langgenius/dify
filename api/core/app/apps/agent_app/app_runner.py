@@ -778,10 +778,7 @@ class AgentAppRunner:
                         dify_context.invoke_from == InvokeFrom.DEBUGGER
                         and agent_config_version_kind in {"draft", "build_draft"}
                     )
-                    or (
-                        dify_context.invoke_from == InvokeFrom.WEB_APP
-                        and agent_config_version_kind == "snapshot"
-                    )
+                    or (dify_context.invoke_from == InvokeFrom.WEB_APP and agent_config_version_kind == "snapshot")
                 )
             )
             else None

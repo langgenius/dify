@@ -130,9 +130,7 @@ def create_runs_router(
             still-pending input in FIFO order for replay on the next turn.
             """
             try:
-                pending = await store.freeze_run_inputs(
-                    run_id, RunInputRequest(input_id=input_id, text=payload.text)
-                )
+                pending = await store.freeze_run_inputs(run_id, RunInputRequest(input_id=input_id, text=payload.text))
             except RunNotFoundError as exc:
                 raise HTTPException(status_code=404, detail="run not found") from exc
             except RunInputConflictError as exc:

@@ -140,9 +140,7 @@ def _web_agent_steering_scope(app_model: App, end_user: EndUser, task_id: UUID) 
     """
     if AppMode.value_of(app_model.mode) != AppMode.AGENT:
         raise NotFound("Agent chat task not found.")
-    return AgentChatTaskScope(
-        app_model.tenant_id, app_model.id, end_user.id, task_id, invoke_from=InvokeFrom.WEB_APP
-    )
+    return AgentChatTaskScope(app_model.tenant_id, app_model.id, end_user.id, task_id, invoke_from=InvokeFrom.WEB_APP)
 
 
 register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload, RunInputRequest, RunInputText)
@@ -402,9 +400,7 @@ class WebAgentChatInputApi(WebApiResource):
 @web_ns.route("/chat-messages/<uuid:task_id>/inputs/<uuid:input_id>/interrupt")
 class WebAgentChatInterruptApi(WebApiResource):
     @web_ns.doc("interrupt_web_agent_chat_input")
-    @web_ns.doc(
-        description="Prioritize a steering input, stop the run, and replay pending inputs on the next turn"
-    )
+    @web_ns.doc(description="Prioritize a steering input, stop the run, and replay pending inputs on the next turn")
     @web_ns.doc(params={"task_id": "Task ID", "input_id": "Input ID"})
     @web_ns.expect(web_ns.models[RunInputText.__name__])
     @web_ns.response(200, "Handoff settled", web_ns.models[WebAgentChatHandoffResponse.__name__])
@@ -422,7 +418,5 @@ class WebAgentChatInterruptApi(WebApiResource):
     ) -> tuple[dict[str, object], int]:
         scope = _web_agent_steering_scope(app_model, end_user, task_id)
         with _web_agent_steering_errors("Agent chat turn could not be handed off."):
-            result = interrupt_agent_chat_input(
-                scope, RunInputRequest(input_id=input_id, text=payload.text)
-            )
+            result = interrupt_agent_chat_input(scope, RunInputRequest(input_id=input_id, text=payload.text))
         return dump_response(WebAgentChatHandoffResponse, result), 200

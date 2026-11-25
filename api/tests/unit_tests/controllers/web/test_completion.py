@@ -264,9 +264,7 @@ def _input_receipt(input_id: uuid.UUID) -> RunInputResponse:
     return RunInputResponse(input_id=input_id)
 
 
-def _handoff_receipt(
-    input_id: uuid.UUID, pending: list[tuple[uuid.UUID, str]]
-) -> RunInputHandoffResponse:
+def _handoff_receipt(input_id: uuid.UUID, pending: list[tuple[uuid.UUID, str]]) -> RunInputHandoffResponse:
     return RunInputHandoffResponse(
         input_id=input_id,
         pending_inputs=[RunInputRequest(input_id=pending_id, text=text) for pending_id, text in pending],
@@ -359,9 +357,7 @@ class TestWebAgentChatInterruptApi:
         ],
     )
     @patch("controllers.web.completion.interrupt_agent_chat_input")
-    def test_errors_map_to_http(
-        self, mock_interrupt: MagicMock, error: Exception, expected: type, app: Flask
-    ) -> None:
+    def test_errors_map_to_http(self, mock_interrupt: MagicMock, error: Exception, expected: type, app: Flask) -> None:
         mock_interrupt.side_effect = error
         with app.test_request_context("/chat-messages/x/inputs/y/interrupt", method="POST", json={"text": "x"}):
             with pytest.raises(expected):

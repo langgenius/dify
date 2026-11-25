@@ -859,6 +859,34 @@ Queue a steering input on an admitted Agent App preview run
 | 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /agent/{agent_id}/chat-messages/{task_id}/inputs/{input_id}/interrupt
+Prioritize a steering input, stop the run, and replay pending inputs on the next turn
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| input_id | path | Input ID | Yes | string (uuid) |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentChatInterruptPayload](#agentchatinterruptpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Handoff settled | **application/json**: [AgentChatInputHandoffResponse](#agentchatinputhandoffresponse)<br> |
+| 400 | Invalid input | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent, task, input, or opted-in preview run not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Input cannot be handed off | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /agent/{agent_id}/chat-messages/{task_id}/queue
 Get the pending input queue of an Agent App preview run
 
@@ -20540,6 +20568,15 @@ The retained Build Sandbox is no longer available.
 | ---- | ---- | ----------- | -------- |
 | AgentBuildSandboxNotFoundError |  | The retained Build Sandbox is no longer available. |  |
 
+#### AgentChatInputHandoffResponse
+
+Settled steering handoff: pending inputs to replay on the next turn.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| pending_inputs | [ [RunInputRequest](#runinputrequest) ] |  | Yes |
+
 #### AgentChatInputPayload
 
 Steering input for an admitted Agent App preview run.
@@ -20557,6 +20594,14 @@ Receipt for an accepted steering input; acceptance is not delivery.
 | ---- | ---- | ----------- | -------- |
 | input_id | string (uuid) |  | Yes |
 | status | string |  | Yes |
+
+#### AgentChatInterruptPayload
+
+Text to prioritize over the run's pending inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
 
 #### AgentChatQueueResponse
 
@@ -36067,6 +36112,18 @@ The Roster Agent package exceeds the size limit.
 | ---- | ---- | ----------- | -------- |
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
+#### RunInputRequest
+
+Request body for queueing steering input on a running run.
+
+The caller-provided id makes retries idempotent: the same id and text is a
+no-op, while the same id with different text conflicts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| text | string |  | Yes |
 
 #### RunQueueEntry
 
