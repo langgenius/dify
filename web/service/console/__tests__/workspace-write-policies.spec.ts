@@ -265,12 +265,6 @@ describe('mutations and the refetches they start', () => {
       [{}, null, { params: { group_id: 'group-1' } }, undefined],
     ],
     [
-      'role creation',
-      workspace.rbac.roles.get.key(),
-      () => workspace.rbac.roles.post.mutationOptions().onSettled as Callback,
-      [{}, null, { body: {} }, undefined],
-    ],
-    [
       'external contact creation',
       workspace.humanInput.v2.contacts.key(),
       () => workspace.humanInput.v2.contacts.external.post.mutationOptions().onSuccess as Callback,
@@ -378,6 +372,47 @@ describe('evaluation config save policies', () => {
         .then(() => {
           saved = true
         })
+      await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(saved).toBe(false)
+
+      reload.resolve({})
+      await save
+      unsubscribe()
+      expect(saved).toBe(true)
+    },
+  )
+})
+
+describe('role and permission-set save policies', () => {
+  const rbac = () => consoleQuery.workspaces.current.rbac
+  it.each([
+    ['role create', () => rbac().roles.post.mutationOptions, { body: {} }],
+    ['role edit', () => rbac().roles.byRoleId.put.mutationOptions, { params: { role_id: 'r' } }],
+    ['permission-set create', () => rbac().accessPolicies.post.mutationOptions, { body: {} }],
+    [
+      'permission-set edit',
+      () => rbac().accessPolicies.byPolicyId.put.mutationOptions,
+      { params: { policy_id: 'p' } },
+    ],
+  ] as const)(
+    'keeps a %s pending until the list that seeds its editor reloads',
+    async (_, mutationOptions, variables) => {
+      const { client } = setup()
+      const listKey = rbac().roles.get.queryKey({ input: {} } as never)
+      const reload = createDeferred<unknown>()
+      const queryFn = vi.fn(() => (queryFn.mock.calls.length === 1 ? {} : reload.promise))
+      const observer = new QueryObserver(client, { queryKey: listKey, queryFn })
+      const unsubscribe = observer.subscribe(() => undefined)
+      await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+
+      let saved = false
+      const options = (mutationOptions() as (options: unknown) => unknown)({
+        mutationFn: async () => ({}),
+      }) as MutationObserverOptions<unknown, Error, unknown, unknown>
+      const save = new MutationObserver(client, options).mutate(variables).then(() => {
+        saved = true
+      })
       await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(2))
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(saved).toBe(false)

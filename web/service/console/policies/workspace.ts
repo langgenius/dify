@@ -208,11 +208,13 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
       // Role writes refresh the role list; role assignment changes also refresh members.
       rbac: {
         roles: {
+          // `RoleModal` seeds its draft from this list when it reopens, so saves wait
+          // for it; otherwise a quick reopen saves the old permissions back.
           post: {
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, { client }) => {
                 if (error) return
-                void invalidateQueryKeys(client, [
+                return invalidateQueryKeys(client, [
                   consoleQuery.workspaces.current.rbac.roles.get.key(),
                 ])
               },
@@ -223,7 +225,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               mutationOptions: {
                 onSettled: (_data, error, _variables, _result, { client }) => {
                   if (error) return
-                  void invalidateQueryKeys(client, [
+                  return invalidateQueryKeys(client, [
                     consoleQuery.workspaces.current.rbac.roles.get.key(),
                   ])
                 },
@@ -292,12 +294,14 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
             },
           },
         },
+        // The permission-set modal seeds its draft from the rule lists, so create and
+        // edit wait for them; resource details refresh in the background.
         accessPolicies: {
           post: {
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
-                void invalidateAccessPolicyQueries(consoleQuery, context.client)
+                return invalidateAccessPolicyQueries(consoleQuery, context.client)
               },
             },
           },
@@ -306,7 +310,7 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
               mutationOptions: {
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
-                  void invalidateAccessPolicyQueries(consoleQuery, context.client)
+                  return invalidateAccessPolicyQueries(consoleQuery, context.client)
                 },
               },
             },
@@ -406,14 +410,15 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
   }
 }
 
+/** Returns once the RBAC lists have refreshed; resource details refresh in the background. */
 function invalidateAccessPolicyQueries(query: RouterUtils<ConsoleClient>, client: QueryClient) {
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.rbac.key(),
+  void invalidateQueryKeys(client, [
     query.agent.get.key(),
     query.agent.byAgentId.get.key(),
     query.apps.byAppId.get.key(),
     query.datasets.byDatasetId.get.key(),
   ])
+  return invalidateQueryKeys(client, [query.workspaces.current.rbac.key()])
 }
 
 // Returns once the agent's access settings have refreshed; permissions and agent
