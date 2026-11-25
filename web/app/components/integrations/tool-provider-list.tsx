@@ -31,7 +31,8 @@ import {
 } from '@/app/components/tools/utils/query-select'
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
-import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -148,10 +149,12 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const currentProvider = useMemo<Collection | undefined>(() => {
     return filteredCollectionList.find((collection) => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
-  const { data: checkedInstalledData } = useCheckInstalled({
-    pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
-    enabled: !!currentProvider?.plugin_id,
-  })
+  const { data: checkedInstalledData } = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
+      enabled: !!currentProvider?.plugin_id,
+    }),
+  )
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
     return checkedInstalledData?.plugins?.[0]

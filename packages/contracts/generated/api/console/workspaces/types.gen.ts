@@ -1213,6 +1213,8 @@ export type SkillAssistMessagePayload = {
   target_path?: string | null
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type SkillDraftFileOperationPayload = {
   content?: string | null
   expected_updated_at?: number | null
@@ -7631,7 +7633,9 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
   PostWorkspacesCurrentPluginUpgradeMarketplaceResponses[keyof PostWorkspacesCurrentPluginUpgradeMarketplaceResponses]
 
 export type PostWorkspacesCurrentPluginUploadBundleData = {
-  body?: never
+  body: {
+    bundle: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/bundle'
@@ -9447,9 +9451,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdExportError =
   GetWorkspacesCurrentSkillsBySkillIdExportErrors[keyof GetWorkspacesCurrentSkillsBySkillIdExportErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponse =

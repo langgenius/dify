@@ -5,12 +5,13 @@ import secrets
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import replace
-from typing import Literal, override
+from typing import override
 from uuid import uuid4
 
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition
 from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus
 from events.tenant_event import tenant_was_created
@@ -32,7 +33,7 @@ from services.account.contracts import TokenerSignupEnrollment
 from services.account.signup_adapter import configured_signup_enrollment
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
-from services.credit_pool_service import CreditPoolBalance, CreditPoolService
+from services.credit_pool_service import CreditPoolService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
@@ -381,8 +382,8 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
                 resolved[workspace_id] = tenant_plan.plan or CloudPlan.SANDBOX
                 continue
 
-            features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
-            resolved[workspace_id] = features.billing.subscription.plan or CloudPlan.SANDBOX
+            # Workspace payloads keep reporting non-Cloud workspaces as sandbox.
+            resolved[workspace_id] = FeatureService.get_workspace_plan(workspace_id) or CloudPlan.SANDBOX
 
         return resolved
 
@@ -442,11 +443,11 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
     @staticmethod
     def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:
         # In Cloud, CreditPoolService reads the billing quota API, without an ORM Session.
-        pool_type: Literal["paid", "trial"] = "trial" if plan == CloudPlan.SANDBOX else "paid"
-        pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type=pool_type)
-        if pool is None:
+        credit_pool_type = FeatureService.get_credit_pool_type(workspace_id, plan=plan)
+        if credit_pool_type is None:
             return EffectiveCreditPool(plan=plan, next_credit_reset_date=reset_date)
-        exhausted_at = pool.exhausted_at if isinstance(pool, CreditPoolBalance) else None
+        pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type=credit_pool_type)
+        exhausted_at = pool.exhausted_at
         if not (
             isinstance(exhausted_at, int)
             and exhausted_at > 0
@@ -456,7 +457,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
             exhausted_at = None
         return EffectiveCreditPool(
             plan=plan,
-            pool_type=pool_type,
+            pool_type="paid" if credit_pool_type == ProviderQuotaType.PAID else "trial",
             quota_limit=pool.quota_limit,
             quota_used=pool.quota_used,
             exhausted_at=exhausted_at,
@@ -538,7 +539,6 @@ class WorkspaceProvisioningEffectsGateway:
             id=workspace_id,
             name=name,
             encrypt_public_key=generate_key_pair(workspace_id),
-            trial_credits=dify_config.HOSTED_POOL_CREDITS,
             plugin_upgrade_time=PluginAutoUpgradeService.default_upgrade_time_of_day(workspace_id),
             plugin_upgrade_settings={
                 category.value: PluginAutoUpgradeService.default_strategy_setting_for_category(category).value

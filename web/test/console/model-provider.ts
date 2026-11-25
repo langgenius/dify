@@ -12,6 +12,7 @@ import {
   zProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { consoleQuery } from '@/service/console'
+import { TEST_WORKSPACE_ID } from '@/test/console/ids'
 
 type ProviderResponse = Awaited<
   ReturnType<ConsoleClient['workspaces']['current']['modelProviders']['get']>
@@ -136,7 +137,7 @@ export const createCatalogModelFixture = (
 export const createModelCatalogFixture = (
   overrides: Partial<ProviderWithModelsResponse> = {},
 ): ProviderWithModelsResponse => ({
-  tenant_id: 'workspace-1',
+  tenant_id: TEST_WORKSPACE_ID,
   provider: 'openai',
   label: { en_US: 'OpenAI' },
   status: 'active',
@@ -159,7 +160,7 @@ export const createDefaultModelFixture = ({
       provider: 'openai',
       label: { en_US: 'OpenAI' },
       supported_model_types: [overrides.model_type ?? 'llm'],
-      tenant_id: 'workspace-1',
+      tenant_id: TEST_WORKSPACE_ID,
       ...provider,
     },
   })

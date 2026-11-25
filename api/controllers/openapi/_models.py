@@ -8,15 +8,23 @@ from enum import StrEnum
 from typing import Any, Final, Literal, Protocol, Self
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
+from configs import dify_config
 from constants.languages import supported_language
 from constants.oauth_bearer import SubjectType
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.openapi._i18n import localized
 from controllers.openapi._upload import UploadPart, UploadParts
+from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.api_entities import ToolApiEntity
+from core.tools.entities.tool_entities import (
+    ApiProviderSchemaType,
+    ToolProviderType,
+    WorkflowToolParameterConfiguration,
+)
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
@@ -24,11 +32,12 @@ from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.nodes.tool.entities import ToolInputType
 from graphon.variables import SegmentType
-from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, to_timestamp, uuid_value
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, alphanumeric, to_timestamp, uuid_value
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from services.entities.app_entities import SupportedAppType
 from services.entities.dsl_entities import CheckDependenciesResult, Import, ImportMode
+from services.knowledge.entities.knowledge_entities import RetrievalModel
 from services.workflow.graph_check import GraphIssue
 from services.workflow.graph_diff import WorkflowDiff
 
@@ -1420,3 +1429,559 @@ class SkillImportResponse(Hinted):
     name: str
     draft_hash: str = Field(description="Opaque; names the draft this wrote")
     file_count: int
+
+
+class AppApiKeyRow(BaseModel):
+    """One app API key; `token` is the full secret, as the console returns it."""
+
+    id: str
+    token: str
+    created_at: int | None = None
+    last_used_at: int | None = None
+
+    @field_validator("created_at", "last_used_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AppApiKeyListResponse(BaseModel):
+    """Every API key of one app; unpaginated, as the console lists them."""
+
+    data: list[AppApiKeyRow]
+
+
+class ModelConfigFrom(StrEnum):
+    """Which credential table a model's load-balancing entries point at, as the console's config_from."""
+
+    PREDEFINED_MODEL = "predefined-model"
+    CUSTOM_MODEL = "custom-model"
+
+
+class ModelRefQuery(ModelRef):
+    """The model a credential or settings op addresses, as query parameters."""
+
+
+class DefaultModelPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(description="Provider id such as langgenius/openai/openai")
+    model: str
+
+
+class DefaultModelResponse(BaseModel):
+    model_type: str
+    provider: str | None = Field(description="Null when no default is set for the type")
+    model: str | None = Field(description="Null when no default is set for the type")
+
+
+class ModelSettingsQuery(ModelRef):
+    config_from: ModelConfigFrom = Field(
+        description="predefined-model: entries point at provider credentials; custom-model: at the model's own"
+    )
+
+
+class LoadBalancingEntry(BaseModel):
+    id: str
+    name: str
+    credential_id: str | None
+    enabled: bool
+    inherit: bool = Field(description="True for the entry that reuses the active credential")
+
+
+class LoadBalancingSettings(BaseModel):
+    enabled: bool
+    entries: list[LoadBalancingEntry]
+
+
+class ModelSettingsResponse(ModelSettingsQuery):
+    enabled: bool = Field(description="False while the model is disabled for this workspace")
+    load_balancing: LoadBalancingSettings
+
+
+class LoadBalancingEntryPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    credential_id: str | None = Field(
+        None, description="A saved credential's id; null names the entry that reuses the active credential"
+    )
+    enabled: bool
+
+
+class LoadBalancingPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    entries: list[LoadBalancingEntryPayload] = Field(description="Desired entries; unlisted ones are deleted")
+
+
+class ModelSettingsPutPayload(ModelSettingsQuery):
+    enabled: bool
+    load_balancing: LoadBalancingPayload = Field(description="Load-balancing settings to replace the stored ones")
+
+    @model_validator(mode="after")
+    def _unique_credentials(self) -> Self:
+        seen: set[str] = set()
+        inherit = 0
+        for entry in self.load_balancing.entries:
+            if entry.credential_id is None:
+                inherit += 1
+            elif entry.credential_id in seen:
+                raise ValueError(f"duplicate credential_id {entry.credential_id}")
+            else:
+                seen.add(entry.credential_id)
+        if inherit > 1:
+            raise ValueError("at most one entry may reuse the active credential")
+        return self
+
+
+class ToolEmojiIcon(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    background: str
+    content: str
+
+
+class ApiToolProviderPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    name: str = Field(description="Provider name; on update it may differ from the path to rename")
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the provider")
+    credentials: dict[str, Any] = Field(description="Auth configuration the provider's calls send")
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema", description="The schema text that defines the provider's tools")
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    labels: list[str] | None = None
+
+
+class ApiToolProviderResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str
+    icon: ToolEmojiIcon
+    schema_type: ApiProviderSchemaType
+    schema_: str = Field(alias="schema")
+    credentials: dict[str, Any] = Field(description="Masked secret values; never the stored secrets")
+    privacy_policy: str | None
+    custom_disclaimer: str | None
+    labels: list[str]
+    tools: list[str] = Field(description="Names of the tools the schema defines")
+    description: str | None = None
+
+
+class ApiToolProviderRow(BaseModel):
+    """One API tool provider summary, as a workspace list shows it."""
+
+    name: str
+    icon: dict[str, str] | str
+    description: str | None
+    labels: list[str]
+    tools: list[str] = Field(description="Names of the tools the provider's schema defines")
+
+
+class ApiToolProviderListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ApiToolProviderListResponse(PaginationEnvelope[ApiToolProviderRow]):
+    pass
+
+
+class McpProviderPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    server_url: str
+    name: str
+    icon: str
+    icon_type: str
+    icon_background: str = ""
+    server_identifier: str
+    configuration: MCPConfiguration | None = Field(
+        None, description="Connection settings such as timeouts; defaults apply when omitted"
+    )
+    headers: dict[str, str] | None = Field(None, description="Extra HTTP headers sent to the server")
+    authentication: MCPAuthentication | None = Field(
+        None, description="OAuth client configuration for servers that require it"
+    )
+
+    @field_validator("authentication", "configuration", mode="before")
+    @classmethod
+    def _empty_to_none(cls, value: object) -> object:
+        if value == {}:
+            return None
+        return value
+
+
+class McpProviderResponse(BaseModel):
+    """An MCP provider with every secret field already masked by the service."""
+
+    id: str
+    name: str
+    icon: str | dict[str, str]
+    server_url: str | None = Field(description="Masked server URL")
+    server_identifier: str | None
+    masked_headers: dict[str, str] | None
+    authentication: MCPAuthentication | None = Field(description="Masked OAuth client config")
+    is_team_authorization: bool = Field(description="True once the workspace authorized the provider")
+    is_dynamic_registration: bool
+    configuration: MCPConfiguration | None
+    identity_mode: str
+    updated_at: int
+    tools: list[str] = Field(description="Names of the tools the server advertised")
+
+
+class WorkflowToolCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workflow_app_id: str = Field(description="The workflow app to publish as a tool")
+    name: str
+    label: str
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the tool")
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
+    privacy_policy: str | None = None
+    labels: list[str] | None = None
+
+    @field_validator("workflow_app_id")
+    @classmethod
+    def _valid_app_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+    @field_validator("name")
+    @classmethod
+    def _valid_name(cls, value: str) -> str:
+        return alphanumeric(value)
+
+
+class WorkflowToolSetPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    label: str
+    icon: ToolEmojiIcon = Field(description="Emoji tile the workspace shows for the tool")
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
+    privacy_policy: str | None = None
+    labels: list[str] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _valid_name(cls, value: str) -> str:
+        return alphanumeric(value)
+
+
+class WorkflowToolResponse(BaseModel):
+    name: str
+    label: str
+    workflow_tool_id: str
+    workflow_app_id: str
+    icon: ToolEmojiIcon
+    description: str
+    parameters: list[WorkflowToolParameterConfiguration]
+    output_schema: dict[str, Any]
+    tool: ToolApiEntity
+    synced: bool = Field(description="False once the app's published workflow moved past this tool's version")
+    privacy_policy: str | None
+
+
+def _check_retrieval_model(value: object) -> None:
+    """Reject invalid retrieval settings at body validation instead of inside the handler.
+
+    The field stays a JSON object so the catalog's input schema remains flat;
+    validating it with `RetrievalModel` here still turns bad settings into a 422.
+    """
+    RetrievalModel.model_validate(value)
+
+
+class DatasetPermission(StrEnum):
+    """Who can reach a knowledge base."""
+
+    ONLY_ME = "only_me"
+    ALL_TEAM_MEMBERS = "all_team_members"
+    PARTIAL_MEMBERS = "partial_members"
+
+
+class DatasetIndexingTechnique(StrEnum):
+    """How a knowledge base indexes its documents."""
+
+    HIGH_QUALITY = "high_quality"
+    ECONOMY = "economy"
+
+
+class DocumentForm(StrEnum):
+    """Chunking shape of a document."""
+
+    TEXT_MODEL = "text_model"
+    HIERARCHICAL_MODEL = "hierarchical_model"
+    QA_MODEL = "qa_model"
+
+
+class DatasetProvider(StrEnum):
+    """Whether the knowledge base indexes locally or proxies an external knowledge API."""
+
+    VENDOR = "vendor"
+    EXTERNAL = "external"
+
+
+class DocumentDisplayStatus(StrEnum):
+    """Public document status shared with the legacy service API."""
+
+    QUEUING = "queuing"
+    INDEXING = "indexing"
+    PAUSED = "paused"
+    ERROR = "error"
+    AVAILABLE = "available"
+    DISABLED = "disabled"
+    ARCHIVED = "archived"
+
+
+class DatasetCreatePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=40, description="Knowledge base name")
+    description: str = Field(
+        "", max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH, description="Knowledge base description"
+    )
+    indexing_technique: DatasetIndexingTechnique | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models; `economy` uses keyword indexing.",
+    )
+    permission: DatasetPermission | None = Field(
+        default=None,
+        description="Legacy dataset permission. Only `only_me` and `all_team_members` are "
+        "supported when RBAC is disabled. Ignored when RBAC is enabled.",
+    )
+    provider: DatasetProvider = Field(
+        default=DatasetProvider.VENDOR,
+        description="`vendor` for internal knowledge bases, `external` for external ones.",
+    )
+    external_knowledge_api_id: str | None = Field(
+        default=None, description="External knowledge API id (required when `provider` is `external`)."
+    )
+    external_knowledge_id: str | None = Field(
+        default=None, description="External knowledge base id (required when `provider` is `external`)."
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Embedding model name. Use the `model` field from "
+        "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`.",
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description="Embedding model provider. Use the `provider` field from "
+        "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`.",
+    )
+    retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration as a JSON object."
+    )
+
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
+
+    @model_validator(mode="after")
+    def _external_binding_required(self) -> Self:
+        if self.provider == DatasetProvider.EXTERNAL and (
+            not self.external_knowledge_api_id or not self.external_knowledge_id
+        ):
+            raise ValueError("external_knowledge_api_id and external_knowledge_id are required for external datasets")
+        return self
+
+
+class DatasetPartialMemberPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUIDStr
+
+
+class DatasetUpdatePayload(BaseModel):
+    """Patchable knowledge-base settings.
+
+    Indexing settings are fixed after creation: `indexing_technique`,
+    `embedding_model`, and `embedding_model_provider` rebuild the whole index, so
+    they are absent here and rejected as unknown fields.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | SkipJsonSchema[None] = Field(
+        default=None, min_length=1, max_length=40, description="Knowledge base name. Omit to keep the current name."
+    )
+    description: str | None = Field(default=None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
+    permission: DatasetPermission | None = None
+    retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration as a JSON object."
+    )
+    summary_index_setting: dict[str, Any] | None = Field(
+        default=None, description="Summary index settings as a JSON object."
+    )
+    partial_member_list: list[DatasetPartialMemberPayload] | None = Field(
+        default=None, description="Member ids granted access when `permission` is `partial_members`."
+    )
+    external_retrieval_model: dict[str, Any] | None = Field(
+        default=None, description="Retrieval model configuration for external knowledge bases as a JSON object."
+    )
+    external_knowledge_id: str | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        description="External knowledge base id. Omit to keep the current binding.",
+    )
+    external_knowledge_api_id: str | SkipJsonSchema[None] = Field(
+        default=None,
+        min_length=1,
+        description="External knowledge API id. Omit to keep the current binding.",
+    )
+    icon_info: dict[str, Any] | None = Field(default=None, description="Icon metadata as a JSON object.")
+
+    @field_validator("name", "external_knowledge_id", "external_knowledge_api_id", mode="before")
+    @classmethod
+    def _reject_explicit_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("omit this field to keep its current value; null is not allowed")
+        return value
+
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
+
+
+class DatasetListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the knowledge base name")
+
+
+class DatasetResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    provider: str
+    permission: str
+    indexing_technique: str | None
+    embedding_model: str | None
+    embedding_model_provider: str | None
+    retrieval_model: dict[str, Any] | None
+    external_knowledge_api_id: str | None
+    external_knowledge_id: str | None
+    created_at: int
+    updated_at: int
+
+
+class DatasetDetailResponse(DatasetResponse):
+    partial_member_list: list[str] | None = Field(
+        default=None,
+        description="Member IDs for a legacy partial-members knowledge base; null when not applicable.",
+    )
+
+
+class DatasetListResponse(PaginationEnvelope[DatasetResponse]):
+    pass
+
+
+class DocumentTextPayload(BaseModel):
+    """Flat text-document settings shared by create-by-text and update-by-text."""
+
+    process_rule: dict[str, Any] | None = Field(
+        default=None, description="Processing rules for chunking as a JSON object."
+    )
+    doc_form: DocumentForm | None = Field(
+        default=None,
+        description="`text_model` for standard chunking, `hierarchical_model` for parent-child, "
+        "`qa_model` for question-answer pairs. Defaults to the knowledge base's form.",
+    )
+
+
+class DocumentCreateByTextPayload(DocumentTextPayload):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, description="Document name.")
+    text: str = Field(min_length=1, description="Document text content.")
+    doc_language: str | None = Field(default=None, description="Language of the document.")
+    indexing_technique: DatasetIndexingTechnique | None = Field(
+        default=None,
+        description="Required for the first document when the knowledge base has no technique; "
+        "later documents inherit the knowledge base's.",
+    )
+    retrieval_model: dict[str, Any] | None = Field(default=None, description="Retrieval model configuration.")
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+
+    @field_validator("retrieval_model", mode="before")
+    @classmethod
+    def _valid_retrieval_model(cls, value: object) -> object:
+        if value is not None:
+            _check_retrieval_model(value)
+        return value
+
+
+class DocumentUpdateByTextPayload(DocumentTextPayload):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, description="Document name.")
+    text: str | None = Field(default=None, description="Document text content.")
+
+    @model_validator(mode="after")
+    def _requires_a_change(self) -> Self:
+        if self.text is not None and self.name is None:
+            raise ValueError("name is required when text is provided")
+        if self.text is None and not self.name and self.process_rule is None:
+            raise ValueError("provide at least one of text, name, or process_rule")
+        return self
+
+
+class DocumentResponse(BaseModel):
+    id: str
+    dataset_id: str
+    name: str
+    data_source_type: str | None
+    display_status: DocumentDisplayStatus | None
+    error: str | None
+    enabled: bool
+    archived: bool
+    doc_form: str | None
+    doc_language: str | None
+    document_process_rule: dict[str, Any] | None
+    created_at: int | None
+    updated_at: int | None
+    completed_at: int | None
+
+
+class DocumentAndBatchResponse(BaseModel):
+    document: DocumentResponse
+    batch: str
+
+
+class DocumentUpdateResponse(BaseModel):
+    document: DocumentResponse
+
+
+class DocumentListQuery(PageQuery):
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field("", description="Words to match in the document name")
+
+
+class DocumentListResponse(PaginationEnvelope[DocumentResponse]):
+    pass
+
+
+class DocumentBatchItem(BaseModel):
+    id: str
+    display_status: DocumentDisplayStatus | None
+    error: str | None
+    completed_segments: int | None
+    total_segments: int | None
+
+
+class DocumentIndexingStatusResponse(BaseModel):
+    batch: str
+    display_status: DocumentDisplayStatus
+    error: str | None
+    documents: list[DocumentBatchItem]

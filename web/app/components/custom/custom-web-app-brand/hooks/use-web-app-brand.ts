@@ -4,15 +4,14 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tansta
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
+import { getImageUploadErrorMessage } from '@/app/components/base/image-uploader/utils'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
-const WEB_APP_LOGO_UPLOAD_URL = '/workspaces/custom-config/webapp-logo/upload'
 const useWebAppBrand = () => {
   const { t } = useTranslation(['common'])
   const { data: canReplaceLogo } = useQuery(
@@ -58,29 +57,33 @@ const useWebAppBrand = () => {
     }
     setUploadProgress(0)
     setUploading(true)
-    imageUpload(
-      {
-        file,
-        onProgressCallback: setUploadProgress,
-        onSuccessCallback: (res) => {
-          setUploadProgress(100)
-          setFileId(res.id)
-          setUploading(false)
+    consoleClient.workspaces.customConfig.webappLogo.upload
+      .post(
+        { body: { file } },
+        {
+          context: {
+            silent: true,
+            onUploadProgress: ({ loaded, total }) => {
+              setUploadProgress(Math.floor((loaded / total) * 100))
+            },
+          },
         },
-        onErrorCallback: (error) => {
-          const errorMessage = getImageUploadErrorMessage(
-            error,
-            t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-            t,
-          )
-          toast.error(errorMessage)
-          setUploadProgress(-1)
-          setUploading(false)
-        },
-      },
-      false,
-      WEB_APP_LOGO_UPLOAD_URL,
-    )
+      )
+      .then((res) => {
+        setUploadProgress(100)
+        setFileId(res.id)
+        setUploading(false)
+      })
+      .catch((error: unknown) => {
+        const errorMessage = getImageUploadErrorMessage(
+          error,
+          t(($) => $['imageUploader.uploadFromComputerUploadError'], { ns: 'common' }),
+          t,
+        )
+        toast.error(errorMessage)
+        setUploadProgress(-1)
+        setUploading(false)
+      })
   }
   const handleApply = async () => {
     await persistWorkspaceBrand({

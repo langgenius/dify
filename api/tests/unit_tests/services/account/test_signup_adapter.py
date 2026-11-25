@@ -6,7 +6,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition
-from models import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration
 from services.account.adapters import DeploymentAccountLifecyclePolicy
@@ -86,7 +85,6 @@ def _assert_native(sessions: sessionmaker[Session], account: str, tenant: str) -
         )
         assert integration is not None
         assert integration.plugin_unique_identifier == UID
-        assert session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == tenant)) is None
 
 
 def test_verified_email_registration_producer_persists_intent_and_only_first_workspace(
@@ -101,7 +99,6 @@ def test_verified_email_registration_producer_persists_intent_and_only_first_wor
     with sqlite_session_factory() as session:
         assert session.scalar(select(func.count()).select_from(TenantModelBillingProfile)) == 1
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 1
-        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1
 
 
 def test_verified_email_code_atomic_account_workspace_producer(

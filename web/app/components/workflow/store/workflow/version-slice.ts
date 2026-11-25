@@ -1,13 +1,13 @@
 import type { StateCreator } from 'zustand'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 
 export type VersionSliceShape = {
   draftUpdatedAt: number
   setDraftUpdatedAt: (draftUpdatedAt: number) => void
   publishedAt: number
   setPublishedAt: (publishedAt: number) => void
-  currentVersion: FetchWorkflowDraftResponse | null
-  setCurrentVersion: (currentVersion: FetchWorkflowDraftResponse) => void
+  currentVersion: WorkflowVersionListItem | null
+  setCurrentVersion: (currentVersion: WorkflowVersionListItem) => void
   isRestoring: boolean
   setIsRestoring: (isRestoring: boolean) => void
 }

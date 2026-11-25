@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "4155d3679ffb2c77ae9fe214e8d7581b49b2c45a",
+  "x-dify-saas-commit": "86a5a9382e1f4a107294f33d3c142eeafd5cedb6",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -892,7 +892,14 @@
           "MISSING_PREFILLED_EMAIL",
           "TOKENER_NATIVE_ACCOUNT_NOT_READY",
           "TENANT_BILLING_MODE_UNAVAILABLE",
-          "CREDIT_MANAGED_BY_TOKENER"
+          "CREDIT_MANAGED_BY_TOKENER",
+          "APP_RUNS_NOT_CONFIGURED",
+          "INVALID_APP_RUNS_REQUEST",
+          "APP_RUNS_WORKSPACE_NOT_FOUND",
+          "QUOTA_RESET_IN_PROGRESS",
+          "APP_RUNS_RPM_NOT_CONFIGURED",
+          "APP_RUNS_RPM_UNAVAILABLE",
+          "APP_RUNS_RPM_READ_ONLY"
         ],
         "type": "string",
         "description": "Reasons returned by the BillingQuota service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingQuotaErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
@@ -1534,6 +1541,14 @@
           },
           "api_rate_limit": {
             "$ref": "#/components/schemas/QuotaFeatureInfo"
+          },
+          "app_runs": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/QuotaFeatureInfo"
+              }
+            ],
+            "nullable": true
           }
         }
       },

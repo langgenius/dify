@@ -191,7 +191,7 @@ class TestTaskEnqueuing:
         self, tenant_id: str, dataset_id: str, document_ids: list[str], mock_redis: MagicMock
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features"),
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=None),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
@@ -220,10 +220,9 @@ class TestTaskEnqueuing:
         task_attribute: str,
     ) -> None:
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch("services.document_indexing_proxy.base.FeatureService.get_workspace_plan", return_value=plan),
             patch.object(DocumentIndexingTaskProxy, task_attribute, Mock()) as task,
         ):
-            features.billing.subscription.plan = plan
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.setex.assert_called()
@@ -235,10 +234,12 @@ class TestTaskEnqueuing:
     ) -> None:
         mock_redis.get.return_value = b"1"
         with (
-            patch.object(DocumentIndexingTaskProxy, "features") as features,
+            patch(
+                "services.document_indexing_proxy.base.FeatureService.get_workspace_plan",
+                return_value=CloudPlan.PROFESSIONAL,
+            ),
             patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", Mock()) as task,
         ):
-            features.billing.subscription.plan = CloudPlan.PROFESSIONAL
             DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids).delay()
 
         mock_redis.lpush.assert_called_once()

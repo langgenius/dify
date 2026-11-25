@@ -1,4 +1,5 @@
 from configs import dify_config
+from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from enums.model_billing import ModelBillingSource
 from services.account_education_service import EDUCATION_EDITIONS
@@ -45,15 +46,49 @@ class FeatureService:
         """Keep Cloud-only Web app customization out of free workspace imports."""
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return True
-        return cls.get_workspace_plan(tenant_id).is_paid
+        return cls._is_paid_cloud_workspace(tenant_id)
 
     @classmethod
-    def get_workspace_plan(cls, tenant_id: str) -> CloudPlan:
+    def get_workspace_plan(cls, tenant_id: str) -> CloudPlan | None:
+        """Return the workspace's Cloud subscription plan, or ``None`` outside Cloud.
+
+        This is the single entry for reading one workspace's plan. Only Cloud has
+        subscription plans, so other editions return ``None`` without calling
+        billing; ``None`` is never a stand-in for Sandbox. On Cloud it makes one
+        billing subscription request. Batch jobs use
+        ``BillingService.get_plan_bulk_with_cache`` instead.
+
+        Billing failures propagate unchanged, and each caller chooses what they
+        mean: permission checks reject the request (directly or as their own
+        unavailable error), while queue routing and other scheduling decisions
+        catch the failure and fall back to their degraded plan.
+        """
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return CloudPlan.SANDBOX
+            return None
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         return CloudPlan(billing_info.subscription.plan)
+
+    @classmethod
+    def get_credit_pool_type(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> ProviderQuotaType | None:
+        """Return the hosted credit pool a workspace spends from, or ``None`` outside Cloud.
+
+        Only Cloud bills hosted model calls against a credit pool, and the plan selects the
+        bucket: Sandbox spends trial credits while every paid plan spends paid credits. A
+        caller that already loaded the subscription passes ``plan`` to skip a second lookup;
+        billing failures propagate so the caller decides whether to fail closed.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+
+        workspace_plan = plan if plan is not None else cls.get_workspace_plan(tenant_id)
+        return ProviderQuotaType.TRIAL if workspace_plan == CloudPlan.SANDBOX else ProviderQuotaType.PAID
+
+    @classmethod
+    def _is_paid_cloud_workspace(cls, tenant_id: str, plan: CloudPlan | None = None) -> bool:
+        """Return whether a Cloud workspace has a paid plan, using ``plan`` when the caller already loaded it."""
+        workspace_plan = plan if plan is not None else cls.get_workspace_plan(tenant_id)
+        return workspace_plan is not None and workspace_plan.is_paid
 
     @classmethod
     def can_use_workflow_collaboration(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
@@ -64,7 +99,7 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return (plan if plan is not None else cls.get_workspace_plan(tenant_id)).is_paid
+        return cls._is_paid_cloud_workspace(tenant_id, plan)
 
     @staticmethod
     def is_evaluation_supported() -> bool:
@@ -80,7 +115,7 @@ class FeatureService:
             return True
         if not tenant_id:
             return False
-        return (plan if plan is not None else cls.get_workspace_plan(tenant_id)).is_paid
+        return cls._is_paid_cloud_workspace(tenant_id, plan)
 
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
@@ -146,8 +181,13 @@ class FeatureService:
 
         return vector_space
 
+    @staticmethod
+    def has_knowledge_subscription_limits() -> bool:
+        """Whether knowledge writes are subject to workspace subscription limits."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> feature_entities.KnowledgeRateLimitModel:
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             knowledge_rate_limit.enabled = True
@@ -162,8 +202,7 @@ class FeatureService:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or not tenant_id:
             return default_limit
 
-        subscription_plan = cls.get_workspace_plan(tenant_id)
-        if subscription_plan.is_paid:
+        if cls._is_paid_cloud_workspace(tenant_id):
             return max(default_limit, dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN)
 
         return default_limit
@@ -201,12 +240,11 @@ class FeatureService:
             # credit plans. Tokener enforces the actual balance at invocation.
             return cls._fulfill_trial_models_from_env()
 
-        subscription_plan = cls.get_workspace_plan(tenant_id)
-        quota_types = ("PAID", "TRIAL") if subscription_plan.is_paid else ("TRIAL",)
+        quota_types = ("PAID", "TRIAL") if cls._is_paid_cloud_workspace(tenant_id) else ("TRIAL",)
         return cls._fulfill_trial_models_from_env(quota_types)
 
     @classmethod
-    def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
+    def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel) -> None:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.education.enabled = (
@@ -229,7 +267,7 @@ class FeatureService:
         features.api_rate_limit = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
 
     @classmethod
-    def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):
+    def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str) -> None:
         workspace_info = EnterpriseService.get_workspace_info(tenant_id)
         if "WorkspaceMembers" in workspace_info:
             features.workspace_members.size = workspace_info["WorkspaceMembers"]["used"]
@@ -242,7 +280,7 @@ class FeatureService:
         features: feature_entities.FeatureModel,
         tenant_id: str,
         exclude_vector_space: bool = False,
-    ):
+    ) -> None:
         if exclude_vector_space:
             billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         else:
@@ -290,7 +328,7 @@ class FeatureService:
     @classmethod
     def _fulfill_vector_space_from_billing_info(
         cls, vector_space: feature_entities.LimitationModel, billing_info: billing.GetSubscriptionInfoReply
-    ):
+    ) -> None:
         if billing_info.vector_space is None:
             return
 

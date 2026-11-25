@@ -5,8 +5,6 @@ import type { FetchDatasetsParams } from '@/models/datasets'
 import type { ConsoleClientContext } from '@/service/console'
 import { isPlainObject } from 'es-toolkit/predicate'
 import { DataSourceProvider } from '@/models/common'
-// oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
-import { post } from './base'
 import { consoleClient, consoleQuery } from './console'
 
 export function documentRenameFilter(datasetId: string, documentId: string): MutationFilters {
@@ -69,18 +67,6 @@ export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) =
   )
 }
 
-export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.delete({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
-export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.useCheck.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
 export const createExternalKnowledgeBase = (
   { body }: { body: CreateKnowledgeBaseReq },
   context?: ConsoleClientContext,
@@ -130,14 +116,9 @@ export const downloadDocumentsZip = (
   { datasetId, documentIds }: DocumentDownloadZipRequest,
   options?: { silent?: boolean },
 ): Promise<Blob> => {
-  return post<Blob>(
-    `/datasets/${datasetId}/documents/download-zip`,
-    {
-      body: {
-        document_ids: documentIds,
-      },
-    },
-    options,
+  return consoleClient.datasets.byDatasetId.documents.downloadZip.post(
+    { params: { dataset_id: datasetId }, body: { document_ids: documentIds } },
+    { context: { silent: options?.silent } },
   )
 }
 

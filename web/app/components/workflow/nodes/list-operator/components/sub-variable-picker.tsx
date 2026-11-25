@@ -53,7 +53,7 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className, disabled }) 
           aria-label={t(($) => $['nodes.listFilter.filterConditionKey'], { ns: 'workflow' })}
           className="h-8 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
         >
-          <div className="group/sub-variable-picker flex h-8 items-center rounded-lg bg-components-input-bg-normal pl-1 hover:bg-state-base-hover-alt">
+          <div className="group/sub-variable-picker flex h-8 items-center rounded-lg bg-components-input-bg-normal ps-1 hover:bg-state-base-hover-alt">
             {selectedOption ? (
               <div className="flex cursor-pointer justify-start">
                 <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
@@ -61,14 +61,14 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className, disabled }) 
                     aria-hidden
                     className="i-custom-vender-solid-development-variable-02 size-3.5 shrink-0 text-text-accent"
                   />
-                  <div className="ml-0.5 truncate system-xs-medium">{selectedOption.name}</div>
+                  <div className="ms-0.5 truncate system-xs-medium">{selectedOption.name}</div>
                 </div>
               </div>
             ) : (
-              <div className="flex pl-1 system-sm-regular text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
+              <div className="flex ps-1 system-sm-regular text-components-input-text-placeholder group-hover/sub-variable-picker:text-text-tertiary">
                 <span
                   aria-hidden
-                  className="mr-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
+                  className="me-1 i-custom-vender-solid-development-variable-02 size-4 shrink-0"
                 />
                 <span>{t(($) => $['placeholder.select'], { ns: 'common' })}</span>
               </div>
@@ -83,15 +83,15 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className, disabled }) 
                   <SelectItem
                     key={option.value}
                     value={option.value}
-                    className="h-8 py-0 pr-5 pl-1"
+                    className="h-8 py-0 ps-1 pe-5"
                   >
                     <div className="flex h-6 items-center justify-between">
                       <div className="flex h-full items-center">
                         <span
                           aria-hidden
-                          className="mr-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
+                          className="me-1.25 i-custom-vender-solid-development-variable-02 h-3.5 w-3.5 text-text-accent"
                         />
-                        <SelectItemText className="mr-0 system-sm-medium text-text-secondary">
+                        <SelectItemText className="me-0 system-sm-medium text-text-secondary">
                           {option.name}
                         </SelectItemText>
                       </div>

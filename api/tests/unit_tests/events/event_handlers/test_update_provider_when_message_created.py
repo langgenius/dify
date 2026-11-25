@@ -1,10 +1,7 @@
-from collections.abc import Iterator
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     EasyUIBasedAppConfig,
@@ -23,8 +20,7 @@ from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from enums.model_billing import ModelBillingSource
 from events.event_handlers import update_provider_when_message_created
-from models import AppMode, Message, TenantCreditPool
-from models.enums import ProviderQuotaType as ModelProviderQuotaType
+from models import AppMode, Message
 from models.provider import ProviderType
 from services.entities.model_billing import TenantModelBillingResolution
 from services.model_billing_profile_service import ModelBillingProfileResolutionError
@@ -52,18 +48,11 @@ def _app_config(tenant_id: str, app_mode: AppMode) -> EasyUIBasedAppConfig:
     )
 
 
-@pytest.fixture
-def credit_pool_session_factory(sqlite_session_factory: sessionmaker[Session]) -> Iterator[sessionmaker[Session]]:
-    """Bind message-created accounting to fixture-owned SQLite sessions."""
-    with patch("events.event_handlers.update_provider_when_message_created.db.session", sqlite_session_factory):
-        yield sqlite_session_factory
-
-
 @pytest.mark.parametrize("cohort", ["legacy", "tokener", "unavailable"])
 def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
-    credit_pool_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     cohort: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Cap debits to legacy balance; a native or unknown cohort must not debit that pool."""
     tenant_id = str(uuid4())
@@ -80,17 +69,6 @@ def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
             "get_model_billing_resolution",
             read_billing_scope,
         )
-    pool_id = str(uuid4())
-    pool = TenantCreditPool(
-        tenant_id=tenant_id,
-        pool_type=ModelProviderQuotaType.TRIAL,
-        quota_limit=10,
-        quota_used=9,
-    )
-    pool.id = pool_id
-    with credit_pool_session_factory.begin() as session:
-        session.add(pool)
-
     system_configuration = SystemConfiguration(
         enabled=True,
         current_quota_type=ProviderQuotaType.TRIAL,
@@ -118,6 +96,10 @@ def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
     message.id = "message-1"
 
     with (
+        patch(
+            "services.credit_pool_service.CreditPoolService.deduct_credits_capped",
+            return_value=1,
+        ) as mock_deduct,
         patch.object(update_provider_when_message_created, "_execute_provider_updates"),
     ):
         update_provider_when_message_created.handle(
@@ -125,10 +107,13 @@ def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
             application_generate_entity=application_generate_entity,
         )
 
-    with credit_pool_session_factory() as session:
-        quota_used = session.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
-
-    assert quota_used == (10 if cohort == "legacy" else 9)
+    if cohort == "legacy":
+        mock_deduct.assert_called_once()
+        assert mock_deduct.call_args.kwargs["credits_required"] == 3
+        assert mock_deduct.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
+        assert "Credit pool exhausted during message-created accounting" in caplog.text
+    else:
+        mock_deduct.assert_not_called()
 
 
 def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
@@ -246,6 +231,7 @@ def test_capped_credit_pool_accounting_skips_exhaustion_warning_when_full_amount
         tenant_id="tenant-id",
         credits_required=3,
         pool_type="trial",
-        session=ANY,
+        request_id=None,
+        metadata=None,
     )
     assert "Credit pool exhausted during message-created accounting" not in caplog.text

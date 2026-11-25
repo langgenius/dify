@@ -12,9 +12,19 @@ type RowProps = {
   role: Role
   onView?: (role: Role) => void
   onEdit?: (role: Role) => void
+  onDelete: (role: Role) => void
 }
 
-const Row = ({ className, name, description, roleCategory, role, onView, onEdit }: RowProps) => {
+const Row = ({
+  className,
+  name,
+  description,
+  roleCategory,
+  role,
+  onView,
+  onEdit,
+  onDelete,
+}: RowProps) => {
   const { t } = useTranslation(['permission'])
 
   return (
@@ -30,7 +40,13 @@ const Row = ({ className, name, description, roleCategory, role, onView, onEdit 
           {description || t(($) => $['role.noDescription'], { ns: 'permission' })}
         </p>
       </div>
-      <RowMenu roleCategory={roleCategory} role={role} onView={onView} onEdit={onEdit} />
+      <RowMenu
+        roleCategory={roleCategory}
+        role={role}
+        onView={onView}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
     </div>
   )
 }

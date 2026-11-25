@@ -23,6 +23,7 @@ Kratos serializes with protojson `EmitUnpopulated: true`, which the snapshot ste
   the upstream schema lists in `required` (`google.api.field_behavior = REQUIRED`) is non-null.
 - Proto3 `optional` fields (annotated `nullable` in dify-saas) are synthetic oneofs, which protojson
   omits when unset, so they are optional and nullable.
+- `QuotaGetInfoReply.app_runs` is also omittable for compatibility with Billing before the App Runs rollout.
 """
 
 from __future__ import annotations
@@ -68,6 +69,10 @@ class UpstreamName(StrEnum):
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
 SCHEMA_PREFIXES: dict[Service, str] = {"billing": "dify.saas.api.billing.", "saas": "dify.saas.api.saas."}
+# App Runs can be missing from a valid response during a staggered Billing rollout.
+_COMPAT_OMITTABLE_MESSAGE_FIELDS: dict[tuple[Service, str], frozenset[str]] = {
+    ("billing", "QuotaGetInfoReply"): frozenset({"app_runs"}),
+}
 # BILLING_API_URL already ends with the API version.
 PATH_VERSION_PREFIX = "/v1"
 SNAPSHOT_COMMIT_KEY = "x-dify-saas-commit"
@@ -211,7 +216,8 @@ def _ref_names(node: Any) -> set[str]:
     return set()
 
 
-def _annotate_presence(schema: JsonObject) -> JsonObject:
+def _annotate_presence(schema: JsonObject, *, compat_omittable: frozenset[str]) -> JsonObject:
+    """Translate protobuf field presence while retaining non-required rollout omissions."""
     properties: dict[str, JsonObject] = schema.get("properties", {})
     always_set = set(schema.get("required", []))
     annotated: dict[str, JsonObject] = {}
@@ -222,7 +228,8 @@ def _annotate_presence(schema: JsonObject) -> JsonObject:
             annotated[name] = {"allOf": [{"$ref": field["$ref"]}], "nullable": True}
         else:
             annotated[name] = field
-        if "$ref" in field or not field.get("nullable"):
+        may_omit = "$ref" in field and name in compat_omittable and name not in always_set
+        if not may_omit and ("$ref" in field or not field.get("nullable")):
             required.append(name)
     result = {**schema, "properties": annotated}
     if required:
@@ -283,7 +290,15 @@ def build_snapshot(service: Service, source: JsonObject, commit: str) -> JsonObj
         "info": source.get("info", {}),
         SNAPSHOT_COMMIT_KEY: commit,
         "paths": paths,
-        "components": {"schemas": {name: _annotate_presence(source_schemas[name]) for name in sorted(reachable)}},
+        "components": {
+            "schemas": {
+                name: _annotate_presence(
+                    source_schemas[name],
+                    compat_omittable=_COMPAT_OMITTABLE_MESSAGE_FIELDS.get((service, name), frozenset()),
+                )
+                for name in sorted(reachable)
+            }
+        },
     }
 
 

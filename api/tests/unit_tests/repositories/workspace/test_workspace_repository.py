@@ -10,7 +10,6 @@ from sqlalchemy import Engine, delete, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from models import TenantCreditPool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.knowledge_fs import (
@@ -446,7 +445,7 @@ class TestWorkspaceRepositoryCases:
         repository = WorkspaceRepository(sqlite_session_factory)
         contact_ids: list[str] = []
         for workspace_id in ("first", "second"):
-            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 10, 0, {})
+            prepare = partial(WorkspaceCreation, workspace_id, "Workspace", "public-key", 0, {})
 
             created = repository.provision(prepare, owner_id="owner")
 
@@ -637,7 +636,7 @@ def _signup_account(sessions: sessionmaker[Session], *, enrolled: bool) -> str:
 
 
 def _signup_workspace() -> WorkspaceCreation:
-    return WorkspaceCreation(str(uuid4()), "Initial workspace", "unit-public-key", 321, 0, {})
+    return WorkspaceCreation(str(uuid4()), "Initial workspace", "unit-public-key", 0, {})
 
 
 def test_signup_intent_survives_workspace_failure_and_flag_off_retry(
@@ -685,7 +684,6 @@ def test_signup_intent_survives_workspace_failure_and_flag_off_retry(
         assert profile.model_billing_source == "tokener"
         assert integration is not None
         assert integration.plugin_unique_identifier == "langgenius/tokener:0.4.4@test-archive"
-        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 0
 
 
 def test_old_orphan_without_signup_intent_stays_legacy_when_flag_enabled(
@@ -706,9 +704,6 @@ def test_old_orphan_without_signup_intent_stays_legacy_when_flag_enabled(
         assert session.get(AccountTokenerSignupIntent, owner) is None
         assert session.get(TenantModelBillingProfile, workspace.id) is None
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
-        pool = session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == workspace.id))
-        assert pool is not None
-        assert pool.quota_limit == 321
 
 
 def test_ordinary_workspace_race_retires_intent_without_converting_workspace(
@@ -726,7 +721,6 @@ def test_ordinary_workspace_race_retires_intent_without_converting_workspace(
         assert intent.consumed_tenant_id is None
         assert session.get(TenantModelBillingProfile, ordinary.id) is None
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
-        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1
 
 
 def test_duplicate_initial_workspace_consumes_one_signup_intent(
@@ -749,7 +743,6 @@ def test_duplicate_initial_workspace_consumes_one_signup_intent(
         assert session.scalar(select(func.count()).select_from(AccountTokenerSignupIntent)) == 1
         assert session.scalar(select(func.count()).select_from(TenantModelBillingProfile)) == 1
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 1
-        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 0
 
 
 def test_deleted_consumed_workspace_cannot_reopen_signup_intent(
@@ -780,4 +773,3 @@ def test_deleted_consumed_workspace_cannot_reopen_signup_intent(
     with sqlite_session_factory() as session:
         assert session.get(TenantModelBillingProfile, later.id) is None
         assert session.scalar(select(func.count()).select_from(TenantTokenerIntegration)) == 0
-        assert session.scalar(select(func.count()).select_from(TenantCreditPool)) == 1

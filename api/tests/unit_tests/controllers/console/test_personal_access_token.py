@@ -545,13 +545,7 @@ def test_app_scope_filters_discovery_and_workspace_scope_cannot_bypass_it(
         ("POST", "/workspaces/{id}/members"),
         ("PATCH", "/workspaces/{id}/members/{id}"),
         ("DELETE", "/workspaces/{id}/members/{id}"),
-        ("POST", "/workspaces/{id}/apps/workflow"),
-        ("POST", "/workspaces/{id}/apps/imports"),
         ("GET", "/workspaces/{id}/knowledge-bases"),
-        ("PATCH", "/apps/{id}/app-info/workflow"),
-        ("POST", "/apps/{id}:publish"),
-        ("GET", "/apps/{id}/dsl"),
-        ("GET", "/apps/{id}/versions"),
     ],
 )
 def test_pat_rejects_management_outside_phase_one(

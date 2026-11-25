@@ -27,7 +27,6 @@ from core.tools.entities.common_entities import I18nObject
 from enums.model_billing import TenantTokenerIntegrationStatus, TokenerBootstrapStatus
 from extensions.ext_redis import RedisClientWrapper
 from models.account import Tenant
-from models.model import TenantCreditPool
 from models.model_billing import TenantModelBillingProfile
 from models.provider import Provider, ProviderCredential, ProviderType, TenantDefaultModel
 from models.tokener import TenantTokenerIntegration
@@ -182,10 +181,6 @@ def test_native_ready_consumes_key_binds_encrypted_credential_and_sets_exact_def
     assert provider_effects.validation_inputs == [{"api_key": TEST_KEY, "endpoint_url": ENDPOINT}]
     assert (
         sqlite_session.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == integration.tenant_id))
-        is None
-    )
-    assert (
-        sqlite_session.scalar(select(TenantCreditPool).where(TenantCreditPool.tenant_id == integration.tenant_id))
         is None
     )
     upstream.assert_called_once_with(integration.tenant_id, "Native signup worker test")

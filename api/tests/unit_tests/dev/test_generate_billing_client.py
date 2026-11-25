@@ -3,8 +3,19 @@ import ast
 import pytest
 
 from dev import generate_billing_client as generator
+from services.billing_client.billing import QuotaGetInfoReply
 
 PREFIX = "#/components/schemas/dify.saas.api.billing."
+
+
+@pytest.mark.parametrize("app_runs", [{}, {"app_runs": None}])
+def test_generated_quota_info_accepts_billing_before_app_runs_rollout(app_runs: dict[str, None]) -> None:
+    quota = {"usage": 0, "limit": 10, "reset_date": 0}
+
+    reply = QuotaGetInfoReply.model_validate({"trigger_event": quota, "api_rate_limit": quota, **app_runs})
+
+    assert reply.app_runs is None
+    assert reply.trigger_event.limit == 10
 
 
 def _source_spec() -> generator.JsonObject:

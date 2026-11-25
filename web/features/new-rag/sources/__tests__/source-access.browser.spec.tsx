@@ -1,34 +1,17 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source } from './source-fixtures'
-import {
-  clientMock,
-  permissionState,
-  resetSourceServer,
-  routerMock,
-  settingsState,
-  sourceResponses,
-} from './source-server'
+import { permissionState, resetSourceServer, settingsState, sourceResponses } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: source-access', () => {
@@ -154,7 +137,7 @@ describe('Sources: source-access', () => {
     settingsState.configurationState = 'setup-required'
     sourceResponses.data = { pages: [{ items: [source({})] }] }
 
-    await render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { navigation } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page
       .getByRole('button', {
         name: 'knowledgeSources.sourceActions:{"name":"Product documentation"}',
@@ -162,16 +145,19 @@ describe('Sources: source-access', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }).click()
 
-    expect(clientMock.syncSource).not.toHaveBeenCalled()
     const dialog = page.getByRole('dialog', {
       name: 'knowledgeSpace.overview.attention.modelReadiness.title',
     })
+    await expect.element(dialog).toBeVisible()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+    ).not.toHaveBeenCalled()
     await dialog
       .getByRole('button', {
         name: 'modelProvider.modelProvider.selector.configure',
       })
       .click()
-    expect(routerMock.push).toHaveBeenCalledWith(
+    expect(navigation.router.push).toHaveBeenCalledWith(
       `/datasets/new/space-1/settings?returnTo=${encodeURIComponent(`/datasets/new/space-1/sources${window.location.search}`)}&capability=source_sync`,
     )
   })

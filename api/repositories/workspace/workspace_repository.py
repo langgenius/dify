@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.shared import AccountId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
-from models import TenantCreditPool
 from models.account import (
     Account,
     Tenant,
@@ -23,7 +22,6 @@ from models.account import (
     TenantStatus,
 )
 from models.dataset import Dataset
-from models.enums import ProviderQuotaType
 from models.model import App
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration
@@ -154,15 +152,6 @@ class WorkspaceRepository(
                             tenant_id=tenant.id, plugin_unique_identifier=eligible_intent.plugin_unique_identifier
                         ),
                     ]
-                )
-            else:
-                session.add(
-                    TenantCreditPool(
-                        tenant_id=tenant.id,
-                        quota_limit=creation.trial_credits,
-                        quota_used=0,
-                        pool_type=ProviderQuotaType.TRIAL,
-                    )
                 )
             if pending_intent is not None:
                 # A raced ordinary first workspace retires, but never converts,

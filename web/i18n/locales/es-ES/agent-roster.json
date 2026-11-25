@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Borrar filtros",
   "roster.createAgent": "Crear agente",
   "roster.createDialog.description": "Crea un Agent reutilizable en este espacio de trabajo.",
   "roster.createDialog.title": "Crear agente",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Editar información",
   "roster.empty": "Aún no hay agentes",
   "roster.emptySearch": "No hay agentes coincidentes",
+  "roster.emptySearchDescription": "Prueba otra búsqueda o borra los filtros actuales.",
   "roster.filters.all": "Todos",
   "roster.filters.createdByMe": "Creado por mí",
   "roster.filters.drafts": "Borradores",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Error al crear el agente inline. Actualiza y vuelve a intentarlo.",
   "roster.nodeSelector.dialogLabel": "Selecciona un agente",
   "roster.nodeSelector.manageInAgentConsole": "Gestionar en Agents",
-  "roster.nodeSelector.searchPlaceholder": "Buscar…",
+  "roster.nodeSelector.searchPlaceholder": "Buscar agentes…",
   "roster.nodeSelector.startFromScratch": "Empezar desde cero",
   "roster.references.label": "Flujos de trabajo que usan {{name}}",
   "roster.references.trigger": "Flujos de trabajo que usan {{name}}",

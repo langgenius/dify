@@ -20,11 +20,14 @@ const api = vi.hoisted(() => ({
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.customizedSnippets.post': api.create,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'snippets.bySnippetId.workflows.draft.post': api.save,
     }),
   }

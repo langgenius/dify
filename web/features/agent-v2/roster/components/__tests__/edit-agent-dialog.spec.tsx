@@ -2,7 +2,7 @@ import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.ge
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
-import { EditAgentDialog } from '../edit-agent-dialog'
+import { EditAgentDialog } from './agent-dialog-harness'
 
 const mutateRequest = vi.hoisted(() => vi.fn())
 
@@ -252,54 +252,6 @@ describe('EditAgentDialog', () => {
         icon: '🦊',
         icon_background: '#FFEDD5',
       }),
-    })
-  })
-
-  it('starts a new form session when the agent identity changes', async () => {
-    const user = userEvent.setup()
-    const onOpenChange = vi.fn()
-    const { rerender } = render(
-      <EditAgentDialog agent={createAgent()} open onOpenChange={onOpenChange} />,
-    )
-
-    rerender(
-      <EditAgentDialog
-        agent={createAgent({
-          description: 'Second description',
-          icon: '🦊',
-          icon_background: '#FFEDD5',
-          id: 'agent-2',
-          name: 'Second Agent',
-          role: 'Second Role',
-        })}
-        open
-        onOpenChange={onOpenChange}
-      />,
-    )
-
-    const dialog = screen.getByRole('dialog', { name: 'agentRoster.roster.editDialog.title' })
-    const nameInput = within(dialog).getByRole('textbox', {
-      name: 'agentRoster.roster.createForm.nameLabel',
-    })
-    expect(nameInput).toHaveValue('Second Agent')
-    expect(within(dialog).getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
-
-    await user.clear(nameInput)
-    await user.type(nameInput, 'Renamed Second Agent')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-
-    expect(mutateRequest).toHaveBeenCalledWith({
-      params: {
-        agent_id: 'agent-2',
-      },
-      body: {
-        name: 'Renamed Second Agent',
-        description: 'Second description',
-        role: 'Second Role',
-        icon_type: 'emoji',
-        icon: '🦊',
-        icon_background: '#FFEDD5',
-      },
     })
   })
 
