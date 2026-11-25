@@ -97,6 +97,7 @@
   "history.status.cancelled": "Abgebrochen",
   "history.status.completed": "Abgeschlossen",
   "history.status.failed": "Fehlgeschlagen",
+  "history.status.notCompleted": "Aufgabe konnte nicht abgeschlossen werden",
   "history.status.partiallyFailed": "Mit Fehlern abgeschlossen",
   "history.status.pending": "Ausstehend",
   "history.status.running": "Wird ausgeführt",

@@ -97,6 +97,7 @@
   "history.status.cancelled": "Preklicano",
   "history.status.completed": "Dokončano",
   "history.status.failed": "Neuspešno",
+  "history.status.notCompleted": "Naloge ni bilo mogoče dokončati",
   "history.status.partiallyFailed": "Dokončano z napakami",
   "history.status.pending": "Na čakanju",
   "history.status.running": "V teku",

@@ -97,6 +97,7 @@
   "history.status.cancelled": "Ləğv edildi",
   "history.status.completed": "Tamamlandı",
   "history.status.failed": "Uğursuz",
+  "history.status.notCompleted": "Tapşırıq tamamlana bilmədi",
   "history.status.partiallyFailed": "Xətalarla tamamlandı",
   "history.status.pending": "Gözləmədə",
   "history.status.running": "İcra olunur",

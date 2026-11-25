@@ -97,6 +97,7 @@
   "history.status.cancelled": "ຍົກເລີກແລ້ວ",
   "history.status.completed": "ສຳເລັດແລ້ວ",
   "history.status.failed": "ລົ້ມເຫຼວ",
+  "history.status.notCompleted": "ບໍ່ສາມາດເຮັດວຽກໃຫ້ສຳເລັດໄດ້",
   "history.status.partiallyFailed": "ສຳເລັດແຕ່ມີບາງລາຍການລົ້ມເຫຼວ",
   "history.status.pending": "ລໍຖ້າ",
   "history.status.running": "ກຳລັງດຳເນີນການ",

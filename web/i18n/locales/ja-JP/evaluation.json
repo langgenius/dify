@@ -97,6 +97,7 @@
   "history.status.cancelled": "キャンセル済み",
   "history.status.completed": "完了",
   "history.status.failed": "失敗",
+  "history.status.notCompleted": "タスクを完了できませんでした",
   "history.status.partiallyFailed": "一部失敗",
   "history.status.pending": "待機中",
   "history.status.running": "実行中",
