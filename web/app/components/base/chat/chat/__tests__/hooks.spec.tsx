@@ -1093,7 +1093,7 @@ describe('useChat', () => {
 
         act(() => {
           if (stream === 'send')
-            result.current.handleSend('test-url', { query: 'parallel files' }, {})
+            result.current.handleSend(streams.sender('test-url'), { query: 'parallel files' }, {})
           else result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
         })
         act(() => {
@@ -1168,7 +1168,7 @@ describe('useChat', () => {
       )
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'file before thought' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'file before thought' }, {})
       })
       act(() => {
         callbacks.onFile({ id: 'mf-first', type: 'document', url: 'report.pdf' })

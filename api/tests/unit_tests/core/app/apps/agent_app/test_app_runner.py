@@ -519,6 +519,10 @@ class _AgentAnswerStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 
 class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, *, tool_return_metadata: dict[str, Any] | None = None) -> None:
+        super().__init__()
+        self._tool_return_metadata = tool_return_metadata
+
     @override
     def stream_events(
         self,
@@ -546,7 +550,14 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             id="4-0",
             run_id=run_id,
             created_at=created_at,
-            data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="bash", content="ok", tool_call_id="tool-1")),
+            data=FunctionToolResultEvent(
+                part=ToolReturnPart(
+                    tool_name="bash",
+                    content="ok",
+                    tool_call_id="tool-1",
+                    metadata=self._tool_return_metadata,
+                )
+            ),
         )
         yield PydanticAIStreamRunEvent(
             id="5-0",
@@ -1103,6 +1114,43 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     assert citation.id == receipt["id"]
     assert sources[0].retriever_resources[0].content == "evidence"
     assert _thought_rows(sqlite_session)[0].tool == "shell_run"
+
+
+def test_run_wires_conversation_id_for_plugin_blob_attachments(sqlite_session: Session) -> None:
+    tool_file = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id="conv-1",
+        file_key="generated/report",
+        name="report.pdf",
+        mimetype="application/pdf",
+        size=20,
+    )
+    sqlite_session.add(tool_file)
+    sqlite_session.commit()
+
+    client = _ProcessStreamingFakeAgentBackendRunClient(tool_return_metadata={"dify_plugin_blob_files": [tool_file.id]})
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+    sqlite_session.expire_all()
+
+    attachments = _message_file_rows(sqlite_session)
+    assert len(attachments) == 1
+    assert attachments[0].upload_file_id == tool_file.id
+    assert attachments[0].message_id == "msg-1"
+    assert attachments[0].belongs_to == MessageFileBelongsTo.ASSISTANT
+    assert attachments[0].transfer_method == FileTransferMethod.TOOL_FILE
+    assert attachments[0].url == f"/files/tools/{tool_file.id}.pdf"
+
+    rows = _thought_rows(sqlite_session)
+    assert len(rows) == 2
+    assert rows[1].tool == "bash"
+    assert rows[1].files == [attachments[0].id]
+
+    file_events = [item for item in qm.events if isinstance(item, QueueMessageFileEvent)]
+    assert [item.message_file_id for item in file_events] == [attachments[0].id]
 
 
 @pytest.mark.parametrize("conversation_id", [None, "conv-1"])

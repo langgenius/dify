@@ -2,29 +2,47 @@
 
 import base64
 import json
+import mimetypes
 
 import httpx
 import pytest
 from pydantic_ai.messages import ModelRequest, ToolReturnPart
 
 from dify_agent.layers.dify_plugin import tools_layer
-from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
+from dify_agent.layers.execution_context.configs import (
+    DifyExecutionContextAgentMode,
+    DifyExecutionContextLayerConfig,
+)
+from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
 from dify_agent.runtime.context import Deps, Services
 from tests.local.dify_agent.module_support import invoke_native_tool
 
 
 _FILE_ID = "00000000-0000-4000-8000-000000000001"
 _FILE_REFERENCE = "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ=="
+_DEFAULT_READ_MEDIA_SUFFIX = (
+    " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
+)
+_DELIVERED_BLOB_SUFFIX = (
+    " (already delivered to the user as an attachment; call `read_media` with `file` set to this object"
+    " only if you need to inspect its content).\n"
+)
 
 
-def _deps(client: httpx.AsyncClient, *, missing_identity: str | None = None) -> Deps:
+def _deps(
+    client: httpx.AsyncClient,
+    *,
+    missing_identity: str | None = None,
+    max_bytes: int = 1024,
+    agent_mode: DifyExecutionContextAgentMode = "agent_app",
+) -> Deps:
     context = DifyExecutionContextLayerConfig(
         tenant_id="tenant",
         user_id=None if missing_identity == "user_id" else "user",
         user_from=None if missing_identity == "user_from" else "account",
         conversation_id="conversation",
         app_id="app",
-        agent_mode="agent_app",
+        agent_mode=agent_mode,
         invoke_from="debugger",
     )
     config = tools_layer.Config(
@@ -40,7 +58,7 @@ def _deps(client: httpx.AsyncClient, *, missing_identity: str | None = None) -> 
             client,
             inner_api_url="http://dify.test",
             inner_api_key="inner-secret",
-            agent_file_upload_max_bytes=1024,
+            agent_file_upload_max_bytes=max_bytes,
         ),
         run_id="test",
     )
@@ -87,11 +105,15 @@ def _tool_returns(result) -> list[ToolReturnPart]:
         ({"filename": "recording", "mime_type": "audio/wav"}, "recording.wav", "audio/wav"),
         ({"filename": "doc.xml", "mime_type": "application/xml"}, "doc.xml", "application/xml"),
         ({"filename": "doc", "mime_type": "application/xml"}, "doc.xml", "application/xml"),
-        ({"filename": "photo.jpg", "mime_type": "image/jpg"}, "photo.jpg", "image/jpg"),
-        ({"filename": "audio.mp3", "mime_type": "audio/mp3"}, "audio.mp3", "audio/mp3"),
-        ({"filename": "photo.jpeg", "mime_type": "image/jpg"}, "photo.jpeg", "image/jpg"),
-        ({"filename": "recording.wav", "mime_type": "audio/wave"}, "recording.wav", "audio/wave"),
-        ({"filename": "recording", "mime_type": "audio/wave"}, "recording.wav", "audio/wave"),
+        ({"filename": "photo.jpg", "mime_type": "image/jpg"}, "photo.jpg", "image/jpeg"),
+        ({"filename": "audio.mp3", "mime_type": "audio/mp3"}, "audio.mp3", "audio/mpeg"),
+        ({"filename": "photo.jpeg", "mime_type": "image/jpg"}, "photo.jpeg", "image/jpeg"),
+        ({"filename": "recording.wav", "mime_type": "audio/wave"}, "recording.wav", "audio/wav"),
+        ({"filename": "recording", "mime_type": "audio/wave"}, "recording.wav", "audio/wav"),
+        ({"filename": "recording.wav", "mime_type": "audio/vnd.wave"}, "recording.wav", "audio/wav"),
+        ({"filename": "recording.wav", "mime_type": "application/octet-stream"}, "recording.wav", "audio/wav"),
+        ({"filename": "report.pdf", "mime_type": "application/x-pdf"}, "report.pdf", "application/pdf"),
+        ({"filename": "report", "mime_type": "application/x-pdf"}, "report.pdf", "application/pdf"),
         ({"filename": "report.pdf.gz", "mime_type": "application/octet-stream"}, "report.pdf.gz", "application/gzip"),
         ({"filename": "dataset.csv.bz2"}, "dataset.csv.bz2", "application/x-bzip2"),
         ({"filename": "archive.gz", "mime_type": "application/gzip"}, "archive.gz", "application/gzip"),
@@ -100,7 +122,61 @@ def _tool_returns(result) -> list[ToolReturnPart]:
     ],
 )
 def test_blob_upload_metadata_is_normalized(meta, filename, mime_type):
-    assert tools_layer._resolve_blob_file_info(meta or {}) == (filename, mime_type)
+    assert tools_layer._resolve_blob_file_info(meta) == (filename, mime_type)
+
+
+def test_blob_upload_metadata_works_without_system_mime_types(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(tools_layer, "mimetypes", mimetypes.MimeTypes(filenames=()))
+    assert tools_layer._resolve_blob_file_info({"filename": "doc", "mime_type": "application/xml"}) == (
+        "doc.xml",
+        "application/xml",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "doc.xml", "mime_type": "application/xml"}) == (
+        "doc.xml",
+        "application/xml",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "recording", "mime_type": "audio/wave"}) == (
+        "recording.wav",
+        "audio/wav",
+    )
+    assert tools_layer._resolve_blob_file_info(
+        {"filename": "recording.wav", "mime_type": "application/octet-stream"}
+    ) == (
+        "recording.wav",
+        "audio/wav",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "archive", "mime_type": "application/gzip"}) == (
+        "archive.gz",
+        "application/gzip",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "dataset", "mime_type": "application/x-bzip2"}) == (
+        "dataset.bz2",
+        "application/x-bzip2",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "dataset.bz2", "mime_type": "application/x-bzip2"}) == (
+        "dataset.bz2",
+        "application/x-bzip2",
+    )
+    assert tools_layer._resolve_blob_file_info({"filename": "report", "mime_type": "application/x-pdf"}) == (
+        "report.pdf",
+        "application/pdf",
+    )
+
+
+def test_unnamed_blob_defaults_use_sanitized_tool_name_and_index():
+    assert tools_layer._resolve_blob_file_info(None, tool_name="../charts.render\x00.", blob_index=1) == (
+        "charts.render_output_1.bin",
+        "application/octet-stream",
+    )
+    assert tools_layer._resolve_blob_file_info(
+        {"mime_type": "application/x-pdf"},
+        tool_name="charts.render",
+        blob_index=2,
+    ) == ("charts.render_output_2.pdf", "application/pdf")
+    assert tools_layer._resolve_blob_file_info({"mime_type": "application/pdf"}, tool_name="..", blob_index=2) == (
+        "output_2.pdf",
+        "application/pdf",
+    )
 
 
 @pytest.mark.anyio
@@ -162,9 +238,8 @@ async def test_binary_output_is_uploaded_and_returned_as_reusable_file_metadata(
     assert f'filename="{filename}"'.encode() in uploads[0]
     assert f"Content-Type: {mime_type}".encode() in uploads[0]
     prefix = "before:\nTool generated media file: "
-    suffix = " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
-    assert result.output.startswith(prefix) and result.output.endswith(suffix)
-    assert json.loads(result.output[len(prefix) : -len(suffix)]) == {
+    assert result.output.startswith(prefix) and result.output.endswith(_DELIVERED_BLOB_SUFFIX)
+    assert json.loads(result.output[len(prefix) : -len(_DELIVERED_BLOB_SUFFIX)]) == {
         "transfer_method": "tool_file",
         "reference": _FILE_REFERENCE,
         "filename": "chart.png",
@@ -173,6 +248,45 @@ async def test_binary_output_is_uploaded_and_returned_as_reusable_file_metadata(
     }
     assert "binary-output-regression" not in result.output and "blob=b" not in result.output
     assert _tool_returns(result)[0].metadata == {"dify_plugin_blob_files": [_FILE_ID]}
+
+
+@pytest.mark.anyio
+async def test_workflow_run_blob_observation_keeps_default_read_media_hint():
+    blob = b"workflow-report"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {
+                        "type": "blob",
+                        "message": {"blob": base64.b64encode(blob).decode()},
+                        "meta": {"filename": "report.pdf", "mime_type": "application/pdf"},
+                    }
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": _FILE_REFERENCE})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(
+            _deps(client, agent_mode="workflow_run"),
+            tools_layer.Toolset("tools"),
+            "create",
+            {},
+        )
+
+    prefix = "\nTool generated media file: "
+    assert result.output.startswith(prefix) and result.output.endswith(_DEFAULT_READ_MEDIA_SUFFIX)
+    assert "already delivered to the user as an attachment" not in result.output
+    assert json.loads(result.output[len(prefix) : -len(_DEFAULT_READ_MEDIA_SUFFIX)]) == {
+        "transfer_method": "tool_file",
+        "reference": _FILE_REFERENCE,
+        "filename": "report.pdf",
+        "mime_type": "application/pdf",
+        "size": len(blob),
+    }
 
 
 @pytest.mark.anyio
@@ -309,16 +423,294 @@ async def test_non_blob_outputs_keep_plain_observations_without_attachment_metad
         assert result.output == url
     else:
         prefix = "\nTool generated media file: " if message_type == "file" else "\nTool generated media link: "
-        suffix = " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
-        assert result.output.startswith(prefix) and result.output.endswith(suffix)
+        assert result.output.startswith(prefix) and result.output.endswith(_DEFAULT_READ_MEDIA_SUFFIX)
         locator = (
             {"transfer_method": "tool_file", "reference": _FILE_REFERENCE}
             if message_type == "file"
             else {"transfer_method": "remote_url", "url": url}
         )
-        assert json.loads(result.output[len(prefix) : -len(suffix)]) == {
+        assert json.loads(result.output[len(prefix) : -len(_DEFAULT_READ_MEDIA_SUFFIX)]) == {
             **locator,
             "filename": "image.png",
             "mime_type": "image/png",
         }
+    assert _tool_returns(result)[0].metadata is None
+
+
+@pytest.mark.anyio
+async def test_multiple_unnamed_blobs_get_distinct_ordered_default_filenames_and_normalized_mime():
+    allocations = []
+    references = [
+        _FILE_REFERENCE,
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDIifQ==",
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {"type": "blob", "message": {"blob": "YQ=="}, "meta": {"mime_type": "application/x-pdf"}},
+                    {"type": "blob", "message": {"blob": "Yg=="}, "meta": {"mime_type": "application/pdf"}},
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            body = json.loads(request.content)
+            allocations.append((body["filename"], body["mimetype"]))
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": references.pop(0)})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(_deps(client), tools_layer.Toolset("tools"), "create", {})
+
+    assert allocations == [
+        ("create_output_1.pdf", "application/pdf"),
+        ("create_output_2.pdf", "application/pdf"),
+    ]
+    assert _tool_returns(result)[0].metadata == {
+        "dify_plugin_blob_files": [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+        ]
+    }
+
+
+@pytest.mark.anyio
+async def test_blob_chunk_limit_aligns_with_agent_file_upload_max_bytes_and_reports_media_unavailable():
+    max_bytes = 2048
+    chunk_a = b"a" * 800
+    chunk_b = b"b" * 700
+    allocations = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "ok-file",
+                            "sequence": 0,
+                            "total_length": len(chunk_a) + len(chunk_b),
+                            "blob": base64.b64encode(chunk_a).decode(),
+                            "end": False,
+                        },
+                        "meta": {"filename": "chunked.pdf", "mime_type": "application/x-pdf"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "ok-file",
+                            "sequence": 1,
+                            "total_length": len(chunk_a) + len(chunk_b),
+                            "blob": base64.b64encode(chunk_b).decode(),
+                            "end": True,
+                        },
+                    },
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            allocations.append(json.loads(request.content))
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": _FILE_REFERENCE})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps_50m = _deps(client, max_bytes=50 * 1024 * 1024)
+        wired_client = ExecutionContextCapability.create_tool_client(
+            deps_50m,
+            "execution_context",
+            plugin_id="files",
+            http_client=client,
+        )
+        assert wired_client.max_file_size == 50 * 1024 * 1024
+
+        ok_result = await invoke_native_tool(
+            _deps(client, max_bytes=max_bytes), tools_layer.Toolset("tools"), "create", {}
+        )
+    assert len(allocations) == 1
+    assert allocations[0]["filename"] == "chunked.pdf"
+    assert allocations[0]["mimetype"] == "application/pdf"
+    assert _tool_returns(ok_result)[0].metadata == {"dify_plugin_blob_files": [_FILE_ID]}
+
+    oversized_allocations = []
+
+    def oversized_handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "too-large",
+                            "sequence": 0,
+                            "total_length": 1025,
+                            "blob": base64.b64encode(b"x").decode(),
+                            "end": False,
+                        },
+                    }
+                ]
+            )
+        oversized_allocations.append(request)
+        raise AssertionError("upload-request must not be called for oversized chunks")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(oversized_handler)) as client:
+        oversized_result = await invoke_native_tool(
+            _deps(client, max_bytes=1024), tools_layer.Toolset("tools"), "create", {}
+        )
+
+    assert "Tool media unavailable" in oversized_result.output
+    assert "File is too large" in oversized_result.output
+    assert "tool parameters validation error" not in oversized_result.output
+    assert oversized_allocations == []
+    assert _tool_returns(oversized_result)[0].metadata is None
+
+
+@pytest.mark.anyio
+async def test_mixed_stream_isolates_oversized_blob_chunk_and_preserves_sibling_outputs():
+    allocations = []
+    references = [
+        _FILE_REFERENCE,
+        "dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDIifQ==",
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {"type": "text", "message": {"text": "summary text:"}},
+                    {
+                        "type": "blob",
+                        "message": {"blob": base64.b64encode(b"small-blob").decode()},
+                        "meta": {"filename": "small.png", "mime_type": "image/png"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "oversized",
+                            "sequence": 0,
+                            "total_length": 2048,
+                            "blob": base64.b64encode(b"x").decode(),
+                            "end": False,
+                        },
+                        "meta": {"filename": "huge.pdf", "mime_type": "application/pdf"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "oversized",
+                            "sequence": 1,
+                            "total_length": 2048,
+                            "blob": base64.b64encode(b"y").decode(),
+                            "end": True,
+                        },
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "valid-chunked",
+                            "sequence": 0,
+                            "total_length": 10,
+                            "blob": base64.b64encode(b"hello").decode(),
+                            "end": False,
+                        },
+                        "meta": {"filename": "ok.pdf", "mime_type": "application/pdf"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "valid-chunked",
+                            "sequence": 1,
+                            "total_length": 10,
+                            "blob": base64.b64encode(b"world").decode(),
+                            "end": True,
+                        },
+                    },
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            body = json.loads(request.content)
+            allocations.append(body["filename"])
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": references.pop(0)})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(_deps(client, max_bytes=1024), tools_layer.Toolset("tools"), "create", {})
+
+    assert allocations == ["small.png", "ok.pdf"]
+    assert result.output.startswith("summary text:\nTool generated media file: ")
+    assert result.output.count("Tool media unavailable") == 1
+    assert "Tool media unavailable (huge.pdf, application/pdf, 2048 bytes): File is too large" in result.output
+    assert "small.png" in result.output and "ok.pdf" in result.output
+    assert "tool parameters validation error" not in result.output
+    assert _tool_returns(result)[0].metadata == {
+        "dify_plugin_blob_files": [
+            "00000000-0000-4000-8000-000000000001",
+            "00000000-0000-4000-8000-000000000002",
+        ]
+    }
+
+
+@pytest.mark.anyio
+async def test_truncated_blob_chunk_is_not_uploaded_while_sibling_outputs_succeed():
+    allocations = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {"type": "text", "message": {"text": "done:"}},
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "truncated",
+                            "sequence": 0,
+                            "total_length": 6,
+                            "blob": base64.b64encode(b"abc").decode(),
+                            "end": True,
+                        },
+                        "meta": {"filename": "broken.pdf", "mime_type": "application/pdf"},
+                    },
+                    {
+                        "type": "blob",
+                        "message": {"blob": base64.b64encode(b"complete").decode()},
+                        "meta": {"filename": "good.png", "mime_type": "image/png"},
+                    },
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            allocations.append(json.loads(request.content)["filename"])
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": _FILE_REFERENCE})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(_deps(client, max_bytes=1024), tools_layer.Toolset("tools"), "create", {})
+
+    assert allocations == ["good.png"]
+    assert result.output.startswith("done:")
+    assert (
+        "\nTool media unavailable (broken.pdf, application/pdf, 6 bytes):"
+        " Plugin file chunks have an invalid sequence or length.\n"
+    ) in result.output
+    assert result.output.count("already delivered to the user as an attachment") == 1
+    assert '"filename":"good.png"' in result.output
+    assert '"filename":"broken.pdf"' not in result.output
+    assert _tool_returns(result)[0].metadata == {"dify_plugin_blob_files": [_FILE_ID]}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "stream_body",
+    [
+        "data: {not-valid-json\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {}}})}\n",
+    ],
+)
+async def test_invalid_daemon_stream_frame_returns_tool_invoke_error_text(stream_body: str):
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=stream_body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(_deps(client), tools_layer.Toolset("tools"), "create", {})
+
+    assert result.output.startswith("tool invoke error:")
+    assert "tool parameters validation error" not in result.output
     assert _tool_returns(result)[0].metadata is None

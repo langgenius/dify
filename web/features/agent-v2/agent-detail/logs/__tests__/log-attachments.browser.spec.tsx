@@ -2,17 +2,24 @@ import type { AgentLogMessageListResponse } from '@dify/contracts/api/console/ag
 import { Drawer } from '@langgenius/dify-ui/drawer'
 import { page } from 'vite-plus/test/browser'
 import { renderChatOwner } from '@/app/components/base/chat/chat/__tests__/chat-owner-preset'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { TEST_AGENT_ID } from '@/test/console/ids'
+import { installFakeApi } from '@/test/fake-api'
 import { AgentLogDetailPanel } from '../components/log-detail-panel'
 
 vi.unmock('react-i18next')
 
+const CONVERSATION_ID = '00000000-0000-4000-8000-000000000002'
+const MESSAGE_ID = '00000000-0000-4000-8000-000000000003'
+const INPUT_FILE_ID = '00000000-0000-4000-8000-000000000011'
+const LEGACY_FILE_ID = '00000000-0000-4000-8000-000000000012'
+const OUTPUT_FILE_ID = '00000000-0000-4000-8000-000000000013'
+
 const response: AgentLogMessageListResponse = {
   data: [
     {
-      id: 'message-1',
-      message_id: 'message-1',
-      conversation_id: 'conversation-1',
+      id: MESSAGE_ID,
+      message_id: MESSAGE_ID,
+      conversation_id: CONVERSATION_ID,
       query: 'Create a report from these files',
       answer: 'Your report is ready',
       status: 'success',
@@ -26,7 +33,7 @@ const response: AgentLogMessageListResponse = {
       latency: 1,
       message_files: [
         {
-          id: 'input',
+          id: INPUT_FILE_ID,
           filename: 'input.pdf',
           type: 'document',
           mime_type: 'application/pdf',
@@ -36,7 +43,7 @@ const response: AgentLogMessageListResponse = {
           url: 'https://files.test/input.pdf?sign=input',
         },
         {
-          id: 'legacy',
+          id: LEGACY_FILE_ID,
           filename: 'legacy.pdf',
           type: 'document',
           mime_type: 'application/pdf',
@@ -46,7 +53,7 @@ const response: AgentLogMessageListResponse = {
           url: 'https://files.test/legacy.pdf',
         },
         {
-          id: 'output',
+          id: OUTPUT_FILE_ID,
           filename: 'generated.pdf',
           type: 'document',
           mime_type: 'application/pdf',
@@ -64,22 +71,34 @@ const response: AgentLogMessageListResponse = {
   total: 1,
 }
 
-// boundary: generated Console transport provides messages and trace availability.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'agent.byAgentId.logs.byConversationId.messages.get': async () => response,
-      'agent.byAgentId.traceRuns.byMessageId.get': async () => ({ status: 'not_collected' }),
-    }),
-  }
-})
-
 it('renders user and generated attachments on their messages and downloads the signed destinations', async () => {
   await page.viewport(1000, 800)
-  onTestFinished(guardUnexpectedFetch())
+  onTestFinished(
+    installFakeApi({
+      console: {
+        agent: {
+          byAgentId: {
+            logs: {
+              byConversationId: {
+                messages: {
+                  get: () => response,
+                },
+              },
+            },
+            traceRuns: {
+              byMessageId: {
+                get: () => ({
+                  source_id: MESSAGE_ID,
+                  source_kind: 'message',
+                  status: 'not_collected',
+                }),
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const downloads: { name: string; url: string }[] = []
   // boundary: prevent external navigation while observing the real download anchors.
   const captureDownload = (event: MouseEvent) => {
@@ -94,10 +113,10 @@ it('renders user and generated attachments on their messages and downloads the s
   await renderChatOwner(
     <Drawer open>
       <AgentLogDetailPanel
-        agentId="agent-1"
+        agentId={TEST_AGENT_ID}
         log={{
-          id: 'conversation-1',
-          conversation_id: 'conversation-1',
+          id: CONVERSATION_ID,
+          conversation_id: CONVERSATION_ID,
           message_count: 1,
           unread: false,
           status: 'success',

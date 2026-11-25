@@ -3,6 +3,7 @@ import { ORPCError } from '@orpc/client'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '../console'
+import { agentChatMessagesSender } from '../console-chat-messages'
 import { sendCompletionMessage } from '../debug'
 import { streamEvents, streamGeneratorEvents } from '../event-stream'
 import { generateWorkflowStream } from '../workflow-generator'
@@ -142,6 +143,62 @@ describe('streamEvents', () => {
       expect.objectContaining({ event: 'agent_message' }),
     )
     expect(onCompleted).toHaveBeenCalledWith()
+  })
+
+  it('dispatches real agent_thought and message_file SSE frames in order with full payloads', async () => {
+    const thoughtFrame = {
+      event: 'agent_thought',
+      id: 'thought-1',
+      message_id: 'm-1',
+      conversation_id: 'c-1',
+      task_id: 't-1',
+      position: 1,
+      tool: 'create_report',
+      tool_input: '{}',
+      observation: 'Report ready',
+      message_files: ['file-1'],
+    }
+    const fileFrame = {
+      event: 'message_file',
+      id: 'file-1',
+      type: 'document',
+      belongs_to: 'assistant',
+      url: 'https://files.test/report.pdf?sign=abc',
+      conversation_id: 'c-1',
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          eventStreamResponse([
+            frame(thoughtFrame),
+            frame(fileFrame),
+            frame({ event: 'message_end', id: 'm-1' }),
+          ]),
+        ),
+    )
+
+    const order: string[] = []
+    const onThought = vi.fn(() => order.push('thought'))
+    const onFile = vi.fn(() => order.push('file'))
+    const onCompleted = run(
+      (options) =>
+        agentChatMessagesSender('agent-1')(
+          { query: 'report', response_mode: 'streaming' },
+          options,
+        ),
+      {
+        onThought,
+        onFile,
+        onCompleted: () => order.push('completed'),
+      },
+    )
+
+    await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
+    expect(order).toEqual(['thought', 'file', 'completed'])
+    expect(onThought).toHaveBeenCalledExactlyOnceWith(thoughtFrame)
+    expect(onFile).toHaveBeenCalledExactlyOnceWith(fileFrame)
   })
 
   it('passes an abort signal and silent context to the request and exposes the controller', async () => {

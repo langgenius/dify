@@ -58,7 +58,7 @@ async def media_observation(message, handler, *, user_id="user", max_bytes=50 * 
 
 
 def media_summary(output):
-    return json.loads(output.split(": ", 1)[1].split(" (call")[0])
+    return json.JSONDecoder().raw_decode(output.split(": ", 1)[1])[0]
 
 
 def reference_payload(reference):
@@ -98,6 +98,7 @@ async def test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline
     assert summary["reference"] == file_reference(record_id)
     assert reference_payload(summary["reference"]) == {"record_id": record_id}
     assert summary["size"] == len(blob)
+    assert "already delivered to the user as an attachment" in output
     assert "read_media" in output
     assert blob.decode() not in output and base64.b64encode(blob).decode() not in output
 

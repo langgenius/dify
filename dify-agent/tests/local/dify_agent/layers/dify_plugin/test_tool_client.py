@@ -16,9 +16,15 @@ Blob chunk merging validates the plugin-declared size before allocating.
 
 from __future__ import annotations
 
+import base64
+import json
+
+import httpx
 import pytest
 
 from dify_agent.layers.dify_plugin.tool_client import (
+    DifyPluginDaemonToolClient,
+    DifyPluginToolClientError,
     DifyPluginToolInvokeMessage,
     merge_blob_chunks,
 )
@@ -151,3 +157,239 @@ def test_merge_blob_chunks_preserves_per_file_metadata_and_later_updates() -> No
         {"filename": "one.pdf", "mime_type": "application/pdf"},
     ]
     assert first.meta == {"filename": "one.pdf", "mime_type": "application/octet-stream"}
+
+
+def test_wire_payload_cannot_inject_chunk_error() -> None:
+    message = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": None,
+            "_chunk_error": "spoofed",
+            "chunk_error": "spoofed",
+        }
+    )
+
+    assert message.chunk_error is None
+    assert "chunk_error" not in message.model_dump()
+
+
+def test_merge_blob_chunks_isolates_failures_and_incomplete_streams() -> None:
+    negative_len = blob_chunk(chunk_id="neg-len", sequence=0, total_length=-1, blob=b"x", end=False)
+    negative_len.meta = {"filename": "negative.bin"}
+
+    bad_declared_0 = blob_chunk(chunk_id="bad-declared", sequence=0, total_length=2048, blob=b"x", end=False)
+    bad_declared_0.meta = {"filename": "huge.pdf"}
+    bad_declared_1 = blob_chunk(chunk_id="bad-declared", sequence=1, total_length=2048, blob=b"y", end=True)
+    bad_declared_1.meta = {"mime_type": "application/pdf"}
+    bad_declared_stray = blob_chunk(chunk_id="bad-declared", sequence=2, total_length=2048, blob=b"z", end=True)
+
+    overflow_max_0 = blob_chunk(chunk_id="overflow-max", sequence=0, total_length=10, blob=b"123456", end=False)
+    overflow_max_0.meta = {"filename": "grow.bin"}
+    overflow_max_1 = blob_chunk(chunk_id="overflow-max", sequence=1, total_length=10, blob=b"789012", end=False)
+    overflow_max_2 = blob_chunk(chunk_id="overflow-max", sequence=2, total_length=10, blob=b"!", end=True)
+
+    oversized_chunk_0 = blob_chunk(chunk_id="big-chunk", sequence=0, total_length=10, blob=b"123456789", end=False)
+    oversized_chunk_0.meta = {"filename": "wide.bin"}
+    oversized_chunk_1 = blob_chunk(chunk_id="big-chunk", sequence=1, total_length=10, blob=b"0", end=True)
+
+    truncated = blob_chunk(chunk_id="truncated", sequence=0, total_length=6, blob=b"abc", end=True)
+    truncated.meta = {"filename": "short.pdf"}
+
+    skipped_seq_0 = blob_chunk(chunk_id="skipped-seq", sequence=0, total_length=6, blob=b"abc", end=False)
+    skipped_seq_0.meta = {"filename": "gap.pdf"}
+    skipped_seq_1 = blob_chunk(chunk_id="skipped-seq", sequence=2, total_length=6, blob=b"def", end=True)
+
+    changed_len_0 = blob_chunk(chunk_id="changed-len", sequence=0, total_length=6, blob=b"abc", end=False)
+    changed_len_0.meta = {"filename": "mismatch.pdf"}
+    changed_len_1 = blob_chunk(chunk_id="changed-len", sequence=1, total_length=8, blob=b"def", end=True)
+
+    exceeded_declared_0 = blob_chunk(chunk_id="over-declared", sequence=0, total_length=4, blob=b"abc", end=False)
+    exceeded_declared_0.meta = {"filename": "extra.pdf"}
+    exceeded_declared_1 = blob_chunk(chunk_id="over-declared", sequence=1, total_length=4, blob=b"de", end=False)
+
+    malformed = DifyPluginToolInvokeMessage(
+        type=DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK,
+        message=None,
+        meta={"filename": "malformed.bin"},
+    )
+
+    incomplete = blob_chunk(chunk_id="dangling", sequence=0, total_length=10, blob=b"hi", end=False)
+    incomplete.meta = {"filename": "partial.bin"}
+
+    ok_0 = blob_chunk(chunk_id="ok", sequence=0, total_length=5, blob=b"he", end=False)
+    ok_0.meta = {"filename": "ok.txt"}
+    ok_1 = blob_chunk(chunk_id="ok", sequence=1, total_length=5, blob=b"llo", end=True)
+
+    merged = merge_blob_chunks(
+        [
+            negative_len,
+            bad_declared_0,
+            overflow_max_0,
+            ok_0,
+            overflow_max_1,
+            oversized_chunk_0,
+            truncated,
+            skipped_seq_0,
+            changed_len_0,
+            exceeded_declared_0,
+            malformed,
+            incomplete,
+            bad_declared_1,
+            bad_declared_stray,
+            overflow_max_2,
+            oversized_chunk_1,
+            skipped_seq_1,
+            changed_len_1,
+            exceeded_declared_1,
+            ok_1,
+        ],
+        max_file_size=10,
+        max_chunk_size=8,
+        isolate_errors=True,
+    )
+
+    blobs = [item for item in merged if item.type is DifyPluginToolInvokeMessage.MessageType.BLOB]
+    assert len(blobs) == 1
+    assert isinstance(blobs[0].message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert blobs[0].message.blob == b"hello"
+    assert blobs[0].meta == {"filename": "ok.txt"}
+
+    failed_by_name = {
+        (item.meta or {}).get("filename"): item
+        for item in merged
+        if item.type is DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK
+    }
+    assert len(failed_by_name) == len(merged) - 1 == 10
+    assert failed_by_name["negative.bin"].chunk_error == "Invalid blob chunk total_length: -1"
+    assert failed_by_name["negative.bin"].meta == {"filename": "negative.bin"}
+    assert failed_by_name["huge.pdf"].chunk_error is not None
+    assert "File is too large" in failed_by_name["huge.pdf"].chunk_error
+    assert failed_by_name["huge.pdf"].meta == {
+        "filename": "huge.pdf",
+        "mime_type": "application/pdf",
+        "size": 2048,
+    }
+    assert failed_by_name["grow.bin"].chunk_error is not None
+    assert "File is too large" in failed_by_name["grow.bin"].chunk_error
+    assert failed_by_name["wide.bin"].chunk_error is not None
+    assert "File chunk is too large" in failed_by_name["wide.bin"].chunk_error
+    for name in ("short.pdf", "gap.pdf", "mismatch.pdf", "extra.pdf"):
+        assert failed_by_name[name].chunk_error == "Plugin file chunks have an invalid sequence or length"
+    assert failed_by_name["malformed.bin"].chunk_error == "Blob chunk responses must carry BlobChunkMessage payloads."
+    assert failed_by_name["partial.bin"].chunk_error is None
+    assert failed_by_name["partial.bin"].message is None
+
+
+@pytest.mark.anyio
+async def test_daemon_tool_client_uses_configured_max_file_size_for_blob_chunks() -> None:
+    chunk_size = 8192
+    chunk_count = (30 * 1024 * 1024 // chunk_size) + 1  # 3841 chunks = 30 MiB + 8 KiB
+    declared_length = chunk_count * chunk_size
+    encoded_chunk = base64.b64encode(b"a" * chunk_size).decode()
+
+    lines = [
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {'text': 'summary:'}}})}\n"
+    ]
+    for sequence in range(chunk_count):
+        frame: dict[str, object] = {
+            "type": "blob_chunk",
+            "message": {
+                "id": "f1",
+                "sequence": sequence,
+                "total_length": declared_length,
+                "blob": encoded_chunk,
+                "end": sequence == chunk_count - 1,
+            },
+        }
+        if sequence == 0:
+            frame["meta"] = {"filename": "large.bin"}
+        lines.append(f"data: {json.dumps({'code': 0, 'message': '', 'data': frame})}\n")
+    stream_body = "".join(lines)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=stream_body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        allowing_client = DifyPluginDaemonToolClient(
+            plugin_daemon_url="http://daemon.test",
+            plugin_daemon_api_key="secret",
+            tenant_id="tenant",
+            plugin_id="files",
+            user_id="user",
+            http_client=http_client,
+            max_file_size=50 * 1024 * 1024,
+        )
+        merged = await allowing_client.invoke(
+            provider="files",
+            tool_name="create",
+            credential_type="unauthorized",
+            credentials={},
+            tool_parameters={},
+        )
+        assert len(merged) == 2
+        assert merged[0].type is DifyPluginToolInvokeMessage.MessageType.TEXT
+        assert isinstance(merged[0].message, DifyPluginToolInvokeMessage.TextMessage)
+        assert merged[0].message.text == "summary:"
+        assert merged[1].type is DifyPluginToolInvokeMessage.MessageType.BLOB
+        assert isinstance(merged[1].message, DifyPluginToolInvokeMessage.BlobMessage)
+        assert len(merged[1].message.blob) == declared_length
+        assert merged[1].message.blob == b"a" * declared_length
+        assert merged[1].meta == {"filename": "large.bin"}
+
+        rejecting_client = DifyPluginDaemonToolClient(
+            plugin_daemon_url="http://daemon.test",
+            plugin_daemon_api_key="secret",
+            tenant_id="tenant",
+            plugin_id="files",
+            user_id="user",
+            http_client=http_client,
+            max_file_size=30 * 1024 * 1024,
+        )
+        isolated = await rejecting_client.invoke(
+            provider="files",
+            tool_name="create",
+            credential_type="unauthorized",
+            credentials={},
+            tool_parameters={},
+        )
+        assert len(isolated) == 2
+        assert isolated[0].type is DifyPluginToolInvokeMessage.MessageType.TEXT
+        assert isinstance(isolated[0].message, DifyPluginToolInvokeMessage.TextMessage)
+        assert isolated[0].message.text == "summary:"
+        assert isolated[1].type is DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK
+        assert isolated[1].message is None
+        assert isolated[1].chunk_error is not None and "File is too large" in isolated[1].chunk_error
+        assert isolated[1].meta == {"filename": "large.bin", "size": declared_length}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "stream_body",
+    [
+        "data: {not-valid-json\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {}}})}\n",
+    ],
+)
+async def test_daemon_tool_client_wraps_invalid_stream_validation_errors(stream_body: str) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=stream_body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        client = DifyPluginDaemonToolClient(
+            plugin_daemon_url="http://daemon.test",
+            plugin_daemon_api_key="secret",
+            tenant_id="tenant",
+            plugin_id="files",
+            user_id="user",
+            http_client=http_client,
+        )
+        with pytest.raises(DifyPluginToolClientError) as exc_info:
+            await client.invoke(
+                provider="files",
+                tool_name="create",
+                credential_type="unauthorized",
+                credentials={},
+                tool_parameters={},
+            )
+
+    assert exc_info.value.error_type == "PluginDaemonBadResponseError"
