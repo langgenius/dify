@@ -531,3 +531,15 @@ it('reloads annotated-reply settings saved elsewhere when the page is opened aga
   await waitFor(async () => expect(await screen.findByRole('switch')).toBeChecked())
   expect(api.config).toHaveBeenCalledTimes(2)
 })
+
+it('reloads annotations changed elsewhere when the page is opened again', async () => {
+  const queryClient = createConsoleQueryClient()
+  setup(undefined, queryClient)
+  expect(await screen.findByText('appAnnotation.noData.title')).toBeVisible()
+  cleanup()
+
+  annotations = [item]
+  setup(undefined, queryClient)
+
+  expect(await screen.findByRole('checkbox', { name: 'Question 1' })).toBeVisible()
+})

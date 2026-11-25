@@ -131,6 +131,8 @@ const HeaderOptions: FC<Props> = ({ appId, onAdded }) => {
   const { data: list = [] } = useQuery(
     consoleQuery.apps.byAppId.annotations.export.get.queryOptions({
       input: { params: { app_id: appId } },
+      // Exports must include changes made outside this client, so reload on every visit.
+      staleTime: 0,
       select: (data) => data.data,
     }),
   )

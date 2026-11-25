@@ -374,6 +374,24 @@ describe('HeaderOptions', () => {
     consoleSpy.mockRestore()
   })
 
+  it('reloads export data changed elsewhere when the page is opened again', async () => {
+    const user = userEvent.setup()
+    const first = renderComponent()
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
+    first.unmount()
+
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    ;(useLocale as Mock).mockReturnValue(LanguagesSupported[0])
+    render(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} />, {
+      queryClient: first.queryClient,
+    })
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
+    await expandExportMenu(user)
+    const { csvItem } = await getExportItems()
+    expect(csvItem).not.toHaveAttribute('data-disabled')
+  })
+
   it('enables export once an invalidated annotations key brings back data', async () => {
     const user = userEvent.setup()
     const view = renderComponent()

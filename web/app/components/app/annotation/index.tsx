@@ -87,6 +87,8 @@ function Annotation({ appDetail }: AnnotationProps) {
         params: { app_id: appDetail.id },
         query: { page: currPage + 1, limit, keyword: debouncedQueryParams.keyword || '' },
       },
+      // Annotations can change outside this client (service API, other sessions), so reload on every visit.
+      staleTime: 0,
       placeholderData: keepPreviousData,
     }),
   )
