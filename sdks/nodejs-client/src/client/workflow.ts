@@ -27,7 +27,8 @@ export class WorkflowClient extends DifyClient {
     let shouldStream = stream
 
     if (user === undefined && 'user' in (inputOrRequest as WorkflowRunRequest)) {
-      payload = inputOrRequest as WorkflowRunRequest
+      const request = inputOrRequest as WorkflowRunRequest
+      payload = { ...request, inputs: request.inputs ?? {} }
       shouldStream = payload.response_mode === 'streaming'
     } else {
       ensureNonEmptyString(user, 'user')
@@ -61,17 +62,18 @@ export class WorkflowClient extends DifyClient {
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>> {
     ensureNonEmptyString(workflowId, 'workflowId')
     ensureNonEmptyString(request.user, 'user')
-    if (request.response_mode === 'streaming') {
+    const payload: WorkflowRunRequest = { ...request, inputs: request.inputs ?? {} }
+    if (payload.response_mode === 'streaming') {
       return this.http.requestStream<WorkflowRunResponse>({
         method: 'POST',
         path: `/workflows/${workflowId}/run`,
-        data: request,
+        data: payload,
       })
     }
     return this.http.request<WorkflowRunResponse>({
       method: 'POST',
       path: `/workflows/${workflowId}/run`,
-      data: request,
+      data: payload,
     })
   }
 
