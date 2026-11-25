@@ -16,7 +16,6 @@ const mockConnect = vi.hoisted(() => vi.fn())
 const mockDisconnect = vi.hoisted(() => vi.fn())
 const mockIsConnected = vi.hoisted(() => vi.fn(() => true))
 const mockEmitCursorMove = vi.hoisted(() => vi.fn())
-const mockGetLeaderId = vi.hoisted(() => vi.fn(() => 'leader-1'))
 
 let onStateChangeCallback:
   | ((state: { isConnected?: boolean; disconnectReason?: string; error?: string }) => void)
@@ -24,19 +23,18 @@ let onStateChangeCallback:
 let onCursorCallback: ((cursors: Record<string, CursorPosition>) => void) | null = null
 let onUsersCallback: ((users: OnlineUser[]) => void) | null = null
 let onPresenceCallback: ((presence: NodePanelPresenceMap) => void) | null = null
-let onLeaderCallback: ((isLeader: boolean) => void) | null = null
 
 const unsubscribeState = vi.hoisted(() => vi.fn())
 const unsubscribeCursor = vi.hoisted(() => vi.fn())
 const unsubscribeUsers = vi.hoisted(() => vi.fn())
 const unsubscribePresence = vi.hoisted(() => vi.fn())
-const unsubscribeLeader = vi.hoisted(() => vi.fn())
 
 let isCollaborationEnabled = true
 
 const renderCollaboration = (hook: () => ReturnType<typeof useCollaboration>, enabled: boolean) => {
   const { wrapper: QueryWrapper } = createConsoleQueryWrapper()
   const store = createWorkflowStore({})
+  store.setState({ loroDraft: { accountId: 'editor', epoch: 'shared' } })
   return renderHook(hook, {
     wrapper: ({ children }) =>
       createElement(
@@ -63,7 +61,6 @@ vi.mock('../../core/collaboration-manager', () => ({
     disconnect: (...args: unknown[]) => mockDisconnect(...args),
     isConnected: () => mockIsConnected(),
     emitCursorMove: (...args: unknown[]) => mockEmitCursorMove(...args),
-    getLeaderId: () => mockGetLeaderId(),
     onStateChange: (
       callback: (state: {
         isConnected?: boolean
@@ -86,10 +83,6 @@ vi.mock('../../core/collaboration-manager', () => ({
       onPresenceCallback = callback
       return unsubscribePresence
     },
-    onLeaderChange: (callback: (isLeader: boolean) => void) => {
-      onLeaderCallback = callback
-      return unsubscribeLeader
-    },
   },
 }))
 
@@ -107,7 +100,6 @@ describe('useCollaboration', () => {
     onCursorCallback = null
     onUsersCallback = null
     onPresenceCallback = null
-    onLeaderCallback = null
     isCollaborationEnabled = true
     mockConnect.mockResolvedValue('conn-1')
     mockIsConnected.mockReturnValue(true)
@@ -123,7 +115,10 @@ describe('useCollaboration', () => {
     )
 
     await waitFor(() => {
-      expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore)
+      expect(mockConnect).toHaveBeenCalledWith('app-1', reactFlowStore, {
+        accountId: 'editor',
+        epoch: 'shared',
+      })
     })
 
     act(() => {
@@ -133,7 +128,6 @@ describe('useCollaboration', () => {
       onPresenceCallback?.({
         nodeA: { sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 } },
       })
-      onLeaderCallback?.(true)
     })
 
     await waitFor(() => {
@@ -145,8 +139,6 @@ describe('useCollaboration', () => {
       expect(result.current.nodePanelPresence.nodeA).toEqual({
         sid1: { userId: 'u1', username: 'U1', clientId: 'sid1', timestamp: 1 },
       })
-      expect(result.current.isLeader).toBe(true)
-      expect(result.current.leaderId).toBe('leader-1')
     })
 
     const ref = { current: document.createElement('div') }
@@ -168,7 +160,6 @@ describe('useCollaboration', () => {
     expect(unsubscribeCursor).toHaveBeenCalled()
     expect(unsubscribeUsers).toHaveBeenCalled()
     expect(unsubscribePresence).toHaveBeenCalled()
-    expect(unsubscribeLeader).toHaveBeenCalled()
     expect(mockDisconnect).toHaveBeenCalledWith('conn-1')
   })
 

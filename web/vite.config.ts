@@ -178,6 +178,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
           define: {
             'process.env': '{}',
           },
+          resolve: {
+            alias: [{ find: /^loro-crdt$/, replacement: 'loro-crdt/browser' }],
+          },
           plugins: lazyPlugins(async () => {
             const { default: tailwindcss } = await import('@tailwindcss/vite')
             return [tailwindcss()]
@@ -195,6 +198,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
               'dayjs/plugin/timezone',
               'dayjs/plugin/utc',
               'es-toolkit/function',
+              'loro-crdt/browser',
               // Keep the router contexts shared with `next/navigation` for `test/next-navigation.tsx`.
               'next/dist/shared/lib/app-router-context.shared-runtime',
               'next/dist/shared/lib/hooks-client-context.shared-runtime',

@@ -599,6 +599,9 @@ catalogs:
     iconify-import-svg:
       specifier: 0.2.0
       version: 0.2.0
+    idb:
+      specifier: 8.0.0
+      version: 8.0.0
     immer:
       specifier: 11.2.10
       version: 11.2.10
@@ -1657,6 +1660,9 @@ importers:
       i18next-resources-to-backend:
         specifier: 'catalog:'
         version: 1.2.4
+      idb:
+        specifier: 'catalog:'
+        version: 8.0.0
       immer:
         specifier: 'catalog:'
         version: 11.2.10
@@ -16964,6 +16970,7 @@ time:
   i18next-resources-to-backend@1.2.4: '2026-11-01T22:18:41.448Z'
   i18next@27.1.2: '2026-11-15T07:04:02.712Z'
   iconify-import-svg@0.2.0: '2026-04-20T06:18:25.132Z'
+  idb@8.0.0: '2023-12-01T15:48:48.760Z'
   immer@11.2.10: '2026-11-10T14:44:08.531Z'
   import-meta-resolve@4.2.0: '2025-08-29T18:46:15.488Z'
   jotai-scope@0.12.2: '2026-08-13T23:49:51.764Z'

@@ -1,46 +1,46 @@
 'use client'
 
-import type { LoroDoc, LoroList, LoroMap, UndoManager, Value } from 'loro-crdt'
+import type { LoroDoc, UndoManager } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
-import type { CommonNodeType, Edge, Node } from '../../types'
+import type { WorkflowHistoryEventT } from '../../hooks/use-workflow-history'
+import type { LLMNodeType } from '../../nodes/llm/types'
+import type { Edge, Node } from '../../types'
 import type {
   CollaborationState,
   CollaborationUpdate,
   CursorPosition,
-  GraphReloadRequest,
   JoinFailure,
   NodePanelPresenceMap,
   NodePanelPresenceUser,
   OnlineUser,
   RestoreCompleteData,
   RestoreIntentData,
-  WorkflowSyncAcknowledgement,
-  WorkflowSyncRequest,
-  WorkflowSyncResult,
 } from '../types/collaboration'
-import type { CRDTProvider } from './crdt-provider'
-import { cloneDeep } from 'es-toolkit/object'
+import type {
+  LoroDraftConfirmation,
+  LoroDraftIdentity,
+  LoroDraftProvider,
+} from './loro-draft-provider'
+import type { LoroDraftRetirement } from './loro-draft-storage'
+import type { NodePanelPresenceEventData } from './presence-manager'
 import { isEqual } from 'es-toolkit/predicate'
 import { v4 as uuid4 } from 'uuid'
+import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../../nodes/agent-v2/types'
+import { BlockEnum } from '../../types'
+import { inheritDraftRowIds } from './draft-row-identity'
 import { EventEmitter } from './event-emitter'
-import {
-  emitWithAuthGuard,
-  isDefaultSocketUrl,
-  isUnauthorizedAck,
-  webSocketClient,
-} from './websocket-manager'
+import { PresenceManager } from './presence-manager'
+import { emitWithAuthGuard, webSocketClient } from './websocket-manager'
+type DraftHistory = Readonly<{
+  undo: readonly WorkflowHistoryEventT[]
+  redo: readonly WorkflowHistoryEventT[]
+}>
+type Prompt = LLMNodeType['prompt_template']
 
 type CrdtRuntime = (typeof import('./crdt-runtime'))['crdtRuntime']
 
-type NodePanelPresenceEventData = {
-  nodeId: string
-  action: 'open' | 'close'
-  user: NodePanelPresenceUser
-  clientId: string
-  timestamp: number
-}
-
 type ReactFlowStore = {
+  hydrateGraph?: (graph: { nodes: Node[]; edges: Edge[] }) => { nodes: Node[]; edges: Edge[] }
   getState: () => {
     getNodes: () => Node[]
     setNodes: (nodes: Node[]) => void
@@ -56,791 +56,598 @@ type CollaborationEventPayload = {
   userId?: string
 }
 
-type LoroSubscribeEvent = {
-  by?: string
-}
+type InitialFieldChange = { before: unknown; after: unknown }
 
-type LoroContainer = {
-  kind?: () => string
-  getAttached?: () => unknown
-}
-
-type GraphImportLogEntry = {
-  timestamp: number
-  appId: string | null
-  sources: Array<'nodes' | 'edges'>
-  before: {
-    nodes: Node[]
-    edges: Edge[]
-  }
-  after: {
-    nodes: Node[]
-    edges: Edge[]
-  }
-  meta: {
-    leaderId: string | null
-    isLeader: boolean
-    graphViewActive: boolean | null
-    pendingInitialSync: boolean
-  }
-}
-
-type SetNodesAnomalyReason = 'node_count_decrease' | 'start_removed'
-
-type SetNodesAnomalyLogEntry = {
-  timestamp: number
-  appId: string | null
-  source: string
-  reasons: SetNodesAnomalyReason[]
-  oldCount: number
-  newCount: number
-  removedNodeIds: string[]
-  oldStartNodeIds: string[]
-  newStartNodeIds: string[]
-  oldNodeIds: string[]
-  newNodeIds: string[]
-  visibilityState: DocumentVisibilityState | 'unknown'
-  meta: {
-    leaderId: string | null
-    isLeader: boolean
-    graphViewActive: boolean | null
-    pendingInitialSync: boolean
-    isConnected: boolean
-  }
-}
-
-type GraphSyncDiagnosticStage =
-  | 'nodes_subscribe'
-  | 'edges_subscribe'
-  | 'nodes_import_apply'
-  | 'edges_import_apply'
-  | 'schedule_graph_import_emit'
-  | 'graph_import_emit'
-  | 'start_import_log'
-  | 'finalize_import_log'
-
-type GraphSyncDiagnosticEvent = {
-  timestamp: number
-  appId: string | null
-  stage: GraphSyncDiagnosticStage
-  status: 'triggered' | 'skipped' | 'applied' | 'queued' | 'emitted' | 'snapshot'
-  reason?: string
-  details?: Record<string, unknown>
-  meta: {
-    leaderId: string | null
-    isLeader: boolean
-    isUndoRedoInProgress: boolean
-    pendingInitialSync: boolean
-    pendingGraphImportEmit: boolean
-    isConnected: boolean
-  }
-}
-
-const GRAPH_IMPORT_LOG_LIMIT = 20
-const SET_NODES_ANOMALY_LOG_LIMIT = 100
-const GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT = 400
-const WORKFLOW_SYNC_REQUEST_TIMEOUT = 20_000
-const GRAPH_RESYNC_RETRY_BASE_DELAY = 1000
-const GRAPH_RESYNC_RETRY_MAX_DELAY = 10_000
-
-const toLoroValue = (value: unknown): Value => cloneDeep(value) as Value
-const toLoroRecord = (value: unknown): Record<string, Value> =>
-  cloneDeep(value) as Record<string, Value>
-
-const toUint8Array = (value: unknown): Uint8Array | null => {
-  if (value instanceof Uint8Array) return value
-  if (value instanceof ArrayBuffer) return new Uint8Array(value)
-  if (ArrayBuffer.isView(value))
-    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
-  if (
-    Array.isArray(value) &&
-    value.every((item) => Number.isInteger(item) && item >= 0 && item <= 255)
-  )
-    return Uint8Array.from(value)
-
-  return null
-}
+const isDraftNode = (node: Node) =>
+  node.data?.type !== BlockEnum.StartPlaceholder &&
+  (!node.data?._isTempNode ||
+    (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data)))
 
 export class CollaborationManager {
-  private crdtRuntime: CrdtRuntime | null = null
-  private crdtRuntimePromise: Promise<CrdtRuntime> | null = null
-  private targetAppId: string | null = null
-  private connectGeneration = 0
-  private doc: LoroDoc | null = null
-  private undoManager: UndoManager | null = null
-  private provider: CRDTProvider | null = null
-  private nodesMap: LoroMap<Record<string, Value>> | null = null
-  private edgesMap: LoroMap<Record<string, Value>> | null = null
   private eventEmitter = new EventEmitter()
-  private currentAppId: string | null = null
-  private reactFlowStore: ReactFlowStore | null = null
-  private isLeader = false
-  private leaderId: string | null = null
-  private onlineUsers: OnlineUser[] = []
-  private cursors: Record<string, CursorPosition> = {}
-  private nodePanelPresence: NodePanelPresenceMap = {}
-  private activeConnections = new Set<string>()
-  private isUndoRedoInProgress = false
-  private pendingInitialSync = false
-  private initialSyncRetryTimer: ReturnType<typeof setTimeout> | null = null
-  private initialSyncRetryAttempt = 0
-  private rejoinInProgress = false
+  private presence = new PresenceManager(this.eventEmitter)
+  private connections = new Set<string>()
+  private currentAppId?: string
+  private loroDraft?: LoroDraftIdentity
+  private socket?: Socket
+  private reactFlowStore?: ReactFlowStore
+  private runtime?: CrdtRuntime
+  private doc?: LoroDoc
+  private undoManager?: UndoManager
+  private unsubscribeDocument?: () => void
+  private nativePushes = 0
+  private provider?: LoroDraftProvider
+  private ready = false
+  private joined = false
+  private previouslyJoined = false
+  private joining = false
+  private joinRetry?: ReturnType<typeof setTimeout>
   private joinFailure: JoinFailure | null = null
-  private joinPending = false
-  private hasJoinedRoom = false
-  private joinAttempt = 0
-  private receivedConnectionStatus = false
-  private pendingGraphImportEmit = false
-  private pendingGraphResyncBroadcast = false
-  private graphViewActive: boolean | null = null
-  private graphViewSequence = 0
-  private visibilityListenerAttached = false
-  private crdtTrusted = false
-  private hasEstablishedConnection = false
-  private localDraftFallbackActive = false
-  private rebuildCrdtOnNextConnect = false
-  private reconnectedWithFreshDoc = false
-  private awaitingSnapshotImport = false
-  private graphReloadRequired = false
-  private crdtGeneration = 0
-  private graphReloadToken = 0
-  private graphReloadAttempt = 0
-  private pendingWorkflowSyncRequests = new Map<
-    string,
-    {
-      resolve: (result: WorkflowSyncResult) => void
-      reject: (error: Error) => void
-      timeout: ReturnType<typeof setTimeout>
-    }
-  >()
-  private graphImportLogs: GraphImportLogEntry[] = []
-  private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
-  private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
-  private pendingImportLog: {
-    timestamp: number
-    sources: Set<'nodes' | 'edges'>
-    before: {
-      nodes: Node[]
-      edges: Edge[]
-    }
-  } | null = null
-
-  private getActiveSocket(): Socket | null {
-    if (!this.currentAppId) return null
-    return webSocketClient.getSocket(this.currentAppId)
+  private initialLlmPrompts?: Map<string, { before: Prompt; prompt: Prompt }>
+  private draftHistory: DraftHistory = { undo: [], redo: [] }
+  private label: WorkflowHistoryEventT = 'NodeChange'
+  private inGroup = false
+  private initialization?: { before?: Record<string, unknown> }
+  private initializedFields = new Map<string, Map<string, InitialFieldChange>>()
+  private lastInput?: { key: string; time: number; start: number }
+  private confirmedEmpty = true
+  private clearing = false
+  private members: Record<'undo' | 'redo', { added: string[]; removed: string[] }[]> = {
+    undo: [],
+    redo: [],
   }
 
-  private handleJoinAck = (...args: unknown[]): void => {
-    const [body, status] = args
-    const message = body && typeof body === 'object' && 'msg' in body ? body.msg : undefined
-    if (message === 'connected') {
-      this.joinPending = false
-      this.joinFailure = null
-      this.eventEmitter.emit('joinFailure', null)
-      this.emitGraphReadyState()
+  onClearRequested(callback: (confirm: () => void) => void) {
+    return this.eventEmitter.on('clearRequested', callback)
+  }
+
+  guardClear(willClear: () => boolean, apply: () => void) {
+    if (!this.canApplyLocalGraphMutation()) return
+    if (!this.currentAppId || this.clearing || this.confirmedEmpty || !willClear()) {
+      apply()
       return
     }
-    if (isUnauthorizedAck(...args) || status === 403 || body === 403 || message === 'not_entitled')
-      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'denied'
-    else if (status === 503 || body === 503 || message === 'collaboration_unavailable')
-      this.joinFailure = this.hasJoinedRoom ? 'session_unavailable' : 'unavailable'
-    else return
-
-    this.joinPending = false
-    this.crdtTrusted = false
-    this.eventEmitter.emit('joinFailure', this.joinFailure)
-    this.emitGraphReadyState()
-  }
-
-  onJoinFailure(callback: (failure: JoinFailure | null) => void): () => void {
-    const unsubscribe = this.eventEmitter.on('joinFailure', callback)
-    callback(this.joinFailure)
-    return unsubscribe
-  }
-
-  private joinWorkflow(socket: Socket): void {
-    if (!this.currentAppId || !socket.connected) return
-
-    this.joinPending = true
-    const attempt = ++this.joinAttempt
-    const sid = socket.id
-    emitWithAuthGuard(
-      socket,
-      'user_connect',
-      { workflow_id: this.currentAppId },
-      {
-        onAck: (...args) => {
-          if (
-            this.getActiveSocket() !== socket ||
-            socket.id !== sid ||
-            this.joinAttempt !== attempt
-          )
-            return
-          this.rejoinInProgress = false
-          this.handleJoinAck(...args)
-        },
-      },
-    )
-  }
-
-  private handleSessionUnauthorized = (): void => {
-    if (
-      this.joinFailure ||
-      this.rejoinInProgress ||
-      (this.joinPending && !this.receivedConnectionStatus)
-    )
-      return
-    if (!this.currentAppId) return
-
-    const socket = this.getActiveSocket()
-    if (!socket?.connected) return
-
-    this.rejoinInProgress = true
-    console.warn('Collaboration session expired, attempting to rejoin workflow.')
-    this.joinWorkflow(socket)
-  }
-
-  private sendCollaborationEvent(payload: CollaborationEventPayload): void {
-    const socket = this.getActiveSocket()
-    if (!socket) return
-
-    emitWithAuthGuard(socket, 'collaboration_event', payload, {
-      onUnauthorized: this.handleSessionUnauthorized,
-    })
-  }
-
-  private sendGraphEvent(payload: Uint8Array): void {
-    const socket = this.getActiveSocket()
-    if (!socket) return
-
-    emitWithAuthGuard(socket, 'graph_event', payload, {
-      onUnauthorized: this.handleSessionUnauthorized,
-    })
-  }
-
-  private getNodeContainer(nodeId: string): LoroMap<Record<string, Value>> {
-    if (!this.nodesMap) throw new Error('Nodes map not initialized')
-
-    const { LoroMap } = this.getCrdtRuntime()
-
-    let container = this.nodesMap.get(nodeId) as unknown
-
-    const isMapContainer = (
-      value: unknown,
-    ): value is LoroMap<Record<string, Value>> & LoroContainer => {
-      return (
-        !!value &&
-        typeof (value as LoroContainer).kind === 'function' &&
-        (value as LoroContainer).kind?.() === 'Map'
-      )
-    }
-
-    if (!container || !isMapContainer(container)) {
-      const previousValue = container
-      const newContainer = this.nodesMap.setContainer(nodeId, new LoroMap())
-      const attached = (newContainer as LoroContainer).getAttached?.() ?? newContainer
-      container = attached
-      if (previousValue && typeof previousValue === 'object')
-        this.populateNodeContainer(
-          container as LoroMap<Record<string, Value>>,
-          previousValue as Node,
-        )
-    } else {
-      const attached = (container as LoroContainer).getAttached?.() ?? container
-      container = attached
-    }
-
-    return container as LoroMap<Record<string, Value>>
-  }
-
-  private ensureDataContainer(
-    nodeContainer: LoroMap<Record<string, Value>>,
-  ): LoroMap<Record<string, Value>> {
-    const { LoroMap } = this.getCrdtRuntime()
-    let dataContainer = nodeContainer.get('data') as unknown
-
-    if (
-      !dataContainer ||
-      typeof (dataContainer as LoroContainer).kind !== 'function' ||
-      (dataContainer as LoroContainer).kind?.() !== 'Map'
-    )
-      dataContainer = nodeContainer.setContainer('data', new LoroMap())
-
-    const attached = (dataContainer as LoroContainer).getAttached?.() ?? dataContainer
-    return attached as LoroMap<Record<string, Value>>
-  }
-
-  private ensureList(
-    nodeContainer: LoroMap<Record<string, Value>>,
-    key: string,
-  ): LoroList<unknown> {
-    const { LoroList } = this.getCrdtRuntime()
-    const dataContainer = this.ensureDataContainer(nodeContainer)
-    let list = dataContainer.get(key) as unknown
-
-    if (
-      !list ||
-      typeof (list as LoroContainer).kind !== 'function' ||
-      (list as LoroContainer).kind?.() !== 'List'
-    )
-      list = dataContainer.setContainer(key, new LoroList())
-
-    const attached = (list as LoroContainer).getAttached?.() ?? list
-    return attached as LoroList<unknown>
-  }
-
-  private exportNode(nodeId: string): Node {
-    const container = this.getNodeContainer(nodeId)
-    const json = container.toJSON() as Node
-    return {
-      ...json,
-      data: json.data || {},
-    }
-  }
-
-  private populateNodeContainer(container: LoroMap<Record<string, Value>>, node: Node): void {
-    const listFields = new Set(['variables', 'parameters'])
-    container.set('id', node.id)
-    container.set('type', node.type)
-    container.set('position', toLoroValue(node.position))
-    container.set('sourcePosition', node.sourcePosition)
-    container.set('targetPosition', node.targetPosition)
-
-    if (node.width === undefined) container.delete('width')
-    else container.set('width', node.width)
-
-    if (node.height === undefined) container.delete('height')
-    else container.set('height', node.height)
-
-    if (node.selected === undefined) container.delete('selected')
-    else container.set('selected', node.selected)
-
-    const optionalProps: Array<keyof Node> = [
-      'parentId',
-      'positionAbsolute',
-      'extent',
-      'zIndex',
-      'draggable',
-      'selectable',
-      'dragHandle',
-      'dragging',
-      'connectable',
-      'expandParent',
-      'focusable',
-      'hidden',
-      'style',
-      'className',
-      'ariaLabel',
-      'resizing',
-      'deletable',
-    ]
-
-    optionalProps.forEach((prop) => {
-      const value = node[prop]
-      if (value === undefined) container.delete(prop as string)
-      else container.set(prop as string, toLoroValue(value))
-    })
-
-    const dataContainer = this.ensureDataContainer(container)
-    const handledKeys = new Set<string>()
-
-    Object.entries(node.data || {}).forEach(([key, value]) => {
-      if (!this.shouldSyncDataKey(key)) return
-      handledKeys.add(key)
-
-      if (listFields.has(key) || (key === 'prompt_template' && Array.isArray(value)))
-        this.syncList(container, key, Array.isArray(value) ? value : [])
-      else dataContainer.set(key, toLoroValue(value))
-    })
-
-    const existingData = dataContainer.toJSON() || {}
-    Object.keys(existingData).forEach((key) => {
-      if (!this.shouldSyncDataKey(key)) return
-      if (handledKeys.has(key)) return
-
-      dataContainer.delete(key)
-    })
-  }
-
-  private shouldSyncDataKey(key: string): boolean {
-    const syncDataAllowList = new Set([
-      '_children',
-      '_connectedSourceHandleIds',
-      '_connectedTargetHandleIds',
-      '_targetBranches',
-    ])
-    return (syncDataAllowList.has(key) || !key.startsWith('_')) && key !== 'selected'
-  }
-
-  private syncList(
-    nodeContainer: LoroMap<Record<string, Value>>,
-    key: string,
-    desired: Array<unknown>,
-  ): void {
-    const list = this.ensureList(nodeContainer, key)
-    const current = list.toJSON() as Array<unknown>
-    const target = Array.isArray(desired) ? desired : []
-    const minLength = Math.min(current.length, target.length)
-
-    for (let i = 0; i < minLength; i += 1) {
-      if (!isEqual(current[i], target[i])) {
-        list.delete(i, 1)
-        list.insert(i, cloneDeep(target[i]))
+    const doc = this.doc,
+      appId = this.currentAppId!
+    this.eventEmitter.emit('clearRequested', () => {
+      if (this.doc !== doc || !this.canPersistLocalGraph()) return
+      const allowEmpty = willClear()
+      this.clearing = true
+      try {
+        apply()
+      } finally {
+        this.clearing = false
       }
-    }
-
-    if (current.length > target.length) {
-      list.delete(target.length, current.length - target.length)
-    } else if (target.length > current.length) {
-      for (let i = current.length; i < target.length; i += 1) list.insert(i, cloneDeep(target[i]))
-    }
-  }
-
-  private getNodePanelPresenceSnapshot(): NodePanelPresenceMap {
-    const snapshot: NodePanelPresenceMap = {}
-    Object.entries(this.nodePanelPresence).forEach(([nodeId, viewers]) => {
-      snapshot[nodeId] = { ...viewers }
+      if (allowEmpty) void this.syncLoroDraft(appId, true).catch(() => {})
     })
-    return snapshot
   }
 
-  private applyNodePanelPresenceUpdate(update: NodePanelPresenceEventData): void {
-    const { nodeId, action, clientId, user, timestamp } = update
+  deletionWillClear(ids: ReadonlySet<string>) {
+    const nodes = this.getNodes()
+    return (
+      nodes.length > 0 &&
+      nodes.every((node) => ids.has(node.id) || (!!node.parentId && ids.has(node.parentId)))
+    )
+  }
 
-    if (action === 'open') {
-      // ensure a client only appears on a single node at a time
-      Object.entries(this.nodePanelPresence).forEach(([id, viewers]) => {
-        if (viewers[clientId]) {
-          delete viewers[clientId]
-          if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[id]
-        }
-      })
-
-      if (!this.nodePanelPresence[nodeId]) this.nodePanelPresence[nodeId] = {}
-
-      this.nodePanelPresence[nodeId][clientId] = {
-        ...user,
-        clientId,
-        timestamp: timestamp || Date.now(),
-      }
-    } else {
-      const viewers = this.nodePanelPresence[nodeId]
-      if (viewers) {
-        delete viewers[clientId]
-        if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[nodeId]
-      }
+  historyWillClear(steps: number) {
+    const direction = steps < 0 ? 'undo' : 'redo'
+    const ids = new Set(this.getNodes().map((node) => node.id))
+    if (!ids.size) return false
+    for (const step of this.members[direction].slice(-Math.abs(steps)).reverse()) {
+      for (const id of steps < 0 ? step.added : step.removed) ids.delete(id)
+      for (const id of steps < 0 ? step.removed : step.added) ids.add(id)
     }
-
-    this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
+    return ids.size === 0
   }
 
-  private cleanupNodePanelPresence(activeClientIds: Set<string>): void {
-    let hasChanges = false
-
-    Object.entries(this.nodePanelPresence).forEach(([nodeId, viewers]) => {
-      Object.keys(viewers).forEach((clientId) => {
-        const clientActive = activeClientIds.has(clientId)
-
-        if (!clientActive) {
-          delete viewers[clientId]
-          hasChanges = true
-        }
-      })
-
-      if (Object.keys(viewers).length === 0) delete this.nodePanelPresence[nodeId]
-    })
-
-    if (hasChanges) this.eventEmitter.emit('nodePanelPresence', this.getNodePanelPresenceSnapshot())
-  }
-
-  init = (appId: string, reactFlowStore: ReactFlowStore): void => {
-    if (!reactFlowStore) {
-      console.warn(
-        'CollaborationManager.init called without reactFlowStore, deferring to connect()',
-      )
-      return
+  async connect(
+    appId: string,
+    reactFlowStore: ReactFlowStore | undefined,
+    identity: LoroDraftIdentity,
+  ) {
+    const id = uuid4()
+    if (
+      this.currentAppId &&
+      (this.currentAppId !== appId || this.loroDraft?.accountId !== identity.accountId)
+    )
+      this.disconnect()
+    if (!this.currentAppId) {
+      this.currentAppId = appId
+      this.loroDraft = identity
+      this.initialLlmPrompts = new Map()
     }
-    this.connect(appId, reactFlowStore)
-  }
-
-  setNodes = (
-    oldNodes: Node[],
-    newNodes: Node[],
-    source = 'collaboration-manager:setNodes',
-  ): void => {
-    if (!this.doc || !this.canApplyLocalGraphMutation()) return
-
-    // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress) return
-
-    this.seedCrdtGraphFromReactFlowIfNeeded()
-    this.captureSetNodesAnomaly(oldNodes, newNodes, source)
-    this.syncNodes(oldNodes, newNodes)
-    this.doc.commit()
-  }
-
-  setEdges = (oldEdges: Edge[], newEdges: Edge[]): void => {
-    if (!this.doc || !this.canApplyLocalGraphMutation()) return
-
-    // Don't track operations during undo/redo to prevent loops
-    if (this.isUndoRedoInProgress) return
-
-    this.seedCrdtGraphFromReactFlowIfNeeded()
-    this.syncEdges(oldEdges, newEdges)
-    this.doc.commit()
-  }
-
-  destroy = (): void => {
-    this.disconnect()
-  }
-
-  private async loadCrdtRuntime(): Promise<CrdtRuntime> {
-    const { crdtRuntime } = await import('./crdt-runtime')
-    return crdtRuntime
-  }
-
-  private async ensureCrdtRuntime(): Promise<void> {
-    if (this.crdtRuntime) return
-
-    const runtimePromise = this.crdtRuntimePromise ?? this.loadCrdtRuntime()
-    this.crdtRuntimePromise = runtimePromise
-
+    this.connections.add(id)
+    if (reactFlowStore) this.reactFlowStore = reactFlowStore
     try {
-      this.crdtRuntime = await runtimePromise
+      this.runtime ??= (await import('./crdt-runtime')).crdtRuntime
     } catch (error) {
-      if (this.crdtRuntimePromise === runtimePromise) this.crdtRuntimePromise = null
+      if (this.connections.has(id)) {
+        this.disconnect(id)
+        this.setFailure('unavailable')
+      }
       throw error
     }
-  }
-
-  private getCrdtRuntime(): CrdtRuntime {
-    if (!this.crdtRuntime) throw new Error('CRDT runtime not initialized')
-    return this.crdtRuntime
-  }
-
-  private initializeCrdt(socket: Socket): void {
-    const { CRDTProvider, LoroDoc, UndoManager } = this.getCrdtRuntime()
-    this.provider?.destroy()
-    this.undoManager = null
-    this.doc = new LoroDoc()
-    this.nodesMap = this.doc.getMap('nodes') as LoroMap<Record<string, Value>>
-    this.edgesMap = this.doc.getMap('edges') as LoroMap<Record<string, Value>>
-    this.crdtGeneration += 1
-    this.pendingGraphImportEmit = false
-    this.pendingGraphResyncBroadcast = false
-    this.pendingImportLog = null
-
-    this.undoManager = new UndoManager(this.doc, {
-      maxUndoSteps: 100,
-      mergeInterval: 500,
-      excludeOriginPrefixes: [],
-      onPush: (_isUndo, _range, _event) => {
-        const selectedNode = this.reactFlowStore
-          ?.getState()
-          .getNodes()
-          .find((n: Node) => n.data?.selected)
-
-        setTimeout(() => {
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        }, 0)
-
-        return {
-          value: {
-            selectedNodeId: selectedNode?.id || null,
-            timestamp: Date.now(),
-          },
-          cursors: [],
-        }
-      },
-      onPop: (_isUndo, value, _counterRange) => {
-        if (
-          value?.value &&
-          typeof value.value === 'object' &&
-          'selectedNodeId' in value.value &&
-          this.reactFlowStore
-        ) {
-          const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
-          if (selectedNodeId) {
-            const state = this.reactFlowStore.getState()
-            const { setNodes } = state
-            const nodes = state.getNodes()
-            const newNodes = nodes.map((n: Node) => ({
-              ...n,
-              data: {
-                ...n.data,
-                selected: n.id === selectedNodeId,
-              },
-            }))
-            this.captureSetNodesAnomaly(
-              nodes,
-              newNodes,
-              'reactflow-native:undo-redo-selection-restore',
-            )
-            setNodes(newNodes)
-          }
-        }
-      },
-    })
-
-    this.provider = new CRDTProvider(
-      socket,
-      this.doc,
-      this.handleSessionUnauthorized,
-      this.handleSnapshotImported,
-      this.shouldImportSnapshot,
-    )
-    this.setupSubscriptions()
-  }
-
-  private handleSnapshotImported = (): void => {
-    if (!this.awaitingSnapshotImport) return
-
-    const shouldBroadcastSnapshot = this.isLeader && this.pendingGraphResyncBroadcast
-    this.clearInitialSyncRetry()
-    this.refreshGraphSynchronously()
-    this.awaitingSnapshotImport = false
-    this.crdtTrusted = true
-    this.reconnectedWithFreshDoc = false
-    this.graphReloadRequired = false
-    this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
-  }
-
-  private shouldImportSnapshot = (): boolean => {
-    return !this.isLeader || this.awaitingSnapshotImport
-  }
-
-  async connect(appId: string, reactFlowStore?: ReactFlowStore): Promise<string> {
-    const connectionId = Math.random().toString(36).substring(2, 11)
-    if (this.targetAppId !== appId) {
-      this.targetAppId = appId
-      this.connectGeneration += 1
+    if (!this.connections.has(id) || this.currentAppId !== appId) return id
+    if (this.socket) {
+      if (!isEqual(this.loroDraft, identity)) this.replaceLoroDraft(appId, identity)
+      return id
     }
-    const connectGeneration = this.connectGeneration
-
-    if (!this.crdtRuntime) await this.ensureCrdtRuntime()
-
-    if (connectGeneration !== this.connectGeneration || this.targetAppId !== appId)
-      return connectionId
-
-    if (this.currentAppId === appId && this.doc) {
-      // Already connected to the same app, only update store if provided and we don't have one
-      if (reactFlowStore && !this.reactFlowStore) this.reactFlowStore = reactFlowStore
-      this.activeConnections.add(connectionId)
-
-      return connectionId
-    }
-
-    // Only disconnect if switching to a different app
-    if (this.currentAppId && this.currentAppId !== appId)
-      this.forceDisconnect({ preserveConnectIntent: true })
-
-    this.activeConnections.add(connectionId)
-
-    this.hasEstablishedConnection = false
-    this.currentAppId = appId
-    // Only set store if provided
-    if (reactFlowStore) this.reactFlowStore = reactFlowStore
-
     const socket = webSocketClient.connect(appId)
-    this.hasEstablishedConnection = socket.connected
-
-    // Setup event listeners BEFORE any other operations
-    this.setupSocketEventListeners(socket)
-    this.attachVisibilityListener()
-
-    this.crdtTrusted = false
-    this.pendingInitialSync = true
-    this.initializeCrdt(socket)
-    this.emitGraphReadyState()
-
-    // Force user_connect if already connected
-    if (socket.connected) this.joinWorkflow(socket)
-
-    return connectionId
-  }
-
-  disconnect = (connectionId?: string): void => {
-    if (connectionId && !this.activeConnections.delete(connectionId)) return
-
-    // Only disconnect when no more connections
-    if (this.activeConnections.size === 0) this.forceDisconnect()
-  }
-
-  private rejectPendingWorkflowSyncRequests(error: Error): void {
-    this.pendingWorkflowSyncRequests.forEach((request) => {
-      clearTimeout(request.timeout)
-      request.reject(error)
+    this.socket = socket
+    this.startDraft()
+    socket.on('connect', this.join)
+    socket.on('connect_error', () => {
+      if (!this.previouslyJoined) this.setFailure('unavailable')
     })
-    this.pendingWorkflowSyncRequests.clear()
+    socket.on('disconnect', (reason: string) => {
+      this.provider?.leave()
+      this.joined = this.joining = false
+      clearTimeout(this.joinRetry)
+      this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
+    })
+    socket.on('loro_draft_changed', (data) => this.provider?.pull(data))
+    socket.on('online_users', ({ users }: { users: OnlineUser[] }) =>
+      this.presence.updateUsers(users),
+    )
+    socket.on('collaboration_update', this.receive)
+    if (socket.connected) this.join()
+    return id
   }
 
-  private forceDisconnect = ({
-    preserveConnectIntent = false,
-  }: { preserveConnectIntent?: boolean } = {}): void => {
-    this.localDraftFallbackActive = false
-    this.joinFailure = null
-    this.eventEmitter.emit('joinFailure', null)
-    this.joinPending = false
-    this.hasJoinedRoom = false
-    this.joinAttempt += 1
-    this.receivedConnectionStatus = false
-    if (this.currentAppId) webSocketClient.disconnect(this.currentAppId)
+  private join = () => {
+    const socket = this.socket
+    if (!socket?.connected || this.joining) return
+    const sid = socket.id
+    this.joining = true
+    socket
+      .timeout(8000)
+      .emit(
+        'user_connect',
+        { workflow_id: this.currentAppId },
+        (err: Error | null, body?: { msg?: string }, status?: number) => {
+          if (this.socket !== socket || socket.id !== sid || !socket.connected) return
+          this.joining = false
+          if (err || status === 503) {
+            if (!this.previouslyJoined) this.setFailure('unavailable')
+            this.joinRetry = setTimeout(this.join, 2000)
+          } else if (body?.msg === 'connected') {
+            this.joined = this.previouslyJoined = true
+            this.setFailure(null)
+            this.provider?.join()
+            this.eventEmitter.emit('stateChange', { isConnected: true })
+          } else {
+            this.provider?.leave()
+            this.setFailure(this.previouslyJoined ? 'session_unavailable' : 'denied')
+          }
+        },
+      )
+  }
 
-    this.clearInitialSyncRetry()
-    this.detachVisibilityListener()
-    this.graphViewActive = null
-    this.graphViewSequence = 0
-    this.crdtTrusted = false
-    this.rebuildCrdtOnNextConnect = false
-    this.reconnectedWithFreshDoc = false
-    this.awaitingSnapshotImport = false
-    this.graphReloadRequired = false
-    this.graphReloadToken += 1
-    this.graphReloadAttempt = 0
-    this.pendingGraphResyncBroadcast = false
-    this.emitGraphReadyState()
-    this.crdtGeneration += 1
-    this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
+  private setFailure(failure: JoinFailure | null) {
+    this.joinFailure = failure
+    this.eventEmitter.emit('joinFailure', failure)
+    this.eventEmitter.emit('graphReady', this.canPersistLocalGraph())
+  }
+
+  private startDraft(retirements?: readonly LoroDraftRetirement[]) {
+    const runtime = this.runtime!
+    const appId = this.currentAppId!
+    const doc = new runtime.LoroDoc()
+    this.releaseDocument()
+    this.doc = doc
+    this.provider = new runtime.LoroDraftProvider({
+      doc,
+      appId,
+      socket: this.socket!,
+      identity: this.loroDraft!,
+      retirements,
+      onReady: (isEmpty) => {
+        this.bindDocument(doc)
+        this.confirmedEmpty = isEmpty
+        this.ready = true
+        this.applyInitialLlmPrompts()
+        this.refreshGraphSynchronously()
+        this.eventEmitter.emit('graphReady', this.canPersistLocalGraph())
+      },
+      onDocument: (doc) => {
+        this.bindDocument(doc)
+        this.refreshGraphSynchronously()
+      },
+      onConfirmed: (result) => {
+        this.confirmedEmpty = result.isEmpty
+        this.eventEmitter.emit('loroDraftConfirmed', result)
+      },
+      onPendingChange: (pending) => this.eventEmitter.emit('loroDraftPendingChange', pending),
+      onEpochChanged: () => {
+        this.ready = false
+        this.initialLlmPrompts = undefined
+        this.eventEmitter.emit('graphReady', false)
+        this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
+      },
+      onUnavailable: () => this.setFailure('session_unavailable'),
+      onUnauthorized: this.join,
+    })
+    if (this.joined) this.provider.join()
+  }
+
+  private releaseDocument() {
+    this.unsubscribeDocument?.()
+    this.unsubscribeDocument = undefined
+    this.undoManager?.free()
+    this.undoManager = undefined
+  }
+
+  private bindDocument(doc: LoroDoc) {
+    this.releaseDocument()
+    this.doc = doc
+    this.initializedFields.clear()
+    this.inGroup = false
+    this.lastInput = undefined
+    this.draftHistory = { undo: [], redo: [] }
+    this.members = { undo: [], redo: [] }
+    this.undoManager = new this.runtime!.UndoManager(doc, {
+      maxUndoSteps: 100,
+      mergeInterval: 0,
+      excludeOriginPrefixes: ['draft-system'],
+      onPush: (_isUndo, span) => {
+        this.nativePushes++
+        return { value: span.start, cursors: [] }
+      },
+    })
+    this.unsubscribeDocument = doc.subscribe((event) => {
+      if (doc !== this.doc || event.by !== 'import' || !this.ready) return
+      this.lastInput = undefined
+      this.refreshGraphSynchronously()
+    })
+    this.emitHistory()
+  }
+
+  private emitHistory() {
+    this.eventEmitter.emit('undoRedoStateChange', {
+      canUndo: !!this.undoManager?.canUndo(),
+      canRedo: !!this.undoManager?.canRedo(),
+    })
+  }
+
+  disconnect = (id?: string) => {
+    if (id && (!this.connections.delete(id) || this.connections.size)) return
+    this.connections.clear()
+    clearTimeout(this.joinRetry)
     this.provider?.destroy()
-    this.undoManager = null
-    this.doc = null
-    this.provider = null
-    this.nodesMap = null
-    this.edgesMap = null
-    this.currentAppId = null
-    this.reactFlowStore = null
-    this.cursors = {}
-    this.onlineUsers = []
-    this.nodePanelPresence = {}
-    this.isUndoRedoInProgress = false
-    this.rejoinInProgress = false
-    this.clearGraphImportLog()
-
-    // Only reset leader status when actually disconnecting
-    const wasLeader = this.isLeader
-    this.isLeader = false
-    this.leaderId = null
-
-    if (wasLeader) this.eventEmitter.emit('leaderChange', false)
-
-    this.activeConnections.clear()
-    if (!preserveConnectIntent) {
-      this.targetAppId = null
-      this.connectGeneration += 1
-    }
-    this.eventEmitter.removeAllListeners()
+    this.releaseDocument()
+    this.socket?.off('collaboration_update', this.receive)
+    if (this.currentAppId && this.socket) webSocketClient.disconnect(this.currentAppId)
+    this.provider =
+      this.socket =
+      this.doc =
+      this.undoManager =
+      this.loroDraft =
+      this.currentAppId =
+      this.reactFlowStore =
+        undefined
+    this.initialLlmPrompts = undefined
+    this.confirmedEmpty = true
+    this.joined = this.joining = this.previouslyJoined = this.ready = false
+    this.joinFailure = null
+    this.presence = new PresenceManager(this.eventEmitter)
   }
 
-  isConnected(): boolean {
-    return this.currentAppId ? webSocketClient.isConnected(this.currentAppId) : false
+  private receive = (update: CollaborationUpdate) => {
+    switch (update.type) {
+      case 'mouse_move':
+        return this.presence.move(update)
+      case 'node_panel_presence':
+        return this.presence.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
+      case 'vars_and_features_update':
+        return this.eventEmitter.emit('varsAndFeaturesUpdate', update)
+      case 'app_meta_update':
+        return this.eventEmitter.emit('appMetaUpdate', update)
+      case 'app_publish_update':
+        return this.eventEmitter.emit('appPublishUpdate', update)
+      case 'workflow_update':
+        return this.eventEmitter.emit('workflowUpdate', update.data)
+      case 'comments_update':
+        return this.eventEmitter.emit('commentsUpdate', update.data)
+      case 'workflow_restore_intent':
+        return this.eventEmitter.emit('restoreIntent', update.data)
+      case 'workflow_restore_complete':
+        return this.eventEmitter.emit('restoreComplete', update.data)
+      case 'workflow_history_action':
+        return this.eventEmitter.emit('historyAction', {
+          action: update.data.action,
+          userId: update.userId,
+        })
+    }
+  }
+
+  private sendCollaborationEvent(payload: CollaborationEventPayload) {
+    if (this.joined && !this.joinFailure)
+      emitWithAuthGuard(this.socket, 'collaboration_event', payload, { onUnauthorized: this.join })
+  }
+
+  onJoinFailure(callback: (failure: JoinFailure | null) => void) {
+    callback(this.joinFailure)
+    return this.eventEmitter.on('joinFailure', callback)
+  }
+  onGraphReadyChange(callback: (ready: boolean) => void) {
+    callback(this.canPersistLocalGraph())
+    return this.eventEmitter.on('graphReady', callback)
+  }
+  canPersistLocalGraph() {
+    return this.ready && !this.joinFailure
+  }
+  canApplyLocalGraphMutation() {
+    return !this.currentAppId || this.canPersistLocalGraph()
+  }
+  isConnected() {
+    return !!this.socket?.connected && this.joined
+  }
+  usesLoroDraft(appId: string) {
+    return this.currentAppId === appId && !!this.loroDraft
+  }
+  isDraftHistoryReady(appId: string, identity: LoroDraftIdentity) {
+    return (
+      this.usesLoroDraft(appId) && isEqual(this.loroDraft, identity) && this.canPersistLocalGraph()
+    )
+  }
+  clearUndoStack() {
+    this.undoManager?.clear()
+    this.members = { undo: [], redo: [] }
+    this.draftHistory = { undo: [], redo: [] }
+    this.emitHistory()
+  }
+  getDraftHistory() {
+    return this.draftHistory
+  }
+
+  private record(label: WorkflowHistoryEventT, apply: () => void, inputKey?: string) {
+    const undo = this.undoManager!,
+      doc = this.doc!
+    const now = Date.now()
+    const merge = !!inputKey && this.lastInput?.key === inputKey && now - this.lastInput.time < 500
+    const lastStart = this.lastInput?.start ?? now
+    undo.setMergeInterval(merge ? now - lastStart + 500 : 0)
+    const previousTop = undo.topUndoValue()
+    const previousPushes = this.nativePushes
+    const before = new Set(doc.getMap('nodes').keys())
+    apply()
+    if (previousPushes === this.nativePushes) return
+    const newStep = undo.topUndoValue() !== previousTop
+    this.lastInput = inputKey
+      ? { key: inputKey, time: now, start: newStep ? now : lastStart }
+      : undefined
+    const after = new Set(doc.getMap('nodes').keys())
+    const added = [...after].filter((id) => !before.has(id)),
+      removed = [...before].filter((id) => !after.has(id))
+    if (newStep) {
+      this.members = { undo: [...this.members.undo.slice(-99), { added, removed }], redo: [] }
+      this.draftHistory = {
+        undo: [...this.draftHistory.undo.slice(-99), this.inGroup ? this.label : label],
+        redo: [],
+      }
+      this.emitHistory()
+    } else {
+      const step = this.members.undo.at(-1)
+      if (step) {
+        const previousAdded = step.added,
+          previousRemoved = step.removed
+        step.added = [
+          ...previousAdded.filter((id) => !removed.includes(id)),
+          ...added.filter((id) => !previousRemoved.includes(id)),
+        ]
+        step.removed = [
+          ...previousRemoved.filter((id) => !added.includes(id)),
+          ...removed.filter((id) => !previousAdded.includes(id)),
+        ]
+      }
+    }
+  }
+
+  beginDraftHistoryAction(label: WorkflowHistoryEventT) {
+    if (!this.canPersistLocalGraph() || !this.undoManager || this.inGroup) return () => {}
+    const undo = this.undoManager
+    this.inGroup = true
+    this.label = label
+    undo.groupStart()
+    return () => {
+      if (this.undoManager !== undo || !this.inGroup) return
+      undo.groupEnd()
+      this.inGroup = false
+    }
+  }
+  runDraftHistoryAction<T>(label: WorkflowHistoryEventT, apply: () => T): T {
+    const end = this.beginDraftHistoryAction(label)
+    try {
+      return apply()
+    } finally {
+      end()
+    }
+  }
+  runDraftInitialization(apply: () => void, before?: Record<string, unknown>) {
+    const previous = this.initialization
+    this.initialization = { before }
+    try {
+      apply()
+    } finally {
+      this.initialization = previous
+    }
+  }
+
+  setNodes = (before: Node[], after: Node[], _source?: string) => {
+    if (!this.canPersistLocalGraph()) return
+    const label =
+      after.length > before.length
+        ? 'NodeAdd'
+        : after.length < before.length
+          ? 'NodeDelete'
+          : 'NodeDragStop'
+    this.record(label, () =>
+      this.runtime!.changeDraftEntities(
+        this.doc!,
+        'nodes',
+        before.filter(isDraftNode),
+        after.filter(isDraftNode),
+      ),
+    )
+  }
+  setEdges = (before: Edge[], after: Edge[]) => {
+    if (!this.canPersistLocalGraph()) return
+    const excluded = new Set(
+      this.reactFlowStore
+        ?.getState()
+        .getNodes()
+        .filter((n) => !isDraftNode(n))
+        .map((n) => n.id),
+    )
+    const keep = (e: Edge) => !e.data?._isTemp && !excluded.has(e.source) && !excluded.has(e.target)
+    this.record(after.length < before.length ? 'EdgeDelete' : 'NodeConnect', () =>
+      this.runtime!.changeDraftEntities(
+        this.doc!,
+        'edges',
+        before.filter(keep),
+        after.filter(keep),
+      ),
+    )
+  }
+  updateDraftNodeData(id: string, before: Record<string, unknown>, after: Record<string, unknown>) {
+    if (!this.canPersistLocalGraph()) return false
+    const version = this.doc!.version()
+    const initial = this.initialization
+    const field = changedStringPath(before, after)
+    const key = field ? JSON.stringify([id, field]) : undefined
+    if (initial) {
+      const baseline = initial.before ?? before
+      const initialized = this.initializedFields.get(id) ?? new Map<string, InitialFieldChange>()
+      this.initializedFields.set(id, initialized)
+      const previous: Record<string, unknown> = {},
+        defaults: Record<string, unknown> = {}
+      for (const [field, value] of Object.entries(after)) {
+        const change = { before: baseline[field], after: value }
+        if (isEqual(change.before, value) || isEqual(initialized.get(field), change)) continue
+        previous[field] = change.before
+        defaults[field] = value
+        initialized.set(field, change)
+      }
+      this.runtime!.changeDraftData(this.doc!, id, previous, defaults, true)
+    } else {
+      this.record(
+        field?.[0] === 'title'
+          ? 'NodeTitleChange'
+          : field?.[0] === 'desc'
+            ? 'NodeDescriptionChange'
+            : 'NodeChange',
+        () => this.runtime!.changeDraftData(this.doc!, id, before, after),
+        key,
+      )
+    }
+    const view = Object.fromEntries(
+      Object.entries(after).filter(([k]) => k === 'selected' || k.startsWith('_')),
+    )
+    if (
+      version.compare(this.doc!.version()) !== 0 ||
+      Object.keys(view).some((k) => !isEqual(before[k], view[k]))
+    )
+      this.refreshGraphSynchronously({ id, fields: view })
+    return true
+  }
+
+  private step(action: 'undo' | 'redo') {
+    const undo = this.undoManager
+    if (
+      !this.canPersistLocalGraph() ||
+      !undo ||
+      !(action === 'undo' ? undo.canUndo() : undo.canRedo())
+    )
+      return false
+    const changed = undo[action]()
+    const other = action === 'undo' ? 'redo' : 'undo'
+    const membership = this.members[action].pop()
+    if (changed && membership) this.members[other].push(membership)
+    const labels = this.draftHistory[action]
+    this.draftHistory = {
+      ...this.draftHistory,
+      [action]: labels.slice(0, -1),
+      [other]: changed
+        ? [...this.draftHistory[other], labels.at(-1) ?? 'NodeChange']
+        : this.draftHistory[other],
+    }
+    this.lastInput = undefined
+    if (changed) this.refreshGraphSynchronously()
+    this.emitHistory()
+    return true
+  }
+  undo() {
+    return this.step('undo')
+  }
+  redo() {
+    return this.step('redo')
+  }
+  getNodes() {
+    return this.doc ? this.runtime!.projectDraftGraph(this.doc).nodes : []
+  }
+  getEdges() {
+    return this.doc ? this.runtime!.projectDraftGraph(this.doc).edges : []
+  }
+  setLoroDraftViewport(vp: { x: number; y: number; zoom: number }) {
+    if (this.canPersistLocalGraph()) this.runtime!.setDraftViewport(this.doc!, vp)
+  }
+
+  replaceLoroDraft(appId: string, identity: LoroDraftIdentity) {
+    if (!this.usesLoroDraft(appId) || !this.socket || isEqual(identity, this.loroDraft))
+      return false
+    const retirements = this.provider?.retirementCandidates
+    this.provider?.destroy()
+    this.loroDraft = identity
+    this.initialLlmPrompts = undefined
+    this.ready = false
+    this.eventEmitter.emit('graphReady', false)
+    this.startDraft(retirements)
+    return true
+  }
+  syncLoroDraft(appId: string, allowEmpty = false) {
+    if (!this.usesLoroDraft(appId) || !this.provider)
+      return Promise.reject(new Error('Draft is not ready.'))
+    return this.provider.flush(allowEmpty)
+  }
+  queueInitialLlmPrompt(
+    appId: string,
+    identity: LoroDraftIdentity,
+    nodeId: string,
+    prompt: Prompt,
+    previousPrompt: Prompt,
+  ): boolean {
+    if (
+      !this.initialLlmPrompts ||
+      this.currentAppId !== appId ||
+      !isEqual(this.loroDraft, identity) ||
+      (typeof document !== 'undefined' && document.visibilityState === 'hidden')
+    )
+      return false
+
+    this.initialLlmPrompts.set(nodeId, {
+      before: this.initialLlmPrompts.get(nodeId)?.before ?? previousPrompt,
+      prompt,
+    })
+    return true
+  }
+
+  private applyInitialLlmPrompts(): void {
+    const prompts = this.initialLlmPrompts
+    this.initialLlmPrompts = undefined
+    if (!prompts?.size) return
+
+    for (const [nodeId, { before, prompt }] of prompts) {
+      const node = this.getNodes().find((item) => item.id === nodeId)
+      if (node?.data.type !== BlockEnum.LLM) continue
+      const current = (node.data as LLMNodeType).prompt_template
+      if (current !== undefined && Array.isArray(current) !== Array.isArray(prompt)) continue
+      this.updateDraftNodeData(nodeId, { prompt_template: before }, { prompt_template: prompt })
+    }
   }
 
   async getOnlineUserAvatars(appId: string): Promise<Record<string, string>> {
-    const socket = this.getActiveSocket()
+    const socket = this.socket
     if (this.currentAppId !== appId || !socket?.connected) return {}
 
     const sid = socket.id
@@ -848,148 +655,13 @@ export class CollaborationManager {
       string,
       string
     >
-    return this.getActiveSocket() === socket && socket.id === sid ? avatars : {}
-  }
-
-  canUseLocalDraftFallback(): boolean {
-    // A graph from a previously connected session must recover through collaboration before saving.
-    return (
-      this.localDraftFallbackActive ||
-      (isDefaultSocketUrl() && !this.isConnected() && !this.hasEstablishedConnection)
-    )
-  }
-
-  getNodes(): Node[] {
-    if (!this.nodesMap) return []
-    return Array.from(this.nodesMap.keys()).map((id) => this.exportNode(id as string))
-  }
-
-  getEdges(): Edge[] {
-    return this.edgesMap ? (Array.from(this.edgesMap.values()) as Edge[]) : []
-  }
-
-  canRestoreGraphFromCrdt(): boolean {
-    return this.crdtTrusted && !this.graphReloadRequired && this.doc !== null
-  }
-
-  canPersistLocalGraph(): boolean {
-    if (this.joinFailure) return false
-    if (this.localDraftFallbackActive) return true
-    return this.crdtTrusted && !this.graphReloadRequired && this.graphViewActive !== false
-  }
-
-  canApplyLocalGraphMutation(): boolean {
-    if (this.localDraftFallbackActive || !this.currentAppId) return true
-    return this.canPersistLocalGraph() && this.getActiveSocket()?.connected === true
-  }
-
-  private activateLocalDraftFallback(socket: Socket): void {
-    // Before the first connection, ReactFlow still holds the HTTP draft baseline. Once a
-    // collaboration session has existed, that graph may be stale and must recover through CRDT.
-    if (!isDefaultSocketUrl() || this.localDraftFallbackActive || this.hasEstablishedConnection)
-      return
-    if (this.getActiveSocket() !== socket || !this.currentAppId) return
-
-    const appId = this.currentAppId
-    this.localDraftFallbackActive = true
-    this.clearInitialSyncRetry()
-    this.pendingInitialSync = false
-    webSocketClient.disconnect(appId)
-    this.emitGraphReadyState()
-  }
-
-  private emitGraphReadyState(): void {
-    this.eventEmitter.emit('graphReadyChange', this.canApplyLocalGraphMutation())
-  }
-
-  onGraphReadyChange(callback: (isReady: boolean) => void): () => void {
-    const unsubscribe = this.eventEmitter.on('graphReadyChange', callback)
-    callback(this.canApplyLocalGraphMutation())
-    return unsubscribe
-  }
-
-  canFlushGraphOnPageClose(): boolean {
-    if (!this.crdtTrusted || this.graphReloadRequired || !this.isLeader) return false
-    if (this.graphViewActive !== false) return true
-
-    const socketId = this.getActiveSocket()?.id
-    return (
-      typeof socketId === 'string' &&
-      this.onlineUsers.length === 1 &&
-      this.onlineUsers[0]?.sid === socketId
-    )
-  }
-
-  private getGraphReloadRequest(): GraphReloadRequest {
-    return {
-      generation: this.crdtGeneration,
-      token: this.graphReloadToken,
-      attempt: this.graphReloadAttempt,
-    }
-  }
-
-  private emitGraphReloadRequired(attempt = 0): void {
-    this.graphReloadAttempt = attempt
-    this.graphReloadToken += 1
-    this.eventEmitter.emit('graphReloadRequired', this.getGraphReloadRequest())
-  }
-
-  onGraphReloadRequired(callback: (request: GraphReloadRequest) => void): () => void {
-    const unsubscribe = this.eventEmitter.on('graphReloadRequired', callback)
-    if (this.graphReloadRequired) callback(this.getGraphReloadRequest())
-    return unsubscribe
-  }
-
-  isGraphReloadCurrent(request: GraphReloadRequest): boolean {
-    return (
-      this.isLeader &&
-      this.graphReloadRequired &&
-      !this.crdtTrusted &&
-      request.generation === this.crdtGeneration &&
-      request.token === this.graphReloadToken
-    )
-  }
-
-  replaceGraphFromReactFlow(request: GraphReloadRequest): boolean {
-    if (!this.doc || !this.reactFlowStore || !this.isGraphReloadCurrent(request)) return false
-
-    const shouldBroadcastSnapshot = this.pendingGraphResyncBroadcast
-    const state = this.reactFlowStore.getState()
-    this.syncNodes(this.getNodes(), state.getNodes())
-    this.syncEdges(this.getEdges(), state.getEdges())
-    this.doc.commit()
-    this.clearInitialSyncRetry()
-    this.crdtTrusted = true
-    this.awaitingSnapshotImport = false
-    this.reconnectedWithFreshDoc = false
-    this.graphReloadRequired = false
-    this.emitGraphReadyState()
-    if (shouldBroadcastSnapshot) this.broadcastCurrentGraph()
-    return true
-  }
-
-  replaceGraphFromCommittedDraft(appId: string, nodes: Node[], edges: Edge[]): boolean {
-    if (this.currentAppId !== appId || !this.doc || !this.canApplyLocalGraphMutation()) return false
-
-    // A server-side import or restore replaces the whole draft. Its graph must also replace
-    // the CRDT snapshot before a visibility refresh or page close can persist the old graph.
-    this.syncNodes(this.getNodes(), nodes)
-    this.syncEdges(this.getEdges(), edges)
-    this.doc.commit()
-    this.clearUndoStack()
-    return true
-  }
-
-  retryGraphReload(request: GraphReloadRequest): void {
-    if (!this.isGraphReloadCurrent(request)) return
-
-    this.emitGraphReloadRequired(request.attempt + 1)
+    return this.socket === socket && socket.id === sid ? avatars : {}
   }
 
   emitCursorMove(position: CursorPosition): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = this.getActiveSocket()
+    const socket = this.socket
     if (!socket) return
 
     this.sendCollaborationEvent({
@@ -1000,107 +672,11 @@ export class CollaborationManager {
     })
   }
 
-  requestWorkflowSync(): Promise<WorkflowSyncResult> {
-    const socket = this.getActiveSocket()
-    if (!this.currentAppId || !socket?.connected)
-      return Promise.reject(new Error('Collaboration connection is not available.'))
-    if (!this.doc || !this.canPersistLocalGraph())
-      return Promise.reject(new Error('Collaborative graph is not ready to save.'))
-
-    const requestId = uuid4()
-    const graphSnapshot = this.doc.export({ mode: 'snapshot' })
-
-    return new Promise<WorkflowSyncResult>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingWorkflowSyncRequests.delete(requestId)
-        reject(new Error('Workflow draft sync timed out.'))
-      }, WORKFLOW_SYNC_REQUEST_TIMEOUT)
-
-      this.pendingWorkflowSyncRequests.set(requestId, { resolve, reject, timeout })
-
-      emitWithAuthGuard(
-        socket,
-        'collaboration_event',
-        {
-          type: 'sync_request',
-          data: { requestId, graphSnapshot },
-          timestamp: Date.now(),
-        } satisfies CollaborationEventPayload,
-        {
-          onAck: (body: unknown, status: unknown) => {
-            const pendingRequest = this.pendingWorkflowSyncRequests.get(requestId)
-            if (!pendingRequest) return
-
-            clearTimeout(pendingRequest.timeout)
-            this.pendingWorkflowSyncRequests.delete(requestId)
-
-            const response = body as {
-              success?: unknown
-              hash?: unknown
-              updatedAt?: unknown
-              error?: unknown
-              msg?: unknown
-            }
-            const failedStatus = typeof status === 'number' && (status < 200 || status >= 300)
-            if (
-              failedStatus ||
-              response?.success !== true ||
-              typeof response.hash !== 'string' ||
-              typeof response.updatedAt !== 'number'
-            ) {
-              const message =
-                (typeof response?.error === 'string' && response.error) ||
-                (typeof response?.msg === 'string' && response.msg) ||
-                'Workflow draft sync failed.'
-              pendingRequest.reject(new Error(message))
-              return
-            }
-
-            pendingRequest.resolve({ hash: response.hash, updatedAt: response.updatedAt })
-          },
-          onUnauthorized: this.handleSessionUnauthorized,
-        },
-      )
-    })
-  }
-
-  emitGraphViewState(active: boolean, force = false): void {
-    // Record the state even while offline so the post-rejoin 'status' handler can re-report it.
-    if (!force && this.graphViewActive === active) return
-
-    this.graphViewActive = active
-    this.graphViewSequence += 1
-    this.emitGraphReadyState()
-
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
-    this.sendCollaborationEvent({
-      type: 'graph_view_state',
-      data: { graphActive: active, sequence: this.graphViewSequence, timestamp: Date.now() },
-      timestamp: Date.now(),
-    })
-  }
-
-  private handleVisibilityChange = (): void => {
-    this.emitGraphViewState(document.visibilityState === 'visible')
-  }
-
-  private attachVisibilityListener(): void {
-    if (this.visibilityListenerAttached || typeof document === 'undefined') return
-
-    document.addEventListener('visibilitychange', this.handleVisibilityChange)
-    this.visibilityListenerAttached = true
-    this.graphViewActive = document.visibilityState === 'visible'
-  }
-
-  private detachVisibilityListener(): void {
-    if (!this.visibilityListenerAttached || typeof document === 'undefined') return
-
-    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
-    this.visibilityListenerAttached = false
-  }
-
   emitWorkflowUpdate(appId: string): void {
+    if (this.usesLoroDraft(appId)) {
+      this.provider?.pull()
+      this.eventEmitter.emit('workflowUpdate', { appId })
+    }
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
     this.sendCollaborationEvent({
@@ -1110,10 +686,18 @@ export class CollaborationManager {
     })
   }
 
+  onLoroDraftConfirmed(callback: (result: LoroDraftConfirmation) => void): () => void {
+    return this.eventEmitter.on('loroDraftConfirmed', callback)
+  }
+
+  onLoroDraftPendingChange(callback: (pending: boolean) => void): () => void {
+    return this.eventEmitter.on('loroDraftPendingChange', callback)
+  }
+
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
     if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
 
-    const socket = this.getActiveSocket()
+    const socket = this.socket
     if (!socket || !nodeId || !user?.userId) return
 
     const payload: NodePanelPresenceEventData = {
@@ -1130,11 +714,7 @@ export class CollaborationManager {
       timestamp: payload.timestamp,
     })
 
-    this.applyNodePanelPresenceUpdate(payload)
-  }
-
-  onSyncRequest(callback: (request: WorkflowSyncRequest) => void): () => void {
-    return this.eventEmitter.on('syncRequest', callback)
+    this.presence.applyNodePanelPresenceUpdate(payload)
   }
 
   onGraphImport(callback: (payload: { nodes: Node[]; edges: Edge[] }) => void): () => void {
@@ -1146,10 +726,12 @@ export class CollaborationManager {
   }
 
   onCursorUpdate(callback: (cursors: Record<string, CursorPosition>) => void): () => void {
+    callback(this.presence.getCursors())
     return this.eventEmitter.on('cursors', callback)
   }
 
   onOnlineUsersUpdate(callback: (users: OnlineUser[]) => void): () => void {
+    callback(this.presence.getOnlineUsers())
     return this.eventEmitter.on('onlineUsers', callback)
   }
 
@@ -1171,12 +753,8 @@ export class CollaborationManager {
 
   onNodePanelPresenceUpdate(callback: (presence: NodePanelPresenceMap) => void): () => void {
     const off = this.eventEmitter.on('nodePanelPresence', callback)
-    callback(this.getNodePanelPresenceSnapshot())
+    callback(this.presence.getNodePanelPresenceSnapshot())
     return off
-  }
-
-  onLeaderChange(callback: (isLeader: boolean) => void): () => void {
-    return this.eventEmitter.on('leaderChange', callback)
   }
 
   onCommentsUpdate(callback: (update: { appId: string; timestamp: number }) => void): () => void {
@@ -1243,336 +821,57 @@ export class CollaborationManager {
     return this.eventEmitter.on('restoreComplete', callback)
   }
 
-  getLeaderId(): string | null {
-    return this.leaderId
-  }
-
-  getIsLeader(): boolean {
-    return this.isLeader
-  }
-
-  // Collaborative undo/redo methods
-  undo(): boolean {
-    if (!this.undoManager) return false
-
-    const canUndo = this.undoManager.canUndo()
-    if (canUndo) {
-      this.isUndoRedoInProgress = true
-      const result = this.undoManager.undo()
-
-      // After undo, manually update React state from CRDT without triggering collaboration
-      const reactFlowStore = this.reactFlowStore
-      if (result && reactFlowStore) {
-        requestAnimationFrame(() => {
-          // Get ReactFlow's native setters, not the collaborative ones
-          const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
-          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
-          const updatedEdges = this.getEdges()
-          // Call ReactFlow's native setters directly to avoid triggering collaboration
-          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
-          state.setNodes(updatedNodes)
-          state.setEdges(updatedEdges)
-
-          this.isUndoRedoInProgress = false
-
-          // Emit event to update UI button states
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        })
-      } else {
-        this.isUndoRedoInProgress = false
-      }
-
-      return result
-    }
-
-    return false
-  }
-
-  redo(): boolean {
-    if (!this.undoManager) return false
-
-    const canRedo = this.undoManager.canRedo()
-    if (canRedo) {
-      this.isUndoRedoInProgress = true
-      const result = this.undoManager.redo()
-
-      // After redo, manually update React state from CRDT without triggering collaboration
-      const reactFlowStore = this.reactFlowStore
-      if (result && reactFlowStore) {
-        requestAnimationFrame(() => {
-          // Get ReactFlow's native setters, not the collaborative ones
-          const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
-          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
-          const updatedEdges = this.getEdges()
-          // Call ReactFlow's native setters directly to avoid triggering collaboration
-          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
-          state.setNodes(updatedNodes)
-          state.setEdges(updatedEdges)
-
-          this.isUndoRedoInProgress = false
-
-          // Emit event to update UI button states
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        })
-      } else {
-        this.isUndoRedoInProgress = false
-      }
-
-      return result
-    }
-
-    return false
-  }
-
-  canUndo(): boolean {
-    if (!this.undoManager) return false
-    return this.undoManager.canUndo()
-  }
-
-  canRedo(): boolean {
-    if (!this.undoManager) return false
-    return this.undoManager.canRedo()
-  }
-
-  clearUndoStack(): void {
-    if (!this.undoManager) return
-    this.undoManager.clear()
-  }
-
-  private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
-    if (!this.nodesMap || !this.doc) return
-
-    const oldNodesMap = new Map(oldNodes.map((node) => [node.id, node]))
-    const newNodesMap = new Map(newNodes.map((node) => [node.id, node]))
-
-    oldNodes.forEach((oldNode) => {
-      if (!newNodesMap.has(oldNode.id)) {
-        this.nodesMap?.delete(oldNode.id)
-      }
-    })
-
-    newNodes.forEach((newNode) => {
-      const oldNode = oldNodesMap.get(newNode.id)
-      if (oldNode && oldNode === newNode) return
-      if (oldNode && isEqual(oldNode, newNode)) return
-
-      const nodeContainer = this.getNodeContainer(newNode.id)
-      this.populateNodeContainer(nodeContainer, newNode)
-    })
-  }
-
-  private syncEdges(oldEdges: Edge[], newEdges: Edge[]): void {
-    if (!this.edgesMap) return
-
-    const oldEdgesMap = new Map(oldEdges.map((edge) => [edge.id, edge]))
-    const newEdgesMap = new Map(newEdges.map((edge) => [edge.id, edge]))
-
-    oldEdges.forEach((oldEdge) => {
-      if (!newEdgesMap.has(oldEdge.id)) {
-        this.edgesMap?.delete(oldEdge.id)
-      }
-    })
-
-    newEdges.forEach((newEdge) => {
-      const oldEdge = oldEdgesMap.get(newEdge.id)
-      if (!oldEdge || !isEqual(oldEdge, newEdge)) {
-        const clonedEdge = toLoroRecord(newEdge)
-        this.edgesMap?.set(newEdge.id, clonedEdge)
-      }
-    })
-  }
-
-  private setupSubscriptions(): void {
-    const generation = this.crdtGeneration
-    this.nodesMap?.subscribe((event: LoroSubscribeEvent) => {
-      if (generation !== this.crdtGeneration) return
-
-      const reactFlowStore = this.reactFlowStore
-      const eventBy = event.by ?? 'unknown'
-      this.recordGraphSyncDiagnostic('nodes_subscribe', 'triggered', undefined, {
-        eventBy,
-        hasReactFlowStore: Boolean(reactFlowStore),
-      })
-
-      if (eventBy !== 'import') {
-        this.recordGraphSyncDiagnostic('nodes_subscribe', 'skipped', 'event_by_not_import', {
-          eventBy,
-        })
-        return
-      }
-
-      if (!reactFlowStore) {
-        this.recordGraphSyncDiagnostic('nodes_subscribe', 'skipped', 'reactflow_store_missing')
-        return
-      }
-
-      // Don't update React nodes during undo/redo to prevent loops
-      if (this.isUndoRedoInProgress) {
-        this.recordGraphSyncDiagnostic('nodes_subscribe', 'skipped', 'undo_redo_in_progress')
-        return
-      }
-
-      this.recordGraphSyncDiagnostic('nodes_subscribe', 'queued', 'raf_scheduled')
-      requestAnimationFrame(() => {
-        if (generation !== this.crdtGeneration) return
-
-        const state = reactFlowStore.getState()
-        const previousNodes: Node[] = state.getNodes()
-        const previousEdges: Edge[] = state.getEdges()
-        this.startImportLog('nodes', { nodes: previousNodes, edges: previousEdges })
-        const previousNodeMap = new Map(previousNodes.map((node) => [node.id, node]))
-        const selectedIds = new Set(
-          previousNodes.filter((node) => node.data?.selected).map((node) => node.id),
-        )
-
-        this.pendingInitialSync = false
-
-        const updatedNodes = Array.from(this.nodesMap?.keys() || []).map((nodeId) => {
-          const node = this.exportNode(nodeId as string)
-          const clonedNode: Node = {
-            ...node,
-            data: {
-              ...(node.data || {}),
-            },
-          }
-          const clonedNodeData = clonedNode.data as CommonNodeType & Record<string, unknown>
-          // Keep the previous node's private data properties (starting with _)
-          const previousNode = previousNodeMap.get(clonedNode.id)
-          if (previousNode?.data) {
-            const previousData = previousNode.data as Record<string, unknown>
-            Object.entries(previousData)
-              .filter(([key]) => key.startsWith('_'))
-              .forEach(([key, value]) => {
-                if (!(key in clonedNodeData)) clonedNodeData[key] = value
-              })
-          }
-
-          if (selectedIds.has(clonedNode.id)) clonedNode.data.selected = true
-
-          return clonedNode
-        })
-
-        // Call ReactFlow's native setter directly to avoid triggering collaboration
-        this.captureSetNodesAnomaly(
-          previousNodes,
-          updatedNodes,
-          'reactflow-native:import-nodes-map-subscribe',
-        )
-        state.setNodes(updatedNodes)
-        this.recordGraphSyncDiagnostic('nodes_import_apply', 'applied', undefined, {
-          eventBy,
-          previousNodeCount: previousNodes.length,
-          updatedNodeCount: updatedNodes.length,
-          previousEdgeCount: previousEdges.length,
-          selectedCount: selectedIds.size,
-        })
-
-        this.scheduleGraphImportEmit()
-      })
-    })
-
-    this.edgesMap?.subscribe((event: LoroSubscribeEvent) => {
-      if (generation !== this.crdtGeneration) return
-
-      const reactFlowStore = this.reactFlowStore
-      const eventBy = event.by ?? 'unknown'
-      this.recordGraphSyncDiagnostic('edges_subscribe', 'triggered', undefined, {
-        eventBy,
-        hasReactFlowStore: Boolean(reactFlowStore),
-      })
-
-      if (eventBy !== 'import') {
-        this.recordGraphSyncDiagnostic('edges_subscribe', 'skipped', 'event_by_not_import', {
-          eventBy,
-        })
-        return
-      }
-
-      if (!reactFlowStore) {
-        this.recordGraphSyncDiagnostic('edges_subscribe', 'skipped', 'reactflow_store_missing')
-        return
-      }
-
-      // Don't update React edges during undo/redo to prevent loops
-      if (this.isUndoRedoInProgress) {
-        this.recordGraphSyncDiagnostic('edges_subscribe', 'skipped', 'undo_redo_in_progress')
-        return
-      }
-
-      this.recordGraphSyncDiagnostic('edges_subscribe', 'queued', 'raf_scheduled')
-      requestAnimationFrame(() => {
-        if (generation !== this.crdtGeneration) return
-
-        // Get ReactFlow's native setters, not the collaborative ones
-        const state = reactFlowStore.getState()
-        const previousNodes = state.getNodes()
-        const previousEdges = state.getEdges()
-        this.startImportLog('edges', { nodes: previousNodes, edges: previousEdges })
-        const updatedEdges = this.getEdges()
-
-        this.pendingInitialSync = false
-
-        // Call ReactFlow's native setter directly to avoid triggering collaboration
-        state.setEdges(updatedEdges)
-        this.recordGraphSyncDiagnostic('edges_import_apply', 'applied', undefined, {
-          eventBy,
-          previousNodeCount: previousNodes.length,
-          previousEdgeCount: previousEdges.length,
-          updatedEdgeCount: updatedEdges.length,
-        })
-
-        this.scheduleGraphImportEmit()
-      })
-    })
-  }
-
-  private scheduleGraphImportEmit(): void {
-    if (this.pendingGraphImportEmit) {
-      this.recordGraphSyncDiagnostic('schedule_graph_import_emit', 'skipped', 'already_pending')
-      return
-    }
-
-    this.recordGraphSyncDiagnostic('schedule_graph_import_emit', 'queued')
-    this.pendingGraphImportEmit = true
-    const generation = this.crdtGeneration
-    requestAnimationFrame(() => {
-      if (generation !== this.crdtGeneration) return
-
-      const beforeFinalizeNodes = this.getNodes().length
-      const beforeFinalizeEdges = this.getEdges().length
-      this.pendingGraphImportEmit = false
-      this.finalizeImportLog()
-      const mergedNodes = this.mergeLocalNodeState(this.getNodes())
-      const mergedEdges = this.getEdges()
-      this.recordGraphSyncDiagnostic('graph_import_emit', 'emitted', undefined, {
-        mergedNodeCount: mergedNodes.length,
-        mergedEdgeCount: mergedEdges.length,
-        crdtNodeCountBeforeFinalize: beforeFinalizeNodes,
-        crdtEdgeCountBeforeFinalize: beforeFinalizeEdges,
-      })
-      this.eventEmitter.emit('graphImport', {
-        nodes: mergedNodes,
-        edges: mergedEdges,
-      })
-    })
-  }
-
-  refreshGraphSynchronously(): void {
-    const mergedNodes = this.mergeLocalNodeState(this.getNodes())
-    this.eventEmitter.emit('graphImport', {
+  refreshGraphSynchronously(localUpdate?: { id: string; fields: Record<string, unknown> }): void {
+    const graph = this.doc ? this.runtime!.projectDraftGraph(this.doc) : { nodes: [], edges: [] }
+    const mergedNodes = this.mergeLocalNodeState(graph.nodes).map((node) =>
+      node.id === localUpdate?.id
+        ? { ...node, data: { ...node.data, ...localUpdate.fields } }
+        : node,
+    )
+    this.emitImportedGraph({
       nodes: mergedNodes,
-      edges: this.getEdges(),
+      edges: graph.edges,
     })
   }
 
+  private emitImportedGraph(graph: { nodes: Node[]; edges: Edge[] }): void {
+    const local = this.reactFlowStore?.getState()
+    if (this.loroDraft && local) {
+      const transient = local
+        .getNodes()
+        .filter((node) => !isDraftNode(node) && node.data.type !== BlockEnum.StartPlaceholder)
+      const transientIds = new Set(transient.map((node) => node.id))
+      const localEdges = new Map(local.getEdges().map((edge) => [edge.id, edge]))
+      const edges = graph.edges.map((edge) => {
+        const previous = localEdges.get(edge.id)
+        if (!previous) return edge
+        localEdges.delete(edge.id)
+        const view = Object.fromEntries(
+          Object.entries(previous.data ?? {}).filter(([key]) => key.startsWith('_')),
+        )
+        return {
+          ...edge,
+          ...(previous.selected !== undefined ? { selected: previous.selected } : {}),
+          ...(edge.data ? { data: { ...edge.data, ...view } } : {}),
+        }
+      })
+      for (const edge of localEdges.values()) {
+        if (edge.data?._isTemp || transientIds.has(edge.source) || transientIds.has(edge.target))
+          edges.push(edge)
+      }
+      graph = {
+        nodes: [
+          ...graph.nodes,
+          ...transient.filter((node) => !graph.nodes.some((item) => item.id === node.id)),
+        ],
+        edges,
+      }
+    }
+    const hydrated = (this.loroDraft && this.reactFlowStore?.hydrateGraph?.(graph)) || graph
+    const projected = new Map(graph.nodes.map((node) => [node.id, node.data]))
+    for (const node of hydrated.nodes) inheritDraftRowIds(projected.get(node.id), node.data)
+    this.eventEmitter.emit('graphImport', hydrated)
+  }
   private mergeLocalNodeState(nodes: Node[]): Node[] {
     const reactFlowStore = this.reactFlowStore
     const state = reactFlowStore?.getState()
@@ -1585,7 +884,7 @@ export class CollaborationManager {
       const localNode = localNodesMap.get(node.id)
       if (!localNode) return node
 
-      const nextNode = cloneDeep(node)
+      const nextNode = { ...node }
       const nextData = { ...(nextNode.data || {}) } as Node['data']
       const nextDataRecord = nextData as Record<string, unknown>
       const localData = localNode.data as Record<string, unknown> | undefined
@@ -1602,542 +901,48 @@ export class CollaborationManager {
       )
         nextDataRecord.selected = localNode.selected
 
+      if (this.loroDraft && localNode.selected !== undefined) nextNode.selected = localNode.selected
       nextNode.data = nextData
       return nextNode
     })
   }
 
-  getGraphImportLog(): GraphImportLogEntry[] {
-    return cloneDeep(this.graphImportLogs)
-  }
-
-  clearGraphImportLog(): void {
-    this.graphImportLogs = []
-    this.setNodesAnomalyLogs = []
-    this.graphSyncDiagnostics = []
-    this.pendingImportLog = null
-  }
-
-  downloadGraphImportLog(): void {
-    const reactFlowState = this.reactFlowStore?.getState()
-    const payload = {
-      appId: this.currentAppId,
-      generatedAt: new Date().toISOString(),
-      entries: this.graphImportLogs,
-      setNodesAnomalies: this.setNodesAnomalyLogs,
-      syncDiagnostics: this.graphSyncDiagnostics,
-      summary: {
-        logCount: this.graphImportLogs.length,
-        setNodesAnomalyCount: this.setNodesAnomalyLogs.length,
-        syncDiagnosticCount: this.graphSyncDiagnostics.length,
-        leaderId: this.leaderId,
-        isLeader: this.isLeader,
-        graphViewActive: this.graphViewActive,
-        pendingInitialSync: this.pendingInitialSync,
-        isConnected: this.isConnected(),
-        hasDoc: Boolean(this.doc),
-        hasReactFlowStore: Boolean(this.reactFlowStore),
-        onlineUsersCount: this.onlineUsers.length,
-        crdtCounts: {
-          nodes: this.getNodes().length,
-          edges: this.getEdges().length,
-        },
-        reactFlowCounts: {
-          nodes: reactFlowState?.getNodes().length ?? 0,
-          edges: reactFlowState?.getEdges().length ?? 0,
-        },
-      },
-    }
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    const appSuffix = this.currentAppId ?? 'unknown'
-    const fileName = `workflow-graph-import-log-${appSuffix}-${stamp}.json`
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
+  downloadGraphImportLog() {
+    if (!this.doc) return
+    const url = URL.createObjectURL(
+      new Blob(
+        [
+          JSON.stringify({
+            appId: this.currentAppId,
+            epoch: this.loroDraft?.epoch,
+            graph: this.runtime!.projectDraftGraph(this.doc),
+          }),
+        ],
+        { type: 'application/json' },
+      ),
+    )
     const link = document.createElement('a')
     link.href = url
-    link.download = fileName
+    link.download = 'workflow-collaboration.json'
     link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  private recordGraphSyncDiagnostic(
-    stage: GraphSyncDiagnosticStage,
-    status: GraphSyncDiagnosticEvent['status'],
-    reason?: string,
-    details?: Record<string, unknown>,
-  ): void {
-    const entry: GraphSyncDiagnosticEvent = {
-      timestamp: Date.now(),
-      appId: this.currentAppId,
-      stage,
-      status,
-      reason,
-      details,
-      meta: {
-        leaderId: this.leaderId,
-        isLeader: this.isLeader,
-        isUndoRedoInProgress: this.isUndoRedoInProgress,
-        pendingInitialSync: this.pendingInitialSync,
-        pendingGraphImportEmit: this.pendingGraphImportEmit,
-        isConnected: this.isConnected(),
-      },
-    }
-
-    this.graphSyncDiagnostics.push(entry)
-    if (this.graphSyncDiagnostics.length > GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT)
-      this.graphSyncDiagnostics.splice(
-        0,
-        this.graphSyncDiagnostics.length - GRAPH_SYNC_DIAGNOSTIC_LOG_LIMIT,
-      )
-  }
-
-  private captureSetNodesAnomaly(oldNodes: Node[], newNodes: Node[], source: string): void {
-    const oldNodeIds = oldNodes.map((node) => node.id)
-    const newNodeIds = newNodes.map((node) => node.id)
-    const newNodeIdSet = new Set(newNodeIds)
-    const removedNodeIds = oldNodeIds.filter((nodeId) => !newNodeIdSet.has(nodeId))
-
-    const oldStartNodeIds = oldNodes
-      .filter((node) => (node.data as CommonNodeType | undefined)?.type === 'start')
-      .map((node) => node.id)
-    const newStartNodeIds = newNodes
-      .filter((node) => (node.data as CommonNodeType | undefined)?.type === 'start')
-      .map((node) => node.id)
-
-    const reasons: SetNodesAnomalyReason[] = []
-    if (newNodes.length < oldNodes.length) reasons.push('node_count_decrease')
-    if (oldStartNodeIds.length > 0 && newStartNodeIds.length === 0) reasons.push('start_removed')
-
-    if (!reasons.length) return
-
-    const entry: SetNodesAnomalyLogEntry = {
-      timestamp: Date.now(),
-      appId: this.currentAppId,
-      source,
-      reasons,
-      oldCount: oldNodes.length,
-      newCount: newNodes.length,
-      removedNodeIds,
-      oldStartNodeIds,
-      newStartNodeIds,
-      oldNodeIds,
-      newNodeIds,
-      visibilityState: typeof document === 'undefined' ? 'unknown' : document.visibilityState,
-      meta: {
-        leaderId: this.leaderId,
-        isLeader: this.isLeader,
-        graphViewActive: this.graphViewActive,
-        pendingInitialSync: this.pendingInitialSync,
-        isConnected: this.isConnected(),
-      },
-    }
-    this.setNodesAnomalyLogs.push(entry)
-    if (this.setNodesAnomalyLogs.length > SET_NODES_ANOMALY_LOG_LIMIT)
-      this.setNodesAnomalyLogs.splice(
-        0,
-        this.setNodesAnomalyLogs.length - SET_NODES_ANOMALY_LOG_LIMIT,
-      )
-  }
-
-  private snapshotReactFlowGraph(): { nodes: Node[]; edges: Edge[] } {
-    if (!this.reactFlowStore) {
-      return {
-        nodes: this.getNodes(),
-        edges: this.getEdges(),
-      }
-    }
-
-    const state = this.reactFlowStore.getState()
-    return {
-      nodes: cloneDeep(state.getNodes()),
-      edges: cloneDeep(state.getEdges()),
-    }
-  }
-
-  private startImportLog(
-    source: 'nodes' | 'edges',
-    before?: { nodes: Node[]; edges: Edge[] },
-  ): void {
-    if (!this.pendingImportLog) {
-      const snapshot = before ?? this.snapshotReactFlowGraph()
-      this.pendingImportLog = {
-        timestamp: Date.now(),
-        sources: new Set([source]),
-        before: {
-          nodes: cloneDeep(snapshot.nodes),
-          edges: cloneDeep(snapshot.edges),
-        },
-      }
-      this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'created', {
-        source,
-        beforeNodes: snapshot.nodes.length,
-        beforeEdges: snapshot.edges.length,
-      })
-      return
-    }
-    this.pendingImportLog.sources.add(source)
-    this.recordGraphSyncDiagnostic('start_import_log', 'snapshot', 'merged_source', {
-      source,
-      sourceCount: this.pendingImportLog.sources.size,
-    })
-  }
-
-  private finalizeImportLog(): void {
-    if (!this.pendingImportLog) {
-      this.recordGraphSyncDiagnostic('finalize_import_log', 'skipped', 'no_pending_import')
-      return
-    }
-
-    const afterSnapshot = this.snapshotReactFlowGraph()
-    const entry: GraphImportLogEntry = {
-      timestamp: this.pendingImportLog.timestamp,
-      appId: this.currentAppId,
-      sources: Array.from(this.pendingImportLog.sources),
-      before: {
-        nodes: this.pendingImportLog.before.nodes,
-        edges: this.pendingImportLog.before.edges,
-      },
-      after: {
-        nodes: cloneDeep(afterSnapshot.nodes),
-        edges: cloneDeep(afterSnapshot.edges),
-      },
-      meta: {
-        leaderId: this.leaderId,
-        isLeader: this.isLeader,
-        graphViewActive: this.graphViewActive,
-        pendingInitialSync: this.pendingInitialSync,
-      },
-    }
-
-    this.graphImportLogs.push(entry)
-    this.recordGraphSyncDiagnostic('finalize_import_log', 'snapshot', undefined, {
-      sources: entry.sources,
-      beforeNodes: entry.before.nodes.length,
-      beforeEdges: entry.before.edges.length,
-      afterNodes: entry.after.nodes.length,
-      afterEdges: entry.after.edges.length,
-    })
-    if (this.graphImportLogs.length > GRAPH_IMPORT_LOG_LIMIT)
-      this.graphImportLogs.splice(0, this.graphImportLogs.length - GRAPH_IMPORT_LOG_LIMIT)
-    this.pendingImportLog = null
-  }
-
-  private importWorkflowSyncSnapshot(snapshotData: unknown): boolean {
-    if (!this.doc || !this.canPersistLocalGraph()) return false
-
-    const snapshot = toUint8Array(snapshotData)
-    if (!snapshot) return false
-
-    try {
-      this.doc.import(snapshot)
-      return true
-    } catch (error) {
-      console.error('Error importing workflow sync snapshot:', error)
-      return false
-    }
-  }
-
-  private setupSocketEventListeners(socket: Socket): void {
-    socket.on(
-      'collaboration_update',
-      (update: CollaborationUpdate, socketAcknowledgement?: (result: unknown) => void) => {
-        if (update.type === 'mouse_move') {
-          // Update cursor state for this user
-          const data = update.data as { x: number; y: number }
-          this.cursors[update.userId] = {
-            x: data.x,
-            y: data.y,
-            userId: update.userId,
-            timestamp: update.timestamp,
-          }
-
-          this.eventEmitter.emit('cursors', { ...this.cursors })
-        } else if (update.type === 'vars_and_features_update') {
-          this.eventEmitter.emit('varsAndFeaturesUpdate', update)
-        } else if (update.type === 'app_meta_update') {
-          this.eventEmitter.emit('appMetaUpdate', update)
-        } else if (update.type === 'app_publish_update') {
-          this.eventEmitter.emit('appPublishUpdate', update)
-        } else if (update.type === 'workflow_update') {
-          this.eventEmitter.emit('workflowUpdate', update.data)
-        } else if (update.type === 'comments_update') {
-          this.eventEmitter.emit('commentsUpdate', update.data)
-        } else if (update.type === 'node_panel_presence') {
-          this.applyNodePanelPresenceUpdate(update.data as NodePanelPresenceEventData)
-        } else if (update.type === 'sync_request') {
-          const requestId =
-            typeof update.data.requestId === 'string' ? update.data.requestId : undefined
-          let acknowledged = false
-          const acknowledge = (result: WorkflowSyncAcknowledgement) => {
-            if (acknowledged || !socketAcknowledgement) return
-            acknowledged = true
-            socketAcknowledgement(result)
-          }
-
-          if (
-            !this.canPersistLocalGraph() ||
-            !this.importWorkflowSyncSnapshot(update.data.graphSnapshot)
-          ) {
-            acknowledge({ success: false, error: 'Collaborative graph is not ready to save.' })
-            return
-          }
-
-          // The server sends sync_request only to its selected saver. The local leader flag can
-          // lag behind that routing decision, so receiving this directed event is the authority.
-          this.eventEmitter.emit('syncRequest', {
-            requestId,
-            acknowledge,
-          } satisfies WorkflowSyncRequest)
-        } else if (update.type === 'graph_resync_request') {
-          // The server sends this only to its selected snapshot source. Its routing decision is
-          // authoritative even if the preceding local leader status event is still in flight.
-          this.broadcastCurrentGraph()
-        } else if (update.type === 'workflow_restore_intent') {
-          this.eventEmitter.emit('restoreIntent', update.data as RestoreIntentData)
-        } else if (update.type === 'workflow_restore_complete') {
-          this.eventEmitter.emit('restoreComplete', update.data as RestoreCompleteData)
-        } else if (update.type === 'workflow_history_action') {
-          const data = update.data as { action?: 'undo' | 'redo' | 'jump' } | undefined
-          if (data?.action)
-            this.eventEmitter.emit('historyAction', { action: data.action, userId: update.userId })
-        }
-      },
-    )
-
-    socket.on('online_users', (data: { users: OnlineUser[]; leader?: string }) => {
-      try {
-        if (!data || !Array.isArray(data.users)) {
-          console.warn('Invalid online_users data structure:', data)
-          return
-        }
-
-        const onlineUserIds = new Set(data.users.map((user: OnlineUser) => user.user_id))
-        const onlineClientIds = new Set(
-          data.users
-            .map((user: OnlineUser) => user.sid)
-            .filter((sid): sid is string => typeof sid === 'string' && sid.length > 0),
-        )
-
-        // Remove cursors for offline users
-        Object.keys(this.cursors).forEach((userId) => {
-          if (!onlineUserIds.has(userId)) delete this.cursors[userId]
-        })
-
-        this.cleanupNodePanelPresence(onlineClientIds)
-
-        // Update leader information
-        if (data.leader && typeof data.leader === 'string') this.leaderId = data.leader
-
-        this.onlineUsers = data.users
-        this.eventEmitter.emit('onlineUsers', data.users)
-        this.eventEmitter.emit('cursors', { ...this.cursors })
-      } catch (error) {
-        console.error('Error processing online_users update:', error)
-      }
-    })
-
-    socket.on('status', (data: { isLeader: boolean }) => {
-      try {
-        if (this.joinFailure && !this.joinPending) return
-        if (!data || typeof data.isLeader !== 'boolean') {
-          console.warn('Invalid status data:', data)
-          return
-        }
-
-        this.hasJoinedRoom = true
-        this.receivedConnectionStatus = true
-
-        const wasLeader = this.isLeader
-        const wasAwaitingSnapshotImport = this.awaitingSnapshotImport
-        this.isLeader = data.isLeader
-
-        if (
-          this.isLeader &&
-          (this.reconnectedWithFreshDoc || this.awaitingSnapshotImport || this.graphReloadRequired)
-        ) {
-          this.clearInitialSyncRetry()
-          this.pendingInitialSync = false
-          const shouldNotifyReload = !this.graphReloadRequired || !wasLeader
-          this.graphReloadRequired = true
-          if (shouldNotifyReload) this.emitGraphReloadRequired()
-        } else if (this.isLeader) {
-          this.clearInitialSyncRetry()
-          this.seedCrdtGraphFromReactFlowIfNeeded()
-          this.crdtTrusted = true
-          this.pendingInitialSync = false
-        } else {
-          this.awaitingSnapshotImport = !this.crdtTrusted
-          this.pendingGraphResyncBroadcast = false
-          if (!this.awaitingSnapshotImport) {
-            this.clearInitialSyncRetry()
-            this.pendingInitialSync = false
-          } else if (!wasAwaitingSnapshotImport) {
-            this.clearInitialSyncRetry()
-            this.pendingInitialSync = true
-            this.requestInitialSyncIfNeeded()
-          }
-        }
-
-        if (wasLeader !== this.isLeader) this.eventEmitter.emit('leaderChange', this.isLeader)
-
-        this.emitGraphReadyState()
-
-        // The server recreates the session on every (re)join. Re-report both visible and hidden
-        // states with a monotonically increasing sequence so stale deliveries cannot win.
-        if (this.graphViewActive !== null) this.emitGraphViewState(this.graphViewActive, true)
-      } catch (error) {
-        console.error('Error processing status update:', error)
-      }
-    })
-
-    socket.on('connect', () => {
-      this.receivedConnectionStatus = false
-      this.hasEstablishedConnection = true
-      if (this.rebuildCrdtOnNextConnect) {
-        this.initializeCrdt(socket)
-        this.rebuildCrdtOnNextConnect = false
-        this.reconnectedWithFreshDoc = true
-        this.awaitingSnapshotImport = false
-        this.crdtTrusted = false
-      }
-      this.pendingInitialSync = true
-      this.joinWorkflow(socket)
-      this.emitGraphReadyState()
-      this.eventEmitter.emit('stateChange', { isConnected: true })
-    })
-
-    socket.on('disconnect', (reason) => {
-      this.joinPending = false
-      this.rejoinInProgress = false
-      this.joinAttempt += 1
-      this.receivedConnectionStatus = false
-      this.clearInitialSyncRetry()
-      this.cursors = {}
-      this.onlineUsers = []
-      this.isLeader = false
-      this.leaderId = null
-      this.crdtTrusted = false
-      this.rebuildCrdtOnNextConnect = true
-      this.reconnectedWithFreshDoc = false
-      this.awaitingSnapshotImport = false
-      this.graphReloadRequired = false
-      this.pendingInitialSync = false
-      this.emitGraphReadyState()
-      this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection lost.'))
-      this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
-      this.eventEmitter.emit('onlineUsers', [])
-      this.eventEmitter.emit('cursors', {})
-    })
-
-    socket.on('connect_error', (error: Error) => {
-      console.error('WebSocket connection error:', error)
-      this.activateLocalDraftFallback(socket)
-      this.eventEmitter.emit('stateChange', { isConnected: false, error: error.message })
-    })
-
-    socket.on('error', (error: Error) => {
-      console.error('WebSocket error:', error)
-    })
-  }
-
-  // We currently only relay CRDT updates; the server doesn't persist them.
-  // When a follower joins mid-session, it might miss earlier broadcasts and render stale data.
-  // This lightweight checkpoint asks the leader to rebroadcast the latest graph snapshot once.
-  private clearInitialSyncRetry(): void {
-    if (this.initialSyncRetryTimer) clearTimeout(this.initialSyncRetryTimer)
-    this.initialSyncRetryTimer = null
-    this.initialSyncRetryAttempt = 0
-  }
-
-  private scheduleInitialSyncRetry(): void {
-    if (this.initialSyncRetryTimer) return
-    if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) return
-
-    const retryDelay = Math.min(
-      GRAPH_RESYNC_RETRY_BASE_DELAY * 2 ** this.initialSyncRetryAttempt,
-      GRAPH_RESYNC_RETRY_MAX_DELAY,
-    )
-    this.initialSyncRetryTimer = setTimeout(() => {
-      this.initialSyncRetryTimer = null
-      if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) {
-        this.initialSyncRetryAttempt = 0
-        return
-      }
-
-      this.initialSyncRetryAttempt += 1
-      this.pendingInitialSync = true
-      this.requestInitialSyncIfNeeded()
-    }, retryDelay)
-  }
-
-  private requestInitialSyncIfNeeded(): void {
-    if (!this.pendingInitialSync) return
-    if (this.isLeader || this.crdtTrusted || !this.awaitingSnapshotImport) {
-      this.pendingInitialSync = false
-      this.clearInitialSyncRetry()
-      return
-    }
-
-    if (!this.emitGraphResyncRequest()) return
-
-    this.pendingInitialSync = false
-    this.scheduleInitialSyncRetry()
-  }
-
-  private emitGraphResyncRequest(): boolean {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return false
-    if (this.getActiveSocket()?.connected !== true) return false
-
-    this.sendCollaborationEvent({
-      type: 'graph_resync_request',
-      data: { timestamp: Date.now() },
-      timestamp: Date.now(),
-    })
-    return true
-  }
-
-  private seedCrdtGraphFromReactFlowIfNeeded(): void {
-    if (!this.doc) return
-    if (!this.reactFlowStore) return
-
-    // CRDT may still be empty when the canvas was initially loaded from HTTP draft data
-    // before collaboration finished connecting, and no local mutation has been written yet.
-    // Seed once from the current ReactFlow graph so leader resync can broadcast a full snapshot.
-    if (this.getNodes().length > 0 || this.getEdges().length > 0) return
-
-    const state = this.reactFlowStore.getState()
-    const nodes = state.getNodes()
-    const edges = state.getEdges()
-
-    if (!nodes.length && !edges.length) return
-
-    this.syncNodes([], nodes)
-    this.syncEdges([], edges)
-    this.doc.commit()
-  }
-
-  private broadcastCurrentGraph(): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-    if (!this.doc) return
-
-    if (!this.crdtTrusted || this.graphReloadRequired) {
-      this.pendingGraphResyncBroadcast = true
-      return
-    }
-
-    const socket = webSocketClient.getSocket(this.currentAppId)
-    if (!socket) return
-
-    try {
-      this.seedCrdtGraphFromReactFlowIfNeeded()
-
-      const snapshot = this.doc.export({ mode: 'snapshot' })
-      this.sendGraphEvent(snapshot)
-      this.pendingGraphResyncBroadcast = false
-    } catch (error) {
-      console.error('Failed to broadcast graph snapshot:', error)
-    }
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 }
 
+function changedStringPath(before: unknown, after: unknown): string[] | undefined {
+  if (typeof after === 'string' && before !== after) return []
+  if (!before || !after || typeof before !== 'object' || typeof after !== 'object') return
+  const left = before as Record<string, unknown>,
+    right = after as Record<string, unknown>
+  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].filter(
+    (k) => !isEqual(left[k], right[k]),
+  )
+  if (keys.length !== 1) return
+  const key = keys[0]!,
+    rest = changedStringPath(left[key], right[key])
+  if (rest) return [key, ...rest]
+}
+
 export const collaborationManager = new CollaborationManager()
+export const runDraftInitialization = (apply: () => void, before?: Record<string, unknown>) =>
+  collaborationManager.runDraftInitialization(apply, before)

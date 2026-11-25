@@ -6,7 +6,12 @@ import type {
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { InputVar, Node, PromptItem } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { createNode } from './test-collaboration-session'
+export const createNode = (id: string, title = `Node-${id}`): Node => ({
+  id,
+  type: 'custom',
+  position: { x: 0, y: 0 },
+  data: { type: BlockEnum.Start, title, desc: '' },
+})
 
 export const createVariable = (variable: string, overrides: Partial<InputVar> = {}): InputVar => ({
   variable,

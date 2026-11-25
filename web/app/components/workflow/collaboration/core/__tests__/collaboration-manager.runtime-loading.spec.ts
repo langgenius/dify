@@ -10,7 +10,10 @@ vi.mock('loro-crdt', async (importOriginal) => {
 
 const releases: (() => void)[] = []
 const connect = async (manager: CollaborationManager, appId: string) => {
-  const connectionId = await manager.connect(appId)
+  const connectionId = await manager.connect(appId, undefined, {
+    accountId: 'editor',
+    epoch: 'draft',
+  })
   releases.push(() => manager.disconnect(connectionId))
   return connectionId
 }
@@ -110,7 +113,7 @@ it('does not open a pending session after the manager is destroyed', async () =>
   const gate = delayRuntimeModule()
   const { manager, open } = await loadManager()
   const pending = connect(manager, 'app-destroyed')
-  manager.destroy()
+  manager.disconnect()
   gate.resolve()
   await pending
   expect(open).not.toHaveBeenCalled()

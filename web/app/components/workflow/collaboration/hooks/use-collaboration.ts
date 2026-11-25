@@ -8,6 +8,7 @@ import type {
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
+import { useStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -16,7 +17,6 @@ type CollaborationViewState = {
   onlineUsers: OnlineUser[]
   cursors: Record<string, CursorPosition>
   nodePanelPresence: NodePanelPresenceMap
-  isLeader: boolean
 }
 
 type ReactFlowStore = NonNullable<Parameters<typeof collaborationManager.connect>[1]>
@@ -26,7 +26,6 @@ const initialState: CollaborationViewState = {
   onlineUsers: [],
   cursors: {},
   nodePanelPresence: {},
-  isLeader: false,
 }
 
 export function useCollaboration(
@@ -39,9 +38,10 @@ export function useCollaboration(
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const loroDraft = useStore((state) => state.loroDraft)
 
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled || !canEdit) {
+    if (!appId || !isCollaborationEnabled || !canEdit || !loroDraft) {
       Promise.resolve().then(() => {
         setState(initialState)
       })
@@ -55,7 +55,7 @@ export function useCollaboration(
 
     const initCollaboration = async () => {
       try {
-        const id = await collaborationManager.connect(appId, reactFlowStore)
+        const id = await collaborationManager.connect(appId, reactFlowStore, loroDraft)
         if (isUnmounted) {
           collaborationManager.disconnect(id)
           return
@@ -97,30 +97,25 @@ export function useCollaboration(
       },
     )
 
-    const unsubscribeLeaderChange = collaborationManager.onLeaderChange((isLeader: boolean) => {
-      setState((prev) => ({ ...prev, isLeader }))
-    })
-
     return () => {
       isUnmounted = true
       unsubscribeStateChange()
       unsubscribeCursors()
       unsubscribeUsers()
       unsubscribeNodePanelPresence()
-      unsubscribeLeaderChange()
       cursorServiceRef.current?.stopTracking()
       if (connectionId) collaborationManager.disconnect(connectionId)
     }
-  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled])
+  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled, loroDraft])
 
-  const prevIsConnected = useRef(false)
+  const prevIsConnectedRef = useRef(false)
   useEffect(() => {
-    if (prevIsConnected.current && !state.isConnected) {
+    if (prevIsConnectedRef.current && !state.isConnected) {
       const reason = lastDisconnectReasonRef.current
       if (reason) console.warn('WebSocket disconnected:', reason)
       else console.warn('WebSocket disconnected.')
     }
-    prevIsConnected.current = state.isConnected || false
+    prevIsConnectedRef.current = state.isConnected || false
   }, [state.isConnected])
 
   const startCursorTracking = (
@@ -149,8 +144,6 @@ export function useCollaboration(
     onlineUsers: state.onlineUsers || [],
     cursors: state.cursors || {},
     nodePanelPresence: state.nodePanelPresence || {},
-    isLeader: state.isLeader || false,
-    leaderId: collaborationManager.getLeaderId(),
     isEnabled: isCollaborationEnabled && canEdit,
     startCursorTracking,
     stopCursorTracking,

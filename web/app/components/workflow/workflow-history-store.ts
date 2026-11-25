@@ -1,8 +1,9 @@
 import type { TemporalState } from 'zundo'
 import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { Edge, Node } from './types'
-import { use, useMemo } from 'react'
+import { use, useMemo, useSyncExternalStore } from 'react'
 import { WorkflowContext } from './context'
+import { useWorkflowStore } from './store'
 
 type WorkflowHistoryTemporalSnapshot = {
   workflowHistory: WorkflowHistoryState
@@ -69,6 +70,12 @@ const toTemporalState = (
     ),
 })
 
+export function useTemporalWorkflowHistory() {
+  const { temporal } = useWorkflowStore()
+  const snapshot = useSyncExternalStore(temporal.subscribe, temporal.getState, temporal.getState)
+  return useMemo(() => toTemporalState(snapshot), [snapshot])
+}
+
 export function useWorkflowHistoryStore() {
   const workflowStore = use(WorkflowContext)
 
@@ -80,6 +87,7 @@ export function useWorkflowHistoryStore() {
         ({
           getState: () => workflowStore.getState().workflowHistory,
           setState: (state: WorkflowHistoryState) => {
+            if (workflowStore.getState().loroDraft) return
             workflowStore.getState().setWorkflowHistory(sanitizeWorkflowHistory(state))
           },
           subscribe: (listener: (state: WorkflowHistoryState) => void) => {
