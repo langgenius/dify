@@ -3,20 +3,25 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_retrieval.retrieval import Source, SourceMetadata
-from models.dataset import Dataset
+from extensions.ext_database import db
+from models.dataset import Dataset, DatasetKeywordTable
+from models.enums import IndexingStatus
 from models.model import App, AppMode
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest
 from services.errors.knowledge_retrieval import (
+    InnerKnowledgeRetrievalServiceError,
     InnerKnowledgeRetrieveAppNotFoundError,
     InnerKnowledgeRetrieveAppTenantMismatchError,
     InnerKnowledgeRetrieveDatasetNotFoundError,
     InnerKnowledgeRetrieveDatasetTenantMismatchError,
 )
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
-from tests.helpers.unit.model_factories import make_app, make_dataset
+from tests.helpers.unit.model_factories import make_app, make_dataset, make_document
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -266,3 +271,37 @@ class TestInnerKnowledgeRetrievalService:
         with pytest.raises(InnerKnowledgeRetrieveDatasetTenantMismatchError):
             InnerKnowledgeRetrievalService().retrieve(_build_request(), sqlite_session)
         assert sqlite_session.in_transaction()
+
+
+def test_retrieve_maps_all_failed_keyword_searches_to_the_existing_service_error(
+    sqlite_engine: Engine, sqlite_session: Session
+) -> None:
+    """A scoped request with only unreadable indexes reports a server-side failure."""
+    datasets = [_dataset(dataset_id=dataset_id) for dataset_id in (DATASET_1_ID, DATASET_2_ID)]
+    with sqlite_session.begin():
+        sqlite_session.add(_app())
+        for dataset in datasets:
+            dataset.indexing_technique = "economy"
+            document = make_document(document_id=None, tenant_id=TENANT_ID, dataset_id=dataset.id, created_by=USER_ID)
+            document.indexing_status = IndexingStatus.COMPLETED
+            sqlite_session.add_all((dataset, document, DatasetKeywordTable(dataset_id=dataset.id, keyword_table="{")))
+
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+    db.init_app(app)
+    request = _build_request(
+        retrieval={"mode": "multiple", "top_k": 3, "reranking_enable": False},
+        metadata_filtering={"mode": "disabled"},
+        attachment_ids=[],
+    )
+    with app.app_context():
+        try:
+            with pytest.raises(InnerKnowledgeRetrievalServiceError) as caught:
+                InnerKnowledgeRetrievalService().retrieve(request, session=sqlite_session)
+        finally:
+            db.engine.dispose()
+
+    assert caught.value.status_code == 500
+    assert caught.value.error_code == "knowledge_retrieve_failed"
+    assert caught.value.description == "Knowledge retrieval failed."
+    assert isinstance(caught.value.__cause__, RuntimeError)

@@ -61,6 +61,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.nodes.knowledge_retrieval import exc
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
+from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelFeature
@@ -69,6 +70,7 @@ from models import UploadFile
 from models.dataset import (
     ChildChunk,
     Dataset,
+    DatasetKeywordTable,
     DatasetMetadata,
     DatasetQuery,
     DocumentSegment,
@@ -5828,8 +5830,9 @@ class TestDatasetRetrievalCases:
                     top_k=1,
                     all_documents=all_documents,
                 )
-                == []
+                is False
             )
+            assert not all_documents
 
             external_dataset = Dataset(
                 id=external_id,
@@ -6766,3 +6769,65 @@ def test_automatic_filters_do_not_downgrade_model_moderation(
     assert len(bound_model.reservations) == (0 if phase == "input" else 1)
     if bound_model.reservations:
         assert bound_model.reservations[0].commits
+
+
+@pytest.mark.parametrize(
+    "unreadable_indexes",
+    [pytest.param(0, id="no-hits"), pytest.param(1, id="partial-failure"), pytest.param(2, id="all-failed")],
+)
+def test_knowledge_retrieval_reports_failure_only_when_all_keyword_indexes_are_unreadable(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    caplog: pytest.LogCaptureFixture,
+    unreadable_indexes: int,
+) -> None:
+    """A completed search with no hits returns empty; corrupt indexes never count as completion."""
+    tenant_id, user_id = str(uuid4()), str(uuid4())
+    datasets = [
+        Dataset(
+            tenant_id=tenant_id,
+            name=name,
+            provider="vendor",
+            indexing_technique=IndexTechniqueType.ECONOMY,
+            created_by=user_id,
+        )
+        for name in ("Index A", "Index B")
+    ]
+    with sqlite_session.begin():
+        for dataset in datasets:
+            document = make_document(document_id=None, tenant_id=tenant_id, dataset_id=dataset.id, created_by=user_id)
+            document.indexing_status = IndexingStatus.COMPLETED
+            sqlite_session.add_all((dataset, document))
+        sqlite_session.add_all(
+            DatasetKeywordTable(dataset_id=dataset.id, keyword_table="{") for dataset in datasets[:unreadable_indexes]
+        )
+
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = str(sqlite_engine.url)
+    db.init_app(app)
+    request = KnowledgeRetrievalRequest(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        app_id=str(uuid4()),
+        user_from="account",
+        dataset_ids=[dataset.id for dataset in datasets],
+        query="verification marker",
+        retrieval_mode="multiple",
+        top_k=3,
+        reranking_enable=False,
+    )
+    retrieval = DatasetRetrieval()
+    with app.app_context():
+        try:
+            if unreadable_indexes == len(datasets):
+                with pytest.raises(RuntimeError, match=r"^All knowledge base searches failed\.$"):
+                    retrieval.knowledge_retrieval(sqlite_session, request)
+            else:
+                assert retrieval.knowledge_retrieval(sqlite_session, request) == []
+        finally:
+            db.engine.dispose()
+
+    skipped_indexes = [
+        record for record in caplog.records if record.getMessage().startswith("Skipping dataset retrieval because")
+    ]
+    assert len(skipped_indexes) == unreadable_indexes

@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
-from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.retrieval.dataset_retrieval import AllDatasetRetrievalsFailedError, DatasetRetrieval
 from core.workflow.nodes.knowledge_retrieval.retrieval import KnowledgeRetrievalRequest
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.nodes.llm.entities import ModelConfig
@@ -28,6 +28,7 @@ from services.entities.knowledge_retrieval_inner import (
     InnerKnowledgeRetrieveUsage,
 )
 from services.errors.knowledge_retrieval import (
+    InnerKnowledgeRetrievalServiceError,
     InnerKnowledgeRetrieveAppNotFoundError,
     InnerKnowledgeRetrieveAppTenantMismatchError,
     InnerKnowledgeRetrieveDatasetNotFoundError,
@@ -59,12 +60,16 @@ class InnerKnowledgeRetrievalService:
             InnerKnowledgeRetrieveDatasetNotFoundError: At least one requested dataset does not exist.
             InnerKnowledgeRetrieveDatasetTenantMismatchError:
                 At least one requested dataset is outside the caller tenant.
+            InnerKnowledgeRetrievalServiceError: All attempted searches failed without a result.
         """
         self._validate_caller_app(tenant_id=request.caller.tenant_id, app_id=request.caller.app_id, session=session)
         self._validate_datasets(tenant_id=request.caller.tenant_id, dataset_ids=request.dataset_ids, session=session)
 
         rag = DatasetRetrieval()
-        results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
+        try:
+            results = rag.knowledge_retrieval(session=session, request=self._to_rag_request(request))
+        except AllDatasetRetrievalsFailedError as exc:
+            raise InnerKnowledgeRetrievalServiceError() from exc
         return InnerKnowledgeRetrieveResponse(
             results=results,
             usage=InnerKnowledgeRetrieveUsage.model_validate(jsonable_encoder(rag.llm_usage)),
