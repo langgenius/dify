@@ -4,7 +4,7 @@ import type { ExternalTracingConfigurationResponse } from '@dify/contracts/api/c
 import type { ConfigurableTracingProvider } from '@/app/components/app/tracing/providers'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Field } from '@langgenius/dify-ui/field'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
@@ -103,12 +103,14 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
       context: { silent: true },
     }),
   )
-  const [editor, setEditor] = useState<{
-    config: ExternalTracingConfigurationResponse | undefined
-    inUse: boolean
-    provider: ConfigurableTracingProvider
-    open: boolean
-  } | null>(null)
+  const [editor] = useState(() =>
+    createDialogHandle<{
+      config: ExternalTracingConfigurationResponse | undefined
+      inUse: boolean
+      provider: ConfigurableTracingProvider
+    }>(),
+  )
+  const [editorOpen, setEditorOpen] = useState(false)
   const [preparingProvider, setPreparingProvider] = useState<ConfigurableTracingProvider | null>(
     null,
   )
@@ -124,8 +126,7 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
     provider: selectedProvider,
     enabled: selectedProvider !== null && selectedProvider === overview.data?.enabled_provider,
   }
-  const configuringProvider = editor?.provider ?? null
-  const closeEditor = () => setEditor((current) => current && { ...current, open: false })
+  const closeEditor = () => editor.close()
   const selectedProviderConfig = selectedProvider ? configs.get(selectedProvider) : undefined
   const isWriting = preparingProvider !== null || save.isPending || remove.isPending
   const cannotEnable = isWriting || (!configuration.enabled && !selectedProviderConfig)
@@ -195,11 +196,11 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
     setPreparingProvider(provider)
     try {
       const response = await readProviderConfig(provider)
-      setEditor({
+      if (editor.isOpen) return
+      editor.openWithPayload({
         config: response.configuration ?? undefined,
         inUse: configuration.enabled && provider === selectedProvider,
         provider,
-        open: true,
       })
     } catch (error) {
       setActionError(error)
@@ -237,18 +238,15 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
       { onSuccess: closeEditor },
     )
   }
-  async function refreshEditor() {
-    if (!editor || isWriting) return
-    const { provider } = editor
+  async function refreshEditor(payload: { provider: ConfigurableTracingProvider; inUse: boolean }) {
+    if (!editor.isOpen || isWriting) return
+    const { provider } = payload
     setPreparingProvider(provider)
     setActionError(undefined)
     try {
       const response = await readProviderConfig(provider)
-      setEditor((current) =>
-        current?.provider === provider
-          ? { ...current, config: response.configuration ?? undefined }
-          : current,
-      )
+      if (editor.isOpen)
+        editor.openWithPayload({ ...payload, config: response.configuration ?? undefined })
     } catch (error) {
       setActionError(error)
     } finally {
@@ -375,7 +373,7 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
               </div>
             </div>
           </Field>
-          {failureMessage && !editor?.open && (
+          {failureMessage && !editorOpen && (
             <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
               {failureMessage}
             </p>
@@ -435,35 +433,43 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
         </div>
       </PopoverContent>
       <Dialog
+        handle={editor}
         disablePointerDismissal
-        open={editor?.open ?? false}
-        onOpenChange={(open) => {
-          if (!open) closeEditor()
+        onOpenChange={(open, details) => {
+          if (!open && isWriting && details.reason !== 'imperative-action') {
+            details.cancel()
+            return
+          }
+          setEditorOpen(open)
         }}
         onOpenChangeComplete={(open) => {
-          if (!open) setEditor(null)
+          if (!open) {
+            save.reset()
+            remove.reset()
+          }
         }}
       >
-        <DialogContent className="w-160">
-          {configuringProvider && (
-            <ProviderConfigurationDialog
-              key={configuringProvider}
-              config={editor?.config}
-              inUse={editor?.inUse ?? false}
-              provider={configuringProvider}
-              onRemove={() => {
-                if (editor?.config)
-                  removeProviderConfig(configuringProvider, editor.config.revision)
-              }}
-              onSave={(values, captureContent) =>
-                saveProviderConfig(configuringProvider, values, captureContent, editor?.config)
-              }
-              pending={isWriting}
-              error={failureMessage}
-              onRefresh={() => void refreshEditor()}
-            />
-          )}
-        </DialogContent>
+        {({ payload }) =>
+          payload && (
+            <DialogContent className="w-160">
+              <ProviderConfigurationDialog
+                config={payload.config}
+                inUse={payload.inUse}
+                provider={payload.provider}
+                onRemove={() => {
+                  if (payload.config)
+                    removeProviderConfig(payload.provider, payload.config.revision)
+                }}
+                onSave={(values, captureContent) =>
+                  saveProviderConfig(payload.provider, values, captureContent, payload.config)
+                }
+                pending={isWriting}
+                error={failureMessage}
+                onRefresh={() => void refreshEditor(payload)}
+              />
+            </DialogContent>
+          )
+        }
       </Dialog>
     </Popover>
   )

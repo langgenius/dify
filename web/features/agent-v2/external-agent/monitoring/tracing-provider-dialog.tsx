@@ -63,7 +63,6 @@ export function ProviderConfigurationDialog({
   onRefresh,
 }: ProviderConfigurationDialogProps) {
   const { t } = useTranslation(['app', 'common', 'agentRoster'])
-  const [confirmingRemoval, setConfirmingRemoval] = useState(false)
   const [captureContent, setCaptureContent] = useState(config?.capture_content ?? false)
   const fields: readonly TracingProviderField[] = tracingProviders[provider].fields
   const isEdit = !!config
@@ -197,7 +196,7 @@ export function ProviderConfigurationDialog({
           </a>
           {isEdit && (
             <>
-              <AlertDialog open={confirmingRemoval} onOpenChange={setConfirmingRemoval}>
+              <AlertDialog>
                 <AlertDialogTrigger render={<Button tone="destructive" disabled={pending} />}>
                   {t(($) => $['operation.remove'], { ns: 'common' })}
                 </AlertDialogTrigger>
@@ -223,12 +222,7 @@ export function ProviderConfigurationDialog({
                     <AlertDialogCancelButton>
                       {t(($) => $['operation.cancel'], { ns: 'common' })}
                     </AlertDialogCancelButton>
-                    <AlertDialogConfirmButton
-                      onClick={() => {
-                        setConfirmingRemoval(false)
-                        onRemove()
-                      }}
-                    >
+                    <AlertDialogConfirmButton onClick={onRemove}>
                       {t(($) => $['operation.remove'], { ns: 'common' })}
                     </AlertDialogConfirmButton>
                   </AlertDialogFooter>

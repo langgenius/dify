@@ -20,7 +20,6 @@ async function renderDemo(
   searchParams = '',
   direction: 'ltr' | 'rtl' = 'ltr',
 ) {
-  await page.viewport(1440, 900)
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient)
   seedCurrentWorkspaceQuery(queryClient, { role })
@@ -44,19 +43,28 @@ async function renderDemo(
   )
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
+  await page.viewport(1440, 900)
 })
 
 async function startPlayback(screen: Awaited<ReturnType<typeof renderDemo>>) {
   await expect
     .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
     .toHaveFocus()
-  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await userEvent.keyboard('{Tab}{Tab}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.steps.members.action' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Enter}')
   await expect
     .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.comment\.title/ }))
     .toHaveFocus()
-  await userEvent.keyboard('{Tab}{Tab}{Enter}')
+  await userEvent.keyboard('{Tab}{Tab}')
+  await expect
+    .element(screen.getByRole('button', { name: 'collaborationDemo.steps.comment.action' }))
+    .toHaveFocus()
+  await userEvent.keyboard('{Enter}')
   await expect
     .element(screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }))
     .toHaveFocus()
@@ -306,8 +314,9 @@ it('lays out playback and the thread in the page direction, which React Flow res
 })
 
 it("keeps the playback controls above the preview's zoom control on a narrow canvas", async () => {
-  const screen = await renderDemo('owner')
+  // Measure and focus the guide at the viewport this test uses, before keyboard input.
   await page.viewport(375, 900)
+  const screen = await renderDemo('owner')
   await startPlayback(screen)
   const pause = screen.getByRole('button', { name: 'collaborationDemo.playback.pause' }).element()
   const box = pause.getBoundingClientRect()

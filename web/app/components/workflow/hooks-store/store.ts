@@ -1,3 +1,7 @@
+import type {
+  WorkflowRunDetailResponse,
+  WorkflowRunNodeExecutionResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { SchemaDefinitionItemResponse } from '@dify/contracts/api/console/spec/types.gen'
 import type { FileUpload } from '../../base/features/types'
 import type {
@@ -7,7 +11,7 @@ import type {
   ValueSelector,
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { EnvironmentVariablePatch } from '@/service/workflow'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
@@ -15,6 +19,13 @@ import { use } from 'react'
 import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+
+export type WorkflowRunCallbacks = StreamCallbacks & {
+  onExternalWorkflowSnapshot?: (
+    run: WorkflowRunDetailResponse,
+    executions: WorkflowRunNodeExecutionResponse[],
+  ) => void
+}
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]
@@ -61,7 +72,7 @@ type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
+  handleRun: (params: any, callback?: WorkflowRunCallbacks, options?: any) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
@@ -71,7 +82,6 @@ type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<boolean>
   isExporting: boolean
@@ -130,10 +140,6 @@ export const createHooksStore = ({
   availableNodesMetaData = {
     nodes: [],
   },
-  getWorkflowRunAndTraceUrl = () => ({
-    runUrl: '',
-    traceUrl: '',
-  }),
   exportCheck = async () => noop(),
   handleExportDSL = async () => false,
   isExporting = false,
@@ -173,7 +179,6 @@ export const createHooksStore = ({
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
     availableNodesMetaData,
-    getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
     isExporting,

@@ -528,6 +528,24 @@ it('requires a deletion-impact response and retains reachable focus after server
     .toHaveFocus()
 })
 
+it('switches deletion to disabling the same agent without sending a delete request', async () => {
+  await setup()
+  await openActions('Contract Review Agent')
+  await page.getByRole('menuitem', { name: 'Delete agent', exact: true }).click()
+  const deletion = page.getByRole('alertdialog', { name: 'Delete agent?', exact: true })
+  await expect.element(deletion).toBeVisible()
+  await deletion.getByRole('button', { name: 'Disable agent', exact: true }).click()
+  const disabling = page.getByRole('alertdialog', { name: 'Disable agent?', exact: true })
+  await expect.element(disabling).toBeVisible()
+  await disabling.getByRole('button', { name: 'Disable agent', exact: true }).click()
+  await expect.element(disabling).not.toBeInTheDocument()
+  expect(requests.enabled).toHaveBeenCalledExactlyOnceWith({
+    params: { agent_id: createExternalAgentAsset().id },
+    body: { enabled: false },
+  })
+  expect(requests.remove).not.toHaveBeenCalled()
+})
+
 it('loads only the active roster and removes outgoing filters from the URL on tab changes', async () => {
   const tagIds = agentTags.map((tag) => tag.id)
   const { onUrlUpdate } = await setup({

@@ -1,9 +1,9 @@
 import type { ExternalTestFileAccessResponse } from '@dify/contracts/api/console/external-agents/types.gen'
 import { ORPCError } from '@orpc/client'
-import { act } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
+import { act } from '@/test/react-act'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { agentId, childId, renderTestPanel, testOverview, testResult } from './test-run-fixture'
 
@@ -101,11 +101,15 @@ it('previews nested published files and refreshes expired signatures using the c
   await expect
     .element(panel().getByRole('status').getByText('Running', { exact: true }))
     .toBeVisible()
-  await act(() => vi.advanceTimersByTimeAsync(1_500))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_500)
+  })
   await expect.element(preview()).toHaveAttribute('href', originalUrl)
   await expect.element(panel().getByText('The actual agent report.', { exact: true })).toBeVisible()
   expect(api.access).not.toHaveBeenCalled()
-  await act(() => vi.advanceTimersByTimeAsync(60_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000)
+  })
   await expect.poll(() => api.access.mock.calls.length).toBe(1)
   await expect.element(preview()).not.toBeInTheDocument()
   await expect
@@ -129,7 +133,9 @@ it('previews nested published files and refreshes expired signatures using the c
   await expect.element(preview()).toHaveAttribute('target', '_blank')
   await panel().getByRole('button', { name: 'Close', exact: true }).click()
   await expect.element(panel()).not.toBeInTheDocument()
-  await act(() => vi.advanceTimersByTimeAsync(120_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(120_000)
+  })
   expect(api.access).toHaveBeenCalledTimes(1)
 })
 
@@ -168,7 +174,9 @@ it('removes expired hrefs after ownership or source-lease loss and stops refresh
   onTestFinished(() => rendered.queryClient.clear())
   await run()
   await expect.element(preview()).toHaveAttribute('href', originalUrl)
-  await act(() => vi.advanceTimersByTimeAsync(60_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000)
+  })
   await expect
     .element(panel().getByText('This file is no longer available.', { exact: true }))
     .toBeVisible()
@@ -179,7 +187,9 @@ it('removes expired hrefs after ownership or source-lease loss and stops refresh
   await expect
     .element(panel().getByRole('button', { name: 'Retry', exact: true }))
     .not.toBeInTheDocument()
-  await act(() => vi.advanceTimersByTimeAsync(180_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(180_000)
+  })
   expect(api.access).toHaveBeenCalledTimes(1)
 })
 
@@ -196,7 +206,9 @@ it('keeps unavailable output metadata without trying to revive a known expired s
     .element(panel().getByText('This file is no longer available.', { exact: true }))
     .toBeVisible()
   await expect.element(preview()).not.toBeInTheDocument()
-  await act(() => vi.advanceTimersByTimeAsync(180_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(180_000)
+  })
   expect(api.access).not.toHaveBeenCalled()
 })
 
@@ -208,7 +220,9 @@ it('does not reuse an old generation signature response for a new run', async ()
   onTestFinished(() => rendered.queryClient.clear())
   await run()
   await expect.element(preview()).toHaveAttribute('href', originalUrl)
-  await act(() => vi.advanceTimersByTimeAsync(60_000))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60_000)
+  })
   await expect.poll(() => api.access.mock.calls.length).toBe(1)
   const overview = testOverview()
   await rendered.rerenderOverview({

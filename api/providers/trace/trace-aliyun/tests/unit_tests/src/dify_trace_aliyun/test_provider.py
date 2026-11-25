@@ -89,8 +89,8 @@ def _rendered(error: Exception) -> str:
     return str(error) + repr(error) + "".join(traceback.format_exception(error))
 
 
-@pytest.mark.parametrize("ack", [SUCCESS_ACK, response(200, "success")])
-def test_verify_posts_one_resource_without_spans_and_accepts_the_literal_ack(ack: EgressResponse) -> None:
+@pytest.mark.parametrize("ack", [SUCCESS_ACK, response(200, "success"), response(200, b"")])
+def test_verify_posts_one_resource_without_spans_and_accepts_success_acknowledgments(ack: EgressResponse) -> None:
     provider, egress = _provider(ack)
     assert provider.verify(CONFIG) == CONFIG
 
@@ -105,14 +105,17 @@ def test_verify_posts_one_resource_without_spans_and_accepts_the_literal_ack(ack
 @pytest.mark.parametrize(
     "outcome",
     [
-        response(200, b""),
         response(200, b"{}"),
+        response(200, _partial_success()),
+        response(200, b"not-protobuf-\xff"),
         response(200, b"success"),
         response(200, b'"success"\n'),
         response(200, b'"failure"'),
         response(201, b'"success"'),
         response(204, b""),
+        response(401, b""),
         response(401, b"private-response"),
+        response(403, b""),
         response(403, b"private-response"),
         response(405, b"private-response"),
         response(503, b"private-response"),

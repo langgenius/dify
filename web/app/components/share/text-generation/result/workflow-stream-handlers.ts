@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type {
   HumanInputFormTimeoutData,
   NodeTracing,
@@ -17,7 +17,8 @@ import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { isExternalWaitOnly } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { sseGet } from '@/service/base'
+import { streamEvents } from '@/service/event-stream'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
 
 type Notify = (payload: { type: 'error' | 'warning'; message: string }) => void
 type CreateWorkflowStreamHandlersParams = {
@@ -28,7 +29,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
-  onPaused?: (workflowRunId: string, handlers: IOtherOptions) => void
+  onPaused?: (workflowRunId: string, handlers: StreamCallbacks) => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -270,7 +271,7 @@ export const createWorkflowStreamHandlers = ({
   setWorkflowProcessData,
   t,
   taskId,
-}: CreateWorkflowStreamHandlersParams): IOtherOptions => {
+}: CreateWorkflowStreamHandlersParams): StreamCallbacks => {
   let tempMessageId = ''
   let hasStartedResumeStream = false
 
@@ -289,7 +290,7 @@ export const createWorkflowStreamHandlers = ({
     markEnded()
   }
 
-  const otherOptions: IOtherOptions = {
+  const otherOptions: StreamCallbacks = {
     isPublicAPI,
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
@@ -424,11 +425,7 @@ export const createWorkflowStreamHandlers = ({
       }
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
-        void sseGet(
-          `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
-          {},
-          otherOptions,
-        )
+        streamEvents(workflowRunEventsRequest(data.workflow_run_id, { isPublicAPI }), otherOptions)
       }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData(), data.reasons))
     },

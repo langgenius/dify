@@ -108,12 +108,8 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
           <span className="px-1 system-sm-regular text-text-tertiary">{label}</span>
           {selectedCreators.length > 0 && (
             <AvatarGroup size="xs">
-              {selectedCreators.slice(0, 3).map((creator, index, visible) => (
-                <Avatar
-                  key={creator.id}
-                  aria-hidden="true"
-                  style={{ zIndex: visible.length - index }}
-                >
+              {selectedCreators.slice(0, 3).map((creator) => (
+                <Avatar key={creator.id} aria-hidden="true">
                   <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
                   <AvatarImage src={creator.avatar_url || undefined} alt="" />
                 </Avatar>

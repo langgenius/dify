@@ -57,11 +57,12 @@ class AliyunProvider(TraceProvider[AliyunConfig]):
 
     @override
     def verify(self, config: AliyunConfig) -> AliyunConfig:
-        """Post one resource with zero spans and require the collector's literal acknowledgment.
+        """Post one resource with zero spans and accept HTTP 200 success acknowledgments.
 
-        The collector distinguishes valid from invalid license keys for this
-        request, whereas an empty OTLP acknowledgment proves nothing. Success
-        does not establish that business spans are retained.
+        A validated, unmasked configuration is returned unchanged only for the
+        collector's literal acknowledgment or an empty protobuf OTLP response.
+        Other responses and transport failures raise VerificationError without
+        exposing credentials. Success does not establish business-span retention.
         """
         if _is_masked(config):
             raise VerificationError("invalid_license_key")
@@ -79,7 +80,7 @@ class AliyunProvider(TraceProvider[AliyunConfig]):
             )
         except EgressError:
             raise VerificationError("verification_failed") from None
-        if not _is_success_ack(response):
+        if not _is_success_ack(response) and not (response.status_code == 200 and response.content == b""):
             raise VerificationError("verification_failed")
         return config
 

@@ -1079,7 +1079,9 @@ export type PatchInstalledAppsByInstalledAppIdResponse =
   PatchInstalledAppsByInstalledAppIdResponses[keyof PatchInstalledAppsByInstalledAppIdResponses]
 
 export type PostInstalledAppsByInstalledAppIdAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     installed_app_id: string
   }

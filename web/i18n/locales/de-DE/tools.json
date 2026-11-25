@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "Alle Workflows als Tool",
   "auth.authorized": "Autorisiert",
   "auth.setup": "Autorisierung einrichten, um zu nutzen",
-  "auth.setupModalTitle": "Autorisierung einrichten",
-  "auth.setupModalTitleDescription": "Nach der Konfiguration der Anmeldeinformationen können alle Mitglieder im Arbeitsbereich dieses Werkzeug beim Orchestrieren von Anwendungen nutzen.",
   "auth.unauthorized": "Unbefugt",
   "author": "Von",
   "builtInPromptTitle": "Aufforderung",

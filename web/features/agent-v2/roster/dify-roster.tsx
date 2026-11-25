@@ -2,11 +2,12 @@
 
 import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from './components/agent-roster-list'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState, useQueryStates } from 'nuqs'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
+import { TagManagementDialogContent } from '@/features/tag-management/tag-management-dialog'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterList } from './components/agent-roster-list'
 import { RosterToolbar } from './components/roster-toolbar'
@@ -35,7 +36,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
   const queryClient = useQueryClient()
   const [filters, setFilters] = useQueryStates(rosterFilters)
   const { keyword, filter: rosterFilter, created_by_me: createdByMe, tag_ids: urlTagIds } = filters
-  const searchRef = useRef<HTMLInputElement>(null)
+  const allStatusRef = useRef<HTMLButtonElement>(null)
   const tagCatalog = useQuery(
     consoleQuery.tags.get.queryOptions({
       input: { query: { type: 'agent' } },
@@ -54,7 +55,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
     void setFilters({ tag_ids: tagIds })
   }, [tagIds, urlTagIds, setFilters])
   const scrollViewportRef = useRef<HTMLDivElement>(null)
-  const [tagManagementOpen, setTagManagementOpen] = useState(false)
+  const [tagManagementDialog] = useState(() => createDialogHandle())
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const trimmedKeyword = keyword.trim()
   const delayedKeyword = useDebounce(trimmedKeyword, { wait: 300 })
@@ -115,7 +116,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
                   onClearFilters: () => {
                     resetRosterPagination({ query: firstUnfilteredPage })
                     void setFilters(null)
-                    searchRef.current?.focus()
+                    allStatusRef.current?.focus()
                   },
                 }
               : 'roster',
@@ -132,7 +133,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
                 : { status: 'none' },
           isFetching,
         }
-  const openTagManagement = () => setTagManagementOpen(true)
+  const openTagManagement = () => tagManagementDialog.open(null)
 
   return (
     <div
@@ -141,7 +142,7 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
     >
       <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-3.5 pb-2 sm:px-8">
         <RosterToolbar
-          searchRef={searchRef}
+          allStatusRef={allStatusRef}
           publicationCounts={publicationCounts}
           tagIds={tagIds}
           onTagIdsChange={(nextIds) => {
@@ -157,11 +158,9 @@ export function DifyRoster({ labelledBy }: { labelledBy: string }) {
         state={listState}
         onOpenTagManagement={openTagManagement}
       />
-      <TagManagementDialog
-        type="agent"
-        show={tagManagementOpen}
-        onClose={() => setTagManagementOpen(false)}
-      />
+      <Dialog handle={tagManagementDialog}>
+        <TagManagementDialogContent type="agent" />
+      </Dialog>
     </div>
   )
 }

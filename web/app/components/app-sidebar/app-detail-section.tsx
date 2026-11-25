@@ -16,7 +16,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
-import AppInfoHeader from './app-info/app-info-header'
+import { AppInfoHeader } from './app-info/app-info-header'
 import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 

@@ -1433,6 +1433,10 @@ export const zPatchInstalledAppsByInstalledAppIdPath = z.object({
  */
 export const zPatchInstalledAppsByInstalledAppIdResponse = zSimpleResultMessageResponse
 
+export const zPostInstalledAppsByInstalledAppIdAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 export const zPostInstalledAppsByInstalledAppIdAudioToTextPath = z.object({
   installed_app_id: z.uuid(),
 })

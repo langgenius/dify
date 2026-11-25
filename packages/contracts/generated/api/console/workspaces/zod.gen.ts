@@ -1088,6 +1088,13 @@ export const zSkillListResponse = z.object({
 })
 
 /**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
+/**
  * SkillFilePreviewResponse
  */
 export const zSkillFilePreviewResponse = z.object({
@@ -7905,6 +7912,10 @@ export const zPostWorkspacesCurrentPluginUpgradeMarketplaceBody = zParserMarketp
 export const zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
   zPluginInstallTaskStartResponse
 
+export const zPostWorkspacesCurrentPluginUploadBundleBody = z.object({
+  bundle: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -8743,7 +8754,7 @@ export const zGetWorkspacesCurrentSkillsBySkillIdExportPath = z.object({
 /**
  * Draft Skill zip archive
  */
-export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = z.record(z.string(), z.unknown())
+export const zGetWorkspacesCurrentSkillsBySkillIdExportResponse = zBinaryFileResponse
 
 export const zPatchWorkspacesCurrentSkillsBySkillIdFilesBody = zSkillDraftFileOperationPayload
 
