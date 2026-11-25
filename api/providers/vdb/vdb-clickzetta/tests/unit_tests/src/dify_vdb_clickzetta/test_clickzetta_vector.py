@@ -14,14 +14,14 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
-def _build_fake_clickzetta_module() -> FakeModule:
+def _build_fake_clickzetta_module(*, rows: list[tuple[str, str, str]] | None = None) -> FakeModule:
     clickzetta = FakeModule("clickzetta")
 
     class _FakeCursor:
         def __init__(self) -> None:
             self.execute = MagicMock()
             self.executemany = MagicMock()
-            self.fetchall = MagicMock(return_value=[])
+            self.fetchall = MagicMock(return_value=rows if rows is not None else [])
             self.fetchone = MagicMock(return_value=(0,))
 
         def __enter__(self) -> Self:
@@ -247,7 +247,7 @@ def test_factory_initializes_clickzetta_vector(clickzetta_module: ModuleType, mo
 
 
 @pytest.mark.parametrize(
-    ("config_value", "expected"),
+    ("config_value", "returns_matches"),
     [
         (True, True),
         (False, False),
@@ -258,20 +258,12 @@ def test_factory_honors_the_inverted_index_toggle(
     clickzetta_module: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
     config_value: bool | None,
-    expected: bool,
+    returns_matches: bool,
 ) -> None:
-    """The factory must forward the configured toggle instead of falling back to ``True``.
-
-    ``CLICKZETTA_ENABLE_INVERTED_INDEX`` is nullable on the config source, while the
-    provider-side ``ClickzettaConfig.enable_inverted_index`` is a non-optional ``bool``.
-    Preconditions: a configured dataset and the required Clickzetta credentials.
-    Postconditions: the value handed to ``ClickzettaVector`` equals the configured
-    value, and ``None`` resolves to the provider default ``True``.
-    """
+    """Search through the initialized vector unless full-text search is explicitly disabled."""
     factory = clickzetta_module.ClickzettaVectorFactory()
     dataset = Dataset(id="dataset-1")
 
-    monkeypatch.setattr(clickzetta_module.Dataset, "gen_collection_name_by_id", lambda _id: "COLLECTION")
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_USERNAME", "username")
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_PASSWORD", "password")
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_INSTANCE", "instance")
@@ -285,11 +277,26 @@ def test_factory_honors_the_inverted_index_toggle(
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_ANALYZER_MODE", "smart")
     monkeypatch.setattr(clickzetta_module.dify_config, "CLICKZETTA_VECTOR_DISTANCE_FUNCTION", "cosine_distance")
 
-    with patch.object(clickzetta_module, "ClickzettaVector", return_value="vector") as vector_cls:
-        factory.init_vector(dataset, attributes=[], embeddings=None, session=None)  # type: ignore[arg-type]
+    clickzetta = _build_fake_clickzetta_module(rows=[("chunk-1", "matching text", '{"document_id": "doc-1"}')])
+    monkeypatch.setattr(clickzetta_module, "clickzetta", clickzetta)
+    vector = factory.init_vector(dataset, attributes=[], embeddings=None, session=None)  # type: ignore[arg-type]
 
-    config = vector_cls.call_args.kwargs["config"]
-    assert config.enable_inverted_index is expected
+    try:
+        matches = vector.search_by_full_text("matching")
+        expected = (
+            [
+                Document(
+                    page_content="matching text", metadata={"doc_id": "chunk-1", "document_id": "doc-1", "score": 1.0}
+                )
+            ]
+            if returns_matches
+            else []
+        )
+        assert matches == expected
+    finally:
+        clickzetta_module.ClickzettaConnectionPool.get_instance().shutdown()
+        clickzetta_module.ClickzettaVector._write_queue.put(None)
+        clickzetta_module.ClickzettaVector._write_thread.join(timeout=1)
 
 
 def test_connection_pool_singleton_and_config_key(
