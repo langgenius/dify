@@ -6,6 +6,7 @@ import {
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -151,8 +152,15 @@ const renderDetail = (collection: Collection, permissions = ['tool.manage']) => 
       workspacePermissionKeys: permissions,
     },
   )
-  return { onRefreshData }
+  return { onRefreshData, queryClient }
 }
+
+const customActionsKey = consoleQuery.workspaces.current.toolProvider.api.tools.get.queryKey({
+  input: { query: { provider: 'Search API' } },
+})
+const workflowActionsKey = consoleQuery.workspaces.current.toolProvider.workflow.tools.get.queryKey(
+  { input: { query: { workflow_tool_id: 'workflow-id' } } },
+)
 
 beforeEach(() => {
   api.builtinTools.mockReset().mockResolvedValue([tool])
@@ -240,6 +248,18 @@ it('persists custom tool labels when the refreshed parent still has the old labe
   ).toBeInTheDocument()
 })
 
+it('refreshes the cached custom tool actions after its schema is saved', async () => {
+  const user = userEvent.setup()
+  const { queryClient } = renderDetail(custom)
+  queryClient.setQueryData(customActionsKey, [])
+  await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
+  const editor = await screen.findByRole('dialog', { name: 'tools.createTool.editTitle' })
+  expect(queryClient.getQueryState(customActionsKey)?.isInvalidated).toBe(false)
+  await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(api.customUpdate).toHaveBeenCalledOnce())
+  await waitFor(() => expect(queryClient.getQueryState(customActionsKey)?.isInvalidated).toBe(true))
+})
+
 it.each([
   { collection: custom, title: 'tools.createTool.editTitle', name: 'Search API' },
   { collection: workflow, title: 'navigation.common.workflowAsTool', name: 'Workflow Tool' },
@@ -266,7 +286,8 @@ it.each([
 
 it('updates a workflow tool only after confirmation and reloads the saved configuration', async () => {
   const user = userEvent.setup()
-  const { onRefreshData } = renderDetail(workflow)
+  const { onRefreshData, queryClient } = renderDetail(workflow)
+  queryClient.setQueryData(workflowActionsKey, [])
   await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
   const editor = await screen.findByRole('dialog', { name: 'navigation.common.workflowAsTool' })
   expect(
@@ -301,6 +322,7 @@ it('updates a workflow tool only after confirmation and reloads the saved config
     ).not.toBeInTheDocument(),
   )
   expect(onRefreshData).toHaveBeenCalledOnce()
+  expect(queryClient.getQueryState(workflowActionsKey)?.isInvalidated).toBe(true)
   await user.click(await screen.findByRole('button', { name: 'tools.createTool.editAction' }))
   const reopened = await screen.findByRole('dialog', { name: 'navigation.common.workflowAsTool' })
   expect(within(reopened).getByRole('textbox', { name: /^tools.createTool.name\b/ })).toHaveValue(
