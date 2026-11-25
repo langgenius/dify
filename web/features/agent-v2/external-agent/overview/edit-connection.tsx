@@ -5,6 +5,7 @@ import type {
   ExternalAgentDetailResponse,
   ExternalAgentVerificationResponse,
 } from '@dify/contracts/api/console/external-agents/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ExternalConnectionSettings } from '../../roster/components/external-connection-verification'
 import type { ExternalAgentOverview } from '../model'
 import type { ExternalConnectionComparisonSnapshot } from './edit-connection-snapshot'
@@ -48,7 +49,8 @@ import {
 function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }) {
   const { t } = useTranslation(['agentRoster', 'common'])
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const [open, setOpen] = useState(false)
+  const dialogActionsRef = useRef<DialogActions>(null)
+  // An ambiguous save must retain the submitted request and its review across close/reopen.
   const [baseDetail, setBaseDetail] = useState<ExternalAgentDetailResponse>()
   const base = useMemo(() => baseDetail && toExternalAgentOverview(baseDetail), [baseDetail])
   const [review, setReview] = useState<ExternalAgentVerificationResponse>()
@@ -119,7 +121,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   useEffect(() => {
     if (identityScopeRef.current !== verification.identityScope) {
       identityScopeRef.current = verification.identityScope
-      setOpen(false)
+      dialogActionsRef.current?.close()
       reset()
     }
   }, [verification.identityScope, reset])
@@ -241,7 +243,7 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
           if (scopeRef.current === scope) {
             setSaveUnknown(false)
             setSubmitted(undefined)
-            setOpen(false)
+            dialogActionsRef.current?.close()
           }
         },
         onError: (error) => {
@@ -298,14 +300,14 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
   return (
     <Dialog
       disablePointerDismissal
-      open={open}
+      actionsRef={dialogActionsRef}
       onOpenChange={(next, details) => {
-        if (pending) details.cancel()
-        else {
-          setOpen(next)
-          if (next) openSession()
-          else loadEpochRef.current += 1
+        if (!next && pending && details.reason !== 'imperative-action') {
+          details.cancel()
+          return
         }
+        if (next) openSession()
+        else loadEpochRef.current += 1
       }}
       onOpenChangeComplete={(next) => {
         if (!next && !saveUnknown) reset()
@@ -351,9 +353,9 @@ function EditConnectionSession({ overview }: { overview: ExternalAgentOverview }
               />
             </DialogBody>
             <DialogFooter className="max-sm:flex-col max-sm:items-stretch">
-              <Button variant="secondary" onClick={() => setOpen(false)}>
+              <DialogClose render={<Button variant="secondary" disabled={pending} />}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
-              </Button>
+              </DialogClose>
               <Button
                 variant="secondary"
                 disabled={detail.isFetching || resolvingConflict || !latest}

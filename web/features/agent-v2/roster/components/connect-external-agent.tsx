@@ -4,6 +4,7 @@ import type {
   ExternalAgentCreatePayload,
   ExternalAgentVerificationResponse,
 } from '@dify/contracts/api/console/external-agents/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { ExternalAgentConnectionDetails } from './external-agent-details-form'
 import type { ExternalConnectionSettings } from './external-connection-verification'
 import { Button } from '@langgenius/dify-ui/button'
@@ -43,7 +44,8 @@ const emptyDetails: ExternalAgentConnectionDetails = { name: '', role: '', descr
 export function ConnectExternalAgent() {
   const { t } = useTranslation(['agentRoster', 'common'])
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const dialogActionsRef = useRef<DialogActions>(null)
+  // An ambiguous save must retain the submitted request and its review across close/reopen.
   const [step, setStep] = useState<'connection' | 'details'>('connection')
   const [settings, setSettings] = useState(emptySettings)
   const [details, setDetails] = useState(emptyDetails)
@@ -79,7 +81,7 @@ export function ConnectExternalAgent() {
   useEffect(() => {
     if (previousScopeRef.current !== verification.scope) {
       previousScopeRef.current = verification.scope
-      setOpen(false)
+      dialogActionsRef.current?.close()
       reset()
     }
   }, [verification.scope, reset])
@@ -111,7 +113,7 @@ export function ConnectExternalAgent() {
           if (currentScopeRef.current !== requestScope) return
           setSaveUnknown(false)
           setSubmitted(undefined)
-          setOpen(false)
+          dialogActionsRef.current?.close()
           router.push(getExternalAgentOverviewPath(operation.resource_id))
         },
         onError: (failure) => {
@@ -138,10 +140,9 @@ export function ConnectExternalAgent() {
   return (
     <Dialog
       disablePointerDismissal
-      open={open}
+      actionsRef={dialogActionsRef}
       onOpenChange={(next, eventDetails) => {
-        if (pending) eventDetails.cancel()
-        else setOpen(next)
+        if (!next && pending && eventDetails.reason !== 'imperative-action') eventDetails.cancel()
       }}
       onOpenChangeComplete={(next) => {
         if (!next && !saveUnknown) reset()
