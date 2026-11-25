@@ -30,8 +30,7 @@ export function useCommandContext(
   // `appId` segment for different resources (for example installed apps).
   const { data: appDetail } = useQuery(
     consoleQuery.apps.byAppId.get.queryOptions({
-      input: routeAppId ? { params: { app_id: routeAppId } } : skipToken,
-      enabled: isWorkflowPage,
+      input: isWorkflowPage && routeAppId ? { params: { app_id: routeAppId } } : skipToken,
     }),
   )
   const appId = appDetail?.id
