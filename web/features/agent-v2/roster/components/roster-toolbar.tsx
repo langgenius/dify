@@ -19,7 +19,7 @@ import { RosterCreateMenu } from './roster-create-menu'
 import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
-  searchRef?: Ref<HTMLInputElement>
+  allStatusRef?: Ref<HTMLButtonElement>
   publicationCounts: AgentPublicationCountsResponse
   tagIds: string[]
   onTagIdsChange: (tagIds: string[]) => void
@@ -29,12 +29,17 @@ type RosterToolbarProps = {
 type RosterFilterItemProps = {
   count?: number
   label: string
+  ref?: Ref<HTMLButtonElement>
   value: RosterFilterValue
 }
 
-function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
+function RosterFilterItem({ count, label, ref, value }: RosterFilterItemProps) {
   return (
-    <SegmentedControlItem value={value} className="gap-1 data-checked:text-text-secondary">
+    <SegmentedControlItem
+      ref={ref}
+      value={value}
+      className="gap-1 data-checked:text-text-secondary"
+    >
       <span>{label}</span>
       {count !== undefined && (
         <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
@@ -45,7 +50,10 @@ function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
   )
 }
 
-function RosterStatusFilter({ publicationCounts }: Pick<RosterToolbarProps, 'publicationCounts'>) {
+function RosterStatusFilter({
+  allStatusRef,
+  publicationCounts,
+}: Pick<RosterToolbarProps, 'allStatusRef' | 'publicationCounts'>) {
   const { t } = useTranslation(['agentRoster'])
   const [filter, setFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
 
@@ -57,6 +65,7 @@ function RosterStatusFilter({ publicationCounts }: Pick<RosterToolbarProps, 'pub
       onValueChange={(value) => void setFilter(value)}
     >
       <RosterFilterItem
+        ref={allStatusRef}
         value="all"
         label={t(($) => $['roster.filters.all'], { ns: 'agentRoster' })}
       />
@@ -74,7 +83,7 @@ function RosterStatusFilter({ publicationCounts }: Pick<RosterToolbarProps, 'pub
   )
 }
 
-function RosterSearchFilter({ searchRef }: Pick<RosterToolbarProps, 'searchRef'>) {
+function RosterSearchFilter() {
   const { t } = useTranslation(['agentRoster'])
   const [keyword, setKeyword] = useQueryState(
     rosterQueryParamNames.keyword,
@@ -83,7 +92,6 @@ function RosterSearchFilter({ searchRef }: Pick<RosterToolbarProps, 'searchRef'>
 
   return (
     <SearchInput
-      ref={searchRef}
       aria-label={t(($) => $['roster.searchLabel'], { ns: 'agentRoster' })}
       className="h-8 w-full min-w-0 sm:w-50"
       placeholder={t(($) => $['roster.searchPlaceholder'], { ns: 'agentRoster' })}
@@ -118,16 +126,16 @@ function RosterCreatedByMeFilter() {
 }
 
 export function RosterToolbar({
+  allStatusRef,
   publicationCounts,
-  searchRef,
   tagIds,
   onTagIdsChange,
   onOpenTagManagement,
 }: RosterToolbarProps) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <RosterStatusFilter publicationCounts={publicationCounts} />
-      <RosterSearchFilter searchRef={searchRef} />
+      <RosterStatusFilter allStatusRef={allStatusRef} publicationCounts={publicationCounts} />
+      <RosterSearchFilter />
       <div className="hidden h-4 shrink-0 px-1 sm:flex" aria-hidden="true">
         <div className="h-full w-px bg-divider-regular" />
       </div>

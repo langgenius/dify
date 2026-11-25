@@ -455,10 +455,10 @@ export function AgentRosterList({
           ) : (
             <AgentRosterPlaceholderState
               role="status"
-              title={t(($) => $['roster.emptySearch'])}
-              description={t(($) => $['roster.emptySearchDescription'])}
+              title={t(($) => $['external.emptySearch'])}
+              description={t(($) => $['external.emptySearchDescription'])}
               action={{
-                label: t(($) => $['roster.clearFilters']),
+                label: t(($) => $['external.clearFilters']),
                 onClick: state.emptyState.onClearFilters,
               }}
             />

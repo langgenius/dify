@@ -148,11 +148,11 @@ describe('AgentRosterList', () => {
     renderList([], { emptyState: { type: 'filtered', onClearFilters: vi.fn() } })
 
     expect(
-      screen.getByRole('heading', { name: 'agentRoster.roster.emptySearch' }),
+      screen.getByRole('heading', { name: 'agentRoster.external.emptySearch' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('agentRoster.roster.emptySearchDescription')).toBeInTheDocument()
+    expect(screen.getByText('agentRoster.external.emptySearchDescription')).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+      screen.getByRole('button', { name: 'agentRoster.external.clearFilters' }),
     ).toBeInTheDocument()
   })
 
@@ -160,9 +160,11 @@ describe('AgentRosterList', () => {
     renderList([])
 
     expect(screen.getByRole('heading', { name: 'agentRoster.roster.empty' })).toBeInTheDocument()
-    expect(screen.queryByText('agentRoster.roster.emptySearchDescription')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'agentRoster.roster.clearFilters' }),
+      screen.queryByText('agentRoster.external.emptySearchDescription'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentRoster.external.clearFilters' }),
     ).not.toBeInTheDocument()
   })
 
