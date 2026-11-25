@@ -338,6 +338,14 @@ export const zExternalTracingProviderOverviewResponse = z.object({
 })
 
 /**
+ * ExternalAgentCardFieldErrorResponse
+ */
+export const zExternalAgentCardFieldErrorResponse = z.object({
+  code: z.string(),
+  path: z.string(),
+})
+
+/**
  * VerificationFailureReason
  */
 export const zVerificationFailureReason = z.enum([
@@ -351,7 +359,9 @@ export const zVerificationFailureReason = z.enum([
  * ExternalAgentVerificationFailureDetailsResponse
  */
 export const zExternalAgentVerificationFailureDetailsResponse = z.object({
+  card_errors: z.array(zExternalAgentCardFieldErrorResponse).nullish(),
   reason: zVerificationFailureReason,
+  subreason: z.string().nullish(),
 })
 
 /**
