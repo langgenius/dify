@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from decimal import Decimal
 from typing import override
 from unittest.mock import ANY, MagicMock, Mock, patch
@@ -6,6 +6,7 @@ from unittest.mock import ANY, MagicMock, Mock, patch
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -20,7 +21,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
-from extensions.tracing import correlation_from_extras
+from extensions.tracing import ExecutionTraceScopes, bind_tracing
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource, ConversationStatus
@@ -47,6 +48,33 @@ def _trace_scope() -> TraceScope:
             external_trace_id=None, session_id="session-1", parent_workflow_run_id=None, parent_node_execution_id=None
         ),
     )
+
+
+class _RecordingTraceScopes(ExecutionTraceScopes):
+    """Record the typed inputs from the real Flask tracing boundary."""
+
+    def __init__(self, scope: TraceScope) -> None:
+        self.scope = scope
+        self.calls: list[tuple[str, str | None, str | None, str | None, TraceCorrelation]] = []
+
+    @override
+    def for_execution(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str | None,
+        app_tracing: str | None,
+        user_id: str | None,
+        correlation: TraceCorrelation,
+    ) -> TraceScope:
+        self.calls.append((tenant_id, app_id, app_tracing, user_id, correlation))
+        return self.scope
+
+    @override
+    def for_app(
+        self, *, tenant_id: str, app_id: str | None, user_id: str | None, correlation: TraceCorrelation
+    ) -> None:
+        return None
 
 
 class DummyQueueManager(AppQueueManager):
@@ -192,15 +220,15 @@ class TestChatAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_debugger_overrides_model_config(
-        self, unbound_session: Session, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_generate_debugger_overrides_model_config(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
         app_model = _app()
         app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
         user = _account()
         trace_scope = _trace_scope()
-        trace_scope_requests = 0
+        scopes = _RecordingTraceScopes(trace_scope)
+        flask_app = Flask(__name__)
+        bind_tracing(flask_app, scopes=scopes, hooks=None)
         expected_extras = {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
         model_config = make_model_config(provider="mock-provider", model="mock-model", mode="chat")
         app_model_config = AppModelConfig(app_id=app_model.id)
@@ -211,25 +239,8 @@ class TestChatAppGenerator:
             "mode": model_config.mode,
         }
 
-        def create_trace_scope(
-            *,
-            tenant_id: str,
-            app_id: str | None,
-            app_tracing: str | None,
-            user_id: str | None,
-            extras: Mapping[str, object],
-        ) -> TraceScope:
-            """Check the open tracing extras without rebuilding a private request schema."""
-            nonlocal trace_scope_requests
-            trace_scope_requests += 1
-            assert (tenant_id, app_id, user_id) == (trace_scope.tenant_id, trace_scope.app_id, trace_scope.user_id)
-            assert app_tracing == app_model.tracing
-            assert extras == expected_extras
-            assert correlation_from_extras(extras) == trace_scope.correlation
-            return trace_scope
-
-        monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
         with (
+            flask_app.app_context(),
             patch(
                 "core.app.apps.chat.app_generator.ConversationService.get_conversation", return_value=None
             ) as get_conversation,
@@ -279,7 +290,9 @@ class TestChatAppGenerator:
         assert generate_entity.call_args.kwargs["extras"] == expected_extras
         assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
         assert generate_entity.call_args.kwargs["model_conf"] is model_config
-        assert trace_scope_requests == 1
+        assert scopes.calls == [
+            (trace_scope.tenant_id, trace_scope.app_id, app_model.tracing, trace_scope.user_id, trace_scope.correlation)
+        ]
         app_config = generate_entity.call_args.kwargs["app_config"]
         assert isinstance(app_config, ChatAppConfig)
         assert app_config.app_model_config_from is EasyUIBasedAppModelConfigFrom.ARGS
