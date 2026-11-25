@@ -12,13 +12,16 @@ from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 
 import core.app.apps.chat.app_generator as generator_module
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.chat.app_config_manager import ChatAppConfig
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ModelConfigWithCredentialsEntity
 from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
+from extensions.tracing import correlation_from_extras
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
@@ -38,16 +41,6 @@ class _AppConfigLike(Protocol):
     external_data_variables: Sequence[object]
     dataset: object | None
     additional_features: object | None
-
-
-class _TraceScopeRequest(TypedDict, closed=True):
-    """Keyword arguments the generator passes to ``create_trace_scope``."""
-
-    tenant_id: str
-    app_id: str | None
-    app_tracing: str | None
-    user_id: str | None
-    extras: Mapping[str, object]
 
 
 class _GenerateArgs(TypedDict, closed=True):
@@ -245,8 +238,16 @@ class TestChatAppGenerator:
         app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
         user = _account()
         trace_scope = _trace_scope()
-        scope_requests: list[_TraceScopeRequest] = []
+        trace_scope_requests = 0
+        expected_extras = {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
         model_config = make_model_config(provider="mock-provider", model="mock-model", mode="chat")
+        app_model_config = AppModelConfig(app_id=app_model.id)
+        override_config = app_model_config.to_dict(annotation_reply={"enabled": False})
+        override_config["model"] = {
+            "provider": model_config.provider,
+            "name": model_config.model,
+            "mode": model_config.mode,
+        }
 
         def create_trace_scope(
             *,
@@ -256,15 +257,13 @@ class TestChatAppGenerator:
             user_id: str | None,
             extras: Mapping[str, object],
         ) -> TraceScope:
-            scope_requests.append(
-                {
-                    "tenant_id": tenant_id,
-                    "app_id": app_id,
-                    "app_tracing": app_tracing,
-                    "user_id": user_id,
-                    "extras": extras,
-                }
-            )
+            """Check the open tracing extras without rebuilding a private request schema."""
+            nonlocal trace_scope_requests
+            trace_scope_requests += 1
+            assert (tenant_id, app_id, user_id) == (trace_scope.tenant_id, trace_scope.app_id, trace_scope.user_id)
+            assert app_tracing == app_model.tracing
+            assert extras == expected_extras
+            assert correlation_from_extras(extras) == trace_scope.correlation
             return trace_scope
 
         monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
@@ -280,25 +279,21 @@ class TestChatAppGenerator:
             patch(
                 "core.app.apps.chat.app_generator.ConversationService.get_conversation", return_value=None
             ) as get_conversation,
-            patch("core.app.apps.chat.app_generator.ChatAppConfigManager.config_validate", return_value={"x": 1}),
             patch(
-                "core.app.apps.chat.app_generator.ChatAppConfigManager.get_app_config",
-                return_value=SimpleNamespace(
-                    variables=[], external_data_variables=[], app_model_config_dict={}, app_mode=AppMode.CHAT
-                ),
+                "core.app.apps.chat.app_generator.ChatAppConfigManager.config_validate", return_value=override_config
             ),
             patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=model_config),
             patch("core.app.apps.chat.app_generator.FileUploadConfigManager.convert", return_value=None),
             patch("core.app.apps.chat.app_generator.file_factory.build_from_mappings", return_value=[]),
             patch(
                 "core.app.apps.chat.app_generator.ChatAppGenerateEntity",
-                Mock(side_effect=DummyGenerateEntity),
+                wraps=ChatAppGenerateEntity,
             ) as generate_entity,
             patch("core.app.apps.chat.app_generator.MessageBasedAppQueueManager", DummyQueueManager),
             patch(
                 "core.app.apps.chat.app_generator.ChatAppGenerateResponseConverter.convert", return_value={"ok": True}
             ),
-            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=AppModelConfig(app_id="app-1")),
+            patch.object(ChatAppGenerator, "_get_app_model_config", return_value=app_model_config),
             patch.object(ChatAppGenerator, "_prepare_user_inputs", return_value={}),
             patch.object(
                 ChatAppGenerator,
@@ -316,19 +311,17 @@ class TestChatAppGenerator:
 
         assert result == {"ok": True}
         assert get_conversation.call_args.kwargs["session"] is unbound_session
-        extras = generate_entity.call_args.kwargs["extras"]
-        assert extras == {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
+        assert generate_entity.call_args.kwargs["extras"] == expected_extras
         assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
         assert generate_entity.call_args.kwargs["model_conf"] is model_config
-        assert scope_requests == [
-            {
-                "tenant_id": "tenant-1",
-                "app_id": "app-1",
-                "app_tracing": '{"enabled": true, "tracing_provider": "langfuse"}',
-                "user_id": "user-1",
-                "extras": extras,
-            }
-        ]
+        assert trace_scope_requests == 1
+        app_config = generate_entity.call_args.kwargs["app_config"]
+        assert isinstance(app_config, ChatAppConfig)
+        assert app_config.app_model_config_from is EasyUIBasedAppModelConfigFrom.ARGS
+        assert app_config.model.provider == model_config.provider
+        assert app_config.model.model == model_config.model
+        assert app_config.additional_features is not None
+        assert app_config.additional_features.show_retrieve_source is True
 
     def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
