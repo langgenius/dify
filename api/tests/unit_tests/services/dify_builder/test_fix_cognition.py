@@ -6,24 +6,13 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.dify_builder.models import Actor, ChecklistError, Diagnosis, Graph, NodeOutput, Run
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder import credentials
 from services.dify_builder.agent import fix, graph_prompt
 from services.dify_builder.preflight import preflight_errors
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
-
-
-class _Msg:
-    def __init__(self, text: str) -> None:
-        self._t = text
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, text: str) -> None:
-        self.message = _Msg(text)
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 class _FakeInstance(MagicMock):
@@ -39,8 +28,8 @@ class _FakeInstance(MagicMock):
         stop: list[str] | None = None,  # noqa: ARG002
         stream: bool = True,  # noqa: ARG002
         **_kw: object,
-    ) -> _Result:
-        return _Result(self._replies.pop(0))
+    ) -> LLMResult:
+        return text_result(self._replies.pop(0))
 
 
 class _BoomInstance(MagicMock):
@@ -892,9 +881,9 @@ class _RecordingInstance(MagicMock):
         self._replies = list(replies)
         self.calls: list[Graph] = []
 
-    def invoke_llm(self, **kwargs: object) -> _Result:
+    def invoke_llm(self, **kwargs: object) -> LLMResult:
         self.calls.append(kwargs)
-        return _Result(self._replies.pop(0))
+        return text_result(self._replies.pop(0))
 
 
 def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence() -> None:
@@ -1611,7 +1600,7 @@ def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy() -
             stop: list[str] | None = None,
             stream: bool = True,
             **kwargs: object,
-        ) -> _Result:
+        ) -> LLMResult:
             self.messages = prompt_messages
             return super().invoke_llm(
                 prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream, **kwargs

@@ -5,19 +5,7 @@ import pytest
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from services.dify_builder.agent import llm
-
-
-class _Msg:
-    def __init__(self, text: str) -> None:
-        self._t = text
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, text: str) -> None:
-        self.message = _Msg(text)
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 class _FakeInstance:
@@ -33,9 +21,9 @@ class _FakeInstance:
         stop: list[str] | None = None,  # noqa: ARG002
         stream: bool = True,  # noqa: ARG002
         **_kw: object,
-    ) -> _Result:
+    ) -> LLMResult:
         self.calls.append(prompt_messages)
-        return _Result(self._replies.pop(0))
+        return text_result(self._replies.pop(0))
 
 
 def test_invoke_text_returns_completion() -> None:

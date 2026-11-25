@@ -11,6 +11,7 @@ from core.app.app_config.entities import ModelConfig
 from core.dify_builder.contract import ResourceOption
 from core.dify_builder.models import BuildNodesResult, Graph, Inputs
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import build, resources
 from services.dify_builder.plan import WorkflowPlan
@@ -28,20 +29,8 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     install_fake_daemon,
     provider_payload,
 )
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
-
-
-class _Msg:
-    def __init__(self, t: str) -> None:
-        self._t = t
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, t: str) -> None:
-        self.message = _Msg(t)
 
 
 class _FakeInstance:
@@ -57,12 +46,12 @@ class _FakeInstance:
         stop: list[str] | None = None,
         stream: bool = True,
         **_kw: object,
-    ) -> _Result:
+    ) -> LLMResult:
         self.calls.append((prompt_messages, model_parameters, stop, stream))
         reply = self._r.pop(0)
         if isinstance(reply, Exception):
             raise reply
-        return _Result(reply)
+        return text_result(reply)
 
 
 class _BoomInstance:

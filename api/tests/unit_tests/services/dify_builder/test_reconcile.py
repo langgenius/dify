@@ -14,12 +14,10 @@ module's outbound seams (``_session_factory``, ``naive_utc_now``,
 ``session_lock.exists``, ``progress_bus.publish``) monkeypatched.
 """
 
-from collections.abc import Iterator
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import event
 from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.orm import sessionmaker
 
@@ -28,7 +26,6 @@ from configs import dify_config
 from core.dify_builder.models import ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
 from libs.datetime_utils import naive_utc_now
-from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
@@ -45,26 +42,6 @@ APP_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def factory(engine: Engine) -> sessionmaker[SQLSession]:
-    return sessionmaker(bind=engine, expire_on_commit=False)
-
-
-@pytest.fixture
-def repo(factory: sessionmaker[SQLSession]) -> SqlDifyBuilderRepository:
-    return SqlDifyBuilderRepository(factory)
-
-
 def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
     s = Session(
         app_id=APP_ID,
@@ -78,14 +55,14 @@ def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
 
 
 def test_reconcile_flags_stale_working_session_with_no_live_lock(
-    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, sqlite_session_factory: sessionmaker[SQLSession]
 ) -> None:
     a = _seed(repo, PcState.FIX_VERIFY)  # working, no lock -> flagged
     b = _seed(repo, PcState.FIX_VERIFY)  # working, live lock -> skipped
     c = _seed(repo, PcState.FIX_AWAIT_VERIFY)  # waiting -> never considered
 
     real_now = naive_utc_now()
-    monkeypatch.setattr(mod, "_session_factory", lambda: factory)
+    monkeypatch.setattr(mod, "_session_factory", lambda: sqlite_session_factory)
     monkeypatch.setattr(
         mod,
         "naive_utc_now",
@@ -104,11 +81,11 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
 
 
 def test_reconcile_empty_sweep_when_nothing_stale(
-    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, sqlite_session_factory: sessionmaker[SQLSession]
 ) -> None:
     _seed(repo, PcState.FIX_VERIFY)  # working, freshly seeded -> not stale
 
-    monkeypatch.setattr(mod, "_session_factory", lambda: factory)
+    monkeypatch.setattr(mod, "_session_factory", lambda: sqlite_session_factory)
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
 
     published: list[tuple[str, dict[str, object]]] = []

@@ -45,13 +45,7 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
     active_worker_lock as active_worker_lock,  # noqa: PLC0414 - shared pytest fixtures
 )
 from tests.unit_tests.services.dify_builder.test_advance_task import (
-    engine as engine,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.test_advance_task import (
     queued_commands as queued_commands,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.test_advance_task import (
-    repo as repo,  # noqa: PLC0414
 )
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     wired as wired,  # noqa: PLC0414

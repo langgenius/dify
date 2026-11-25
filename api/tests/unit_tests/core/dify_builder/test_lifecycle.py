@@ -1,35 +1,10 @@
-"""Slice 4 session-lifecycle-core tests: restore_graph, invalidation, revert,
-checkpoint surfacing, pause/resume."""
+"""Session history, checkpoint restoration and pause/resume through the workflow handlers."""
 
 from core.dify_builder.models import Actor, Graph
-from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, FakeDifyPort
 
 
 def _actor() -> Actor:
     return Actor(account_id="a", tenant_id="t")
-
-
-def test_fake_dify_port_restore_graph_swaps_graph_and_returns_hash() -> None:
-    dify = FakeDifyPort()
-    dify.graph = {"nodes": [{"id": "x"}]}
-    snapshot = {"nodes": [{"id": "start"}, {"id": "end"}]}
-    new_hash = dify.restore_graph("app", _actor(), snapshot)
-    assert isinstance(new_hash, str)
-    assert new_hash
-    got, got_hash = dify.read_graph("app", _actor())
-    assert got == snapshot
-    assert got_hash == new_hash
-    # deep-copied: mutating the caller's graph does not corrupt the fake
-    snapshot["nodes"].append({"id": "leak"})
-    assert len(dify.read_graph("app", _actor())[0]["nodes"]) == 2
-
-
-def test_fake_build_dify_port_restore_graph_swaps_graph() -> None:
-    dify = FakeBuildDifyPort()
-    dify.graph = {"nodes": [{"id": "a"}], "edges": []}
-    snapshot: Graph = {"nodes": [], "edges": []}
-    dify.restore_graph("app", _actor(), snapshot)
-    assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}
 
 
 def test_in_memory_invalidate_flips_assistant_turns_from_seq() -> None:

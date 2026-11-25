@@ -9,12 +9,14 @@ from typing_extensions import TypedDict
 
 from core.dify_builder.errors import ProposalWouldRunWrongError
 from core.dify_builder.models import Graph, MutationIntent
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.utils.condition.entities import Condition, SupportedComparisonOperator
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit, graph_prompt
 from services.dify_builder.plan import WorkflowPlan
 from services.dify_builder.preflight import new_preflight_problems, preflight_errors
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 def _message_text(message: PromptMessage) -> str:
@@ -22,26 +24,13 @@ def _message_text(message: PromptMessage) -> str:
     return message.content
 
 
-class _Msg:
-    def __init__(self, text: str) -> None:
-        self._t = text
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, text: str) -> None:
-        self.message = _Msg(text)
-
-
 class _FakeInstance(MagicMock):
     def __init__(self, replies: list[str]) -> None:
         super().__init__()
         self._replies = list(replies)
 
-    def invoke_llm(self, **_kwargs: object) -> _Result:
-        return _Result(self._replies.pop(0))
+    def invoke_llm(self, **_kwargs: object) -> LLMResult:
+        return text_result(self._replies.pop(0))
 
 
 class _BoomInstance(MagicMock):
@@ -62,10 +51,10 @@ class _RecordingInstance(MagicMock):
         self._replies = list(replies)
         self.calls: list[RecordedInvocation] = []
 
-    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> _Result:
+    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **kwargs: object) -> LLMResult:
         del kwargs
         self.calls.append({"prompt_messages": prompt_messages})
-        return _Result(self._replies.pop(0))
+        return text_result(self._replies.pop(0))
 
 
 _GRAPH: Graph = {"nodes": [{"id": "llm", "data": {"type": "llm", "title": "LLM"}}], "edges": []}

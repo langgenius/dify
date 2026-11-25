@@ -15,14 +15,11 @@ exception detail leaked).
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from typing import NoReturn, TypedDict, override
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as mod
 from core.dify_builder.models import (
@@ -40,7 +37,6 @@ from core.dify_builder.models import (
     Turn,
 )
 from core.dify_builder.state import PcState
-from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, FakeEditDifyPort, StubAgent, saved_test_context
@@ -125,13 +121,6 @@ def _act(kind: str, base_version: int, **payload: object) -> dict[str, object]:
     return {"kind": kind, "payload": payload, "base_version": base_version}
 
 
-def _new_engine_and_repo() -> tuple[Engine, SqlDifyBuilderRepository]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return engine, SqlDifyBuilderRepository(factory)
-
-
 def _seed_fix_session(repo: SqlDifyBuilderRepository) -> Session:
     s = Session(
         app_id=APP_ID,
@@ -147,21 +136,6 @@ def _seed_fix_session(repo: SqlDifyBuilderRepository) -> Session:
     )
     repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
     return s
-
-
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine, _repo = _new_engine_and_repo()
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return SqlDifyBuilderRepository(factory)
 
 
 @pytest.fixture(autouse=True)
@@ -1067,46 +1041,41 @@ def test_message_failure_keeps_the_durable_user_half_retryable(
 @pytest.mark.usefixtures("admitted_stub_cognition")
 def test_advance_session_generic_exception_publishes_generic_error_and_releases_lock(
     monkeypatch: pytest.MonkeyPatch,
+    repo: SqlDifyBuilderRepository,
 ) -> None:
-    # A fresh, isolated engine/repo/session so the FakeDifyPort.read_graph
-    # monkeypatch below cannot bleed into any other test.
-    engine, repo = _new_engine_and_repo()
-    try:
-        monkeypatch.setattr(mod, "_build_repo", lambda: repo)
-        monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
 
-        def _raise(_self: FakeDifyPort, _app_id: str, _actor: Actor) -> NoReturn:
-            raise RuntimeError("boom: some secret internal detail")
+    def _raise(_self: FakeDifyPort, _app_id: str, _actor: Actor) -> NoReturn:
+        raise RuntimeError("boom: some secret internal detail")
 
-        monkeypatch.setattr(FakeDifyPort, "read_graph", _raise)
+    monkeypatch.setattr(FakeDifyPort, "read_graph", _raise)
 
-        events: CapturedEvents = []
-        released: list[tuple[str, str]] = []
-        monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
-        monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
+    events: CapturedEvents = []
+    released: list[tuple[str, str]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: events.append((sid, ev)))
+    monkeypatch.setattr(mod.session_lock, "release", lambda sid, tok: released.append((sid, tok)))
 
-        s = _seed_fix_session(repo)
+    s = _seed_fix_session(repo)
 
-        mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-y")
+    mod.advance_session(s.id, _act("request_fix", 1), _ACTOR_DICT, "tok-y")
 
-        assert next((ev["kind"], ev["error"]) for _sid, ev in events if ev["kind"] == "error") == (
-            "error",
-            "step failed",
-        )
-        # no exception detail must leak into the published event.
-        assert all("boom" not in str(ev) for _sid, ev in events)
-        stored, _context = repo.get_session(s.id)
-        assert stored.current_state == PcState.FAILED
-        assert any(ev["kind"] == "progress" and ev["status"] == "error" for _sid, ev in events)
-        assert not any(ev["kind"] == "commit" for _sid, ev in events)
-        # The failure was persisted, but this test also makes read_graph fail,
-        # so projecting the authoritative terminal view falls back to an error
-        # frame and the client reconciles over GET.
-        assert any(ev["kind"] == "error" and ev["error"] == "step failed" for _sid, ev in events)
+    assert next((ev["kind"], ev["error"]) for _sid, ev in events if ev["kind"] == "error") == (
+        "error",
+        "step failed",
+    )
+    # no exception detail must leak into the published event.
+    assert all("boom" not in str(ev) for _sid, ev in events)
+    stored, _context = repo.get_session(s.id)
+    assert stored.current_state == PcState.FAILED
+    assert any(ev["kind"] == "progress" and ev["status"] == "error" for _sid, ev in events)
+    assert not any(ev["kind"] == "commit" for _sid, ev in events)
+    # The failure was persisted, but this test also makes read_graph fail,
+    # so projecting the authoritative terminal view falls back to an error
+    # frame and the client reconciles over GET.
+    assert any(ev["kind"] == "error" and ev["error"] == "step failed" for _sid, ev in events)
 
-        assert (s.id, "tok-y") in released
-    finally:
-        engine.dispose()
+    assert (s.id, "tok-y") in released
 
 
 def test_stale_worker_failure_does_not_overwrite_a_newer_session_head(

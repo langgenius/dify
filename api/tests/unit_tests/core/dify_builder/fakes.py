@@ -915,7 +915,7 @@ _BUILD_APPLY_FNS = {
 }
 
 
-class FakeBuildDifyPort(DifyPort):
+class FakeBuildDifyPort(FakeDifyPort):
     """A ``DifyPort`` that genuinely applies Build's verbs to an accumulating
     in-memory graph via the pure ``graph_ops`` helpers and emits the same
     committed batch notification the real adapter does. Distinct from
@@ -923,62 +923,9 @@ class FakeBuildDifyPort(DifyPort):
     tests can assert the graph was actually built and the reveal fired."""
 
     def __init__(self) -> None:
-        self.workflow_events: list[dict[str, object]] = []
-        self.run_outputs: Inputs = {}
-        self.app_mode: str = "workflow"
-        self.graph: Graph = {"nodes": [], "edges": []}
-        self.hash: str = "h0"
-        self.applied: list[MutationIntent] = []
-        self.last_business_failure_run_id: str | None = None
-        self.published: bool = False
-        self.verify_pass: bool = True
-        self.run_draft_inputs: Inputs = {}
-        self.fail_error: str = "boom"
-        self.effect_disclosure = EffectDisclosure()
-        self.run_draft_effect_confirmation: dict[str, str] = {}
-
-    @override
-    def get_app_mode(self, app_id: str, actor: Actor) -> str:
-        return self.app_mode
-
-    def prepare_code_risks(
-        self,
-        app_id: str,
-        actor: Actor,
-        *,
-        session_id: str,
-        inputs: Mapping[str, object],
-        context: DifyBuilderContext,
-    ) -> dict[str, dict[str, object]]:
-        del app_id, actor
-        del session_id, inputs
-        # This canned fake has no reasoning/runtime implementation; Code tests
-        # use the real adapter with an explicit deterministic reasoner.
-        return dict(context.code_risk_assessments)
-
-    def disclose_effects(
-        self,
-        app_id: str,
-        actor: Actor,
-        *,
-        inputs: Mapping[str, object] | None = None,
-        code_risk_context: object = None,
-    ) -> EffectDisclosure:
-        del app_id, actor
-        del inputs, code_risk_context
-        return self.effect_disclosure
-
-    @override
-    def stamp_http_fixtures(
-        self, app_id: str, actor: Actor, *, base_app_revision: str, fixtures: tuple[HttpResponseFixtureV1, ...]
-    ) -> HttpFixtureSetV1:
-        if base_app_revision != self.hash:
-            raise BuilderExecutionPolicyError("stale_http_fixtures")
-        return HttpFixtureSetV1(execution_revision=self.hash, fixtures=fixtures)
-
-    @override
-    def read_graph(self, app_id: str, actor: Actor) -> tuple[Graph, str]:
-        return copy.deepcopy(self.graph), self.hash
+        super().__init__()
+        self.graph = {"nodes": [], "edges": []}
+        self.fail_error = "boom"
 
     @override
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]:
@@ -1070,36 +1017,6 @@ class FakeBuildDifyPort(DifyPort):
             per_node=[NodeOutput(node_id="llm", status="failed", error=self.fail_error)],
         )
 
-    @override
-    def publish(
-        self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
-    ) -> PublishResult:
-        assert expected_revision == self.hash
-        assert expected_graph_revision == self.graph_revision(self.graph)
-        self.published = True
-        return PublishResult(version_name="# 1", status="live")
-
-    @override
-    def restore_graph(self, app_id: str, actor: Actor, graph: Graph, *, expected_revision: str = "") -> str:
-        self.expected_revision = expected_revision
-        self.graph = copy.deepcopy(graph)
-        self.hash = "h-restored"
-        return self.hash
-
-    @override
-    def graph_revision(self, graph: Graph) -> str:
-        from services.dify_builder.revision import executable_graph_revision
-
-        return executable_graph_revision(graph)
-
-    @override
-    def structural_fingerprint(self, graph: Graph) -> str:
-        return _structural_fingerprint(graph)
-
-    @override
-    def graph_node_ids(self, graph: Graph) -> list[str]:
-        return _graph_node_ids(graph)
-
 
 # ---- fake DifyPort pre-seeded with an existing graph (for Edit) -----------
 
@@ -1161,7 +1078,7 @@ class FakeEditDifyPort(FakeBuildDifyPort):
         self.graph = _seeded_edit_graph()
 
 
-def successful_verification(dify: FakeDifyPort | FakeBuildDifyPort, *, no_output: bool = False) -> RunVerification:
+def successful_verification(dify: FakeDifyPort, *, no_output: bool = False) -> RunVerification:
     """Unit policy fixture only; never evidence of a composed native execution."""
     from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
 
@@ -1184,7 +1101,7 @@ def successful_verification(dify: FakeDifyPort | FakeBuildDifyPort, *, no_output
     )
 
 
-def seed_verified_run(repo: InMemoryRepository, session: Session, dify: FakeDifyPort | FakeBuildDifyPort) -> None:
+def seed_verified_run(repo: InMemoryRepository, session: Session, dify: FakeDifyPort) -> None:
     """Seed the initial persisted context of a positive publication fixture."""
     run = Run(
         id=str(uuid.uuid4()),
@@ -1206,7 +1123,7 @@ def saved_test_context(repo: Repository, session_id: str, **overrides: Unpack[Co
     return replace(DifyBuilderContext(test_input_ref=test_input.id), **overrides)
 
 
-def failed_verification(dify: FakeDifyPort | FakeBuildDifyPort) -> RunVerification:
+def failed_verification(dify: FakeDifyPort) -> RunVerification:
     """Complete business-failure evidence for unit routing only, not native execution proof."""
     evidence = successful_verification(dify)
     assert evidence.execution_evidence is not None
@@ -1274,8 +1191,8 @@ class FixtureEnv(Env):
     """Expose the in-memory port used by engine test assertions."""
 
     @property
-    def fake_dify(self) -> FakeDifyPort | FakeBuildDifyPort:
-        assert isinstance(self.dify, (FakeDifyPort, FakeBuildDifyPort))
+    def fake_dify(self) -> FakeDifyPort:
+        assert isinstance(self.dify, FakeDifyPort)
         return self.dify
 
     @fake_dify.setter

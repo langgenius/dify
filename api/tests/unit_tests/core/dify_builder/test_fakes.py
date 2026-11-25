@@ -1,13 +1,4 @@
-"""Tests for the in-memory fakes (`InMemoryRepository`, `FakeDifyPort`, `StubAgent`).
-
-Port of the behavioral guarantees dify-enterprise/server/pkg/enterprise/
-biz/dify_builder/fakes_test.go's memRepo/FakeDify/StubAgent give the Go test
-suite, plus the fix from the Go code review noted in the P1 port plan
-(Task 4): the Go `memRepo.CompareAndAdvance` never checked
-`(session_id, seq)` uniqueness on appended conversation items, silently
-hiding a bug. This suite asserts the added real uniqueness guard as a
-first-class behavior, not an afterthought.
-"""
+"""Exercise the in-memory repository guarantees relied on by state-machine tests."""
 
 from dataclasses import replace
 from typing import Unpack
@@ -30,11 +21,7 @@ from core.dify_builder.models import (
     TestInput,
 )
 from core.dify_builder.state import PcState
-from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, SessionOverrides
-
-
-def _actor() -> Actor:
-    return Actor(account_id="acc-1", tenant_id="tenant-1")
+from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository, SessionOverrides
 
 
 def _session(**overrides: Unpack[SessionOverrides]) -> Session:
@@ -328,94 +315,7 @@ def test_list_conversation_returns_empty_list_for_unknown_session() -> None:
     assert repo.list_conversation("nope") == []
 
 
-# ---- FakeDifyPort ------------------------------------------------------------
-
-
-def test_fake_dify_port_read_graph_returns_canned_graph_and_hash_and_deep_copies() -> None:
-    port = FakeDifyPort()
-
-    graph, h = port.read_graph("app-1", _actor())
-
-    assert h == port.hash
-    graph["nodes"].append({"id": "mutated"})
-    graph2, _ = port.read_graph("app-1", _actor())
-    assert graph2 == {"nodes": []}
-
-
-def test_fake_dify_port_apply_repair_records_intents_and_returns_result() -> None:
-    port = FakeDifyPort()
-    intents = [MutationIntent(op="set_node_config", args={"node_id": "n1", "field": "metrics", "value": "[]"})]
-
-    result = port.apply_repair("app-1", _actor(), intents)
-
-    assert port.applied == intents
-    assert result.changed_nodes == ["n1"]
-    assert result.new_hash == port.hash
-
-
-def test_fake_dify_port_run_draft_emits_events_and_returns_configured_status() -> None:
-    port = FakeDifyPort()
-    events = []
-
-    port.verify_pass = False
-    run = port.run_draft(
-        "app-1", _actor(), {"query": "x"}, events.append, session_id="session-1", test_input_id="test-1"
-    )
-
-    assert run.status == "failed"
-    assert len(events) == 2
-    assert port.run_draft_inputs == {"query": "x"}
-
-    events.clear()
-    port.verify_pass = True
-    run2 = port.run_draft(
-        "app-1", _actor(), {"query": "y"}, events.append, session_id="session-1", test_input_id="test-1"
-    )
-
-    assert run2.status == "succeeded"
-    assert len(events) == 2
-
-
 # ---- graph primitives (C-1 structural fingerprint) -------------------------
-
-
-def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint() -> None:
-    from core.dify_builder import node_defaults
-    from services.dify_builder.graph_ops import structural_fingerprint
-    from tests.unit_tests.core.dify_builder.fakes import BuiltinNodeTypes, FakeBuildDifyPort
-
-    port = FakeBuildDifyPort()
-    # Build a single Start node via the same verb Build uses.
-    intent = MutationIntent(
-        op="create_node",
-        args={
-            "node_type": BuiltinNodeTypes.START,
-            "config": node_defaults.default_config(BuiltinNodeTypes.START),
-            "node_id": "start",
-        },
-    )
-    result = port.apply_repair("app", _actor(), [intent])
-    assert result.structure_fingerprint == structural_fingerprint(port.graph)
-    assert result.structure_fingerprint != ""
-
-
-def test_fake_build_dify_port_run_draft_pass_and_fail() -> None:
-    from core.dify_builder.models import NodeEvent
-    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
-
-    events = []
-    port = FakeBuildDifyPort()
-    actor = Actor(account_id="a", tenant_id="t")
-    run = port.run_draft("app", actor, {"q": "x"}, events.append, session_id="session-1", test_input_id="test-1")
-    assert run.status == "succeeded"
-    assert run.per_node
-    assert run.per_node[0].status == "success"
-    port.verify_pass = False
-    run2 = port.run_draft("app", actor, {"q": "x"}, events.append, session_id="session-1", test_input_id="test-1")
-    assert run2.status == "failed"
-    assert run2.per_node[0].status == "failed"
-    assert run2.per_node[0].error
-    assert any(isinstance(e, NodeEvent) for e in events)
 
 
 def test_workflow_writer_fake_preserves_scope_expiry_and_token_ownership(monkeypatch: pytest.MonkeyPatch) -> None:

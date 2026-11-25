@@ -1,6 +1,6 @@
 """Unit tests for the ``DifyBuilderService`` usecase (P3b Task 3).
 
-Wires ``SqlDifyBuilderRepository`` (backed by a SQLite in-memory DB, same
+Wires ``SqlDifyBuilderRepository`` (backed by an isolated SQLite DB, same
 fixtures as ``test_engine_on_sql_repo.py``) with a fake in-memory
 ``session_lock`` and a capturing ``enqueue_fn`` -- the service is
 dependency-injected so it stays unit-testable without Celery or the real
@@ -8,13 +8,10 @@ Redis-backed ``session_lock`` module.
 """
 
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from typing import Never, Protocol, override
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.contract import ActionKind
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
@@ -32,7 +29,6 @@ from core.dify_builder.models import (
     Session,
 )
 from core.dify_builder.state import PcState
-from models.base import Base
 from services.dify_builder import service as service_module
 from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.plan import WorkflowPlan
@@ -102,16 +98,6 @@ class FakeSessionLock:
         return self._held.get(session_id)
 
 
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
 @pytest.fixture(autouse=True)
 def configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
@@ -121,12 +107,6 @@ def configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
             config or {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
         ),
     )
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return SqlDifyBuilderRepository(factory)
 
 
 @pytest.fixture
@@ -151,7 +131,7 @@ def service(repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: lis
 def inmemory_service_factory_raw(
     repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> Callable[..., tuple[DifyBuilderService, Actor]]:
-    """Build a ``DifyBuilderService`` (in-memory SQLite repo + fake lock) with
+    """Build a ``DifyBuilderService`` (SQLite repo + fake lock) with
     caller-supplied ``subscribe_fn``/``enqueue_fn``, for tests that need to
     observe subscribe/dispatch ordering directly (rather than via the
     capturing ``enqueued`` list the plain ``service`` fixture uses)."""

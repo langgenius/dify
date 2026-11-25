@@ -23,12 +23,8 @@ from services.dify_builder.native_launch_observation import (
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase, _run
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import harness as full_run_harness
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine as engine_fixture
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import repo as repo_fixture
 
 harness = full_run_harness
-engine = engine_fixture
-repo = repo_fixture
 
 PREFIX = (
     "Failed to activate plugin before invocation: unexpected response from serverless connector activation: status="
