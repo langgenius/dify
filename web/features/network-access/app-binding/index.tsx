@@ -165,13 +165,15 @@ function AccessControlSession({
     consoleQuery.workspaces.current.networkAccessGroups.byGroupId.checkCurrentIp.get
   const ipCheck = useQuery(
     checkCurrentIp.queryOptions({
-      input: selectedPolicyId ? { params: { group_id: selectedPolicyId } } : skipToken,
-      enabled:
+      input:
         canFetchNetworkAccess &&
         canEditBinding &&
         bindingQuery.data?.entitled === true &&
         open &&
-        view === 'config',
+        view === 'config' &&
+        selectedPolicyId
+          ? { params: { group_id: selectedPolicyId } }
+          : skipToken,
       context: { silent: true },
       staleTime: 0,
       retry: false,

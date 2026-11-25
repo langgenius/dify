@@ -25,6 +25,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   infiniteQueryOptions,
   queryOptions,
+  skipToken,
   useInfiniteQuery,
   useQueries,
   useQuery,
@@ -775,19 +776,18 @@ function ResourceConfiguration({
         previewSource?.id,
         githubTreePreview,
       ],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            limit: githubTreePreview ? GITHUB_ROOT_PAGE_SIZE : RESOURCE_PAGE_SIZE,
-            ...(githubTreePreview ? { view: 'tree' as const } : {}),
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-      enabled: !driveTransport && Boolean(previewSource),
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                limit: githubTreePreview ? GITHUB_ROOT_PAGE_SIZE : RESOURCE_PAGE_SIZE,
+                ...(githubTreePreview ? { view: 'tree' as const } : {}),
+                ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+              },
+            })
+        : skipToken,
+      enabled: !driveTransport,
       getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
       initialPageParam: null as string | null,
       retry: false,
@@ -811,23 +811,22 @@ function ResourceConfiguration({
           parentId,
           cursor,
         ],
-        queryFn: () =>
-          consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-            params: {
-              control_space_id: knowledgeSpaceId,
-              source_id: previewSource?.id ?? '',
-            },
-            query: {
-              limit:
-                parentId.startsWith('contents:') || parentId.startsWith('dir:')
-                  ? GITHUB_DIRECTORY_PAGE_SIZE
-                  : GITHUB_CHILD_PAGE_SIZE,
-              parentId,
-              view: 'tree',
-              ...(cursor ? { cursor } : {}),
-            },
-          }),
-        enabled: githubTreePreview && Boolean(previewSource),
+        queryFn: previewSource
+          ? () =>
+              consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+                params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+                query: {
+                  limit:
+                    parentId.startsWith('contents:') || parentId.startsWith('dir:')
+                      ? GITHUB_DIRECTORY_PAGE_SIZE
+                      : GITHUB_CHILD_PAGE_SIZE,
+                  parentId,
+                  view: 'tree',
+                  ...(cursor ? { cursor } : {}),
+                },
+              })
+          : skipToken,
+        enabled: githubTreePreview,
         retry: false,
       }),
     ),
@@ -855,21 +854,20 @@ function ResourceConfiguration({
   const filesQuery = useInfiniteQuery(
     infiniteQueryOptions({
       queryKey: ['new-rag', 'connected-source-files', knowledgeSpaceId, previewSource?.id],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            maxKeys: RESOURCE_PAGE_SIZE,
-            ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
-            ...(pageParam?.continuationToken
-              ? { continuationToken: pageParam.continuationToken }
-              : {}),
-          },
-        }),
-      enabled: driveTransport && Boolean(previewSource),
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                maxKeys: RESOURCE_PAGE_SIZE,
+                ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
+                ...(pageParam?.continuationToken
+                  ? { continuationToken: pageParam.continuationToken }
+                  : {}),
+              },
+            })
+        : skipToken,
+      enabled: driveTransport,
       getNextPageParam: (lastPage, _allPages, _lastPageParam, allPageParams) => {
         const candidate = lastPage.buckets.find(
           (bucket) => bucket.is_truncated && bucket.continuation_token,
