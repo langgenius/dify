@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +44,6 @@ export function AgentVersionRestore({
   onRestored?: () => void | Promise<void>
 }) {
   const { t } = useTranslation(['agentV2', 'billing', 'common', 'workflowHistory'])
-  const queryClient = useQueryClient()
   const { canReleaseAndVersion: canRestore } = useAgentPermissions(agentId)
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: plan } = useQuery(
@@ -65,21 +64,6 @@ export function AgentVersionRestore({
         await onBeforeRestore?.()
       },
       onSuccess: async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.composer.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          }),
-        ])
         await onRestored?.()
         setStage('closed')
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))

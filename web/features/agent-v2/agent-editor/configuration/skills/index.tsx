@@ -11,13 +11,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -448,7 +442,6 @@ export function AgentSkills() {
   const { t: tCommon } = useTranslation(['common'])
 
   const skillsListId = 'agent-configure-skills-list'
-  const queryClient = useQueryClient()
   const readOnly = useAgentOrchestrateReadOnly()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuView, setAddMenuView] = useState<'menu' | 'workspace-selector'>('menu')
@@ -492,19 +485,6 @@ export function AgentSkills() {
   const boundSkillIds =
     agentSkillBindingsQuery.data?.skill_ids ?? workspaceSkills.map((skill) => skill.id)
   const hasSkills = skills.length > 0 || workspaceSkills.length > 0
-  const invalidateAgentSkillBindings = useCallback(() => {
-    void queryClient.invalidateQueries({
-      queryKey: consoleQuery.workspaces.current.agents.byAgentId.skills.get.key({
-        type: 'query',
-        input: {
-          params: {
-            agent_id: apiContext.agentId,
-          },
-        },
-      }),
-    })
-  }, [apiContext.agentId, queryClient])
-
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
       if (readOnly || !hasLoadedAgentSkillBindings) return
@@ -538,17 +518,6 @@ export function AgentSkills() {
             toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
           },
           onSuccess: () => {
-            invalidateAgentSkillBindings()
-            void queryClient.invalidateQueries({
-              queryKey: consoleQuery.agent.byAgentId.composer.get.key({
-                type: 'query',
-                input: {
-                  params: {
-                    agent_id: apiContext.agentId,
-                  },
-                },
-              }),
-            })
             onSuccess?.()
           },
         },
@@ -557,8 +526,6 @@ export function AgentSkills() {
     [
       apiContext.agentId,
       hasLoadedAgentSkillBindings,
-      invalidateAgentSkillBindings,
-      queryClient,
       readOnly,
       replaceAgentSkillBindings,
       t,
