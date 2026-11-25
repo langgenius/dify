@@ -1,23 +1,9 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import QuotaPanel from '../quota-panel'
-
-const { getCredits } = vi.hoisted(() => ({ getCredits: vi.fn() }))
-
-// boundary: return controlled server replies while the real query and quota panel render both billing sources.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.modelProviders.credits.get': getCredits,
-    }),
-  }
-})
 
 const legacy: ModelProviderCreditsResponse = {
   pool_type: 'trial',
@@ -48,14 +34,21 @@ const wallet = {
   balance_generated_at: '2026-11-18T04:00:00Z',
 }
 
+const fake = setupFakeApi({
+  console: {
+    trialModels: { get: () => ({ trial_models: [] }) },
+    workspaces: { current: { modelProviders: { credits: { get: () => legacy } } } },
+  },
+})
+
 async function renderQuota(response: ModelProviderCreditsResponse) {
-  getCredits.mockReset().mockResolvedValue(response)
+  const getCredits = fake.console.workspaces.current.modelProviders.credits.get
+  getCredits.mockReturnValue(response)
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'CLOUD' },
-    trialModels: [],
   })
+  onTestFinished(() => queryClient.clear())
   const queryKey = consoleQuery.workspaces.current.modelProviders.credits.get.queryKey()
-  queryClient.setQueryData(queryKey, zModelProviderCreditsResponse.parse(response))
   const screen = await render(
     <Wrapper>
       <QuotaPanel providers={[]} />
@@ -64,8 +57,8 @@ async function renderQuota(response: ModelProviderCreditsResponse) {
   return {
     screen,
     async update(response: ModelProviderCreditsResponse) {
-      getCredits.mockResolvedValue(response)
-      await queryClient.invalidateQueries({ queryKey })
+      getCredits.mockReturnValue(response)
+      await queryClient.invalidateQueries({ queryKey, exact: true })
     },
   }
 }

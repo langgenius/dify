@@ -873,6 +873,9 @@ class ProviderManager:
                 model_settings=model_settings,
             )
             provider_configuration.bind_model_runtime(self._model_runtime)
+            provider_configuration.bind_managed_tokener_credential_protection(
+                enabled=FeatureService.protects_tokener_provider_credentials(provider_entity.provider)
+            )
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
 

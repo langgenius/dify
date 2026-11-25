@@ -31,7 +31,6 @@ from core.helper.model_provider_cache import (
     ProviderCredentialsCacheType,
 )
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
-from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
@@ -124,6 +123,7 @@ class ProviderConfiguration(BaseModel):
     _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
     _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
     _policy_checked_credential_ids: set[str] = PrivateAttr(default_factory=set)
+    _protect_managed_tokener_credential: bool = PrivateAttr(default=False)
 
     @model_validator(mode="after")
     def _(self):
@@ -675,6 +675,14 @@ class ProviderConfiguration(BaseModel):
         )
         return new_credential_id
 
+    def bind_managed_tokener_credential_protection(self, *, enabled: bool) -> None:
+        """Bind the trusted provider policy before making this configuration available.
+
+        The caller must resolve the policy for this provider before use. The
+        policy is internal and is not part of serialized provider data.
+        """
+        self._protect_managed_tokener_credential = enabled
+
     def _reject_managed_tokener_credential_mutation(self, session: Session, credential_id: str) -> None:
         """Keep the integration's dedicated billing key out of ordinary user edits.
 
@@ -682,8 +690,7 @@ class ProviderConfiguration(BaseModel):
         A BYOK credential, even one using the managed label, remains editable.
         """
         if (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and self.provider.provider == dify_config.TOKENER_PROVIDER_NAME
+            self._protect_managed_tokener_credential
             and session.scalar(
                 select(TenantTokenerIntegration.id).where(
                     TenantTokenerIntegration.tenant_id == self.tenant_id,

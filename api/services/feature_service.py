@@ -13,6 +13,21 @@ from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 class FeatureService:
     @staticmethod
+    def supports_workspace_subscription_billing() -> bool:
+        """Return whether workspaces in this deployment have Cloud subscription billing."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
+    @classmethod
+    def protects_tokener_provider_credentials(cls, provider_name: str) -> bool:
+        """Decide whether to protect a provider's platform-owned key for this deployment.
+
+        The caller must pass a resolved provider name. The result selects
+        which provider needs a tenant-scoped managed-key check; it never
+        depends on whether new signup enrollment is currently open.
+        """
+        return cls.supports_workspace_subscription_billing() and provider_name == dify_config.TOKENER_PROVIDER_NAME
+
+    @staticmethod
     def get_model_billing_resolution(tenant_id: str | None) -> TenantModelBillingResolution:
         """Resolve a scoped Cloud profile; tenant-less defaults need no database.
 
@@ -20,7 +35,7 @@ class FeatureService:
         invocation admission. Real Cloud tenant lookups still fail closed even
         when new signup admission is disabled.
         """
-        if not tenant_id or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if not tenant_id or not FeatureService.supports_workspace_subscription_billing():
             return TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
         from extensions.application_services.model_billing import build_model_billing_profiles
 

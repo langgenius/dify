@@ -393,14 +393,12 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
     def get_features(self, workspace_id: str) -> WorkspaceFeatures:
         features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
         credits = self._billing_context(workspace_id)
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            credits = replace(credits, plan=CloudPlan(features.billing.subscription.plan))
-        if (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and credits.model_billing_source != ModelBillingSource.TOKENER
-        ):
-            credits = self._credit_pool(
-                workspace_id, CloudPlan(features.billing.subscription.plan), features.next_credit_reset_date
+        if FeatureService.supports_workspace_subscription_billing():
+            plan = CloudPlan(features.billing.subscription.plan)
+            credits = (
+                replace(credits, plan=plan)
+                if credits.model_billing_source == ModelBillingSource.TOKENER
+                else self._credit_pool(workspace_id, plan, features.next_credit_reset_date)
             )
         return WorkspaceFeatures(can_replace_logo=features.can_replace_logo, credits=credits)
 
@@ -409,7 +407,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         context = self._billing_context(workspace_id)
         if context.model_billing_source == ModelBillingSource.TOKENER:
             return context
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        if not FeatureService.supports_workspace_subscription_billing():
             return context
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
         return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
@@ -428,7 +426,7 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         """Enrich only a ready native cohort, never query its legacy credit pool."""
         context = self.get_effective_credit_pool(workspace_id)
         if (
-            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            not FeatureService.supports_workspace_subscription_billing()
             or context.model_billing_source != ModelBillingSource.TOKENER
             or context.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
         ):
