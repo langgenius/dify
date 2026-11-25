@@ -16,7 +16,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom, ModelConfigWithCredentialsEntity
 from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
 from graphon.file import File, FileUploadConfig
@@ -25,6 +25,7 @@ from models import Account
 from models.enums import ConversationFromSource, ConversationStatus
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 class _AppConfigLike(Protocol):
@@ -37,15 +38,6 @@ class _AppConfigLike(Protocol):
     external_data_variables: Sequence[object]
     dataset: object | None
     additional_features: object | None
-
-
-class _ModelConfLike(Protocol):
-    """Structural view of the model config the generator reads from the entity."""
-
-    provider_model_bundle: object | None
-    model: str | None
-    parameters: Mapping[str, object]
-    app_model_config_dict: Mapping[str, object]
 
 
 class _TraceScopeRequest(TypedDict, closed=True):
@@ -76,7 +68,7 @@ class DummyGenerateEntity(ChatAppGenerateEntity):
         *,
         task_id: str = "",
         app_config: _AppConfigLike | None = None,
-        model_conf: _ModelConfLike | None = None,
+        model_conf: ModelConfigWithCredentialsEntity | None = None,
         inputs: Mapping[str, object] | None = None,
         query: str = "",
         files: Sequence[File] | None = None,
@@ -254,6 +246,7 @@ class TestChatAppGenerator:
         user = _account()
         trace_scope = _trace_scope()
         scope_requests: list[_TraceScopeRequest] = []
+        model_config = make_model_config(provider="mock-provider", model="mock-model", mode="chat")
 
         def create_trace_scope(
             *,
@@ -294,7 +287,7 @@ class TestChatAppGenerator:
                     variables=[], external_data_variables=[], app_model_config_dict={}, app_mode=AppMode.CHAT
                 ),
             ),
-            patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=SimpleNamespace()),
+            patch("core.app.apps.chat.app_generator.ModelConfigConverter.convert", return_value=model_config),
             patch("core.app.apps.chat.app_generator.FileUploadConfigManager.convert", return_value=None),
             patch("core.app.apps.chat.app_generator.file_factory.build_from_mappings", return_value=[]),
             patch(
@@ -326,6 +319,7 @@ class TestChatAppGenerator:
         extras = generate_entity.call_args.kwargs["extras"]
         assert extras == {"auto_generate_conversation_name": True, "trace_session_id": "session-1"}
         assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert generate_entity.call_args.kwargs["model_conf"] is model_config
         assert scope_requests == [
             {
                 "tenant_id": "tenant-1",
@@ -428,7 +422,7 @@ class TestChatAppRunner:
         )
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model=None, parameters={}, app_model_config_dict={}),
+            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
             inputs={},
             query="hi",
             files=[],
@@ -462,7 +456,7 @@ class TestChatAppRunner:
         )
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model=None, parameters={}, app_model_config_dict={}),
+            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
             inputs={},
             query="hi",
             files=[],
@@ -502,7 +496,7 @@ class TestChatAppRunner:
         )
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model=None, parameters={}, app_model_config_dict={}),
+            model_conf=make_model_config(provider="mock-provider", model="mock-model", mode="chat"),
             inputs={},
             query="hi",
             files=[],
@@ -545,9 +539,10 @@ class TestChatAppRunner:
             dataset=None,
             additional_features=None,
         )
+        model_config = make_model_config(provider="mock-provider", model="model-1", mode="chat")
         app_generate_entity = DummyGenerateEntity(
             app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model="model-1", parameters={}),
+            model_conf=model_config,
             inputs={},
             query="hi",
             files=[],
@@ -585,7 +580,7 @@ class TestChatAppRunner:
                     "_handle_invoke_result",
                     side_effect=lambda invoke_result, **kwargs: list(invoke_result),
                 ) as mock_handle,
-                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance),
+                patch("core.app.apps.chat.app_runner.ModelInstance", return_value=model_instance) as create_model,
             ):
                 model_instance.invoke_llm.side_effect = invoke_llm
                 runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
@@ -593,6 +588,9 @@ class TestChatAppRunner:
             event.remove(sqlite_session, "after_commit", record_commit)
 
         assert events == ["commit", "commit", "invoke", "first-chunk"]
+        create_model.assert_called_once_with(
+            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
+        )
         mock_handle.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,
