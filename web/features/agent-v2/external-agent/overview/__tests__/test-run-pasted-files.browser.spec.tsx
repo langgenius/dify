@@ -1,9 +1,9 @@
 import type { ExternalTestFileResponse } from '@dify/contracts/api/console/external-agents/types.gen'
-import { act } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createDeferred } from '@/test/deferred'
+import { act } from '@/test/react-act'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { renderTestPanel, testResult } from './test-run-fixture'
 

@@ -1,9 +1,9 @@
 import { ORPCError } from '@orpc/client'
-import { act } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createExternalAgentCapabilities } from '@/test/console/external-agents'
+import { act } from '@/test/react-act'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { anchorId, childId, renderTestPanel, testOverview, testResult } from './test-run-fixture'
 
@@ -166,7 +166,9 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
   usePollClock()
   await openAndRun()
   expect(api.start).toHaveBeenCalledTimes(1)
-  await act(() => vi.advanceTimersByTimeAsync(1_500))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1_500)
+  })
   await expect.poll(() => api.read.mock.calls.length).toBe(1)
   await panel().getByRole('button', { name: 'Stop test', exact: true }).click()
   await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
