@@ -1,4 +1,3 @@
-import type { WorkflowRunDetailResponse, WorkflowRunNodeExecutionResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -95,8 +94,6 @@ export type StreamCallbacks = {
   onHumanInputFormFilled?: (humanInputFormFilled: HumanInputFormFilledResponse) => void
   onHumanInputFormTimeout?: (humanInputFormTimeout: HumanInputFormTimeoutResponse) => void
   onWorkflowPaused?: (workflowPaused: WorkflowPausedResponse) => void
-
-  onExternalWorkflowSnapshot?: (run: WorkflowRunDetailResponse, executions: WorkflowRunNodeExecutionResponse[]) => void
 
   // Pipeline data source node run
   onDataSourceNodeProcessing?: (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void

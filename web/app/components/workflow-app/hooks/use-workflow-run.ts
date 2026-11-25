@@ -1,3 +1,7 @@
+import type {
+  WorkflowRunDetailResponse,
+  WorkflowRunNodeExecutionResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
@@ -51,6 +55,13 @@ import {
   runTriggerDebug,
   validateWorkflowRunRequest,
 } from './use-workflow-run-utils'
+
+type WorkflowRunCallbacks = StreamCallbacks & {
+  onExternalWorkflowSnapshot?: (
+    run: WorkflowRunDetailResponse,
+    executions: WorkflowRunNodeExecutionResponse[],
+  ) => void
+}
 
 type WorkflowRunParams = Record<string, unknown> & {
   token?: string
@@ -144,9 +155,9 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-  const externalCallbacksRef = useRef<StreamCallbacks>({})
+  const externalCallbacksRef = useRef<WorkflowRunCallbacks>({})
   const updateExternalRunSnapshot = useCallback<
-    NonNullable<StreamCallbacks['onExternalWorkflowSnapshot']>
+    NonNullable<WorkflowRunCallbacks['onExternalWorkflowSnapshot']>
   >((run, executions) => {
     externalCallbacksRef.current.onExternalWorkflowSnapshot?.(run, executions)
   }, [])
@@ -224,7 +235,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const handleRun = useCallback(
     async (
       params: WorkflowRunParams | null | undefined,
-      callback?: StreamCallbacks,
+      callback?: WorkflowRunCallbacks,
       options?: HandleRunOptions,
     ) => {
       const runMode = options?.mode ?? TriggerType.UserInput
