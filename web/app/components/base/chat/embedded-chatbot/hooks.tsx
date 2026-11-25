@@ -1,10 +1,9 @@
 import type { ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { InputValueTypes } from '@/app/components/share/text-generation/types'
 import type { Locale } from '@/i18n'
-import type { AppData, ConversationItem } from '@/models/share'
+import type { AppData } from '@/models/share'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useConversationSelection } from '@/app/components/base/chat/storage'
@@ -146,7 +145,11 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       limit: 100,
     }),
   )
-  const { data: appConversationData, isLoading: appConversationDataLoading } = useQuery(
+  const {
+    data: appConversationData,
+    isLoading: appConversationDataLoading,
+    dataUpdatedAt: conversationListUpdatedAt,
+  } = useQuery(
     shareConversationsQueryOptions({
       appSourceType,
       appId,
@@ -282,7 +285,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
-  const { data: newConversation } = useQuery(
+  const { data: newConversation, dataUpdatedAt: newConversationUpdatedAt } = useQuery(
     shareConversationNameQueryOptions(
       {
         conversationId: newConversationId,
@@ -295,14 +298,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       },
     ),
   )
-  const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
-  useEffect(() => {
-    if (appConversationData?.data && !appConversationDataLoading)
-      // oxlint-disable-next-line eslint-react/set-state-in-effect
-      setOriginConversationList(appConversationData?.data)
-  }, [appConversationData, appConversationDataLoading])
   const conversationList = useMemo(() => {
-    const data = originConversationList.slice()
+    const data = (appConversationData?.data ?? []).slice()
+    // The generated name of a new conversation shows until the list is loaded again after it.
+    if (newConversation && newConversationUpdatedAt >= conversationListUpdatedAt) {
+      const index = data.findIndex((item) => item.id === newConversation.id)
+      if (index > -1) data[index] = newConversation
+      else data.unshift(newConversation)
+    }
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
@@ -312,18 +315,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       })
     }
     return data
-  }, [originConversationList, showNewConversationItemInList, t])
-  useEffect(() => {
-    if (newConversation) {
-      setOriginConversationList(
-        produce((draft) => {
-          const index = draft.findIndex((item) => item.id === newConversation.id)
-          if (index > -1) draft[index] = newConversation
-          else draft.unshift(newConversation)
-        }),
-      )
-    }
-  }, [newConversation])
+  }, [
+    appConversationData,
+    newConversation,
+    newConversationUpdatedAt,
+    conversationListUpdatedAt,
+    showNewConversationItemInList,
+    t,
+  ])
   const currentConversationItem = useMemo(() => {
     let conversationItem = conversationList.find((item) => item.id === currentConversationId)
     if (!conversationItem && pinnedConversationList.length)

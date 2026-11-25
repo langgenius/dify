@@ -18,6 +18,7 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
+import { shareQueryKeys } from '@/service/share-queries'
 import { createChatConfigFixture as createChatConfig } from '@/test/fixtures/chat'
 import { createHumanInputFormFixture } from '@/test/fixtures/workflow-process'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../constants'
@@ -265,6 +266,55 @@ describe('useChatWithHistory', () => {
       expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)['app-1']['user-1']).toBe(
         'conversation-new',
       )
+    })
+    it('should show the reloaded list once it arrives after the generated name', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+
+      // The conversation was pinned elsewhere: the next list no longer has it.
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      await act(() => queryClient.invalidateQueries({ queryKey: shareQueryKeys.conversations }))
+      await waitFor(() =>
+        expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1']),
+      )
+    })
+
+    it('should keep a rename of the new conversation before the list includes it', async () => {
+      mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      mockRenameConversation.mockResolvedValue(undefined)
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      await act(async () => {
+        await result.current.handleRenameConversation('conversation-new', 'Renamed', {
+          onSuccess: vi.fn(),
+        })
+      })
+
+      expect(result.current.conversationList[0]).toMatchObject({
+        id: 'conversation-new',
+        name: 'Renamed',
+      })
     })
   })
 
