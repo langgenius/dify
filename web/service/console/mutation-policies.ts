@@ -45,6 +45,15 @@ function withOwnMutateResult(
   return next
 }
 
+/** Starts a callback now and turns a synchronous throw into a rejection. */
+function settle(callback: () => unknown): Promise<unknown> {
+  try {
+    return Promise.resolve(callback())
+  } catch (error) {
+    return Promise.reject(error)
+  }
+}
+
 /**
  * Runs a procedure's policy callbacks together with the caller's. `onMutate` runs
  * the policy first, so its query cancellation lands before the caller's optimistic
@@ -79,8 +88,12 @@ export function composeMutationOptions<TOptions extends object>(
       // Wait for both even when one rejects, so the mutation never settles while
       // the other side is still refreshing the cache.
       const results = await Promise.allSettled([
-        policyCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'policy') : args)),
-        callerCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'caller') : args)),
+        settle(() =>
+          policyCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'policy') : args)),
+        ),
+        settle(() =>
+          callerCallback(...(splitMutateResult ? withOwnMutateResult(name, args, 'caller') : args)),
+        ),
       ])
       for (const result of results) if (result.status === 'rejected') throw result.reason
     }

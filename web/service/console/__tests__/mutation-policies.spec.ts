@@ -99,6 +99,47 @@ describe('composeMutationOptions', () => {
     expect(observer.getCurrentResult().error).toEqual(new Error('caller failed'))
   })
 
+  it('runs and waits for both callbacks when either one throws synchronously', async () => {
+    const policyDone = createDeferred<void>()
+    const calls: string[] = []
+    const callerThrows = composeMutationOptions(
+      {
+        onSuccess: async () => {
+          await policyDone.promise
+          calls.push('policy:end')
+        },
+      },
+      {
+        onSuccess: () => {
+          throw new Error('caller failed')
+        },
+      },
+    )
+    const policyThrows = composeMutationOptions(
+      {
+        onSuccess: () => {
+          throw new Error('policy failed')
+        },
+      },
+      { onSuccess: () => calls.push('caller') },
+    )
+
+    let settled = false
+    const running = Promise.resolve(callerThrows.onSuccess())
+      .catch((error: Error) => error.message)
+      .finally(() => {
+        settled = true
+      })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(settled).toBe(false)
+    policyDone.resolve()
+    await expect(running).resolves.toBe('caller failed')
+    expect(calls).toEqual(['policy:end'])
+
+    await expect(Promise.resolve(policyThrows.onSuccess())).rejects.toThrow('policy failed')
+    expect(calls).toEqual(['policy:end', 'caller'])
+  })
+
   it('keeps each side on its own onMutate result when both define onMutate', async () => {
     const policyError = vi.fn()
     const callerError = vi.fn()
