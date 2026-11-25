@@ -82,6 +82,9 @@ class RBACPermission(StrEnum):
 
     WORKSPACE_MEMBER_MANAGE = "workspace_member_manage"
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
+    CHANNEL_MANAGE = "channel_manage"
+    CONTACT_MANAGE = "contact_manage"
+    CONTACT_VIEW = "contact_view"
     API_EXTENSION_MANAGE = "api_extension_manage"
     CUSTOMIZATION_MANAGE = "customization_manage"
     SKILL_VIEW = "skill_view"

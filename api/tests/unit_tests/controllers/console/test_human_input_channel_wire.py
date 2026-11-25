@@ -76,7 +76,7 @@ def wire_app(console_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Flask:
 
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
     monkeypatch.setattr("libs.login.current_user", LocalProxy(lambda: account))
     monkeypatch.setattr(
         "controllers.console.wraps.current_account_with_tenant",

@@ -130,7 +130,7 @@ from services.human_input_v2.im_contact_sync.service import (
 )
 from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
-from ._decorators import require_admin_or_owner, require_editor
+from ._decorators import require_channel_manage, require_contact_manage, require_contact_options, require_contact_view
 
 register_enum_models(
     console_ns,
@@ -327,7 +327,7 @@ def _raise_contact_error(error: ContactError) -> Never:
 class WorkspaceContactsApi(Resource):
     @console_ns.doc(params=query_params_from_model(ContactListQuery))
     @console_ns.response(200, "Success", console_ns.models[ListContactsResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_view
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
@@ -360,7 +360,7 @@ class WorkspaceContactApi(Resource):
 
     @console_ns.response(200, "Success", console_ns.models[GetContactResponse.__name__])
     @console_ns.response(404, "Contact not found or absent in the current workspace")
-    @require_admin_or_owner
+    @require_contact_view
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, contact_id: str):
@@ -399,7 +399,7 @@ class WorkspaceContactOptionsApi(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[ListContactOptionsResponse.__name__])
-    @require_editor
+    @require_contact_options
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
@@ -426,7 +426,7 @@ class WorkspaceContactOptionsApi(Resource):
 class WorkspaceOrganizationCandidatesApi(Resource):
     @console_ns.doc(params=query_params_from_model(OrganizationCandidatesQuery))
     @console_ns.response(200, "Success", console_ns.models[ListOrganizationCandidatesResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @only_edition_enterprise
     @with_current_tenant_id
     @with_session(write=False)
@@ -461,7 +461,7 @@ class WorkspaceOrganizationCandidatesApi(Resource):
 class WorkspacePlatformContactsApi(Resource):
     @console_ns.expect(console_ns.models[AddPlatformContactsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AddPlatformContactsResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @only_edition_enterprise
     @with_current_user
     @with_current_tenant_id
@@ -483,7 +483,7 @@ class WorkspacePlatformContactsApi(Resource):
 class WorkspaceExternalContactsApi(Resource):
     @console_ns.expect(console_ns.models[ExternalContactCreateRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[ExternalContactCreateResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str):
@@ -506,7 +506,7 @@ class WorkspaceExternalContactsApi(Resource):
 class WorkspaceExternalContactApi(Resource):
     @console_ns.expect(console_ns.models[ExternalContactUpdateRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[ExternalContactUpdateResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     @with_session
     def patch(self, session: Session, tenant_id: str, contact_id: str):
@@ -542,7 +542,7 @@ class WorkspaceExternalContactApi(Resource):
 class WorkspaceContactsRemoveApi(Resource):
     @console_ns.expect(console_ns.models[RemoveContactsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[RemoveContactsResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, tenant_id: str):
@@ -575,7 +575,7 @@ class WorkspaceIMSyncRunsApi(Resource):
         "IM synchronization temporarily unavailable",
         console_ns.models[IMContactSyncErrorResponse.__name__],
     )
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account):
@@ -605,7 +605,7 @@ class WorkspaceLatestIMSyncRunApi(Resource):
     )
     @console_ns.response(200, "Success", console_ns.models[GetLatestIMSyncRunResponse.__name__])
     @console_ns.response(404, "Latest IM sync run not found", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def get(self, tenant_id: str):
         try:
@@ -626,7 +626,7 @@ class WorkspaceLatestIMSyncRunResultsApi(Resource):
     )
     @console_ns.response(200, "Success", console_ns.models[ListLatestIMSyncRunResultsResponse.__name__])
     @console_ns.response(404, "Latest IM sync run not found", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def get(self, tenant_id: str):
         query = ListLatestIMSyncRunResultsQuery.model_validate(request.args.to_dict(flat=True))
@@ -652,7 +652,7 @@ class WorkspaceIMIdentitiesApi(Resource):
     @console_ns.doc(params=query_params_from_model(ListIMIdentitiesQuery))
     @console_ns.response(200, "Success", console_ns.models[ListIMIdentitiesResponse.__name__])
     @console_ns.response(404, "IM Integration not configured", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     def get(self, tenant_id: str):
         query = ListIMIdentitiesQuery.model_validate(request.args.to_dict(flat=True))
@@ -695,7 +695,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
@@ -726,7 +726,7 @@ class WorkspaceContactIMOverrideApi(Resource):
     @console_ns.response(404, "Contact not found", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(422, "Invalid binding scope", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
         if not FeatureService.is_im_centrally_managed():
@@ -764,7 +764,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     )
     @console_ns.response(409, "IM binding conflict", console_ns.models[IMContactSyncErrorResponse.__name__])
     @console_ns.response(503, "IM write unavailable", console_ns.models[IMContactSyncErrorResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, contact_id: str):
@@ -796,7 +796,7 @@ class WorkspaceContactIMBindingsApi(Resource):
             "WorkspaceContactIMOverrideApi.delete instead."
         ),
     )
-    @require_admin_or_owner
+    @require_contact_manage
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: UUID):
         if FeatureService.is_im_centrally_managed():
@@ -821,7 +821,7 @@ class BatchGetContactsAPI(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[BatchGetContactsResponse.__name__])
-    @require_admin_or_owner
+    @require_contact_view
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
@@ -849,7 +849,7 @@ class BatchGetContactOptionsAPI(Resource):
         ),
     )
     @console_ns.response(200, "Success", console_ns.models[BatchGetContactOptionsResponse.__name__])
-    @require_editor
+    @require_contact_options
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):

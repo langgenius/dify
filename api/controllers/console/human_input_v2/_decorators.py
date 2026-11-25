@@ -7,6 +7,9 @@ from http import HTTPStatus
 from flask import Response, abort
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
+from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
+from controllers.common.wraps import rbac_permission_required
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
@@ -45,49 +48,37 @@ def workspace_email_channel_api_admission[**P, R](view: Callable[P, R]) -> Calla
     return admitted
 
 
-def require_admin_or_owner[**P, R](view: Callable[P, R]) -> Callable[P, R | Response]:
-    """Apply the complete Console workspace owner/administrator guard stack."""
+def _workspace_permission_required[**P, R](
+    permission: RBACPermission,
+    legacy_roles: frozenset[TenantAccountRole],
+) -> Callable[[Callable[P, R]], Callable[P, R | Response]]:
+    """Authorize an initialized console account using its active Workspace.
 
-    @wraps(view)
-    def admin_or_owner_required(*args: P.args, **kwargs: P.kwargs) -> R:
-        from libs.login import current_user
+    With RBAC enabled, the Workspace locator ignores App resource overrides.
+    Otherwise, the endpoint's existing role restriction decides admission.
+    """
 
-        user = current_user._get_current_object()
-        # Keep this check synchronized with the non-RBAC branch in
-        # controllers.console.wraps.is_admin_or_owner_required.
-        # TODO(QuantumGhost): Introduce RBAC authorization for Human Input channel management.
-        if not isinstance(user, Account) or not TenantAccountRole.is_privileged_role(user.role):
-            raise Forbidden()
-        return view(*args, **kwargs)
+    def decorate(view: Callable[P, R]) -> Callable[P, R | Response]:
+        checked = rbac_permission_required(RBACCheck(permission, Workspace()))(view)
 
-    return setup_required(
-        login_required(
-            account_initialization_required(
-                admin_or_owner_required,
-            )
-        )
-    )
+        @wraps(checked)
+        def admitted(*args: P.args, **kwargs: P.kwargs) -> R:
+            from libs.login import current_user
 
+            user = current_user._get_current_object()
+            if not isinstance(user, Account) or (not dify_config.RBAC_ENABLED and user.role not in legacy_roles):
+                raise Forbidden()
+            return checked(*args, **kwargs)
 
-def require_editor[**P, R](view: Callable[P, R]) -> Callable[P, R | Response]:
-    """Require an editing workspace role independently of RBAC configuration."""
+        return setup_required(login_required(account_initialization_required(admitted)))
 
-    @wraps(view)
-    def editor_required(*args: P.args, **kwargs: P.kwargs) -> R:
-        from libs.login import current_user
-
-        user = current_user._get_current_object()
-        # Contact selection follows workspace roles even when RBAC is enabled.
-        if not isinstance(user, Account) or not TenantAccountRole.is_editing_role(user.role):
-            raise Forbidden()
-        return view(*args, **kwargs)
-
-    return setup_required(login_required(account_initialization_required(editor_required)))
+    return decorate
 
 
-__all__ = [
-    "require_admin_or_owner",
-    "require_editor",
-    "workspace_channel_api_admission",
-    "workspace_email_channel_api_admission",
-]
+_ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+_EDIT_ROLES = _ADMIN_ROLES | {TenantAccountRole.EDITOR}
+
+require_channel_manage = _workspace_permission_required(RBACPermission.CHANNEL_MANAGE, _ADMIN_ROLES)
+require_contact_manage = _workspace_permission_required(RBACPermission.CONTACT_MANAGE, _ADMIN_ROLES)
+require_contact_view = _workspace_permission_required(RBACPermission.CONTACT_VIEW, _ADMIN_ROLES)
+require_contact_options = _workspace_permission_required(RBACPermission.APP_EDIT, _EDIT_ROLES)

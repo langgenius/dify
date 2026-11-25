@@ -33,11 +33,13 @@ from controllers.common.human_input_v2.provider_views import (
     im_credentials_response,
 )
 from controllers.common.human_input_v2.providers import EmailProviderCredentials, IMProviderCredentialsInput
+from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -90,7 +92,7 @@ from services.human_input_v2.im_channel_service_composition import (
 from services.human_input_v2.message_template_test_composition import build_message_template_test_service
 
 from ._decorators import (
-    require_admin_or_owner,
+    require_channel_manage,
     workspace_channel_api_admission,
     workspace_email_channel_api_admission,
 )
@@ -424,7 +426,7 @@ def _provider_failure_response(error: ChannelProviderError | IMProviderError) ->
 @console_ns.route("/workspaces/current/human-input/v2/channel-providers")
 class ListChannelProvidersApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
@@ -444,7 +446,7 @@ class ListChannelProvidersApi(WorkspaceChannelResource):
 @console_ns.route("/workspaces/current/human-input/v2/channels")
 class ListChannelsApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelsResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
@@ -460,16 +462,17 @@ class ListChannelsApi(WorkspaceChannelResource):
 
 @console_ns.route("/workspaces/current/human-input/v2/test-channels")
 class ListTestChannelsApi(Resource):
-    """Expose only test channel identifiers to authenticated Dify Workspace members."""
+    """Expose only test channel identifiers to Dify Workspace members authorized to edit apps."""
 
     @console_ns.response(200, "Success", console_ns.models[HumanInputTestChannelsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, Workspace()))
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
-        """List test identifiers for an authenticated workspace member in every edition.
+        """List test identifiers for a workspace orchestrator in every edition.
 
         Discovery grants no channel-management or app-execution permissions and
         performs no writes or provider I/O. Storage failures propagate normally.
@@ -485,7 +488,7 @@ class ListTestChannelsApi(Resource):
 class EmailChannelTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def post(self, tenant_id: str) -> ResponseReturnValue:
         request_body = EmailChannelTestPayload.model_validate(console_ns.payload or {})
@@ -513,7 +516,7 @@ class EmailChannelSavedTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def post(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
         request_body = EmailChannelUpdatePayload.model_validate(console_ns.payload or {})
@@ -546,7 +549,7 @@ class EmailChannelCreateApi(_WorkspaceEmailChannelResource):
     @console_ns.response(
         400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
     )
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
@@ -571,7 +574,7 @@ class EmailChannelCreateApi(_WorkspaceEmailChannelResource):
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>")
 class EmailChannelApi(_WorkspaceEmailChannelResource):
     @console_ns.response(200, "Success", console_ns.models[EmailChannelDetailResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def get(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
         try:
@@ -594,7 +597,7 @@ class EmailChannelApi(_WorkspaceEmailChannelResource):
         400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
     )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
@@ -623,7 +626,7 @@ class EmailChannelApi(_WorkspaceEmailChannelResource):
     @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
     @console_ns.response(200, "Success", console_ns.models[ChannelDeleteResponse.__name__])
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_tenant_id
     def delete(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
         query = ChannelDeleteQuery.model_validate(request.args.to_dict(flat=True))
@@ -645,7 +648,7 @@ class EmailChannelApi(_WorkspaceEmailChannelResource):
 class IMChannelTestApi(WorkspaceChannelResource):
     @console_ns.expect(console_ns.models[IMChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
@@ -671,7 +674,7 @@ class IMChannelSavedTestApi(WorkspaceChannelResource):
         console_ns.models[ChannelProviderBadRequestResponse.__name__],
     )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
@@ -701,7 +704,7 @@ class IMChannelCreateApi(WorkspaceChannelResource):
     @console_ns.response(
         400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
     )
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
@@ -725,7 +728,7 @@ class IMChannelCreateApi(WorkspaceChannelResource):
 @console_ns.route("/workspaces/current/human-input/v2/channels/im/<uuid:channel_id>")
 class IMChannelApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[IMChannelDetailResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
@@ -744,7 +747,7 @@ class IMChannelApi(WorkspaceChannelResource):
         400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
     )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def put(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
@@ -774,7 +777,7 @@ class IMChannelApi(WorkspaceChannelResource):
     @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
     @console_ns.response(200, "Success", console_ns.models[ChannelDeleteResponse.__name__])
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def delete(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
@@ -800,7 +803,7 @@ class IMChannelReplacementApi(WorkspaceChannelResource):
         400, "Provider configuration rejected", console_ns.models[ChannelProviderBadRequestResponse.__name__]
     )
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
-    @require_admin_or_owner
+    @require_channel_manage
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:

@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from controllers.common.rbac import checks
 from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import contact as controller
 from enums import DeploymentEdition
@@ -67,13 +68,11 @@ def console_app() -> Flask:
     return app
 
 
-@pytest.fixture(params=[False, True], ids=["legacy-roles", "rbac"])
-def client(
-    console_app: Flask, current_account: Account, request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
-) -> FlaskClient:
+@pytest.fixture
+def client(console_app: Flask, current_account: Account, monkeypatch: pytest.MonkeyPatch) -> FlaskClient:
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
-    monkeypatch.setattr(dify_config, "RBAC_ENABLED", request.param)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
     monkeypatch.setitem(console_app.extensions, "test_login_user", current_account)
     return console_app.test_client()
 
@@ -190,3 +189,42 @@ def test_contact_options_reject_non_editing_roles_before_query(
     response = client.get(f"{_BASE_URL}{path}")
 
     assert response.status_code == 403, response.get_json()
+
+
+def test_rbac_checks_contact_directory_writes_and_options_independently(
+    client: FlaskClient, current_account: Account, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    current_account.role = TenantAccountRole.NORMAL
+    granted: set[str] = set()
+
+    def check(tenant_id, account_id, *, scene, resource_type, resource_id):
+        assert tenant_id == current_account.current_tenant_id
+        assert account_id == current_account.id
+        assert resource_type is None
+        assert resource_id is None
+        return scene in granted
+
+    monkeypatch.setattr(checks.RBACService.CheckAccess, "check", check)
+    assert client.get(f"{_BASE_URL}/contacts").status_code == 403
+    assert client.get(f"{_BASE_URL}/contact-options").status_code == 403
+    assert client.get(f"{_BASE_URL}/contact-options/batch?contact_ids={_CONTACT_ID}").status_code == 403
+
+    granted.add("contact_view")
+    assert client.get(f"{_BASE_URL}/contacts").status_code == 200
+    assert (
+        client.post(f"{_BASE_URL}/contacts/external", json={"name": "Reviewer", "email": "x@example.com"}).status_code
+        == 403
+    )
+    assert client.get(f"{_BASE_URL}/contact-options").status_code == 403
+
+    granted.add("contact_manage")
+    created = client.post(f"{_BASE_URL}/contacts/external", json={"name": "Reviewer", "email": "x@example.com"})
+    assert created.status_code == 200
+    contact_id = created.get_json()["contact"]["id"]
+
+    granted.clear()
+    granted.add("app_edit")
+    assert client.get(f"{_BASE_URL}/contacts").status_code == 403
+    assert client.get(f"{_BASE_URL}/contact-options").status_code == 200
+    assert client.get(f"{_BASE_URL}/contact-options/batch?contact_ids={contact_id}").status_code == 200

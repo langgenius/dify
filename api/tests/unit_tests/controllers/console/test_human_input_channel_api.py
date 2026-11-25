@@ -14,6 +14,7 @@ from flask_login import LoginManager
 
 from configs import dify_config
 from controllers.common.human_input_v2.config_version import encode_email_config_version
+from controllers.common.rbac import PlainApp, RBACPermission, RBACResourceScope, checks, locators
 from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
 from controllers.console.wraps import _is_setup_completed
@@ -620,7 +621,7 @@ def test_composite_guard_rejects_a_non_admin_workspace_member(
     method: str,
     path: str,
 ) -> None:
-    """Reject Editor HTTP requests before channel work, with or without RBAC."""
+    """Reject legacy Editors or members without the channel management grant before channel work."""
     account = Account(name="Editor", email="editor@example.com", status=AccountStatus.ACTIVE)
     account._current_tenant = make_tenant(tenant_id="workspace-1", name="Workspace")
     account.role = TenantAccountRole.EDITOR
@@ -642,6 +643,16 @@ def test_composite_guard_rejects_a_non_admin_workspace_member(
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", rbac_enabled)
+
+    def check(tenant_id, account_id, *, scene, resource_type, resource_id):
+        assert tenant_id == account.current_tenant_id
+        assert account_id == account.id
+        assert scene == RBACPermission.CHANNEL_MANAGE
+        assert resource_type is None
+        assert resource_id is None
+        return False
+
+    monkeypatch.setattr(checks.RBACService.CheckAccess, "check", check)
 
     application = Flask(__name__)
     LoginManager(application)
@@ -693,3 +704,54 @@ def test_composite_guard_allows_a_workspace_owner(
         "email_providers": [{"provider": "resend", "connection_mode": "custom_app"}],
         "im_providers": [],
     }
+
+
+def test_rbac_test_channel_discovery_checks_workspace_app_edit(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = Account(name="Member", email="member@example.com", status=AccountStatus.ACTIVE)
+    account._current_tenant = make_tenant(tenant_id="workspace-1", name="Workspace")
+    account.role = TenantAccountRole.NORMAL
+    _is_setup_completed.mark_success()
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    allowed = False
+    app_id = "00000000-0000-0000-0000-000000000001"
+
+    def check(tenant_id, account_id, *, scene, resource_type, resource_id):
+        assert tenant_id == account.current_tenant_id
+        assert account_id == account.id
+        if scene == RBACPermission.APP_TEST_AND_RUN:
+            assert resource_type == RBACResourceScope.APP
+            assert resource_id == app_id
+            return False
+        assert scene == RBACPermission.APP_EDIT
+        assert resource_type is None
+        assert resource_id is None
+        return allowed
+
+    class TestChannels:
+        def list_channels(self) -> tuple[()]:
+            return ()
+
+    monkeypatch.setattr(checks.RBACService.CheckAccess, "check", check)
+    monkeypatch.setattr(channel_controller, "build_message_template_test_service", lambda **_: TestChannels())
+    application = Flask(__name__)
+    LoginManager(application)
+    application.register_blueprint(console_bp)
+
+    @application.before_request
+    def authenticate() -> None:
+        g._login_user = account
+
+    client = application.test_client()
+    path = "/console/api/workspaces/current/human-input/v2/test-channels"
+    assert client.get(path).status_code == HTTPStatus.FORBIDDEN
+    allowed = True
+    assert client.get(path).status_code == HTTPStatus.OK
+
+    monkeypatch.setattr(locators, "agent_binding", lambda *_: None)
+    monkeypatch.setattr(PlainApp, "owner_id", lambda *_: None)
+    send = client.post(
+        f"/console/api/apps/{app_id}/workflows/draft/human-input/nodes/hitl/message-template/test",
+        json={"channel": "email", "inputs": {}},
+    )
+    assert send.status_code == HTTPStatus.FORBIDDEN
