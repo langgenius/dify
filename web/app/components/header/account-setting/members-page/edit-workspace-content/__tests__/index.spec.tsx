@@ -14,13 +14,22 @@ let isOwner = true
 
 const getSaveButton = () => screen.getByRole('button', { name: /operation\.(save|saving)/i })
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: (await import('@/test/console/service-responses')).withConsoleClientResponses(
-    (await importOriginal<typeof import('@/service/console')>()).consoleClient,
-    { 'workspaces.info.post': vi.fn() },
-  ),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const responses = { 'workspaces.info.post': vi.fn() }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, responses)
+  return {
+    ...actual,
+    consoleClient,
+    consoleQuery: createConsoleQuery(consoleClient),
+  }
+})
+
+const silentRequest = expect.objectContaining({
+  context: expect.objectContaining({ silent: true }),
+})
 vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
@@ -87,7 +96,7 @@ describe('EditWorkspaceContent', () => {
         {
           body: { name: 'Renamed Workspace' },
         },
-        { context: { silent: true } },
+        silentRequest,
       )
       expect(mockAssign).toHaveBeenCalledWith('http://localhost')
     })
