@@ -15,10 +15,10 @@ const mockHandleSyncWorkflowDraft = vi.fn()
 const mockSaveStateToHistory = vi.fn()
 const mockToastError = vi.fn()
 const mockIncrementSnippetUseCount = vi.fn()
+const mockGetPublishedWorkflow = vi.fn()
 
 vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => mockRequest(...args),
-  sseGeneratorPost: vi.fn(),
 }))
 
 // History owns a debounced temporal store and is covered separately; insertion only emits its event.
@@ -37,11 +37,19 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-vi.mock('@/service/use-snippets', () => ({
-  useIncrementSnippetUseCountMutation: () => ({
-    mutate: mockIncrementSnippetUseCount,
-  }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.customizedSnippets.bySnippetId.useCount.increment.post': (input) =>
+        mockIncrementSnippetUseCount(input),
+      // Counting a use invalidates snippet queries, so a later insertion refetches the workflow.
+      'snippets.bySnippetId.workflows.publish.get': (input) => mockGetPublishedWorkflow(input),
+    }),
+  }
+})
 
 type PublishedWorkflow = Pick<SnippetWorkflowResponse, 'graph'>
 
@@ -53,6 +61,7 @@ const seedPublishedWorkflow = (queryClient: QueryClient, workflow: PublishedWork
   })
 
   queryClient.setQueryData<PublishedWorkflow>(queryOptions.queryKey, workflow)
+  mockGetPublishedWorkflow.mockResolvedValue(workflow)
 }
 
 describe('useInsertSnippet', () => {
@@ -213,7 +222,7 @@ describe('useInsertSnippet', () => {
       })
       expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledTimes(1)
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-1' },
+        params: { snippet_id: 'snippet-1' },
       })
     })
 
@@ -744,13 +753,13 @@ describe('useInsertSnippet', () => {
           }),
         )
         expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
-          params: { snippetId: 'snippet-1' },
+          params: { snippet_id: 'snippet-1' },
         })
       },
     )
 
     it('should show error toast when fetching snippet workflow fails', async () => {
-      mockRequest.mockRejectedValue(new Error('insert failed'))
+      mockGetPublishedWorkflow.mockRejectedValue(new Error('insert failed'))
       const initialNodes = [
         createNode({ id: 'existing-node', data: { selected: true } }),
         createNode({ id: 'other-node' }),

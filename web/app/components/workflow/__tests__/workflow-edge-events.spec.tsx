@@ -40,6 +40,10 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete
     >(),
+  resolveComment:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflow.comments.byCommentId.resolve.post
+    >(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -50,7 +54,8 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -60,6 +65,15 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
       'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
       'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': api.resolveComment,
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.workflow.comments.get': api.comments,
+      'apps.byAppId.workflow.comments.mentionUsers.get': async () => ({ users: [] }),
+      'apps.byAppId.workflow.comments.byCommentId.get': api.comment,
+      'apps.byAppId.workflow.comments.byCommentId.delete': api.deleteComment,
+      'apps.byAppId.workflow.comments.byCommentId.replies.byReplyId.delete': api.deleteReply,
+      'apps.byAppId.workflow.comments.byCommentId.resolve.post': api.resolveComment,
     }),
   }
 })
@@ -107,6 +121,7 @@ beforeEach(() => {
   api.comment.mockReset()
   api.deleteComment.mockReset().mockResolvedValue({ result: 'success' })
   api.deleteReply.mockReset().mockResolvedValue({ result: 'success' })
+  api.resolveComment.mockReset()
 })
 afterEach(async () => {
   await act(async () => cleanup())
@@ -417,7 +432,11 @@ it('navigates unresolved comments and deletes a thread only after confirmation',
   await user.click(
     screen.getByRole('button', { name: 'workflowComments.comments.aria.deleteComment' }),
   )
-  await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+  await user.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', {
+      name: 'common.operation.delete',
+    }),
+  )
   await waitFor(() =>
     expect(api.deleteComment).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-1', comment_id: 'user-1' },
@@ -468,7 +487,13 @@ it('deletes a reply through the real thread confirmation and refreshes its conte
     await screen.findByRole('menuitem', { name: 'workflowComments.comments.actions.deleteReply' }),
   )
   expect(api.deleteReply).not.toHaveBeenCalled()
-  await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
+  await user.click(
+    within(
+      await screen.findByRole('dialog', {
+        name: 'workflowComments.comments.confirm.deleteReplyTitle',
+      }),
+    ).getByRole('button', { name: 'common.operation.delete' }),
+  )
   await waitFor(() =>
     expect(api.deleteReply).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: 'app-1', comment_id: 'user-1', reply_id: 'reply-1' },

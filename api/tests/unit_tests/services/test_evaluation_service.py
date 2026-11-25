@@ -1469,10 +1469,35 @@ def test_extract_llm_context_node_mapping_uses_published_graph_selectors() -> No
                 "llm-1",
                 {"type": "llm", "context": {"enabled": True, "variable_selector": ["retrieval-1", "result"]}},
             ),
+            (
+                "llm-2",
+                {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", "text"]}},
+            ),
         ]
     )
 
-    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {"llm-1": ["retrieval-1"]}
+    assert EvaluationService._extract_llm_context_node_mapping(workflow) == {
+        "llm-1": ["retrieval-1"],
+        "llm-2": ["llm-1"],
+    }
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {
+        "llm-1": ["retrieval-1", "result"],
+        "llm-2": ["llm-1", "text"],
+    }
+
+
+def test_extract_llm_context_selector_mapping_skips_unusable_context_configs() -> None:
+    """Disabled and malformed context selectors never become metric evidence sources."""
+    workflow = _workflow_with_nodes(
+        [
+            ("llm-disabled", {"type": "llm", "context": {"enabled": False, "variable_selector": ["llm-1", "text"]}}),
+            ("llm-unconfigured", {"type": "llm"}),
+            ("llm-short", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1"]}}),
+            ("llm-invalid", {"type": "llm", "context": {"enabled": True, "variable_selector": ["llm-1", 42]}}),
+        ]
+    )
+
+    assert EvaluationService._extract_llm_context_selector_mapping(workflow) == {}
 
 
 def test_validate_knowledge_base_config_rejects_external_provider(sqlite_session: Session) -> None:

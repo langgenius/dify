@@ -13,6 +13,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from events.app_event import app_model_config_was_updated
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import filter_uuid_strings
 from machinery.context import RequestContext
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -21,14 +22,20 @@ from models.agent import (
     AgentConfigDraftType,
     AgentConfigVersionKind,
     AgentDebugConversation,
+    AgentHomeSnapshot,
     AgentIconType,
     AgentScope,
     AgentStatus,
+    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import build_initial_agent_soul
+from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus
-from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict
+from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from repositories.agent_app_composer_queries import read_composer_state, require_composer_agent
+from repositories.agent_drafts import agent_soul_matches_active_config, get_or_create_agent_draft, save_agent_draft
 from repositories.agent_roster_queries import (
     find_agent_draft,
     load_reference_counts_by_agent_id,
@@ -50,12 +57,28 @@ from repositories.app.agent_runtime_app import (
 from repositories.app.console_repository import ConsoleAppRepository, StageTargetEvaluationCleanup, console_app_actor
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
+from repositories.tag_repository import TagRepository
+from services.agent.app_composer_store import (
+    AgentComposerAgentMissingError,
+    AgentComposerCandidateSource,
+    AgentComposerDatasetLabel,
+    AgentComposerSnapshotMissingError,
+    AgentComposerState,
+)
 from services.agent.build_session_store import (
     AgentBuildAgentNotFoundError,
+    AgentBuildApplied,
+    AgentBuildApplyChangedError,
+    AgentBuildApplyRolledBackError,
+    AgentBuildApplySource,
+    AgentBuildBaseUnavailableError,
     AgentBuildBindingUnavailableError,
+    AgentBuildCheckout,
     AgentBuildDraft,
     AgentBuildDraftNotFoundError,
+    AgentBuildHomeSnapshot,
     AgentBuildRefresh,
+    AgentBuildSandbox,
 )
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
@@ -133,7 +156,10 @@ class AgentAppRepository:
     ) -> AgentAppListPage:
         """Load an admitted account's Agent App page and commit its Build conversations together.
 
-        A None visibility set leaves the App filters unrestricted by Agent id.
+        Preconditions: params contains validated filters for the admitted workspace.
+        Postconditions: tags, totals and publication counts reflect the same Agent
+        tag filters; Studio tags never appear on Agent cards. A None visibility
+        set leaves the App filters unrestricted by Agent id.
         The editor mapping's unique key prevents concurrent duplicate mappings.
         A write or projection failure rolls back the page's conversation changes.
         """
@@ -157,6 +183,9 @@ class AgentAppRepository:
                 session, tenant_id=tenant_id, app_ids=[app.id for app in page.items]
             )
             agent_ids = [agent.id for agent in agents.values()]
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=tenant_id, tag_type="agent", target_ids=agent_ids
+            )
             references = load_published_references_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             reference_counts = load_reference_counts_by_agent_id(session, tenant_id=tenant_id, agent_ids=agent_ids)
             items: list[AgentAppListItem] = []
@@ -177,7 +206,11 @@ class AgentAppRepository:
                 )
                 items.append(
                     AgentAppListItem(
-                        app=replace(app_record(app, session=session), has_draft_trigger=app.has_draft_trigger),
+                        app=replace(
+                            app_record(app, session=session),
+                            has_draft_trigger=app.has_draft_trigger,
+                            tags=tags.get(agent.id, []) if agent else [],
+                        ),
                         agent_id=agent.id if agent else None,
                         backing_app_id=backing_app_id,
                         role=(agent.role or "") if agent else None,
@@ -263,7 +296,14 @@ class AgentAppRepository:
             )
 
     def get_agent_detail(self, context: RequestContext, agent_id: str) -> AgentAppDetail:
-        """Return the tenant Agent's detached detail, materializing a hidden runtime App if needed."""
+        """Return an admitted Agent's detached detail and its independent Agent tags.
+
+        Preconditions: context is admitted to the active workspace and agent_id
+        passed Agent visibility checks. Postconditions: the runtime App is
+        materialized when needed, tags use the canonical Agent identity rather
+        than Studio App bindings, and missing or foreign Agents raise
+        AgentAppNotFoundError without returning another workspace's metadata.
+        """
         with self._session_factory() as session:
             app = resolve_agent_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
             if app is None:
@@ -277,7 +317,12 @@ class AgentAppRepository:
             )
             if agent is None:
                 raise AgentAppNotFoundError
-            record = app_record(app, session=session, projection="detail-with-site")
+            tags = TagRepository.load_tags_for_targets(
+                session, tenant_id=context.active_workspace_id, tag_type="agent", target_ids=[agent.id]
+            )
+            record = replace(
+                app_record(app, session=session, projection="detail-with-site"), tags=tags.get(agent.id, [])
+            )
             # The legacy response view detects old Agent configurations here,
             # including its existing mode update and commit.
             should_mask_agent_mode = bool(
@@ -373,6 +418,75 @@ class AgentAppRepository:
                 mapping.conversation_id = conversation_id
             return AgentBuildRefresh(conversation_id=conversation_id, retired_binding_id=retired_binding_id)
 
+    def get_composer(self, *, tenant_id: str, agent_id: str) -> AgentComposerState:
+        """Return the tenant's Agent configuration without writing a draft."""
+        with self._session_factory() as session:
+            agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            return read_composer_state(session, agent=agent)
+
+    def save_composer(
+        self, *, tenant_id: str, agent_id: str, account_id: str, soul: AgentSoulConfig
+    ) -> AgentComposerState:
+        """Save the normal draft and recalculate the publish flag in one transaction."""
+        try:
+            with self._session_factory.begin() as session, session.no_autoflush:
+                agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+                draft = save_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    agent_soul=soul,
+                    account_id_for_audit=account_id,
+                )
+                agent.updated_by = account_id
+                agent.active_config_is_published = agent_soul_matches_active_config(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    agent_soul=AgentSoulConfig.model_validate(draft.config_snapshot_dict),
+                    home_snapshot_id=draft.home_snapshot_id,
+                )
+                session.flush()
+                return read_composer_state(session, agent=agent)
+        except AgentBuildAgentNotFoundError as exc:
+            raise AgentComposerAgentMissingError from exc
+        except AgentBuildBaseUnavailableError as exc:
+            raise AgentComposerSnapshotMissingError from exc
+
+    @staticmethod
+    def _composer_datasets(
+        session: Session, *, tenant_id: str, dataset_ids: list[str]
+    ) -> dict[str, AgentComposerDatasetLabel]:
+        """Return labels for valid dataset IDs owned by the tenant."""
+        ids = filter_uuid_strings(dataset_ids)
+        if not ids:
+            return {}
+        rows = session.execute(
+            select(Dataset.id, Dataset.name, Dataset.description).where(
+                Dataset.tenant_id == tenant_id, Dataset.id.in_(ids)
+            )
+        )
+        return {dataset_id: AgentComposerDatasetLabel(name, description) for dataset_id, name, description in rows}
+
+    def missing_composer_datasets(self, *, tenant_id: str, dataset_ids: list[str]) -> list[str]:
+        """Return malformed, missing and foreign dataset IDs in the request order."""
+        with self._session_factory() as session:
+            datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=dataset_ids)
+        return [dataset_id for dataset_id in dataset_ids if dataset_id not in datasets]
+
+    def get_composer_candidates(self, *, tenant_id: str, agent_id: str) -> AgentComposerCandidateSource:
+        """Detach the effective Soul and labels, retaining empty Soul candidates for an unknown Agent."""
+        with self._session_factory() as session:
+            try:
+                agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            except AgentComposerAgentMissingError:
+                return AgentComposerCandidateSource(soul=None, datasets={})
+            soul = AgentSoulConfig.model_validate(read_composer_state(session, agent=agent).agent_soul)
+            datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=soul.knowledge.dataset_ids())
+            return AgentComposerCandidateSource(soul=soul, datasets=datasets)
+
     def get_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildDraft:
         """Return the existing account-owned draft and its stored Soul without creating or changing rows."""
         with self._session_factory() as session:
@@ -385,10 +499,281 @@ class AgentAppRepository:
             )
             if draft is None:
                 raise AgentBuildDraftNotFoundError
-            return AgentBuildDraft(
-                summary=project_agent_draft_summary(draft),
-                agent_soul=draft.config_snapshot_dict,
+            return self._build_draft_record(draft)
+
+    @staticmethod
+    def _build_draft_record(draft: AgentConfigDraft) -> AgentBuildDraft:
+        """Detach the draft metadata and stored Soul while the caller owns the session."""
+        return AgentBuildDraft(summary=project_agent_draft_summary(draft), agent_soul=draft.config_snapshot_dict)
+
+    @staticmethod
+    def _require_build_agent(session: Session, *, tenant_id: str, agent_id: str, for_update: bool) -> Agent:
+        """Load the tenant's Agent, optionally taking the parent lock used by draft writers."""
+        stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+        if for_update:
+            stmt = stmt.with_for_update()
+        agent = session.scalar(stmt)
+        if agent is None:
+            raise AgentBuildAgentNotFoundError
+        return agent
+
+    def save_build_draft(
+        self, *, tenant_id: str, agent_id: str, account_id: str, agent_soul: dict[str, object]
+    ) -> AgentBuildDraft:
+        """Persist a validated personal Soul, preserving omitted file references under the draft lock."""
+        soul = AgentSoulConfig.model_validate(agent_soul)
+        with self._session_factory.begin() as session:
+            agent = self._require_build_agent(session, tenant_id=tenant_id, agent_id=agent_id, for_update=False)
+            draft = save_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                agent_soul=soul,
+                account_id_for_audit=account_id,
             )
+            return self._build_draft_record(draft)
+
+    def checkout_build_draft(
+        self, *, tenant_id: str, agent_id: str, account_id: str, force: bool
+    ) -> AgentBuildCheckout:
+        """Copy the shared draft into the caller's draft and retire a replaced binding in the same transaction."""
+        with self._session_factory.begin() as session:
+            agent = self._require_build_agent(session, tenant_id=tenant_id, agent_id=agent_id, for_update=False)
+            shared = get_or_create_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                created_by=account_id,
+            )
+            draft = find_agent_draft(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                for_update=True,
+            )
+            if draft is not None and not force:
+                return AgentBuildCheckout(self._build_draft_record(draft), None)
+
+            retired = None
+            if draft is not None and draft.agent_workspace_binding_id is not None:
+                retired = self._retire_build_binding(
+                    session, draft, app_id=agent.backing_app_id or agent.app_id, require_generation=True
+                )
+                draft.agent_workspace_binding_id = None
+
+            soul = AgentSoulConfig.model_validate(shared.config_snapshot_dict)
+            if draft is None:
+                draft = AgentConfigDraft(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=account_id,
+                    draft_owner_key=account_id,
+                    created_by=account_id,
+                    config_snapshot=soul,
+                )
+                session.add(draft)
+            else:
+                draft.config_snapshot = soul
+            draft.base_snapshot_id = shared.base_snapshot_id
+            draft.home_snapshot_id = shared.home_snapshot_id
+            draft.updated_by = account_id
+            session.flush()
+            return AgentBuildCheckout(self._build_draft_record(draft), retired)
+
+    def prepare_build_apply(self, *, tenant_id: str, agent_id: str, account_id: str) -> AgentBuildApplySource:
+        """Materialize the caller's draft and its exact Sandbox before returning the read connection."""
+        with self._session_factory() as session:
+            agent, draft = self._require_build_apply_draft(
+                session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id, for_update=False
+            )
+            return self._build_apply_source(session, agent=agent, draft=draft, for_update=False)
+
+    def _require_build_apply_draft(
+        self, session: Session, *, tenant_id: str, agent_id: str, account_id: str, for_update: bool
+    ) -> tuple[Agent, AgentConfigDraft]:
+        """Return the account's Build draft with its Agent, locking the parent first when writing."""
+        agent = self._require_build_agent(session, tenant_id=tenant_id, agent_id=agent_id, for_update=for_update)
+        draft = find_agent_draft(
+            session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+            for_update=for_update,
+        )
+        if draft is None:
+            raise AgentBuildDraftNotFoundError
+        return agent, draft
+
+    def _build_apply_source(
+        self, session: Session, *, agent: Agent, draft: AgentConfigDraft, for_update: bool
+    ) -> AgentBuildApplySource:
+        """Detach the loaded draft's checkpoint source, with no Sandbox if unavailable."""
+        sandbox = None
+        try:
+            binding = self._get_build_binding(
+                session,
+                draft,
+                app_id=agent.backing_app_id or agent.app_id,
+                require_generation=True,
+                for_update=for_update,
+            )
+        except AgentBuildBindingUnavailableError:
+            # Apply validates the Soul before reporting a missing Sandbox, as the legacy flow did.
+            pass
+        else:
+            sandbox = AgentBuildSandbox(binding.id, binding.workspace_id, binding.app_id, binding.backend_binding_ref)
+        return AgentBuildApplySource(
+            draft.id, draft.base_snapshot_id, draft.home_snapshot_id, draft.config_snapshot_dict, sandbox
+        )
+
+    def commit_build_apply(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        source: AgentBuildApplySource,
+        snapshot: AgentBuildHomeSnapshot | None,
+    ) -> AgentBuildApplied:
+        """Recheck the prepared state and atomically attach the checkpoint and retire the old bindings.
+
+        Report a rolled-back write only after a staging failure and successful rollback.
+        A failure once commit starts leaves the checkpoint's attachment uncertain.
+        """
+        with self._session_factory() as session:
+            try:
+                result = self._stage_build_apply(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    account_id=account_id,
+                    source=source,
+                    snapshot=snapshot,
+                )
+            except (AgentBuildApplyChangedError, AgentBuildBaseUnavailableError, AgentBuildBindingUnavailableError):
+                raise
+            except Exception as exc:
+                session.rollback()
+                raise AgentBuildApplyRolledBackError from exc
+            session.commit()
+            return result
+
+    def _stage_build_apply(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        source: AgentBuildApplySource,
+        snapshot: AgentBuildHomeSnapshot | None,
+    ) -> AgentBuildApplied:
+        """Stage and flush Apply in the caller's transaction if the prepared state still matches."""
+        try:
+            agent, draft = self._require_build_apply_draft(
+                session, tenant_id=tenant_id, agent_id=agent_id, account_id=account_id, for_update=True
+            )
+        except (AgentBuildAgentNotFoundError, AgentBuildDraftNotFoundError) as exc:
+            raise AgentBuildApplyChangedError from exc
+        current = self._build_apply_source(session, agent=agent, draft=draft, for_update=True)
+        if current != source or current.sandbox is None:
+            raise AgentBuildApplyChangedError
+
+        soul = AgentSoulConfig.model_validate(source.agent_soul)
+        shared = save_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            agent_soul=soul,
+            account_id_for_audit=account_id,
+            base_snapshot_id=source.base_snapshot_id,
+        )
+        retired = self._retire_preview_bindings(session, agent=agent, draft=shared)
+        workspaces = AgentWorkspaceRepository(session=session)
+        binding_id = workspaces.retire_binding(tenant_id=tenant_id, binding_id=current.sandbox.binding_id)
+        if binding_id is None:
+            raise AgentBuildApplyChangedError
+        if snapshot is not None:
+            session.add(
+                AgentHomeSnapshot(id=snapshot.id, tenant_id=tenant_id, agent_id=agent_id, snapshot_ref=snapshot.ref)
+            )
+        shared.home_snapshot_id = snapshot.id if snapshot is not None else None
+        agent.active_config_is_published = agent_soul_matches_active_config(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=soul,
+            home_snapshot_id=shared.home_snapshot_id,
+        )
+        agent.updated_by = account_id
+        session.delete(draft)
+        session.flush()
+        return AgentBuildApplied(project_agent_draft_summary(shared), (*retired, binding_id))
+
+    @staticmethod
+    def _retire_preview_bindings(session: Session, *, agent: Agent, draft: AgentConfigDraft) -> list[str]:
+        """Retire participants for the old shared Home and clear their pointers in the apply transaction."""
+        conversations = (
+            session.scalars(
+                select(Conversation)
+                .join(
+                    AgentDebugConversation,
+                    (AgentDebugConversation.conversation_id == Conversation.id)
+                    & (AgentDebugConversation.app_id == Conversation.app_id),
+                )
+                .where(
+                    AgentDebugConversation.tenant_id == agent.tenant_id,
+                    AgentDebugConversation.agent_id == agent.id,
+                    AgentDebugConversation.draft_type == AgentConfigDraftType.DRAFT,
+                    Conversation.is_deleted.is_(False),
+                    Conversation.agent_workspace_binding_id.is_not(None),
+                )
+            )
+            .unique()
+            .all()
+        )
+        workspaces = AgentWorkspaceRepository(session=session)
+        retired: list[str] = []
+        for conversation in conversations:
+            binding_id = conversation.agent_workspace_binding_id
+            if binding_id is not None:
+                binding = workspaces.get_active_binding(
+                    tenant_id=agent.tenant_id,
+                    binding_id=binding_id,
+                    expected_owner_scope=WorkspaceOwnerScope(
+                        tenant_id=agent.tenant_id,
+                        app_id=conversation.app_id,
+                        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                        owner_id=conversation.id,
+                    ),
+                    for_update=True,
+                )
+                if binding is None or binding.agent_id != agent.id:
+                    raise AgentBuildBindingUnavailableError
+                try:
+                    validate_binding_generation(
+                        binding,
+                        base_home_snapshot_id=draft.home_snapshot_id,
+                        agent_config_version_id=draft.id,
+                        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+                    )
+                except AgentWorkspaceBindingGenerationMismatchError as exc:
+                    raise AgentBuildBindingUnavailableError from exc
+                if workspaces.retire_binding(tenant_id=agent.tenant_id, binding_id=binding_id) is None:
+                    raise AgentBuildBindingUnavailableError
+                conversation.agent_workspace_binding_id = None
+                retired.append(binding_id)
+        return retired
 
     def discard_build_draft(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
         """Discard only this account's draft. An existing Agent with no such draft is a no-op."""
@@ -427,6 +812,26 @@ class AgentAppRepository:
         unavailable binding. Refresh can reset an owned binding from an older
         generation.
         """
+        binding = AgentAppRepository._get_build_binding(
+            session, draft, app_id=app_id, require_generation=require_generation, for_update=True
+        )
+        retired_binding_id = AgentWorkspaceRepository(session=session).retire_binding(
+            tenant_id=draft.tenant_id, binding_id=binding.id
+        )
+        if retired_binding_id is None:
+            raise AgentBuildBindingUnavailableError
+        return retired_binding_id
+
+    @staticmethod
+    def _get_build_binding(
+        session: Session,
+        draft: AgentConfigDraft,
+        *,
+        app_id: str | None,
+        require_generation: bool,
+        for_update: bool,
+    ) -> AgentWorkspaceBinding:
+        """Require the draft's active binding in the exact owner scope and, when requested, generation."""
         binding_id = draft.agent_workspace_binding_id
         if binding_id is None or app_id is None:
             raise AgentBuildBindingUnavailableError
@@ -440,6 +845,7 @@ class AgentAppRepository:
                 owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
                 owner_id=draft.id,
             ),
+            for_update=for_update,
         )
         if binding is None or binding.agent_id != draft.agent_id:
             raise AgentBuildBindingUnavailableError
@@ -453,10 +859,7 @@ class AgentAppRepository:
                 )
             except AgentWorkspaceBindingGenerationMismatchError as exc:
                 raise AgentBuildBindingUnavailableError from exc
-        retired_binding_id = workspaces.retire_binding(tenant_id=draft.tenant_id, binding_id=binding_id)
-        if retired_binding_id is None:
-            raise AgentBuildBindingUnavailableError
-        return retired_binding_id
+        return binding
 
     def update_agent(self, context: RequestContext, agent_id: str, params: UpdateAppParams) -> str:
         """Commit updates for the tenant's active roster Agent App and return its id."""

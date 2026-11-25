@@ -8,66 +8,9 @@ import { render } from 'vitest-browser-react'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
-import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { selectToolProvider } from '../../utils/query-select'
 import ProviderDetail from '../detail'
-
-const api = vi.hoisted(() => ({
-  builtinTools:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.builtin.byProvider.tools.get
-    >(),
-  customTools:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.tools.get
-    >(),
-  customDetail:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.get.get
-    >(),
-  customUpdate:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.update.post
-    >(),
-  customRemove:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.delete.post
-    >(),
-  workflowDetail:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.get.get
-    >(),
-  workflowUpdate:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.update.post
-    >(),
-  workflowRemove:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.workflow.delete.post
-    >(),
-}))
-// boundary: only generated service responses are replaced; editors and nested overlays stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.api.delete.post': api.customRemove,
-      'workspaces.current.toolProvider.workflow.delete.post': api.workflowRemove,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.toolProvider.builtin.byProvider.tools.get': api.builtinTools,
-      'workspaces.current.toolProvider.api.tools.get': api.customTools,
-      'workspaces.current.toolProvider.api.get.get': api.customDetail,
-      'workspaces.current.toolProvider.api.update.post': api.customUpdate,
-      'workspaces.current.toolProvider.workflow.get.get': api.workflowDetail,
-      'workspaces.current.toolProvider.workflow.update.post': api.workflowUpdate,
-    }),
-  }
-})
 
 const tool = zToolApiEntity.parse({
   name: 'search',
@@ -129,15 +72,27 @@ const workflow = selectToolProvider(
   }),
 )
 
-beforeEach(() => {
-  api.builtinTools.mockReset().mockResolvedValue([tool])
-  api.customTools.mockReset().mockResolvedValue([tool])
-  api.customDetail.mockReset().mockResolvedValue(customDetail)
-  api.customRemove.mockReset().mockResolvedValue({ result: 'success' })
-  api.workflowDetail.mockReset().mockResolvedValue(workflowDetail)
-  api.workflowRemove.mockReset().mockResolvedValue({ result: 'success' })
-  onTestFinished(guardUnexpectedFetch())
+const fake = setupFakeApi({
+  console: {
+    workspaces: {
+      current: {
+        toolProvider: {
+          builtin: { byProvider: { tools: { get: () => [tool] } } },
+          api: {
+            tools: { get: () => [tool] },
+            get: { get: () => customDetail },
+            delete: { post: () => ({ result: 'success' }) },
+          },
+          workflow: {
+            get: { get: () => workflowDetail },
+            delete: { post: () => ({ result: 'success' }) },
+          },
+        },
+      },
+    },
+  },
 })
+const toolProvider = () => fake.console.workspaces.current.toolProvider
 
 it.each([
   { collection: custom, title: 'tools.createTool.editTitle', kind: 'custom' },
@@ -145,9 +100,12 @@ it.each([
 ])(
   'keeps a $kind deletion pending and preserves the editor for retry',
   async ({ collection, title, kind }) => {
-    const pending = createDeferred<Awaited<ReturnType<typeof api.customRemove>>>()
-    const operation = kind === 'custom' ? api.customRemove : api.workflowRemove
-    operation.mockReturnValueOnce(pending.promise)
+    const operation =
+      kind === 'custom' ? toolProvider().api.delete.post : toolProvider().workflow.delete.post
+    const pending =
+      kind === 'custom'
+        ? hold(toolProvider().api.delete.post)
+        : hold(toolProvider().workflow.delete.post)
     const { wrapper: Wrapper, queryClient } = createConsoleQueryWrapper({
       workspacePermissionKeys: ['tool.manage'],
     })
@@ -170,6 +128,7 @@ it.each([
     await submit.click()
     await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
     await userEvent.keyboard('{Enter}')
+    await pending.arrived
     expect(operation).toHaveBeenCalledTimes(1)
     await userEvent.keyboard('{Escape}')
     await expect.element(confirm).toBeVisible()
@@ -177,7 +136,7 @@ it.each([
       .element(confirm.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     expect(onRefreshData).not.toHaveBeenCalled()
-    pending.reject(new Error('Deletion failed'))
+    pending.reject(apiError({ status: 500, message: 'Deletion failed' }))
     await expect.element(submit).not.toHaveAttribute('aria-disabled', 'true')
     await confirm.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect.element(confirm).not.toBeInTheDocument()

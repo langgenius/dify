@@ -3,10 +3,12 @@ import type {
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
 import { useStoreApi } from 'reactflow'
+import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
   isChatflowAtom,
@@ -26,15 +28,11 @@ import { generateNewNode } from '@/app/components/workflow/utils'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useAutoOnboarding } from '../hooks/use-auto-onboarding'
 import WorkflowHeader from './workflow-header'
-import WorkflowPanel from './workflow-panel'
 
 const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,
 })
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
-const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
   ssr: false,
 })
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
@@ -70,7 +68,9 @@ const WorkflowChildren = () => {
   const appId = useAtomValue(workflowAppIdentityAtom).appId
   const isChatflow = useAtomValue(isChatflowAtom)
   const { eventEmitter } = useEventEmitterContextContext()
-  const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
+  const [exportSecretsDialog] = useState(() =>
+    createAlertDialogHandle<ExportSecretEnvironmentVariable[]>(),
+  )
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
   const showImportDSLModal = useStore((s) => s.showImportDSLModal)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -88,7 +88,8 @@ const WorkflowChildren = () => {
   const { exportCheck, handleExportDSL, isExporting } = useDSL()
 
   eventEmitter?.useSubscription((event) => {
-    if (isExportSecretEnvironmentEvent(event)) setSecretEnvList(event.payload.data)
+    if (isExportSecretEnvironmentEvent(event))
+      exportSecretsDialog.openWithPayload(event.payload.data)
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -187,16 +188,28 @@ const WorkflowChildren = () => {
           onImport={handlePaneContextmenuCancel}
         />
       )}
-      {canImportExportDSL && secretEnvList.length > 0 && (
-        <AppExportConfirmModal
-          envList={secretEnvList}
-          onConfirm={handleExportDSL!}
-          isExporting={isExporting}
-          onClose={() => setSecretEnvList([])}
-        />
+      {canImportExportDSL && (
+        <AlertDialog
+          handle={exportSecretsDialog}
+          onOpenChange={(open, details) => {
+            if (!open && isExporting && details.reason !== 'imperative-action') details.cancel()
+          }}
+        >
+          {({ payload }) =>
+            payload && (
+              <ExportSecretsDialogContent
+                envList={payload}
+                isExporting={isExporting}
+                onConfirm={async (includeSecret) => {
+                  if (isExporting) return
+                  if (await handleExportDSL?.(includeSecret)) exportSecretsDialog.close()
+                }}
+              />
+            )
+          }
+        </AlertDialog>
       )}
       <WorkflowHeader />
-      <WorkflowPanel />
     </>
   )
 }

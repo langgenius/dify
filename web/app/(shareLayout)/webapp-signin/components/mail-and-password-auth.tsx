@@ -60,24 +60,16 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         remember_me: true,
       }
 
-      const res = await webAppLogin({
-        url: '/login',
-        body: loginData,
-      })
-      if (res.result === 'success') {
-        if (res?.data?.access_token) {
-          setWebAppAccessToken(res.data.access_token)
-        }
+      // Failed logins reject: `authentication_failed` is toasted below, other errors by the request layer.
+      const res = await webAppLogin(loginData)
+      setWebAppAccessToken(res.data.access_token)
 
-        const { access_token } = await fetchAccessToken({
-          appCode: loginRedirect.appCode,
-          userId: embeddedUserId || undefined,
-        })
-        setWebAppPassport(loginRedirect.address, access_token)
-        navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
-      } else {
-        toast.error(res.data)
-      }
+      const { access_token } = await fetchAccessToken({
+        appCode: loginRedirect.appCode,
+        userId: embeddedUserId || undefined,
+      })
+      setWebAppPassport(loginRedirect.address, access_token)
+      navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
     } catch (error: unknown) {
       const authenticationError = error as { code?: unknown; message?: unknown }
       if (

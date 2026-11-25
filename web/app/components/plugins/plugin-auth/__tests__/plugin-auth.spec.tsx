@@ -8,10 +8,17 @@ import PluginAuth from '../plugin-auth'
 import { AuthCategory, CredentialTypeEnum } from '../types'
 
 const requests = vi.hoisted(() => ({ credentials: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  get: requests.credentials,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get':
+        requests.credentials,
+    }),
+  }
+})
 
 const defaultPayload = { category: AuthCategory.tool, provider: 'test-provider' }
 const credential: Credential = {
@@ -51,9 +58,7 @@ beforeEach(() => {
 it('offers API authorization when the provider has no saved credentials', async () => {
   renderAuth()
   expect(await screen.findByRole('button', { name: 'plugin.auth.useApiAuth' })).toBeEnabled()
-  expect(requests.credentials).toHaveBeenCalledWith(
-    '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
-  )
+  expect(requests.credentials).toHaveBeenCalledWith({ params: { provider: 'test-provider' } })
   expect(screen.queryByText('plugin.auth.permissionHint.title')).not.toBeInTheDocument()
   expect(
     screen.queryByRole('button', { name: /plugin.auth.authorization$/ }),

@@ -6,13 +6,9 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createStepByStepTourService } from '@/test/fixtures/onboarding'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import StepByStepTourMount from '../mount'
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/apps',
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-}))
 
 function renderTour(children?: ReactNode) {
   onTestFinished(guardUnexpectedFetch())
@@ -34,6 +30,7 @@ function renderTour(children?: ReactNode) {
         </div>
       </NuqsTestingAdapter>
     </Providers>,
+    { wrapper: createTestNavigation({ url: '/apps' }).NavigationProvider },
   )
 }
 

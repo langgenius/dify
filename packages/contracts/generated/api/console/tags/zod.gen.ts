@@ -45,7 +45,7 @@ export const zTagUpdateRequestPayload = z.object({
  *
  * Tag type
  */
-export const zTagType = z.enum(['app', 'knowledge', 'skill', 'snippet'])
+export const zTagType = z.enum(['agent', 'app', 'knowledge', 'skill', 'snippet'])
 
 /**
  * TagBasePayload
@@ -57,7 +57,7 @@ export const zTagBasePayload = z.object({
 
 export const zGetTagsQuery = z.object({
   keyword: z.string().optional(),
-  type: z.enum(['app', 'knowledge', 'skill', 'snippet']),
+  type: z.enum(['agent', 'app', 'knowledge', 'skill', 'snippet']),
 })
 
 /**

@@ -152,25 +152,25 @@ vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
-    data:
-      infos.length > 0 && marketplacePluginState.label
-        ? {
-            data: {
-              list: infos.map(({ organization, plugin }) => ({
-                plugin: {
-                  label: marketplacePluginState.label,
-                  labels: marketplacePluginState.label,
-                  name: plugin,
-                  plugin_id: `${organization}/${plugin}`,
-                },
-              })),
-            },
-          }
-        : undefined,
-  }),
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByVersions: async ({ body }) => ({
+      data: {
+        list: marketplacePluginState.label
+          ? body.plugin_tuples.map(({ org, name }) => ({
+              plugin: {
+                label: marketplacePluginState.label,
+                labels: marketplacePluginState.label,
+                name,
+                plugin_id: `${org}/${name}`,
+              },
+            }))
+          : [],
+      },
+    }),
+  })
+})
 
 vi.mock('@/service/console', async () => {
   const { consoleOperationStub } = await import('@/test/console/operation-hooks')
@@ -1228,6 +1228,8 @@ describe('useAgentConfigureSync', () => {
       } satisfies AgentSoulConfigFormState)
     })
 
+    // The tool label comes from the marketplace lookup, which resolves after the draft changes.
+    await act(() => vi.advanceTimersByTimeAsync(0))
     await act(async () => {
       await result.current.publishDraft()
     })
