@@ -166,6 +166,27 @@ caller is not allowed to delete it.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/advanced-chat:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [AdvancedChatStartPayload](#advancedchatstartpayload)<br>**multipart/form-data**: [AdvancedChatStartPayload](#advancedchatstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/api-keys
 **List the app's API keys**
 
@@ -455,6 +476,27 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/chat:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [ChatStartPayload](#chatstartpayload)<br>**multipart/form-data**: [ChatStartPayload](#chatstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/completion:run
 #### Parameters
 
@@ -473,6 +515,27 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/completion:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [CompletionStartPayload](#completionstartpayload)<br>**multipart/form-data**: [CompletionStartPayload](#completionstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -710,6 +773,50 @@ Upload a file to use as an input variable when running the app
 | 400 | Bad Request | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorBody](#errorbody)<br> |
 | 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorBody](#errorbody)<br> |
 | 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/jobs/{job_id}:stop
+**Stop a job of the caller**
+
+Precondition: the guards admitted the caller for the app.
+Postcondition: a job that is not final is asked to stop and its state is returned; 404 job_not_found when
+the job is missing, expired or not the caller's for this app.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/jobs/{job_id}:wait
+**Wait for a job of the caller**
+
+Precondition: the guards admitted the caller for the app.
+Postcondition: the job's state with hints after waiting up to query.wait_seconds; 404 job_not_found when the
+job is missing, expired or not the caller's for this app.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| wait_seconds | query | How long to wait for a final state; 0 answers at once | No | integer, <br>**Default:** 25 |
+| app_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1253,6 +1360,27 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/workflow:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [WorkflowStartPayload](#workflowstartpayload)<br>**multipart/form-data**: [WorkflowStartPayload](#workflowstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -3150,6 +3278,21 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
 
+#### AdvancedChatStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | User message | Yes |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
+| workflow_id | string | Pin a published workflow version | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### AdvancedChatWebApp
 
 | Name | Type | Description | Required |
@@ -3548,6 +3691,20 @@ Button styles for user actions.
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
 
+#### ChatStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | User message | Yes |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### ChatWebApp
 
 | Name | Type | Description | Required |
@@ -3610,6 +3767,18 @@ Button styles for user actions.
 | files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
+| workspace_id | string | Workspace that owns the app | No |
+
+#### CompletionStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | Prompt text; most completion apps take their input through `inputs` | No |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
 | workspace_id | string | Workspace that owns the app | No |
 
 #### CreateAppPayload
@@ -4250,6 +4419,32 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidInputError |  |  |  |
+
+#### JobState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| conversation_id | string |  | No |
+| error | string |  | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| message_id | string |  | No |
+| outputs | object |  | No |
+| run_id | string |  | No |
+| status | [JobStatus](#jobstatus) |  | Yes |
+
+#### JobStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JobStatus | string |  |  |
+
+#### JobWaitQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for a final state; 0 answers at once | No |
 
 #### JsonValue
 
@@ -5878,6 +6073,18 @@ Page of published versions, newest first; there is no total, `hints` carries the
 | attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
 | files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| workflow_id | string | Pin a published workflow version | No |
+| workspace_id | string | Workspace that owns the app | No |
+
+#### WorkflowStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
 | workflow_id | string | Pin a published workflow version | No |
 | workspace_id | string | Workspace that owns the app | No |
 

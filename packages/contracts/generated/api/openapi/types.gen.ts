@@ -44,6 +44,23 @@ export type AdvancedChatRunPayload = {
   workspace_id?: string | null
 }
 
+export type AdvancedChatStartPayload = {
+  attachments?: Array<Blob | File> | null
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query: string
+  wait_seconds?: number
+  workflow_id?: string | null
+  workspace_id?: string | null
+}
+
 export type AdvancedChatWebApp = {
   access_token?: string | null
   app_base_url: string
@@ -367,6 +384,22 @@ export type ChatRunPayload = {
   workspace_id?: string | null
 }
 
+export type ChatStartPayload = {
+  attachments?: Array<Blob | File> | null
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query: string
+  wait_seconds?: number
+  workspace_id?: string | null
+}
+
 export type ChatWebApp = {
   access_token?: string | null
   app_base_url: string
@@ -422,6 +455,20 @@ export type CompletionRunPayload = {
     [key: string]: unknown
   }
   query?: string
+  workspace_id?: string | null
+}
+
+export type CompletionStartPayload = {
+  attachments?: Array<Blob | File> | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query?: string
+  wait_seconds?: number
   workspace_id?: string | null
 }
 
@@ -928,6 +975,26 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 export type InvalidInputError = ErrorBody & {
   code: 'invalid_input'
   status: 400
+}
+
+export type JobState = {
+  answer?: string | null
+  conversation_id?: string | null
+  error?: string | null
+  hints?: Array<Hint>
+  id: string
+  message_id?: string | null
+  outputs?: {
+    [key: string]: unknown
+  } | null
+  run_id?: string | null
+  status: JobStatus
+}
+
+export type JobStatus = 'failed' | 'paused' | 'running' | 'stopped' | 'succeeded'
+
+export type JobWaitQuery = {
+  wait_seconds?: number
 }
 
 export type JsonValue = unknown
@@ -1490,6 +1557,8 @@ export type OpenApiErrorCode =
   | 'form_not_found'
   | 'internal_server_error'
   | 'invalid_param'
+  | 'job_capacity_reached'
+  | 'job_not_found'
   | 'knowledge_fs_access_denied'
   | 'knowledge_fs_conflict'
   | 'knowledge_fs_invalid_request'
@@ -2303,6 +2372,20 @@ export type WorkflowRunPayload = {
   workspace_id?: string | null
 }
 
+export type WorkflowStartPayload = {
+  attachments?: Array<Blob | File> | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  wait_seconds?: number
+  workflow_id?: string | null
+  workspace_id?: string | null
+}
+
 export type WorkflowToolCreatePayload = {
   description: string
   icon: ToolEmojiIcon
@@ -2652,6 +2735,30 @@ export type PostAppsByAppIdAdvancedChatRunResponses = {
 
 export type PostAppsByAppIdAdvancedChatRunResponse =
   PostAppsByAppIdAdvancedChatRunResponses[keyof PostAppsByAppIdAdvancedChatRunResponses]
+
+export type PostAppsByAppIdAdvancedChatStartData = {
+  body: AdvancedChatStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/advanced-chat:start'
+}
+
+export type PostAppsByAppIdAdvancedChatStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdAdvancedChatStartError =
+  PostAppsByAppIdAdvancedChatStartErrors[keyof PostAppsByAppIdAdvancedChatStartErrors]
+
+export type PostAppsByAppIdAdvancedChatStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdAdvancedChatStartResponse =
+  PostAppsByAppIdAdvancedChatStartResponses[keyof PostAppsByAppIdAdvancedChatStartResponses]
 
 export type GetAppsByAppIdApiKeysData = {
   body?: never
@@ -3029,6 +3136,30 @@ export type PostAppsByAppIdChatRunResponses = {
 export type PostAppsByAppIdChatRunResponse =
   PostAppsByAppIdChatRunResponses[keyof PostAppsByAppIdChatRunResponses]
 
+export type PostAppsByAppIdChatStartData = {
+  body: ChatStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/chat:start'
+}
+
+export type PostAppsByAppIdChatStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdChatStartError =
+  PostAppsByAppIdChatStartErrors[keyof PostAppsByAppIdChatStartErrors]
+
+export type PostAppsByAppIdChatStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdChatStartResponse =
+  PostAppsByAppIdChatStartResponses[keyof PostAppsByAppIdChatStartResponses]
+
 export type PostAppsByAppIdCompletionRunData = {
   body: CompletionRunPayload
   path: {
@@ -3052,6 +3183,30 @@ export type PostAppsByAppIdCompletionRunResponses = {
 
 export type PostAppsByAppIdCompletionRunResponse =
   PostAppsByAppIdCompletionRunResponses[keyof PostAppsByAppIdCompletionRunResponses]
+
+export type PostAppsByAppIdCompletionStartData = {
+  body: CompletionStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/completion:start'
+}
+
+export type PostAppsByAppIdCompletionStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdCompletionStartError =
+  PostAppsByAppIdCompletionStartErrors[keyof PostAppsByAppIdCompletionStartErrors]
+
+export type PostAppsByAppIdCompletionStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdCompletionStartResponse =
+  PostAppsByAppIdCompletionStartResponses[keyof PostAppsByAppIdCompletionStartResponses]
 
 export type GetAppsByAppIdDependenciesCheckData = {
   body?: never
@@ -3349,6 +3504,57 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses = {
 
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse =
   PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses[keyof PostAppsByAppIdHumanInputFormsByFormTokenSubmitResponses]
+
+export type PostAppsByAppIdJobsByJobIdStopData = {
+  body?: never
+  path: {
+    app_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/jobs/{job_id}:stop'
+}
+
+export type PostAppsByAppIdJobsByJobIdStopErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdJobsByJobIdStopError =
+  PostAppsByAppIdJobsByJobIdStopErrors[keyof PostAppsByAppIdJobsByJobIdStopErrors]
+
+export type PostAppsByAppIdJobsByJobIdStopResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdJobsByJobIdStopResponse =
+  PostAppsByAppIdJobsByJobIdStopResponses[keyof PostAppsByAppIdJobsByJobIdStopResponses]
+
+export type GetAppsByAppIdJobsByJobIdWaitData = {
+  body?: never
+  path: {
+    app_id: string
+    job_id: string
+  }
+  query?: {
+    wait_seconds?: number
+  }
+  url: '/apps/{app_id}/jobs/{job_id}:wait'
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitError =
+  GetAppsByAppIdJobsByJobIdWaitErrors[keyof GetAppsByAppIdJobsByJobIdWaitErrors]
+
+export type GetAppsByAppIdJobsByJobIdWaitResponses = {
+  200: JobState
+}
+
+export type GetAppsByAppIdJobsByJobIdWaitResponse =
+  GetAppsByAppIdJobsByJobIdWaitResponses[keyof GetAppsByAppIdJobsByJobIdWaitResponses]
 
 export type GetAppsByAppIdReleaseCheckData = {
   body?: never
@@ -4116,6 +4322,30 @@ export type PostAppsByAppIdWorkflowRunResponses = {
 
 export type PostAppsByAppIdWorkflowRunResponse =
   PostAppsByAppIdWorkflowRunResponses[keyof PostAppsByAppIdWorkflowRunResponses]
+
+export type PostAppsByAppIdWorkflowStartData = {
+  body: WorkflowStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow:start'
+}
+
+export type PostAppsByAppIdWorkflowStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdWorkflowStartError =
+  PostAppsByAppIdWorkflowStartErrors[keyof PostAppsByAppIdWorkflowStartErrors]
+
+export type PostAppsByAppIdWorkflowStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdWorkflowStartResponse =
+  PostAppsByAppIdWorkflowStartResponses[keyof PostAppsByAppIdWorkflowStartResponses]
 
 export type PostAppsByAppIdPublishData = {
   body: PublishPayload

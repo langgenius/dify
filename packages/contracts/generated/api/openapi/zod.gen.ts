@@ -55,6 +55,32 @@ export const zAdvancedChatRunPayload = z.object({
 })
 
 /**
+ * AdvancedChatStartPayload
+ */
+export const zAdvancedChatStartPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  auto_generate_name: z.boolean().optional().default(true),
+  conversation_id: z.string().nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  idempotency_key: z.string().min(1).max(128).nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  query: z.string(),
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+  workflow_id: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * AdvancedChatWebApp
  */
 export const zAdvancedChatWebApp = z.object({
@@ -403,6 +429,31 @@ export const zChatRunPayload = z.object({
 })
 
 /**
+ * ChatStartPayload
+ */
+export const zChatStartPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  auto_generate_name: z.boolean().optional().default(true),
+  conversation_id: z.string().nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  idempotency_key: z.string().min(1).max(128).nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  query: z.string(),
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * ChatWebApp
  */
 export const zChatWebApp = z.object({
@@ -463,6 +514,29 @@ export const zCompletionRunPayload = z.object({
     .nullish(),
   inputs: z.record(z.string(), z.unknown()).optional(),
   query: z.string().optional().default(''),
+  workspace_id: z.string().nullish(),
+})
+
+/**
+ * CompletionStartPayload
+ */
+export const zCompletionStartPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  idempotency_key: z.string().min(1).max(128).nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  query: z.string().optional().default(''),
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
   workspace_id: z.string().nullish(),
 })
 
@@ -1221,6 +1295,33 @@ export const zInvalidInputError = zErrorBody.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * JobStatus
+ */
+export const zJobStatus = z.enum(['failed', 'paused', 'running', 'stopped', 'succeeded'])
+
+/**
+ * JobState
+ */
+export const zJobState = z.object({
+  answer: z.string().nullish(),
+  conversation_id: z.string().nullish(),
+  error: z.string().nullish(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  message_id: z.string().nullish(),
+  outputs: z.record(z.string(), z.unknown()).nullish(),
+  run_id: z.string().nullish(),
+  status: zJobStatus,
+})
+
+/**
+ * JobWaitQuery
+ */
+export const zJobWaitQuery = z.object({
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+})
 
 export const zJsonValue = z.unknown()
 
@@ -1986,6 +2087,8 @@ export const zOpenApiErrorCode = z.enum([
   'form_not_found',
   'internal_server_error',
   'invalid_param',
+  'job_capacity_reached',
+  'job_not_found',
   'knowledge_fs_access_denied',
   'knowledge_fs_conflict',
   'knowledge_fs_invalid_request',
@@ -3268,6 +3371,29 @@ export const zWorkflowRunPayload = z.object({
 })
 
 /**
+ * WorkflowStartPayload
+ */
+export const zWorkflowStartPayload = z.object({
+  attachments: z
+    .array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File))
+    .nullish(),
+  files: z
+    .record(
+      z.string(),
+      z.union([
+        z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+        z.array(z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File)),
+      ]),
+    )
+    .nullish(),
+  idempotency_key: z.string().min(1).max(128).nullish(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+  workflow_id: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+})
+
+/**
  * WorkflowToolParameterConfiguration
  *
  * Workflow tool configuration
@@ -3528,6 +3654,17 @@ export const zPostAppsByAppIdAdvancedChatRunPath = z.object({
  */
 export const zPostAppsByAppIdAdvancedChatRunResponse = zEventStreamResponse
 
+export const zPostAppsByAppIdAdvancedChatStartBody = zAdvancedChatStartPayload
+
+export const zPostAppsByAppIdAdvancedChatStartPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdAdvancedChatStartResponse = zJobState
+
 export const zGetAppsByAppIdApiKeysPath = z.object({
   app_id: z.string(),
 })
@@ -3687,6 +3824,17 @@ export const zPostAppsByAppIdChatRunPath = z.object({
  */
 export const zPostAppsByAppIdChatRunResponse = zEventStreamResponse
 
+export const zPostAppsByAppIdChatStartBody = zChatStartPayload
+
+export const zPostAppsByAppIdChatStartPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdChatStartResponse = zJobState
+
 export const zPostAppsByAppIdCompletionRunBody = zCompletionRunPayload
 
 export const zPostAppsByAppIdCompletionRunPath = z.object({
@@ -3697,6 +3845,17 @@ export const zPostAppsByAppIdCompletionRunPath = z.object({
  * Run result (SSE stream)
  */
 export const zPostAppsByAppIdCompletionRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdCompletionStartBody = zCompletionStartPayload
+
+export const zPostAppsByAppIdCompletionStartPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdCompletionStartResponse = zJobState
 
 export const zGetAppsByAppIdDependenciesCheckPath = z.object({
   app_id: z.string(),
@@ -3832,6 +3991,30 @@ export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
  * Form submitted
  */
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse = zFormSubmitResponse
+
+export const zPostAppsByAppIdJobsByJobIdStopPath = z.object({
+  app_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdJobsByJobIdStopResponse = zJobState
+
+export const zGetAppsByAppIdJobsByJobIdWaitPath = z.object({
+  app_id: z.string(),
+  job_id: z.string(),
+})
+
+export const zGetAppsByAppIdJobsByJobIdWaitQuery = z.object({
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+})
+
+/**
+ * Job state
+ */
+export const zGetAppsByAppIdJobsByJobIdWaitResponse = zJobState
 
 export const zGetAppsByAppIdReleaseCheckPath = z.object({
   app_id: z.string(),
@@ -4166,6 +4349,17 @@ export const zPostAppsByAppIdWorkflowRunPath = z.object({
  * Run result (SSE stream)
  */
 export const zPostAppsByAppIdWorkflowRunResponse = zEventStreamResponse
+
+export const zPostAppsByAppIdWorkflowStartBody = zWorkflowStartPayload
+
+export const zPostAppsByAppIdWorkflowStartPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdWorkflowStartResponse = zJobState
 
 export const zPostAppsByAppIdPublishBody = zPublishPayload
 
