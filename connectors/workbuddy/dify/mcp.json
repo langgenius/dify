@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "dify": {
+      "type": "streamableHttp",
+      "url": "https://${DIFY_HOST}/openapi/v1/mcp",
+      "headers": {
+        "Authorization": "Bearer ${DIFY_TOKEN}"
+      },
+      "timeout": 60000
+    }
+  }
+}
