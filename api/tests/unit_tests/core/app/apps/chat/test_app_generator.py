@@ -9,7 +9,6 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 import core.app.apps.chat.app_generator as generator_module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
@@ -41,16 +40,6 @@ class _AppConfigLike(Protocol):
     external_data_variables: Sequence[object]
     dataset: object | None
     additional_features: object | None
-
-
-class _GenerateArgs(TypedDict, closed=True):
-    """Keyword payload accepted by ``ChatAppGenerator.generate``."""
-
-    query: str
-    inputs: Mapping[str, object]
-    conversation_id: str
-    model_config: Mapping[str, object]
-    trace_session_id: str
 
 
 class DummyGenerateEntity(ChatAppGenerateEntity):
@@ -267,14 +256,6 @@ class TestChatAppGenerator:
             return trace_scope
 
         monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
-        args: _GenerateArgs = {
-            "query": "hi",
-            "inputs": {},
-            "conversation_id": "conversation-1",
-            "model_config": {"foo": "bar"},
-            "trace_session_id": "session-1",
-        }
-
         with (
             patch(
                 "core.app.apps.chat.app_generator.ConversationService.get_conversation", return_value=None
@@ -306,7 +287,18 @@ class TestChatAppGenerator:
         ):
             mock_thread.return_value.start.return_value = None
             result = generator.generate(
-                app_model, user, args, InvokeFrom.DEBUGGER, streaming=False, session=unbound_session
+                app_model,
+                user,
+                {
+                    "query": "hi",
+                    "inputs": {},
+                    "conversation_id": "conversation-1",
+                    "model_config": {"foo": "bar"},
+                    "trace_session_id": "session-1",
+                },
+                InvokeFrom.DEBUGGER,
+                streaming=False,
+                session=unbound_session,
             )
 
         assert result == {"ok": True}
