@@ -33,7 +33,7 @@ import {
 } from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
-import { streamEvents } from '@/service/event-stream'
+import { parseAgentDeliveredInputs, streamEvents } from '@/service/event-stream'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -55,6 +55,7 @@ type HistoryConversationMessage = {
   retriever_resources?: ChatItem['citation']
   metadata?: {
     reasoning?: ChatItem['reasoningContent']
+    steering_inputs?: unknown
   }
   created_at?: number
   answer_tokens?: number
@@ -81,6 +82,7 @@ type SendCallback = {
   onUnhandledEvent?: StreamCallbacks['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
   onNotifyError?: StreamCallbacks['onNotifyError']
+  onAgentQueueReady?: StreamCallbacks['onAgentQueueReady']
   isPublicAPI?: boolean
 }
 
@@ -1114,6 +1116,7 @@ export const useChat = (
         onUnhandledEvent,
         onSendSettled,
         onNotifyError,
+        onAgentQueueReady,
         isPublicAPI,
       }: SendCallback,
     ) => {
@@ -1223,6 +1226,24 @@ export const useChat = (
         isPublicAPI,
         onNotifyError,
         onUnhandledEvent,
+        // Lets the admitted preview start steering and stop before the first answer.
+        onAgentQueueReady: (taskId) => {
+          if (!isCurrentRequest() || !options.isNewAgent) return
+          taskIdRef.current = taskId
+          onAgentQueueReady?.(taskId)
+        },
+        onAgentInputDelivered: (input) => {
+          if (!isCurrentRequest() || !options.isNewAgent) return
+          const current = responseItem.agent_steering_inputs ?? []
+          if (current.some((entry) => entry.input_id === input.input_id)) return
+          responseItem.agent_steering_inputs = [...current, input]
+          updateCurrentQAOnTree({
+            parentId: data.parent_message_id,
+            responseItem,
+            placeholderQuestionId,
+            questionItem,
+          })
+        },
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1332,6 +1353,11 @@ export const useChat = (
                   (newResponseItem.status === 'error' || (!!hasError && !newResponseItem.status)),
                 agent_thoughts: historyAgentThoughts,
                 agent_response_parts: undefined,
+                agent_steering_inputs: options.isNewAgent
+                  ? parseAgentDeliveredInputs(newResponseItem.metadata).length
+                    ? parseAgentDeliveredInputs(newResponseItem.metadata)
+                    : responseItem.agent_steering_inputs
+                  : undefined,
                 citation: newResponseItem.retriever_resources,
                 reasoningContent: newResponseItem.metadata?.reasoning,
                 reasoningFinished: true,

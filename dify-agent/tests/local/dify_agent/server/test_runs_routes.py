@@ -1,4 +1,9 @@
+import asyncio
+from uuid import uuid4
+
 import pytest
+from fakeredis import FakeServer
+from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
 from fastapi.testclient import TestClient
 
 from dify_agent.protocol import CancelRunResponse, DIFY_AGENT_MODEL_LAYER_ID, RunFailureType
@@ -6,7 +11,7 @@ from dify_agent.protocol.schemas import CreateRunRequest, RunStatus
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, SchedulerStoppingError
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.schemas import RunRecord
-from dify_agent.storage.redis_run_store import IdempotencyConflictError, RunNotFoundError
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore, RunNotFoundError
 
 
 class FakeScheduler:
@@ -399,3 +404,53 @@ def test_create_run_does_not_map_infrastructure_failure_to_422() -> None:
     )
 
     assert response.status_code == 500
+
+
+def test_run_inputs_endpoint_maps_accepted_and_conflicted_enqueues() -> None:
+    from fastapi import FastAPI
+
+    server = FakeServer()
+    redis_client = AsyncFakeRedis(server=server)
+    store = RedisRunStore(redis_client, prefix="test", run_retention_seconds=60)
+    record = asyncio.run(store.create_run())
+    asyncio.run(store.open_run_inputs(record.run_id))
+
+    app = FastAPI()
+    app.include_router(create_runs_router(lambda: store, lambda: FakeScheduler(), input_enabled=True))
+    client = TestClient(app)
+
+    input_id = str(uuid4())
+    response = client.post(f"/runs/{record.run_id}/inputs", json={"input_id": input_id, "text": "switch to plan B"})
+    assert response.status_code == 202
+    assert response.json() == {"input_id": input_id, "status": "queued"}
+
+    retry = client.post(f"/runs/{record.run_id}/inputs", json={"input_id": input_id, "text": "switch to plan B"})
+    assert retry.status_code == 202
+
+    queue = client.get(f"/runs/{record.run_id}/queue")
+    assert queue.status_code == 200
+    assert queue.json() == {
+        "accepting_inputs": True,
+        "entries": [{"kind": "input_queued", "id": input_id}],
+    }
+    assert "switch to plan B" not in queue.text
+
+    conflict = client.post(f"/runs/{record.run_id}/inputs", json={"input_id": input_id, "text": "different"})
+    assert conflict.status_code == 409
+
+    missing = client.post("/runs/missing/inputs", json={"input_id": str(uuid4()), "text": "x"})
+    assert missing.status_code == 404
+
+    blank = client.post(f"/runs/{record.run_id}/inputs", json={"input_id": str(uuid4()), "text": "   "})
+    assert blank.status_code == 422
+
+
+def test_run_inputs_endpoint_is_not_registered_when_disabled() -> None:
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(create_runs_router(lambda: FakeStore(), lambda: FakeScheduler()))
+    client = TestClient(app)
+    response = client.post("/runs/run-1/inputs", json={"input_id": "2f0b3f34-0000-4000-8000-000000000001", "text": "x"})
+    assert response.status_code == 404
+    assert client.get("/runs/run-1/queue").status_code == 404

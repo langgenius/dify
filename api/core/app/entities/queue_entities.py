@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum, auto
 from typing import Any
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,6 +24,8 @@ class QueueEvent(StrEnum):
     LLM_CHUNK = "llm_chunk"
     TEXT_CHUNK = "text_chunk"
     AGENT_MESSAGE = "agent_message"
+    AGENT_QUEUE_READY = "agent_queue_ready"
+    AGENT_INPUT_DELIVERED = "agent_input_delivered"
     MESSAGE_REPLACE = "message_replace"
     MESSAGE_END = "message_end"
     ADVANCED_CHAT_MESSAGE_END = "advanced_chat_message_end"
@@ -211,6 +214,26 @@ class QueueReasoningChunkEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+
+
+class QueueAgentQueueReadyEvent(AppQueueEvent):
+    """Published once when an admitted preview run is ready to accept steering."""
+
+    event: QueueEvent = QueueEvent.AGENT_QUEUE_READY
+
+
+class AgentDeliveredInput(BaseModel):
+    """A steering input the run has actually delivered into its message history."""
+
+    input_id: UUID
+    text: str = Field(min_length=1, max_length=8000)
+
+
+class QueueAgentInputDeliveredEvent(AppQueueEvent):
+    """Published when a steering input was persisted and delivered to the run."""
+
+    event: QueueEvent = QueueEvent.AGENT_INPUT_DELIVERED
+    input: AgentDeliveredInput
 
 
 class QueueAgentMessageEvent(AppQueueEvent):

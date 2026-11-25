@@ -304,6 +304,21 @@ export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
   status: 403
 }
 
+export type AgentChatInputPayload = {
+  input_id: string
+  text: string
+}
+
+export type AgentChatInputResponse = {
+  input_id: string
+  status: 'queued'
+}
+
+export type AgentChatQueueResponse = {
+  accepting_inputs: boolean
+  entries: Array<RunQueueEntry>
+}
+
 export type AgentAppComposerResponse = {
   active_config_is_published: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -1024,6 +1039,11 @@ export type ComposerSoulLockPayload = {
 }
 
 export type ComposerVariant = 'agent_app' | 'workflow'
+
+export type RunQueueEntry = {
+  id: string
+  kind: 'input_queued'
+}
 
 export type AgentConfigSnapshotSummaryResponse = {
   agent_id?: string | null
@@ -3252,6 +3272,60 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses 
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse =
   GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses]
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsData = {
+  body: AgentChatInputPayload
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/chat-messages/{task_id}/inputs'
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsErrors = {
+  400: ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  409: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsError =
+  PostAgentByAgentIdChatMessagesByTaskIdInputsErrors[keyof PostAgentByAgentIdChatMessagesByTaskIdInputsErrors]
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsResponses = {
+  202: AgentChatInputResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsResponse =
+  PostAgentByAgentIdChatMessagesByTaskIdInputsResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdInputsResponses]
+
+export type GetAgentByAgentIdChatMessagesByTaskIdQueueData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/chat-messages/{task_id}/queue'
+}
+
+export type GetAgentByAgentIdChatMessagesByTaskIdQueueErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdChatMessagesByTaskIdQueueError =
+  GetAgentByAgentIdChatMessagesByTaskIdQueueErrors[keyof GetAgentByAgentIdChatMessagesByTaskIdQueueErrors]
+
+export type GetAgentByAgentIdChatMessagesByTaskIdQueueResponses = {
+  200: AgentChatQueueResponse
+}
+
+export type GetAgentByAgentIdChatMessagesByTaskIdQueueResponse =
+  GetAgentByAgentIdChatMessagesByTaskIdQueueResponses[keyof GetAgentByAgentIdChatMessagesByTaskIdQueueResponses]
 
 export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
   body?: never

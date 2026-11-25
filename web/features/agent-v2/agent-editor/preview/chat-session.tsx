@@ -20,6 +20,8 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { deploymentEditionAtom } from '@/features/system-features/state'
+import { useAgentRunQueue } from './agent-run-queue'
+import { AgentRunQueueStrip } from './agent-run-queue-strip'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
 
@@ -97,7 +99,20 @@ export function AgentPreviewChatSession({
     isResponding: false,
     isSendPending: false,
   }))
+  // Pair the admitted task id with the session that produced it so a stale
+  // event can never steer a different preview conversation.
+  const [queueTask, setQueueTask] = useState<{
+    conversationSessionKey: string
+    taskId: string
+  } | null>(null)
+  const handleAgentQueueReady = useCallback(
+    (taskId: string) => {
+      setQueueTask({ conversationSessionKey, taskId })
+    },
+    [conversationSessionKey],
+  )
   const handleRuntimeStateChange = useCallback((nextState: AgentPreviewChatRuntimeState) => {
+    if (!nextState.isResponding) setQueueTask(null)
     setRuntimeState((currentState) => {
       if (
         currentState.isEmptyChat === nextState.isEmptyChat &&
@@ -109,17 +124,27 @@ export function AgentPreviewChatSession({
       return nextState
     })
   }, [])
+  const activeQueueTaskId =
+    runtimeState.isResponding && queueTask?.conversationSessionKey === conversationSessionKey
+      ? queueTask.taskId
+      : null
+  const queue = useAgentRunQueue({ agentId, taskId: activeQueueTaskId })
   const handleInputSend: OnSend = useCallback(
-    (
+    async (
       message: string,
       files?: FileEntity[],
       isRegenerate: boolean = false,
       parentAnswer: ChatItem | null = null,
     ) => {
-      if (disabled) return
+      if (disabled) return false
+      if (runtimeState.isResponding && !isRegenerate) {
+        // A live run never starts a second turn; the text steers it instead.
+        if (!queue.canSteer || files?.length) return false
+        return queue.steer(message)
+      }
       return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
     },
-    [disabled],
+    [disabled, queue, runtimeState.isResponding],
   )
   useImperativeHandle(
     controllerRef,
@@ -140,7 +165,8 @@ export function AgentPreviewChatSession({
   )
   const hasBuildNote = !!composerDraft.configNote.trim()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
-  const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
+  const sendButtonLoading =
+    isEmptyChat && !!sendButtonLabel && (isSendPending || (isResponding && !queue.canSteer))
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
@@ -155,7 +181,7 @@ export function AgentPreviewChatSession({
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
       inputLabel={inputPlaceholder}
-      disabled={disabled || (isEmptyChat && isResponding)}
+      disabled={disabled || (isEmptyChat && isResponding && !queue.canSteer)}
       // oxlint-disable-next-line jsx-a11y/no-autofocus -- Build chat opts out so it does not steal focus from the configure editor.
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
       sendButtonLoading={sendButtonLoading}
@@ -167,7 +193,7 @@ export function AgentPreviewChatSession({
       onSend={handleInputSend}
       inputs={inputs}
       inputsForm={inputsForm}
-      isResponding={isEmptyChat ? undefined : isResponding}
+      isResponding={isEmptyChat ? undefined : isResponding && !queue.canSteer}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
       footerNoticeTooltip={
@@ -209,6 +235,7 @@ export function AgentPreviewChatSession({
           onRuntimeStateChange={handleRuntimeStateChange}
           onSaveDraftBeforeRun={onSaveDraftBeforeRun}
           onSendInterrupted={onSendInterrupted}
+          onAgentQueueReady={handleAgentQueueReady}
         />
       </div>
       <div
@@ -233,6 +260,7 @@ export function AgentPreviewChatSession({
             </div>
           )}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
+            {activeQueueTaskId && <AgentRunQueueStrip queue={queue} />}
             {chatInputNode}
           </div>
         </div>

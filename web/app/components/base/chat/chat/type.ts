@@ -1,4 +1,5 @@
 import type { KnowledgeFsCitation } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentDeliveredInput } from '@/service/event-stream'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
@@ -120,6 +121,8 @@ export type IChatItem = {
   suggestedQuestions?: string[]
   log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
+  /** Steering inputs the run delivered, scoped to this parent turn. */
+  agent_steering_inputs?: AgentDeliveredInput[]
   agent_response_parts?: AgentResponsePart[]
   // for LLM reasoning (chain-of-thought) in "separated" mode, keyed by LLM node id
   reasoningContent?: Record<string, string>

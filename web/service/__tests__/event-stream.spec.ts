@@ -144,6 +144,52 @@ describe('streamEvents', () => {
     expect(onCompleted).toHaveBeenCalledWith()
   })
 
+  it('routes agent_queue_ready to the ready callback without consuming a message', async () => {
+    const onAgentQueueReady = vi.fn()
+    const onData = vi.fn()
+    const onCompleted = run(
+      () =>
+        Promise.resolve(
+          framesOf(
+            { event: 'agent_queue_ready', task_id: 'task-9' },
+            {
+              event: 'message',
+              answer: 'Hi',
+              id: 'm-1',
+              conversation_id: 'c-1',
+              task_id: 'task-9',
+            },
+          ),
+        ),
+      { onAgentQueueReady, onData, silent: true },
+    )
+
+    await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
+    expect(onAgentQueueReady).toHaveBeenCalledWith('task-9')
+    expect(onData).toHaveBeenCalledOnce()
+  })
+
+  it('routes agent_input_delivered to the delivered callback only when the frame is well formed', async () => {
+    const onAgentInputDelivered = vi.fn()
+    const onData = vi.fn()
+    const onCompleted = run(
+      () =>
+        Promise.resolve(
+          framesOf(
+            { event: 'agent_input_delivered', input: { input_id: 'in-1', text: 'Steer this' } },
+            { event: 'agent_input_delivered', input: { input_id: '', text: 'bad' } },
+            { event: 'agent_input_delivered' },
+          ),
+        ),
+      { onAgentInputDelivered, onData, silent: true },
+    )
+
+    await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
+    expect(onAgentInputDelivered).toHaveBeenCalledOnce()
+    expect(onAgentInputDelivered).toHaveBeenCalledWith({ input_id: 'in-1', text: 'Steer this' })
+    expect(onData).not.toHaveBeenCalled()
+  })
+
   it('passes an abort signal and silent context to the request and exposes the controller', async () => {
     const request = vi.fn((_options: StreamRequestOptions) => Promise.resolve(framesOf()))
     let controller: AbortController | undefined

@@ -14,7 +14,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Literal
 
 from flask import Flask, current_app
@@ -37,6 +37,7 @@ from core.app.apps.agent_app.errors import (
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppWorkspaceStore
+from core.app.apps.agent_app.task_pipeline import AgentAppQueueManager, AgentAppTaskPipeline
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
@@ -74,6 +75,18 @@ logger = logging.getLogger(__name__)
 
 
 class AgentAppGenerator(MessageBasedAppGenerator):
+    def __init__(
+        self,
+        *,
+        bind_steering_task_to_run: Callable[[DifyRunContext, str, str], bool] | None = None,
+    ) -> None:
+        """Inject the preview-run binding hook owned by the application layer.
+
+        When set, admitted roster draft/build previews opt into steering
+        metadata and bind their accepted backend run id to the public task id.
+        """
+        self._bind_steering_task_to_run = bind_steering_task_to_run
+
     def generate(
         self,
         *,
@@ -185,7 +198,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             session=session,
         )
 
-        queue_manager = MessageBasedAppQueueManager(
+        # Steering is admitted only for Console roster draft/build chats that
+        # registered a preview-run hook; every other run stays on the shared
+        # EasyUI queue manager and pipeline unchanged.
+        allow_async_loop = (
+            self._bind_steering_task_to_run is not None
+            and agent.scope == AgentScope.ROSTER
+            and invoke_from == InvokeFrom.DEBUGGER
+            and agent_config_version_kind in {"draft", "build_draft"}
+            and args.get("agent_build_finalization") is not True
+        )
+        queue_type = AgentAppQueueManager if allow_async_loop else MessageBasedAppQueueManager
+        queue_manager = queue_type(
             task_id=application_generate_entity.task_id,
             user_id=application_generate_entity.user_id,
             invoke_from=application_generate_entity.invoke_from,
@@ -205,17 +229,34 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "conversation_id": conversation.id,
                 "message_id": message.id,
                 "user_from": UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
+                "allow_async_loop": allow_async_loop,
             },
         )
         worker_thread.start()
 
-        response = self._handle_response(
-            application_generate_entity=application_generate_entity,
-            queue_manager=queue_manager,
-            conversation=conversation,
-            message=message,
-            stream=streaming,
-        )
+        if isinstance(queue_manager, AgentAppQueueManager):
+            pipeline = AgentAppTaskPipeline(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                conversation=conversation,
+                message=message,
+                stream=streaming,
+            )
+            try:
+                response = pipeline.process()
+            except ValueError as e:
+                if len(e.args) > 0 and e.args[0] == "I/O operation on closed file.":  # ignore this error
+                    raise GenerateTaskStoppedError() from e
+                logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
+                raise e
+        else:
+            response = self._handle_response(
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                conversation=conversation,
+                message=message,
+                stream=streaming,
+            )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def _generate_worker(
@@ -228,6 +269,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         user_from: UserFrom,
+        allow_async_loop: bool = True,
     ) -> None:
         from libs.flask_utils import preserve_flask_contexts
 
@@ -308,6 +350,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     files=list(application_generate_entity.files),
                     image_detail_config=image_detail_config,
+                    allow_async_loop=allow_async_loop,
                     session_scope_snapshot_id=application_generate_entity.agent_session_scope_config_version_id,
                     build_draft_id=(
                         application_generate_entity.agent_config_snapshot_id
@@ -341,8 +384,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             raise AgentAppGeneratorError("query is required")
         return query.replace("\x00", "")
 
-    @staticmethod
-    def _build_runner() -> AgentAppRunner:
+    def _build_runner(self) -> AgentAppRunner:
         return AgentAppRunner(
             request_builder=AgentAppRuntimeRequestBuilder(),
             agent_backend_client=create_agent_backend_run_client(
@@ -356,6 +398,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppWorkspaceStore(),
             text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
+            bind_steering_task_to_run=self._bind_steering_task_to_run,
         )
 
     def _run_input_guards(

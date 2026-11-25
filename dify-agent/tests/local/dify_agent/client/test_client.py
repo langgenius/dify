@@ -40,6 +40,7 @@ from dify_agent.protocol import (
     RunEventsResponse,
     RunFailedEvent,
     RunFailedEventData,
+    RunInputRequest,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -1756,3 +1757,43 @@ def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+def test_sync_run_input_and_queue_methods_send_dtos_with_auth() -> None:
+    input_id = "2f0b3f34-0000-4000-8000-000000000001"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == "Bearer secret"
+        if request.method == "POST" and request.url.path == "/runs/run-1/inputs":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload == {"input_id": input_id, "text": "steer this run"}
+            return httpx.Response(202, json={"input_id": input_id, "status": "queued"})
+        if request.method == "GET" and request.url.path == "/runs/run-1/queue":
+            return httpx.Response(
+                200,
+                json={
+                    "accepting_inputs": True,
+                    "entries": [
+                        {"kind": "input_queued", "id": input_id},
+                        {"kind": "input_queued", "id": "another-input"},
+                    ],
+                },
+            )
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    client = Client(
+        base_url="http://testserver",
+        headers={"Authorization": "Bearer secret"},
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    queued = client.enqueue_run_input_sync("run-1", RunInputRequest(input_id=input_id, text="steer this run"))
+    queue = client.get_run_queue_sync("run-1")
+
+    assert queued.status == "queued"
+    assert str(queued.input_id) == input_id
+    assert queue.accepting_inputs is True
+    assert [(entry.kind, entry.id) for entry in queue.entries] == [
+        ("input_queued", input_id),
+        ("input_queued", "another-input"),
+    ]

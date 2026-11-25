@@ -125,6 +125,11 @@ class AppQueueManager(ABC):
     def execution_state(self) -> AppExecutionState:
         return self._execution_coordinator.state
 
+    @property
+    def task_id(self) -> str:
+        """Return the public task id used to correlate this queue with the client stream."""
+        return self._task_id
+
     def _publish_timeout_stop(self, reason: str) -> None:
         self.publish(
             QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL, reason=reason),

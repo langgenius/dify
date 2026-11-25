@@ -34,6 +34,11 @@ class AgentBackendConfig(BaseSettings):
         default=False,
     )
 
+    AGENT_APP_ASYNC_LOOP_ENABLED: bool = Field(
+        description="Enable experimental Console Agent App chat steering.",
+        default=False,
+    )
+
     AGENT_BACKEND_FAKE_SCENARIO: str = Field(
         description="Scenario used by the fake Agent backend client.",
         default="success",

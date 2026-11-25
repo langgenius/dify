@@ -146,6 +146,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
                 agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
                 knowledge_session_store=knowledge_store,
+                run_input_store=store if resolved_settings.api_token is not None else None,
             ),
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             run_timeout_seconds=resolved_settings.run_timeout_seconds,
@@ -182,7 +183,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     control_plane_router = APIRouter(
         dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(
+        create_runs_router(get_store, get_scheduler, input_enabled=resolved_settings.api_token is not None)
+    )
     control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
     control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
     control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))

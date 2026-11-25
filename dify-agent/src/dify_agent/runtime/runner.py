@@ -62,6 +62,7 @@ from dify_agent.runtime.event_sink import (
 )
 from dify_agent.layers.execution_context.configs import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
+from dify_agent.runtime.run_inputs import RunInputCapability
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
 
 
@@ -334,14 +335,20 @@ class AgentRunRunner:
             )
             if compaction is not None:
                 capabilities.append(compaction)
+            execution_context = DifyExecutionContextLayerConfig.model_validate(
+                deps.layers[llm_config.execution_context]["config"]
+            )
+            human_input_enabled = (
+                execution_context.agent_mode == "agent_app" and self.request.metadata.get("allow_steering") is True
+            )
+            input_store = self.services.run_input_store if human_input_enabled else None
+            if input_store is not None:
+                capabilities.append(RunInputCapability(input_store))
             agent = create_agent(
                 model,
                 toolsets=[module for module in modules.values() if isinstance(module, AbstractToolset)],
                 capabilities=capabilities,
                 output_type=output_type,
-            )
-            execution_context = DifyExecutionContextLayerConfig.model_validate(
-                deps.layers[llm_config.execution_context]["config"]
             )
             observability: AgentObservability | None = self.agent_observability
             if execution_context.tracing is not None and self.application_observability is not None:
@@ -380,6 +387,8 @@ class AgentRunRunner:
                 finished = False
                 try:
                     async with timeout:
+                        if input_store is not None:
+                            await input_store.open_run_inputs(self.run_id)
                         result = await agent.run(
                             normalize_user_input(user_content),
                             deps=deps,

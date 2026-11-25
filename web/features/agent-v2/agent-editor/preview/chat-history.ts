@@ -11,6 +11,7 @@ import type { FileResponse } from '@/types/workflow'
 import { buildChatItemTree } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { parseAgentDeliveredInputs } from '@/service/event-stream'
 
 const toFileResponse = (
   file: NonNullable<MessageDetailResponse['message_files']>[number],
@@ -138,6 +139,7 @@ export function getFormattedAgentDebugChatTree(
         score: source.score ?? 0,
         word_count: source.word_count ?? 0,
       })),
+      agent_steering_inputs: parseAgentDeliveredInputs(item.metadata),
       isError: item.status === 'error',
       agent_thoughts: addFileInfos(
         sortAgentSorts(

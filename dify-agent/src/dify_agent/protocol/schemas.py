@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import StrEnum
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
@@ -98,6 +99,53 @@ class CreateRunRequest(BaseModel):
         if value is not None and not value.strip():
             raise ValueError("idempotency_key must not be blank")
         return value
+
+
+class RunInputRequest(BaseModel):
+    """Request body for queueing steering input on a running run.
+
+    The caller-provided id makes retries idempotent: the same id and text is a
+    no-op, while the same id with different text conflicts.
+    """
+
+    input_id: UUID
+    text: Annotated[str, Field(min_length=1, max_length=8000)]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @field_validator("text")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("input text must not be blank")
+        return value
+
+
+class RunInputResponse(BaseModel):
+    """Response returned after a steering input is accepted into the run inbox."""
+
+    input_id: UUID
+    status: Literal["queued"] = "queued"
+
+
+class RunQueueEntry(BaseModel):
+    """One inbox entry: an id and kind only, never text, output, or secrets."""
+
+    kind: Literal["input_queued"]
+    id: str
+
+
+class RunQueueResponse(BaseModel):
+    """Snapshot of a run's inbox: whether humans may enqueue, and pending ids.
+
+    Entries are removed once drained by the run; they do not confirm model
+    delivery. Working data such as input text is never exposed.
+    """
+
+    accepting_inputs: bool
+    entries: list[RunQueueEntry]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class CancelRunRequest(BaseModel):
@@ -302,6 +350,10 @@ __all__ = [
     "RunFailedEvent",
     "RunFailedEventData",
     "RunFailureType",
+    "RunInputRequest",
+    "RunInputResponse",
+    "RunQueueEntry",
+    "RunQueueResponse",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",

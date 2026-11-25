@@ -10,7 +10,7 @@ import type { Node } from '@/app/components/workflow/types'
 import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useEffect, useImperativeHandle, useRef } from 'react'
+import { Fragment, memo, useEffect, useImperativeHandle, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Answer from './answer'
 import ChatInputArea from './chat-input-area'
@@ -228,25 +228,42 @@ const Chat: FC<ChatProps> = ({
               if (item.isAnswer) {
                 const isLast = item.id === chatList.at(-1)?.id
                 return (
-                  <Answer
-                    answerActionPosition={answerActionPosition}
-                    appData={appData}
-                    key={item.id}
-                    item={item}
-                    question={chatList[index - 1]?.content ?? ''}
-                    index={index}
-                    config={config}
-                    answerIcon={answerIcon}
-                    responding={isLast && isResponding}
-                    chatAnswerContainerInner={chatAnswerContainerInner}
-                    hideProcessDetail={hideProcessDetail}
-                    noChatInput={noChatInput}
-                    switchSibling={switchSibling}
-                    hideAvatar={hideAvatar}
-                    renderAgentContent={renderAgentContent}
-                    footer={renderMessageFooter?.(item)}
-                    onHumanInputFormSubmit={onHumanInputFormSubmit}
-                  />
+                  <Fragment key={item.id}>
+                    {/* Render-only: delivered steering inputs show as ordinary
+                        user rows; they are not separate backend turns. */}
+                    {item.agent_steering_inputs?.map((input) => (
+                      <Question
+                        key={`steering-${input.input_id}`}
+                        item={{
+                          id: `steering-${input.input_id}`,
+                          content: input.text,
+                          isAnswer: false,
+                        }}
+                        questionIcon={questionIcon}
+                        theme={theme}
+                        enableEdit={false}
+                        hideAvatar={hideAvatar}
+                      />
+                    ))}
+                    <Answer
+                      answerActionPosition={answerActionPosition}
+                      appData={appData}
+                      item={item}
+                      question={chatList[index - 1]?.content ?? ''}
+                      index={index}
+                      config={config}
+                      answerIcon={answerIcon}
+                      responding={isLast && isResponding}
+                      chatAnswerContainerInner={chatAnswerContainerInner}
+                      hideProcessDetail={hideProcessDetail}
+                      noChatInput={noChatInput}
+                      switchSibling={switchSibling}
+                      hideAvatar={hideAvatar}
+                      renderAgentContent={renderAgentContent}
+                      footer={renderMessageFooter?.(item)}
+                      onHumanInputFormSubmit={onHumanInputFormSubmit}
+                    />
+                  </Fragment>
                 )
               }
               return (

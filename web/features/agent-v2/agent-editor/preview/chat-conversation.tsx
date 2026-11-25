@@ -97,6 +97,7 @@ export function AgentPreviewChatConversation({
   onRuntimeStateChange,
   onSaveDraftBeforeRun,
   onSendInterrupted,
+  onAgentQueueReady,
 }: {
   ref: Ref<AgentPreviewChatController>
   agentId: string
@@ -121,6 +122,7 @@ export function AgentPreviewChatConversation({
   onRuntimeStateChange: (state: AgentPreviewChatRuntimeState) => void
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
+  onAgentQueueReady?: (taskId: string) => void
 }) {
   const { t } = useTranslation(['agentV2'])
   const docLink = useDocLink()
@@ -242,6 +244,7 @@ export function AgentPreviewChatConversation({
               onConversationIdChange?.(completedConversationId)
               onConversationComplete?.(completedConversationId, workflowRunId)
             },
+            onAgentQueueReady,
             onSendSettled: (hasError) => {
               setIsSendPending(false)
               if (hasError) notifySendInterrupted()
@@ -266,6 +269,7 @@ export function AgentPreviewChatConversation({
       inputs,
       inputsForm,
       notifySendInterrupted,
+      onAgentQueueReady,
       onConversationComplete,
       onConversationIdChange,
       onCurrentSessionConversationIdChange,

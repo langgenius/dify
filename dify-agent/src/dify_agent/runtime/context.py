@@ -20,6 +20,7 @@ from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLease
 if TYPE_CHECKING:
     from dify_agent.layers.knowledge_fs.session import KnowledgeFsSessionStore
     from dify_agent.layers.shell.layer import ShellSession
+    from dify_agent.runtime.run_inputs import RunInputStore
 
 
 class LayerData(TypedDict):
@@ -43,6 +44,7 @@ class Services:
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     knowledge_session_store: KnowledgeFsSessionStore | None = None
+    run_input_store: RunInputStore | None = None
 
 
 @dataclass

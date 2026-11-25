@@ -24,16 +24,26 @@ from dify_agent.protocol.schemas import (
     CreateRunRequest,
     CreateRunResponse,
     RunEventsResponse,
+    RunInputRequest,
+    RunInputResponse,
+    RunQueueResponse,
     RunStatusResponse,
 )
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.server.sse import sse_event_stream
-from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore, RunNotFoundError
+from dify_agent.storage.redis_run_store import (
+    IdempotencyConflictError,
+    RedisRunStore,
+    RunInputConflictError,
+    RunNotFoundError,
+)
 
 
 def create_runs_router(
     get_store: Callable[[], RedisRunStore],
     get_scheduler: Callable[[], RunScheduler],
+    *,
+    input_enabled: bool = False,
 ) -> APIRouter:
     router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -85,6 +95,34 @@ def create_runs_router(
             raise HTTPException(status_code=404, detail="run not found") from exc
         except RunCancellationConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    if input_enabled:
+
+        @router.post("/{run_id}/inputs", response_model=RunInputResponse, status_code=202)
+        async def enqueue_input(
+            run_id: str,
+            request: RunInputRequest,
+            store: Annotated[RedisRunStore, Depends(store_dep)],
+        ) -> RunInputResponse:
+            """Queue steering input; 202 means inbox-accepted, not model-delivered."""
+            try:
+                await store.enqueue_run_input(run_id, request)
+            except RunNotFoundError as exc:
+                raise HTTPException(status_code=404, detail="run not found") from exc
+            except RunInputConflictError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            return RunInputResponse(input_id=request.input_id)
+
+        @router.get("/{run_id}/queue", response_model=RunQueueResponse)
+        async def get_run_queue(
+            run_id: str,
+            store: Annotated[RedisRunStore, Depends(store_dep)],
+        ) -> RunQueueResponse:
+            """Return pending inbox ids/kinds only; no input text or job output."""
+            try:
+                return await store.get_run_queue(run_id)
+            except RunNotFoundError as exc:
+                raise HTTPException(status_code=404, detail="run not found") from exc
 
     @router.get("/{run_id}/events", response_model=RunEventsResponse)
     async def get_run_events(

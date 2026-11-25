@@ -3,6 +3,7 @@ from collections.abc import Mapping
 import hashlib
 import json
 from typing import cast
+from uuid import uuid4
 
 import pytest
 from fakeredis import FakeServer
@@ -19,6 +20,7 @@ from dify_agent.protocol.schemas import (
     RunFailedEvent,
     RunFailedEventData,
     RunFailureType,
+    RunInputRequest,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
@@ -27,11 +29,13 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import RunFinalizationResult, RunStreamSealedError
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_idempotency_key, run_record_key
+from dify_agent.runtime.run_inputs import RunInboxInput
 from dify_agent.storage.redis_run_store import (
     DEFAULT_RUN_EVENT_STREAM_MAX_LENGTH,
     DEFAULT_RUN_RETENTION_SECONDS,
     IdempotencyConflictError,
     RedisRunStore,
+    RunInputConflictError,
     RunNotFoundError,
 )
 
@@ -221,6 +225,83 @@ def test_legacy_record_without_idempotency_fields_still_accepts_active_writes() 
             assert loaded.idempotency_fingerprint is None
             assert [event.type for event in (await store.get_events(loaded.run_id)).events] == ["run_started"]
             assert not await client.keys("test:idempotency:*")
+
+    asyncio.run(scenario())
+
+
+def test_run_inputs_enqueue_drain_and_seal_across_clients() -> None:
+    async def scenario() -> None:
+        server = FakeServer()
+        async with AsyncFakeRedis(server=server) as first_client, AsyncFakeRedis(server=server) as second_client:
+            first = RedisRunStore(first_client, prefix="test", run_retention_seconds=60)
+            second = RedisRunStore(second_client, prefix="test", run_retention_seconds=60)
+            record = await first.create_run()
+
+            with pytest.raises(RunInputConflictError, match="not accepting steering input"):
+                await first.enqueue_run_input(record.run_id, RunInputRequest(input_id=uuid4(), text="early"))
+
+            await first.open_run_inputs(record.run_id)
+            one = RunInputRequest(input_id=uuid4(), text="one")
+            two = RunInputRequest(input_id=uuid4(), text="two")
+            await second.enqueue_run_input(record.run_id, one)
+            await second.enqueue_run_input(record.run_id, two)
+            # A retry of the same id with the same text is an idempotent no-op.
+            await second.enqueue_run_input(record.run_id, one)
+            with pytest.raises(RunInputConflictError, match="different text"):
+                await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=one.input_id, text="changed"))
+
+            assert await first.take_run_inputs(record.run_id, finish=True) == [
+                RunInboxInput(text="one", input_id=str(one.input_id)),
+                RunInboxInput(text="two", input_id=str(two.input_id)),
+            ]
+
+            # The first finish drained pending inputs, so the inbox stays open until
+            # a finish observes it empty; only then is it sealed for new input.
+            three = RunInputRequest(input_id=uuid4(), text="three")
+            await second.enqueue_run_input(record.run_id, three)
+            assert await first.take_run_inputs(record.run_id) == [
+                RunInboxInput(text="three", input_id=str(three.input_id))
+            ]
+            assert await first.take_run_inputs(record.run_id, finish=True) == []
+            with pytest.raises(RunInputConflictError, match="not accepting steering input"):
+                await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=uuid4(), text="four"))
+
+            with pytest.raises(RunNotFoundError):
+                await second.enqueue_run_input("missing", RunInputRequest(input_id=uuid4(), text="x"))
+
+    asyncio.run(scenario())
+
+
+def test_run_queue_snapshot_reports_ids_only_and_tracks_lifecycle() -> None:
+    async def scenario() -> None:
+        server = FakeServer()
+        async with AsyncFakeRedis(server=server) as first_client, AsyncFakeRedis(server=server) as second_client:
+            first = RedisRunStore(first_client, prefix="test", run_retention_seconds=60)
+            second = RedisRunStore(second_client, prefix="test", run_retention_seconds=60)
+            record = await first.create_run()
+
+            queue = await second.get_run_queue(record.run_id)
+            assert queue.accepting_inputs is False and queue.entries == []
+
+            await first.open_run_inputs(record.run_id)
+            one, two = uuid4(), uuid4()
+            await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=one, text="first"))
+            await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=two, text="second"))
+            queue = await second.get_run_queue(record.run_id)
+            assert queue.accepting_inputs is True
+            assert [(e.kind, e.id) for e in queue.entries] == [
+                ("input_queued", str(one)),
+                ("input_queued", str(two)),
+            ]
+            # Entries carry kind and id only; input text never leaves the inbox.
+            assert all(set(e.model_dump()) == {"kind", "id"} for e in queue.entries)
+            assert await first.take_run_inputs(record.run_id, finish=True) == [
+                RunInboxInput(text="first", input_id=str(one)),
+                RunInboxInput(text="second", input_id=str(two)),
+            ]
+
+            with pytest.raises(RunNotFoundError):
+                await second.get_run_queue("missing")
 
     asyncio.run(scenario())
 

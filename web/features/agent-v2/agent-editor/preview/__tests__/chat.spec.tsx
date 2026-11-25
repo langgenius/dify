@@ -6,7 +6,7 @@ import type { ComponentProps } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -26,6 +26,8 @@ const api = vi.hoisted(() => ({
   history: vi.fn(),
   suggestions: vi.fn(),
   stop: vi.fn(),
+  queue: vi.fn(),
+  enqueue: vi.fn(),
   transcribe: vi.fn(),
   uploadRemote: vi.fn(),
   error: vi.fn<typeof import('@/app/notifications').toast.error>(),
@@ -67,6 +69,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.chatMessages.get': api.history,
+      'agent.byAgentId.chatMessages.byTaskId.queue.get': api.queue,
+      'agent.byAgentId.chatMessages.byTaskId.inputs.post': api.enqueue,
       'remoteFiles.upload.post': api.uploadRemote,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -126,6 +130,11 @@ beforeEach(() => {
   )
   api.suggestions.mockResolvedValue({ data: ['What comes next?'] })
   api.stop.mockResolvedValue({ result: 'success' })
+  api.queue.mockResolvedValue({ accepting_inputs: true, entries: [] })
+  api.enqueue.mockImplementation(async (request) => ({
+    input_id: request.body.input_id,
+    status: 'queued',
+  }))
   api.transcribe.mockResolvedValue({ text: 'Transcribed request' })
   api.uploadRemote.mockResolvedValue({
     id: 'uploaded-1',
@@ -285,6 +294,35 @@ describe('Agent conversation history', () => {
       expect(input()).toHaveValue('Keep my draft')
     },
   )
+
+  it('renders persisted steering inputs from history metadata', async () => {
+    messages.set('conversation-1', [
+      createMessage({
+        metadata: {
+          steering_inputs: [
+            { input_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', text: 'Earlier steer' },
+            { input_id: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff', text: 'Second steer' },
+          ],
+        },
+      }),
+    ])
+    renderChat({ conversationId: 'conversation-1' })
+
+    // Steering inputs render as ordinary user rows, in delivery order, before
+    // the answer — not nested inside the answer bubble.
+    const questions = await screen.findAllByTestId('question-content')
+    expect(questions.map((q) => q.textContent)).toEqual([
+      'Earlier question',
+      'Earlier steer',
+      'Second steer',
+    ])
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Earlier steer'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Second steer'),
+    ).not.toBeInTheDocument()
+  })
 
   it.each([false, true])(
     'uses the configured show thoughts setting (%s) in preview',
@@ -808,3 +846,105 @@ it.each(['sse', 'http'])(
     }
   },
 )
+
+describe('Agent preview steering queue', () => {
+  const queueKey = (taskId: string) =>
+    consoleQuery.agent.byAgentId.chatMessages.byTaskId.queue.get.queryKey({
+      input: { params: { agent_id: 'agent-1', task_id: taskId } },
+    })
+
+  async function ready(index = 0, taskId = `task-${index}`) {
+    await waitFor(() => expect(ssePost.mock.calls[index]).toBeDefined())
+    await act(async () => {
+      stream(index).onAgentQueueReady?.(taskId)
+    })
+  }
+
+  it.each(['preview', 'build'] as const)(
+    'steers the live run instead of starting a second turn: %s',
+    async (mode) => {
+      const user = userEvent.setup()
+      const { queryClient } = renderChat({ mode })
+      await send(user, 'Start the run')
+      await ready()
+
+      await waitFor(() =>
+        expect(api.queue).toHaveBeenCalledWith(
+          expect.objectContaining({ params: { agent_id: 'agent-1', task_id: 'task-0' } }),
+        ),
+      )
+      api.queue.mockResolvedValue({
+        accepting_inputs: true,
+        entries: [{ kind: 'input_queued', id: 'input-1' }],
+      })
+
+      await user.type(input(), 'Please also check the logs')
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(api.enqueue).toHaveBeenCalledOnce())
+      const request = api.enqueue.mock.calls[0]![0]
+      expect(request.params).toEqual({ agent_id: 'agent-1', task_id: 'task-0' })
+      expect(request.body.text).toBe('Please also check the logs')
+      expect(request.body.input_id).toMatch(/^[0-9a-f-]{36}$/)
+      // One SSE turn only: the typed text steered the run instead of opening a new one.
+      expect(ssePost).toHaveBeenCalledOnce()
+
+      api.queue.mockResolvedValue({
+        accepting_inputs: true,
+        entries: [
+          { kind: 'input_queued', id: 'input-1' },
+          { kind: 'input_queued', id: request.body.input_id },
+        ],
+      })
+      await queryClient.invalidateQueries({ queryKey: queueKey('task-0') })
+      expect(await screen.findByText('Please also check the logs')).toBeVisible()
+    },
+  )
+
+  it('renders delivered steering inputs in the transcript exactly once', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await send(user, 'Start the run')
+    await ready()
+    api.queue.mockResolvedValue({ accepting_inputs: true, entries: [] })
+
+    const input = { input_id: '11111111-2222-3333-4444-555555555555', text: 'Steer mid-run' }
+    expect(screen.queryByText('Steer mid-run')).not.toBeInTheDocument()
+
+    await act(async () => {
+      stream(0).onAgentInputDelivered?.(input)
+    })
+    await receive(0)
+
+    const questionRows = await screen.findAllByTestId('question-content')
+    expect(questionRows.map((q) => q.textContent)).toEqual(['Start the run', 'Steer mid-run'])
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Steer mid-run'),
+    ).not.toBeInTheDocument()
+
+    // A repeated delivery of the same id does not duplicate the transcript row.
+    await act(async () => {
+      stream(0).onAgentInputDelivered?.(input)
+    })
+    expect(screen.getAllByText('Steer mid-run')).toHaveLength(1)
+    // The delivery path never opened a second SSE turn.
+    expect(ssePost).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the draft and shows an inline error when queueing fails', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await send(user, 'Start the run')
+    await ready()
+    await waitFor(() => expect(api.queue).toHaveBeenCalled())
+
+    api.enqueue.mockRejectedValueOnce(new Error('network down'))
+    await user.type(input(), 'Steer this instead')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(api.enqueue).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('alert')).toHaveTextContent('sendFailed')
+    expect(input()).toHaveValue('Steer this instead')
+    expect(ssePost).toHaveBeenCalledOnce()
+  })
+})
