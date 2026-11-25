@@ -50,7 +50,7 @@
   "scanner.lastTested": "पिछला परीक्षण: {{time}}",
   "scanner.loadFailed": "स्कैनर लोड नहीं हो सके।",
   "scanner.neverTested": "अभी तक परीक्षण नहीं किया गया",
-  "scanner.readOnly": "केवल वर्कस्पेस के मालिक और एडमिन ही स्कैनर प्रबंधित कर सकते हैं।",
+  "scanner.readOnly": "आपके पास स्कैनर प्रबंधित करने की अनुमति नहीं है।",
   "scanner.status.active": "सक्रिय",
   "scanner.status.error": "त्रुटि",
   "scanner.test": "परीक्षण करें",
