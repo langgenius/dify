@@ -1,5 +1,6 @@
 import { vi } from 'vite-plus/test'
 import { page, server, userEvent } from 'vite-plus/test/browser'
+import { cleanup } from 'vitest-browser-react'
 import { consoleErrorAllowlist } from './test/console-error-allowlist'
 import './app/styles/globals.css'
 
@@ -55,12 +56,22 @@ vi.mock(import('@/service/client-error'), async (importOriginal) => {
 const isSimulatedRequestFailure = (value: unknown) =>
   !!value && typeof value === 'object' && simulatedRequestFailures.has(value)
 
+// boundary: Chromium reports a ResizeObserver whose callbacks resized an observed element as an
+// `ErrorEvent` with no error object; the remaining notifications are delivered in the next frame.
+// Vitest logs that event through `console.error`. Under CI load it reaches specs whose components
+// observe nothing themselves (floating-ui positioners, canvases), so the guard ignores exactly
+// this message. A spec that checks for a real resize loop listens for the window `error` event.
+const isResizeObserverLoopNotice = (value: unknown) =>
+  value instanceof Error &&
+  value.message === 'ResizeObserver loop completed with undelivered notifications.'
+
 // Fail a test that logs `console.error`. A spec that expects one silences it with
 // `vi.spyOn(console, 'error').mockImplementation(…)`, which replaces this recorder.
 beforeEach(() => {
   consoleErrors = []
   console.error = (...args: unknown[]) => {
-    if (!args.some(isSimulatedRequestFailure)) consoleErrors.push(args)
+    if (!args.some(isSimulatedRequestFailure) && !args.every(isResizeObserverLoopNotice))
+      consoleErrors.push(args)
     writeConsoleError(...args)
   }
 })
@@ -74,6 +85,14 @@ afterEach(({ task }) => {
   const messages = errors.map((args) => args.map((arg) => String(arg)).join(' ')).join('\n\n')
   throw new Error(`Test logged console.error:\n\n${messages}`)
 })
+
+// Unmount rendered trees when the test ends rather than when the next one starts. A tree left
+// mounted keeps re-rendering after the spec's `onTestFinished` cleanups (such as clearing its query
+// client) and after the fake API restores the real transports, so its refetches reach a missing
+// handler or the real network and fail this or the next test. `afterEach` hooks run in reverse, so
+// this runs before the guard above and its errors stay with this test. Failure screenshots are
+// taken before `afterEach`.
+afterEach(cleanup)
 
 // Tests in one file share a page, so the viewport and pointer position outlive the test that set them.
 beforeEach(async () => {

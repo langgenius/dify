@@ -9,7 +9,6 @@ export type FileUploadStrategy = {
 }
 
 export const FileUploadContext = createContext<{
-  localUploadUrl?: string
   trialAppId?: string
   uploadStrategy?: FileUploadStrategy
 }>({})
