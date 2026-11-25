@@ -26,7 +26,15 @@ always run. `mutationOptions({ onSuccess })` runs the caller's callback together
 with the policy's: `onMutate` runs the policy first (so cancellation precedes an
 optimistic write), and the other callbacks start both at once and wait for both.
 A returned invalidation promise keeps the mutation pending until active consumers
-have refreshed, while caller feedback does not wait for that refetch. When both
+have refreshed, while caller feedback does not wait for that refetch.
+
+Return or await an invalidation only when a caller needs the refreshed data
+before it continues (it reads the cache after `mutateAsync`, or a toggle must keep
+its pending value until the refreshed state lands), and say which caller in a
+comment. Fire everything else with `void`: plan and quota, counts, catalogs, and
+lists or details the calling flow doesn't show. Otherwise success feedback is
+delayed and buttons gated on `isPending` stay pending until unrelated refetches
+finish. When both
 define `onMutate`, each side receives its own result in later callbacks. Other
 options (`retry`, `context`, `meta`) still merge shallowly: the caller's value
 wins.
