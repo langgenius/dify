@@ -58,7 +58,6 @@ const FeaturesTrigger = () => {
       select: (features) => features.billing.subscription.plan,
     }),
   )
-  // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
   const { canAccess: evaluationEnabled } = useEvaluationAccess()
   const publishedAt = useStore((s) => s.publishedAt)
   const draftUpdatedAt = useStore((s) => s.draftUpdatedAt)
@@ -85,6 +84,11 @@ const FeaturesTrigger = () => {
     )
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
+  // An ordinary publish keeps the active workflow's kind.
+  const canPublishWorkflow =
+    hasWorkflowNodes &&
+    canReleaseAndVersion &&
+    (appDetail?.workflow_kind !== 'evaluation' || evaluationEnabled)
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -365,7 +369,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
+          publishDisabled: startNodeLimitExceeded || !canPublishWorkflow,
         }}
       />
     </>

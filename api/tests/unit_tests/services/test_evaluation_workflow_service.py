@@ -11,7 +11,7 @@ from blinker import Signal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.enums import BuiltinNodeTypes
 from models.enums import AppStatus
 from models.model import App, AppMode
@@ -19,7 +19,11 @@ from models.workflow import Workflow, WorkflowKind, WorkflowType
 from services.app.access import AppRunAccessFilter
 from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.workflow_service import WorkflowService
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.model_factories import make_account, make_app
@@ -143,10 +147,22 @@ def test_publish_kind_uses_explicit_request_or_standard_default(sqlite_session: 
 
 
 @pytest.mark.parametrize("requested_kind", [None, WorkflowKind.EVALUATION])
-def test_cloud_sandbox_cannot_publish_an_evaluation_workflow(
-    sqlite_session: Session, config_overrides: Callable[..., None], requested_kind: WorkflowKind | None
+@pytest.mark.parametrize(
+    ("plan", "enabled", "error"),
+    [
+        (CloudPlan.SANDBOX, True, EvaluationPlanRequiredError),
+        (CloudPlan.PROFESSIONAL, False, EvaluationDisabledError),
+    ],
+)
+def test_cloud_cannot_publish_an_unavailable_evaluation_workflow(
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    requested_kind: WorkflowKind | None,
+    plan: CloudPlan,
+    enabled: bool,
+    error: type[Exception],
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=enabled)
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     active_id = str(uuid4())
@@ -171,15 +187,18 @@ def test_cloud_sandbox_cannot_publish_an_evaluation_workflow(
     with (
         patch(
             "services.workflow_service.BillingService.get_info",
-            return_value=builders.subscription_info("sandbox"),
+            return_value=builders.subscription_info(plan.value),
         ) as get_info,
-        pytest.raises(EvaluationPlanRequiredError),
+        pytest.raises(error),
     ):
         WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)).publish_workflow(
             session=sqlite_session, app_model=app, account=make_account(), workflow_kind=requested_kind
         )
 
-    get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
+    if enabled:
+        get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
+    else:
+        get_info.assert_not_called()
     assert {workflow.id for workflow in sqlite_session.scalars(select(Workflow).where(Workflow.app_id == app_id))} == {
         active.id,
         draft.id,
@@ -380,8 +399,9 @@ def test_list_evaluation_workflows_filters_run_access_before_pagination(sqlite_s
 
 
 def test_convert_published_workflow_kind_updates_only_active_version(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
 ) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=True)
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     active_id = str(uuid4())
@@ -450,7 +470,7 @@ def test_cloud_sandbox_rejects_both_conversion_directions(
     config_overrides: Callable[..., None],
     target_kind: WorkflowKind,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
     active_id = str(uuid4())
     active_kind = WorkflowKind.STANDARD if target_kind == WorkflowKind.EVALUATION else WorkflowKind.EVALUATION
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), workflow_id=active_id, mode=AppMode.WORKFLOW)
@@ -489,7 +509,7 @@ def test_cloud_paid_plan_allows_both_conversion_directions(
     target_kind: WorkflowKind,
     plan: str,
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
     active_id = str(uuid4())
     active_kind = WorkflowKind.STANDARD if target_kind == WorkflowKind.EVALUATION else WorkflowKind.EVALUATION
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), workflow_id=active_id, mode=AppMode.WORKFLOW)
@@ -520,7 +540,7 @@ def test_cloud_paid_plan_allows_both_conversion_directions(
 def test_enterprise_conversion_skips_cloud_billing(
     sqlite_session: Session, config_overrides: Callable[..., None]
 ) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=True)
     active_id = str(uuid4())
     app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), workflow_id=active_id, mode=AppMode.WORKFLOW)
     active = _workflow(
@@ -547,7 +567,7 @@ def test_enterprise_conversion_skips_cloud_billing(
 
 
 def test_cloud_conversion_propagates_billing_failure(config_overrides: Callable[..., None]) -> None:
-    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, ENABLE_EVALUATION=True)
 
     with (
         patch(
@@ -556,10 +576,13 @@ def test_cloud_conversion_propagates_billing_failure(config_overrides: Callable[
         ),
         pytest.raises(EvaluationEntitlementUnavailableError),
     ):
-        WorkflowService._require_evaluation_paid_plan(str(uuid4()))
+        WorkflowService._require_evaluation_workflow_access(str(uuid4()))
 
 
-def test_convert_published_workflow_kind_rejects_missing_active_version(sqlite_session: Session) -> None:
+def test_convert_published_workflow_kind_rejects_missing_active_version(
+    sqlite_session: Session, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE, ENABLE_EVALUATION=True)
     app = App(id=str(uuid4()), tenant_id=str(uuid4()), workflow_id=str(uuid4()), mode=AppMode.WORKFLOW)
     service = WorkflowService(sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False))
 
