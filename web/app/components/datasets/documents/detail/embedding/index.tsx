@@ -40,7 +40,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     isError,
     percent,
     resetStatus,
-    refetch,
+    invalidate,
   } = useEmbeddingStatus({
     datasetId,
     documentId,
@@ -79,7 +79,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     documentId,
     onSuccess: () => {
       handleSuccess()
-      refetch()
+      invalidate()
       detailUpdate()
     },
     onError: handleError,
