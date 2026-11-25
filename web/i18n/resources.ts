@@ -27,6 +27,7 @@ export const namespaces = [
   'workflowAgent',
   'workflowDebug',
   'workflowComments',
+  'collaborationDemo',
   'workflowHistory',
   'onboarding',
   'modelProvider',

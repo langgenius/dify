@@ -41,7 +41,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 const mockFetchWorkflowDraft = vi.fn()
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (path: string) => mockFetchWorkflowDraft(path),
+  fetchAppWorkflowDraft: (appId: string) => mockFetchWorkflowDraft(appId),
 }))
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from operator import itemgetter
 from pathlib import Path
 from typing import override
 from unittest.mock import patch
@@ -11,7 +12,6 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.local import LocalProxy
 from yaml import YAMLError
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -39,10 +39,6 @@ from tests.helpers.unit.model_factories import make_document
 
 def _flask_app() -> Flask:
     return Flask(__name__)
-
-
-def _current_app_proxy() -> LocalProxy[Flask]:
-    return LocalProxy(_flask_app)
 
 
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
@@ -86,24 +82,6 @@ class _UnusedProviderManager(ProviderManager):
 class _UnusedModelInstance(ModelInstance):
     def __init__(self) -> None:
         pass
-
-
-class _ImmediateThread:
-    def __init__(
-        self,
-        target: Callable[..., object] | None = None,
-        kwargs: dict[str, object] | None = None,
-        **_kwargs: object,
-    ) -> None:
-        self._target = target
-        self._kwargs = kwargs or {}
-
-    def start(self) -> None:
-        if self._target is not None:
-            self._target(**self._kwargs)
-
-    def join(self) -> None:
-        return None
 
 
 class _TestHitCallback(DatasetIndexToolCallbackHandler):
@@ -511,6 +489,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
 
 
 def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlite_session: Session) -> None:
+    """Return ranked resources after both dataset workers contribute documents."""
     dataset_one = _persist_dataset(sqlite_session, name="Dataset One")
     dataset_two = _persist_dataset(sqlite_session, tenant_id=dataset_one.tenant_id, name="Dataset Two")
     document_two = make_document(
@@ -532,10 +511,11 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     )
     sqlite_session.add_all([document_two, document_one])
     sqlite_session.commit()
+    dataset_ids = [dataset_one.id, dataset_two.id]
     callback = _TestHitCallback()
     tool = DatasetMultiRetrieverTool(
         tenant_id=dataset_one.tenant_id,
-        dataset_ids=[dataset_one.id, dataset_two.id],
+        dataset_ids=dataset_ids,
         reranking_provider_name="provider",
         reranking_model_name="model",
         return_resource=True,
@@ -547,6 +527,9 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     first_doc = RagDocument(page_content="first", metadata={"doc_id": "node-2", "score": 0.4})
     second_doc = RagDocument(page_content="second", metadata={"doc_id": "node-1", "score": 0.9})
 
+    documents_by_dataset = {dataset_ids[0]: first_doc, dataset_ids[1]: second_doc}
+    retriever_calls: list[tuple[str, Flask, str, tuple[DatasetIndexToolCallbackHandler, ...]]] = []
+
     def fake_retriever(
         *,
         flask_app: Flask,
@@ -555,10 +538,19 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
         all_documents: list[RagDocument],
         hit_callbacks: list[DatasetIndexToolCallbackHandler],
     ) -> None:
-        if dataset_id == dataset_one.id:
-            all_documents.append(first_doc)
-        else:
-            all_documents.append(second_doc)
+        """Record the worker inputs and emit its document without accessing the SQLite session."""
+        retriever_calls.append((dataset_id, flask_app, query, tuple(hit_callbacks)))
+        all_documents.append(documents_by_dataset[dataset_id])
+
+    def fake_rerank(
+        query: str, documents: list[RagDocument], score_threshold: float | None, top_n: int | None
+    ) -> list[RagDocument]:
+        """Verify both workers finished before returning a deterministic ranking."""
+        assert query == "hello"
+        assert score_threshold == 0.1
+        assert top_n == 2
+        assert sorted(documents, key=lambda document: document.page_content) == [first_doc, second_doc]
+        return [second_doc, first_doc]
 
     segment_for_node_2 = DocumentSegment(
         tenant_id=dataset_one.tenant_id,
@@ -596,27 +588,29 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     model_manager = ModelManager(provider_manager=_UnusedProviderManager())
     model_instance = _UnusedModelInstance()
     rerank_runner = RerankModelRunner(model_instance, session=sqlite_session)
-    fake_current_app = _current_app_proxy()
+    flask_app = _flask_app()
 
     with (
+        flask_app.app_context(),
         patch.object(
             multi_retriever_module,
             "sign_segment_content",
             lambda segment, **_kwargs: segment.content.replace("raw", "signed"),
         ),
-        patch.object(tool, "_retriever", side_effect=fake_retriever) as retriever_mock,
-        patch.object(multi_retriever_module, "current_app", fake_current_app),
-        patch.object(multi_retriever_module.threading, "Thread", _ImmediateThread),
+        patch.object(tool, "_retriever", new=fake_retriever),
         patch.object(multi_retriever_module.ModelManager, "for_tenant", return_value=model_manager),
         patch.object(model_manager, "get_model_instance", return_value=model_instance),
         patch.object(multi_retriever_module, "RerankModelRunner", return_value=rerank_runner) as rerank_runner_class,
-        patch.object(rerank_runner, "run", return_value=[second_doc, first_doc]),
+        patch.object(rerank_runner, "run", side_effect=fake_rerank) as rerank_mock,
     ):
         result = tool.run(session=sqlite_session, query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
     rerank_runner_class.assert_called_once_with(model_instance, session=sqlite_session)
-    assert retriever_mock.call_count == 2
+    rerank_mock.assert_called_once()
+    assert sorted(retriever_calls, key=itemgetter(0)) == [
+        (dataset_id, flask_app, "hello", (callback,)) for dataset_id in sorted(dataset_ids)
+    ]
     assert callback.documents == [second_doc, first_doc]
     assert callback.resources is not None
     resource_info = callback.resources

@@ -769,6 +769,18 @@ class AgentSoulKnowledgeConfig(BaseModel):
     spaces: list[AgentKnowledgeSpaceConfig] = Field(default_factory=list, max_length=10)
     sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
 
+    def dataset_ids(self) -> list[str]:
+        """Return the nonblank Classic Knowledge dataset IDs, trimmed and deduplicated in config order."""
+        dataset_ids: list[str] = []
+        seen: set[str] = set()
+        for knowledge_set in self.sets:
+            for dataset in knowledge_set.datasets:
+                dataset_id = (dataset.id or "").strip()
+                if dataset_id and dataset_id not in seen:
+                    seen.add(dataset_id)
+                    dataset_ids.append(dataset_id)
+        return dataset_ids
+
     @model_validator(mode="after")
     def validate_unique_bindings(self) -> Self:
         for attribute, values in (
@@ -1183,6 +1195,18 @@ class WorkflowNodeJobConfig(BaseModel):
     schema_version: int = 1
     mode: WorkflowNodeJobMode = WorkflowNodeJobMode.TELL_AGENT_WHAT_TO_DO
     workflow_prompt: str = ""
+    continue_agent_session: bool = Field(
+        default=True,
+        strict=True,
+        description="Reuse this node's Agent history and working resources across messages in the same Chatflow chat.",
+    )
+    session_generation: str = Field(
+        default="",
+        max_length=36,
+        pattern=r"^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$",
+        json_schema_extra={"readOnly": True},
+        description="Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes.",
+    )
     previous_node_output_refs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     output_routes: WorkflowOutputRoutes = Field(default_factory=WorkflowOutputRoutes)

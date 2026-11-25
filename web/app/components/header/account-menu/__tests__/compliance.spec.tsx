@@ -26,7 +26,6 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 vi.mock('@/service/base', () => ({
   request: vi.fn(() => new Promise(() => {})),
-  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('@/utils/download', () => ({

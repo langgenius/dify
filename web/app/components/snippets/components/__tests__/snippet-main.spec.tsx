@@ -49,12 +49,15 @@ vi.mock('@/service/fetch', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'snippets.bySnippetId.workflows.publish.post': api.publish,
+    }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'snippets.bySnippetId.workflows.draft.post': api.save,
-      'snippets.bySnippetId.workflows.publish.post': api.publish,
       'snippets.bySnippetId.workflows.draft.get': api.refresh,
       'snippets.bySnippetId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
     }),
@@ -236,13 +239,10 @@ it('waits for the latest graph and fields to save before publishing', async () =
   expect(api.publish).not.toHaveBeenCalled()
   await act(async () => saved.resolve({ result: 'success', hash: 'latest', updated_at: 3 }))
   await waitFor(() =>
-    expect(api.publish).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { snippet_id: 'snippet-1' },
-        body: {},
-      },
-      { context: { silent: true } },
-    ),
+    expect(api.publish).toHaveBeenCalledExactlyOnceWith({
+      params: { snippet_id: 'snippet-1' },
+      body: {},
+    }),
   )
   expect(screen.getByText('Draft transform')).toBeInTheDocument()
 })

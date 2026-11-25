@@ -4,11 +4,7 @@ import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/
 import { useChat } from '../../hooks'
 
 type Callbacks = NonNullable<Parameters<ReturnType<typeof useWorkflowRun>['handleRun']>[1]>
-const mocks = vi.hoisted(() => ({ run: vi.fn(), invalidate: vi.fn(), inspect: vi.fn() }))
-vi.mock('@/service/use-workflow', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-workflow')>()),
-  useInvalidateAllLastRun: () => mocks.invalidate,
-}))
+const mocks = vi.hoisted(() => ({ run: vi.fn(), inspect: vi.fn() }))
 beforeEach(() => vi.resetAllMocks())
 
 const hooksStoreProps = {
