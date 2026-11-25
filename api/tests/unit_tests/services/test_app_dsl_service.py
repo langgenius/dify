@@ -965,6 +965,17 @@ def workflow_dsl_service(
     return AppDslService(sqlite_session)
 
 
+def test_workflow_import_without_workspace_reports_missing_workspace_first(unbound_session: Session) -> None:
+    """Reject an App without an admitted workspace before checking its workflow body."""
+    service = AppDslService(unbound_session)
+    with pytest.raises(ValueError, match="Current tenant is not set"):
+        service._create_or_update_app(
+            app=None,
+            data={"app": {"mode": AppMode.WORKFLOW.value}},
+            account=make_account(),
+        )
+
+
 def test_create_or_update_app_removes_imported_workflow_viewport(
     sqlite_session: Session, workflow_dsl_service: AppDslService
 ) -> None:
