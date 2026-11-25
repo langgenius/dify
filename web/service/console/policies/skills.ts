@@ -55,19 +55,22 @@ export function skillPolicies(
             },
           },
         },
-        // Metadata writes return the full detail: write it instead of refetching it.
+        // Metadata writes return the skill without its files, and a rename rewrites
+        // SKILL.md: merge the response into the cached detail, then refetch it.
         patch: {
           mutationOptions: {
-            onSuccess: async (detail, { params, body }, _result, { client }) => {
-              // A detail refetch started before the save must not overwrite it.
-              await client.cancelQueries({
-                queryKey: consoleQuery.workspaces.current.skills.bySkillId.get.key({
-                  input: { params: { skill_id: params.skill_id } },
-                }),
-              })
-              setSkillDetailCache(consoleQuery, client, params.skill_id, detail)
+            onSuccess: async (skill, { params, body }, _result, { client }) => {
               const input = { params: { skill_id: params.skill_id } }
+              const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
+                input,
+              })
+              // A detail refetch started before the save must not overwrite it.
+              await client.cancelQueries({ queryKey: detailKey })
+              const cached = client.getQueryData(detailKey)
+              if (cached)
+                setSkillDetailCache(consoleQuery, client, params.skill_id, { ...cached, ...skill })
               void invalidateQueryKeys(client, [
+                detailKey,
                 consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({ input }),
                 consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
                 consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),

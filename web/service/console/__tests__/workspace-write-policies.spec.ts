@@ -31,9 +31,11 @@ describe('skill metadata policy', () => {
   >[0]
   const detail = { id: 'skill-1', display_name: 'Renamed', tags: ['a'] } as Detail
 
-  it('writes the returned detail instead of refetching it', async () => {
+  it('keeps the cached files and refetches the detail after a metadata save', async () => {
     const { client, context, invalidatedKeys } = setup()
     const detailKey = skills.bySkillId.get.queryKey({ input: { params } })
+    const files = [{ path: 'SKILL.md' }]
+    client.setQueryData(detailKey, { ...detail, display_name: 'Before', files } as never)
 
     await skills.bySkillId.patch.mutationOptions().onSuccess!(
       detail,
@@ -42,10 +44,11 @@ describe('skill metadata policy', () => {
       context,
     )
 
-    expect(client.getQueryData(detailKey)).toBe(detail)
-    expect(invalidatedKeys()).not.toContainEqual(skills.bySkillId.get.key({ input: { params } }))
+    // The PATCH response has no files: the file tree must not be cleared.
+    expect(client.getQueryData(detailKey)).toMatchObject({ display_name: 'Renamed', files })
     expect(invalidatedKeys()).toEqual(
       expect.arrayContaining([
+        detailKey,
         skills.bySkillId.versions.get.key({ input: { params } }),
         skills.get.key({ type: 'query' }),
       ]),
@@ -53,15 +56,14 @@ describe('skill metadata policy', () => {
     expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
   })
 
-  it('keeps the saved detail when an older detail refetch lands afterwards', async () => {
+  it('shows the refetched detail, not an older response that lands afterwards', async () => {
     const { client, context } = setup()
     const detailKey = skills.bySkillId.get.queryKey({ input: { params } })
     const stale = createDeferred<Detail>()
+    const fresh = { ...detail, files: [{ path: 'SKILL.md' }] } as Detail
     client.setQueryData(detailKey, { ...detail, display_name: 'Before' })
-    const observer = new QueryObserver(client, {
-      queryKey: detailKey,
-      queryFn: () => stale.promise,
-    })
+    const queryFn = vi.fn(() => (queryFn.mock.calls.length === 1 ? stale.promise : fresh))
+    const observer = new QueryObserver(client, { queryKey: detailKey, queryFn })
     const unsubscribe = observer.subscribe(() => undefined)
     void client.refetchQueries({ queryKey: detailKey })
 
@@ -75,7 +77,7 @@ describe('skill metadata policy', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     unsubscribe()
 
-    expect(client.getQueryData(detailKey)).toEqual(detail)
+    expect(client.getQueryData(detailKey)).toEqual(fresh)
   })
 
   it('refreshes the tag catalog only when tags change', async () => {
