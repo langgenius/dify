@@ -70,9 +70,16 @@ export const TransferOwnershipContent = () => {
       context: { silent: true },
     }),
   )
+  // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
   const { isPending: isTransfer, mutate: transferOwnership } = useMutation(
     consoleQuery.workspaces.current.members.byMemberId.ownerTransfer.post.mutationOptions({
       context: { silent: true },
+      onSuccess: () => {
+        globalThis.location.reload()
+      },
+      onError: (error) => {
+        toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
+      },
     }),
   )
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
@@ -105,20 +112,10 @@ export const TransferOwnershipContent = () => {
     setCode('')
   }
   const handleTransfer = () => {
-    transferOwnership(
-      {
-        params: { member_id: newOwner },
-        body: { token: stepToken },
-      },
-      {
-        onSuccess: () => {
-          globalThis.location.reload()
-        },
-        onError: (error) => {
-          toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
-        },
-      },
-    )
+    transferOwnership({
+      params: { member_id: newOwner },
+      body: { token: stepToken },
+    })
   }
   return (
     <>

@@ -315,6 +315,29 @@ describe('TransferOwnershipContent', () => {
     })
   })
 
+  it('still reloads when the dialog closes before the transfer resolves', async () => {
+    const user = userEvent.setup()
+    mockEmailVerification()
+    let resolveTransfer!: (value: { result: 'success' }) => void
+    vi.mocked(
+      consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post,
+    ).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveTransfer = resolve
+        }),
+    )
+    renderModal()
+    await goToTransferStep(user)
+    await selectNewOwnerAndSubmit(user)
+
+    await user.click(screen.getByRole('button', { name: /operation\.close$/ }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    resolveTransfer({ result: 'success' })
+    await waitFor(() => expect(window.location.reload).toHaveBeenCalled())
+  })
+
   it('starts a new verification session after closing and reopening', async () => {
     const user = userEvent.setup()
     mockEmailVerification()

@@ -131,6 +131,34 @@ describe('EditWorkspaceContent', () => {
     })
   })
 
+  it('still redirects when the dialog closes before the update resolves', async () => {
+    const user = userEvent.setup()
+    const mockAssign = vi.fn()
+    vi.stubGlobal('location', {
+      ...window.location,
+      assign: mockAssign,
+      origin: 'http://localhost',
+    })
+    let resolveUpdate!: (value: { result: 'success'; tenant: { id: string } }) => void
+    vi.mocked(consoleClient.workspaces.info.post).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve
+        }),
+    )
+    renderModal()
+    const input = screen.getByLabelText(/account\.workspaceName/i)
+    await user.clear(input)
+    await user.type(input, 'Renamed Workspace')
+    await user.click(getSaveButton())
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    resolveUpdate({ result: 'success', tenant: { id: 'workspace-id' } })
+    await waitFor(() => expect(mockAssign).toHaveBeenCalledWith('http://localhost'))
+  })
+
   it('should show error toast when update fails', async () => {
     const user = userEvent.setup()
 

@@ -28,8 +28,20 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const [name, setName] = useState<string>(currentWorkspace.name)
+  // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
   const { isPending: isSubmitting, mutate: updateWorkspaceInfo } = useMutation(
-    consoleQuery.workspaces.info.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.info.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: () => {
+        location.assign(`${location.origin}`)
+      },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
+      },
+    }),
   )
   const inputId = useId()
   const saveButtonLabelId = useId()
@@ -46,20 +58,7 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
   }, [hasError, t])
   const changeWorkspaceInfo = () => {
     if (isSubmitting || isSaveUnavailable) return
-    updateWorkspaceInfo(
-      { body: { name: normalizedName } },
-      {
-        onSuccess: () => {
-          location.assign(`${location.origin}`)
-        },
-        onError: (error) => {
-          toast.error(
-            getErrorMessage(error) ??
-              t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
-          )
-        },
-      },
-    )
+    updateWorkspaceInfo({ body: { name: normalizedName } })
   }
   return (
     <form
