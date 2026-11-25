@@ -5,11 +5,13 @@ import { invalidateQueryKeys } from './shared'
 export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['fileScan'] {
   return {
     providers: {
+      // `FileScanProvidersPage` opens its dialog with the row from this list, so saves
+      // wait for it; otherwise a quick reopen saves the old settings back.
       post: {
         mutationOptions: {
           onSettled: (_data, error, _variables, _result, context) => {
             if (error) return
-            void invalidateProviders(consoleQuery, context.client)
+            return invalidateProviders(consoleQuery, context.client)
           },
         },
       },
@@ -18,7 +20,7 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
           mutationOptions: {
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              void invalidateProviders(consoleQuery, context.client)
+              return invalidateProviders(consoleQuery, context.client)
             },
           },
         },

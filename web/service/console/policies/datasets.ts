@@ -295,11 +295,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
                 const params = { dataset_id: variables.params.dataset_id }
                 void invalidateQueryKeys(context.client, [
                   consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
-                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
                 ])
                 // The document panel leaves edit mode for the values in the refreshed detail,
-                // so saving waits for them instead of showing the old values first.
+                // and the batch editor reopens from the document list (rewriting every field
+                // it holds), so saving waits for both instead of seeding the old values.
                 return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
                   consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
                     input: { params },
                   }),
@@ -331,11 +332,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
                 void invalidateQueryKeys(context.client, [
-                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
                   consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
                   consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
                     input: { params },
                   }),
+                ])
+                // The rename dialog reopens with the name from this list.
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
                 ])
               },
             },

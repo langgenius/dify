@@ -66,9 +66,10 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
         byWorkflowId: {
           patch: {
             mutationOptions: {
-              // The version history closes its editor without waiting for the list to reload.
+              // The version editor reopens with the name and notes from this list, and saves
+              // both, so the edit waits for the reload.
               onSuccess: (_data, variables, _result, context) => {
-                void invalidateQueryKeys(context.client, [
+                return invalidateQueryKeys(context.client, [
                   consoleQuery.snippets.bySnippetId.workflows.get.key({
                     input: { params: { snippet_id: variables.params.snippet_id } },
                   }),

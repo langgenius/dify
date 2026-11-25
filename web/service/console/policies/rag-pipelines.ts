@@ -147,10 +147,12 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             },
           },
           byWorkflowId: {
+            // The version editor reopens with the name and notes from this list, and saves
+            // both, so the edit waits for the reload.
             patch: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
-                  void invalidateQueryKeys(context.client, [
+                  return invalidateQueryKeys(context.client, [
                     consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
                       input: { params: { pipeline_id: variables.params.pipeline_id } },
                     }),

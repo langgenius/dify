@@ -282,7 +282,9 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
                 mutationOptions: {
                   onSettled: (_data, error, variables, _result, { client }) => {
                     if (error) return
-                    void invalidateQueryKeys(client, [
+                    // `AssignRolesContent` seeds its draft from the member's roles when it
+                    // reopens, so the save waits for both reloads.
+                    return invalidateQueryKeys(client, [
                       consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.get.key({
                         input: { params: variables.params },
                       }),

@@ -24,16 +24,13 @@ export function dataSourceAuthPolicies(
                 },
               },
             },
+            // The credential editor reopens with the values from the credential list, so
+            // the edit waits for it.
             update: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, { params }, _result, { client }) => {
-                    void invalidateDataSourceCredentialQueries(
-                      consoleQuery,
-                      client,
-                      params.provider_id,
-                    )
-                  },
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateDataSourceCredentialQueries(consoleQuery, client, params.provider_id),
                 },
               },
             },

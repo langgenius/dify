@@ -97,12 +97,13 @@ export function workspacePluginPolicies(
               },
             },
           },
+          // The credential editor reopens with the values from these lists, so the edit
+          // waits for them; otherwise a quick reopen saves the old values back.
           update: {
             post: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
-                  void invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider)
-                },
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateBuiltinCredentialQueries(consoleQuery, client, params.provider),
               },
             },
           },

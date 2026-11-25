@@ -63,11 +63,12 @@ export function humanInputPolicies(
               },
             },
             byContactId: {
+              // The contact dialog reopens with the details from these queries, so the edit
+              // waits for them.
               patch: {
                 mutationOptions: {
-                  onSuccess: (_data, _variables, _onMutateResult, context) => {
-                    void invalidateHumanInputContactQueries(consoleQuery, context.client)
-                  },
+                  onSuccess: (_data, _variables, _onMutateResult, context) =>
+                    invalidateHumanInputContactQueries(consoleQuery, context.client),
                 },
               },
             },

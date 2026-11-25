@@ -54,11 +54,15 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
               void invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.agent.byAgentId.trace.get.queryKey({ input: { params } }),
                 consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                   input: { params, query: { tracing_provider: variables.body.tracing_provider } },
                 }),
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
               ])
             },
           },
@@ -69,11 +73,15 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
               void invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.agent.byAgentId.trace.get.queryKey({ input: { params } }),
                 consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                   input: { params, query: { tracing_provider: variables.body.tracing_provider } },
                 }),
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
               ])
             },
           },
@@ -84,11 +92,15 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
               if (error && getHttpErrorStatus(error) !== 409) return
               const { params } = variables
               void invalidateQueryKeys(context.client, [
+                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
+              ])
+              // The provider dialog reopens from this config (and status toggles send the
+              // cached status), so the save waits for both reloads.
+              return invalidateQueryKeys(context.client, [
                 consoleQuery.agent.byAgentId.trace.get.queryKey({ input: { params } }),
                 consoleQuery.agent.byAgentId.traceConfig.get.queryKey({
                   input: { params, query: { tracing_provider: variables.query.tracing_provider } },
                 }),
-                consoleQuery.agent.byAgentId.traceCapabilities.get.key({ input: { params } }),
               ])
             },
           },

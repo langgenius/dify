@@ -225,6 +225,10 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
               consoleQuery.apps.get.key(),
               consoleQuery.apps.starred.get.key(),
               consoleQuery.apps.recent.get.key(),
+            ])
+            // The access dialog reopens with the access mode and subjects from these
+            // queries (the agent detail on the agent page), so the save waits for them.
+            return invalidateQueryKeys(context.client, [
               consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
               consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
               consoleQuery.agent.byAgentId.get.key(),

@@ -386,25 +386,152 @@ describe('evaluation config save policies', () => {
   )
 })
 
-describe('role and permission-set save policies', () => {
-  const rbac = () => consoleQuery.workspaces.current.rbac
-  it.each([
-    ['role create', () => rbac().roles.post.mutationOptions, { body: {} }],
-    ['role edit', () => rbac().roles.byRoleId.put.mutationOptions, { params: { role_id: 'r' } }],
-    ['permission-set create', () => rbac().accessPolicies.post.mutationOptions, { body: {} }],
+describe('saves whose editor reopens from the refreshed data', () => {
+  const workspace = () => consoleQuery.workspaces.current
+  const rbac = () => workspace().rbac
+  type Case = [string, () => unknown, QueryKey, unknown]
+  const memberParams = { member_id: 'member-1' }
+  it.each<Case>([
+    ['role create', () => rbac().roles.post.mutationOptions, rbac().roles.get.key(), { body: {} }],
+    [
+      'role edit',
+      () => rbac().roles.byRoleId.put.mutationOptions,
+      rbac().roles.get.key(),
+      { params: { role_id: 'r' } },
+    ],
+    [
+      'permission-set create',
+      () => rbac().accessPolicies.post.mutationOptions,
+      rbac().key(),
+      { body: {} },
+    ],
     [
       'permission-set edit',
       () => rbac().accessPolicies.byPolicyId.put.mutationOptions,
+      rbac().key(),
       { params: { policy_id: 'p' } },
     ],
-  ] as const)(
-    'keeps a %s pending until the list that seeds its editor reloads',
-    async (_, mutationOptions, variables) => {
+    [
+      'member role assignment (member list)',
+      () => rbac().members.byMemberId.rbacRoles.put.mutationOptions,
+      workspace().members.get.key(),
+      { params: memberParams, body: {} },
+    ],
+    [
+      'member role assignment (member roles)',
+      () => rbac().members.byMemberId.rbacRoles.put.mutationOptions,
+      rbac().members.byMemberId.rbacRoles.get.key({ input: { params: memberParams } }),
+      { params: memberParams, body: {} },
+    ],
+    [
+      'file scanner create',
+      () => consoleQuery.fileScan.providers.post.mutationOptions,
+      consoleQuery.fileScan.providers.get.key(),
+      { body: {} },
+    ],
+    [
+      'file scanner edit',
+      () => consoleQuery.fileScan.providers.byProviderId.patch.mutationOptions,
+      consoleQuery.fileScan.providers.get.key(),
+      { params: { provider_id: 'scanner-1' }, body: {} },
+    ],
+    [
+      'built-in tool credential edit',
+      () => workspace().toolProvider.builtin.byProvider.update.post.mutationOptions,
+      workspace().toolProvider.builtin.byProvider.credential.info.get.key({
+        input: { params: { provider: 'tool-1' } },
+      }),
+      { params: { provider: 'tool-1' }, body: {} },
+    ],
+    [
+      'data source credential edit',
+      () => consoleQuery.auth.plugin.datasource.byProviderId.update.post.mutationOptions,
+      consoleQuery.auth.plugin.datasource.list.get.key(),
+      { params: { provider_id: 'source-1' }, body: {} },
+    ],
+    [
+      'external contact edit',
+      () => workspace().humanInput.v2.contacts.external.byContactId.patch.mutationOptions,
+      workspace().humanInput.v2.contacts.key(),
+      { params: { contact_id: 'contact-1' }, body: {} },
+    ],
+    [
+      'web app access save',
+      () => consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions,
+      consoleQuery.agent.byAgentId.get.key(),
+      { body: {} },
+    ],
+    [
+      'batch document metadata edit',
+      () => consoleQuery.datasets.byDatasetId.documents.metadata.post.mutationOptions,
+      consoleQuery.datasets.byDatasetId.documents.get.key({
+        input: { params: { dataset_id: 'dataset-1' } },
+      }),
+      { params: { dataset_id: 'dataset-1' }, body: {} },
+    ],
+    [
+      'metadata field rename',
+      () => consoleQuery.datasets.byDatasetId.metadata.byMetadataId.patch.mutationOptions,
+      consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+        input: { params: { dataset_id: 'dataset-1' } },
+      }),
+      { params: { dataset_id: 'dataset-1', metadata_id: 'field-1' }, body: {} },
+    ],
+    [
+      'pipeline version edit',
+      () => consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions,
+      consoleQuery.rag.pipelines.byPipelineId.workflows.get.key({
+        input: { params: { pipeline_id: 'pipeline-1' } },
+      }),
+      { params: { pipeline_id: 'pipeline-1', workflow_id: 'version-1' }, body: {} },
+    ],
+    [
+      'snippet version edit',
+      () => consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions,
+      consoleQuery.snippets.bySnippetId.workflows.get.key({
+        input: { params: { snippet_id: 'snippet-1' } },
+      }),
+      { params: { snippet_id: 'snippet-1', workflow_id: 'version-1' }, body: {} },
+    ],
+    ...(['apps', 'agent'] as const).flatMap((owner): Case[] => {
+      const trace =
+        owner === 'apps'
+          ? consoleQuery.apps.byAppId.traceConfig
+          : consoleQuery.agent.byAgentId.traceConfig
+      const params = owner === 'apps' ? { app_id: 'app-1' } : { agent_id: 'agent-1' }
+      const configKey = trace.get.queryKey({
+        input: { params, query: { tracing_provider: 'langfuse' } },
+      } as never)
+      const body = { tracing_provider: 'langfuse', tracing_config: {} }
+      return [
+        [
+          `${owner} tracing config create`,
+          () => trace.post.mutationOptions,
+          configKey,
+          { params, body },
+        ],
+        [
+          `${owner} tracing config edit`,
+          () => trace.patch.mutationOptions,
+          configKey,
+          { params, body },
+        ],
+        [
+          `${owner} tracing config removal`,
+          () => trace.delete.mutationOptions,
+          configKey,
+          { params, query: { tracing_provider: 'langfuse' } },
+        ],
+      ]
+    }),
+  ])(
+    'keeps a %s pending until the data that seeds its editor reloads',
+    async (_, mutationOptions, listKey, variables) => {
       const { client } = setup()
-      const listKey = rbac().roles.get.queryKey({ input: {} } as never)
+      const queryKey = [...listKey, 'seeded-editor']
       const reload = createDeferred<unknown>()
       const queryFn = vi.fn(() => (queryFn.mock.calls.length === 1 ? {} : reload.promise))
-      const observer = new QueryObserver(client, { queryKey: listKey, queryFn })
+      const observer = new QueryObserver(client, { queryKey, queryFn })
       const unsubscribe = observer.subscribe(() => undefined)
       await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
 
