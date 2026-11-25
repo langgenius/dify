@@ -2981,7 +2981,7 @@
   },
   "web/service/device-flow.ts": {
     "no-restricted-globals": {
-      "count": 5
+      "count": 2
     }
   },
   "web/service/fetch.spec.ts": {
@@ -3003,11 +3003,6 @@
   "web/service/http-error.spec.ts": {
     "typescript/no-deprecated": {
       "count": 10
-    }
-  },
-  "web/service/marketplace-templates.ts": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "web/service/marketplace.ts": {
