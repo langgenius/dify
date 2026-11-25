@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
-import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
+import { selectEvaluationEntryVisible } from '@/app/components/evaluation/entry'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import { getAgentSectionAccess } from '@/features/agent-v2/acl'
@@ -176,15 +176,12 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation(['agentV2'])
-  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
-  const { data: evaluationEntry } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  const { data: isEvaluationVisible = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntryVisible }),
   )
-  const isEvaluationVisible = evaluationEntry?.visible ?? false
-  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
 
   if (!agentId) return null
 
@@ -263,15 +260,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
-            disabled={
-              (item.requiresPublishedAgent && agent?.access_ready !== true) ||
-              (item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade)
-            }
-            disabledReason={
-              item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade
-                ? tCommon(($) => $['compliance.sandboxUpgradeTooltip'])
-                : undefined
-            }
+            disabled={item.requiresPublishedAgent && agent?.access_ready !== true}
           />
         ))}
       </nav>

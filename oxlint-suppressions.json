@@ -198,9 +198,6 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -1180,9 +1177,6 @@
     }
   },
   "web/app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-restricted-globals": {
       "count": 2
     }
@@ -1303,11 +1297,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
