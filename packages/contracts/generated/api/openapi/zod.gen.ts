@@ -1222,6 +1222,34 @@ export const zInvalidInputError = zErrorBody.and(
   }),
 )
 
+/**
+ * JobStatus
+ */
+export const zJobStatus = z.enum(['failed', 'paused', 'running', 'stopped', 'succeeded'])
+
+/**
+ * JobState
+ */
+export const zJobState = z.object({
+  answer: z.string().nullish(),
+  conversation_id: z.string().nullish(),
+  error: z.string().nullish(),
+  hints: z.array(zHint).optional(),
+  id: z.string(),
+  message_id: z.string().nullish(),
+  note: z.string().nullish(),
+  outputs: z.record(z.string(), z.unknown()).nullish(),
+  run_id: z.string().nullish(),
+  status: zJobStatus,
+})
+
+/**
+ * JobWaitQuery
+ */
+export const zJobWaitQuery = z.object({
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+})
+
 export const zJsonValue = z.unknown()
 
 /**
@@ -1986,6 +2014,8 @@ export const zOpenApiErrorCode = z.enum([
   'form_not_found',
   'internal_server_error',
   'invalid_param',
+  'job_capacity_reached',
+  'job_not_found',
   'knowledge_fs_access_denied',
   'knowledge_fs_conflict',
   'knowledge_fs_invalid_request',
@@ -3529,7 +3559,7 @@ export const zPostAppsByAppIdAdvancedChatRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdAdvancedChatRunResponse = zEventStreamResponse
 
@@ -3688,7 +3718,7 @@ export const zPostAppsByAppIdChatRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdChatRunResponse = zEventStreamResponse
 
@@ -3699,7 +3729,7 @@ export const zPostAppsByAppIdCompletionRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdCompletionRunResponse = zEventStreamResponse
 
@@ -3732,7 +3762,7 @@ export const zPostAppsByAppIdDraftAdvancedChatRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdDraftAdvancedChatRunResponse = zEventStreamResponse
 
@@ -3756,7 +3786,7 @@ export const zPostAppsByAppIdDraftWorkflowRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdDraftWorkflowRunResponse = zEventStreamResponse
 
@@ -3837,6 +3867,30 @@ export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitPath = z.object({
  * Form submitted
  */
 export const zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse = zFormSubmitResponse
+
+export const zPostAppsByAppIdJobsByJobIdStopPath = z.object({
+  app_id: z.string(),
+  job_id: z.string(),
+})
+
+/**
+ * Job state
+ */
+export const zPostAppsByAppIdJobsByJobIdStopResponse = zJobState
+
+export const zGetAppsByAppIdJobsByJobIdWaitPath = z.object({
+  app_id: z.string(),
+  job_id: z.string(),
+})
+
+export const zGetAppsByAppIdJobsByJobIdWaitQuery = z.object({
+  wait_seconds: z.int().gte(0).lte(45).optional().default(25),
+})
+
+/**
+ * Job state
+ */
+export const zGetAppsByAppIdJobsByJobIdWaitResponse = zJobState
 
 export const zGetAppsByAppIdReleaseCheckPath = z.object({
   app_id: z.string(),
@@ -4168,7 +4222,7 @@ export const zPostAppsByAppIdWorkflowRunPath = z.object({
 })
 
 /**
- * Run result (SSE stream)
+ * Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState)
  */
 export const zPostAppsByAppIdWorkflowRunResponse = zEventStreamResponse
 

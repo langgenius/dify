@@ -1,5 +1,5 @@
 # OpenAPI
-User-scoped programmatic API (bearer auth)
+User-scoped programmatic API (bearer auth). A stream operation called with the header X-Dify-Stream-Result: job runs as a background job and answers JSON with the job's state instead of the stream; X-Dify-Job-Wait-Seconds sets how long it waits for a result and Idempotency-Key makes a repeated call return the first job. Without the header it streams.
 
 ## Version: 1.0
 
@@ -146,6 +146,12 @@ caller is not allowed to delete it.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -162,7 +168,7 @@ caller is not allowed to delete it.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -435,6 +441,12 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/chat:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -451,11 +463,17 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/completion:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -472,7 +490,7 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -513,6 +531,12 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/draft/advanced-chat:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -529,7 +553,7 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -556,6 +580,12 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/draft/workflow:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -572,7 +602,7 @@ Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -710,6 +740,50 @@ Upload a file to use as an input variable when running the app
 | 400 | Bad Request | **application/json**: [InvalidInputError](#invalidinputerror)<br>[ErrorBody](#errorbody)<br> |
 | 409 | Conflict | **application/json**: [AlreadySubmittedError](#alreadysubmittederror)<br>[WorkflowNotActiveError](#workflownotactiveerror)<br>[ErrorBody](#errorbody)<br> |
 | 410 | Gone | **application/json**: [ExpiredError](#expirederror)<br>[ErrorBody](#errorbody)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/jobs/{job_id}:stop
+**Stop a job of the caller**
+
+Precondition: the guards admitted the caller for the app.
+Postcondition: a job that is not final is asked to stop and its state is returned; 404 job_not_found when
+the job is missing, expired or not the caller's for this app.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/jobs/{job_id}:wait
+**Wait for a job of the caller**
+
+Precondition: the guards admitted the caller for the app.
+Postcondition: the job's state with hints after waiting up to query.wait_seconds; 404 job_not_found when the
+job is missing, expired or not the caller's for this app.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| wait_seconds | query | How long to wait for a final state; 0 answers at once | No | integer, <br>**Default:** 25 |
+| app_id | path |  | Yes | string |
+| job_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1236,6 +1310,12 @@ Upload a file to use as an input variable when running the app
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/workflow:run
+**Run the app and hand back its frames**
+
+Precondition: the route's guards admitted the caller for the app.
+Postcondition: the run's SSE frames with the route's hint layers, after the run was accepted and audited;
+the service's errors are raised as HTTP errors and nothing is audited.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1252,7 +1332,7 @@ Upload a file to use as an input variable when running the app
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Run result (SSE stream); with X-Dify-Stream-Result: job, the job's state (JobState) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -4250,6 +4330,33 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidInputError |  |  |  |
+
+#### JobState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
+| conversation_id | string |  | No |
+| error | string |  | No |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| message_id | string |  | No |
+| note | string | A line for the human when the next step is not a call this login can make | No |
+| outputs | object |  | No |
+| run_id | string |  | No |
+| status | [JobStatus](#jobstatus) |  | Yes |
+
+#### JobStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JobStatus | string |  |  |
+
+#### JobWaitQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for a final state; 0 answers at once | No |
 
 #### JsonValue
 
