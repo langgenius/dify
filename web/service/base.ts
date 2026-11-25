@@ -261,14 +261,3 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
     return Promise.reject(error)
   }
 }
-
-// request methods
-/**
- * @deprecated For console JSON APIs, prefer generated contract clients (`consoleClient`/`consoleQuery`)
- * only after the backend OpenAPI schema produces accurate method, path, input, and output types.
- * Keep this helper for endpoints whose generated contract is missing or too loose, and for non-console
- * flows such as public APIs, marketplace APIs, streaming, upload, or download.
- */
-export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
-}

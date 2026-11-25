@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
-import { get, request } from './base'
+import { request } from './base'
 import { consoleClient } from './console'
 
 const refresh = vi.hoisted(() => vi.fn())
@@ -74,7 +74,9 @@ describe('HTTP failure contract', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(body, { status: 502, statusText: 'Bad Gateway' }),
       )
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+      await expect(
+        request('/test-errors', { method: 'GET' }, { silent: true }),
+      ).rejects.toMatchObject({
         defined: false,
         message: 'Bad Gateway',
         status: 502,
@@ -94,7 +96,9 @@ describe('HTTP failure contract', () => {
     fetch.mockResolvedValueOnce(
       Response.json({ message: { internal: 'invalid' } }, { status: 500 }),
     )
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(
+      request('/test-errors', { method: 'GET' }, { silent: true }),
+    ).rejects.toMatchObject({
       message: 'HTTP 500',
       status: 500,
     })
@@ -121,7 +125,9 @@ describe('HTTP failure contract', () => {
         Response.json({ code: 'forbidden', message: 'Access denied' }, { status: 403 }),
       )
     refresh.mockResolvedValue(undefined)
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(
+      request('/test-errors', { method: 'GET' }, { silent: true }),
+    ).rejects.toMatchObject({
       defined: false,
       message: 'Access denied',
       status: 403,
@@ -140,7 +146,9 @@ describe('HTTP failure contract', () => {
       refresh.mockRejectedValue(refreshError)
       const initialUrl = window.location.href
 
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toBe(refreshError)
+      await expect(request('/test-errors', { method: 'GET' }, { silent: true })).rejects.toBe(
+        refreshError,
+      )
       expect(refresh).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(initialUrl)
     },
@@ -197,7 +205,7 @@ describe('HTTP failure contract', () => {
       )
     })
 
-    const pending = get('/test-errors', { signal: controller.signal }).catch(
+    const pending = request('/test-errors', { method: 'GET', signal: controller.signal }).catch(
       (error: unknown) => error,
     )
     await bodyRead
