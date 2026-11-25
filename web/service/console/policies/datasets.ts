@@ -5,6 +5,7 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus } from '@/service/http-error'
+import { invalidateQueryKeys } from './shared'
 
 export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['datasets'] {
   return {
@@ -113,12 +114,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
             onSettled: (_data, error, variables, _onMutateResult, context) => {
               if (error) return
 
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.evaluation.get.key({
+              void invalidateQueryKeys(context.client, [
+                consoleQuery.datasets.byDatasetId.evaluation.get.key({
                   type: 'query',
                   input: { params: variables.params },
                 }),
-              })
+              ])
             },
           },
         },
@@ -128,12 +129,12 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _onMutateResult, context) => {
                 if (error) return
 
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
                     type: 'query',
                     input: { params: variables.params },
                   }),
-                })
+                ])
               },
             },
           },
@@ -148,20 +149,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
-                          type: 'query',
-                          input: { params: targetParams },
-                        }),
+                    void invalidateQueryKeys(context.client, [
+                      consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: targetParams },
                       }),
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key(
-                          {
-                            type: 'query',
-                            input: { params },
-                          },
-                        ),
+                      consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                        type: 'query',
+                        input: { params },
                       }),
                     ])
                   },
@@ -176,20 +171,14 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
 
                     const params = variables.params
                     const targetParams = { dataset_id: params.dataset_id }
-                    return Promise.all([
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
-                          type: 'query',
-                          input: { params: targetParams },
-                        }),
+                    void invalidateQueryKeys(context.client, [
+                      consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: targetParams },
                       }),
-                      context.client.invalidateQueries({
-                        queryKey: consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key(
-                          {
-                            type: 'query',
-                            input: { params },
-                          },
-                        ),
+                      consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                        type: 'query',
+                        input: { params },
                       }),
                     ])
                   },
@@ -302,21 +291,15 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                ])
+                // The document panel leaves edit mode for the values in the refreshed detail,
+                // so saving waits for them instead of showing the old values first.
+                return invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
                 ])
               },
@@ -329,11 +312,13 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
           mutationOptions: {
             onSettled: (_data, error, variables, _result, context) => {
               if (error) return
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+              // The metadata picker returns to its list right after creating a field, so the
+              // new field is there to select.
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                   input: { params: variables.params },
                 }),
-              })
+              ])
             },
           },
         },
@@ -343,21 +328,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
                 ])
               },
@@ -368,21 +343,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               onSettled: (_data, error, variables, _result, context) => {
                 if (error) return
                 const params = { dataset_id: variables.params.dataset_id }
-                return Promise.all([
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.get.key({
-                      input: { params },
-                    }),
-                  }),
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
-                      input: { params },
-                    }),
+                void invalidateQueryKeys(context.client, [
+                  consoleQuery.datasets.byDatasetId.metadata.get.queryKey({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.get.key({ input: { params } }),
+                  consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.key({
+                    input: { params },
                   }),
                 ])
               },
@@ -395,11 +360,11 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
               mutationOptions: {
                 onSettled: (_data, error, variables, _result, context) => {
                   if (error) return
-                  return context.client.invalidateQueries({
-                    queryKey: consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
+                  void invalidateQueryKeys(context.client, [
+                    consoleQuery.datasets.byDatasetId.metadata.get.queryKey({
                       input: { params: { dataset_id: variables.params.dataset_id } },
                     }),
-                  })
+                  ])
                 },
               },
             },

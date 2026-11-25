@@ -1,4 +1,6 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
+import { invalidateQueryKeys } from './shared'
 
 export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['fileScan'] {
   return {
@@ -7,9 +9,7 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
         mutationOptions: {
           onSettled: (_data, error, _variables, _result, context) => {
             if (error) return
-            return context.client.invalidateQueries({
-              queryKey: consoleQuery.fileScan.providers.get.key(),
-            })
+            void invalidateProviders(consoleQuery, context.client)
           },
         },
       },
@@ -18,9 +18,7 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
           mutationOptions: {
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.fileScan.providers.get.key(),
-              })
+              void invalidateProviders(consoleQuery, context.client)
             },
           },
         },
@@ -28,9 +26,7 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
           mutationOptions: {
             onSettled: (_data, error, _variables, _result, context) => {
               if (error) return
-              return context.client.invalidateQueries({
-                queryKey: consoleQuery.fileScan.providers.get.key(),
-              })
+              void invalidateProviders(consoleQuery, context.client)
             },
           },
         },
@@ -40,9 +36,9 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
             mutationOptions: {
               onSettled: (_data, error, _variables, _result, context) => {
                 if (error) return
-                return context.client.invalidateQueries({
-                  queryKey: consoleQuery.fileScan.providers.get.key(),
-                })
+                // The scanner row shows the result only through the refreshed list, so its
+                // Test button stays loading until the new status lands.
+                return invalidateProviders(consoleQuery, context.client)
               },
             },
           },
@@ -50,4 +46,8 @@ export function fileScanPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['f
       },
     },
   }
+}
+
+function invalidateProviders(query: ConsoleQuery, client: QueryClient) {
+  return invalidateQueryKeys(client, [query.fileScan.providers.get.key()])
 }

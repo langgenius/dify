@@ -22,7 +22,7 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
           if (type === 'agent') {
             // Card edits refresh the catalog after applying the new bindings.
             const refetchType = meta?.deferAgentTagCatalogRefresh ? 'none' : 'active'
-            return client.invalidateQueries({ queryKey, refetchType })
+            void client.invalidateQueries({ queryKey, refetchType })
           }
         },
       },
@@ -41,10 +41,9 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
               },
             )
 
-            return Promise.all([
-              updatedTag.type === 'agent' && refreshAgentTagCatalogs(consoleQuery, context.client),
-              invalidateTaggedResources(consoleQuery, context.client, updatedTag.type),
-            ])
+            if (updatedTag.type === 'agent')
+              void refreshAgentTagCatalogs(consoleQuery, context.client)
+            void invalidateTaggedResources(consoleQuery, context.client, updatedTag.type)
           },
         },
       },
@@ -68,10 +67,9 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
               },
             )
 
-            return Promise.all([
-              deletedTag?.type === 'agent' && refreshAgentTagCatalogs(consoleQuery, context.client),
-              invalidateTaggedResources(consoleQuery, context.client, deletedTag?.type),
-            ])
+            if (deletedTag?.type === 'agent')
+              void refreshAgentTagCatalogs(consoleQuery, context.client)
+            void invalidateTaggedResources(consoleQuery, context.client, deletedTag?.type)
           },
         },
       },
