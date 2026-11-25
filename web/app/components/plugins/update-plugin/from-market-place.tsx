@@ -19,7 +19,7 @@ import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { usePluginTaskList } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
@@ -58,6 +58,9 @@ const UpdateFromMarketplaceContent = ({
   const exclude = useMutation(
     consoleQuery.workspaces.current.plugin.autoUpgrade.exclude.post.mutationOptions(),
   )
+  const upgradeFromMarketplace = useMutation(
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions(),
+  )
   const upgrade = useMutation({
     mutationKey: updateMutationKey(payload),
     // Keep exclusion and task creation in one submission. The task list owns installation progress.
@@ -66,7 +69,7 @@ const UpdateFromMarketplaceContent = ({
         await exclude.mutateAsync({
           body: { plugin_id: pluginId, category: payload.category },
         })
-      const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
+      const response = await upgradeFromMarketplace.mutateAsync({
         body: {
           original_plugin_unique_identifier: originalPackageInfo.id,
           new_plugin_unique_identifier: targetPackageInfo.id,

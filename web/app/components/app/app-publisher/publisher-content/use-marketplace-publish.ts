@@ -1,33 +1,34 @@
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 
 export function useMarketplacePublish(appId?: string) {
   const { t } = useTranslation(['workflow'])
-  const [isPublishing, setIsPublishing] = useState(false)
+  const { isPending: isPublishing, mutate } = useMutation(
+    consoleQuery.apps.byAppId.publishToCreatorsPlatform.post.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
-  async function publish() {
+  function publish() {
     if (!appId || isPublishing) return
 
-    setIsPublishing(true)
-    try {
-      const response = await consoleClient.apps.byAppId.publishToCreatorsPlatform.post(
-        {
-          params: { app_id: appId },
+    mutate(
+      { params: { app_id: appId } },
+      {
+        onSuccess: (response) => {
+          if (response.redirect_url) window.open(response.redirect_url, '_blank')
         },
-        { context: { silent: true } },
-      )
-      if (response.redirect_url) window.open(response.redirect_url, '_blank')
-    } catch (error) {
-      toast.error(
-        getErrorMessage(error) ??
-          t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }),
-      )
-    } finally {
-      setIsPublishing(false)
-    }
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['common.publishToMarketplaceFailed'], { ns: 'workflow' }),
+          )
+        },
+      },
+    )
   }
 
   return {

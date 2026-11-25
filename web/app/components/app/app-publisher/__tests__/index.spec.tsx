@@ -54,9 +54,14 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
     await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'apps.byAppId.publishToCreatorsPlatform.post': api.marketplace,
+    'workspaces.current.toolProvider.workflow.create.post': api.createTool,
+  })
   return {
     ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'apps.byAppId.workflows.byWorkflowId.patch': api.patch,
       'apps.byAppId.workflows.publish.get': api.published,
       'enterprise.appDeploy.deploymentService.listAppEnvironments': api.environments,
@@ -74,10 +79,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.tools.mcp.get': async () => [],
       'rag.pipelines.datasourcePlugins.get': async () => [],
     }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.publishToCreatorsPlatform.post': api.marketplace,
-      'workspaces.current.toolProvider.workflow.create.post': api.createTool,
-    }),
+    consoleClient,
   }
 })
 vi.mock('@/service/share', async (importOriginal) => ({
@@ -449,7 +451,7 @@ it('opens the marketplace redirect after a successful submission', async () => {
   )
   expect(api.marketplace).toHaveBeenCalledExactlyOnceWith(
     { params: { app_id: 'app-1' } },
-    { context: { silent: true } },
+    expect.objectContaining({ context: expect.objectContaining({ silent: true }) }),
   )
 })
 
