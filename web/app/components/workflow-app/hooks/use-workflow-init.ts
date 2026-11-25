@@ -10,7 +10,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -90,7 +90,7 @@ export const useWorkflowInit = () => {
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const res = await fetchAppWorkflowDraft(appDetail.id)
       const initialData = {
         ...res,
         graph: {

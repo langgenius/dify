@@ -8,16 +8,8 @@ import { ThemeProvider } from '@/features/theme/provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createTestNavigation } from '@/test/next-navigation'
 import { GotoAnything } from '../index'
-
-const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), pathname: '/' }))
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/next/navigation')>()),
-  useRouter: () => ({ push: navigation.push, refresh: navigation.refresh }),
-  usePathname: () => navigation.pathname,
-  useParams: () => ({}),
-}))
 
 const emptyPage = { data: [], has_more: false, limit: 10, page: 1, total: 0 }
 const searchTitle = 'app.gotoAnything.searchTitle'
@@ -72,6 +64,7 @@ function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
         <GotoAnything />
       </ThemeProvider>
     </ConsoleWrapper>,
+    { wrapper: createTestNavigation().NavigationProvider },
   )
 }
 

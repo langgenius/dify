@@ -8,7 +8,8 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
-import { permissionState, server, sourceResponses } from './source-server'
+import { createTestNavigation } from '@/test/next-navigation'
+import { permissionState, routeState, server, sourceResponses } from './source-server'
 
 const clients = new Set<ReturnType<typeof createConsoleQueryWrapper>['queryClient']>()
 export function clearSourceClients() {
@@ -35,24 +36,33 @@ export async function renderSources(
     workspacePermissionKeys: permissionState.workspacePermissionKeys,
   })
   clients.add(queryClient)
+  const query = new URLSearchParams(searchParams)
+  if (routeState.awaitInitialSource) query.set('awaitInitialSource', routeState.awaitInitialSource)
+  const navigation = createTestNavigation({
+    url: `/datasets/new/space-1/sources${query.size ? `?${query}` : ''}`,
+  })
+  const { NavigationProvider } = navigation
   const withProviders = (content: ReactElement) => (
-    <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
-        <KnowledgeSpaceTestProvider
-          space={createKnowledgeSpaceFixture({
-            permission_keys: permissionState.knowledgeSpacePermissionKeys,
-          })}
-        >
-          <div className="@container/knowledge-content">{content}</div>
-          <AppToaster />
-        </KnowledgeSpaceTestProvider>
-      </NuqsTestingAdapter>
-    </QueryClientTestProvider>
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <NuqsTestingAdapter hasMemory searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+          <KnowledgeSpaceTestProvider
+            space={createKnowledgeSpaceFixture({
+              permission_keys: permissionState.knowledgeSpacePermissionKeys,
+            })}
+          >
+            <div className="@container/knowledge-content">{content}</div>
+            <AppToaster />
+          </KnowledgeSpaceTestProvider>
+        </NuqsTestingAdapter>
+      </QueryClientTestProvider>
+    </NavigationProvider>
   )
   const rendered = await render(withProviders(ui))
   if (shouldSettle) await settle()
   return {
     ...rendered,
+    navigation,
     onUrlUpdate,
     queryClient,
     async refresh() {

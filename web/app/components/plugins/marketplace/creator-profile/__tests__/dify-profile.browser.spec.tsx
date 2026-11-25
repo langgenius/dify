@@ -1,21 +1,18 @@
 import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { TestNavigation } from '@/test/next-navigation'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
 
-const router = vi.hoisted(() => ({ push: vi.fn() }))
-
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: router.push }),
-}))
+let navigation: TestNavigation
 
 // boundary: embedded Marketplace documents stay local while preserving their real route parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
@@ -126,12 +123,16 @@ async function renderProfile(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CL
     systemFeatures: { deployment_edition: edition },
   })
   seedModelProviderQueries(queryClient, [])
+  navigation = createTestNavigation({ url: '/marketplace/creator/creator' })
+  const { NavigationProvider } = navigation
   const screen = await render(
-    <ConsoleProvider>
-      <UrlState>
-        <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />
-      </UrlState>
-    </ConsoleProvider>,
+    <NavigationProvider>
+      <ConsoleProvider>
+        <UrlState>
+          <DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />
+        </UrlState>
+      </ConsoleProvider>
+    </NavigationProvider>,
   )
   return { screen, onUrlUpdate }
 }
@@ -227,7 +228,7 @@ it('imports a template only after the real embedded dialog sends its install mes
   )
 
   await expect
-    .poll(() => router.push)
+    .poll(() => navigation.router.push)
     .toHaveBeenCalledExactlyOnceWith('/apps?template-id=template-one')
   await expect.element(dialog).not.toBeInTheDocument()
 })

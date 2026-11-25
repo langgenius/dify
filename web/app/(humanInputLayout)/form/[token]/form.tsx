@@ -1,5 +1,6 @@
 'use client'
 import { ORPCError } from '@orpc/client'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
@@ -15,7 +16,7 @@ import { normalizeLegacyHumanInputForm } from '@/features/human-input/form/norma
 import { createLegacyFormUploadStrategy } from '@/features/human-input/public/legacy-upload'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useParams } from '@/next/navigation'
-import { useGetHumanInputForm } from '@/service/use-share'
+import { humanInputFormQueryOptions } from '@/service/share-queries'
 import LegacyLoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
 
@@ -32,7 +33,7 @@ const FormContent = () => {
     [inheritedUploadContext, token],
   )
 
-  const { data: formData, isLoading, error } = useGetHumanInputForm(token)
+  const { data: formData, isLoading, error } = useQuery(humanInputFormQueryOptions(token))
   const { isSubmitting, submit, success } = useFormSubmit(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true

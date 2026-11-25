@@ -2326,6 +2326,10 @@ export const zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectQuery = z.object(
 export const zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse =
   zAgentConfigSkillInspectResponse
 
+export const zPostTrialAppsByAppIdAudioToTextBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),
 })

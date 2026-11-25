@@ -17,8 +17,8 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
+  chatMessagesSender,
   fetchSuggestedQuestions,
-  getUrl,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -226,7 +226,7 @@ const ChatWrapper = () => {
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
-      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,

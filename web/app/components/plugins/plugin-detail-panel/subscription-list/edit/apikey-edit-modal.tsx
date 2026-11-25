@@ -12,6 +12,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { useMutation } from '@tanstack/react-query'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,10 @@ import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { toast } from '@/app/notifications'
-import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
+import {
+  updateTriggerSubscriptionMutationOptions,
+  verifyTriggerSubscriptionMutationOptions,
+} from '@/service/trigger-queries'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -133,10 +137,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     null,
   )
 
-  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription({
-    silent: true,
-  })
-  const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
+  const { mutate: updateSubscription, isPending: isUpdating } = useMutation(
+    updateTriggerSubscriptionMutationOptions({
+      silent: true,
+    }),
+  )
+  const { mutate: verifyCredentials, isPending: isVerifying } = useMutation(
+    verifyTriggerSubscriptionMutationOptions(),
+  )
 
   const parametersSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],

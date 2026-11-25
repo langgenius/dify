@@ -1,5 +1,4 @@
 import type { KeyboardEvent } from 'react'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
@@ -80,9 +79,10 @@ export function CommentInput({
     <>
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Escape bubbling from the marker after it handles its own keys. */}
       <div
-        className={cn('absolute z-40', disabled && 'pointer-events-none opacity-80')}
+        className="absolute z-3 data-disabled:pointer-events-none data-disabled:opacity-80"
         style={{ left: canvasPosition.x, top: canvasPosition.y }}
         data-comment-input
+        data-disabled={disabled || undefined}
         onKeyDown={cancelOnEscape}
       >
         <IconButton
@@ -144,8 +144,9 @@ export function CommentInput({
               aria-label={addLabel}
               initialFocus={disabled ? false : inputRef}
               // Shown where it was placed, at once, like the preview it replaces.
-              className={cn('w-80 transition-none', disabled && 'pointer-events-none opacity-80')}
+              className="w-80 transition-none data-disabled:pointer-events-none data-disabled:opacity-80"
               data-comment-input
+              data-disabled={disabled || undefined}
               onKeyDown={disabled ? undefined : cancelOnEscape}
             >
               <CommentComposerFrame className="shadow-lg">

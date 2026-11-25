@@ -3,17 +3,8 @@ import { createDeferred } from '@/test/deferred'
 import { apiError, route, setupFakeApi } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
-const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
-// boundary: Next routing supplies the authorization landing URL in the running app.
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => api.search,
-  useRouter: () => ({
-    replace: () => {
-      api.search = new URLSearchParams()
-    },
-  }),
-  usePathname: () => '/device',
-}))
+const landingUrl = '/device?user_code=ABCD-3456'
+
 const fake = setupFakeApi(() => ({
   routes: [
     route('POST', 'origin', '/openapi/v1/oauth/device/approve', () => ({ status: 'approved' })),
@@ -23,9 +14,6 @@ const fake = setupFakeApi(() => ({
 const deviceAction = (action: 'approve' | 'deny') =>
   fake.route('POST', 'origin', `/openapi/v1/oauth/device/${action}`)
 const withCode = expect.objectContaining({ body: { user_code: 'ABCD-3456' } })
-beforeEach(() => {
-  api.search = new URLSearchParams({ user_code: 'ABCD-3456' })
-})
 
 it.each(['approve', 'deny'] as const)(
   'finishes %s only after the request succeeds and locks both actions while pending',
@@ -33,7 +21,7 @@ it.each(['approve', 'deny'] as const)(
     const pending = createDeferred<unknown>()
     const request = deviceAction(action)
     request.mockReturnValueOnce(pending.promise)
-    const { screen } = await renderDevicePage({ signedIn: true })
+    const { screen } = await renderDevicePage({ signedIn: true, url: landingUrl })
     await expect.element(screen.getByText('Gareth Chen')).toBeVisible()
     await expect.element(screen.getByText('gareth@example.com')).toBeVisible()
     await expect.element(screen.getByText('Dify Enterprise')).toBeVisible()
@@ -71,7 +59,7 @@ it('keeps the account and code available after failure and completes a native ke
       details: { error: 'unexpected' },
     }),
   )
-  const { screen } = await renderDevicePage({ signedIn: true })
+  const { screen } = await renderDevicePage({ signedIn: true, url: landingUrl })
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
   await approve.click()
   await expect.element(screen.getByText('deviceFlow.approveError.default')).toBeVisible()
@@ -87,7 +75,7 @@ it('keeps the account and code available after failure and completes a native ke
 it('keeps focus on a pending action so a keyboard retry works after failure', async () => {
   const pending = createDeferred<unknown>()
   deviceAction('approve').mockReturnValueOnce(pending.promise)
-  const { screen } = await renderDevicePage({ signedIn: true })
+  const { screen } = await renderDevicePage({ signedIn: true, url: landingUrl })
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })
   await approve.click()
   await expect.element(approve).toHaveAttribute('aria-disabled', 'true')

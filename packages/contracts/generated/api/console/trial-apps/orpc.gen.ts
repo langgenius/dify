@@ -88,6 +88,7 @@ import {
   zGetTrialAppsByAppIdSiteResponse,
   zGetTrialAppsByAppIdWorkflowsPath,
   zGetTrialAppsByAppIdWorkflowsResponse,
+  zPostTrialAppsByAppIdAudioToTextBody,
   zPostTrialAppsByAppIdAudioToTextPath,
   zPostTrialAppsByAppIdAudioToTextResponse,
   zPostTrialAppsByAppIdChatMessagesBody,
@@ -385,7 +386,12 @@ export const post = oc
     path: '/trial-apps/{app_id}/audio-to-text',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
+  .input(
+    z.object({
+      body: zPostTrialAppsByAppIdAudioToTextBody,
+      params: zPostTrialAppsByAppIdAudioToTextPath,
+    }),
+  )
   .output(zPostTrialAppsByAppIdAudioToTextResponse)
   .errors({
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },

@@ -7,9 +7,14 @@ import commonEn from '@/i18n/locales/en-US/common.json'
 import commonZh from '@/i18n/locales/zh-Hans/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import InSiteMessageNotification from '../notification'
 
 vi.unmock('react-i18next')
+let pathname = '/apps'
+beforeEach(() => {
+  pathname = '/apps'
+})
 const notice = (
   body: string,
 ): Awaited<ReturnType<typeof consoleClient.notification.get>>['notifications'][number] => ({
@@ -32,13 +37,16 @@ async function setup(edition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') {
   const { wrapper: Providers } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
   })
+  const { NavigationProvider } = createTestNavigation({ url: pathname })
   const screen = await render(
-    <Providers>
-      <I18nextProvider i18n={i18n}>
-        <button type="button">Before notification</button>
-        <InSiteMessageNotification />
-      </I18nextProvider>
-    </Providers>,
+    <NavigationProvider>
+      <Providers>
+        <I18nextProvider i18n={i18n}>
+          <button type="button">Before notification</button>
+          <InSiteMessageNotification />
+        </I18nextProvider>
+      </Providers>
+    </NavigationProvider>,
   )
   return { screen, i18n }
 }
@@ -60,6 +68,19 @@ it('keeps cloud notifications unavailable in Community even when the service has
   await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
   await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
   expect(fake.console.notification.get).not.toHaveBeenCalled()
+})
+
+it('stays off the collaboration demo it links to without dismissing the notice', async () => {
+  pathname = '/collaboration-demo'
+  fake.console.notification.get.mockResolvedValue({
+    should_show: true,
+    notifications: [notice('Cloud update')],
+  })
+  const { screen } = await setup()
+  await expect.element(screen.getByRole('button', { name: 'Before notification' })).toBeVisible()
+  await expect.element(screen.getByText('Cloud update')).not.toBeInTheDocument()
+  expect(fake.console.notification.get).not.toHaveBeenCalled()
+  expect(fake.console.notification.dismiss.post).not.toHaveBeenCalled()
 })
 
 it('replaces the displayed notice when the real interface language changes', async () => {

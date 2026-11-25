@@ -3,8 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { apiError, hold, setupFakeApi } from '@/test/fake-api'
+import { createTestNavigation } from '@/test/next-navigation'
 import List from '..'
 import Header from '../../header'
 
@@ -15,9 +18,6 @@ vi.mock('@/next/link', () => ({
     ...props
   }: React.ComponentProps<'a'> & { replace?: boolean }) => <a {...props}>{children}</a>,
 }))
-// boundary: Marketplace availability is deployment-specific and unrelated to customized templates.
-vi.mock('@/features/marketplace/client', () => ({ useMarketplace: () => null }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 const original = {
   id: 'template-1',
   name: 'Legal documents',
@@ -28,8 +28,11 @@ const original = {
 } satisfies PipelineTemplateListResponse['pipeline_templates'][number]
 const other = { ...original, id: 'template-2', name: 'Invoices' }
 let templates: (typeof original)[]
+// Marketplace availability is deployment-specific and unrelated to customized templates.
+const systemFeatures = createSystemFeaturesFixture({ enable_marketplace: false })
 const fake = setupFakeApi({
   console: {
+    systemFeatures: { get: () => systemFeatures },
     rag: {
       pipeline: {
         templates: { get: () => ({ pipeline_templates: templates }) },
@@ -67,7 +70,12 @@ async function setup() {
       queries: { refetchOnWindowFocus: false, retry: false },
     },
   })
-  return { client, screen: await render(<Fixture client={client} />) }
+  client.setQueryData(systemFeaturesQueryOptions().queryKey, systemFeatures)
+  const { NavigationProvider } = createTestNavigation({ url: '/datasets/create-from-pipeline' })
+  return {
+    client,
+    screen: await render(<Fixture client={client} />, { wrapper: NavigationProvider }),
+  }
 }
 
 async function openDeletion(screen: Awaited<ReturnType<typeof render>>) {

@@ -26,7 +26,7 @@ export function NodeEditorAvatars({ editors, maxVisible = 3 }: NodeEditorAvatars
 
   return (
     <AvatarGroup size="xs">
-      {visibleEditors.map((editor, index) => (
+      {visibleEditors.map((editor) => (
         <Tooltip key={editor.id}>
           <TooltipTrigger
             render={
@@ -37,7 +37,6 @@ export function NodeEditorAvatars({ editors, maxVisible = 3 }: NodeEditorAvatars
                 aria-label={editingLabel(editor.name)}
                 tabIndex={0}
                 className="focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                style={{ zIndex: visibleEditors.length - index }}
               />
             }
           />
