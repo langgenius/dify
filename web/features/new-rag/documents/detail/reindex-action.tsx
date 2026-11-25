@@ -3,10 +3,12 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { useKnowledgeModelSetupGuard } from '../../use-knowledge-model-setup-guard'
+import { ReindexConfirmDialog } from '../reindex-confirm-dialog'
 import { documentDetailKnowledgeSpaceIdAtom } from './state/inputs'
 import {
   cancelDocumentReindexAtom,
@@ -66,6 +68,7 @@ export function DocumentReindexAction() {
     },
   })
   const guardBusy = startReindexMutation.isPending
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
@@ -79,7 +82,7 @@ export function DocumentReindexAction() {
         className="gap-1 ps-3"
         disabled={inProgress ? !canCancel : disabled}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
-        onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}
+        onClick={() => (inProgress ? void stopReindex() : setConfirmOpen(true))}
       >
         {!inProgress && <span aria-hidden className="i-ri-refresh-line size-4" />}
         {t(
@@ -92,6 +95,11 @@ export function DocumentReindexAction() {
           { ns: 'knowledgeDocuments' },
         )}
       </Button>
+      <ReindexConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => startReindexMutation.mutate()}
+      />
       <KnowledgeModelSetupDialog
         open={modelSetupDialogOpen}
         readiness={modelReadiness}

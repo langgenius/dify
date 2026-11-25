@@ -30,6 +30,24 @@ def test_document_action_requires_an_explicit_side_and_revision() -> None:
     assert KnowledgeFSTidyActionPayload(action="undo", expectedRevision=2).documentId is None
 
 
+def test_adopting_a_side_requires_the_kept_document_and_the_new_wording() -> None:
+    with pytest.raises(ValidationError, match="new wording"):
+        KnowledgeFSTidyActionPayload(action="adopt", expectedRevision=1, documentId="doc")
+    with pytest.raises(ValidationError, match="new wording"):
+        KnowledgeFSTidyActionPayload(action="adopt", expectedRevision=1, documentId="doc", replacement="  ")
+    with pytest.raises(ValidationError, match="new wording"):
+        KnowledgeFSTidyActionPayload(action="adopt", expectedRevision=1, replacement="30 days")
+    with pytest.raises(ValidationError, match="rewrites a passage"):
+        KnowledgeFSTidyActionPayload(action="review", expectedRevision=1, replacement="30 days")
+    payload = KnowledgeFSTidyActionPayload(action="adopt", expectedRevision=1, documentId="doc", replacement="30 days")
+    assert payload.model_dump(exclude_none=True) == {
+        "expectedRevision": 1,
+        "action": "adopt",
+        "documentId": "doc",
+        "replacement": "30 days",
+    }
+
+
 @pytest.mark.parametrize("operation", ["updateTidySettings", "retryTidyScans", "actOnTidyFinding"])
 def test_tidy_mutations_require_space_edit_permission(operation: str) -> None:
     assert KNOWLEDGE_FS_PRODUCT_OPERATIONS[operation].permission == KnowledgeFSProductPermission.EDIT

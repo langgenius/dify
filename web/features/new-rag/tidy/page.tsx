@@ -34,7 +34,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
-import { groupDuplicates, groupPairs, rewriteErrorCode } from './review'
+import { groupDuplicates, groupPairs, rewriteRefusal } from './review'
 import { DuplicateGroupCard, KindSection, PairCard, PairGroupCard } from './review-cards'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
@@ -165,20 +165,18 @@ export function TidyPage() {
     api.findings.byFindingId.actions.post.mutationOptions({ context: { silent: true } }),
   )
   const retry = useMutation(api.retry.post.mutationOptions({ context: { silent: true } }))
-  const rewrite = useMutation(
-    api.findings.byFindingId.rewrite.post.mutationOptions({ context: { silent: true } }),
-  )
-  const pending = configure.isPending || act.isPending || retry.isPending || rewrite.isPending
+  const pending = configure.isPending || act.isPending || retry.isPending
   const progress = progressOf(summary.data)
   const lastError = settings.data?.enabled ? settings.data.lastError : null
 
   const rewriteErrors = {
-    tidy_rewrite_source_managed: t(($) => $['tidy.rewriteSourceManaged']),
-    tidy_rewrite_document_busy: t(($) => $['tidy.rewriteBusy']),
-    tidy_rewrite_unsupported_document: t(($) => $['tidy.adoptUnsupported']),
-    tidy_rewrite_passage_not_found: t(($) => $['tidy.rewriteNotFound']),
-    tidy_rewrite_passage_ambiguous: t(($) => $['tidy.rewriteAmbiguous']),
-    tidy_rewrite_no_change: t(($) => $['tidy.rewriteNoChange']),
+    document_busy: t(($) => $['tidy.rewriteBusy']),
+    not_indexed: t(($) => $['tidy.rewriteNotFound']),
+    passage_not_found: t(($) => $['tidy.rewriteNotFound']),
+    passage_ambiguous: t(($) => $['tidy.rewriteAmbiguous']),
+    no_change: t(($) => $['tidy.rewriteNoChange']),
+    too_long: t(($) => $['tidy.rewriteTooLong']),
+    unsupported: t(($) => $['tidy.rewriteUnavailable']),
   }
   function report(cause: unknown) {
     setError(
@@ -225,26 +223,25 @@ export function TidyPage() {
       report(cause)
     }
   }
-  /** Rewrites the other document's passage as a new revision and settles the finding. */
+  /** Rewrites the other document's indexed passage in place and settles the finding. */
   async function adopt(request: RewriteRequest, text: string) {
     setError(undefined)
     try {
-      await rewrite.mutateAsync({
+      await act.mutateAsync({
         params: { ...params, finding_id: request.finding.id },
         body: {
+          action: 'adopt',
           expectedRevision: request.finding.revision,
-          documentId: request.targetDocumentId,
-          passage: request.passage,
+          documentId: request.keptDocumentId,
           replacement: text,
         },
       })
       restoreQueueFocusRef.current = true
       setConfirmation(undefined)
-      await findings.refetch()
       toast.success(t(($) => $['tidy.rewriteAccepted'], { title: request.targetTitle }))
     } catch (cause) {
-      const code = rewriteErrorCode(cause instanceof ORPCError ? cause.code : undefined)
-      if (code) setError(rewriteErrors[code])
+      const refusal = rewriteRefusal(cause instanceof ORPCError ? cause.data : undefined)
+      if (refusal) setError(rewriteErrors[refusal])
       else report(cause)
     }
   }

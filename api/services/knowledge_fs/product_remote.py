@@ -61,8 +61,6 @@ class KnowledgeFSRemoteMultipartRequest(NamedTuple):
     trace_id: str
     file: KnowledgeFSRemoteMultipartFile
     query: tuple[tuple[str, str], ...] = ()
-    # Plain form fields sent beside the file; only the revision-upload fields are admitted.
-    fields: tuple[tuple[str, str], ...] = ()
 
 
 class KnowledgeFSRemoteSSERequest(NamedTuple):
