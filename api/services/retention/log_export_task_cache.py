@@ -125,6 +125,7 @@ if expires then
     end
     local is_latest = redis.call("GET", KEYS[4]) == current.task_id
     redis.call("SET", KEYS[1], ARGV[3], "PXAT", expires)
+    redis.call("PEXPIREAT", KEYS[5], expires)
     if is_latest then
         redis.call("PEXPIREAT", KEYS[4], expires)
     end
@@ -295,6 +296,11 @@ class RedisLogExportTasks[FiltersT]:
         if ready:
             args.append(int(expires_at.timestamp() * 1000))
         latest_key = self._latest_key(tenant_id=task.tenant_id, app_id=task.app_id, requested_by=task.requested_by)
+        task_key, lease_key, active_key = self._execution_keys(task)
         with _translate_transient_redis_errors():
             finish = self._redis.register_script(_FINISH_LOG_EXPORT_TASK)
-            return updated if finish(keys=(*self._execution_keys(task), latest_key), args=args) else None
+            return (
+                updated
+                if finish(keys=(task_key, lease_key, active_key, latest_key, f"{task_key}:email"), args=args)
+                else None
+            )

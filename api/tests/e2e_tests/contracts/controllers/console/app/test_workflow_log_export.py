@@ -515,6 +515,11 @@ def test_workflow_export_status_and_latest_respect_their_scope(
 
     assert export_client.get_status(task.task_id).status_code == task_status
     assert export_client.get_latest().json == {"task": None}
+    email = export_client.client.put(
+        f"{export_client.path}/{task.task_id}", headers=export_client.headers, json={"enabled": True}
+    )
+    assert email.status_code == 404
+    assert email.get_json()["code"] == "workflow_log_export_task_not_found"
 
 
 @pytest.fixture

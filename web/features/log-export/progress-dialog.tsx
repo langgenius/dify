@@ -1,6 +1,8 @@
 import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
+import type { LogExportEmailNotification } from './use-log-export'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Dialog,
   DialogBody,
@@ -12,6 +14,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 import { useObserveLogExportProgress } from './notification-visibility'
@@ -22,6 +25,7 @@ export function LogExportProgressDialog({
   taskId,
   task,
   statusError,
+  emailNotification,
   fileUrl,
   finalFocus,
   onClose,
@@ -32,12 +36,14 @@ export function LogExportProgressDialog({
   taskId: string
   task?: ConversationLogExportStatusResponse
   statusError: boolean
+  emailNotification?: LogExportEmailNotification
   fileUrl: string
   finalFocus: ComponentProps<typeof DialogContent>['finalFocus']
   onClose: () => void
   onRetry: () => void
 }) {
   const { t, i18n } = useTranslation(['appLog', 'common'])
+  const emailLabelId = useId()
   const title = t(($) => $['export.progressTitle'], { ns: 'appLog' })
   const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
   const ready = !statusError && task?.status === 'ready'
@@ -133,6 +139,43 @@ export function LogExportProgressDialog({
             <div className="space-y-1 system-sm-regular text-text-secondary">
               <p>{t(($) => $['export.progressBackground'], { ns: 'appLog' })}</p>
               <p>{t(($) => $['export.progressDownloadLater'], { ns: 'appLog' })}</p>
+            </div>
+          )}
+          {(active || ready) && emailNotification && (
+            <div className="space-y-1 system-sm-regular text-text-secondary">
+              {active && (
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    aria-labelledby={emailLabelId}
+                    checked={emailNotification.state !== 'off'}
+                    disabled={emailNotification.pending || emailNotification.state === 'queued'}
+                    onCheckedChange={emailNotification.onChange}
+                  />
+                  <span id={emailLabelId}>
+                    {t(($) => $['export.emailNotifyWhenFinished'], { ns: 'appLog' })}
+                  </span>
+                </label>
+              )}
+              {ready && emailNotification.state !== 'queued' && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="small"
+                  loading={emailNotification.pending}
+                  disabled={emailNotification.pending}
+                  onClick={() => emailNotification.onChange(true)}
+                >
+                  {t(($) => $['export.emailNotify'], { ns: 'appLog' })}
+                </Button>
+              )}
+              {emailNotification.state === 'queued' && (
+                <p role="status">{t(($) => $['export.emailQueued'], { ns: 'appLog' })}</p>
+              )}
+              {emailNotification.updateFailed && (
+                <p role="alert" className="text-text-destructive">
+                  {t(($) => $['export.emailUpdateFailed'], { ns: 'appLog' })}
+                </p>
+              )}
             </div>
           )}
         </DialogBody>

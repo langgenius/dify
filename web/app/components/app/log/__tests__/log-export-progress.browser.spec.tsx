@@ -9,6 +9,8 @@ vi.mock('react-i18next', async (importOriginal) => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
   const mock = createReactI18nextMock({
+    'export.emailNotify': copy['export.emailNotify'],
+    'export.emailNotifyWhenFinished': copy['export.emailNotifyWhenFinished'],
     'export.previewConversationCount': copy['export.previewConversationCount_other'],
     'export.previewRowCount': copy['export.previewRowCount_other'],
     'export.progressRows': copy['export.progressRows_other'],
@@ -32,6 +34,14 @@ const progressDialog = page.getByRole('dialog', { name: 'appLog.export.progressT
 const progressBar = progressDialog.getByRole('progressbar', { name: 'appLog.export.progressTitle' })
 const progressClose = progressDialog.getByRole('button', { name: 'common.operation.close' }).last()
 const progressDownload = progressDialog.getByRole('button', { name: 'common.operation.download' })
+const emailButton = progressDialog.getByRole('button', {
+  name: 'Email me the download link',
+  exact: true,
+})
+const emailWhenFinishedCheckbox = progressDialog.getByRole('checkbox', {
+  name: 'Email me the download link when finished',
+  exact: true,
+})
 
 it('opens task progress after creating an export and resumes polling it when reopened', async () => {
   let taskStatus: Pick<ConversationLogExportStatusResponse, 'status' | 'progress'> = {
@@ -49,6 +59,7 @@ it('opens task progress after creating an export and resumes polling it when reo
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(progressDialog.getByText('appLog.export.progressPreparing')).toBeVisible()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeInTheDocument()
   await expect.poll(() => statusTaskIds[0]).toBe(taskId)
   expect(requests[0]?.estimated_rows).toBe(300)
 
@@ -80,6 +91,82 @@ it('opens task progress after creating an export and resumes polling it when reo
   expect(downloadPaths).toEqual([
     `/console/api/apps/${appId}/conversation-log-exports/${taskId}/file`,
   ])
+})
+
+it('lets the user cancel a waiting email and request it after the CSV is ready', async () => {
+  let status: ConversationLogExportStatusResponse['status'] = 'processing'
+  const initialStatus = createDeferred()
+  onTestFinished(() => initialStatus.resolve())
+  const { trigger, dialog, emailRequests } = await openExport(false, 'chat', {
+    isEmailSetup: true,
+    getTaskStatus: () => ({ status }),
+    waitForStatus: () => initialStatus.promise,
+    updateEmailNotification: (enabled) => ({
+      state: enabled ? (status === 'ready' ? 'queued' : 'waiting') : 'off',
+    }),
+  })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await expect.element(emailWhenFinishedCheckbox).toBeDisabled()
+  initialStatus.resolve()
+  await expect.element(emailWhenFinishedCheckbox).toBeEnabled()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeChecked()
+  await emailWhenFinishedCheckbox.click()
+  await expect.element(emailWhenFinishedCheckbox).toBeChecked()
+  await expect.element(emailWhenFinishedCheckbox).toBeEnabled()
+  await emailWhenFinishedCheckbox.click()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeChecked()
+
+  status = 'ready'
+  await expect.element(progressDownload).toBeEnabled()
+  await expect.element(emailWhenFinishedCheckbox).not.toBeInTheDocument()
+  await emailButton.click()
+  await expect.element(progressDialog.getByText('appLog.export.emailQueued')).toBeVisible()
+  await expect.element(emailButton).not.toBeInTheDocument()
+  expect(emailRequests).toEqual([
+    { taskId, enabled: true },
+    { taskId, enabled: false },
+    { taskId, enabled: true },
+  ])
+})
+
+it('lets the user retry queueing a ready export email after a failed response', async () => {
+  let attempted = false
+  const { trigger, dialog, emailRequests } = await openExport(false, 'chat', {
+    isEmailSetup: true,
+    updateEmailNotification: () => {
+      const state = attempted ? 'queued' : 'waiting'
+      attempted = true
+      return { state, failed: true }
+    },
+  })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await expect.element(progressDownload).toBeEnabled()
+  await emailButton.click()
+  const emailError = progressDialog.getByText('appLog.export.emailUpdateFailed')
+  await expect.element(emailError).toBeVisible()
+  await expect.element(emailButton).toBeEnabled()
+
+  await emailButton.click()
+  await expect.element(progressDialog.getByText('appLog.export.emailQueued')).toBeVisible()
+  await expect.element(emailButton).not.toBeInTheDocument()
+  await expect.element(emailError).not.toBeInTheDocument()
+  expect(emailRequests).toEqual([
+    { taskId, enabled: true },
+    { taskId, enabled: true },
+  ])
+})
+
+it('hides email when the status response omits the per-export preference', async () => {
+  const { trigger, dialog } = await openExport(false, 'chat', {
+    isEmailSetup: true,
+    omitEmailNotificationOnStatus: true,
+  })
+  await trigger.click()
+  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
+  await expect.element(progressDownload).toBeEnabled()
+  await expect.element(emailButton).not.toBeInTheDocument()
 })
 
 it('allows an export after preview fails and shows indeterminate progress with the rows written', async () => {

@@ -590,6 +590,9 @@ import {
   zPostAppsWorkflowsOnlineUsersBody,
   zPostAppsWorkflowsOnlineUsersResponse,
   zPutAppsByAppIdBody,
+  zPutAppsByAppIdConversationLogExportsByTaskIdBody,
+  zPutAppsByAppIdConversationLogExportsByTaskIdPath,
+  zPutAppsByAppIdConversationLogExportsByTaskIdResponse,
   zPutAppsByAppIdNetworkAccessGroupBody,
   zPutAppsByAppIdNetworkAccessGroupPath,
   zPutAppsByAppIdNetworkAccessGroupResponse,
@@ -604,6 +607,9 @@ import {
   zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath,
   zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse,
   zPutAppsByAppIdWorkflowCommentsByCommentIdResponse,
+  zPutAppsByAppIdWorkflowLogExportsByTaskIdBody,
+  zPutAppsByAppIdWorkflowLogExportsByTaskIdPath,
+  zPutAppsByAppIdWorkflowLogExportsByTaskIdResponse,
   zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerBody,
   zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
   zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
@@ -2296,8 +2302,41 @@ export const get34 = oc
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   })
 
+/**
+ * Update the caller's preference for a live export in the app
+ *
+ * Set the requester's email preference for this CSV export
+ */
+export const put = oc
+  .route({
+    description: "Set the requester's email preference for this CSV export",
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdConversationLogExportsByTaskId',
+    path: '/apps/{app_id}/conversation-log-exports/{task_id}',
+    summary: "Update the caller's preference for a live export in the app",
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdConversationLogExportsByTaskIdBody,
+      params: zPutAppsByAppIdConversationLogExportsByTaskIdPath,
+    }),
+  )
+  .output(zPutAppsByAppIdConversationLogExportsByTaskIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    conversation_log_export_task_not_found: {
+      status: 404,
+      data: zConversationLogExportTaskNotFoundError,
+    },
+    forbidden: { status: 403, data: zForbiddenError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
+
 export const byTaskId3 = {
   get: get34,
+  put,
   file,
 }
 
@@ -2603,7 +2642,7 @@ export const get39 = oc
     },
   })
 
-export const put = oc
+export const put2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -2641,7 +2680,7 @@ export const put = oc
 
 export const networkAccessGroup = {
   get: get39,
-  put,
+  put: put2,
   status: status2,
 }
 
@@ -2716,7 +2755,7 @@ export const post33 = oc
 /**
  * Update MCP server configuration for an application
  */
-export const put2 = oc
+export const put3 = oc
   .route({
     description: 'Update MCP server configuration for an application',
     inputStructure: 'detailed',
@@ -2732,7 +2771,7 @@ export const put2 = oc
 export const server = {
   get: get40,
   post: post33,
-  put: put2,
+  put: put3,
   refresh,
 }
 
@@ -3624,8 +3663,38 @@ export const get61 = oc
     workflow_log_export_task_not_found: { status: 404, data: zWorkflowLogExportTaskNotFoundError },
   })
 
+/**
+ * Update the caller's preference for a live Workflow export
+ *
+ * Set the requester's email preference for this Workflow CSV export
+ */
+export const put4 = oc
+  .route({
+    description: "Set the requester's email preference for this Workflow CSV export",
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAppsByAppIdWorkflowLogExportsByTaskId',
+    path: '/apps/{app_id}/workflow-log-exports/{task_id}',
+    summary: "Update the caller's preference for a live Workflow export",
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutAppsByAppIdWorkflowLogExportsByTaskIdBody,
+      params: zPutAppsByAppIdWorkflowLogExportsByTaskIdPath,
+    }),
+  )
+  .output(zPutAppsByAppIdWorkflowLogExportsByTaskIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    workflow_log_export_task_not_found: { status: 404, data: zWorkflowLogExportTaskNotFoundError },
+  })
+
 export const byTaskId4 = {
   get: get61,
+  put: put4,
   file: file2,
 }
 
@@ -4000,7 +4069,7 @@ export const delete9 = oc
  *
  * Update a comment reply
  */
-export const put3 = oc
+export const put5 = oc
   .route({
     description: 'Update a comment reply',
     inputStructure: 'detailed',
@@ -4024,7 +4093,7 @@ export const put3 = oc
 
 export const byReplyId = {
   delete: delete9,
-  put: put3,
+  put: put5,
 }
 
 /**
@@ -4136,7 +4205,7 @@ export const get70 = oc
  *
  * Update a workflow comment
  */
-export const put4 = oc
+export const put6 = oc
   .route({
     description: 'Update a workflow comment',
     inputStructure: 'detailed',
@@ -4161,7 +4230,7 @@ export const put4 = oc
 export const byCommentId = {
   delete: delete10,
   get: get70,
-  put: put4,
+  put: put6,
   replies,
   resolve,
 }
@@ -4880,7 +4949,7 @@ export const get81 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
-export const put5 = oc
+export const put7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -4907,7 +4976,7 @@ export const put5 = oc
 
 export const agentComposer = {
   get: get81,
-  put: put5,
+  put: put7,
   candidates,
   copyFromRoster,
   impact,
@@ -5275,7 +5344,7 @@ export const trigger2 = {
 /**
  * Reset a workflow variable to its default value
  */
-export const put6 = oc
+export const put8 = oc
   .route({
     description: 'Reset a workflow variable to its default value',
     inputStructure: 'detailed',
@@ -5289,7 +5358,7 @@ export const put6 = oc
   .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const reset = {
-  put: put6,
+  put: put8,
 }
 
 /**
@@ -5837,7 +5906,7 @@ export const get99 = oc
 /**
  * Update application details
  */
-export const put7 = oc
+export const put9 = oc
   .route({
     description: 'Update application details',
     inputStructure: 'detailed',
@@ -5852,7 +5921,7 @@ export const put7 = oc
 export const byAppId2 = {
   delete: delete15,
   get: get99,
-  put: put7,
+  put: put9,
   advancedChat,
   agent,
   annotationReply,

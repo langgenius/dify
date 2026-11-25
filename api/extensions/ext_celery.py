@@ -213,6 +213,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
         "tasks.log_export_tasks",  # CSV log export preparation
+        "tasks.mail_log_export_task",  # CSV log export email
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
         "tasks.human_input_im_card_tasks",  # post-submission IM card updates
         "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization

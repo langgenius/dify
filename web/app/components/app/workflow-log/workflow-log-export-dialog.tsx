@@ -10,7 +10,7 @@ import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
 import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { toWorkflowLogFilters } from './log-filters'
 
 const exportsApi = consoleQuery.apps.byAppId.workflowLogExports
@@ -54,6 +54,11 @@ export function WorkflowLogExportDialog({
         ...logExportRequest,
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
+    updateEmailNotification: (taskId, enabled) =>
+      consoleClient.apps.byAppId.workflowLogExports.byTaskId.put(
+        { params: { ...params, task_id: taskId }, body: { enabled } },
+        logExportRequest,
+      ),
   })
   const fileUrl = (taskId: string) =>
     `${API_PREFIX}/apps/${appId}/workflow-log-exports/${taskId}/file`

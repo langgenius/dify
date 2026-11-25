@@ -30,9 +30,18 @@ from controllers.console.app.error import (
     ConversationLogExportTaskNotReadyHTTPError,
     LogExportLimitReachedHTTPError,
 )
-from controllers.console.app.log_export_response import log_export_file_response
+from controllers.console.app.log_export_response import (
+    log_export_file_response,
+    log_export_status_email_preference,
+    update_log_export_email_preference,
+)
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
+from controllers.console.wraps import (
+    RBACPermission,
+    is_cloud_edition_billing_paid_plan,
+    model_validate,
+    validate_request,
+)
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -51,7 +60,13 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
-from fields.log_export_fields import LogExportEstimatedRows, LogExportProgressResponse, LogExportTaskResponse
+from fields.log_export_fields import (
+    LogExportEmailNotificationPayload,
+    LogExportEmailNotificationResponse,
+    LogExportEstimatedRows,
+    LogExportProgressResponse,
+    LogExportTaskResponse,
+)
 from libs.datetime_utils import parse_time_range
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
@@ -72,11 +87,14 @@ from services.errors.conversation import ConversationNotExistsError
 from services.feature_service import FeatureService
 from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
+    ConversationLogExportTask,
     UnsupportedConversationLogExportModeError,
 )
+from services.retention.log_export_email import LogExportEmailState
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
+    LogExportKind,
     LogExportLimitReachedError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
@@ -180,6 +198,7 @@ class ConversationLogExportTaskResponse(LogExportTaskResponse):
 class ConversationLogExportStatusResponse(LogExportTaskResponse):
     status: ConversationLogExportStatus
     progress: LogExportProgressResponse | None = None
+    email_notification: LogExportEmailState | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class ConversationLogExportFiltersResponse(ResponseModel):
@@ -252,6 +271,7 @@ register_schema_models(
     CompletionConversationQuery,
     ChatConversationQuery,
     ConversationLogExportCreatePayload,
+    LogExportEmailNotificationPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -266,6 +286,7 @@ register_response_schema_models(
     ConversationLogExportTaskResponse,
     ConversationLogExportStatusResponse,
     ConversationLogExportLatestResponse,
+    LogExportEmailNotificationResponse,
     BinaryFileResponse,
 )
 
@@ -542,6 +563,12 @@ class ConversationLogExportLatestApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
 class ConversationLogExportTaskApi(Resource):
+    @staticmethod
+    def _get_task(request_context: RequestContext, app_id: UUID, task_id: UUID) -> ConversationLogExportTask:
+        """Load the export in the caller's admitted app scope."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        return application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
+
     @error_responses(
         AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
     )
@@ -556,16 +583,44 @@ class ConversationLogExportTaskApi(Resource):
         self, request_context: RequestContext, app_id: UUID, task_id: UUID
     ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live export task for an admitted app."""
-        scope = _resolve_log_export_scope(request_context, app_id)
         try:
-            task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
+            task = self._get_task(request_context, app_id, task_id)
         except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
         return (
-            dump_response(ConversationLogExportStatusResponse, task),
+            dump_response(ConversationLogExportStatusResponse, task)
+            | log_export_status_email_preference(
+                task, account_id=request_context.account_id, export_kind=LogExportKind.CONVERSATION
+            ),
             HTTPStatus.OK,
             {"Cache-Control": "no-store"},
         )
+
+    @error_responses(
+        AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
+    )
+    @console_ns.doc("set_conversation_log_export_email_notification")
+    @console_ns.doc(description="Set the requester's email preference for this CSV export")
+    @console_ns.expect(console_ns.models[LogExportEmailNotificationPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Email notification preference", console_ns.models[LogExportEmailNotificationResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    @model_validate(LogExportEmailNotificationPayload)
+    def put(
+        self, payload: LogExportEmailNotificationPayload, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Update the caller's preference for a live export in the app."""
+        try:
+            task = self._get_task(request_context, app_id, task_id)
+            return update_log_export_email_preference(
+                task,
+                account_id=request_context.account_id,
+                export_kind=LogExportKind.CONVERSATION,
+                enabled=payload.enabled,
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")

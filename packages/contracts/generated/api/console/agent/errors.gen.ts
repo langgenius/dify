@@ -609,6 +609,13 @@ export const get22Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
+export const put3Errors = {
+  agent_log_export_task_not_found: { status: 404, data: zAgentLogExportTaskNotFoundError },
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  forbidden: { status: 403, data: zForbiddenError },
+  paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+}
+
 export const post16Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   forbidden: { status: 403, data: zForbiddenError },
@@ -768,7 +775,7 @@ export const delete6Errors = { agent_not_found_error: { status: 404, data: zAgen
 
 export const get40Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const put3Errors = {
+export const put4Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
 }

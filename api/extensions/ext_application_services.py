@@ -228,6 +228,7 @@ from services.retention.agent.log_export_service import AgentLogExportService, A
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
 from services.retention.log_export_adapters import dispatch_log_export, open_log_export_csv, store_log_export_csv
 from services.retention.log_export_command import LogExportCommandService
+from services.retention.log_export_email import LogExportEmailNotifications
 from services.retention.log_export_task import LogExportKind
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.archive_download_adapters import (
@@ -277,6 +278,7 @@ from tasks.annotation.enable_annotation_reply_task import enable_annotation_repl
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
+from tasks.mail_log_export_task import dispatch_log_export_email
 
 logger = logging.getLogger(__name__)
 
@@ -364,6 +366,7 @@ class ApplicationServices:
     conversation_queries: ConversationQueryService
     conversation_log_exports: ConversationLogExportService
     log_export_command: LogExportCommandService
+    log_export_email_notifications: LogExportEmailNotifications
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -730,6 +733,7 @@ def build_application_services(
             write_workflow_csv=workflow_log_csv.write_scoped_csv,
             agents=agent_log_csv,
         ),
+        log_export_email_notifications=LogExportEmailNotifications(redis=redis, dispatch=dispatch_log_export_email),
         accounts=account_services,
         apps=apps,
         credential_queries=credential_queries,

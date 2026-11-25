@@ -1,11 +1,24 @@
 import type { ConversationLogExportStatusResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultError, UseMutationOptions, UseQueryOptions } from '@tanstack/react-query'
 import { ORPCError } from '@orpc/client'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export type LogExportPhase = 'checking' | 'exporting' | 'retry-status' | 'selecting'
 export type LogExportCreateErrorKind = 'limit-reached' | 'failed' | null
+export type LogExportEmailNotification = {
+  state: NonNullable<ConversationLogExportStatusResponse['email_notification']>
+  pending: boolean
+  updateFailed: boolean
+  onChange: (enabled: boolean) => void
+}
 
 export const logExportRequest = { context: { silent: true } } as const
 
@@ -24,6 +37,7 @@ export function useLogExport<
   previewOptions,
   createOptions,
   statusOptions,
+  updateEmailNotification,
 }: {
   enabled: boolean
   latestOptions: UseQueryOptions<Latest>
@@ -32,8 +46,13 @@ export function useLogExport<
   statusOptions: (
     taskId: string | undefined,
   ) => UseQueryOptions<ConversationLogExportStatusResponse>
+  updateEmailNotification: (taskId: string, enabled: boolean) => Promise<unknown>
 }) {
   const queryClient = useQueryClient()
+  const { data: isEmailSetup } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ is_email_setup }) => is_email_setup,
+  })
   const [dialog, setDialog] = useState<'filters' | 'progress' | null>(null)
   const [progressTask, setProgressTask] = useState<ConversationLogExportStatusResponse>()
   const [taskIdAtSubmit, setTaskIdAtSubmit] = useState<string>()
@@ -48,8 +67,32 @@ export function useLogExport<
     staleTime: 0,
     retry: 1,
     refetchInterval: ({ state }) =>
-      state.status !== 'error' && isActive(state.data?.status) ? 1500 : false,
+      state.status !== 'error' &&
+      (isActive(state.data?.status) ||
+        (state.data?.status === 'ready' && state.data.email_notification === 'waiting'))
+        ? 1500
+        : false,
   })
+  const emailMutation = useMutation({
+    mutationFn: ({ taskId, enabled }: { taskId: string; enabled: boolean }) =>
+      updateEmailNotification(taskId, enabled),
+    onSettled: async (_result, _error, { taskId }) => {
+      await queryClient.invalidateQueries({ queryKey: statusOptions(taskId).queryKey, exact: true })
+    },
+  })
+  const emailState = progress.data?.email_notification
+  const emailStatusLoading = !progress.data || progress.isPlaceholderData
+  const emailUpdate = emailMutation.variables
+  const emailUpdateForTask = emailUpdate?.taskId === progressTask?.task_id ? emailUpdate : undefined
+  // A failed response can still leave the requested preference in place. A ready
+  // export that is still waiting can be queued by retrying the request.
+  const emailUpdateFailed =
+    emailMutation.isError &&
+    emailUpdateForTask != null &&
+    emailState !== 'queued' &&
+    (emailUpdateForTask.enabled
+      ? emailState === 'off' || progress.data?.status === 'ready'
+      : emailState === 'waiting')
   const latest = useQuery({
     ...latestOptions,
     enabled: enabled && dialog === 'filters',
@@ -131,6 +174,16 @@ export function useLogExport<
       taskId: progressTask.task_id,
       task: progress.data,
       statusError: progress.isError,
+      emailNotification:
+        isEmailSetup && (emailStatusLoading || emailState != null)
+          ? ({
+              state: emailState ?? 'off',
+              pending: emailStatusLoading || (!!emailUpdateForTask && emailMutation.isPending),
+              updateFailed: emailUpdateFailed,
+              onChange: (enabled: boolean) =>
+                emailMutation.mutate({ taskId: progressTask.task_id, enabled }),
+            } satisfies LogExportEmailNotification)
+          : undefined,
       onClose: () => setDialog(null),
       onRetry: () => {
         void progress.refetch()

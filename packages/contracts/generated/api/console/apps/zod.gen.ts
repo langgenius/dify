@@ -679,6 +679,15 @@ export const zConversationLogExportTaskNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * LogExportEmailNotificationPayload
+ *
+ * Set the requester's mail preference for a single export.
+ */
+export const zLogExportEmailNotificationPayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
  * BinaryFileResponse
  */
 export const zBinaryFileResponse = z.custom<Blob | File>(
@@ -2224,6 +2233,22 @@ export const zConversationLogExportPreviewResponse = z.object({
 })
 
 /**
+ * LogExportEmailState
+ *
+ * The public opt-in state for a task with a live download.
+ */
+export const zLogExportEmailState = z.enum(['off', 'queued', 'waiting'])
+
+/**
+ * LogExportEmailNotificationResponse
+ *
+ * Return the stored preference or that a mail job has been queued.
+ */
+export const zLogExportEmailNotificationResponse = z.object({
+  email_notification: zLogExportEmailState,
+})
+
+/**
  * LogExportStatus
  */
 export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
@@ -3743,6 +3768,7 @@ export const zLogExportProgressResponse = z.object({
  * ConversationLogExportStatusResponse
  */
 export const zConversationLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
@@ -3753,6 +3779,7 @@ export const zConversationLogExportStatusResponse = z.object({
  * WorkflowLogExportStatusResponse
  */
 export const zWorkflowLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
@@ -4212,6 +4239,7 @@ export const zWorkflowLogExportFiltersResponse = z.object({
  * WorkflowLogExportLatestTaskResponse
  */
 export const zWorkflowLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   expires_at: z.iso.datetime().nullish(),
   filters: zWorkflowLogExportFiltersResponse,
@@ -4903,6 +4931,7 @@ export const zConversationLogExportFiltersResponse = z.object({
  * ConversationLogExportLatestTaskResponse
  */
 export const zConversationLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   expires_at: z.iso.datetime().nullish(),
   filters: zConversationLogExportFiltersResponse,
@@ -7926,6 +7955,19 @@ export const zGetAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
 export const zGetAppsByAppIdConversationLogExportsByTaskIdResponse =
   zConversationLogExportStatusResponse
 
+export const zPutAppsByAppIdConversationLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAppsByAppIdConversationLogExportsByTaskIdResponse =
+  zLogExportEmailNotificationResponse
+
 export const zGetAppsByAppIdConversationLogExportsByTaskIdFilePath = z.object({
   app_id: z.uuid(),
   task_id: z.uuid(),
@@ -8543,6 +8585,18 @@ export const zGetAppsByAppIdWorkflowLogExportsByTaskIdPath = z.object({
  * Export task status
  */
 export const zGetAppsByAppIdWorkflowLogExportsByTaskIdResponse = zWorkflowLogExportStatusResponse
+
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAppsByAppIdWorkflowLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
 
 export const zGetAppsByAppIdWorkflowLogExportsByTaskIdFilePath = z.object({
   app_id: z.uuid(),

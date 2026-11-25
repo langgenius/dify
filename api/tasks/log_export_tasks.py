@@ -35,10 +35,22 @@ def prepare_log_export_task(*, tenant_id: str, app_id: str, task_id: str, export
 
     logger.info("Preparing %s log export: tenant=%s app=%s task=%s", export_kind, tenant_id, app_id, task_id)
     ready_task = exports.prepare_task(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-    if ready_task is not None:
-        try:
-            notify_log_export_ready(ready_task, export_kind=kind)
-        except Exception:
-            logger.exception(
-                "Could not notify requester after exporting logs: tenant=%s app=%s task=%s", tenant_id, app_id, task_id
-            )
+    if ready_task is None:
+        return
+
+    try:
+        services.log_export_email_notifications.queue_if_requested(
+            tenant_id=ready_task.tenant_id,
+            app_id=ready_task.app_id,
+            task_id=ready_task.task_id,
+            requested_by=ready_task.requested_by,
+            export_kind=kind,
+        )
+    except Exception:
+        logger.exception("Could not queue log export email: tenant=%s app=%s task=%s", tenant_id, app_id, task_id)
+    try:
+        notify_log_export_ready(ready_task, export_kind=kind)
+    except Exception:
+        logger.exception(
+            "Could not notify requester after exporting logs: tenant=%s app=%s task=%s", tenant_id, app_id, task_id
+        )

@@ -55,18 +55,26 @@ export async function openExport(
   responses?: {
     waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined
     waitForLatest?: () => Promise<void> | undefined
+    waitForStatus?: () => Promise<void>
     previewRows?: number
     previewFailure?: boolean
     createFailure?: 'response-lost' | 'active-export' | 'workspace-limit'
     existingTaskExpiresAt?: string
+    isEmailSetup?: boolean
+    omitEmailNotificationOnStatus?: boolean
     timezone?: string
     getTaskStatus?: () => Pick<ConversationLogExportStatusResponse, 'status' | 'progress'>
+    updateEmailNotification?: (enabled: boolean) => {
+      state: NonNullable<ConversationLogExportStatusResponse['email_notification']>
+      failed?: boolean
+    }
   },
 ) {
   const appId = crypto.randomUUID()
   const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
+  const emailRequests: { taskId: string; enabled: boolean }[] = []
   const statusTaskIds: string[] = []
   let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
     ? {
@@ -174,13 +182,30 @@ export async function openExport(
         return Response.json({ task })
       default:
         if (task && route === `conversation-log-exports/${task.task_id}`) {
+          if (request.method === 'PUT' && responses?.updateEmailNotification) {
+            const { enabled } = (await request.json()) as { enabled: boolean }
+            emailRequests.push({ taskId: task.task_id, enabled })
+            const { state, failed } = responses.updateEmailNotification(enabled)
+            task = { ...task, email_notification: state }
+            if (failed)
+              return Response.json(
+                { message: 'Email notification update unavailable' },
+                { status: 500 },
+              )
+            return Response.json({ email_notification: state })
+          }
           statusTaskIds.push(task.task_id)
+          await responses?.waitForStatus?.()
           task = { ...task, ...(responses?.getTaskStatus?.() ?? { status: 'ready' }) }
           return Response.json({
             task_id: task.task_id,
             status: task.status,
             progress: task.progress,
             estimated_rows: task.estimated_rows,
+            email_notification:
+              responses?.isEmailSetup && !responses.omitEmailNotificationOnStatus
+                ? (task.email_notification ?? 'off')
+                : undefined,
           })
         }
         throw new Error(`Unexpected request ${url.pathname}`)
@@ -194,7 +219,10 @@ export async function openExport(
     const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
       accountProfile: { timezone: responses?.timezone ?? 'UTC' },
       currentWorkspace: { role: 'admin' },
-      systemFeatures: { deployment_edition: 'COMMUNITY' },
+      systemFeatures: {
+        deployment_edition: 'COMMUNITY',
+        is_email_setup: responses?.isEmailSetup ?? false,
+      },
     })
     const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
     const screen = await render(
@@ -222,6 +250,7 @@ export async function openExport(
     appId,
     previews,
     requests,
+    emailRequests,
     statusTaskIds,
     renderLogs,
   }

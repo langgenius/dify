@@ -254,6 +254,9 @@ import {
   zPutAgentByAgentIdComposerBody,
   zPutAgentByAgentIdComposerPath,
   zPutAgentByAgentIdComposerResponse,
+  zPutAgentByAgentIdLogExportsByTaskIdBody,
+  zPutAgentByAgentIdLogExportsByTaskIdPath,
+  zPutAgentByAgentIdLogExportsByTaskIdResponse,
   zPutAgentByAgentIdPath,
   zPutAgentByAgentIdResponse,
 } from './zod.gen.ts'
@@ -1274,8 +1277,38 @@ export const get22 = oc
     paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   })
 
+/**
+ * Update the caller's preference for a live export of the Agent's logs
+ *
+ * Set the requester's email preference for this Agent CSV export
+ */
+export const put3 = oc
+  .route({
+    description: "Set the requester's email preference for this Agent CSV export",
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putAgentByAgentIdLogExportsByTaskId',
+    path: '/agent/{agent_id}/log-exports/{task_id}',
+    summary: "Update the caller's preference for a live export of the Agent's logs",
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutAgentByAgentIdLogExportsByTaskIdBody,
+      params: zPutAgentByAgentIdLogExportsByTaskIdPath,
+    }),
+  )
+  .output(zPutAgentByAgentIdLogExportsByTaskIdResponse)
+  .errors({
+    agent_log_export_task_not_found: { status: 404, data: zAgentLogExportTaskNotFoundError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    forbidden: { status: 403, data: zForbiddenError },
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+  })
+
 export const byTaskId2 = {
   get: get22,
+  put: put3,
   file,
 }
 
@@ -2021,7 +2054,7 @@ export const get40 = oc
 /**
  * Update a roster Agent App and return its current detail
  */
-export const put3 = oc
+export const put4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
@@ -2040,7 +2073,7 @@ export const put3 = oc
 export const byAgentId = {
   delete: delete6,
   get: get40,
-  put: put3,
+  put: put4,
   apiAccess,
   apiEnable,
   apiKeys,

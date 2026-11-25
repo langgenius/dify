@@ -11,7 +11,7 @@ import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
 import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AgentLogSourcePicker } from './components/source-picker'
 import { agentLogPeriods, toAgentLogQuery } from './log-filters'
 
@@ -57,6 +57,11 @@ export function AgentLogExportDialog({
         ...logExportRequest,
         input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
       }),
+    updateEmailNotification: (taskId, enabled) =>
+      consoleClient.agent.byAgentId.logExports.byTaskId.put(
+        { params: { ...params, task_id: taskId }, body: { enabled } },
+        logExportRequest,
+      ),
   })
   const fileUrl = (taskId: string) => `${API_PREFIX}/agent/${agentId}/log-exports/${taskId}/file`
   const task = latest?.task

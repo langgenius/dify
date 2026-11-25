@@ -47,7 +47,11 @@ from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
 from controllers.console.app.error import LogExportLimitReachedHTTPError
-from controllers.console.app.log_export_response import log_export_file_response
+from controllers.console.app.log_export_response import (
+    log_export_file_response,
+    log_export_status_email_preference,
+    update_log_export_email_preference,
+)
 from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
@@ -81,7 +85,13 @@ from fields.agent_fields import (
 )
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
-from fields.log_export_fields import LogExportEstimatedRows, LogExportProgressResponse, LogExportTaskResponse
+from fields.log_export_fields import (
+    LogExportEmailNotificationPayload,
+    LogExportEmailNotificationResponse,
+    LogExportEstimatedRows,
+    LogExportProgressResponse,
+    LogExportTaskResponse,
+)
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
@@ -131,9 +141,12 @@ from services.entities.agent_entities import ComposerSavePayload, RosterListQuer
 from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.feature_service import FeatureService
+from services.retention.agent.log_export_service import AgentLogExportTask
+from services.retention.log_export_email import LogExportEmailState
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
+    LogExportKind,
     LogExportLimitReachedError,
     LogExportStatus,
     LogExportTaskNotFoundError,
@@ -387,6 +400,7 @@ class AgentLogExportTaskResponse(LogExportTaskResponse):
 class AgentLogExportStatusResponse(LogExportTaskResponse):
     status: LogExportStatus
     progress: LogExportProgressResponse | None = None
+    email_notification: LogExportEmailState | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class AgentLogExportLatestTaskResponse(AgentLogExportStatusResponse):
@@ -502,6 +516,7 @@ register_schema_models(
     AgentInviteOptionsQuery,
     AgentLogsQuery,
     AgentLogExportCreatePayload,
+    LogExportEmailNotificationPayload,
     AgentStatisticsQuery,
     AgentIdPath,
     AppListQuery,
@@ -526,6 +541,7 @@ register_response_schema_models(
     AgentLogExportTaskResponse,
     AgentLogExportStatusResponse,
     AgentLogExportLatestResponse,
+    LogExportEmailNotificationResponse,
     BinaryFileResponse,
     AgentLogMessageListResponse,
     AgentLogSourceListResponse,
@@ -1206,6 +1222,15 @@ class AgentLogExportLatestApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>")
 class AgentLogExportTaskApi(Resource):
+    @staticmethod
+    def _get_task(context: RequestContext, agent_id: UUID, task_id: UUID) -> AgentLogExportTask:
+        """Load the live export after checking the caller's access to the selected Agent."""
+        _require_agent_log_export_access(context)
+        try:
+            return application_services().agent_log_exports.get_task(context, str(agent_id), task_id=str(task_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+
     @error_responses(AgentNotFoundError, AgentLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
     @console_ns.doc("get_agent_log_export_status", description="Get the current status of an Agent log export task")
     @console_ns.response(HTTPStatus.OK, "Export task status", console_ns.models[AgentLogExportStatusResponse.__name__])
@@ -1214,14 +1239,37 @@ class AgentLogExportTaskApi(Resource):
         self, context: RequestContext, agent_id: UUID, task_id: UUID
     ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live task scoped to the admitted workspace and Agent."""
-        _require_agent_log_export_access(context)
         try:
-            task = application_services().agent_log_exports.get_task(context, str(agent_id), task_id=str(task_id))
-        except AgentObservabilityNotFoundError as exc:
-            raise AgentNotFoundError from exc
+            task = self._get_task(context, agent_id, task_id)
         except LogExportTaskNotFoundError as exc:
             raise AgentLogExportTaskNotFoundHTTPError() from exc
-        return dump_response(AgentLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
+        return (
+            dump_response(AgentLogExportStatusResponse, task)
+            | log_export_status_email_preference(task, account_id=context.account_id, export_kind=LogExportKind.AGENT),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
+
+    @error_responses(AgentNotFoundError, AgentLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("set_agent_log_export_email_notification")
+    @console_ns.doc(description="Set the requester's email preference for this Agent CSV export")
+    @console_ns.expect(console_ns.models[LogExportEmailNotificationPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Email notification preference", console_ns.models[LogExportEmailNotificationResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    @model_validate(LogExportEmailNotificationPayload)
+    def put(
+        self, payload: LogExportEmailNotificationPayload, context: RequestContext, agent_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Update the caller's preference for a live export of the Agent's logs."""
+        try:
+            task = self._get_task(context, agent_id, task_id)
+            return update_log_export_email_preference(
+                task, account_id=context.account_id, export_kind=LogExportKind.AGENT, enabled=payload.enabled
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise AgentLogExportTaskNotFoundHTTPError() from exc
 
 
 @console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/file")

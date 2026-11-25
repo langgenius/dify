@@ -524,6 +524,15 @@ export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * LogExportEmailNotificationPayload
+ *
+ * Set the requester's mail preference for a single export.
+ */
+export const zLogExportEmailNotificationPayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
  * BinaryFileResponse
  */
 export const zBinaryFileResponse = z.custom<Blob | File>(
@@ -1318,6 +1327,22 @@ export const zAgentLogExportPreviewResponse = z.object({
 })
 
 /**
+ * LogExportEmailState
+ *
+ * The public opt-in state for a task with a live download.
+ */
+export const zLogExportEmailState = z.enum(['off', 'queued', 'waiting'])
+
+/**
+ * LogExportEmailNotificationResponse
+ *
+ * Return the stored preference or that a mail job has been queued.
+ */
+export const zLogExportEmailNotificationResponse = z.object({
+  email_notification: zLogExportEmailState,
+})
+
+/**
  * LogExportStatus
  */
 export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
@@ -1992,6 +2017,7 @@ export const zLogExportProgressResponse = z.object({
  * AgentLogExportStatusResponse
  */
 export const zAgentLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
@@ -2002,6 +2028,7 @@ export const zAgentLogExportStatusResponse = z.object({
  * AgentLogExportLatestTaskResponse
  */
 export const zAgentLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
   estimated_rows: z.int().gte(0).nullish(),
   expires_at: z.iso.datetime().nullish(),
   filters: zAgentLogExportFilters,
@@ -4720,6 +4747,18 @@ export const zGetAgentByAgentIdLogExportsByTaskIdPath = z.object({
  * Export task status
  */
 export const zGetAgentByAgentIdLogExportsByTaskIdResponse = zAgentLogExportStatusResponse
+
+export const zPutAgentByAgentIdLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAgentByAgentIdLogExportsByTaskIdPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAgentByAgentIdLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
 
 export const zGetAgentByAgentIdLogExportsByTaskIdFilePath = z.object({
   agent_id: z.uuid(),

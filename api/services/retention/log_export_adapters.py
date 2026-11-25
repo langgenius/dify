@@ -155,39 +155,54 @@ def dispatch_log_export[FiltersT](task: LogExportTask[FiltersT], *, export_kind:
     prepare_log_export_task.apply_async(kwargs=kwargs, task_id=task.task_id, expires=task.expires_at)
 
 
-def _read_log_export_names(session: Session, task: LogExportNotificationTask) -> tuple[str, list[str]]:
+def _read_log_export_names(
+    session: Session,
+    *,
+    tenant_id: str,
+    app_id: str,
+    export_kind: LogExportKind,
+    sources: tuple[str, ...] = (),
+) -> tuple[str, list[str]]:
     """Read display names for the exported app and its selected sources within the task's workspace."""
-    if not isinstance(task.filters, AgentLogExportFilters):
-        name = session.scalar(select(App.name).where(App.id == task.app_id, App.tenant_id == task.tenant_id))
+    if export_kind is not LogExportKind.AGENT:
+        name = session.scalar(select(App.name).where(App.id == app_id, App.tenant_id == tenant_id))
         return name or "", []
 
-    filters = task.filters
-    agent = find_runtime_resolvable_agent(session, tenant_id=task.tenant_id, agent_id=task.app_id)
+    agent = find_runtime_resolvable_agent(session, tenant_id=tenant_id, agent_id=app_id)
     if agent is None:
-        return "", list(filters.sources)
+        return "", list(sources)
+    if not sources:
+        return agent.name, []
 
     runtime_id = agent.backing_app_id or agent.app_id
     webapp_source = f"webapp:{runtime_id}"
     names: dict[str, str] = {}
-    if runtime_id and webapp_source in filters.sources:
-        runtime_name = session.scalar(select(App.name).where(App.id == runtime_id, App.tenant_id == task.tenant_id))
+    if runtime_id and webapp_source in sources:
+        runtime_name = session.scalar(select(App.name).where(App.id == runtime_id, App.tenant_id == tenant_id))
         if runtime_name:
             names[webapp_source] = runtime_name
-    workflow_ids = {source.split(":", 2)[1] for source in filters.sources if source.startswith("workflow:")}
+    workflow_ids = {source.split(":", 2)[1] for source in sources if source.startswith("workflow:")}
     if workflow_ids:
         statement = (
             select(App.id, App.name)
             .join(WorkflowAgentNodeBinding, WorkflowAgentNodeBinding.app_id == App.id)
             .where(
-                App.tenant_id == task.tenant_id,
+                App.tenant_id == tenant_id,
                 App.id.in_(workflow_ids),
-                WorkflowAgentNodeBinding.tenant_id == task.tenant_id,
-                WorkflowAgentNodeBinding.agent_id == task.app_id,
+                WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                WorkflowAgentNodeBinding.agent_id == app_id,
             )
             .distinct()
         )
         names.update({f"workflow:{app_id}": name for app_id, name in session.execute(statement)})
-    return agent.name, [names.get(":".join(source.split(":", 2)[:2]), source) for source in filters.sources]
+    return agent.name, [names.get(":".join(source.split(":", 2)[:2]), source) for source in sources]
+
+
+def read_log_export_app_name(*, tenant_id: str, app_id: str, export_kind: LogExportKind) -> str:
+    """Resolve the display name for a saved export within its workspace, or return an empty name if gone."""
+    with Session(db.engine) as session:
+        name, _ = _read_log_export_names(session, tenant_id=tenant_id, app_id=app_id, export_kind=export_kind)
+    return name
 
 
 def _log_export_notice_markdown(
@@ -248,19 +263,31 @@ def _log_export_timestamp(value: datetime, timezone: tzinfo) -> str:
     return ensure_naive_utc(value).replace(tzinfo=UTC).astimezone(timezone).strftime("%Y-%m-%d %H:%M")
 
 
+def log_export_download_path(*, app_id: str, task_id: str, export_kind: LogExportKind) -> str:
+    """Link to the existing Console download, which rechecks the task's permissions on access."""
+    scope = (
+        f"agent/{app_id}/log-exports"
+        if export_kind is LogExportKind.AGENT
+        else f"apps/{app_id}/{export_kind.value}-log-exports"
+    )
+    return f"/console/api/{scope}/{task_id}/file"
+
+
 def notify_log_export_ready(task: LogExportNotificationTask, *, export_kind: LogExportKind) -> None:
     """Publish a one-time Cloud notification for the requester of a newly completed export."""
     if not SystemFeatureService.is_log_export_notification_enabled():
         return
 
-    scope = (
-        f"agent/{task.app_id}/log-exports"
-        if export_kind is LogExportKind.AGENT
-        else f"apps/{task.app_id}/{export_kind.value}-log-exports"
-    )
-    url = f"{dify_config.CONSOLE_API_URL.rstrip('/')}/console/api/{scope}/{task.task_id}/file"
+    path = log_export_download_path(app_id=task.app_id, task_id=task.task_id, export_kind=export_kind)
+    url = f"{dify_config.CONSOLE_API_URL.rstrip('/')}{path}"
     with Session(db.engine) as session:
-        app_name, sources = _read_log_export_names(session, task)
+        app_name, sources = _read_log_export_names(
+            session,
+            tenant_id=task.tenant_id,
+            app_id=task.app_id,
+            export_kind=export_kind,
+            sources=task.filters.sources if isinstance(task.filters, AgentLogExportFilters) else (),
+        )
         timezone_name = session.scalar(select(Account.timezone).where(Account.id == task.requested_by))
     try:
         timezone = ZoneInfo(timezone_name) if timezone_name else UTC
