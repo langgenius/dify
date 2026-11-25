@@ -548,7 +548,8 @@ def test_deduct_llm_quota_for_model_delegates_capped_trial_deduction_to_billing(
     assert mock_deduct_credits.call_args.kwargs["pool_type"] == ProviderQuotaType.TRIAL
 
 
-def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
+def test_unbounded_quota_neither_reserves_nor_deducts_credits() -> None:
+    """An explicitly unlimited bucket, unlike a missing bucket, permits an unmetered call."""
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 42
     provider_configuration = _provider_configuration(
@@ -573,6 +574,9 @@ def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         patch("services.credit_pool_service.CreditPoolService.deduct_credits_capped") as mock_deduct_credits,
     ):
+        reservation = reserve_llm_quota_for_model(tenant_id="tenant-id", provider="openai", model="gpt-4o")
+        assert reservation.credit_pool_reservation is None
+        assert not reservation.requires_settlement
         deduct_llm_quota_for_model(
             tenant_id="tenant-id",
             provider="openai",

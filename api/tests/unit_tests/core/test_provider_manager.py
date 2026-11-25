@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
@@ -22,6 +24,8 @@ from core.entities.provider_entities import (
     SystemConfiguration,
 )
 from core.errors.error import ProviderTokenNotInitError
+from core.helper import model_provider_cache
+from core.helper.encrypter import encrypt_token
 from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from core.hosting_configuration import (
     FreeHostingQuota,
@@ -36,9 +40,21 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_redis import RedisClientWrapper
+from extensions.ext_storage import storage
+from extensions.storage.opendal_storage import OpenDALStorage
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderCredentialSchema,
+    ProviderEntity,
+)
+from libs.key_providers import generate_key_pair
+from models.account import Tenant
+from models.engine import db
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import (
     LoadBalancingModelConfig,
@@ -56,6 +72,7 @@ from services.billing_client import billing
 from services.credit_pool_service import FEATURE_KEY_CREDIT_POOL, CreditPoolBalance
 from tests.helpers.billing_builders import subscription_info
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.redis_commands import RedisCommandEmulator
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -479,17 +496,47 @@ def test_paid_only_hosting_requires_a_paid_workspace(
             assert instance.credentials["openai_api_key"] == expected_key
 
 
-def test_to_system_configuration_falls_back_to_free_quota_instead_of_unmetered_hosting() -> None:
-    """Only the third-party row supplies credentials and quota when the plan bucket is absent."""
+@pytest.fixture
+def encrypted_free_quota_key(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sqlite_session: Session) -> str:
+    """Encrypt a test credential with the local tenant key provider."""
+    monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
+    monkeypatch.setattr(db, "session", sqlite_session)
+    tenant = Tenant(name="Sandbox", encrypt_public_key=generate_key_pair("tenant-id"))
+    tenant.id = "tenant-id"
+    sqlite_session.add(tenant)
+    sqlite_session.commit()
+    return encrypt_token(tenant.id, "free-key")
+
+
+def test_to_system_configuration_falls_back_to_free_quota_instead_of_unmetered_hosting(
+    monkeypatch: pytest.MonkeyPatch,
+    encrypted_free_quota_key: str,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    """Only the third-party row supplies credentials and quota, both before and after caching."""
+    redis, commands = redis_transport
+    commands.side_effect = RedisCommandEmulator()
+    monkeypatch.setattr(model_provider_cache, "redis_client", redis)
     provider_entity = _build_plugin_provider_declaration(PluginInstallationSource.Marketplace)
-    manager = _build_provider_manager()
+    provider_entity.provider_credential_schema = ProviderCredentialSchema(
+        credential_form_schemas=[
+            CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API key"), type=FormType.SECRET_INPUT),
+            CredentialFormSchema(
+                variable="optional_token", label=I18nObject(en_US="Token"), type=FormType.SECRET_INPUT, required=False
+            ),
+        ]
+    )
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
     hosting = HostingProvider(
         enabled=True,
         credentials={"api_key": "system-secret"},
         quotas=[PaidHostingQuota(), FreeHostingQuota()],
     )
     free_credential = ProviderCredential(
-        tenant_id="tenant-id", provider_name="openai", credential_name="free", encrypted_config='{"api_key":"free-key"}'
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="free",
+        encrypted_config=json.dumps({"api_key": encrypted_free_quota_key}),
     )
     free_record = Provider(
         tenant_id="tenant-id",
@@ -498,6 +545,7 @@ def test_to_system_configuration_falls_back_to_free_quota_instead_of_unmetered_h
         quota_type=ModelProviderQuotaType.FREE,
         quota_limit=10,
         quota_used=2,
+        is_valid=True,
         credential_id=free_credential.id,
     )
     free_record.credential = free_credential
@@ -512,9 +560,13 @@ def test_to_system_configuration_falls_back_to_free_quota_instead_of_unmetered_h
         patch("core.provider_manager.FeatureService.get_workspace_plan", return_value=CloudPlan.SANDBOX),
         patch("services.credit_pool_service.CreditPoolService.get_pool") as get_pool,
     ):
-        configuration = manager._to_system_configuration(
-            "tenant-id", provider_entity, [_build_trial_provider_record(), free_record]
+        records = [_build_trial_provider_record(), free_record]
+        configuration = manager._to_system_configuration("tenant-id", provider_entity, records)
+        cache = model_provider_cache.ProviderCredentialsCache(
+            "tenant-id", free_record.id, ProviderCredentialsCacheType.PROVIDER
         )
+        assert cache.get() == {"api_key": "free-key"}
+        assert manager._to_system_configuration("tenant-id", provider_entity, records) == configuration
 
     get_pool.assert_not_called()
     assert configuration.enabled is True
@@ -542,6 +594,7 @@ def test_to_system_configuration_keeps_an_exhausted_plan_bucket_over_free_quota(
         quota_type=ModelProviderQuotaType.FREE,
         quota_limit=10,
         quota_used=2,
+        is_valid=True,
     )
 
     with (

@@ -407,11 +407,12 @@ class TestModelProviderServiceCases:
             assert result[0].custom_configuration.status.value == "no-configure"
 
         @pytest.mark.parametrize(
-            ("plan", "has_key", "expected_hosted", "expected_configured"),
+            ("plan", "key_owner", "expected_hosted", "expected_configured"),
             [
-                pytest.param(CloudPlan.SANDBOX, False, False, False, id="sandbox-without-key"),
-                pytest.param(CloudPlan.SANDBOX, True, False, True, id="sandbox-with-key"),
-                pytest.param(CloudPlan.TEAM, False, True, True, id="paid-without-key"),
+                pytest.param(CloudPlan.SANDBOX, None, False, False, id="sandbox-without-key"),
+                pytest.param(CloudPlan.SANDBOX, "tenant-1", False, True, id="sandbox-with-own-key"),
+                pytest.param(CloudPlan.SANDBOX, "tenant-2", False, False, id="sandbox-with-foreign-key-reference"),
+                pytest.param(CloudPlan.TEAM, None, True, True, id="paid-without-key"),
             ],
         )
         def test_paid_only_provider_summary(
@@ -420,7 +421,7 @@ class TestModelProviderServiceCases:
             sqlite_session: Session,
             config_overrides: Callable[..., None],
             plan: CloudPlan,
-            has_key: bool,
+            key_owner: str | None,
             expected_hosted: bool,
             expected_configured: bool,
         ) -> None:
@@ -445,9 +446,9 @@ class TestModelProviderServiceCases:
                 HostingConfiguration().init_openai(),
             )
             monkeypatch.setattr(BillingService, "get_info", lambda *_, **__: subscription_info(plan))
-            if has_key:
+            if key_owner is not None:
                 credential = ProviderCredential(
-                    tenant_id="tenant-1", provider_name="openai", credential_name="Workspace", encrypted_config="opaque"
+                    tenant_id=key_owner, provider_name="openai", credential_name="Workspace", encrypted_config="opaque"
                 )
                 sqlite_session.add_all(
                     [
@@ -463,6 +464,7 @@ class TestModelProviderServiceCases:
 
             assert summary.is_configured is expected_configured
             assert summary.system_configuration.enabled is expected_hosted
+            assert summary.custom_configuration.current_credential_usable is (key_owner == "tenant-1")
 
         def test_get_provider_summary_list_uses_lightweight_state_and_plugin_bindings(
             self, monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
