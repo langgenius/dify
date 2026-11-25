@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 import configs.feature as feature_config
-from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig
+from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig, OpenApiAgentConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
 
 
@@ -144,3 +144,22 @@ def test_paid_plan_file_size_limit_can_be_configured_separately() -> None:
 
     assert config.UPLOAD_FILE_SIZE_LIMIT == 23
     assert config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN == 50
+
+
+@pytest.mark.parametrize(("configured", "expected"), [(None, True), ("true", True), ("false", False)])
+def test_the_mcp_switch_is_on_unless_set_off(
+    monkeypatch: pytest.MonkeyPatch, configured: str | None, expected: bool
+) -> None:
+    if configured is not None:
+        monkeypatch.setenv("OPENAPI_MCP_ENABLED", configured)
+    else:
+        monkeypatch.delenv("OPENAPI_MCP_ENABLED", raising=False)
+
+    assert OpenApiAgentConfig(_env_file=None).OPENAPI_MCP_ENABLED is expected
+
+
+def test_an_unknown_mcp_switch_value_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAPI_MCP_ENABLED", "sometimes")
+
+    with pytest.raises(ValidationError, match="OPENAPI_MCP_ENABLED"):
+        OpenApiAgentConfig(_env_file=None)

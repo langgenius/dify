@@ -38,6 +38,7 @@ _UNCATALOGUED = {
     "/openapi/v1/openapi.json",
     "/openapi/v1/_health",
     "/openapi/v1/_version",
+    "/openapi/v1/mcp",
     CATALOG_PATH,
 }
 
