@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import PlanComp from '../index'
@@ -35,7 +36,7 @@ const renderPlan = (
   educationStatus = { allow_refresh: false, is_student: false },
   role: 'normal' | 'owner' = 'normal',
 ) => {
-  const { wrapper } = createConsoleQueryWrapper({
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
     educationStatus,
     currentWorkspace: { role },
     features: {
@@ -43,6 +44,11 @@ const renderPlan = (
       billing: { subscription: { plan: 'sandbox' } },
     },
     systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  queryClient.setQueryData(consoleQuery.features.vectorSpace.get.queryKey(), {
+    size: 0,
+    limit: 50,
+    usage_unknown: false,
   })
 
   const { wrapper: UrlState } = createNuqsTestWrapper()
