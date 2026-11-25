@@ -97,6 +97,7 @@
   "history.status.cancelled": "Отменено",
   "history.status.completed": "Завершено",
   "history.status.failed": "Ошибка",
+  "history.status.notCompleted": "Не удалось завершить задачу",
   "history.status.partiallyFailed": "Завершено с ошибками",
   "history.status.pending": "В ожидании",
   "history.status.running": "Выполняется",

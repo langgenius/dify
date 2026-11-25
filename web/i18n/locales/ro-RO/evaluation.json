@@ -97,6 +97,7 @@
   "history.status.cancelled": "Anulat",
   "history.status.completed": "Finalizat",
   "history.status.failed": "Eșuat",
+  "history.status.notCompleted": "Sarcina nu a putut fi finalizată",
   "history.status.partiallyFailed": "Finalizat cu erori",
   "history.status.pending": "În așteptare",
   "history.status.running": "În curs",

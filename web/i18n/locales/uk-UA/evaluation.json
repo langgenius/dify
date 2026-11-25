@@ -97,6 +97,7 @@
   "history.status.cancelled": "Скасовано",
   "history.status.completed": "Завершено",
   "history.status.failed": "Помилка",
+  "history.status.notCompleted": "Не вдалося завершити завдання",
   "history.status.partiallyFailed": "Завершено з помилками",
   "history.status.pending": "Очікування",
   "history.status.running": "Виконується",

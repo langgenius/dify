@@ -97,6 +97,7 @@
   "history.status.cancelled": "Annullato",
   "history.status.completed": "Completato",
   "history.status.failed": "Non riuscito",
+  "history.status.notCompleted": "Impossibile completare l’attività",
   "history.status.partiallyFailed": "Completato con errori",
   "history.status.pending": "In attesa",
   "history.status.running": "In esecuzione",
