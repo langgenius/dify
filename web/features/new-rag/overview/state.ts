@@ -90,8 +90,11 @@ function cachedTaskPolling(
   queryClient: QueryClient,
   knowledgeSpaceId: string,
 ): OverviewTaskPolling | undefined {
-  const data = queryClient.getQueryData(overviewBackgroundTasksOptions(knowledgeSpaceId).queryKey)
-  return data ? overviewTaskPollingState(data.pages.flatMap((page) => page.data)) : undefined
+  const state = queryClient.getQueryState(overviewBackgroundTasksOptions(knowledgeSpaceId).queryKey)
+  if (state?.data) return overviewTaskPollingState(state.data.pages.flatMap((page) => page.data))
+  // A failed task request does not poll again, so it must not keep the snapshots polling either.
+  if (state?.status === 'error') return { hasActiveTasks: false }
+  return undefined
 }
 
 const backgroundTasksQueryDataAtom = selectAtom(backgroundTasksQueryAtom, (query) => query.data)

@@ -3,7 +3,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { installFakeApi } from '@/test/fake-api'
+import { apiError, installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
 import { createTestNavigation } from '@/test/next-navigation'
@@ -194,6 +194,23 @@ describe('KnowledgeOverviewPage indexing', () => {
     await vi.advanceTimersByTimeAsync(6000)
     expect(stats).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
+  })
+
+  it('stops refreshing overview sections after the task request fails', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.mockImplementation(
+      async () => {
+        throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'tasks unavailable' })
+      },
+    )
+    const { queryClient } = await renderOverview()
+    await expect.element(page.getByText('10', { exact: true })).toBeVisible()
+    await expect.poll(() => queryClient.isFetching()).toBe(0)
+    const overview = fake.console.knowledgeFs.spaces.byControlSpaceId.overview
+    const calls = () => [overview.stats.get, overview.attention.get].map((m) => m.mock.calls.length)
+    const settled = calls()
+    await vi.advanceTimersByTimeAsync(6000)
+    expect(calls()).toEqual(settled)
   })
 
   it('resumes refreshing visible metrics when a task starts after polling stopped', async () => {
