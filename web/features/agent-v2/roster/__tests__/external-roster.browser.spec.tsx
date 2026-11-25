@@ -1,5 +1,6 @@
 import type {
   ExternalAgentAssetResponse,
+  ExternalAgentDetailResponse,
   ExternalAgentListResponse,
 } from '@dify/contracts/api/console/external-agents/types.gen'
 import { ORPCError } from '@orpc/client'
@@ -9,9 +10,11 @@ import { render } from 'vitest-browser-react'
 import {
   createExternalAgentAsset,
   createExternalAgentCapabilities,
+  createExternalAgentDetail,
   createExternalAgentReferences,
 } from '@/test/console/external-agents'
 import { createDeferred } from '@/test/deferred'
+import { act } from '@/test/react-act'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { createRosterFixture, resetRoster, server, vendorId } from './external-roster-fixture'
 
@@ -400,6 +403,18 @@ it('keeps canceled info drafts local and PATCHes only changed fields with the lo
   })
 })
 
+it('restores focus to search when an edited name no longer matches the roster filter', async () => {
+  await setup({ searchParams: '?external_keyword=Contract' })
+  await openActions('Contract Review Agent')
+  await page.getByRole('menuitem', { name: 'Edit info', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit info', exact: true })
+  await dialog.getByRole('textbox', { name: 'Name', exact: true }).fill('Legal Review Agent')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(page.getByText('No matching agents', { exact: true })).toBeVisible()
+  await expect.element(search()).toHaveFocus()
+})
+
 it('preserves a conflicted info draft until explicitly loading the latest metadata revision', async () => {
   requests.info.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
   await setup()
@@ -429,6 +444,39 @@ it('preserves a conflicted info draft until explicitly loading the latest metada
   })
 })
 
+it('does not reset another agent save when a closed edit session finishes reloading', async () => {
+  requests.info.mockRejectedValueOnce(new ORPCError('conflict', { status: 409 }))
+  await setup()
+  await openActions('Contract Review Agent')
+  await page.getByRole('menuitem', { name: 'Edit info', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Edit info', exact: true })
+  const name = dialog.getByRole('textbox', { name: 'Name', exact: true })
+  await name.fill('First draft')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  const reload = dialog.getByRole('button', { name: 'Load latest configuration', exact: true })
+  await expect.element(reload).toBeVisible()
+  const lateDetail = createDeferred<ExternalAgentDetailResponse>()
+  requests.detail.mockReturnValueOnce(lateDetail.promise)
+  await reload.click()
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await openActions('Vendor Screening Agent')
+  await page.getByRole('menuitem', { name: 'Edit info', exact: true }).click()
+  await expect.element(name).toHaveValue('Vendor Screening Agent')
+  await name.fill('Second draft')
+  const pendingSave = createDeferred<ExternalAgentAssetResponse>()
+  requests.info.mockReturnValueOnce(pendingSave.promise)
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.element(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled()
+  await act(async () => {
+    lateDetail.resolve(createExternalAgentDetail({ asset: server.assets[1]! }))
+    await lateDetail.promise
+  })
+  await expect.element(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeDisabled()
+  pendingSave.resolve(createExternalAgentAsset({ ...server.assets[0]!, name: 'Second draft' }))
+  await expect.element(dialog).not.toBeInTheDocument()
+})
+
 it('waits for the server enabled result before updating filtered results and global totals', async () => {
   const saved = createDeferred<ExternalAgentAssetResponse>()
   requests.enabled.mockImplementationOnce(() => saved.promise)
@@ -449,6 +497,8 @@ it('waits for the server enabled result before updating filtered results and glo
   saved.resolve(updated)
   await expect.element(page.getByText('No matching agents', { exact: true })).toBeVisible()
   await expect.element(page.getByRole('radio', { name: 'Enabled 2', exact: true })).toBeVisible()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(search()).toHaveFocus()
 })
 
 it('requires a deletion-impact response and retains reachable focus after server-confirmed removal', async () => {
