@@ -21,5 +21,9 @@ def test_max_retries_accepts_zero_to_disable_retries() -> None:
 
 
 def test_max_retries_rejects_a_negative_count() -> None:
+    # Read from a string: pyrefly rejects a `Literal[-1]` handed to a `ge=0` field at
+    # type-check time, which is the constraint being tested, not a mistake to fix.
+    negative = int("-1")
+
     with pytest.raises(ValidationError):
-        _IsolatedOpenSearchConfig(OPENSEARCH_MAX_RETRIES=-1)
+        _IsolatedOpenSearchConfig(OPENSEARCH_MAX_RETRIES=negative)
