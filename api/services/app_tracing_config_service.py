@@ -207,6 +207,15 @@ class AppTracingConfigService:
         *,
         include_config: bool,
     ) -> tuple[AppTracingConfigRecord, ...]:
+        return self.list_with_providers(context, app_id, include_config=include_config)[1]
+
+    def list_with_providers(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        include_config: bool,
+    ) -> tuple[tuple[str, ...], tuple[AppTracingConfigRecord, ...]]:
         """List every saved provider configuration for an app.
 
         Preconditions:
@@ -222,15 +231,16 @@ class AppTracingConfigService:
         """
         workspace_id = context.active_workspace_id
         records = self._configs.list_for_app(workspace_id=workspace_id, app_id=app_id)
+        providers = tuple(record.tracing_provider for record in records if record.tracing_provider is not None)
         if not include_config:
-            return records
+            return providers, records
 
         presented_records: list[AppTracingConfigRecord] = []
         for record in records:
             presented_record = self._present_record(workspace_id, record)
             if presented_record is not None:
                 presented_records.append(presented_record)
-        return tuple(presented_records)
+        return providers, tuple(presented_records)
 
     def _present_record(self, workspace_id: str, record: AppTracingConfigRecord) -> AppTracingConfigRecord | None:
         """Return the presented record, or None when its provider is unavailable here."""

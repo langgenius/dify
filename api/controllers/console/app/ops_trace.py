@@ -140,7 +140,7 @@ class TraceAppConfigListApi(Resource):
         app_id: UUID,
     ):
         try:
-            records = application_services().app_tracing_configs.list(
+            providers, records = application_services().app_tracing_configs.list_with_providers(
                 context=request_context,
                 app_id=str(app_id),
                 include_config=req_data.include_config,
@@ -153,9 +153,7 @@ class TraceAppConfigListApi(Resource):
         return dump_response(
             TraceAppConfigListResponse,
             {
-                "configured_providers": [
-                    record.tracing_provider for record in records if record.tracing_provider is not None
-                ],
+                "configured_providers": list(providers),
                 "configs": [TraceAppConfigResponse.from_record(record) for record in records]
                 if req_data.include_config
                 else None,

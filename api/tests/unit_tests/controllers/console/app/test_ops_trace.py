@@ -277,7 +277,7 @@ def test_trace_config_list_returns_provider_ids_and_only_includes_configs_on_req
         updated_at=datetime(2026, 1, 1),
         configured_secrets=("secret_key",),
     )
-    tracing_configs.list.return_value = (record,)
+    tracing_configs.list_with_providers.return_value = ((PROVIDER, "retired"), (record,))
     context = _request_context()
 
     with app.test_request_context("/"):
@@ -288,12 +288,12 @@ def test_trace_config_list_returns_provider_ids_and_only_includes_configs_on_req
             UUID(APP_ID),
         )
 
-    assert result["configured_providers"] == [PROVIDER]
+    assert result["configured_providers"] == [PROVIDER, "retired"]
     assert ("configs" in result) is include_config
     if include_config:
         assert result["configs"][0]["tracing_provider"] == PROVIDER
         assert result["configs"][0]["configured_secrets"] == ["secret_key"]
-    tracing_configs.list.assert_called_once_with(
+    tracing_configs.list_with_providers.assert_called_once_with(
         context=context,
         app_id=APP_ID,
         include_config=include_config,
