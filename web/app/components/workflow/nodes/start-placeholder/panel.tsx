@@ -108,7 +108,7 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
         }
       })
 
-      setNodes(nextNodes)
+      if (!setNodes(nextNodes)) return
       saveStateToHistory(WorkflowHistoryEvent.NodeChange, { nodeId: id })
       setHasSelectedStartNode?.(true)
       setShouldAutoOpenStartNodeSelector?.(true)

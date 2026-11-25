@@ -160,6 +160,7 @@ it('writes the selected start node through the collaborative graph', async () =>
   const user = userEvent.setup()
   persistDraft.mockReturnValue(new Promise(() => {}))
   const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  onTestFinished(() => collabSetNodes.mockRestore())
   renderPanel()
   await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
   expect(collabSetNodes).toHaveBeenCalledWith(
@@ -177,5 +178,18 @@ it('writes the selected start node through the collaborative graph', async () =>
     ]),
     expect.any(String),
   )
-  collabSetNodes.mockRestore()
+})
+
+it('keeps the placeholder untouched while the collaborative graph is not ready', async () => {
+  const user = userEvent.setup()
+  const canApply = vi
+    .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+    .mockReturnValue(false)
+  onTestFinished(() => canApply.mockRestore())
+  const { store } = renderPanel()
+  await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
+  const nodes = JSON.parse(screen.getByLabelText('Graph').textContent!)
+  expect(nodes[0].data.type).toBe(BlockEnum.StartPlaceholder)
+  expect(store.getState().hasSelectedStartNode).toBeFalsy()
+  expect(persistDraft).not.toHaveBeenCalled()
 })
