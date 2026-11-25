@@ -1,14 +1,19 @@
 import logging
+from collections.abc import Generator
+from contextlib import contextmanager
 from typing import Any, Literal
+from uuid import UUID
 
+from dify_agent.protocol import RunInputRequest, RunInputText
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, InternalServerError, NotFound, ServiceUnavailable
 
 import services
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
+from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import (
     AgentNotPublishedError,
@@ -30,11 +35,20 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
+from services.agent.chat_steering import (
+    AgentChatBackendUnavailableError,
+    AgentChatInputConflictError,
+    AgentChatTaskNotFoundError,
+    AgentChatTaskScope,
+    enqueue_agent_chat_input,
+    interrupt_agent_chat_input,
+)
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
@@ -91,8 +105,54 @@ class ChatMessagePayload(BaseModel):
         return uuid_value(value)
 
 
-register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
+class WebAgentChatInputResponse(ResponseModel):
+    """Receipt for an accepted steering input; acceptance is not delivery."""
+
+    input_id: UUID
+    status: Literal["queued"]
+
+
+class WebAgentChatHandoffResponse(ResponseModel):
+    """Settled steering handoff: pending inputs to replay on the next turn."""
+
+    input_id: UUID
+    pending_inputs: list[RunInputRequest]
+
+
+@contextmanager
+def _web_agent_steering_errors(unavailable: str) -> Generator[None]:
+    """Map scoped steering failures to the published Web API contract."""
+    try:
+        yield
+    except AgentChatTaskNotFoundError:
+        raise NotFound("Agent chat task not found.") from None
+    except AgentChatInputConflictError:
+        raise Conflict("This Agent run is not accepting this input.") from None
+    except AgentChatBackendUnavailableError:
+        raise ServiceUnavailable(unavailable) from None
+
+
+def _web_agent_steering_scope(app_model: App, end_user: EndUser, task_id: UUID) -> AgentChatTaskScope:
+    """Derive the steering binding for a published roster Agent Web App chat.
+
+    Only AGENT apps can own a binding; the run itself was bound server-side
+    when the opted-in Web App run registered its backend run id.
+    """
+    if AppMode.value_of(app_model.mode) != AppMode.AGENT:
+        raise NotFound("Agent chat task not found.")
+    return AgentChatTaskScope(
+        app_model.tenant_id, app_model.id, end_user.id, task_id, invoke_from=InvokeFrom.WEB_APP
+    )
+
+
+register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload, RunInputRequest, RunInputText)
+register_response_schema_models(
+    web_ns,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+    WebAgentChatInputResponse,
+    WebAgentChatHandoffResponse,
+)
 
 
 # define completion api for user
@@ -313,3 +373,56 @@ class ChatStopApi(WebApiResource):
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+@web_ns.route("/chat-messages/<uuid:task_id>/inputs")
+class WebAgentChatInputApi(WebApiResource):
+    @web_ns.doc("enqueue_web_agent_chat_input")
+    @web_ns.doc(description="Queue a steering input on an admitted Agent App web run")
+    @web_ns.doc(params={"task_id": "Task ID"})
+    @web_ns.expect(web_ns.models[RunInputRequest.__name__])
+    @web_ns.response(202, "Input queued", web_ns.models[WebAgentChatInputResponse.__name__])
+    @web_ns.response(404, "Task or opted-in web run not found")
+    @web_ns.response(409, "Run is not accepting this input")
+    @web_ns.response(503, "Agent backend unavailable")
+    @model_validate(RunInputRequest)
+    def post(
+        self,
+        payload: RunInputRequest,
+        app_model: App,
+        end_user: EndUser,
+        task_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        scope = _web_agent_steering_scope(app_model, end_user, task_id)
+        with _web_agent_steering_errors("Agent chat queue is unavailable."):
+            result = enqueue_agent_chat_input(scope, payload)
+        return dump_response(WebAgentChatInputResponse, result), 202
+
+
+@web_ns.route("/chat-messages/<uuid:task_id>/inputs/<uuid:input_id>/interrupt")
+class WebAgentChatInterruptApi(WebApiResource):
+    @web_ns.doc("interrupt_web_agent_chat_input")
+    @web_ns.doc(
+        description="Prioritize a steering input, stop the run, and replay pending inputs on the next turn"
+    )
+    @web_ns.doc(params={"task_id": "Task ID", "input_id": "Input ID"})
+    @web_ns.expect(web_ns.models[RunInputText.__name__])
+    @web_ns.response(200, "Handoff settled", web_ns.models[WebAgentChatHandoffResponse.__name__])
+    @web_ns.response(404, "Task or opted-in web run not found")
+    @web_ns.response(409, "Input cannot be handed off")
+    @web_ns.response(503, "Agent backend unavailable")
+    @model_validate(RunInputText)
+    def post(
+        self,
+        payload: RunInputText,
+        app_model: App,
+        end_user: EndUser,
+        task_id: UUID,
+        input_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        scope = _web_agent_steering_scope(app_model, end_user, task_id)
+        with _web_agent_steering_errors("Agent chat turn could not be handed off."):
+            result = interrupt_agent_chat_input(
+                scope, RunInputRequest(input_id=input_id, text=payload.text)
+            )
+        return dump_response(WebAgentChatHandoffResponse, result), 200

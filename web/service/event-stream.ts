@@ -72,7 +72,10 @@ export type StreamCallbacks = {
   onMessageEnd?: (messageEnd: MessageEnd) => void
   onMessageReplace?: IOnMessageReplace
   /** Fired when an admitted Agent App preview run starts accepting steering inputs. */
-  onAgentQueueReady?: (taskId: string) => void
+  onAgentQueueReady?: (
+    taskId: string,
+    identity?: { conversationId?: string; messageId?: string },
+  ) => void
   /** Fired when a steering input was delivered into the run's history. */
   onAgentInputDelivered?: (input: AgentDeliveredInput) => void
   onError?: IOnError
@@ -340,7 +343,11 @@ const consumeFrames = async (
     }
     if (event === 'agent_queue_ready') {
       const taskId = field(frame, 'task_id')
-      if (typeof taskId === 'string' && taskId) callbacks.onAgentQueueReady?.(taskId)
+      if (typeof taskId === 'string' && taskId)
+        callbacks.onAgentQueueReady?.(taskId, {
+          conversationId: field(frame, 'conversation_id'),
+          messageId: field(frame, 'message_id'),
+        })
       return true
     }
     if (event === 'agent_input_delivered') {

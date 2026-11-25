@@ -82,8 +82,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
     ) -> None:
         """Inject the preview-run binding hook owned by the application layer.
 
-        When set, admitted roster draft/build previews opt into steering
-        metadata and bind their accepted backend run id to the public task id.
+        When set, admitted roster draft/build previews and published roster
+        Web App chats opt into steering metadata and bind their accepted
+        backend run id to the public task id.
         """
         self._bind_steering_task_to_run = bind_steering_task_to_run
 
@@ -198,14 +199,17 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             session=session,
         )
 
-        # Steering is admitted only for Console roster draft/build chats that
-        # registered a preview-run hook; every other run stays on the shared
-        # EasyUI queue manager and pipeline unchanged.
+        # Steering is admitted for Console roster draft/build chats and for
+        # published roster Web App chats, provided a steering hook was
+        # registered; every other run stays on the shared EasyUI queue
+        # manager and pipeline unchanged.
         allow_async_loop = (
             self._bind_steering_task_to_run is not None
             and agent.scope == AgentScope.ROSTER
-            and invoke_from == InvokeFrom.DEBUGGER
-            and agent_config_version_kind in {"draft", "build_draft"}
+            and (
+                (invoke_from == InvokeFrom.DEBUGGER and agent_config_version_kind in {"draft", "build_draft"})
+                or (invoke_from == InvokeFrom.WEB_APP and agent_config_version_kind == "snapshot")
+            )
             and args.get("agent_build_finalization") is not True
         )
         queue_type = AgentAppQueueManager if allow_async_loop else MessageBasedAppQueueManager

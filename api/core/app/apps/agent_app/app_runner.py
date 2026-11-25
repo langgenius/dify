@@ -22,6 +22,7 @@ from pydantic import JsonValue, ValidationError
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendError,
+    AgentBackendHTTPError,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
@@ -41,6 +42,7 @@ from core.app.apps.agent_app.session_store import (
     AgentAppWorkspaceStore,
     StoredAgentAppSession,
 )
+from core.app.apps.agent_app.task_pipeline import AgentAppQueueManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
@@ -764,14 +766,23 @@ class AgentAppRunner:
         )
 
         # Steering opt-in is intentionally limited to admitted Console draft
-        # chats (preview and build chat; finalization excluded): the queue's
-        # public task id is the only handle a browser can use.
+        # chats (preview and build chat; finalization excluded) and published
+        # roster Web App chats: the queue's public task id is the only handle
+        # a browser can use.
         bind_steering_task_to_run = (
             self._bind_steering_task_to_run
             if (
                 allow_async_loop
-                and dify_context.invoke_from == InvokeFrom.DEBUGGER
-                and agent_config_version_kind in {"draft", "build_draft"}
+                and (
+                    (
+                        dify_context.invoke_from == InvokeFrom.DEBUGGER
+                        and agent_config_version_kind in {"draft", "build_draft"}
+                    )
+                    or (
+                        dify_context.invoke_from == InvokeFrom.WEB_APP
+                        and agent_config_version_kind == "snapshot"
+                    )
+                )
             )
             else None
         )
@@ -784,6 +795,8 @@ class AgentAppRunner:
             and create_response.status == "running"
             and bind_steering_task_to_run(dify_context, queue_manager.task_id, create_response.run_id)
         ):
+            if isinstance(queue_manager, AgentAppQueueManager):
+                queue_manager.enable_handoff()
             queue_manager.publish(QueueAgentQueueReadyEvent(), PublishFrom.APPLICATION_MANAGER)
         terminal, process_recorder = self._consume_stream(
             create_response.run_id,
@@ -811,12 +824,17 @@ class AgentAppRunner:
 
         if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            saved = True
             if terminal.session_snapshot is not None:
-                self._save_session(
+                saved = self._save_session(
                     scope=scope,
                     binding_id=runtime.binding_id,
                     snapshot=terminal.session_snapshot,
                 )
+            if saved and isinstance(queue_manager, AgentAppQueueManager):
+                # Steering handoff waits on this mark before opening the next
+                # turn; it stays unset when the snapshot save failed.
+                queue_manager.mark_handoff_ready()
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
@@ -854,13 +872,16 @@ class AgentAppRunner:
                 session_scope=scope,
                 binding_id=runtime.binding_id,
                 message_id=message_id,
+                queue_manager=queue_manager,
             )
             raise
-        self._save_session(
+        saved = self._save_session(
             scope=scope,
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
         )
+        if saved and isinstance(queue_manager, AgentAppQueueManager):
+            queue_manager.mark_handoff_ready()
         tracing_hooks = application_tracing_hooks()
         if tracing_hooks is not None:
             tracing_hooks.capture_agent_app_terminal(
@@ -1080,6 +1101,7 @@ class AgentAppRunner:
                     session_scope=session_scope,
                     binding_id=binding_id,
                     message_id=message_id,
+                    queue_manager=queue_manager,
                 )
             raise
         if queue_manager.is_stopped():
@@ -1090,6 +1112,7 @@ class AgentAppRunner:
                     session_scope=session_scope,
                     binding_id=binding_id,
                     message_id=message_id,
+                    queue_manager=queue_manager,
                 )
             else:
                 self._cancel_run(
@@ -1127,6 +1150,40 @@ class AgentAppRunner:
                         message_id=message_id,
                         queue_manager=queue_manager,
                     )
+        except AgentBackendHTTPError as error:
+            if error.status_code != 409:
+                logger.warning(
+                    "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                    run_id,
+                    exc_info=True,
+                )
+                return
+            # The run reached a terminal state before the cancel landed; the
+            # retained terminal frame still owns the snapshot + handoff barrier.
+            try:
+                for retained_event in self._agent_backend_client.stream_events(run_id, after=after):
+                    for internal_event in self._event_adapter.adapt(retained_event):
+                        if isinstance(
+                            internal_event,
+                            AgentBackendRunSucceededInternalEvent
+                            | AgentBackendRunFailedInternalEvent
+                            | AgentBackendRunCancelledInternalEvent,
+                        ):
+                            self._finish_stopped_terminal(
+                                internal_event,
+                                dify_context=dify_context,
+                                session_scope=session_scope,
+                                binding_id=binding_id,
+                                message_id=message_id,
+                                queue_manager=queue_manager,
+                            )
+                            return
+            except Exception:
+                logger.warning(
+                    "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                    run_id,
+                    exc_info=True,
+                )
         except Exception:
             logger.warning(
                 "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
@@ -1147,8 +1204,11 @@ class AgentAppRunner:
         queue_manager: AppQueueManager | None = None,
     ) -> None:
         """Keep the observed runtime result when the client has requested stop."""
+        saved = True
         if terminal.session_snapshot is not None:
-            self._save_session(scope=session_scope, binding_id=binding_id, snapshot=terminal.session_snapshot)
+            saved = self._save_session(scope=session_scope, binding_id=binding_id, snapshot=terminal.session_snapshot)
+        if saved and isinstance(queue_manager, AgentAppQueueManager):
+            queue_manager.mark_handoff_ready()
         self._persist_message_usage(message_id=message_id, usage=_llm_usage_from_agent_backend(terminal.usage))
         if queue_manager is not None and not queue_manager.is_stopped():
             # A stream error can cancel its runtime only for cleanup. Keep its

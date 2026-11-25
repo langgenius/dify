@@ -4,14 +4,23 @@ from __future__ import annotations
 
 import uuid
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import InternalServerError
+from flask_restx import Api
+from werkzeug.exceptions import Conflict, InternalServerError, NotFound, ServiceUnavailable, Unauthorized
 
-from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
+from controllers.web.completion import (
+    ChatApi,
+    ChatStopApi,
+    CompletionApi,
+    CompletionStopApi,
+    WebAgentChatInputApi,
+    WebAgentChatInterruptApi,
+)
 from controllers.web.error import (
     AgentNotPublishedError,
     CompletionRequestError,
@@ -22,9 +31,15 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from core.app.apps.agent_app.errors import AgentAppNotPublishedError
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, AppMode, EndUser
+from services.agent.chat_steering import (
+    AgentChatBackendUnavailableError,
+    AgentChatInputConflictError,
+    AgentChatTaskNotFoundError,
+)
 from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
@@ -236,3 +251,166 @@ class TestChatStopApi:
 
         assert status == 200
         assert result == {"result": "success"}
+
+
+# ---------------------------------------------------------------------------
+# Web Agent steering: enqueue + cut-in
+# ---------------------------------------------------------------------------
+def _agent_app() -> App:
+    return _app(AppMode.AGENT)
+
+
+def _input_receipt(input_id: uuid.UUID) -> MagicMock:
+    receipt = MagicMock()
+    receipt.input_id = input_id
+    receipt.status = "queued"
+    return receipt
+
+
+def _handoff_receipt(input_id: uuid.UUID, pending: list[tuple[uuid.UUID, str]]) -> MagicMock:
+    receipt = MagicMock()
+    receipt.input_id = input_id
+    receipt.pending_inputs = [
+        SimpleNamespace(input_id=pending_id, text=text) for pending_id, text in pending
+    ]
+    return receipt
+
+
+class TestWebAgentChatInputApi:
+    def test_wrong_mode_raises(self, app: Flask) -> None:
+        body = {"input_id": str(uuid.uuid4()), "text": "hello"}
+        with app.test_request_context("/chat-messages/x/inputs", method="POST", json=body):
+            with pytest.raises(NotFound):
+                WebAgentChatInputApi().post(_chat_app(), _end_user(), uuid.uuid4())
+
+    @patch("controllers.web.completion.enqueue_agent_chat_input")
+    def test_enqueue_scopes_to_web_binding(self, mock_enqueue: MagicMock, app: Flask) -> None:
+        input_id, task_id = uuid.uuid4(), uuid.uuid4()
+        mock_enqueue.side_effect = lambda _scope, request: _input_receipt(request.input_id)
+        app_model = _agent_app()
+        end_user = _end_user()
+        body = {"input_id": str(input_id), "text": "hello"}
+
+        with app.test_request_context("/chat-messages/x/inputs", method="POST", json=body):
+            result, status = WebAgentChatInputApi().post(app_model, end_user, task_id)
+
+        assert status == 202
+        assert result["input_id"] == str(input_id)
+        (call,) = mock_enqueue.call_args_list
+        scope, request = call.args
+        assert scope.invoke_from == InvokeFrom.WEB_APP
+        assert (scope.tenant_id, scope.app_id, scope.user_id, scope.task_id) == (
+            app_model.tenant_id,
+            app_model.id,
+            end_user.id,
+            task_id,
+        )
+        assert scope.cache_key().startswith("agent-web-run:")
+        assert (request.input_id, request.text) == (input_id, "hello")
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (AgentChatTaskNotFoundError("nope"), NotFound),
+            (AgentChatInputConflictError("nope"), Conflict),
+            (AgentChatBackendUnavailableError("nope"), ServiceUnavailable),
+        ],
+    )
+    @patch("controllers.web.completion.enqueue_agent_chat_input")
+    def test_errors_map_to_http(self, mock_enqueue: MagicMock, error: Exception, expected: type, app: Flask) -> None:
+        mock_enqueue.side_effect = error
+        body = {"input_id": str(uuid.uuid4()), "text": "hello"}
+        with app.test_request_context("/chat-messages/x/inputs", method="POST", json=body):
+            with pytest.raises(expected):
+                WebAgentChatInputApi().post(_agent_app(), _end_user(), uuid.uuid4())
+
+
+class TestWebAgentChatInterruptApi:
+    def test_wrong_mode_raises(self, app: Flask) -> None:
+        with app.test_request_context("/chat-messages/x/inputs/y/interrupt", method="POST", json={"text": "x"}):
+            with pytest.raises(NotFound):
+                WebAgentChatInterruptApi().post(_chat_app(), _end_user(), uuid.uuid4(), uuid.uuid4())
+
+    @patch("controllers.web.completion.interrupt_agent_chat_input")
+    def test_interrupt_carries_text_and_scope(self, mock_interrupt: MagicMock, app: Flask) -> None:
+        task_id, input_id, older = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        mock_interrupt.return_value = _handoff_receipt(input_id, [(older, "earlier"), (input_id, "urgent")])
+        app_model = _agent_app()
+        end_user = _end_user()
+        body = {"text": "urgent"}
+
+        with app.test_request_context("/chat-messages/x/inputs/y/interrupt", method="POST", json=body):
+            result, status = WebAgentChatInterruptApi().post(app_model, end_user, task_id, input_id)
+
+        assert status == 200
+        assert [item["input_id"] for item in result["pending_inputs"]] == [str(older), str(input_id)]
+        (call,) = mock_interrupt.call_args_list
+        scope, request = call.args
+        assert scope.invoke_from == InvokeFrom.WEB_APP
+        assert scope.task_id == task_id
+        assert (request.input_id, request.text) == (input_id, "urgent")
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (AgentChatTaskNotFoundError("nope"), NotFound),
+            (AgentChatInputConflictError("nope"), Conflict),
+            (AgentChatBackendUnavailableError("nope"), ServiceUnavailable),
+        ],
+    )
+    @patch("controllers.web.completion.interrupt_agent_chat_input")
+    def test_errors_map_to_http(
+        self, mock_interrupt: MagicMock, error: Exception, expected: type, app: Flask
+    ) -> None:
+        mock_interrupt.side_effect = error
+        with app.test_request_context("/chat-messages/x/inputs/y/interrupt", method="POST", json={"text": "x"}):
+            with pytest.raises(expected):
+                WebAgentChatInterruptApi().post(_agent_app(), _end_user(), uuid.uuid4(), uuid.uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Route wiring: the real WebApiResource JWT decorators apply over HTTP
+# ---------------------------------------------------------------------------
+class TestWebAgentSteeringRouteWiring:
+    def _api(self, app: Flask) -> None:
+        api = Api(app)
+        api.add_resource(
+            WebAgentChatInterruptApi,
+            "/chat-messages/<uuid:task_id>/inputs/<uuid:input_id>/interrupt",
+        )
+
+    def test_unauthorized_request_never_reaches_service(self, app: Flask) -> None:
+        self._api(app)
+        url = f"/chat-messages/{uuid.uuid4()}/inputs/{uuid.uuid4()}/interrupt"
+        with (
+            patch("controllers.web.wraps.decode_jwt_token", side_effect=Unauthorized()),
+            patch("controllers.web.completion.interrupt_agent_chat_input") as mock_interrupt,
+        ):
+            response = app.test_client().post(url, json={"text": "hi"})
+        assert response.status_code == 401
+        mock_interrupt.assert_not_called()
+
+    def test_admitted_request_scopes_to_jwt_identity(self, app: Flask) -> None:
+        self._api(app)
+        app_model = _agent_app()
+        end_user = _end_user()
+        task_id, input_id = uuid.uuid4(), uuid.uuid4()
+        url = f"/chat-messages/{task_id}/inputs/{input_id}/interrupt"
+        with (
+            patch("controllers.web.wraps.decode_jwt_token", return_value=(app_model, end_user)),
+            patch("controllers.web.completion.interrupt_agent_chat_input") as mock_interrupt,
+        ):
+            mock_interrupt.return_value = _handoff_receipt(input_id, [(input_id, "hi")])
+            response = app.test_client().post(url, json={"text": "hi"})
+
+        assert response.status_code == 200
+        (call,) = mock_interrupt.call_args_list
+        scope, request = call.args
+        assert scope.invoke_from == InvokeFrom.WEB_APP
+        assert (scope.tenant_id, scope.app_id, scope.user_id, scope.task_id) == (
+            app_model.tenant_id,
+            app_model.id,
+            end_user.id,
+            task_id,
+        )
+        assert (request.input_id, request.text) == (input_id, "hi")

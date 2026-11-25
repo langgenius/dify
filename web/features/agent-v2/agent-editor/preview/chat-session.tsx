@@ -5,25 +5,26 @@ import type { ReactNode, Ref } from 'react'
 import type {
   AgentChatMessageSender,
   AgentPreviewChatController,
+  AgentPreviewChatConversationController,
   AgentPreviewChatRuntimeState,
 } from './chat-conversation'
 import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
-import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { ChatItemInTree } from '@/app/components/base/chat/types'
+import type { AgentChatCutInSend } from '@/app/components/base/chat/use-agent-chat-cut-in'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import { useAgentChatCutIn } from '@/app/components/base/chat/use-agent-chat-cut-in'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { deploymentEditionAtom } from '@/features/system-features/state'
-import { useAgentRunQueue } from './agent-run-queue'
-import { AgentRunQueueStrip } from './agent-run-queue-strip'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
+import { useAgentRunSteering } from './use-agent-run-steering'
 
 const chatMaxWidthClassName = 'max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
 
@@ -93,26 +94,13 @@ export function AgentPreviewChatSession({
   )
   const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
   const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
-  const conversationRef = useRef<AgentPreviewChatController>(null)
+  const conversationRef = useRef<AgentPreviewChatConversationController>(null)
   const [runtimeState, setRuntimeState] = useState<AgentPreviewChatRuntimeState>(() => ({
     isEmptyChat: initialChatTree.length === 0 && !config.opening_statement,
     isResponding: false,
     isSendPending: false,
   }))
-  // Pair the admitted task id with the session that produced it so a stale
-  // event can never steer a different preview conversation.
-  const [queueTask, setQueueTask] = useState<{
-    conversationSessionKey: string
-    taskId: string
-  } | null>(null)
-  const handleAgentQueueReady = useCallback(
-    (taskId: string) => {
-      setQueueTask({ conversationSessionKey, taskId })
-    },
-    [conversationSessionKey],
-  )
   const handleRuntimeStateChange = useCallback((nextState: AgentPreviewChatRuntimeState) => {
-    if (!nextState.isResponding) setQueueTask(null)
     setRuntimeState((currentState) => {
       if (
         currentState.isEmptyChat === nextState.isEmptyChat &&
@@ -124,35 +112,37 @@ export function AgentPreviewChatSession({
       return nextState
     })
   }, [])
-  const activeQueueTaskId =
-    runtimeState.isResponding && queueTask?.conversationSessionKey === conversationSessionKey
-      ? queueTask.taskId
-      : null
-  const queue = useAgentRunQueue({ agentId, taskId: activeQueueTaskId })
-  const handleInputSend: OnSend = useCallback(
-    async (
-      message: string,
-      files?: FileEntity[],
-      isRegenerate: boolean = false,
-      parentAnswer: ChatItem | null = null,
-    ) => {
+  const transport = useAgentRunSteering({ agentId })
+  // Cut-in ("interrupt and continue"): while the scoped run is live, a
+  // normal Send of new text freezes the inbox around that text, stops the
+  // run, waits for its snapshot, starts one ordinary new turn in the same
+  // conversation, and replays the frozen inputs FIFO.
+  const sendTurn = useCallback<AgentChatCutInSend>(
+    async (message, files, isRegenerate, parent) => {
       if (disabled) return false
-      if (runtimeState.isResponding && !isRegenerate) {
-        // A live run never starts a second turn; the text steers it instead.
-        if (!queue.canSteer || files?.length) return false
-        return queue.steer(message)
-      }
-      return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
+      return conversationRef.current?.send(message, files, isRegenerate, parent)
     },
-    [disabled, queue, runtimeState.isResponding],
+    [disabled],
   )
+  const settleHandoff = useCallback(
+    (taskId: string) => conversationRef.current?.settleHandoff(taskId) ?? false,
+    [],
+  )
+  const cutIn = useAgentChatCutIn({
+    enabled: !disabled,
+    scopeKey: conversationSessionKey,
+    isResponding: runtimeState.isResponding,
+    transport,
+    settle: settleHandoff,
+    send: sendTurn,
+  })
   useImperativeHandle(
     controllerRef,
     () => ({
-      send: handleInputSend,
+      send: cutIn.send,
       stop: () => conversationRef.current?.stop(),
     }),
-    [handleInputSend],
+    [cutIn.send],
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
   const hasAgentConfiguration = !!(
@@ -166,7 +156,7 @@ export function AgentPreviewChatSession({
   const hasBuildNote = !!composerDraft.configNote.trim()
   const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading =
-    isEmptyChat && !!sendButtonLabel && (isSendPending || (isResponding && !queue.canSteer))
+    isEmptyChat && !!sendButtonLabel && (isSendPending || (isResponding && !cutIn.canSteer))
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
@@ -181,7 +171,7 @@ export function AgentPreviewChatSession({
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
       inputLabel={inputPlaceholder}
-      disabled={disabled || (isEmptyChat && isResponding && !queue.canSteer)}
+      disabled={disabled || (isEmptyChat && isResponding && !cutIn.canSteer)}
       // oxlint-disable-next-line jsx-a11y/no-autofocus -- Build chat opts out so it does not steal focus from the configure editor.
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
       sendButtonLoading={sendButtonLoading}
@@ -190,10 +180,10 @@ export function AgentPreviewChatSession({
       speechToTextConfig={config.speech_to_text}
       speechToTextTarget={speechToTextTarget}
       onBeforeSpeechToText={onBeforeSpeechToText}
-      onSend={handleInputSend}
+      onSend={cutIn.send}
       inputs={inputs}
       inputsForm={inputsForm}
-      isResponding={isEmptyChat ? undefined : isResponding && !queue.canSteer}
+      isResponding={isEmptyChat ? undefined : isResponding && !cutIn.canSteer}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
       footerNoticeTooltip={
@@ -235,7 +225,7 @@ export function AgentPreviewChatSession({
           onRuntimeStateChange={handleRuntimeStateChange}
           onSaveDraftBeforeRun={onSaveDraftBeforeRun}
           onSendInterrupted={onSendInterrupted}
-          onAgentQueueReady={handleAgentQueueReady}
+          onAgentQueueReady={cutIn.onReady}
         />
       </div>
       <div
@@ -260,7 +250,11 @@ export function AgentPreviewChatSession({
             </div>
           )}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
-            {activeQueueTaskId && <AgentRunQueueStrip queue={queue} />}
+            {cutIn.sendFailed && (
+              <p role="alert" className="mb-2 text-xs text-text-destructive">
+                {t(($) => $['agentDetail.configure.preview.queue.sendFailed'])}
+              </p>
+            )}
             {chatInputNode}
           </div>
         </div>

@@ -44,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendError,
+    AgentBackendHTTPError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
@@ -52,6 +53,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.apps.agent_app import app_runner as app_runner_module
+from core.app.apps.agent_app import task_pipeline as task_pipeline_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
@@ -63,6 +65,7 @@ from core.app.apps.agent_app.session_store import (
     AgentAppWorkspaceStore,
     StoredAgentAppSession,
 )
+from core.app.apps.agent_app.task_pipeline import AgentAppQueueManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
@@ -185,6 +188,44 @@ class _CancelAndWaitFailingClient(_RecordingFakeAgentBackendRunClient):
         del request
         self.cancel_after.append(after)
         raise RuntimeError(f"failed to finish cancelling {run_id}")
+
+
+class _CancelAndWaitConflictClient(_RecordingFakeAgentBackendRunClient):
+    """Cancel loses the race to an already-terminal run; the retained stream
+    still replays the terminal frame for the snapshot/handoff barrier."""
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        del request
+        self.cancel_after.append(after)
+        raise AgentBackendHTTPError("run already finished", status_code=409, detail={"code": "conflict"})
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunCancelledEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunCancelledEventData(
+                reason="terminal before cancel",
+                session_snapshot=SessionSnapshot(layers={}),
+            ),
+        )
 
 
 class _UsageCancellationClient(_RecordingFakeAgentBackendRunClient):
@@ -676,7 +717,7 @@ def _runner(
 
 def _run(
     runner: AgentAppRunner,
-    qm: _FakeQueueManager,
+    qm: AppQueueManager,
     *,
     dify_context: DifyRunContext | None = None,
     agent_config_version_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
@@ -1682,6 +1723,98 @@ def test_cancel_and_wait_failure_preserves_stopped_app_outcome() -> None:
     assert store.saved == []
 
 
+class _StoppedAgentAppQueueManager(AgentAppQueueManager):
+    """Admitted steering queue whose task was stopped before consume ends."""
+
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del event, pub_from
+
+    @override
+    def is_stopped(self) -> bool:
+        return True
+
+
+class _TerminalFirstFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    """Streams the terminal frame first, as when the stop lands with its snapshot."""
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        yield RunCancelledEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            data=RunCancelledEventData(
+                reason="stopped",
+                session_snapshot=SessionSnapshot(layers={}),
+            ),
+        )
+
+
+def test_stopped_terminal_marks_handoff_only_after_snapshot_save(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marks: list[str] = []
+    monkeypatch.setattr(task_pipeline_module, "mark_agent_chat_handoff_ready", marks.append)
+    store = _FakeSessionStore()
+    qm = _StoppedAgentAppQueueManager(
+        task_id="task-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv-1",
+        app_mode=AppMode.AGENT,
+        message_id="msg-1",
+    )
+
+    # A non-steering run finishing under stop never arms the handoff barrier.
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(_TerminalFirstFakeAgentBackendRunClient(), store), qm)
+    assert marks == []
+
+    # Once the binding admitted steering, a stopped run that persisted its
+    # terminal snapshot must unblock the waiting handoff.
+    qm.enable_handoff()
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(_TerminalFirstFakeAgentBackendRunClient(), store), qm)
+
+    assert marks == ["task-1"]
+    assert len(store.saved) == 2
+
+
+def test_cancel_conflict_replays_retained_terminal_for_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marks: list[str] = []
+    monkeypatch.setattr(task_pipeline_module, "mark_agent_chat_handoff_ready", marks.append)
+    store = _FakeSessionStore()
+    qm = _StoppedAgentAppQueueManager(
+        task_id="task-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv-1",
+        app_mode=AppMode.AGENT,
+        message_id="msg-1",
+    )
+    qm.enable_handoff()
+    client = _CancelAndWaitConflictClient()
+
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, store), qm)
+
+    # The cancel lost to a retained terminal; its snapshot still reached the
+    # store and armed the handoff barrier.
+    assert marks == ["task-1"]
+    assert len(store.saved) == 1
+    assert store.saved[0][2] == SessionSnapshot(layers={})
+
+
 def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer(None) == ""
     assert AgentAppRunner._terminal_output_to_answer("plain text") == "plain text"
@@ -1793,14 +1926,33 @@ def test_queue_ready_not_published_when_registration_fails() -> None:
     assert _queue_ready_events(qm) == []
 
 
+def test_web_app_snapshot_registers_and_publishes_queue_ready() -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+
+    _run(runner, qm, dify_context=_dify_ctx(), agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT)
+
+    assert len(_queue_ready_events(qm)) == 1
+    ((context, task_id, run_id),) = calls
+    assert context.invoke_from == InvokeFrom.WEB_APP
+    assert task_id == "task-1"
+    assert run_id == "fake-run-1"
+    request = client.request
+    assert request is not None
+    assert request.metadata["allow_steering"] is True
+
+
 @pytest.mark.parametrize(
     ("invoke_from", "kind"),
     [
-        (InvokeFrom.WEB_APP, AgentConfigVersionKind.SNAPSHOT),
         (InvokeFrom.DEBUGGER, AgentConfigVersionKind.SNAPSHOT),
+        (InvokeFrom.SERVICE_API, AgentConfigVersionKind.SNAPSHOT),
     ],
 )
-def test_queue_ready_not_published_for_non_preview_runs(
+def test_queue_ready_not_published_for_non_admitted_runs(
     invoke_from: InvokeFrom,
     kind: AgentConfigVersionKind,
 ) -> None:
@@ -1809,7 +1961,13 @@ def test_queue_ready_not_published_for_non_preview_runs(
     calls: list[tuple[DifyRunContext, str, str]] = []
     runner = _preview_runner(client, store, calls)
     qm = _FakeQueueManager()
-    context = _debugger_ctx() if invoke_from == InvokeFrom.DEBUGGER else _dify_ctx()
+    context = DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=invoke_from,
+    )
 
     _run(runner, qm, dify_context=context, agent_config_version_kind=kind)
 

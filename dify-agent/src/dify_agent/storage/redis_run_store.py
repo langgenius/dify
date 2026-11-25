@@ -14,6 +14,7 @@ never extend retention. Multi-key Lua coordination requires non-Cluster Redis.
 from collections.abc import AsyncIterator, Awaitable
 import hashlib
 from typing import Literal, cast, override
+from uuid import UUID
 
 from redis.asyncio import Redis
 
@@ -110,10 +111,51 @@ _RUN_INPUT_SCRIPT = """
 -- conflict, -4 input limit, 1 applied.
 local raw = redis.call('GET', KEYS[1])
 if not raw then return {-1} end
-if cjson.decode(raw).status ~= 'running' or redis.call('EXISTS', KEYS[2]) == 1 then
-    return {-2}
-end
 local op = ARGV[1]
+local running = cjson.decode(raw).status == 'running' and redis.call('EXISTS', KEYS[2]) == 0
+local function append(input, ref)
+    local seq = redis.call('HINCRBY', KEYS[3], 'count', 1)
+    redis.call('HSET', KEYS[3], 'pending:' .. seq, input, 'ref:' .. seq, ref)
+    redis.call('EXPIRE', KEYS[3], ARGV[2])
+end
+if op == 'freeze' then
+    local function pending_pairs()
+        local result = {1}
+        local count = tonumber(redis.call('HGET', KEYS[3], 'count') or '0')
+        for seq = 1, count do
+            local ref = redis.call('HGET', KEYS[3], 'ref:' .. seq)
+            local payload = redis.call('HGET', KEYS[3], 'pending:' .. seq)
+            if ref and payload then
+                result[#result + 1] = payload
+                result[#result + 1] = ref
+            end
+        end
+        return result
+    end
+    local state = redis.call('HGET', KEYS[3], 'state')
+    if state == 'handoff' then
+        -- Retried freeze of the same prioritized input returns the same refs
+        -- even after the run settled; a different id or changed text rejects.
+        if redis.call('HGET', KEYS[3], 'handoff_input_id') ~= ARGV[3]
+            or redis.call('HGET', KEYS[3], 'id:' .. ARGV[3]) ~= ARGV[5] then
+            return {-3}
+        end
+        return pending_pairs()
+    end
+    if not running or state ~= 'open' then return {-2} end
+    -- The cut-in input is appended atomically with the freeze so it can never
+    -- drain natively before the handoff settles.
+    local key = 'id:' .. ARGV[3]
+    if redis.call('HEXISTS', KEYS[3], key) == 1 then return {-3} end
+    local count = tonumber(redis.call('HGET', KEYS[3], 'user_count') or '0')
+    if count >= 64 then return {-4} end
+    redis.call('HINCRBY', KEYS[3], 'user_count', 1)
+    redis.call('HSET', KEYS[3], key, ARGV[5])
+    append(ARGV[4], 'input_queued:' .. ARGV[3])
+    redis.call('HSET', KEYS[3], 'state', 'handoff', 'handoff_input_id', ARGV[3])
+    return pending_pairs()
+end
+if not running then return {-2} end
 if op == 'open' then
     if redis.call('EXISTS', KEYS[3]) == 0 then
         redis.call('HSET', KEYS[3], 'state', 'open')
@@ -133,11 +175,6 @@ if op == 'queue' then
         if ref then snapshot[#snapshot + 1] = ref end
     end
     return snapshot
-end
-local function append(input, ref)
-    local seq = redis.call('HINCRBY', KEYS[3], 'count', 1)
-    redis.call('HSET', KEYS[3], 'pending:' .. seq, input, 'ref:' .. seq, ref)
-    redis.call('EXPIRE', KEYS[3], ARGV[2])
 end
 if op == 'enqueue' then
     local key = 'id:' .. ARGV[3]
@@ -425,7 +462,7 @@ class RedisRunStore(RunEventSink):
     async def _run_input_operation(
         self,
         run_id: str,
-        operation: Literal["open", "enqueue", "take", "finish", "queue"],
+        operation: Literal["open", "enqueue", "take", "finish", "queue", "freeze"],
         request: RunInputRequest | None = None,
     ) -> list[object]:
         call = cast(
@@ -467,6 +504,35 @@ class RedisRunStore(RunEventSink):
             raise RunInputConflictError("input id has already been used with different text")
         if code == -4:
             raise RunInputConflictError("run steering input limit reached")
+
+    async def freeze_run_inputs(self, run_id: str, request: RunInputRequest) -> list[RunInputRequest]:
+        """Freeze the inbox for handoff while prioritizing the caller's input.
+
+        Atomically appends ``request`` as the last pending input and seals the
+        inbox in the same script, so the prioritized text can never drain
+        natively before the handoff settles; returns every pending input in
+        FIFO order. While frozen, enqueues and drains stop, so the remaining
+        inputs transfer to the next turn unchanged. Retrying with the same
+        input id and text returns the same inputs even after the run settled;
+        a different id or changed text is rejected, which keeps replays safe.
+        """
+        result = await self._run_input_operation(run_id, "freeze", request)
+        code = int(cast("int | bytes | str", result[0]))
+        if code == -1:
+            raise RunNotFoundError(run_id)
+        if code == -2:
+            raise RunInputConflictError("run is not accepting steering inputs")
+        if code == -3:
+            raise RunInputConflictError("input cannot freeze this inbox")
+        if code == -4:
+            raise RunInputConflictError("run steering input limit reached")
+        return [
+            RunInputRequest(
+                input_id=UUID(_decode_redis_text(ref).removeprefix("input_queued:")),
+                text=_decode_redis_text(payload),
+            )
+            for payload, ref in zip(result[1::2], result[2::2], strict=True)
+        ]
 
     async def take_run_inputs(self, run_id: str, *, finish: bool = False) -> list[RunInboxInput]:
         """Drain pending inputs, or seal an empty inbox when finishing.

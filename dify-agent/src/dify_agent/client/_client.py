@@ -48,6 +48,7 @@ from dify_agent.protocol import (
     RunEvent,
     RunEventsResponse,
     RunInputRequest,
+    RunInputHandoffResponse,
     RunInputResponse,
     RunQueueResponse,
     RunStatusResponse,
@@ -523,6 +524,25 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"enqueue_run_input_sync request failed: {exc}") from exc
         return _parse_model_response(response, RunInputResponse)
+
+    def interrupt_run_input_sync(self, run_id: str, request: RunInputRequest) -> RunInputHandoffResponse:
+        """Freeze a run's inbox and prioritize ``request`` for turn handoff.
+
+        Returns the still-pending inputs in FIFO order so the caller can
+        replay them on the next turn; the run itself is stopped separately.
+        """
+        try:
+            response = self._get_sync_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/inputs/{request.input_id}/interrupt"),
+                json={"text": request.text},
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("interrupt_run_input_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"interrupt_run_input_sync request failed: {exc}") from exc
+        return _parse_model_response(response, RunInputHandoffResponse)
 
     async def get_run_queue(self, run_id: str) -> RunQueueResponse:
         """Return pending inbox ids and kinds for ``run_id``; never payload text."""

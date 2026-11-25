@@ -272,6 +272,88 @@ def test_run_inputs_enqueue_drain_and_seal_across_clients() -> None:
     asyncio.run(scenario())
 
 
+def test_run_inputs_freeze_appends_prioritized_text_and_seals() -> None:
+    async def scenario() -> None:
+        server = FakeServer()
+        async with AsyncFakeRedis(server=server) as first_client, AsyncFakeRedis(server=server) as second_client:
+            first = RedisRunStore(first_client, prefix="test", run_retention_seconds=60)
+            second = RedisRunStore(second_client, prefix="test", run_retention_seconds=60)
+            record = await first.create_run()
+            await first.open_run_inputs(record.run_id)
+            a, b, cut_in = uuid4(), uuid4(), uuid4()
+            for input_id, text in ((a, "first"), (b, "second")):
+                await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=input_id, text=text))
+
+            request = RunInputRequest(input_id=cut_in, text="urgent")
+            frozen = await second.freeze_run_inputs(record.run_id, request)
+            # Prior pending inputs keep FIFO order; the cut-in text lands last
+            # and was never natively drained.
+            assert frozen == [
+                RunInputRequest(input_id=a, text="first"),
+                RunInputRequest(input_id=b, text="second"),
+                request,
+            ]
+
+            # While frozen nothing drains or enqueues, and the queue snapshot
+            # reports the inbox as not accepting.
+            assert await first.take_run_inputs(record.run_id) == []
+            with pytest.raises(RunInputConflictError):
+                await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=uuid4(), text="late"))
+            queue = await second.get_run_queue(record.run_id)
+            assert not queue.accepting_inputs
+
+            # A different id or changed text cannot steal the freeze; replaying
+            # the same request returns the same FIFO refs.
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(record.run_id, RunInputRequest(input_id=uuid4(), text="urgent"))
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(record.run_id, RunInputRequest(input_id=cut_in, text="other"))
+            assert await second.freeze_run_inputs(record.run_id, request) == frozen
+
+            # The replay stays stable even after the run settled, so a retried
+            # handoff request cannot lose or duplicate pending inputs.
+            await first.request_cancellation(record.run_id, CancelRunRequest(reason="stop"))
+            assert await second.freeze_run_inputs(record.run_id, request) == frozen
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(record.run_id, RunInputRequest(input_id=uuid4(), text="urgent"))
+
+    asyncio.run(scenario())
+
+
+def test_run_inputs_freeze_rejects_duplicates_closed_cancelled_and_missing() -> None:
+    async def scenario() -> None:
+        server = FakeServer()
+        async with AsyncFakeRedis(server=server) as first_client, AsyncFakeRedis(server=server) as second_client:
+            first = RedisRunStore(first_client, prefix="test", run_retention_seconds=60)
+            second = RedisRunStore(second_client, prefix="test", run_retention_seconds=60)
+            record = await first.create_run()
+            await first.open_run_inputs(record.run_id)
+            pending = uuid4()
+
+            # An id that already queued cannot freeze as a cut-in input.
+            await second.enqueue_run_input(record.run_id, RunInputRequest(input_id=pending, text="x"))
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(record.run_id, RunInputRequest(input_id=pending, text="x"))
+
+            # A sealed inbox (empty finish) rejects freezes.
+            assert await first.take_run_inputs(record.run_id) != []
+            assert await first.take_run_inputs(record.run_id, finish=True) == []
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(record.run_id, RunInputRequest(input_id=uuid4(), text="x"))
+
+            cancelled = await first.create_run()
+            await first.open_run_inputs(cancelled.run_id)
+            await second.enqueue_run_input(cancelled.run_id, RunInputRequest(input_id=uuid4(), text="x"))
+            await first.request_cancellation(cancelled.run_id, CancelRunRequest(reason="stop"))
+            with pytest.raises(RunInputConflictError):
+                await second.freeze_run_inputs(cancelled.run_id, RunInputRequest(input_id=uuid4(), text="x"))
+
+            with pytest.raises(RunNotFoundError):
+                await second.freeze_run_inputs("missing", RunInputRequest(input_id=uuid4(), text="x"))
+
+    asyncio.run(scenario())
+
+
 def test_run_queue_snapshot_reports_ids_only_and_tracks_lifecycle() -> None:
     async def scenario() -> None:
         server = FakeServer()

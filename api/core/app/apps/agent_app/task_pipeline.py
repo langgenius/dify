@@ -27,6 +27,7 @@ from typing import override
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.orm import Session
 
+from core.app.apps.agent_app.steering_handoff import mark_agent_chat_handoff_ready
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -64,6 +65,26 @@ class AgentAppQueueManager(MessageBasedAppQueueManager):
     """
 
     _segment: Iterator[MessageQueueMessage | WorkflowQueueMessage] | None = None
+    _handoff_enabled: bool = False
+
+    def enable_handoff(self) -> None:
+        """Allow handoff marks; called once a steering binding is admitted."""
+        self._handoff_enabled = True
+
+    def mark_handoff_ready(self) -> None:
+        """Mark this task's run as settled for the steering handoff barrier.
+
+        Called by the Agent App runner only after the terminal session
+        snapshot save completed (or there was nothing to persist). Best
+        effort: only admitted bound runs may mark, and a Redis failure is
+        logged so the ordinary run path can never fail after terminal.
+        """
+        if not self._handoff_enabled:
+            return
+        try:
+            mark_agent_chat_handoff_ready(self._task_id)
+        except Exception:
+            logger.warning("Failed to mark Agent chat handoff ready: task_id=%s", self._task_id, exc_info=True)
 
     @override
     def listen(self) -> Generator[MessageQueueMessage | WorkflowQueueMessage]:

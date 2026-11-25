@@ -413,6 +413,11 @@ class TestAppGeneratorCases:
                 (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "snapshot", False, False),
                 (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "draft", True, False),
                 (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "draft", False, False),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "build_draft", False, False),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "snapshot", False, True),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "snapshot", True, False),
+                (True, AgentScope.ROSTER, InvokeFrom.SERVICE_API, "snapshot", False, False),
+                (True, AgentScope.WORKFLOW_ONLY, InvokeFrom.WEB_APP, "snapshot", False, False),
                 (True, AgentScope.WORKFLOW_ONLY, InvokeFrom.DEBUGGER, "draft", False, False),
                 (False, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "draft", False, False),
             ],
@@ -428,7 +433,7 @@ class TestAppGeneratorCases:
             finalization: bool,
             admitted: bool,
         ) -> None:
-            """Only roster DEBUGGER draft/build runs with the preview hook take the steering path."""
+            """Only roster DEBUGGER draft/build or WEB_APP snapshot runs with the hook take the steering path."""
             if has_hook:
                 generator._bind_steering_task_to_run = lambda _context, _task_id, _run_id: True
             app_model = _app_generator_app()

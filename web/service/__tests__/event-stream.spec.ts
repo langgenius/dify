@@ -151,7 +151,12 @@ describe('streamEvents', () => {
       () =>
         Promise.resolve(
           framesOf(
-            { event: 'agent_queue_ready', task_id: 'task-9' },
+            {
+              event: 'agent_queue_ready',
+              task_id: 'task-9',
+              conversation_id: 'c-1',
+              message_id: 'm-1',
+            },
             {
               event: 'message',
               answer: 'Hi',
@@ -165,7 +170,10 @@ describe('streamEvents', () => {
     )
 
     await vi.waitFor(() => expect(onCompleted).toHaveBeenCalled())
-    expect(onAgentQueueReady).toHaveBeenCalledWith('task-9')
+    expect(onAgentQueueReady).toHaveBeenCalledWith('task-9', {
+      conversationId: 'c-1',
+      messageId: 'm-1',
+    })
     expect(onData).toHaveBeenCalledOnce()
   })
 

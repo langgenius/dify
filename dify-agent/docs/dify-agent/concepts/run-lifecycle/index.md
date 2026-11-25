@@ -63,8 +63,25 @@ Queued inputs are sent as user messages in the native agent loop. They are
 drained at the next model-request boundary, or as an extra step after the model
 produces what looked like final output — steering can therefore redirect a run
 that was about to end. Redis inputs expire after the configured retention
-period and are not replayed after a worker restart. This endpoint does not
-interrupt an in-flight tool call.
+period and are not replayed after a worker restart.
+
+`POST /runs/{run_id}/inputs/{input_id}/interrupt` freezes the inbox for a turn
+handoff while prioritizing new text: it accepts a `{"text": ...}` body, and in
+one atomic step appends that text as the last pending input under `{input_id}`
+and moves the inbox to a `handoff` state where nothing else enqueues or
+drains — so the prioritized text can never be consumed natively before the
+handoff settles. It returns every still-pending input (id and text) in FIFO
+order, the prioritized one last. The caller (the Dify API) then stops the run
+through the ordinary stop path and replays the returned inputs on the next
+turn: the new text as a fresh user message first, the older inputs as steering
+inputs behind it. `202` means the freeze was recorded, not that the next turn
+started. The endpoint returns `404` for unknown runs, `409` when the run is
+closed or cancelled, the input id was already used, a different id froze the
+inbox first, or the per-run input limit was reached, and `422` for blank text.
+Retrying the same input id with the same text after the run settled returns
+the same ref list, so replayed requests stay safe. Freezing never delivers
+text to the model — a frozen input only reaches the Agent through the next
+turn the caller opens.
 
 The Console roster Agent App draft chats are the only callers: when the Dify
 API is configured with a real Agent backend URL and API token and
@@ -75,8 +92,8 @@ public task id.
 Console chat does not opt into background shell jobs. If the agent is waiting
 for a foreground tool, accepted input remains queued until the tool returns
 and the next model request is prepared. Build-chat finalization, published
-WebApp, workflow, and other agent modes never opt in. The UI offers queueing
-and status only — no per-job stop action.
+WebApp, workflow, and other agent modes never opt in. The UI offers text
+submission only — no per-job stop action and no queue inspection.
 
 `GET /runs/{run_id}/queue` reports the inbox status: whether the run is
 accepting human inputs, and the queued `input_queued` entry ids in order.

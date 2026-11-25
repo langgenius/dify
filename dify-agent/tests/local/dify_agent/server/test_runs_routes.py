@@ -445,6 +445,58 @@ def test_run_inputs_endpoint_maps_accepted_and_conflicted_enqueues() -> None:
     assert blank.status_code == 422
 
 
+def test_run_inputs_interrupt_endpoint_prioritizes_text_and_maps_errors() -> None:
+    from fastapi import FastAPI
+
+    server = FakeServer()
+    redis_client = AsyncFakeRedis(server=server)
+    store = RedisRunStore(redis_client, prefix="test", run_retention_seconds=60)
+    record = asyncio.run(store.create_run())
+    asyncio.run(store.open_run_inputs(record.run_id))
+
+    app = FastAPI()
+    app.include_router(create_runs_router(lambda: store, lambda: FakeScheduler(), input_enabled=True))
+    client = TestClient(app)
+
+    first_id, last_id, cut_in_id = str(uuid4()), str(uuid4()), str(uuid4())
+    for input_id, text in ((first_id, "one"), (last_id, "three")):
+        enqueued = client.post(f"/runs/{record.run_id}/inputs", json={"input_id": input_id, "text": text})
+        assert enqueued.status_code == 202
+
+    # The cut-in text is appended last atomically with the freeze so it can
+    # never drain before the caller replays the receipt.
+    frozen = client.post(f"/runs/{record.run_id}/inputs/{cut_in_id}/interrupt", json={"text": "urgent"})
+    assert frozen.status_code == 202
+    assert frozen.json() == {
+        "input_id": cut_in_id,
+        "pending_inputs": [
+            {"input_id": first_id, "text": "one"},
+            {"input_id": last_id, "text": "three"},
+            {"input_id": cut_in_id, "text": "urgent"},
+        ],
+    }
+
+    # Replaying the same freeze returns the same pending list; a different id
+    # or changed text is rejected, and the frozen inbox rejects and never drains.
+    replay = client.post(f"/runs/{record.run_id}/inputs/{cut_in_id}/interrupt", json={"text": "urgent"})
+    assert replay.json() == frozen.json()
+    changed = client.post(f"/runs/{record.run_id}/inputs/{cut_in_id}/interrupt", json={"text": "other"})
+    assert changed.status_code == 409
+    different = client.post(f"/runs/{record.run_id}/inputs/{uuid4()}/interrupt", json={"text": "urgent"})
+    assert different.status_code == 409
+    assert (
+        client.post(f"/runs/{record.run_id}/inputs", json={"input_id": str(uuid4()), "text": "late"}).status_code == 409
+    )
+    queue = client.get(f"/runs/{record.run_id}/queue")
+    assert queue.json()["accepting_inputs"] is False
+    assert queue.json()["entries"] == []
+
+    blank = client.post(f"/runs/{record.run_id}/inputs/{uuid4()}/interrupt", json={"text": "   "})
+    assert blank.status_code == 422
+    missing = client.post(f"/runs/missing/inputs/{uuid4()}/interrupt", json={"text": "x"})
+    assert missing.status_code == 404
+
+
 def test_run_inputs_endpoint_is_not_registered_when_disabled() -> None:
     from fastapi import FastAPI
 
@@ -454,3 +506,4 @@ def test_run_inputs_endpoint_is_not_registered_when_disabled() -> None:
     response = client.post("/runs/run-1/inputs", json={"input_id": "2f0b3f34-0000-4000-8000-000000000001", "text": "x"})
     assert response.status_code == 404
     assert client.get("/runs/run-1/queue").status_code == 404
+    assert client.post("/runs/run-1/inputs/2f0b3f34-0000-4000-8000-000000000001/interrupt").status_code == 404

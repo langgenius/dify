@@ -598,6 +598,21 @@ export const useChat = (
     return true
   }, [stopChat, stopLocalResponse, options.isNewAgent, t])
 
+  // Settles the old run locally for the steering handoff: the server already
+  // confirmed the snapshot save, so the stale transport is aborted and its
+  // delayed callbacks invalidated instead of waiting for its onCompleted.
+  const settleAgentHandoff = useCallback(
+    (taskId: string): boolean => {
+      if (!options.isNewAgent) return false
+      if (!isRespondingRef.current) return true
+      if (taskIdRef.current !== taskId) return false
+      ++workflowRequestGenerationRef.current
+      stopLocalResponse()
+      return true
+    },
+    [options.isNewAgent, stopLocalResponse],
+  )
+
   const handleRestart = useCallback(
     (cb?: () => void) => {
       conversationIdRef.current = initialConversationIdRef.current
@@ -1227,10 +1242,26 @@ export const useChat = (
         onNotifyError,
         onUnhandledEvent,
         // Lets the admitted preview start steering and stop before the first answer.
-        onAgentQueueReady: (taskId) => {
+        onAgentQueueReady: (taskId, identity) => {
           if (!isCurrentRequest() || !options.isNewAgent) return
           taskIdRef.current = taskId
-          onAgentQueueReady?.(taskId)
+          // The queue-ready frame already carries the conversation/message
+          // identity, so an interrupt before the first token still keeps the
+          // conversation and parent linkage.
+          if (identity?.conversationId) conversationIdRef.current = identity.conversationId
+          if (identity?.messageId && !hasSetResponseId) {
+            questionItem.id = `question-${identity.messageId}`
+            responseItem.id = identity.messageId
+            responseItem.parentMessageId = questionItem.id
+            hasSetResponseId = true
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: data.parent_message_id,
+            })
+          }
+          onAgentQueueReady?.(taskId, identity)
         },
         onAgentInputDelivered: (input) => {
           if (!isCurrentRequest() || !options.isNewAgent) return
@@ -1252,6 +1283,9 @@ export const useChat = (
           isFirstMessage: boolean,
           { event, conversationId: newConversationId, messageId, taskId }: any,
         ) => {
+          // Buffered frames from a settled handoff transport must not relink
+          // the conversation or task identity of the new run.
+          if (options.isNewAgent && !isCurrentRequest()) return
           const isNewAgentMessage =
             options.isNewAgent && (event === 'agent_message' || event === 'message')
           if (isNewAgentMessage) {
@@ -1284,6 +1318,7 @@ export const useChat = (
           })
         },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+          if (options.isNewAgent && !isCurrentRequest()) return
           const { reasoning, node_id, is_final } = reasoningData
           const reasoningContent =
             responseItem.reasoningContent || (responseItem.reasoningContent = {})
@@ -1521,6 +1556,7 @@ export const useChat = (
           })
         },
         onMessageEnd: (messageEnd) => {
+          if (options.isNewAgent && !isCurrentRequest()) return
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
           if (messageEnd.metadata?.annotation_reply) {
@@ -1982,6 +2018,7 @@ export const useChat = (
     suggestedQuestions,
     handleRestart,
     handleStop,
+    settleAgentHandoff,
     handleAnnotationEdited,
     handleAnnotationAdded,
     handleAnnotationRemoved,

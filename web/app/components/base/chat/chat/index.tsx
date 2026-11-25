@@ -27,6 +27,8 @@ export type ChatProps = {
   chatList: ChatItem[]
   config?: ChatConfig
   isResponding?: boolean
+  /** Keeps the textbox usable while a run is live (e.g. steering cut-in); Stop still shows. */
+  allowSendWhileResponding?: boolean
   noStopResponding?: boolean
   onStopResponding?: () => void
   noChatInput?: boolean
@@ -102,6 +104,7 @@ const Chat: FC<ChatProps> = ({
   onRegenerate,
   chatList,
   isResponding,
+  allowSendWhileResponding,
   noStopResponding,
   onStopResponding,
   noChatInput,
@@ -328,7 +331,7 @@ const Chat: FC<ChatProps> = ({
                 inputs={inputs}
                 inputsForm={inputsForm}
                 theme={theme}
-                isResponding={isResponding}
+                isResponding={isResponding && !allowSendWhileResponding}
                 readonly={readonly}
                 sendButtonLabel={sendButtonLabel}
                 sendButtonLoading={sendButtonLoading}

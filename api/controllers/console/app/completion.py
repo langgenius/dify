@@ -1,13 +1,13 @@
 import json
 import logging
 from collections.abc import Generator, Iterator, Mapping
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from dify_agent.protocol import RunInputRequest, RunQueueEntry
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Conflict, InternalServerError, NotFound, ServiceUnavailable
 
@@ -159,6 +159,12 @@ class AgentChatInputPayload(RunInputRequest):
     """Steering input for an admitted Agent App preview run."""
 
 
+class AgentChatInterruptPayload(BaseModel):
+    """Text to prioritize over the run's pending inputs."""
+
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+
+
 class AgentChatQueueResponse(ResponseModel):
     """Backend-neutral snapshot of the scoped run's pending inbox entries."""
 
@@ -173,8 +179,19 @@ class AgentChatInputResponse(ResponseModel):
     status: Literal["queued"]
 
 
-register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload, AgentChatInputPayload)
-register_response_schema_models(console_ns, SimpleResultResponse, AgentChatQueueResponse, AgentChatInputResponse)
+class AgentChatInputHandoffResponse(ResponseModel):
+    """Settled steering handoff: pending inputs to replay on the next turn."""
+
+    input_id: UUID
+    pending_inputs: list[RunInputRequest]
+
+
+register_schema_models(
+    console_ns, CompletionMessagePayload, ChatMessagePayload, AgentChatInputPayload, AgentChatInterruptPayload
+)
+register_response_schema_models(
+    console_ns, SimpleResultResponse, AgentChatQueueResponse, AgentChatInputResponse, AgentChatInputHandoffResponse
+)
 
 
 # define completion message api for user
@@ -794,3 +811,43 @@ class AgentChatMessageInputApi(Resource):
         except AgentChatBackendUnavailableError:
             raise ServiceUnavailable("Agent chat queue is unavailable.") from None
         return dump_response(AgentChatInputResponse, result), 202
+
+
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/inputs/<uuid:input_id>/interrupt")
+class AgentChatMessageInputInterruptApi(Resource):
+    @error_responses(AgentNotFoundError)
+    @console_ns.doc("interrupt_agent_chat_input")
+    @console_ns.doc(description="Prioritize a steering input, stop the run, and replay pending inputs on the next turn")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID", "input_id": "Input ID"})
+    @console_ns.expect(console_ns.models[AgentChatInterruptPayload.__name__])
+    @console_ns.response(200, "Handoff settled", console_ns.models[AgentChatInputHandoffResponse.__name__])
+    @console_ns.response(400, "Invalid input")
+    @console_ns.response(404, "Agent, task, input, or opted-in preview run not found")
+    @console_ns.response(409, "Input cannot be handed off")
+    @console_ns.response(503, "Agent backend unavailable")
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
+    @model_validate(AgentChatInterruptPayload)
+    def post(
+        self,
+        args: AgentChatInterruptPayload,
+        request_context: RequestContext,
+        agent_id: UUID,
+        task_id: UUID,
+        input_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            result = application_services().agent_apps.chat_steering.interrupt_input(
+                request_context, agent_id, task_id, RunInputRequest(input_id=input_id, text=args.text)
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentChatTaskNotFoundError:
+            raise NotFound("Agent chat task not found.") from None
+        except AgentChatInputConflictError:
+            raise Conflict("This Agent run is not accepting this input.") from None
+        except AgentChatBackendUnavailableError:
+            raise ServiceUnavailable("Agent chat turn could not be handed off.") from None
+        return dump_response(AgentChatInputHandoffResponse, result), 200

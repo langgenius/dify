@@ -418,6 +418,15 @@ export const zAgentChatInputResponse = z.object({
 })
 
 /**
+ * AgentChatInterruptPayload
+ *
+ * Text to prioritize over the run's pending inputs.
+ */
+export const zAgentChatInterruptPayload = z.object({
+  text: z.string().min(1).max(8000),
+})
+
+/**
  * AgentConfigFileUploadPayload
  */
 export const zAgentConfigFileUploadPayload = z.object({
@@ -1019,6 +1028,29 @@ export const zComposerSoulLockPayload = z.object({
  * ComposerVariant
  */
 export const zComposerVariant = z.enum(['agent_app', 'workflow'])
+
+/**
+ * RunInputRequest
+ *
+ * Request body for queueing steering input on a running run.
+ *
+ * The caller-provided id makes retries idempotent: the same id and text is a
+ * no-op, while the same id with different text conflicts.
+ */
+export const zRunInputRequest = z.object({
+  input_id: z.uuid(),
+  text: z.string().min(1).max(8000),
+})
+
+/**
+ * AgentChatInputHandoffResponse
+ *
+ * Settled steering handoff: pending inputs to replay on the next turn.
+ */
+export const zAgentChatInputHandoffResponse = z.object({
+  input_id: z.uuid(),
+  pending_inputs: z.array(zRunInputRequest),
+})
 
 /**
  * RunQueueEntry
@@ -4247,6 +4279,21 @@ export const zPostAgentByAgentIdChatMessagesByTaskIdInputsPath = z.object({
  * Input queued
  */
 export const zPostAgentByAgentIdChatMessagesByTaskIdInputsResponse = zAgentChatInputResponse
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptBody =
+  zAgentChatInterruptPayload
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptPath = z.object({
+  agent_id: z.uuid(),
+  input_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Handoff settled
+ */
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponse =
+  zAgentChatInputHandoffResponse
 
 export const zGetAgentByAgentIdChatMessagesByTaskIdQueuePath = z.object({
   agent_id: z.uuid(),

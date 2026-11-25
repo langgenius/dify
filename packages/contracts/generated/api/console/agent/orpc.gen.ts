@@ -180,6 +180,9 @@ import {
   zPostAgentByAgentIdBuildDraftCheckoutPath,
   zPostAgentByAgentIdBuildDraftCheckoutResponse,
   zPostAgentByAgentIdChatMessagesByTaskIdInputsBody,
+  zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptBody,
+  zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptPath,
+  zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponse,
   zPostAgentByAgentIdChatMessagesByTaskIdInputsPath,
   zPostAgentByAgentIdChatMessagesByTaskIdInputsResponse,
   zPostAgentByAgentIdChatMessagesByTaskIdStopPath,
@@ -597,9 +600,39 @@ export const byMessageId = {
 }
 
 /**
- * Queue a steering input on an admitted Agent App preview run
+ * Prioritize a steering input, stop the run, and replay pending inputs on the next turn
  */
 export const post7 = oc
+  .route({
+    description:
+      'Prioritize a steering input, stop the run, and replay pending inputs on the next turn',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterrupt',
+    path: '/agent/{agent_id}/chat-messages/{task_id}/inputs/{input_id}/interrupt',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptBody,
+      params: zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptPath,
+    }),
+  )
+  .output(zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponse)
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+
+export const interrupt = {
+  post: post7,
+}
+
+export const byInputId = {
+  interrupt,
+}
+
+/**
+ * Queue a steering input on an admitted Agent App preview run
+ */
+export const post8 = oc
   .route({
     description: 'Queue a steering input on an admitted Agent App preview run',
     inputStructure: 'detailed',
@@ -619,7 +652,8 @@ export const post7 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const inputs = {
-  post: post7,
+  post: post8,
+  byInputId,
 }
 
 /**
@@ -645,7 +679,7 @@ export const queue = {
 /**
  * Stop a running Agent App chat message generation
  */
-export const post8 = oc
+export const post9 = oc
   .route({
     description: 'Stop a running Agent App chat message generation',
     inputStructure: 'detailed',
@@ -659,7 +693,7 @@ export const post8 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const stop = {
-  post: post8,
+  post: post9,
 }
 
 export const byTaskId = {
@@ -721,7 +755,7 @@ export const candidates = {
 /**
  * Check publish rules for the supplied configuration and report findings without writing
  */
-export const post9 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -747,7 +781,7 @@ export const post9 = oc
   })
 
 export const validate = {
-  post: post9,
+  post: post10,
 }
 
 /**
@@ -798,7 +832,7 @@ export const composer = {
   validate,
 }
 
-export const post10 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -818,7 +852,7 @@ export const post10 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const batch = {
-  post: post10,
+  post: post11,
 }
 
 export const get10 = oc
@@ -903,7 +937,7 @@ export const get12 = oc
   .output(zGetAgentByAgentIdConfigFilesResponse)
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
-export const post11 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -924,7 +958,7 @@ export const post11 = oc
 
 export const files = {
   get: get12,
-  post: post11,
+  post: post12,
   batch,
   byName,
 }
@@ -950,7 +984,7 @@ export const manifest = {
   get: get13,
 }
 
-export const post12 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -970,7 +1004,7 @@ export const post12 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const upload = {
-  post: post12,
+  post: post13,
 }
 
 export const get14 = oc
@@ -1132,7 +1166,7 @@ export const config = {
   skills,
 }
 
-export const post13 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1150,13 +1184,13 @@ export const post13 = oc
   })
 
 export const copy = {
-  post: post13,
+  post: post14,
 }
 
 /**
  * Reset the admitted account's Build conversation and return the new empty conversation
  */
-export const post14 = oc
+export const post15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1174,7 +1208,7 @@ export const post14 = oc
   })
 
 export const refresh = {
-  post: post14,
+  post: post15,
 }
 
 export const debugConversation = {
@@ -1184,7 +1218,7 @@ export const debugConversation = {
 /**
  * Update an Agent App's presentation features (opener, follow-up, citations, ...)
  */
-export const post15 = oc
+export const post16 = oc
   .route({
     description: "Update an Agent App's presentation features (opener, follow-up, citations, ...)",
     inputStructure: 'detailed',
@@ -1200,13 +1234,13 @@ export const post15 = oc
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const features = {
-  post: post15,
+  post: post16,
 }
 
 /**
  * Create or update Agent App message feedback
  */
-export const post16 = oc
+export const post17 = oc
   .route({
     description: 'Create or update Agent App message feedback',
     inputStructure: 'detailed',
@@ -1226,7 +1260,7 @@ export const post16 = oc
   })
 
 export const feedbacks = {
-  post: post16,
+  post: post17,
 }
 
 /**
@@ -1328,7 +1362,7 @@ export const messages2 = {
   byMessageId: byMessageId2,
 }
 
-export const post17 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1347,7 +1381,7 @@ export const post17 = oc
   })
 
 export const publish = {
-  post: post17,
+  post: post18,
 }
 
 /**
@@ -1373,7 +1407,7 @@ export const referencingWorkflows = {
 /**
  * Create a ToolFile from one Agent App Binding file and return its download URL
  */
-export const post18 = oc
+export const post19 = oc
   .route({
     description: 'Create a ToolFile from one Agent App Binding file and return its download URL',
     inputStructure: 'detailed',
@@ -1398,7 +1432,7 @@ export const post18 = oc
   })
 
 export const download4 = {
-  post: post18,
+  post: post19,
 }
 
 /**
@@ -1550,7 +1584,7 @@ export const voices = {
 /**
  * Preview an Agent TTS voice or read an Agent chat message
  */
-export const post19 = oc
+export const post20 = oc
   .route({
     description: 'Preview an Agent TTS voice or read an Agent chat message',
     inputStructure: 'detailed',
@@ -1580,7 +1614,7 @@ export const post19 = oc
   })
 
 export const textToAudio = {
-  post: post19,
+  post: post20,
   voices,
 }
 
@@ -1595,7 +1629,7 @@ export const get30 = oc
   .input(z.object({ params: zGetAgentByAgentIdTracePath }))
   .output(zGetAgentByAgentIdTraceResponse)
 
-export const post20 = oc
+export const post21 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1616,7 +1650,7 @@ export const post20 = oc
 
 export const trace = {
   get: get30,
-  post: post20,
+  post: post21,
 }
 
 export const get31 = oc
@@ -1717,7 +1751,7 @@ export const patch = oc
     unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
   })
 
-export const post21 = oc
+export const post22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1750,10 +1784,10 @@ export const traceConfig = {
   delete: delete5,
   get: get32,
   patch,
-  post: post21,
+  post: post22,
 }
 
-export const post22 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1782,7 +1816,7 @@ export const post22 = oc
   })
 
 export const retry = {
-  post: post22,
+  post: post23,
 }
 
 export const get33 = oc
@@ -1814,7 +1848,7 @@ export const traceRuns = {
   byMessageId: byMessageId3,
 }
 
-export const post23 = oc
+export const post24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1830,7 +1864,7 @@ export const post23 = oc
   })
 
 export const restore = {
-  post: post23,
+  post: post24,
 }
 
 export const get34 = oc
@@ -1966,7 +2000,7 @@ export const get37 = oc
   .output(zGetAgentResponse)
   .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
-export const post24 = oc
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1984,7 +2018,7 @@ export const post24 = oc
 
 export const agent = {
   get: get37,
-  post: post24,
+  post: post25,
   inviteOptions,
   byAgentId,
 }

@@ -314,6 +314,15 @@ export type AgentChatInputResponse = {
   status: 'queued'
 }
 
+export type AgentChatInterruptPayload = {
+  text: string
+}
+
+export type AgentChatInputHandoffResponse = {
+  input_id: string
+  pending_inputs: Array<RunInputRequest>
+}
+
 export type AgentChatQueueResponse = {
   accepting_inputs: boolean
   entries: Array<RunQueueEntry>
@@ -1039,6 +1048,11 @@ export type ComposerSoulLockPayload = {
 }
 
 export type ComposerVariant = 'agent_app' | 'workflow'
+
+export type RunInputRequest = {
+  input_id: string
+  text: string
+}
 
 export type RunQueueEntry = {
   id: string
@@ -3300,6 +3314,35 @@ export type PostAgentByAgentIdChatMessagesByTaskIdInputsResponses = {
 
 export type PostAgentByAgentIdChatMessagesByTaskIdInputsResponse =
   PostAgentByAgentIdChatMessagesByTaskIdInputsResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdInputsResponses]
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptData = {
+  body: AgentChatInterruptPayload
+  path: {
+    agent_id: string
+    input_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/chat-messages/{task_id}/inputs/{input_id}/interrupt'
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptErrors = {
+  400: ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  409: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptError =
+  PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptErrors[keyof PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptErrors]
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponses = {
+  200: AgentChatInputHandoffResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponse =
+  PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponses]
 
 export type GetAgentByAgentIdChatMessagesByTaskIdQueueData = {
   body?: never

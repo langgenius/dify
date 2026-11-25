@@ -5,7 +5,7 @@ import type { Ref } from 'react'
 import type { AgentPreviewChatConfig } from './chat-config'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
-import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
@@ -68,9 +68,23 @@ export type AgentPreviewChatRuntimeState = {
   isSendPending: boolean
 }
 
+export type AgentPreviewChatSend = (
+  message: string,
+  files?: FileEntity[],
+  isRegenerate?: boolean,
+  parentAnswer?: ChatItem | null,
+) => Promise<boolean | undefined>
+
 export type AgentPreviewChatController = {
-  send: OnSend
+  send: AgentPreviewChatSend
   stop: () => void
+}
+
+// Internal-only surface for the Roster steering handoff: settles the old
+// run's local transport once the server confirmed it stopped, without
+// touching the public session controller.
+export type AgentPreviewChatConversationController = AgentPreviewChatController & {
+  settleHandoff: (taskId: string) => boolean
 }
 
 export function AgentPreviewChatConversation({
@@ -99,7 +113,7 @@ export function AgentPreviewChatConversation({
   onSendInterrupted,
   onAgentQueueReady,
 }: {
-  ref: Ref<AgentPreviewChatController>
+  ref: Ref<AgentPreviewChatConversationController>
   agentId: string
   answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
@@ -149,6 +163,7 @@ export function AgentPreviewChatConversation({
     handleAnnotationAdded,
     handleAnnotationEdited,
     handleAnnotationRemoved,
+    settleAgentHandoff,
   } = useChat(
     config,
     {
@@ -165,7 +180,7 @@ export function AgentPreviewChatConversation({
     { isNewAgent: true },
   )
 
-  const doSend: OnSend = useCallback(
+  const doSend: AgentPreviewChatSend = useCallback(
     async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
       sendInterruptedRef.current = false
       setIsSendPending(true)
@@ -191,7 +206,7 @@ export function AgentPreviewChatConversation({
 
         if (files?.length) data.files = files
 
-        sendMessage({
+        const started = await sendMessage({
           agentId,
           data: data as Parameters<typeof handleSend>[1],
           handleSend,
@@ -251,7 +266,8 @@ export function AgentPreviewChatConversation({
             },
           },
         })
-        sendStarted = true
+        sendStarted = started === true
+        return sendStarted
       } catch {
         return false
       } finally {
@@ -284,6 +300,18 @@ export function AgentPreviewChatConversation({
     if (await handleStop()) notifySendInterrupted()
   }, [handleStop, notifySendInterrupted])
 
+  // The handoff settle replaces the old run's settle path, so the pending
+  // flag it would have cleared is released here instead of surfacing a build
+  // failure for an intentional settle.
+  const doSettleHandoff = useCallback(
+    (taskId: string) => {
+      const settled = settleAgentHandoff(taskId)
+      if (settled) setIsSendPending(false)
+      return settled
+    },
+    [settleAgentHandoff],
+  )
+
   const doRegenerate = useCallback(
     (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => {
       const question = editedQuestion
@@ -303,10 +331,11 @@ export function AgentPreviewChatConversation({
   )
   const isEmptyChat = chatList.length === 0
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
-  useImperativeHandle(ref, () => ({ send: doSend, stop: doStopResponding }), [
-    doSend,
-    doStopResponding,
-  ])
+  useImperativeHandle(
+    ref,
+    () => ({ send: doSend, stop: doStopResponding, settleHandoff: doSettleHandoff }),
+    [doSend, doStopResponding, doSettleHandoff],
+  )
   useLayoutEffect(() => {
     onRuntimeStateChange({
       isEmptyChat,

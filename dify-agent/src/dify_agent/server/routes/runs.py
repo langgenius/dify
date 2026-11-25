@@ -14,6 +14,7 @@ replay backed by Redis event streams.
 
 from collections.abc import Callable
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -25,7 +26,9 @@ from dify_agent.protocol.schemas import (
     CreateRunResponse,
     RunEventsResponse,
     RunInputRequest,
+    RunInputHandoffResponse,
     RunInputResponse,
+    RunInputText,
     RunQueueResponse,
     RunStatusResponse,
 )
@@ -112,6 +115,29 @@ def create_runs_router(
             except RunInputConflictError as exc:
                 raise HTTPException(status_code=409, detail=str(exc)) from exc
             return RunInputResponse(input_id=request.input_id)
+
+        @router.post("/{run_id}/inputs/{input_id}/interrupt", response_model=RunInputHandoffResponse, status_code=202)
+        async def interrupt_input(
+            run_id: str,
+            input_id: UUID,
+            payload: RunInputText,
+            store: Annotated[RedisRunStore, Depends(store_dep)],
+        ) -> RunInputHandoffResponse:
+            """Freeze the inbox and prioritize this input for turn handoff.
+
+            The text is atomically appended last and the inbox sealed, so it
+            cannot drain before the run settles; the receipt carries every
+            still-pending input in FIFO order for replay on the next turn.
+            """
+            try:
+                pending = await store.freeze_run_inputs(
+                    run_id, RunInputRequest(input_id=input_id, text=payload.text)
+                )
+            except RunNotFoundError as exc:
+                raise HTTPException(status_code=404, detail="run not found") from exc
+            except RunInputConflictError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+            return RunInputHandoffResponse(input_id=input_id, pending_inputs=pending)
 
         @router.get("/{run_id}/queue", response_model=RunQueueResponse)
         async def get_run_queue(

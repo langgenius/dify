@@ -1304,6 +1304,31 @@ export const zRetrieverResource = z.object({
 })
 
 /**
+ * RunInputRequest
+ *
+ * Request body for queueing steering input on a running run.
+ *
+ * The caller-provided id makes retries idempotent: the same id and text is a
+ * no-op, while the same id with different text conflicts.
+ */
+export const zRunInputRequest = z.object({
+  input_id: z.uuid(),
+  text: z.string().min(1).max(8000),
+})
+
+/**
+ * RunInputText
+ *
+ * Text prioritized over a run's pending inputs by the interrupt route.
+ *
+ * Shares the ``RunInputRequest.text`` contract; the input id travels in the
+ * path so a retried cut-in keeps its caller-provided id.
+ */
+export const zRunInputText = z.object({
+  text: z.string().min(1).max(8000),
+})
+
+/**
  * SSOProtocol
  */
 export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
@@ -1972,6 +1997,26 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * WebAgentChatHandoffResponse
+ *
+ * Settled steering handoff: pending inputs to replay on the next turn.
+ */
+export const zWebAgentChatHandoffResponse = z.object({
+  input_id: z.uuid(),
+  pending_inputs: z.array(zRunInputRequest),
+})
+
+/**
+ * WebAgentChatInputResponse
+ *
+ * Receipt for an accepted steering input; acceptance is not delivery.
+ */
+export const zWebAgentChatInputResponse = z.object({
+  input_id: z.uuid(),
+  status: z.literal('queued'),
+})
+
+/**
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
@@ -2296,6 +2341,30 @@ export const zPostChatMessagesBody = zChatMessagePayload
  * Success
  */
 export const zPostChatMessagesResponse = zGeneratedAppResponse
+
+export const zPostChatMessagesByTaskIdInputsBody = zRunInputRequest
+
+export const zPostChatMessagesByTaskIdInputsPath = z.object({
+  task_id: z.uuid(),
+})
+
+/**
+ * Input queued
+ */
+export const zPostChatMessagesByTaskIdInputsResponse = zWebAgentChatInputResponse
+
+export const zPostChatMessagesByTaskIdInputsByInputIdInterruptBody = zRunInputText
+
+export const zPostChatMessagesByTaskIdInputsByInputIdInterruptPath = z.object({
+  input_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Handoff settled
+ */
+export const zPostChatMessagesByTaskIdInputsByInputIdInterruptResponse =
+  zWebAgentChatHandoffResponse
 
 export const zPostChatMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),

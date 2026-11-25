@@ -128,6 +128,39 @@ class RunInputResponse(BaseModel):
     status: Literal["queued"] = "queued"
 
 
+class RunInputText(BaseModel):
+    """Text prioritized over a run's pending inputs by the interrupt route.
+
+    Shares the ``RunInputRequest.text`` contract; the input id travels in the
+    path so a retried cut-in keeps its caller-provided id.
+    """
+
+    text: Annotated[str, Field(min_length=1, max_length=8000)]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @field_validator("text")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("input text must not be blank")
+        return value
+
+
+class RunInputHandoffResponse(BaseModel):
+    """Acknowledgement that a run's steering inbox froze for turn handoff.
+
+    ``pending_inputs`` carries every still-pending input in FIFO order —
+    including the prioritized ``input_id``, appended last — so the authorized
+    caller can replay them on the next turn. Unlike the public queue snapshot,
+    this scoped mutation returns text because the same owner already submitted
+    it.
+    """
+
+    input_id: UUID
+    pending_inputs: list[RunInputRequest]
+
+
 class RunQueueEntry(BaseModel):
     """One inbox entry: an id and kind only, never text, output, or secrets."""
 
@@ -350,8 +383,10 @@ __all__ = [
     "RunFailedEvent",
     "RunFailedEventData",
     "RunFailureType",
+    "RunInputHandoffResponse",
     "RunInputRequest",
     "RunInputResponse",
+    "RunInputText",
     "RunQueueEntry",
     "RunQueueResponse",
     "RunStartedEvent",
