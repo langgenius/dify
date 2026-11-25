@@ -272,7 +272,20 @@ def test_get_pool_uses_billing_quota_balance_when_enabled(config_overrides: Call
     )
 
 
-def test_reserve_credits_commits_billing_reservation_once() -> None:
+@pytest.mark.parametrize(
+    ("attribution", "expected_app_type", "expected_created_by"),
+    [
+        ({}, "unknown", "unknown"),
+        (
+            {"app_type": CreditUsageAppType.WORKFLOW, "created_by": CreditUsageCreatedBy.EVALUATION},
+            "workflow",
+            "evaluation",
+        ),
+    ],
+)
+def test_reserve_credits_commits_billing_reservation_once(
+    attribution: dict[str, str], expected_app_type: str, expected_created_by: str
+) -> None:
     with (
         patch.object(CreditPoolService, "_use_billing_quota", return_value=True),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
@@ -286,24 +299,25 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
             credits_required=3,
             pool_type=ProviderQuotaType.TRIAL,
             request_id="request-1",
-            meta={"source": "test"},
+            meta={"source": "test", **attribution},
         )
         reservation.commit()
         reservation.commit()
         reservation.release()
 
     assert reservation.state == CreditPoolReservationState.COMMITTED
+    expected_metadata = {
+        "source": "test",
+        "created_by": expected_created_by,
+        "app_type": expected_app_type,
+    }
     quota_reserve.assert_called_once_with(
         tenant_id="tenant-1",
         feature_key=FEATURE_KEY_CREDIT_POOL,
         bucket="trial",
         request_id="request-1",
         amount=3,
-        meta={
-            "source": "test",
-            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
-            "app_type": CreditUsageAppType.UNKNOWN.value,
-        },
+        meta=expected_metadata,
     )
     quota_commit.assert_called_once_with(
         tenant_id="tenant-1",
@@ -311,12 +325,7 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
         bucket="trial",
         reservation_id="reservation-1",
         actual_amount=3,
-        meta={
-            "source": "test",
-            "created_by": CreditUsageCreatedBy.UNKNOWN.value,
-            "app_type": CreditUsageAppType.UNKNOWN.value,
-            "request_id": "request-1",
-        },
+        meta={**expected_metadata, "request_id": "request-1"},
     )
     quota_release.assert_not_called()
 
