@@ -102,6 +102,7 @@ from models.workflow import (
     WorkflowType,
     resolve_workflow_kind,
 )
+from repositories.app.workflow_app_lock import lock_workflow_app
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
@@ -522,19 +523,25 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
-        Existing drafts are row-locked before the hash check. Collaborative
-        graph-only saves preserve independently persisted draft fields, while
-        an explicit per-ID environment patch is merged with the graph.
+        The caller supplies an admitted App and a transaction with no pending
+        draft edits. A missing hash requests initialization under the App lock.
+        Read and refresh the draft under its own lock before comparing the hash.
+        A conflict writes nothing. With commit=False the caller keeps the locks
+        until commit or rollback. Collaborative saves preserve independently
+        persisted fields and merge an explicit per-ID environment patch.
 
-        :raises WorkflowHashNotEqualError
+        :raises WorkflowHashNotEqualError: The draft state differs from the request.
+        :raises WorkflowNotFoundError: The App was removed before initialization.
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
-        # fetch draft workflow by app_model
+        if unique_hash is None and not lock_workflow_app(app=app_model, session=session):
+            raise WorkflowNotFoundError("App not found for draft initialization.")
+
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
-        if workflow and workflow.unique_hash != unique_hash:
+        if unique_hash != (workflow.unique_hash if workflow is not None else None):
             raise WorkflowHashNotEqualError()
 
         # Collaboration persists features and variables through dedicated endpoints. A graph save
@@ -731,10 +738,14 @@ class WorkflowService:
         published workflow so the normal draft sync flow stays stateless.
 
         Preconditions: the caller has admitted the App, account and source ID.
-        Postconditions: the source and destination draft stay locked while their
-        graph and Agent bindings are copied atomically; a concurrent Composer
-        save cannot interleave. Validation failure commits no draft changes.
+        Postconditions: the App, source and destination draft stay locked while
+        the graph and Agent bindings are copied atomically. The App lock also
+        serializes creation if the draft is missing. Validation failure commits
+        no draft changes.
         """
+        if not lock_workflow_app(app=app_model, session=session):
+            raise WorkflowNotFoundError("Workflow not found.")
+
         source_workflow = self.get_published_workflow_by_id(
             app_model=app_model,
             workflow_id=workflow_id,
@@ -797,10 +808,13 @@ class WorkflowService:
         paid plan. Entitlement failures add no published version.
 
         Preconditions: the caller has admitted the App and account. Postconditions:
-        the refreshed draft is locked until the caller commits or rolls back, so
-        the copied graph and Agent node jobs represent the same session-policy
-        generation. Validation or entitlement failure publishes no version.
+        the App and refreshed draft are locked in that order until the caller
+        commits or rolls back. The caller can activate the copy in the same
+        transaction. Validation or entitlement failure publishes no version.
         """
+        if not lock_workflow_app(app=app_model, session=session):
+            raise ValueError("No valid workflow found.")
+
         draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")

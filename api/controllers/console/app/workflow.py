@@ -34,6 +34,7 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.app.error import (
+    AppNotFoundError,
     ConversationCompletedError,
     DraftWorkflowNotExist,
     DraftWorkflowNotSync,
@@ -665,9 +666,7 @@ class DraftWorkflowApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def post(self, current_user: Account, app_model: App):
-        """
-        Sync draft workflow
-        """
+        """Save the admitted application's draft or report a stale draft hash."""
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -723,6 +722,8 @@ class DraftWorkflowApi(Resource):
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
+        except WorkflowNotFoundError as exc:
+            raise AppNotFoundError() from exc
         except VariableError as e:
             raise InvalidArgumentError(description=str(e)) from e
 

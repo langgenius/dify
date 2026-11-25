@@ -6,17 +6,22 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
+import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from queue import Queue
 
 import pytest
 from faker import Faker
-from sqlalchemy.orm import Session
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session, sessionmaker
 
 from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
+from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 from tests.helpers.unit.core.model_fixtures import make_model_instance
@@ -740,6 +745,78 @@ class TestWorkflowService:
         assert result.graph == json.dumps(graph)
         assert result.features == json.dumps(features)
         assert result.created_by == account.id
+
+    @pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    def test_competing_first_saves_create_one_draft(self, db_session_with_containers: Session, mode: AppMode) -> None:
+        """An initializer holds the owner through commit and a competing save then sees its draft."""
+        account = self._create_test_account(db_session_with_containers)
+        app = self._create_test_app(db_session_with_containers)
+        app.mode = mode
+        db_session_with_containers.commit()
+        app_id, tenant_id, account_id = app.id, app.tenant_id, account.id
+        sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
+        service = WorkflowService(sessions)
+        contender_pid: Queue[int] = Queue()
+
+        def sync(session: Session, title: str) -> Workflow:
+            admitted_app = session.get(App, app_id)
+            actor = session.get(Account, account_id)
+            assert admitted_app is not None
+            assert actor is not None
+            return service.sync_draft_workflow(
+                app_model=admitted_app,
+                graph={"nodes": [{"id": "start", "data": {"type": "start", "title": title}}], "edges": []},
+                features={},
+                unique_hash=None,
+                account=actor,
+                environment_variables=[],
+                conversation_variables=[],
+                session=session,
+                commit=False,
+                sync_agent_bindings=False,
+            )
+
+        def compete() -> bool:
+            with sessions.begin() as session:
+                session.execute(text("SET LOCAL lock_timeout = '10s'"))
+                pid = session.scalar(text("SELECT pg_backend_pid()"))
+                assert isinstance(pid, int)
+                contender_pid.put(pid)
+                try:
+                    sync(session, "Competing save")
+                except WorkflowHashNotEqualError:
+                    return False
+                return True
+
+        with ThreadPoolExecutor(max_workers=1) as executor, sessions() as initializer, sessions() as observer:
+            first = sync(initializer, "First save")
+            initializer_pid = initializer.scalar(text("SELECT pg_backend_pid()"))
+            contender = executor.submit(compete)
+            pid = contender_pid.get(timeout=5)
+            deadline = time.monotonic() + 5
+            waiting_for_initializer = False
+            while not waiting_for_initializer and not contender.done() and time.monotonic() < deadline:
+                waiting_for_initializer = bool(
+                    observer.scalar(
+                        text("SELECT :initializer = ANY(pg_blocking_pids(:contender))"),
+                        {"initializer": initializer_pid, "contender": pid},
+                    )
+                )
+                if not waiting_for_initializer:
+                    time.sleep(0.01)
+            assert waiting_for_initializer
+
+            initializer.commit()
+            assert contender.result(timeout=5) is False
+            stored = observer.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.app_id == app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                )
+            ).one()
+            assert stored.id == first.id
+            assert stored.graph_dict == first.graph_dict
 
     def test_sync_draft_workflow_update_existing(self, db_session_with_containers: Session):
         """

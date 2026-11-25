@@ -88,7 +88,7 @@ export const useWorkflowInit = () => {
     workflowStore.getState().setFileUploadConfig(fileUploadConfigResponse)
   }, [fileUploadConfigResponse, workflowStore])
 
-  const handleGetInitialWorkflowData = useCallback(async () => {
+  const handleGetInitialWorkflowData = useCallback(async (): Promise<void> => {
     try {
       const res = await fetchAppWorkflowDraft(appDetail.id)
       const initialData = {
@@ -157,8 +157,8 @@ export const useWorkflowInit = () => {
             return
           }
 
-          consoleClient.apps.byAppId.workflows.draft
-            .post(
+          try {
+            const res = await consoleClient.apps.byAppId.workflows.draft.post(
               {
                 params: { app_id: appDetail.id },
                 body: {
@@ -172,11 +172,13 @@ export const useWorkflowInit = () => {
               },
               { context: { silent: true } },
             )
-            .then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash, initialGraph)
-              handleGetInitialWorkflowData()
-            })
+            workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+            setSyncWorkflowDraftHash(res.hash, initialGraph)
+          } catch (saveError) {
+            if (!(saveError instanceof ORPCError) || saveError.code !== 'draft_workflow_not_sync')
+              throw saveError
+          }
+          await handleGetInitialWorkflowData()
         }
       }
     }

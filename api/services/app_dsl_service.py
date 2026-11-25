@@ -56,6 +56,7 @@ from models.agent import AgentScope, WorkflowAgentBindingType, WorkflowAgentNode
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
+from repositories.app.workflow_app_lock import lock_workflow_app
 from services.agent.dsl_entities import AGENT_NODE_JOB_DSL_KEY, AgentPackage, make_agent_app_dsl
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
 from services.agent.package_resource_exporter import AgentPackageResourceExporter
@@ -683,13 +684,25 @@ class AppDslService:
         preserve_agent_bindings: bool = False,
         draft_hash: str | None = None,
     ) -> App:
-        """Create a new app or update an existing one."""
+        """Create an App or apply validated DSL to an admitted existing App.
+
+        Workflow imports lock the App before inspecting the draft and before
+        changing metadata. A failed draft guard leaves metadata and the
+        dependency cache untouched.
+        """
         app_data = data.get("app", {})
         app_mode = app_data.get("mode")
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
-        # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
+        if (
+            app is not None
+            and app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW)
+            and not lock_workflow_app(app=app, session=self._session)
+        ):
+            if draft_hash is not None:
+                raise DraftChangedError()
+            raise WorkflowNotFoundError("App not found for draft import.")
         locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
@@ -781,7 +794,7 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow(
+                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow_for_update(
                     app_model=app, session=self._session
                 )
                 unique_hash = current_draft_workflow.unique_hash if current_draft_workflow else None

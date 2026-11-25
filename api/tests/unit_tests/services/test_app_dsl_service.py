@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from functools import partial
 from io import BytesIO
 from types import SimpleNamespace
 from typing import cast
@@ -10,13 +10,16 @@ import pytest
 import yaml
 from pydantic import ValidationError
 from sqlalchemy import event, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql.elements import ClauseElement
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
+from events.app_event import app_draft_workflow_was_synced
 from models import Account, App, AppMode
 from models.enums import CustomizeTokenStrategy
 from models.model import AppModelConfig, AppModelConfigDict, IconType, Site
@@ -31,6 +34,7 @@ from services.entities.site_dsl import SiteDsl
 from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.graph_diff import draft_token
+from services.workflow_service import WorkflowService
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 
@@ -953,60 +957,55 @@ def test_chat_dsl_import_preserves_valid_feature_fields(sqlite_session: Session)
     assert persisted.text_to_speech_dict == model_config["text_to_speech"]
 
 
-def test_create_or_update_app_removes_imported_workflow_viewport(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), get=Mock()))
-    service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-    )
-    workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=SimpleNamespace(id="workflow-1")),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+@pytest.fixture
+def workflow_dsl_service(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> AppDslService:
+    """Wire the real workflow service to the same database as the DSL import."""
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", partial(WorkflowService, sqlite_session_factory))
+    return AppDslService(sqlite_session)
+
+
+def test_create_or_update_app_removes_imported_workflow_viewport(
+    sqlite_session: Session, workflow_dsl_service: AppDslService
+) -> None:
+    session = sqlite_session
+    app = _app(mode=AppMode.WORKFLOW)
+    session.add(app)
+    session.commit()
     imported_graph: dict[str, object] = {
         "nodes": [],
         "edges": [],
         "viewport": {"x": 100, "y": 200, "zoom": 1.5},
     }
 
-    service._create_or_update_app(
-        app=cast(App, app),
-        data={
-            "app": {"mode": AppMode.WORKFLOW.value},
-            "workflow": {"graph": imported_graph},
-        },
-        account=Mock(id="account-1"),
-    )
+    with app_draft_workflow_was_synced.muted():
+        workflow_dsl_service._create_or_update_app(
+            app=app,
+            data={
+                "app": {"mode": AppMode.WORKFLOW.value},
+                "workflow": {"graph": imported_graph},
+            },
+            account=_account(),
+        )
 
-    assert workflow_service.sync_draft_workflow.call_args.kwargs["graph"] == {
-        "nodes": [],
-        "edges": [],
-    }
+    draft = WorkflowService.get_draft_workflow(app, session=session)
+    assert draft is not None
+    assert draft.graph_dict == {"nodes": [], "edges": []}
     assert imported_graph["viewport"] == {"x": 100, "y": 200, "zoom": 1.5}
 
 
-def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
+def test_create_or_update_app_forwards_imported_agent_purge_ids(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    session = sqlite_session
     service = AppDslService(session=session)
-    app = SimpleNamespace(
-        id="app-1",
-        tenant_id="tenant-1",
-        name="Workflow",
-        description="",
-        icon_type=IconType.EMOJI,
-        icon="robot",
-        icon_background="#FFFFFF",
-    )
+    app = _app(tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+    session.add(app)
+    session.commit()
     workflow = SimpleNamespace(id="workflow-1")
     workflow_service = SimpleNamespace(
-        get_draft_workflow=Mock(return_value=None),
+        get_draft_workflow_for_update=Mock(return_value=None),
         sync_draft_workflow=Mock(return_value=workflow),
     )
     monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
@@ -1029,7 +1028,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pyt
     )
 
     service._create_or_update_app(
-        app=cast(App, app),
+        app=app,
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": {"nodes": [], "edges": []}},
@@ -1272,81 +1271,58 @@ def test_missing_app_section_names_the_keys_that_were_present(
     assert not unbound_session.in_transaction()
 
 
-@dataclass
-class _DraftWorkflowService:
-    draft: Workflow | None
-    lookups: list[str] = field(default_factory=list)
-    synced_hashes: list[str | None] = field(default_factory=list)
-
-    def _draft_of(self, app_model: App) -> Workflow | None:
-        return self.draft if self.draft is not None and self.draft.app_id == app_model.id else None
-
-    def get_draft_workflow(self, app_model: App, **_: object) -> Workflow | None:
-        self.lookups.append("read")
-        return self._draft_of(app_model)
-
-    def get_draft_workflow_for_update(self, app_model: App, **_: object) -> Workflow | None:
-        self.lookups.append("locked")
-        return self._draft_of(app_model)
-
-    def sync_draft_workflow(self, *, graph: dict[str, object], unique_hash: str | None, **_: object) -> Workflow:
-        self.synced_hashes.append(unique_hash)
-        return _workflow(graph=graph)
-
-
 def _workflow_draft(app: App) -> Workflow:
     return make_workflow(tenant_id=app.tenant_id, app_id=app.id, graph={"nodes": [], "edges": []})
 
 
-def _guarded_overwrite(
-    monkeypatch: pytest.MonkeyPatch, session: Session, *, draft: Workflow | None
-) -> tuple[AppDslService, _DraftWorkflowService, Callable[[str], App]]:
-    service = AppDslService(session=session)
-    workflow_service = _DraftWorkflowService(draft=draft)
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", lambda: workflow_service)
-    app = _app(mode=AppMode.WORKFLOW)
-
-    def overwrite(draft_hash: str) -> App:
-        return service._create_or_update_app(
-            app=app,
-            data={"app": {"mode": AppMode.WORKFLOW.value}, "workflow": {"graph": {"nodes": [], "edges": []}}},
-            account=_account(),
-            draft_hash=draft_hash,
-        )
-
-    return service, workflow_service, overwrite
-
-
-def test_guarded_overwrite_saves_against_the_locked_draft_it_matched(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+@pytest.mark.parametrize("guarded", [False, True], ids=["unconditional-import", "hash-guarded-import"])
+def test_overwrite_locks_app_before_draft_and_updates_it_in_place(
+    sqlite_session: Session, workflow_dsl_service: AppDslService, guarded: bool
 ) -> None:
-    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW))
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
+    """Both overwrite paths acquire the App before the draft so metadata writes can safely follow."""
+    app = _app(mode=AppMode.WORKFLOW)
+    draft = _workflow_draft(app)
+    sqlite_session.add_all([app, draft])
+    sqlite_session.commit()
+    locking_reads: list[str] = []
 
-    overwrite(draft_token(draft))
+    def record_lock(state: ORMExecuteState) -> None:
+        if state.is_select and isinstance(state.statement, ClauseElement):
+            statement = str(state.statement.compile(dialect=postgresql.dialect()))
+            if "FOR UPDATE" in statement:
+                locking_reads.append(statement)
 
-    assert workflow_service.lookups == ["locked"]
-    assert workflow_service.synced_hashes == [draft.unique_hash]
+    graph = {"nodes": [{"id": "start", "data": {"type": "start"}}], "edges": []}
+    event.listen(sqlite_session, "do_orm_execute", record_lock)
+    try:
+        with app_draft_workflow_was_synced.muted():
+            workflow_dsl_service._create_or_update_app(
+                app=app,
+                data={"app": {"mode": AppMode.WORKFLOW.value, "name": "Imported"}, "workflow": {"graph": graph}},
+                account=_account(),
+                draft_hash=draft_token(draft) if guarded else None,
+            )
+    finally:
+        event.remove(sqlite_session, "do_orm_execute", record_lock)
+    app_lock, initial_draft_lock, sync_draft_lock = locking_reads
+    assert "FROM apps" in app_lock
+    assert "FROM workflows" in initial_draft_lock
+    assert "FROM workflows" in sync_draft_lock
+    assert app.name == "Imported"
+    assert sqlite_session.scalars(select(Workflow).where(Workflow.app_id == app.id)).one().id == draft.id
+    assert draft.graph_dict == graph
 
 
 @pytest.mark.parametrize("draft_exists", [True, False], ids=["draft-changed", "draft-gone"])
-def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, draft_exists: bool
-) -> None:
-    draft = _workflow_draft(_app(mode=AppMode.WORKFLOW)) if draft_exists else None
-    _, workflow_service, overwrite = _guarded_overwrite(monkeypatch, unbound_session, draft=draft)
-
-    with pytest.raises(DraftChangedError):
-        overwrite("exported")
-
-    assert workflow_service.synced_hashes == []
-
-
 def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, workflow_dsl_service: AppDslService, draft_exists: bool
 ) -> None:
     app = _app(mode=AppMode.WORKFLOW)
-    service, workflow_service, _ = _guarded_overwrite(monkeypatch, unbound_session, draft=_workflow_draft(app))
+    draft = _workflow_draft(app) if draft_exists else None
+    sqlite_session.add(app)
+    if draft is not None:
+        sqlite_session.add(draft)
+    sqlite_session.commit()
     cached: list[str] = []
     monkeypatch.setattr("services.app_dsl_service.redis_client.setex", lambda key, _expiry, _value: cached.append(key))
     dependency = PluginDependency(
@@ -1355,7 +1331,7 @@ def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
     )
 
     with pytest.raises(DraftChangedError):
-        service._create_or_update_app(
+        workflow_dsl_service._create_or_update_app(
             app=app,
             data={"app": {"mode": AppMode.WORKFLOW.value, "name": "After"}, "workflow": {"graph": {}}},
             account=_account(),
@@ -1365,7 +1341,7 @@ def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(
 
     assert cached == []
     assert app.name == "Existing app"
-    assert workflow_service.synced_hashes == []
+    assert WorkflowService.get_draft_workflow(app, session=sqlite_session) is draft
 
 
 def _refuse_changed_draft(forwarded: list[str | None]) -> Callable[..., App]:
