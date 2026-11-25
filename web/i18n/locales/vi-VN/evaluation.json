@@ -75,6 +75,7 @@
   "entry.checkFailed": "Không thể kiểm tra phiên bản đã xuất bản. Vui lòng thử lại.",
   "entry.duplicateNodeNames": "Phiên bản đã xuất bản có các nút trùng tên ({{names}}). Bạn vẫn có thể tiếp tục đánh giá, nhưng đổi tên các nút và xuất bản phiên bản mới sẽ giúp phân biệt kết quả dễ dàng hơn.",
   "entry.duplicateNodeNamesTitle": "Tên nút bị trùng",
+  "entry.triggerUnsupported": "Không thể đánh giá quy trình bắt đầu bằng trình kích hoạt. Hãy xuất bản quy trình có nút bắt đầu Nhập liệu người dùng.",
   "history.actions.cancel": "Hủy lượt chạy",
   "history.actions.downloadFailed": "Không thể tải tệp đánh giá.",
   "history.actions.downloadResultFile": "Tải kết quả",
