@@ -34,19 +34,38 @@ export function isUnknownExternalSaveResult(error: unknown): boolean {
   return status === undefined || status === 408 || status >= 500
 }
 
-/** Keeps verification evidence scoped to its actor, workspace and immutable edit base. */
-export function useExternalConnectionVerification(edit?: {
-  agentId: string
-  revisionId: string
-  hasCredential: boolean
-}) {
+export function useExternalConnectionIdentity() {
   const workspaceId = useAtomValue(currentWorkspaceIdAtom)
   const profile = useQuery(userProfileQueryOptions())
-  const [proof, setProof] = useState<{
-    scope: string
-    evidence: ExternalAgentVerificationResponse
-  }>()
-  const [expiredScope, setExpiredScope] = useState<string>()
+  const actorId = profile.data?.profile.id
+  return { workspaceId, actorId, identityScope: `${workspaceId}:${actorId ?? ''}` }
+}
+
+/** Keeps verification evidence scoped to its actor, workspace and immutable edit base. */
+export function useExternalConnectionVerification(
+  edit?: {
+    agentId: string
+    revisionId: string
+    hasCredential: boolean
+  },
+  initialEvidence?: ExternalAgentVerificationResponse,
+) {
+  const { workspaceId, actorId, identityScope } = useExternalConnectionIdentity()
+  const scope = `${identityScope}:${edit?.agentId ?? ''}:${edit?.revisionId ?? ''}`
+  const [proof, setProof] = useState<
+    | {
+        scope: string
+        evidence: ExternalAgentVerificationResponse
+      }
+    | undefined
+  >(() =>
+    initialEvidence && Date.parse(initialEvidence.expires_at) > Date.now()
+      ? { scope, evidence: initialEvidence }
+      : undefined,
+  )
+  const [expiredScope, setExpiredScope] = useState<string | undefined>(() =>
+    initialEvidence && Date.parse(initialEvidence.expires_at) <= Date.now() ? scope : undefined,
+  )
   const epochRef = useRef(0)
   const verification = useMutation(
     consoleQuery.externalAgents.verify.post.mutationOptions({
@@ -54,8 +73,6 @@ export function useExternalConnectionVerification(edit?: {
       retry: false,
     }),
   )
-  const identityScope = `${workspaceId}:${profile.data?.profile.id ?? ''}`
-  const scope = `${identityScope}:${edit?.agentId ?? ''}:${edit?.revisionId ?? ''}`
   const evidence = proof?.scope === scope ? proof.evidence : undefined
   const expired = expiredScope === scope
   const { reset: resetVerification } = verification
@@ -88,7 +105,7 @@ export function useExternalConnectionVerification(edit?: {
     onVerified: (result: ExternalAgentVerificationResponse) => void,
     onConflict?: () => void,
   ) => {
-    if (verification.isPending || !workspaceId || !profile.data?.profile.id) return
+    if (verification.isPending || !workspaceId || !actorId) return
     const requestEpoch = ++epochRef.current
     setProof(undefined)
     setExpiredScope(undefined)
