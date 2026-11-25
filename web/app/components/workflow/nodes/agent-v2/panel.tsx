@@ -285,13 +285,14 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const handleRosterChange = useCallback(
     (agent: AgentRosterNodeData) => {
       setOpenInlineAgentPanelNodeId(undefined)
-      const newInputs = produce(inputs, (draft) => {
+      const newInputs = produce(inputsRef.current, (draft) => {
         delete (draft as AgentV2NodeType & { agent_roster?: unknown }).agent_roster
         draft.agent_binding = {
           binding_type: 'roster_agent',
           agent_id: agent.id,
         }
       })
+      inputsRef.current = newInputs
       handleNodeDataUpdateWithSyncDraft(
         {
           id,
@@ -303,7 +304,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         },
       )
     },
-    [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId],
+    [handleNodeDataUpdateWithSyncDraft, id, setOpenInlineAgentPanelNodeId],
   )
 
   const handleExternalChange = useCallback(
@@ -345,6 +346,12 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setOpenInlineAgentPanelNodeId,
     ],
   )
+
+  const handleSessionContinuityChange = (checked: boolean) => {
+    const newInputs = { ...inputsRef.current, continue_agent_session: checked }
+    inputsRef.current = newInputs
+    setInputs(newInputs)
+  }
 
   const handleRosterCopySuccess = useCallback(
     (composerState: WorkflowAgentComposerResponse) => {
@@ -778,7 +785,13 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
             onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
-          {isChatflow && <AgentSessionContinuityField id={id} data={inputs} />}
+          {isChatflow && (
+            <AgentSessionContinuityField
+              checked={inputs.continue_agent_session ?? true}
+              disabled={isAgentBindingPending || isCopyingFromRoster || rosterAgentQuery.isLoading}
+              onChange={handleSessionContinuityChange}
+            />
+          )}
           <AgentOutputRoutes id={id} data={inputs} />
           <AgentOutputVariables
             collapsed={isOutputVariablesCollapsed}

@@ -170,6 +170,25 @@ it.each(['paste', 'duplicate'] as const)(
   },
 )
 
+it('keeps the off session setting when duplicating a Chatflow New Agent node', async () => {
+  const binding = { binding_type: 'roster_agent', agent_id: 'shared-agent' }
+  const source = workflowNode(BlockEnum.AgentV2, 'agent', {
+    data: {
+      agent_binding: binding,
+      continue_agent_session: false,
+    },
+  })
+  const { result } = setup({ nodes: [source], chatflow: true })
+
+  await act(async () => result.current.handleNodesDuplicate(source.id))
+
+  await waitFor(() => expect(result.current.nodes).toHaveLength(2))
+  expect(result.current.nodes.find((node) => node.id !== source.id)?.data).toMatchObject({
+    agent_binding: binding,
+    continue_agent_session: false,
+  })
+})
+
 it.each(['add', 'replace'] as const)(
   'rejects %s overrides that smuggle V2 data through the legacy catalog when the release gate is off',
   (command) => {
