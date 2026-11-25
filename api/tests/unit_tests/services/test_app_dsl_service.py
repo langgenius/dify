@@ -385,18 +385,19 @@ def test_extract_model_config_dependencies_skips_workspace_tool_providers() -> N
 
 
 @pytest.mark.parametrize(
-    ("reranking_mode", "expected"),
+    ("retrieval_model", "reranking_mode", "expected"),
     [
-        (None, ["langgenius/openai", "langgenius/cohere"]),
-        ("reranking_model", ["langgenius/openai", "langgenius/cohere"]),
-        ("weighted_score", ["langgenius/openai"]),
+        ("multiple", None, ["langgenius/openai", "langgenius/cohere"]),
+        ("multiple", "reranking_model", ["langgenius/openai", "langgenius/cohere"]),
+        ("multiple", "weighted_score", ["langgenius/openai"]),
+        ("single", "reranking_model", ["langgenius/openai"]),
     ],
 )
 def test_extract_model_config_dependencies_includes_reranking_model_provider(
-    reranking_mode: str | None, expected: list[str]
+    retrieval_model: str, reranking_mode: str | None, expected: list[str]
 ) -> None:
     dataset_configs: dict[str, object] = {
-        "retrieval_model": "multiple",
+        "retrieval_model": retrieval_model,
         "datasets": {"datasets": [{"dataset": {"enabled": True, "id": "dataset-1"}}]},
         "reranking_model": {"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v3.5"},
     }

@@ -1330,7 +1330,13 @@ class AppDslService:
 
             # reranking model
             dataset_configs = model_config.get("dataset_configs", {})
-            if dataset_configs and dataset_configs.get("reranking_mode", "reranking_model") == "reranking_model":
+            # Only multiple retrieval runs the rerank model (see DatasetConfigManager); mirrors the
+            # knowledge retrieval node branch in _extract_dependencies_from_workflow.
+            if (
+                dataset_configs
+                and dataset_configs.get("retrieval_model") == "multiple"
+                and dataset_configs.get("reranking_mode", "reranking_model") == "reranking_model"
+            ):
                 reranking_provider = (dataset_configs.get("reranking_model") or {}).get("reranking_provider_name")
                 if reranking_provider:
                     dependencies.append(
