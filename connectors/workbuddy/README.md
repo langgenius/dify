@@ -24,7 +24,7 @@ Use `--worktree` for a test build before a release, so the zip contains skill ch
 - The Dify host name. WorkBuddy always connects to `https://<host>/openapi/v1/mcp` on port 443 and cannot take a port, so the server must be reachable over HTTPS on 443.
 - A personal access token (prefix `dpat_`, recommended) or a workspace access token. The token's app access decides which apps the agent can find and run. Workspace access is needed for plugins, model providers and tool credentials. A personal token can find and run the apps chosen for the token, answer human-input forms, and manage plugins, model providers and tool credentials. A workspace token can list and run apps, but cannot answer a human-input pause and cannot reach plugins, model providers or tool credentials.
 
-File upload is not available over MCP. A file is passed to an app as a URL in its inputs. A bad token gets a 401, and WorkBuddy then asks the user to reconnect.
+An agent whose shell can reach the Dify server can send a local file as a run input: it calls `prepare.upload` and runs the command it returns. Skill operations refuse personal and workspace tokens, so with these tokens their files stay out of reach. A URL in an app's inputs still works. A bad token gets a 401, and WorkBuddy then asks the user to reconnect.
 
 ## Notes
 

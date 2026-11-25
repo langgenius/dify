@@ -32,6 +32,8 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Response
 
+from configs import dify_config
+from constants import HEADER_NAME_FILE_RESULT
 from controllers.openapi._catalog import (
     _QUERY_METHODS,
     CATALOG_HEADER,
@@ -41,6 +43,7 @@ from controllers.openapi._catalog import (
     current_catalog,
     op_registry,
 )
+from controllers.openapi._transfer import FileResult
 
 AUTHORIZATION_HEADER: Final = "Authorization"
 TRACE_ID_HEADER: Final = "X-Trace-Id"
@@ -52,6 +55,8 @@ _URL_ENCODING: Final = "utf-8"
 _PLACEHOLDER_RE: Final = re.compile(r"\{(\w+)\}")
 # Kept unescaped when the proved path is encoded: the separators the template itself holds.
 _PATH_SAFE: Final = "/"
+# A file field travels in the JSON body as a transfer id; the op's parse layer swaps it for the file.
+_SLOT_OF: Final[Mapping[Bind, Bind]] = {Bind.FILE: Bind.BODY}
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -84,7 +89,7 @@ class UnsafePathValue(Exception):  # noqa: N818
 
 
 class FileInputUnsupported(Exception):  # noqa: N818
-    """The input fills a field the op binds as a file upload."""
+    """The input fills a field the op binds as a file, while file transfers are off: there is no transfer id."""
 
 
 class RouteMismatch(Exception):  # noqa: N818
@@ -105,9 +110,9 @@ def call_op(call: OpCall) -> OpResult:
 
     Precondition: runs inside a Flask request. Postcondition: the operation ran
     exactly as for an outside HTTP request, or one of ``UnknownOp``,
-    ``FileInputUnsupported``, ``UnsafePathValue`` and ``RouteMismatch`` was raised
-    and nothing ran. The outer request's context variables and ``flask.g`` are
-    untouched either way.
+    ``FileInputUnsupported``, ``UnsafePathValue`` and ``RouteMismatch`` was raised and
+    nothing ran. The outer request's context variables and ``flask.g`` are untouched
+    either way.
     """
     registered = op_registry().get(call.op)
     if registered is None:
@@ -124,24 +129,33 @@ def _split_input(entry: CatalogOp, method: HTTPMethod, input: Mapping[str, Any])
     """Place each input key where the op's bind table says.
 
     Precondition: ``entry`` is a catalog entry. Postcondition: returns the filled
-    path, the query and, for body-bound methods, the JSON body. Keys the bind table
-    does not list go to the body for body-bound methods and to the query otherwise,
-    so the op's own validation answers them. Raises ``FileInputUnsupported`` when a
-    file-bound key is present and ``UnsafePathValue`` for a bad path value.
+    path, the query and, for body-bound methods, the JSON body. A file-bound key
+    goes to the body, where it holds a transfer id. Keys the bind table does not
+    list go to the body for body-bound methods and to the query otherwise, so the
+    op's own validation answers them. Raises ``FileInputUnsupported`` for a file-bound
+    key while file transfers are off, and ``UnsafePathValue`` for a bad path value.
     """
     body_bound = method not in _QUERY_METHODS
     default = Bind.BODY if body_bound else Bind.QUERY
     bind = entry["bind"]
+    if not dify_config.file_transfers_on:
+        _refuse_file_input(input, bind)
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
-        parts[Bind(bind.get(name, default))][name] = value
-    if parts[Bind.FILE]:
-        raise FileInputUnsupported(sorted(parts[Bind.FILE]))
+        kind = Bind(bind.get(name, default))
+        parts[_SLOT_OF.get(kind, kind)][name] = value
     path_values = parts[Bind.PATH]
     path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry["path"])
     _check_query_text(parts[Bind.QUERY])
     body = parts[Bind.BODY] if body_bound else None
     return _Request(path=path, query=parts[Bind.QUERY], body=body)
+
+
+def _refuse_file_input(input: Mapping[str, Any], bind: Mapping[str, Bind]) -> None:
+    """Raises ``FileInputUnsupported`` when the input fills any file-bound field."""
+    names = sorted(name for name in input if bind.get(name) == Bind.FILE)
+    if names:
+        raise FileInputUnsupported(names)
 
 
 def _safe_path_value(name: str, values: Mapping[str, Any]) -> str:
@@ -213,10 +227,13 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
     The inner request carries the outer request's scheme and host, so links an op builds
     from ``request.url_root`` point at the server the caller reached.
     Headers: the caller's Authorization and trace id when given, the current
-    catalog fingerprint, and ``Accept: application/json``.
+    catalog fingerprint, ``Accept: application/json``, and, while file transfers are on,
+    the file-result header, so a file operation answers JSON with a transfer instead of bytes.
     """
     _, fingerprint = current_catalog()
     headers = Headers({CATALOG_HEADER: fingerprint, ACCEPT_HEADER: JSON_CONTENT_TYPE})
+    if dify_config.file_transfers_on:
+        headers[HEADER_NAME_FILE_RESULT] = FileResult.TRANSFER
     if call.authorization is not None:
         headers[AUTHORIZATION_HEADER] = call.authorization
     if call.trace_id is not None:
