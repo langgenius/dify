@@ -4,6 +4,7 @@ import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-history-store'
+import { useCollaborativeHistory } from '../collaboration/hooks/use-collaborative-history'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import TipPopup from '../operator/tip-popup'
 
@@ -11,7 +12,14 @@ type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
   const { t } = useTranslation(['workflow'])
   const { store } = useWorkflowHistoryStore()
-  const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
+  const [snapshotButtonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
+  const collaborativeHistory = useCollaborativeHistory()
+  const buttonsDisabled = collaborativeHistory.active
+    ? {
+        undo: !collaborativeHistory.canUndo,
+        redo: !collaborativeHistory.canRedo,
+      }
+    : snapshotButtonsDisabled
 
   useEffect(() => {
     const unsubscribe = store.temporal.subscribe((state) => {

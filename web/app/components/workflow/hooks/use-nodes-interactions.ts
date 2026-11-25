@@ -2341,6 +2341,13 @@ export const useNodesInteractions = () => {
   const handleHistoryBack = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
 
+    if (collaborationManager.isHistoryActive()) {
+      // Shared documents undo only this user's commits, so collaborators' edits stay.
+      if (collaborationManager.undo()) collaborationManager.emitHistoryAction('undo')
+      workflowStore.setState({ contextMenuTarget: undefined })
+      return
+    }
+
     undo()
     const { edges, nodes } = workflowHistoryStore.getState()
     if (edges.length === 0 && nodes.length === 0) return
@@ -2362,6 +2369,12 @@ export const useNodesInteractions = () => {
 
   const handleHistoryForward = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly()) return
+
+    if (collaborationManager.isHistoryActive()) {
+      if (collaborationManager.redo()) collaborationManager.emitHistoryAction('redo')
+      workflowStore.setState({ contextMenuTarget: undefined })
+      return
+    }
 
     redo()
     const { edges, nodes } = workflowHistoryStore.getState()
