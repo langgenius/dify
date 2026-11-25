@@ -21,8 +21,11 @@ def _build_fake_clickzetta_module(*, rows: list[tuple[str, str, str]] | None = N
         def __init__(self) -> None:
             self.execute = MagicMock()
             self.executemany = MagicMock()
-            self.fetchall = MagicMock(return_value=rows if rows is not None else [])
             self.fetchone = MagicMock(return_value=(0,))
+
+        def fetchall(self) -> list[tuple[str, str, str]]:
+            """Return the rows supplied by the test transport, or an empty result."""
+            return rows if rows is not None else []
 
         def __enter__(self) -> Self:
             return self
