@@ -1305,11 +1305,6 @@
       "count": 4
     }
   },
-  "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
     "dify/require-disable-directive-description": {
       "count": 1
