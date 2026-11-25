@@ -20,7 +20,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -277,6 +277,9 @@ function ConnectionForm({
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions(),
+  )
   const configurableFields = provider.configuration.filter(
     (field) => !isManagedSourceProviderFieldName(field.name),
   )
@@ -325,7 +328,7 @@ function ConnectionForm({
           .map((field) => [field.name, fieldValue(credentials[field.name] ?? '', field.type)]),
       )
       const createdConnection = sourceConnectionFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+        await createConnection({
           body: {
             authKind,
             configuration: safeConfiguration,
@@ -619,6 +622,9 @@ function ConnectionProblem({
   const refreshButtonLabelId = useId()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
+  const { mutateAsync: refreshConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post.mutationOptions(),
+  )
 
   const refresh = async () => {
     if (pending) return
@@ -626,15 +632,13 @@ function ConnectionProblem({
     setError(false)
     try {
       const refreshed = sourceConnectionFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.byConnectionId.refresh.post(
-          {
-            body: { expectedVersion: connection.version },
-            params: {
-              connection_id: connection.id,
-              control_space_id: knowledgeSpaceId,
-            },
+        await refreshConnection({
+          body: { expectedVersion: connection.version },
+          params: {
+            connection_id: connection.id,
+            control_space_id: knowledgeSpaceId,
           },
-        ),
+        }),
       )
       onConnected(refreshed)
     } catch {
