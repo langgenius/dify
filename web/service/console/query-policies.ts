@@ -22,6 +22,7 @@ import type {
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
+import { isDefinedError } from '@orpc/client'
 import { noop } from 'es-toolkit/function'
 import {
   markAppDeletionFailed,
@@ -670,7 +671,82 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          // Switching or re-prioritizing credentials changes the provider summaries. The
+          // per-model-type lists depend on the provider's supported types, which callers own.
+          modelProviders: {
+            byProvider: {
+              preferredProviderType: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      void client.invalidateQueries({
+                        queryKey:
+                          consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey(
+                            { input: { params: { provider: params.provider } } },
+                          ),
+                        exact: true,
+                        refetchType: 'none',
+                      })
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+                        consoleQuery.workspaces.current.modelProviders.get.key(),
+                      ])
+                    },
+                  },
+                },
+              },
+              credentials: {
+                switch: {
+                  post: {
+                    mutationOptions: {
+                      onSuccess: (_data, _variables, _result, { client }) => {
+                        void invalidateQueryKeys(client, [
+                          consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+                          consoleQuery.workspaces.current.modelProviders.get.key(),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          defaultModel: {
+            post: {
+              mutationOptions: {
+                onSuccess: (response, { body }, _result, { client }) => {
+                  if (response.result !== 'success') return
+                  void invalidateQueryKeys(
+                    client,
+                    body.model_settings.map(({ model_type }) =>
+                      consoleQuery.workspaces.current.defaultModel.get.queryKey({
+                        input: { query: { model_type } },
+                      }),
+                    ),
+                  )
+                },
+              },
+            },
+          },
           toolProvider: {
+            mcp: {
+              update: {
+                byProviderId: {
+                  get: {
+                    mutationOptions: {
+                      onSuccess: (_data, { params }, _result, { client }) => {
+                        void invalidateQueryKeys(client, [
+                          consoleQuery.workspaces.current.toolProvider.mcp.tools.byProviderId.get.queryKey(
+                            { input: { params: { provider_id: params.provider_id } } },
+                          ),
+                          consoleQuery.workspaces.current.tools.mcp.get.queryKey(),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
             builtin: {
               byProvider: {
                 add: {
@@ -817,6 +893,17 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           networkAccessGroups: {
             post: {
               mutationOptions: {
+                // Show the new group right away; the settled refetch confirms it.
+                onSuccess: (data, _variables, _result, { client }) => {
+                  client.setQueryData(
+                    consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
+                    (current) => {
+                      if (!current) return current
+                      if (current.groups.some((group) => group.id === data.group.id)) return current
+                      return { ...current, groups: [...current.groups, data.group] }
+                    },
+                  )
+                },
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
                   return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
@@ -1346,6 +1433,22 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                 void context.client.invalidateQueries({
                   queryKey: consoleQuery.account.education.get.key(),
                 })
+                // Verified education changes the plan features.
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.features.get.queryKey(),
+                })
+              },
+            },
+          },
+        },
+        password: {
+          post: {
+            mutationOptions: {
+              // The request alone decides success; a slow profile refresh must not hold the mutation.
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.profile.get.queryKey(),
+                })
               },
             },
           },
@@ -1683,10 +1786,53 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
           },
+          server: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                  })
+                },
+              },
+            },
+            put: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) => {
+                  void client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.server.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                  })
+                },
+              },
+            },
+          },
           // Shared invalidation uses onSettled so feature-owned onSuccess callbacks can coexist.
           networkAccessGroup: {
             put: {
               mutationOptions: {
+                onSuccess: (data, { params }, _result, { client }) => {
+                  client.setQueryData(
+                    consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                    (current) => (current ? { ...current, ...data } : current),
+                  )
+                },
+                // A version conflict means another write landed first: reload what it changed.
+                onError: (error, { params }, _result, { client }) => {
+                  if (!isDefinedError(error) || error.code !== 'network_access_version_conflict')
+                    return
+                  void invalidateQueryKeys(client, [
+                    consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
+                      input: { params: { app_id: params.app_id } },
+                    }),
+                    consoleQuery.workspaces.current.networkAccessGroups.get.queryKey(),
+                  ])
+                },
                 onSettled: (_data, error, _variables, _result, context) => {
                   if (error) return
                   return invalidateNetworkAccessGroupQueries(consoleQuery, context.client)
