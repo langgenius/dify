@@ -148,3 +148,23 @@ class KnowledgeFSTidyScanListResponse(ResponseModel):
 
 class KnowledgeFSTidyRetryResponse(ResponseModel):
     resumed: int
+
+
+class KnowledgeFSTidyRewritePayload(BaseModel):
+    """Adopt one side of a conflict: replace ``passage`` in ``documentId`` with ``replacement``."""
+
+    expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
+    documentId: str = Field(min_length=1, max_length=64)  # noqa: N815  # Public field name.
+    passage: str = Field(min_length=1, max_length=8000)
+    replacement: str = Field(min_length=1, max_length=8000)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSTidyRewriteResponse(ResponseModel):
+    documentId: str  # noqa: N815  # Public field name.
+    documentRevision: int  # noqa: N815  # Public field name.
+    taskId: str  # noqa: N815  # Public field name.
+    # None when the rewrite was accepted but the finding could not be marked handled; the next
+    # scan retires it once the new revision is published.
+    finding: KnowledgeFSTidyFindingResponse | None = None

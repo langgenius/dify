@@ -38,6 +38,8 @@ from services.knowledge_fs.product_remote import (
 _JSON_ADAPTER: TypeAdapter[JsonValue] = TypeAdapter(JsonValue)
 logger = logging.getLogger(__name__)
 
+# Uploading a new revision of an existing document names it and its compare-and-swap versions.
+_MULTIPART_REVISION_FIELDS = frozenset({"documentId", "expectedActiveRevision", "expectedDocumentRowVersion"})
 _ERROR_CONTRACT_HEADER = "X-KnowledgeFS-Error-Contract"
 _ERROR_CONTRACT_VERSION = "2"
 _REJECTED_STATUS_CODES = frozenset({400, 403, 409, 413, 422, 429, 503, 504})
@@ -255,6 +257,10 @@ class HTTPKnowledgeFSProductRemoteClient:
             raise KnowledgeFSProductRequestRejectedError(status_code=422)
         if len(file.body) > operation.max_request_bytes:
             raise KnowledgeFSProductRequestRejectedError(status_code=413)
+        if {name for name, _ in request.fields} - _MULTIPART_REVISION_FIELDS or len(
+            {name for name, _ in request.fields}
+        ) != len(request.fields):
+            raise KnowledgeFSProductRemoteError("KnowledgeFS multipart request carries unexpected fields")
         response_limit = min(self._max_response_bytes, operation.max_response_bytes)
         if response_limit <= 0:
             raise KnowledgeFSOperationUnavailableError("KnowledgeFS operation response limit is unavailable")
@@ -272,6 +278,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 url=str(upstream_url),
                 headers=headers,
                 files={"file": (file.filename, file.body, file.content_type)},
+                data=dict(request.fields),
                 timeout=self._timeout_seconds,
                 follow_redirects=False,
                 max_retries=0,

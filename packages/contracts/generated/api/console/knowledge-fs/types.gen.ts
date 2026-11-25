@@ -1420,6 +1420,20 @@ export type KnowledgeFsTidyFindingResponse = {
   status: 'disabled' | 'dismissed' | 'open' | 'outdated' | 'reviewed'
 }
 
+export type KnowledgeFsTidyRewritePayload = {
+  documentId: string
+  expectedRevision: number
+  passage: string
+  replacement: string
+}
+
+export type KnowledgeFsTidyRewriteResponse = {
+  documentId: string
+  documentRevision: number
+  finding?: KnowledgeFsTidyFindingResponse | null
+  taskId: string
+}
+
 export type KnowledgeFsTidyRetryResponse = {
   resumed: number
 }
@@ -6450,6 +6464,35 @@ export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsR
 
 export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponse =
   PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActionsResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteData = {
+  body: KnowledgeFsTidyRewritePayload
+  path: {
+    control_space_id: string
+    finding_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/rewrite'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteErrors = {
+  400: KnowledgeFsInvalidRequestError | ErrorResponse
+  403: KnowledgeFsAccessDeniedError | ErrorResponse
+  404: KnowledgeFsResourceNotFoundError | KnowledgeFsSpaceNotFoundError | ErrorResponse
+  409: KnowledgeFsConflictError | ErrorResponse
+  503: KnowledgeFsOperationUnavailableError | KnowledgeFsUpstreamUnavailableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteError =
+  PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteErrors[keyof PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteErrors]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponses = {
+  202: KnowledgeFsTidyRewriteResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdRewriteResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdTidyRetryData = {
   body?: never
