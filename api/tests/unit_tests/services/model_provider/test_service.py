@@ -45,6 +45,7 @@ from models.provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from services.billing_client import billing
 from services.billing_service import BillingService
 from services.credentials.query import CredentialQuery, ModelCredentialRecord
 from services.errors.app_model_config import ProviderNotFoundError
@@ -567,8 +568,13 @@ class TestModelProviderServiceCases:
         ) -> None:
             """Check bindings and free quota ownership without a billing round trip per provider."""
             config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
-            get_info = MagicMock(return_value=subscription_info("sandbox"))
-            monkeypatch.setattr(BillingService, "get_info", get_info)
+            plan_lookups: list[tuple[str, bool]] = []
+
+            def read_subscription(*, tenant_id: str, exclude_vector_space: bool) -> billing.GetSubscriptionInfoReply:
+                plan_lookups.append((tenant_id, exclude_vector_space))
+                return subscription_info("sandbox")
+
+            monkeypatch.setattr(billing, "subscription_get_subscription_info", read_subscription)
             marketplace_binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
             package_binding = _build_model_provider_binding(
                 PluginInstallationSource.Package,
@@ -656,7 +662,7 @@ class TestModelProviderServiceCases:
 
             providers, _ = ModelProviderService().get_provider_summary_list(tenant_id)
 
-            get_info.assert_called_once_with(tenant_id, exclude_vector_space=True)
+            assert plan_lookups == [(tenant_id, True)]
             assert {provider.provider: provider.system_configuration.enabled for provider in providers} == {
                 free_provider_name: has_free_quota,
                 "langgenius/openai/openai": True,
