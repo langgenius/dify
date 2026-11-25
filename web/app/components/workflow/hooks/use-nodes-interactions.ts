@@ -73,6 +73,7 @@ import { stepDraftHistory, useCollaborativeHistoryAppId } from './use-canvas-dra
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
+import { useNodeDataUpdate } from './use-node-data-update'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
@@ -202,6 +203,7 @@ export const useNodesInteractions = () => {
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
+  const { initializeNodeData } = useNodeDataUpdate()
   const { createInlineAgentBinding } = useCreateInlineAgentBinding()
 
   const createInlineAgentBindingForNode = useCallback(
@@ -218,23 +220,28 @@ export const useNodesInteractions = () => {
           options?.onError?.()
         },
         onSuccess: (binding) => {
-          const { nodes, setNodes } = collaborativeWorkflow.getState()
-          setNodes(
-            produce(nodes, (draft) => {
-              const node = draft.find((node) => node.id === nodeId)
-              if (node) {
-                if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-                  node.data.agent_binding = binding
-                node.data._openInlineAgentPanel = true
-                delete node.data._isTempNode
-              }
-            }),
-          )
+          const node = collaborativeWorkflow.getState().nodes.find((node) => node.id === nodeId)
+          if (!node || !isAgentV2NodeData(node.data)) return
+          initializeNodeData({
+            id: nodeId,
+            previousData: node.data,
+            data: {
+              ...(needsInlineAgentBindingCreation(node.data) ? { agent_binding: binding } : {}),
+              _openInlineAgentPanel: true,
+              _isTempNode: undefined,
+            },
+          })
           handleSyncWorkflowDraft(true, true)
         },
       })
     },
-    [collaborativeWorkflow, createInlineAgentBinding, handleSyncWorkflowDraft, workflowStore],
+    [
+      collaborativeWorkflow,
+      createInlineAgentBinding,
+      handleSyncWorkflowDraft,
+      initializeNodeData,
+      workflowStore,
+    ],
   )
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
@@ -869,7 +876,7 @@ export const useNodesInteractions = () => {
 
   const handleNodeDelete = useCallback((id: string) => deleteNodes([id]), [deleteNodes])
 
-  const handleNodeAdd = useCallback<OnNodeAdd>(
+  const performNodeAdd = useCallback<OnNodeAdd>(
     (
       { nodeType, sourceHandle = 'source', targetHandle = 'target', pluginDefaultValue },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
@@ -1390,6 +1397,14 @@ export const useNodesInteractions = () => {
       nodesMetaDataMap,
       t,
     ],
+  )
+
+  const handleNodeAdd = useCallback<OnNodeAdd>(
+    (block, connections) =>
+      collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeAdd, () =>
+        performNodeAdd(block, connections),
+      ),
+    [performNodeAdd],
   )
 
   const handleNodeChange = useCallback(
@@ -2534,6 +2549,7 @@ export const useNodesInteractions = () => {
   }, [collaborativeWorkflow])
 
   return {
+    createInlineAgentBindingForNode,
     handleNodeDragStart,
     handleNodeDrag,
     handleNodeDragStop,

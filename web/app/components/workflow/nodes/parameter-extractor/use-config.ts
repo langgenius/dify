@@ -1,3 +1,4 @@
+import type { ModelChangeSource } from '../../hooks/use-model-change-with-vision'
 import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { produce } from 'immer'
@@ -15,6 +16,7 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { supportFunctionCall } from '@/utils/tool-call'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useModelChangeWithVision } from '../../hooks/use-model-change-with-vision'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { ChangeType, VarType } from '../../types'
@@ -147,43 +149,42 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     [isChatModel],
   )
 
-  const [modelChanged, setModelChanged] = useState(false)
+  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
   const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
 
   const handleModelChanged = useCallback(
-    (model: { provider: string; modelId: string; mode?: string }) => {
-      const newInputs = produce(inputRef.current, (draft) => {
+    (
+      model: { provider: string; modelId: string; mode?: string },
+      source: ModelChangeSource = 'user',
+    ) => {
+      const before = inputRef.current
+      const newInputs = produce(before, (draft) => {
         draft.model.provider = model.provider
         draft.model.name = model.modelId
         draft.model.mode = model.mode!
-        const isModeChange = model.mode !== inputRef.current.model?.mode
+        const isModeChange = model.mode !== before.model?.mode
         if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
           appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
       })
-      setInputs(newInputs)
-      setModelChanged(true)
+      setModelInputs(before, newInputs, source)
     },
-    [setInputs, defaultConfig, appendDefaultPromptConfig],
+    [setModelInputs, defaultConfig, appendDefaultPromptConfig],
   )
 
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
-      handleModelChanged({
-        provider: currentProvider?.provider,
-        modelId: currentModel?.model,
-        mode: currentModel?.model_properties?.mode as string,
-      })
+      handleModelChanged(
+        {
+          provider: currentProvider.provider,
+          modelId: currentModel.model,
+          mode: currentModel.model_properties?.mode as string,
+        },
+        'default',
+      )
     }
   }, [model?.provider, currentProvider, currentModel, handleModelChanged])
-
-  // change to vision model to set vision enabled, else disabled
-  useEffect(() => {
-    if (!modelChanged) return
-    setModelChanged(false)
-    handleVisionConfigAfterModelChanged()
-  }, [isVisionModel, modelChanged])
 
   const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
     provider: model.provider,

@@ -11,7 +11,6 @@ import { useNodesInteractions } from './hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from './hooks/use-nodes-sync-draft'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import CustomNode from './nodes'
-import { useCreateInlineAgentBinding } from './nodes/agent-v2/hooks'
 import { isAgentV2NodeData, needsInlineAgentBindingCreation } from './nodes/agent-v2/types'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
@@ -27,12 +26,11 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
   const workflowStore = useWorkflowStore()
   const mousePosition = useStore((s) => s.mousePosition)
   const { zoom } = useViewport()
-  const { handleNodeSelect } = useNodesInteractions()
+  const { handleNodeSelect, createInlineAgentBindingForNode } = useNodesInteractions()
   const { saveStateToHistory } = useWorkflowHistory()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
   const collaborativeWorkflow = useCollaborativeWorkflow()
-  const { createInlineAgentBinding } = useCreateInlineAgentBinding()
 
   useEventListener('click', (e) => {
     e.preventDefault()
@@ -81,27 +79,10 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
     }
 
     if (shouldCreateInlineAgentBinding) {
-      workflowStore.getState().setOpenInlineAgentPanelNodeId(candidateNode.id)
-      handleSyncWorkflowDraft(true, true)
-      createInlineAgentBinding(candidateNode.id, {
+      createInlineAgentBindingForNode(candidateNode.id, {
         onError: () => {
           const { nodes, setNodes } = collaborativeWorkflow.getState()
           setNodes(nodes.filter((node) => node.id !== candidateNode.id))
-        },
-        onSuccess: (binding) => {
-          const { nodes, setNodes } = collaborativeWorkflow.getState()
-          setNodes(
-            produce(nodes, (draft) => {
-              const node = draft.find((node) => node.id === candidateNode.id)
-              if (node) {
-                if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-                  node.data.agent_binding = binding
-                node.data._openInlineAgentPanel = true
-                delete node.data._isTempNode
-              }
-            }),
-          )
-          handleSyncWorkflowDraft(true, true)
         },
       })
       return

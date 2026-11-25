@@ -1,9 +1,10 @@
+import type { ModelChangeSource } from '../../hooks/use-model-change-with-vision'
 import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
 import type { LLMNodeType } from './types'
 import type { EnvironmentVariable, ValueSelector } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useStoreApi } from 'reactflow'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -12,6 +13,7 @@ import { editorAppIdAtom, isChatflowAtom } from '@/app/components/workflow/edito
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { useModelChangeWithVision } from '../../hooks/use-model-change-with-vision'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -63,7 +65,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
-  const [modelChanged, setModelChanged] = useState(false)
   const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
@@ -82,27 +83,35 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       setInputs(newInputs)
     },
   })
+  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
 
   const applyModelIdentity = useCallback(
     (
       model: { provider: string; modelId: string; mode?: string },
-      modelSelector?: ValueSelector,
-      completionParams?: LLMNodeType['model']['completion_params'],
+      {
+        modelSelector,
+        completionParams,
+        source,
+      }: {
+        modelSelector?: ValueSelector
+        completionParams?: LLMNodeType['model']['completion_params']
+        source?: ModelChangeSource
+      } = {},
     ) => {
-      const nextInputs = produce(inputRef.current, (draft) => {
+      const before = inputRef.current
+      const nextInputs = produce(before, (draft) => {
         draft.model.provider = model.provider
         draft.model.name = model.modelId
         draft.model.mode = model.mode!
         if (completionParams !== undefined) draft.model.completion_params = completionParams
         draft.model_selector = modelSelector
-        const isModeChange = model.mode !== inputRef.current.model.mode
+        const isModeChange = model.mode !== before.model.mode
         if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
           appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
       })
-      setInputs(nextInputs)
-      setModelChanged(true)
+      setModelInputs(before, nextInputs, source)
     },
-    [setInputs, defaultConfig, appendDefaultPromptConfig, inputRef],
+    [setModelInputs, defaultConfig, appendDefaultPromptConfig, inputRef],
   )
 
   const handleModelChanged = useCallback(
@@ -110,7 +119,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       model: { provider: string; modelId: string; mode?: string },
       completionParams?: LLMNodeType['model']['completion_params'],
     ) => {
-      applyModelIdentity(model, undefined, completionParams)
+      applyModelIdentity(model, { completionParams })
     },
     [applyModelIdentity],
   )
@@ -159,8 +168,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
           modelId: selectedModel.name,
           mode: selectedModel.mode,
         },
-        modelSelector,
-        selectedModel.completion_params ?? completionParams,
+        { modelSelector, completionParams: selectedModel.completion_params ?? completionParams },
       )
     },
     [applyModelIdentity, environmentVariables, inputRef, setInputs],
@@ -173,14 +181,16 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       currentModel?.model &&
       !model.provider
     ) {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Asynchronously loaded provider defaults initialize the existing model draft.
-      handleModelChanged({
-        provider: currentProvider?.provider,
-        modelId: currentModel?.model,
-        mode: currentModel?.model_properties?.mode as string,
-      })
+      applyModelIdentity(
+        {
+          provider: currentProvider.provider,
+          modelId: currentModel.model,
+          mode: currentModel.model_properties?.mode as string,
+        },
+        { source: 'default' },
+      )
     }
-  }, [model.provider, currentProvider, currentModel, handleModelChanged, isEnvironmentModelSource])
+  }, [model.provider, currentProvider, currentModel, applyModelIdentity, isEnvironmentModelSource])
 
   const handleCompletionParamsChange = useCallback(
     (newParams: LLMNodeType['model']['completion_params']) => {
@@ -192,13 +202,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     [inputRef, setInputs],
   )
 
-  // change to vision model to set vision enabled, else disabled
-  useEffect(() => {
-    if (!modelChanged) return
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Consume the pending model change after the new model capabilities have rendered.
-    setModelChanged(false)
-    handleVisionConfigAfterModelChanged()
-  }, [handleVisionConfigAfterModelChanged, isVisionModel, modelChanged])
   const promptConfig = useLLMPromptConfig({
     inputs,
     inputRef,

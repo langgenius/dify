@@ -2287,9 +2287,6 @@
     }
   },
   "web/app/components/workflow/nodes/parameter-extractor/use-config.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }

@@ -1,3 +1,4 @@
+import type { ModelChangeSource } from '../../hooks/use-model-change-with-vision'
 import type { Memory, ValueSelector, Var } from '../../types'
 import type { QuestionClassifierNodeType } from './types'
 import type { Topic } from '@/app/components/workflow/nodes/_base/components/branch-list/types'
@@ -15,6 +16,7 @@ import {
 } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useConfigVision from '../../hooks/use-config-vision'
+import { useModelChangeWithVision } from '../../hooks/use-model-change-with-vision'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
 import { useStore } from '../../store'
 import { BlockEnum, VarType } from '../../types'
@@ -45,7 +47,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     inputRef.current = inputs
   }, [inputs])
 
-  const isHandlingModelChangeRef = useRef(false)
   const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
   )
@@ -73,28 +74,32 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     payload: inputs.vision,
     onChange: handleVisionChange,
   })
+  const setModelInputs = useModelChangeWithVision(setInputs, handleVisionConfigAfterModelChanged)
 
   const handleModelChanged = useCallback(
-    (model: { provider: string; modelId: string; mode?: string }) => {
-      const newInputs = produce(inputRef.current, (draft) => {
+    (model: { provider: string; modelId: string; mode?: string }, source?: ModelChangeSource) => {
+      const before = inputRef.current
+      const newInputs = produce(before, (draft) => {
         draft.model.provider = model.provider
         draft.model.name = model.modelId
         draft.model.mode = model.mode!
       })
-      isHandlingModelChangeRef.current = true
-      setInputs(newInputs)
+      setModelInputs(before, newInputs, source)
     },
-    [setInputs],
+    [setModelInputs],
   )
 
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
       startTransition(() => {
-        handleModelChanged({
-          provider: currentProvider?.provider,
-          modelId: currentModel?.model,
-          mode: currentModel?.model_properties?.mode as string | undefined,
-        })
+        handleModelChanged(
+          {
+            provider: currentProvider?.provider,
+            modelId: currentModel?.model,
+            mode: currentModel?.model_properties?.mode as string | undefined,
+          },
+          'default',
+        )
       })
     }
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
@@ -108,15 +113,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     },
     [inputs, setInputs],
   )
-
-  // change to vision model to set vision enabled, else disabled
-  useEffect(() => {
-    if (!isHandlingModelChangeRef.current) return
-    isHandlingModelChangeRef.current = false
-    startTransition(() => {
-      handleVisionConfigAfterModelChanged()
-    })
-  }, [handleVisionConfigAfterModelChanged, isVisionModel])
 
   const handleQueryVarChange = useCallback(
     (newVar: ValueSelector | string) => {

@@ -1,16 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
+import { useNodeDataUpdate } from './use-node-data-update'
 
 export const useAutoGenerateWebhookUrl = () => {
   const appId = useAtomValue(editorAppIdAtom)
   const queryClient = useQueryClient()
   const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { initializeNodeData } = useNodeDataUpdate()
 
   return useCallback(
     async (nodeId: string) => {
@@ -30,25 +31,20 @@ export const useAutoGenerateWebhookUrl = () => {
             retry: false,
           }),
         )
-        const { nodes: latestNodes, setNodes } = collaborativeWorkflow.getState()
-        let hasUpdated = false
-        const updatedNodes = produce(latestNodes, (draft) => {
-          const targetNode = draft.find((n) => n.id === nodeId)
-          if (!targetNode || targetNode.data.type !== BlockEnum.TriggerWebhook) return
-
-          targetNode.data = {
-            ...targetNode.data,
+        const current = collaborativeWorkflow.getState().nodes.find((n) => n.id === nodeId)
+        if (current?.data.type !== BlockEnum.TriggerWebhook || current.data.webhook_url) return
+        initializeNodeData({
+          id: nodeId,
+          previousData: node.data,
+          data: {
             webhook_url: response.webhook_url,
             webhook_debug_url: response.webhook_debug_url,
-          }
-          hasUpdated = true
+          },
         })
-
-        if (hasUpdated) setNodes(updatedNodes)
       } catch (error: unknown) {
         console.error('Failed to auto-generate webhook URL:', error)
       }
     },
-    [appId, collaborativeWorkflow, queryClient],
+    [appId, collaborativeWorkflow, initializeNodeData, queryClient],
   )
 }

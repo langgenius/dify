@@ -57,8 +57,15 @@ export const useNodeDataUpdate = () => {
     [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly],
   )
 
+  const initializeNodeData = useCallback(
+    (payload: Required<NodeDataUpdatePayload>) =>
+      collaborationManager.runDraftInitialization(() => handleNodeDataUpdate(payload)),
+    [handleNodeDataUpdate],
+  )
+
   return {
     handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
+    initializeNodeData,
   }
 }

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { toast } from '@/app/notifications'
@@ -155,6 +156,8 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
     if (!appId) return
 
+    const setUrls = (url: string, debugUrl?: string) =>
+      runDraftInitialization(() => setInputs(updateWebhookUrls(inputs, url, debugUrl)), inputs)
     try {
       const response = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.triggers.webhook.get.queryOptions({
@@ -163,10 +166,10 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
           retry: false,
         }),
       )
-      setInputs(updateWebhookUrls(inputs, response.webhook_url, response.webhook_debug_url))
+      setUrls(response.webhook_url, response.webhook_debug_url)
     } catch (error: unknown) {
       console.error('Failed to generate webhook URL:', error)
-      setInputs(updateWebhookUrls(inputs, ''))
+      setUrls('')
     }
   }, [appId, id, inputs, setInputs, queryClient])
 
