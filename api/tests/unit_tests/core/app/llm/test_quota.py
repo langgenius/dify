@@ -422,6 +422,46 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("enabled", "offered_bucket"),
+    [(True, ProviderQuotaType.PAID), (True, ProviderQuotaType.FREE), (False, ProviderQuotaType.TRIAL)],
+)
+def test_reserve_llm_quota_requires_an_enabled_selected_bucket(
+    enabled: bool, offered_bucket: ProviderQuotaType
+) -> None:
+    """A System route without an enabled trial bucket must fail before reserving any credits."""
+    provider_configuration = _provider_configuration(
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(
+            enabled=enabled,
+            current_quota_type=ProviderQuotaType.TRIAL,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
+                    quota_type=offered_bucket,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                )
+            ],
+        ),
+    )
+    provider_manager = _provider_manager(provider_configuration)
+
+    with (
+        patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
+        patch("core.app.llm.quota.CreditPoolService.reserve_credits") as reserve,
+        pytest.raises(QuotaExceededError, match="Model provider openai quota exceeded."),
+    ):
+        reserve_llm_quota_for_model(
+            tenant_id="tenant-id",
+            provider="openai",
+            model="gpt-4o",
+        )
+
+    reserve.assert_not_called()
+
+
 def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 42

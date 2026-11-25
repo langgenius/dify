@@ -564,15 +564,14 @@ def _resolve_quota_configuration(
     provider_quota: HostingQuota,
     hosting_provider: HostingProvider,
     provider_record: Provider | None,
-    credit_pool_type: ProviderQuotaType,
-    credit_pool: CreditPoolBalance,
+    credit_pool: CreditPoolBalance | None,
 ) -> QuotaConfiguration | None:
     """Return the quota entry this workspace can spend, or ``None`` when the bucket is unusable.
 
     Hosted trial and paid balances live in the billing credit pool, and the workspace plan
-    selects exactly one of those buckets. The local ``Provider`` rows are legacy mirrors that
-    carry no balance, so they must never be surfaced as a hosted quota source; only the
-    third-party free bucket still reads its own row.
+    selects exactly one bucket. A missing balance means the provider does not offer that
+    bucket. Only third-party free quota reads a local provider row; a legacy trial or paid
+    row never grants hosted access.
     """
     quota_unit = hosting_provider.quota_unit or QuotaUnit.TOKENS
     if provider_quota.quota_type == ProviderQuotaType.FREE:
@@ -598,7 +597,7 @@ def _resolve_quota_configuration(
             restrict_models=provider_quota.restrict_models,
         )
 
-    if provider_quota.quota_type != credit_pool_type:
+    if credit_pool is None or provider_quota.quota_type != credit_pool.pool_type:
         return None
 
     return QuotaConfiguration(
@@ -609,6 +608,23 @@ def _resolve_quota_configuration(
         is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
         restrict_models=provider_quota.restrict_models,
     )
+
+
+def _select_current_quota_type(
+    quota_configurations: Sequence[QuotaConfiguration],
+    credit_pool_type: ProviderQuotaType,
+) -> ProviderQuotaType | None:
+    """Return the offered bucket this workspace may spend from, or ``None`` when none is offered.
+
+    An exhausted plan bucket is still selected so billing can report exhaustion. Only an
+    independent third-party free bucket can be used when the plan bucket is not offered.
+    """
+    offered_quota_types = {quota_configuration.quota_type for quota_configuration in quota_configurations}
+    if credit_pool_type in offered_quota_types:
+        return credit_pool_type
+    if ProviderQuotaType.FREE in offered_quota_types:
+        return ProviderQuotaType.FREE
+    return None
 
 
 class ProviderManager:
@@ -1480,7 +1496,9 @@ class ProviderManager:
 
         Hosting is a Cloud capability, so every entry offered here is either the third-party
         free bucket or the billing credit pool selected by the workspace plan. The other
-        hosted bucket is never offered: this workspace holds no balance in it.
+        hosted bucket is never offered. If the provider offers no eligible bucket, return
+        a disabled configuration without credentials or a balance lookup. Otherwise, bind
+        credentials to the selected quota. Billing failures propagate.
 
         :param tenant_id: workspace id
         :param provider_entity: provider entity
@@ -1522,24 +1540,27 @@ class ProviderManager:
             # Hosting is a Cloud capability; a workspace without a credit pool has nothing to spend.
             return SystemConfiguration(enabled=False)
 
-        credit_pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=credit_pool_type)
+        offered_quotas = provider_hosting_configuration.quotas
+        credit_pool = (
+            CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=credit_pool_type)
+            if any(quota.quota_type == credit_pool_type for quota in offered_quotas)
+            else None
+        )
 
         quota_configurations: list[QuotaConfiguration] = []
-        for provider_quota in provider_hosting_configuration.quotas:
+        for provider_quota in offered_quotas:
             quota_configuration = _resolve_quota_configuration(
                 provider_quota=provider_quota,
                 hosting_provider=provider_hosting_configuration,
                 provider_record=quota_type_to_provider_records_dict.get(provider_quota.quota_type),
-                credit_pool_type=credit_pool_type,
                 credit_pool=credit_pool,
             )
             if quota_configuration is not None:
                 quota_configurations.append(quota_configuration)
 
-        if len(quota_configurations) == 0:
+        current_quota_type = _select_current_quota_type(quota_configurations, credit_pool_type)
+        if current_quota_type is None:
             return SystemConfiguration(enabled=False)
-
-        current_quota_type = credit_pool_type
 
         current_using_credentials = provider_hosting_configuration.credentials
         if current_quota_type == ProviderQuotaType.FREE:
@@ -1558,8 +1579,9 @@ class ProviderManager:
 
                 if not cached_provider_credentials:
                     provider_credentials: dict[str, Any] = {}
-                    if provider_records and provider_records[0].encrypted_config:
-                        provider_credentials = _credentials_adapter.validate_json(provider_records[0].encrypted_config)
+                    encrypted_config = provider_record_quota_free.encrypted_config
+                    if encrypted_config:
+                        provider_credentials = _credentials_adapter.validate_json(encrypted_config)
 
                     # Get provider credential secret variables
                     provider_credential_secret_variables = self._extract_secret_variables(
@@ -1568,11 +1590,9 @@ class ProviderManager:
                         else []
                     )
 
-                    # Get decoding context for decrypting credentials
-                    decoding_context = self._get_decoding_context(tenant_id)
-
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
+                            decoding_context = self._get_decoding_context(tenant_id)
                             with contextlib.suppress(ValueError):
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
@@ -1586,8 +1606,9 @@ class ProviderManager:
                 else:
                     current_using_credentials = cached_provider_credentials
             else:
-                current_using_credentials = {}
-                quota_configurations = []
+                # The free bucket has no balance to read without its provider row, so there is
+                # nothing this workspace can spend and System hosting must not be offered.
+                return SystemConfiguration(enabled=False)
 
         return SystemConfiguration(
             enabled=True,
