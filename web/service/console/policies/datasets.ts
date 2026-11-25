@@ -5,7 +5,7 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { invalidateQueryKeys } from './shared'
+import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
 export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['datasets'] {
   return {
@@ -411,10 +411,9 @@ export function datasetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['da
     apiKeys: {
       post: {
         mutationOptions: {
-          // Waits for the key list the new key joins.
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            return invalidateQueryKeys(context.client, [consoleQuery.datasets.apiKeys.get.key()])
-          },
+          // Writes the new key into its list, so the one-time secret shows at once.
+          onSuccess: (created, _variables, _onMutateResult, context) =>
+            addCreatedKeyToLists(context.client, consoleQuery.datasets.apiKeys.get.key(), created),
         },
       },
       byApiKeyId: {

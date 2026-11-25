@@ -36,7 +36,8 @@ Await the primary source; detach everything else:
   invalidation, or write the response into that cache before the callback resolves.
   Editors and flows copy these values into local state right after a save (reopening
   a dialog, "deploy latest", resending a batch), so a late refetch would let them act
-  on the old row.
+  on the old row. Creates that reveal a one-time secret (tokens, API keys) write the
+  created entry into the list instead, so the secret shows without waiting.
 - **Secondary, `void`:** plan and quota, counts, catalogs and option lists, other
   resources' lists or details, summaries. Awaiting them would delay success feedback
   and keep `isPending` buttons pending on unrelated refetches.

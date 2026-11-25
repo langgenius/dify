@@ -141,9 +141,12 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
         inviteEmail: {
           post: {
             mutationOptions: {
+              // The invite modal shows the one-time invitation links from the response, and
+              // the response has no member rows to write. A new invitee can't be acted on
+              // before its row appears, so the lists refresh in the background.
               onSuccess: (response, _variables, _result, { client }) => {
-                void invalidateQueryKeys(client, [consoleQuery.features.get.queryKey()])
-                return invalidateQueryKeys(client, [
+                void invalidateQueryKeys(client, [
+                  consoleQuery.features.get.queryKey(),
                   consoleQuery.workspaces.current.members.get.key(),
                   consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
                     input: { params: { workspace_id: response.tenant_id } },

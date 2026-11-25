@@ -1,3 +1,4 @@
+import type { PersonalAccessTokenListResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
@@ -50,11 +51,21 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
       },
       post: {
         mutationOptions: {
-          // Waits for the token list the new token appears in.
-          onSuccess: (_data, _variables, _onMutateResult, context) =>
-            invalidateQueryKeys(context.client, [
+          // The dialog shows the one-time secret as soon as the create resolves, so the new
+          // token is written into the cached lists instead of waiting for their refetch.
+          onSuccess: (created, _variables, _onMutateResult, context) => {
+            const { secret: _secret, ...token } = created
+            context.client.setQueriesData<PersonalAccessTokenListResponse>(
+              { queryKey: consoleQuery.account.personalAccessTokens.get.key() },
+              (list) =>
+                list && list.page === 1 && !list.data.some((row) => row.id === token.id)
+                  ? { ...list, data: [token, ...list.data], total: list.total + 1 }
+                  : list,
+            )
+            void invalidateQueryKeys(context.client, [
               consoleQuery.account.personalAccessTokens.get.key(),
-            ]),
+            ])
+          },
         },
       },
     },

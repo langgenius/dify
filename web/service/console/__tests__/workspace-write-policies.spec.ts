@@ -611,3 +611,79 @@ describe('saves whose editor reopens from the refreshed data', () => {
     },
   )
 })
+
+describe('creates that reveal a one-time secret', () => {
+  type Case = [string, () => unknown, QueryKey, unknown, Record<string, unknown>]
+  const appParams = { resource_id: 'app-1' }
+  const envParams = { app_id: 'app-1', environment_id: 'env-1' }
+  const access = () => consoleQuery.enterprise.appDeploy.accessService
+  it.each<Case>([
+    [
+      'personal access token',
+      () => consoleQuery.account.personalAccessTokens.post.mutationOptions,
+      consoleQuery.account.personalAccessTokens.get.queryKey({
+        input: { query: { page: 1 } },
+      } as never),
+      { body: { name: 'New token' } },
+      { id: 'token-2', name: 'New token', secret: 'dpat_secret' },
+    ],
+    [
+      'app API key',
+      () => consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions,
+      consoleQuery.apps.byResourceId.apiKeys.get.queryKey({ input: { params: appParams } }),
+      { params: appParams },
+      { id: 'key-2', token: 'app-secret' },
+    ],
+    [
+      'agent API key',
+      () => consoleQuery.agent.byAgentId.apiKeys.post.mutationOptions,
+      consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+        input: { params: { agent_id: 'agent-1' } },
+      }),
+      { params: { agent_id: 'agent-1' } },
+      { id: 'key-2', token: 'agent-secret' },
+    ],
+    [
+      'dataset API key',
+      () => consoleQuery.datasets.apiKeys.post.mutationOptions,
+      consoleQuery.datasets.apiKeys.get.queryKey({} as never),
+      {},
+      { id: 'key-2', token: 'dataset-secret' },
+    ],
+    [
+      'environment API key',
+      () => access().createEnvironmentApiKey.mutationOptions,
+      access().listEnvironmentApiKeys.queryKey({ input: { params: envParams } } as never),
+      { params: envParams },
+      { id: 'key-2', token: 'env-secret' },
+    ],
+  ])(
+    'a %s create resolves with the new entry in the list before its refetch lands',
+    async (name, mutationOptions, listKey, variables, created) => {
+      const { client } = setup()
+      const isToken = name === 'personal access token'
+      const loaded = isToken
+        ? { data: [{ id: 'token-1' }], page: 1, limit: 20, total: 1, has_more: false }
+        : { data: [{ id: 'key-1' }] }
+      const reload = createDeferred<unknown>()
+      const queryFn = vi.fn(() => (queryFn.mock.calls.length === 1 ? loaded : reload.promise))
+      const observer = new QueryObserver(client, { queryKey: listKey, queryFn })
+      const unsubscribe = observer.subscribe(() => undefined)
+      await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+
+      const options = (mutationOptions() as (options: unknown) => unknown)({
+        mutationFn: async () => created,
+      }) as MutationObserverOptions<unknown, Error, unknown, unknown>
+      await new MutationObserver(client, options).mutate(variables)
+
+      // The refetch is still pending, but the list already has the new entry.
+      expect(queryFn).toHaveBeenCalledTimes(2)
+      const ids = (client.getQueryData(listKey) as { data: Array<{ id: string; secret?: string }> })
+        .data
+      expect(ids.map((row) => row.id)).toContain(created.id)
+      if (isToken) expect(ids.find((row) => row.id === created.id)).not.toHaveProperty('secret')
+      reload.resolve(loaded)
+      unsubscribe()
+    },
+  )
+})

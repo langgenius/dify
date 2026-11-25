@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
-import { invalidateQueryKeys } from './shared'
+import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
 export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['enterprise'] {
   return {
@@ -156,8 +156,19 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         // background.
         createEnvironmentApiKey: {
           mutationOptions: {
-            onSuccess: (_data, variables, _result, context) =>
-              invalidateEnvironmentApiKeyQueries(consoleQuery, context.client, variables.params),
+            // Writes the new key into its list, so the one-time secret shows at once.
+            onSuccess: (created, variables, _result, context) => {
+              const input = { params: variables.params }
+              const access = consoleQuery.enterprise.appDeploy.accessService
+              void invalidateQueryKeys(context.client, [
+                access.getEnvironmentApi.queryKey({ input }),
+              ])
+              addCreatedKeyToLists(
+                context.client,
+                access.listEnvironmentApiKeys.queryKey({ input }),
+                created,
+              )
+            },
           },
         },
         deleteEnvironmentApiKey: {

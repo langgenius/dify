@@ -14,7 +14,11 @@ import {
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from '../workflow-version-cache'
-import { invalidateNetworkAccessGroupQueries, invalidateQueryKeys } from './shared'
+import {
+  addCreatedKeyToLists,
+  invalidateNetworkAccessGroupQueries,
+  invalidateQueryKeys,
+} from './shared'
 
 export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps'] {
   return {
@@ -763,13 +767,15 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       apiKeys: {
         post: {
           mutationOptions: {
-            // Waits for the API key list the new key appears in.
-            onSuccess: (_data, variables, _onMutateResult, context) =>
-              invalidateQueryKeys(context.client, [
+            // Writes the new key into its list, so the one-time secret shows at once.
+            onSuccess: (created, variables, _onMutateResult, context) =>
+              addCreatedKeyToLists(
+                context.client,
                 consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
                   input: { params: { resource_id: variables.params.resource_id } },
                 }),
-              ]),
+                created,
+              ),
           },
         },
         byApiKeyId: {

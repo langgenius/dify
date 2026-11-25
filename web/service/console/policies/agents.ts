@@ -5,7 +5,7 @@ import type {
 import type { InfiniteData } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
-import { invalidateQueryKeys, refreshAgentTagCatalogs } from './shared'
+import { addCreatedKeyToLists, invalidateQueryKeys, refreshAgentTagCatalogs } from './shared'
 
 export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agent'] {
   return {
@@ -106,15 +106,18 @@ export function agentPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['agen
       apiKeys: {
         post: {
           mutationOptions: {
-            // Waits for the key list the new key appears in; API access refreshes in the background.
-            onSuccess: (_data, variables, _result, context) => {
+            // Writes the new key into its list, so the one-time secret shows at once; API
+            // access refreshes in the background.
+            onSuccess: (created, variables, _result, context) => {
               const input = { params: { agent_id: variables.params.agent_id } }
               void invalidateQueryKeys(context.client, [
                 consoleQuery.agent.byAgentId.apiAccess.get.queryKey({ input }),
               ])
-              return invalidateQueryKeys(context.client, [
+              addCreatedKeyToLists(
+                context.client,
                 consoleQuery.agent.byAgentId.apiKeys.get.queryKey({ input }),
-              ])
+                created,
+              )
             },
           },
         },
