@@ -11,13 +11,13 @@ runs, and the allow/deny answers live in `test_auth_matrix.py`.
 from __future__ import annotations
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi, WorkflowEventsQuery
@@ -111,7 +111,7 @@ def _make_end_user() -> EndUser:
     )
 
 
-def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Response]:
+def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Iterable[str]]:
     """Return the bare view the contract decorator attaches as ``__handler__``.
 
     ``__handler__`` is injected at decoration time, so it is absent from the
@@ -123,21 +123,9 @@ def _handler(api: OpenApiWorkflowEventsApi) -> Callable[..., Response]:
     return handler
 
 
-def _sse_body(response: Response) -> str:
-    """Read the streamed SSE body as text, decoding any byte chunks.
-
-    Flask types ``Response.response`` as ``Iterable[bytes] | Iterable[str]``
-    because a view may yield either; the SSE view under test yields ``str``.
-    Iterating chunk by chunk keeps the two arms separate, so no union has to be
-    handed to ``str.join`` or ``bytes.join``.
-    """
-    parts: list[str] = []
-    for chunk in response.response:
-        if isinstance(chunk, bytes):
-            parts.append(chunk.decode())
-        else:
-            parts.append(chunk)
-    return "".join(parts)
+def _sse_body(frames: Iterable[str]) -> str:
+    """Read the frames the handler hands back; the stream layer around it builds the response."""
+    return "".join(frames)
 
 
 class TestOpenApiWorkflowEventsApi:
@@ -217,7 +205,7 @@ class TestOpenApiWorkflowEventsApi:
                 run_id=_RUN_ID,
                 query=WorkflowEventsQuery(),
             )
-        assert resp.mimetype == "text/event-stream"
+            assert _sse_body(resp) == ""
 
     def _bind_finished_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from datetime import UTC, datetime
@@ -256,7 +244,6 @@ class TestOpenApiWorkflowEventsApi:
             ctx.seal()
             body = _sse_body(resp)
 
-        assert resp.mimetype == "text/event-stream"
         assert "workflow_finished" in body
 
     @pytest.mark.parametrize("include_state_snapshot", [False, True], ids=["events", "snapshot"])
@@ -286,7 +273,6 @@ class TestOpenApiWorkflowEventsApi:
             ctx.seal()
             body = _sse_body(resp)
 
-        assert resp.mimetype == "text/event-stream"
         assert body == "event: a\n\nevent: b\n\n"
 
     @pytest.mark.parametrize("continue_on_pause", [False, True], ids=["close", "keep_open"])

@@ -8,9 +8,8 @@ GET /apps/<app_id>/runs/<run_id>/events
 from __future__ import annotations
 
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 
-from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound, UnprocessableEntity
@@ -76,7 +75,7 @@ class OpenApiWorkflowEventsApi(Resource):
         query=WorkflowEventsQuery,
         returns=(200, EventStreamResponse, "SSE event stream"),
     )
-    def get(self, ctx: Context, app_id: str, run_id: str, *, query: WorkflowEventsQuery):
+    def get(self, ctx: Context, app_id: str, run_id: str, *, query: WorkflowEventsQuery) -> Iterable[str]:
         # The router's session closes as soon as this returns, so everything the SSE
         # body needs is read off `ctx` here and the generators below close over plain
         # values only.
@@ -156,8 +155,4 @@ class OpenApiWorkflowEventsApi(Resource):
 
             event_generator = _generate_stream_events
 
-        return Response(
-            with_form_hints(event_generator(), app_id=owning_app_id),
-            mimetype="text/event-stream",
-            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-        )
+        return with_form_hints(event_generator(), app_id=owning_app_id)

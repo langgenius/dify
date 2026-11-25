@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import replace
 from inspect import unwrap
 from io import BytesIO
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from flask_restx import Resource
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import event
@@ -121,7 +121,7 @@ def _make_account() -> Account:
     return account
 
 
-def _post_handler(api: Resource) -> Callable[..., Response]:
+def _post_handler(api: Resource) -> Callable[..., Iterable[str]]:
     # The per-mode run resources are created dynamically, so pyrefly only sees `Resource`.
     return unwrap(api.post)  # pyrefly: ignore[missing-attribute]
 
@@ -263,7 +263,7 @@ def test_run_reads_everything_off_the_context_before_streaming(
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/advanced-chat:run", method="POST"):
         response = _post_handler(api)(api, ctx, app_id=_TEST_APP_ID, body=body)
         ctx.seal()
-        body = "".join(part.decode() if isinstance(part, bytes) else part for part in response.response)
+        body = "".join(response)
 
     assert body == "event: a\n\nevent: b\n\n"
     assert generate_mock.call_args.kwargs["streaming"] is True
@@ -333,7 +333,7 @@ def test_chat_route_hints_the_reply_on_message_end(app: Flask, monkeypatch: pyte
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = _post_handler(api)(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
-        chunks = list(response.response)
+        chunks = list(response)
     assert chunks[0] == message
     assert json.loads(chunks[1][len("data: ") :])["hints"] == [
         {
@@ -353,7 +353,7 @@ def test_chat_route_passes_a_message_end_without_conversation_through(
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         response = _post_handler(api)(api, _ctx(AppMode.CHAT), app_id=_TEST_APP_ID, body=body)
-        assert list(response.response) == [end]
+        assert list(response) == [end]
 
 
 def test_draft_runs_do_not_hint_the_form_submit_op() -> None:

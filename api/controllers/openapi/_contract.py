@@ -10,7 +10,8 @@ compose with.
 carries the catalog fields ``op``, ``kind``, ``summary``, ``internal`` and
 ``deprecated`` that ``_catalog.py`` reads to describe ``/openapi/v1``. A ``list``
 op gets ``paginated`` as well, which fills the next-page hint on a bare
-``PaginationEnvelope`` result.
+``PaginationEnvelope`` result. A ``stream`` op's handler returns its SSE frames, and ``_stream_result.py`` answers
+them as a stream or, when the request asks for a job, as a background job.
 """
 
 from __future__ import annotations
@@ -21,7 +22,6 @@ from functools import wraps
 from typing import Any, Final, cast, get_args, get_origin, override
 
 from flask import request
-from flask_restx import abort
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -30,10 +30,11 @@ from constants import BYTES_PER_MIB
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.schema import query_params_from_model, query_params_from_request
 from controllers.openapi import openapi_ns
-from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits
+from controllers.openapi._errors import ErrorBody, RequestOverRouteLimits, refuse_invalid_request
 from controllers.openapi._hints import next_page_hint, page_after
 from controllers.openapi._models import PaginationEnvelope
 from controllers.openapi._multipart import body_from_request
+from controllers.openapi._stream_result import answers_stream_or_job, check_stream_op
 from controllers.openapi._upload import file_fields
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import Requirement
@@ -138,11 +139,7 @@ def accepts(*, query: type[BaseModel] | None = None, body: type[BaseModel] | Non
                     kwargs["body"] = body.model_validate(_read_body(body_file_fields))
             except ValidationError as exc:
                 # Sanitized 422 — no pydantic `url` (version) or `input` (user payload) leak.
-                abort(
-                    422,
-                    message="Request validation failed",
-                    errors=exc.errors(include_url=False, include_input=False, include_context=False),
-                )
+                refuse_invalid_request(exc.errors(include_url=False, include_input=False, include_context=False))
             return view(*args, **kwargs)
 
         if query is not None:
@@ -275,10 +272,14 @@ def endpoint(
     def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
         if context is not None and "ctx" not in inspect.signature(view).parameters:
             raise TypeError(f"{view.__qualname__} must declare a 'ctx' parameter")
+        if kind is Kind.SSE:
+            check_stream_op(view, context=context, query=query, body=body)
 
         decorated = view
         if kind is Kind.LIST:
             decorated = paginated(op)(decorated)
+        if kind is Kind.SSE:
+            decorated = answers_stream_or_job(op)(decorated)
         if query is not None or body is not None:
             decorated = accepts(query=query, body=body)(decorated)
         for return_spec in reversed(return_specs):

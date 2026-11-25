@@ -982,6 +982,8 @@ ROUTES: tuple[Route, ...] = (
     Route("app_run.chat", "POST", "/apps/{app_id}/chat:run", _RUN_TRAITS),
     Route("app_run.advanced_chat", "POST", "/apps/{app_id}/advanced-chat:run", _RUN_TRAITS),
     Route("app_run.completion", "POST", "/apps/{app_id}/completion:run", _RUN_TRAITS),
+    Route("jobs.wait", "GET", "/apps/{app_id}/jobs/{job_id}:wait", _RUN_TRAITS),
+    Route("jobs.stop", "POST", "/apps/{app_id}/jobs/{job_id}:stop", _RUN_TRAITS),
     Route(
         "app_run.draft.workflow",
         "POST",
@@ -1532,6 +1534,19 @@ _DUAL_SUBJECT_RUN: dict[Case, Expect] = {
     Case.RBAC_ON_LOW_ROLE: ADMIT_NO_WORKSPACE_ROLE,
 }
 
+# The job routes skip the web-access check: a job is found only by its owner, and a draft test has no web access.
+_JOB: dict[Case, Expect] = {
+    **_DUAL_SUBJECT_RUN,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED: ADMIT,
+    Case.EE_ACCOUNT_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
+    Case.EE_ACCOUNT_MODE_UNRESOLVED: ADMIT,
+    Case.EE_EXTERNAL_PRIVATE_ALL: ADMIT,
+    Case.EE_EXTERNAL_PRIVATE: ADMIT,
+    Case.EE_EXTERNAL_PRIVATE_REFUSED_WEBAPP_AUTH_OFF: ADMIT,
+    Case.EE_EXTERNAL_MODE_UNRESOLVED: ADMIT,
+    Case.RBAC_ON_DENIED: ADMIT,
+}
+
 
 _ACCOUNT_READER_APP: dict[Case, Expect] = {
     Case.MEMBER: ADMIT,
@@ -1661,6 +1676,8 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_run.chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "app_run.advanced_chat": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "app_run.completion": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
+    "jobs.wait": dict(_JOB),
+    "jobs.stop": dict(_JOB),
     "app_run.stop": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "app_run.stop.task": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "human_input_form.get": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
@@ -1936,13 +1953,13 @@ def _settings_req(
     return (*base, CheckWorkspaceRole(roles)) if roles is not None else base
 
 
-_RESOURCE_RUN = (
+_RESOURCE_JOB = (
     CheckSubject(allowed=(*_ACCOUNT_OR_EXTERNAL, ResourceAccessSubject)),
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckAppAccess(),
 )
+_RESOURCE_RUN = (*_RESOURCE_JOB, CheckAppAccess())
 
 DECLARED: dict[str, tuple[Requirement, ...]] = {
     "knowledge_fs.ls": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
@@ -2091,6 +2108,8 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "app_run.chat": _RESOURCE_RUN,
     "app_run.advanced_chat": _RESOURCE_RUN,
     "app_run.completion": _RESOURCE_RUN,
+    "jobs.wait": _RESOURCE_JOB,
+    "jobs.stop": _RESOURCE_JOB,
     "app_run.draft.workflow": _draft_req(_auth_matrix_AppMode.WORKFLOW),
     "app_run.draft.advanced_chat": _draft_req(_auth_matrix_AppMode.ADVANCED_CHAT),
     "app_workflow.run.list": _REQ_RUN_HISTORY,
@@ -2407,6 +2426,7 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "task_id": str(uuid.uuid4()),
         "form_token": uuid.uuid4().hex,
         "run_id": str(uuid.uuid4()),
+        "job_id": str(uuid.uuid4()),
         "version_id": str(uuid.uuid4()),
         "skill_id": str(uuid.uuid4()),
         "env_id": str(uuid.uuid4()),
@@ -2734,6 +2754,8 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
+    ("get", "/apps/{app_id}/jobs/{job_id}:wait"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}/jobs/{job_id}:stop"): frozenset({"200", "default"}),
     ("post", "/apps/{app_id}/draft/workflow:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/draft/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/runs"): frozenset({"200", "422", "default"}),

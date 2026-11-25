@@ -25,15 +25,28 @@ promote them to ``libs`` if a second surface adopts ``ErrorBody``.
 
 import contextlib
 import logging
+from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any
+from typing import Any, Final, NoReturn
 from uuid import UUID
 
+from flask_restx import abort
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
 from controllers.openapi._models import Hint
 from libs.external_api import http_status_message
+
+REQUEST_VALIDATION_FAILED: Final = "Request validation failed"
+
+
+def refuse_invalid_request(errors: Sequence[Mapping[str, Any]]) -> NoReturn:
+    """Answer a request whose input did not validate.
+
+    Precondition: errors are pydantic error details without input values, URLs or context.
+    Postcondition: raises the 422 every request validation answers, with errors as its details.
+    """
+    abort(422, message=REQUEST_VALIDATION_FAILED, errors=list(errors))
 
 
 class OpenApiErrorCode(StrEnum):
@@ -83,6 +96,8 @@ class OpenApiErrorCode(StrEnum):
     TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE = "trigger_workflow_service_mode_unavailable"
     RUN_NOT_FOUND = "run_not_found"
     RUN_NOT_STOPPABLE = "run_not_stoppable"
+    JOB_NOT_FOUND = "job_not_found"
+    JOB_CAPACITY_REACHED = "job_capacity_reached"
     VERSION_NOT_FOUND = "version_not_found"
     VERSION_NOT_RESTORABLE = "version_not_restorable"
     DRAFT_NOT_FOUND = "draft_not_found"
@@ -382,6 +397,19 @@ class RunNotFound(OpenApiError):  # noqa: N818
     code = 404
     error_code = OpenApiErrorCode.RUN_NOT_FOUND
     description = "No run with this id exists for this app."
+
+
+class JobNotFound(OpenApiError):  # noqa: N818
+    code = 404
+    error_code = OpenApiErrorCode.JOB_NOT_FOUND
+    description = "No job with this id exists for this app, or it has expired."
+
+
+class JobCapacityReached(OpenApiError):  # noqa: N818
+    code = 429
+    error_code = OpenApiErrorCode.JOB_CAPACITY_REACHED
+    description = "This server is running as many background runs as it allows."
+    hint = "Wait for a running job to finish, then start again."
 
 
 class RunNotStoppable(OpenApiError):  # noqa: N818

@@ -91,6 +91,7 @@ from controllers.openapi._models import (
     HealthResponse,
     Hint,
     HumanInputFormDefinitionResponse,
+    JobState,
     KnowledgeBaseListQuery,
     KnowledgeBaseListResponse,
     KnowledgeBaseRow,
@@ -208,6 +209,7 @@ from fields.workflow_run_fields import (
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ErrorSpec, ExternalApi
 from services.entities.dsl_entities import CheckDependenciesResult, Import
+from services.run_job import JobWaitQuery
 
 bp = Blueprint("openapi", __name__, url_prefix="/openapi/v1")
 attach_anti_framing(bp)
@@ -237,7 +239,10 @@ api = _OpenApi(
     bp,
     version="1.0",
     title="OpenAPI",
-    description="User-scoped programmatic API (bearer auth)",
+    description="User-scoped programmatic API (bearer auth). A stream operation called with the header "
+    "X-Dify-Stream-Result: job runs as a background job and answers JSON with the job's state instead of the "
+    "stream; X-Dify-Job-Wait-Seconds sets how long it waits for a result and Idempotency-Key makes a repeated call "
+    "return the first job. Without the header it streams.",
     error_body_formatter=OpenApiErrorFormatter(),
 )
 
@@ -288,6 +293,7 @@ register_schema_models(
     PluginListQuery,
     ModelListQuery,
     KnowledgeBaseListQuery,
+    JobWaitQuery,
     ToolListQuery,
     ProviderCredentialCreatePayload,
     ProviderCredentialUpdatePayload,
@@ -358,6 +364,7 @@ register_response_schema_models(
     MemberInviteResponse,
     MemberActionResponse,
     TaskStopResponse,
+    JobState,
     FormSubmitResponse,
     HumanInputFormDefinitionResponse,
     DeviceCodeResponse,
@@ -466,6 +473,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         files,
         human_input_form,
         index,
+        jobs,
         knowledge_bases,
         knowledge_fs,
         mcp_providers,
@@ -498,6 +506,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         files,
         human_input_form,
         index,
+        jobs,
         knowledge_bases,
         knowledge_fs,
         mcp_providers,
@@ -531,6 +540,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     files,
     human_input_form,
     index,
+    jobs,
     knowledge_bases,
     knowledge_fs,
     mcp_providers,
@@ -567,6 +577,7 @@ __all__ = [
     "files",
     "human_input_form",
     "index",
+    "jobs",
     "knowledge_bases",
     "knowledge_fs",
     "mcp_providers",

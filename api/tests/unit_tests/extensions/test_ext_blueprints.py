@@ -10,7 +10,12 @@ from flask_cors import CORS
 from flask_restx import Resource
 
 from configs import dify_config
-from constants import HEADER_NAME_CATALOG
+from constants import (
+    HEADER_NAME_CATALOG,
+    HEADER_NAME_IDEMPOTENCY_KEY,
+    HEADER_NAME_JOB_WAIT_SECONDS,
+    HEADER_NAME_STREAM_RESULT,
+)
 from dify_app import DifyApp
 from extensions import ext_blueprints
 from extensions.ext_blueprints import (
@@ -200,6 +205,24 @@ class TestCorsCases:
 
         allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
         assert HEADER_NAME_CATALOG.lower() in allow_headers
+
+    @staticmethod
+    def test_the_job_headers_are_allowed_on_requests() -> None:
+        """A job reads its mode, wait and key from request headers, so preflight must admit them."""
+        job_headers = (HEADER_NAME_STREAM_RESULT, HEADER_NAME_JOB_WAIT_SECONDS, HEADER_NAME_IDEMPOTENCY_KEY)
+        app = _make_app(["https://app.example.com"], "openapi_t8")
+        client = app.test_client()
+        response = client.options(
+            "/openapi/v1/_health",
+            headers={
+                "Origin": "https://app.example.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": ", ".join(job_headers),
+            },
+        )
+
+        allow_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
+        assert all(header.lower() in allow_headers for header in job_headers)
 
 
 """Regression coverage for authenticated browser CORS headers."""
