@@ -21,6 +21,8 @@ from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowPageResume
 
+PAGE_ID = "97b8e908-8f47-4ad8-95d9-f8ebe3da8218"
+
 
 @pytest.fixture
 def collaboration_server(
@@ -181,7 +183,12 @@ def test_user_connect_accepts_legacy_and_page_resume_payloads(
 
 @pytest.mark.parametrize(
     ("page_id", "sequence"),
-    [("invalid", 1), (str(uuid4()), 0), (str(uuid4()), "1"), (str(uuid4()), True)],
+    [
+        pytest.param("invalid", 1, id="invalid-page-id"),
+        pytest.param(PAGE_ID, 0, id="zero-sequence"),
+        pytest.param(PAGE_ID, "1", id="string-sequence"),
+        pytest.param(PAGE_ID, True, id="boolean-sequence"),
+    ],
 )
 def test_user_connect_rejects_invalid_page_resume_before_admission(
     collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
@@ -190,12 +197,14 @@ def test_user_connect_rejects_invalid_page_resume_before_admission(
     sequence: object,
 ) -> None:
     server, _, _ = collaboration_server
-    admit = MagicMock()
-    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", admit)
+
+    def unexpected_session() -> Session:
+        pytest.fail("Malformed page resume reached database session creation")
+
+    monkeypatch.setattr(workflow.session_factory, "create_session", unexpected_session)
     payload = {"workflow_id": "wf-1", "resume": {"page_id": page_id, "sequence": sequence}}
 
     assert server.handlers["/"]["user_connect"]("sid-1", payload) == ({"msg": "invalid resume"}, 400)
-    admit.assert_not_called()
 
 
 def test_user_connect_does_not_hide_unrelated_errors(
