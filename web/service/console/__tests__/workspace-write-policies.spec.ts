@@ -49,6 +49,31 @@ describe('skill metadata policy', () => {
     expect(invalidatedKeys()).not.toContainEqual(skills.tags.get.key())
   })
 
+  it('keeps the saved detail when an older detail refetch lands afterwards', async () => {
+    const { client, context } = setup()
+    const detailKey = skills.bySkillId.get.queryKey({ input: { params } })
+    const stale = createDeferred<Detail>()
+    client.setQueryData(detailKey, { ...detail, display_name: 'Before' })
+    const observer = new QueryObserver(client, {
+      queryKey: detailKey,
+      queryFn: () => stale.promise,
+    })
+    const unsubscribe = observer.subscribe(() => undefined)
+    void client.refetchQueries({ queryKey: detailKey })
+
+    await skills.bySkillId.patch.mutationOptions().onSuccess!(
+      detail,
+      { params, body: { display_name: 'Renamed', expected_updated_at: 1 } },
+      undefined,
+      context,
+    )
+    stale.resolve({ ...detail, display_name: 'Before' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    unsubscribe()
+
+    expect(client.getQueryData(detailKey)).toEqual(detail)
+  })
+
   it('refreshes the tag catalog only when tags change', async () => {
     const { context, invalidatedKeys } = setup()
 

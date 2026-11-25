@@ -21,6 +21,18 @@ function propertyName(node: Node) {
   return undefined
 }
 
+function variableOf(
+  identifier: Node,
+  scope: ReturnType<Rule.RuleContext['sourceCode']['getScope']>,
+) {
+  if (identifier.type !== 'Identifier') return undefined
+  for (let current: typeof scope | null = scope; current; current = current.upper) {
+    const variable = current.set.get(identifier.name)
+    if (variable) return variable
+  }
+  return undefined
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -37,19 +49,23 @@ const rule: Rule.RuleModule = {
     },
   },
   create(context) {
-    const mutationOptionNames = new Set<string>()
+    // Track bindings, not names: an unrelated `options` elsewhere is not a policy.
+    const mutationOptionVariables = new Set<unknown>()
+    const isMutationOptions = (node: Node) =>
+      isMutationOptionsCall(node) ||
+      mutationOptionVariables.has(variableOf(node, context.sourceCode.getScope(node)))
     return {
       VariableDeclarator(node) {
-        if (node.id.type === 'Identifier' && isMutationOptionsCall(node.init as Node))
-          mutationOptionNames.add(node.id.name)
+        if (node.id.type !== 'Identifier' || !isMutationOptionsCall(node.init as Node)) return
+        const variable = variableOf(node.id as Node, context.sourceCode.getScope(node))
+        if (variable) mutationOptionVariables.add(variable)
       },
       MemberExpression(node) {
         if (
           !node.computed &&
           node.property.type === 'Identifier' &&
           CALLBACKS.has(node.property.name) &&
-          (isMutationOptionsCall(node.object as Node) ||
-            (node.object.type === 'Identifier' && mutationOptionNames.has(node.object.name)))
+          isMutationOptions(node.object as Node)
         )
           context.report({ node, messageId: 'manualPolicyCall' })
       },
@@ -59,11 +75,7 @@ const rule: Rule.RuleModule = {
         for (const property of node.properties as Node[]) {
           if (property.type === 'SpreadElement') {
             const argument = property.argument as Node
-            if (
-              isMutationOptionsCall(argument) ||
-              (argument.type === 'Identifier' && mutationOptionNames.has(argument.name))
-            )
-              spread = true
+            if (isMutationOptions(argument)) spread = true
             continue
           }
           const name = propertyName(property)

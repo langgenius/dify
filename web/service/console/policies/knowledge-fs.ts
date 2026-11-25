@@ -116,9 +116,15 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             },
           },
           byQuestionId: {
+            // Bulk deletes run one mutation per question: refresh the list once,
+            // after the last pending delete of the space settles.
             delete: {
               mutationOptions: {
-                onSuccess: (_data, { params }, _result, { client }) => {
+                onMutate: ({ params }, { client }) => {
+                  startGoldenQuestionDelete(client, params.control_space_id)
+                },
+                onSettled: (_data, _error, { params }, _result, { client }) => {
+                  if (!finishGoldenQuestionDelete(client, params.control_space_id)) return
                   void invalidateGoldenQuestionList(consoleQuery, client, params.control_space_id)
                 },
               },
@@ -264,6 +270,26 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
       },
     },
   }
+}
+
+const pendingGoldenQuestionDeletes = new WeakMap<QueryClient, Map<string, number>>()
+
+function startGoldenQuestionDelete(client: QueryClient, controlSpaceId: string) {
+  const pending = pendingGoldenQuestionDeletes.get(client) ?? new Map<string, number>()
+  pendingGoldenQuestionDeletes.set(client, pending)
+  pending.set(controlSpaceId, (pending.get(controlSpaceId) ?? 0) + 1)
+}
+
+/** Returns true when no other delete of the space is still pending. */
+function finishGoldenQuestionDelete(client: QueryClient, controlSpaceId: string) {
+  const pending = pendingGoldenQuestionDeletes.get(client)
+  const remaining = (pending?.get(controlSpaceId) ?? 1) - 1
+  if (remaining > 0) {
+    pending!.set(controlSpaceId, remaining)
+    return false
+  }
+  pending?.delete(controlSpaceId)
+  return true
 }
 
 function invalidateGoldenQuestionList(
