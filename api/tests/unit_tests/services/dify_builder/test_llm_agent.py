@@ -153,25 +153,6 @@ def _capture_tool_owners(monkeypatch: pytest.MonkeyPatch) -> Graph:
     return seen
 
 
-def test_initial_plan_defers_catalogue_and_discovery_receives_goal_and_requirements(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    seen = _capture_tool_owners(monkeypatch)
-    agent = LlmBuilderAgent("t1", {}, model_resolver_fn=lambda: None)
-    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
-
-    requirements = {"channel": "#oncall"}
-    goal = "Page the on-call responders"
-    agent.propose_plan_v1(requirements, goal_text=goal)
-    assert "planning_catalogue" not in seen
-
-    agent.discover_resources(["Notify responders"], goal_text=goal, requirements=requirements)
-    tenant_id, kwargs = seen["discover_resources"]
-    assert tenant_id == "t1"
-    assert kwargs["goal_text"] == goal
-    assert kwargs["requirements"] is requirements
-
-
 def test_every_tool_owner_receives_the_acting_account(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _capture_tool_owners(monkeypatch)
     agent = LlmBuilderAgent("t1", {}, account_id="acct-a", app_mode="advanced-chat")

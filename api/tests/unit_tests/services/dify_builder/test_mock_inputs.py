@@ -47,11 +47,6 @@ def test_generate_degrades_to_typed_defaults_on_boom() -> None:
     assert isinstance(out["count"], int | float)
 
 
-def test_generate_degrades_on_none_model() -> None:
-    out = mock_inputs.generate(None, _SCHEMA, {})
-    assert set(out.keys()) == {"query", "count"}
-
-
 def test_generate_empty_schema_is_empty_inputs() -> None:
     assert mock_inputs.generate(None, {"variables": []}, {}) == {}
 

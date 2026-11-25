@@ -273,9 +273,7 @@ def test_recovery_restart_resets_to_entry_state_and_preserves_conversation() -> 
 
 
 def _engine_env() -> tuple[Env, InMemoryRepository, FakeDifyPort]:
-    """A real engine env (PlaceholderAgent + FakeDifyPort + InMemoryRepository),
-    mirroring test_fix_flow.py's _new_env. FIX/FIX_CHECKLIST recovery restarts
-    land on working states that the runner must drive through real handlers."""
+    """Exercise Fix and Checklist recovery through the real state machine."""
     repo = InMemoryRepository()
     dify = FakeDifyPort()
     env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min)
@@ -295,9 +293,7 @@ def test_recovery_restart_in_fix_mode_drives_working_entry_state_to_waiting() ->
     drives fix.diagnose -> fix.propose -> fix.apply (PlaceholderAgent's
     canned repair is low-risk, so no approval gate) and rests at the next
     genuine waiting state, exactly like any other transition into a working
-    state (e.g. request_fix in test_fix_flow.py). This test fails against
-    the old runner (out.current_state == PcState.FIX_DIAGNOSE, a working
-    state) and passes after the fix.
+    state.
     """
     env, repo, dify = _engine_env()
     fc = DifyBuilderContext(failed_run_id="TR-1", recovery_class="structural_invalidating", next_seq=1)
@@ -324,7 +320,7 @@ def test_recovery_restart_in_fix_checklist_mode_drives_working_entry_state_to_wa
     strand the session at checklist.diagnose (also a WORKING state). Mirrors
     the FIX test above; the checklist flow instead rests at
     checklist.await_recheck once handle_apply routes on fc.source ==
-    'checklist' (see test_fix_flow.py's checklist-entry smoke test)."""
+    'checklist'."""
     env, repo, dify = _engine_env()
     errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
     fc = DifyBuilderContext(

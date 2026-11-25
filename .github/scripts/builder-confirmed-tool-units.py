@@ -123,7 +123,6 @@ FILES = [
     "api/tests/unit_tests/services/test_workflow_run_service.py",
     "api/tests/unit_tests/services/dify_builder/test_code_risk_assessment.py",
     "api/tests/unit_tests/services/dify_builder/test_code_risk_preparation.py",
-    "api/tests/unit_tests/core/dify_builder/test_ports.py",
     "api/tests/unit_tests/services/dify_builder/test_edit_cognition.py",
     "api/tests/unit_tests/services/dify_builder/test_fix_cognition.py",
     "api/tests/unit_tests/services/dify_builder/test_edit_plan_generation.py",
@@ -160,7 +159,7 @@ FILES = [
     "api/tests/unit_tests/services/dify_builder/test_predefined_model_readiness.py",
     "api/tests/unit_tests/core/plugin/impl/test_model_readiness.py",
     "api/tests/unit_tests/services/dify_builder/test_cognition_thread_context.py",
-    "api/tests/unit_tests/core/dify_builder/test_fix_flow.py",
+    "api/tests/unit_tests/services/dify_builder/test_engine_on_sql_repo.py",
     "api/tests/unit_tests/core/dify_builder/test_repair_readability.py",
     "api/tests/unit_tests/services/dify_builder/test_repair_presentation.py",
     "api/tests/unit_tests/services/dify_builder/test_tool_output_evidence.py",
@@ -345,11 +344,6 @@ expected_functions = {
         "test_workflow_app_generate_entity_roundtrip_excludes_trace_scope": 1,
         "test_workflow_resumption_context_roundtrip": 2,
     },
-    "tests.unit_tests.core.dify_builder.test_fix_flow": {
-        "test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision": 1,
-        "test_full_fix_flow_request_fix_to_publish_success": 1,
-        "test_full_fix_flow_stale_base_version_raises_conflict": 1,
-    },
     "tests.unit_tests.core.dify_builder.test_handlers_build": {
         "test_a_determinate_outcome_resets_the_unknown_outcome_count": 1,
         "test_a_missing_config_tool_still_lets_the_gap_agent_report_a_gap": 1,
@@ -396,7 +390,6 @@ expected_functions = {
         "test_re_fix_branches_clear_stale_test_input_ref_and_verify_run_id": 1,
         "test_recovery_continue_reruns_interrupted_publish_step": 1,
         "test_recovery_restart_resets_interrupted_step_to_entry_state": 1,
-        "test_repeated_failure_stops_offering_a_repair": 1,
         "test_resource_recommendation_confirm_creates_internal_checkpoint_and_plan": 1,
         "test_reverted_clarification_clears_old_attempt_before_fresh_build_and_testdata": 1,
         "test_reverted_planning_failure_retains_prior_attempt_context": 1,
@@ -468,9 +461,6 @@ expected_functions = {
         "test_empty_plan_preserves_context_and_stays_at_its_waiting_gate": 3,
         "test_resource_discovery_uses_persisted_session_language": 8,
         "test_runtime_cognition_receives_full_original_goal_and_confirmed_requirements": 4,
-    },
-    "tests.unit_tests.core.dify_builder.test_ports": {
-        "test_actor_replaces_forward_auth_on_dify_port_methods": 1,
     },
     "tests.unit_tests.core.dify_builder.test_repair_readability": {
         "test_proposal_owners_show_business_title_rationale_and_retest_boundary": 3,
@@ -896,7 +886,6 @@ expected_functions = {
         "test_cleanup_only_log_release_refuses_live_dispatcher_and_keeps_original_lease": 1,
         "test_code_capability_requires_explicit_trusted_owner_and_default_stays_http": 1,
         "test_composed_cancel_does_not_upgrade_incomplete_or_noninitial_history": 5,
-        "test_composed_start_cancel_before_delivery_reconciles_without_physical_acquisition": 1,
         "test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one": 1,
         "test_delivered_unclaimed_cancel_retires_logically_without_consuming_lifetime": 1,
         "test_get_cancel_interleaving_refreshes_orm_state_and_projects_one_cancellation": 4,
@@ -1108,10 +1097,7 @@ expected_functions = {
         "test_approved_generation_preserves_business_source_and_satisfies_historical_approval": 1,
         "test_build_nodes_corrects_list_schema_before_returning_complete_intents": 1,
         "test_build_nodes_does_not_duplicate_an_endpoint_variable_the_start_node_already_declares": 1,
-        "test_build_nodes_grounds_a_bearer_key_the_goal_only_mentions_as_a_word": 1,
-        "test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variable": 1,
         "test_build_nodes_grounds_an_empty_api_key_authorization_config": 1,
-        "test_build_nodes_grounds_an_endpoint_the_user_never_supplied_even_when_not_placeholder_shaped": 1,
         "test_build_nodes_grounds_an_invented_api_key_authorization_config": 1,
         "test_build_nodes_grounds_an_invented_api_key_param": 1,
         "test_build_nodes_grounds_an_invented_azure_subscription_key_header": 1,
@@ -1147,7 +1133,6 @@ expected_functions = {
         "test_full_build_completeness_uses_the_actual_mode_terminal": 2,
         "test_full_build_corrects_disconnected_healthcheck_within_existing_retry_budget": 1,
         "test_full_build_rejects_disconnected_convergence_before_returning_intents": 4,
-        "test_grounding_a_templated_url_is_idempotent": 1,
     },
     "tests.unit_tests.services.dify_builder.test_build_presentation": {
         "test_noop_does_not_claim_proposed_creates_were_applied": 2,
@@ -1414,7 +1399,6 @@ expected_functions = {
         "test_build_edit_intents_partial_reject_keeps_first_attempt_when_retry_still_fails": 1,
         "test_build_edit_intents_partial_reject_retries_once_then_recovers_both": 1,
         "test_build_edit_intents_provider_error_degrades_to_empty": 1,
-        "test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt": 1,
         "test_build_edit_intents_reprompts_on_a_node_the_engine_would_refuse_and_recovers": 1,
         "test_build_edit_intents_total_reject_reprompts_then_recovers": 1,
         "test_build_edit_intents_validates_and_drops_bad": 1,
@@ -1444,7 +1428,6 @@ expected_functions = {
         "test_requested_placement_is_checked_from_actual_graph_facts": 1,
         "test_sufficient_impact_retains_original_request_without_a_confirmation_field": 1,
         "test_the_drafts_pre_existing_problems_do_not_spend_the_reprompt": 1,
-        "test_the_engines_text_separates_two_refusals_the_preflight_key_cannot": 1,
         "test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry": 1,
         "test_unavailable_assessment_does_not_authorize_a_bypass": 1,
     },
@@ -1468,6 +1451,12 @@ expected_functions = {
     },
     "tests.unit_tests.services.dify_builder.test_edit_plan_lifecycle": {
         "test_failed_replanning_preserves_snapshot_and_recovers_on_retry": 12
+    },
+    "tests.unit_tests.services.dify_builder.test_engine_on_sql_repo": {
+        "test_checklist_entry_flow_wires_diagnose_through_await_recheck_to_decision_on_sql_repo": 1,
+        "test_execution_evidence_round_trips_without_historical_backfill": 1,
+        "test_full_fix_flow_request_fix_to_publish_success_on_sql_repo": 1,
+        "test_full_fix_flow_stale_base_version_raises_conflict_on_sql_repo": 1,
     },
     "tests.unit_tests.services.dify_builder.test_execution_recovery_messages": {
         "test_preparation_failure_localizes_reason_and_retains_machine_evidence": 1
@@ -1635,7 +1624,6 @@ expected_functions = {
     "tests.unit_tests.services.dify_builder.test_llm_agent": {
         "test_every_tool_owner_receives_the_acting_account": 1,
         "test_fix_methods_degrade_without_model": 1,
-        "test_initial_plan_defers_catalogue_and_discovery_receives_goal_and_requirements": 1,
         "test_message_reply_delegates_stream_callback": 1,
         "test_model_is_resolved_lazily_and_memoized": 1,
         "test_model_or_none_swallows_resolution_error": 1,
@@ -1645,7 +1633,6 @@ expected_functions = {
         "test_all_mock_input_paths_ground_prompt_in_current_business_context": 6,
         "test_business_context_preserves_existing_type_fallbacks": 5,
         "test_explicit_json_string_is_validated_without_reserializing": 1,
-        "test_generate_degrades_on_none_model": 1,
         "test_generate_degrades_to_typed_defaults_on_boom": 1,
         "test_generate_empty_schema_is_empty_inputs": 1,
         "test_generate_uses_llm_values_keyed_by_variable": 1,

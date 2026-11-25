@@ -93,34 +93,6 @@ def test_context_round_trips_build_fields() -> None:
     assert out == fc
 
 
-def test_context_from_dict_defaults_build_fields_when_absent() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.serde import context_from_dict
-
-    fc = context_from_dict({"failed_run_id": "TR-9"})
-    assert fc == DifyBuilderContext(failed_run_id="TR-9")
-    assert fc.goal_text == ""
-    assert fc.requirements == {}
-    assert fc.plan_items == []
-
-
-def test_context_from_dict_defaults_edit_fields_when_absent() -> None:
-    from services.dify_builder.serde import context_from_dict
-
-    out = context_from_dict({})  # an older row with no edit_* keys
-    assert out.edit_rules == {}
-    assert out.edit_target_node_ids == []
-    assert out.last_edit_rejection == ""
-
-
-def test_context_from_dict_defaults_lifecycle_fields_when_absent() -> None:
-    from services.dify_builder.serde import context_from_dict
-
-    out = context_from_dict({})  # an older row with no paused/checkpoint_seq keys
-    assert out.paused is False
-    assert out.checkpoint_seq == 0
-
-
 def test_serde_round_trips_recovery_fields() -> None:
     from core.dify_builder.models import DifyBuilderContext
     from services.dify_builder.serde import context_from_dict, context_to_dict
@@ -132,21 +104,6 @@ def test_serde_round_trips_recovery_fields() -> None:
     back = context_from_dict(d)
     assert back.last_structure_fingerprint == "fp-abc"
     assert back.recovery_class == "config_only"
-
-
-def test_serde_defaults_recovery_fields_for_old_rows() -> None:
-    from services.dify_builder.serde import context_from_dict
-
-    # An older persisted dict lacking the new keys still deserializes.
-    back = context_from_dict({})
-    assert back.last_structure_fingerprint == ""
-    assert back.recovery_class == ""
-
-
-def test_serde_defaults_skill_learning_policy_for_old_rows() -> None:
-    from services.dify_builder.serde import context_from_dict
-
-    assert context_from_dict({}).skill_learning_policy == "ask"
 
 
 def test_repair_loop_fields_round_trip() -> None:

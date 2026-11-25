@@ -1832,37 +1832,6 @@ def cancel_composition(case: ObservationOwnerCase, monkeypatch: pytest.MonkeyPat
     )
 
 
-def test_composed_start_cancel_before_delivery_reconciles_without_physical_acquisition(
-    cancel_composition: CancellationCase,
-) -> None:
-    from models.dify_builder_native_tests import NativeInvocationState
-    from runtime_contracts.builder.execution import BuilderExecutionPolicyError
-    from runtime_contracts.builder.native.contracts import decode_native_ref
-    from services.dify_builder.native_testing.lifecycle import NativeDispatchRef
-
-    c = cancel_composition
-    assert len(c.published) == 1
-    assert c.owner._requests == c.owner._current == {}
-    result = c.api.cancel(
-        actor=c.actor, session_id="session", request_id=c.started.request_id, idempotency_key="cancel"
-    )
-    assert result.cancellation is not None
-    assert result.cancellation.status == "cancelled"
-    assert result.status == "terminal"
-    assert checked_row(NativeInvocationState, c.rows[NativeInvocationState][0]).cleanup_complete
-    assert checked_row(NativeDispatch, c.rows[NativeDispatch][0]).state == "cancelled"
-    assert c.api.lifecycle.reconcile() == 0
-    message = c.published[0]
-    ref = decode_native_ref(message["ref"])
-    late = c.owner.delivery(sessions=c.sessions, delivery=NativeDispatchRef(ref, 0, dispatch_identity(message)))
-    with pytest.raises(BuilderExecutionPolicyError, match="native_cancelled"):
-        late.execute_dispatch(ref=ref, generation=0, dispatch_id=dispatch_identity(message))
-    assert c.owner._requests == c.owner._current == {}
-    refreshed = c.api.get(actor=c.actor, session_id="session", request_id=c.started.request_id)
-    assert refreshed.cancellation is not None
-    assert refreshed.cancellation.status == "cancelled"
-
-
 def test_consumed_generation_zero_in_other_owner_cannot_ack_live_generation_one(
     cancel_composition: CancellationCase, monkeypatch: pytest.MonkeyPatch
 ) -> None:

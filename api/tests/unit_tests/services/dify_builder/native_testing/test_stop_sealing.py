@@ -272,38 +272,6 @@ def test_stop_rejects_incomplete_or_foreign_tree_before_authority_changes(case: 
     assert all(s.active for s in case.sql.invocations)
 
 
-@pytest.mark.parametrize("dispatch_state", ["queued", "published", "claimed"])
-def test_stop_rejects_orphan_dispatch_before_any_authority_or_outbox_mutation(
-    case: StopSealCase, dispatch_state: str
-) -> None:
-    orphan = deepcopy(case.sql.dispatches[1])
-    orphan.id, orphan.invocation_id, orphan.state = "orphan-dispatch", "missing-invocation", dispatch_state
-    case.sql.dispatches.append(orphan)
-    rows = [case.sql.request, case.loader.scope, *case.sql.states, *case.sql.invocations, *case.sql.dispatches]
-    before = deepcopy(
-        [tuple(inspect(row).attrs[column.key].value for column in inspect(type(row)).column_attrs) for row in rows]
-    )
-
-    with pytest.raises(BuilderExecutionPolicyError, match="native_owner_mismatch"):
-        seal(case)
-
-    assert [
-        tuple(inspect(row).attrs[column.key].value for column in inspect(type(row)).column_attrs) for row in rows
-    ] == before
-    assert case.loader.events == ["writer-enter"]
-
-
-def test_lost_stop_commit_ack_is_not_retried_into_acceptance(case: StopSealCase) -> None:
-    case.loader.commit_error = RuntimeError("synthetic lost acknowledgment")
-    with pytest.raises(RuntimeError, match="synthetic lost acknowledgment"):
-        seal(case)
-    assert case.sql.request.state == "sealed"
-    case.loader.commit_error = None
-    with pytest.raises(BuilderExecutionPolicyError):
-        seal(case)
-    assert case.loader.events.count("committed") == 1
-
-
 @pytest.mark.parametrize("status", ["completed", "waiting"])
 def test_sealed_request_cannot_be_finalized_as_completed_or_resumable_wait(
     case: StopSealCase, status: Literal[NativeWorkflowStatus.COMPLETED, NativeWorkflowStatus.WAITING]

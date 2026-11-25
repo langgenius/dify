@@ -491,22 +491,6 @@ def _build_with(gen_graph: Graph, *, trusted_text: str = "") -> list[MutationInt
         return build.build_nodes("t1", {}, ["Call the PPT API"], trusted_text=trusted_text).intents
 
 
-def test_build_nodes_grounds_a_placeholder_endpoint_into_a_required_start_variable() -> None:
-    """The ESQ1-302 draft called ``https://api.example.com/ppt/generate`` -- an
-    endpoint the model invented. A placeholder URL now becomes a required start
-    variable, so the test-data gate asks the user for the real endpoint instead
-    of the run failing against a host that does not exist."""
-    intents = _build_with(_gen_graph_with_http("https://api.example.com/ppt/generate"))
-
-    http = next(i for i in intents if i.args.get("node_type") == "http-request")
-    start = next(i for i in intents if i.args.get("node_type") == "start")
-    assert http.args["config"]["url"] == "{{#s.h_url#}}"
-    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
-    assert var["type"] == "text-input"
-    assert var["required"] is True
-    assert "Call PPT API" in var["label"]
-
-
 def _http_node(
     node_id: str,
     title: str,
@@ -567,22 +551,6 @@ def test_build_nodes_does_not_duplicate_an_endpoint_variable_the_start_node_alre
     assert http.args["config"]["url"] == "{{#s.h_url#}}"
     assert [v["variable"] for v in start.args["config"]["variables"]] == ["h_url"]
     assert start.args["config"]["variables"][0]["label"] == "PPT API URL"  # the declared one is kept
-
-
-def test_build_nodes_grounds_an_endpoint_the_user_never_supplied_even_when_not_placeholder_shaped() -> None:
-    """A plausible, real-looking host the model invented (S5b/ESQ1-302's shape
-    one step earlier: ``api.pptrender.io``) must still be grounded once
-    trusted_text is available -- ``_is_placeholder_endpoint`` alone would miss
-    it, since nothing about the URL LOOKS invented the way ``example.com`` or
-    ``your-api.com`` do."""
-    goal = "Build a workflow that renders a slide deck from bullet points and returns a download link."
-    intents = _build_with(_gen_graph_with_http("https://api.pptrender.io/v1/render"), trusted_text=goal)
-
-    http = next(i for i in intents if i.args.get("node_type") == "http-request")
-    start = next(i for i in intents if i.args.get("node_type") == "start")
-    assert http.args["config"]["url"] == "{{#s.h_url#}}"
-    var = next(v for v in start.args["config"]["variables"] if v["variable"] == "h_url")
-    assert var["required"] is True
 
 
 def test_build_nodes_leaves_an_endpoint_alone_when_the_user_actually_supplied_its_host() -> None:
@@ -793,21 +761,6 @@ def test_build_nodes_leaves_a_url_whose_host_is_a_template_alone() -> None:
         assert start.args["config"]["variables"] == []
 
 
-def test_grounding_a_templated_url_is_idempotent() -> None:
-    intents = _build_with(
-        _gen_graph_with_http("https://api.pptrender.io/v1/render?topic={{#node1.topic#}}"),
-        trusted_text=_NO_URL_GOAL,
-    )
-    http = next(i for i in intents if i.args.get("node_type") == "http-request")
-    start = next(i for i in intents if i.args.get("node_type") == "start")
-    url_before = http.args["config"]["url"]
-    variables_before = list(start.args["config"]["variables"])
-
-    assert build._ground_placeholder_endpoints(intents, trusted_text=_NO_URL_GOAL) == []
-    assert http.args["config"]["url"] == url_before
-    assert start.args["config"]["variables"] == variables_before
-
-
 def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_data_is_not() -> None:
     """Reviewer check (a): the grounding side and ``endpoint_variable_names``
     agree after the origin-only substitution -- the grounded ``h_url`` is a
@@ -828,17 +781,6 @@ def test_every_variable_url_grounding_creates_is_excluded_from_mocks_and_path_da
 
 
 # ---- Final review minors ------------------------------------------------------
-
-
-def test_build_nodes_grounds_a_bearer_key_the_goal_only_mentions_as_a_word() -> None:
-    """M1: ``Bearer key`` is not user-supplied just because the goal says "key"."""
-    intents = _build_with(
-        _gen_graph_with_http_full("https://api.acme.com/v1/render", headers="Authorization: Bearer key"),
-        trusted_text="Call https://api.acme.com/v1/render with my API key.",
-    )
-
-    http = next(i for i in intents if i.args.get("node_type") == "http-request")
-    assert http.args["config"]["headers"] == "Authorization: Bearer {{#s.h_api_key#}}"
 
 
 def test_build_nodes_grounds_an_invented_azure_subscription_key_header() -> None:

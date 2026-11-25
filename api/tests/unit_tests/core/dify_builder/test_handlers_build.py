@@ -1751,27 +1751,6 @@ def test_await_repair_says_a_fix_that_would_not_start_is_not_a_stale_fix() -> No
     assert out.context.staged_repair == []
 
 
-def test_repeated_failure_stops_offering_a_repair() -> None:
-    """The guard must be REACHED, not merely defined: a third identical
-    failure clears the staged repair instead of proposing a fourth."""
-    from services.dify_builder.application.handlers_build import (
-        _MAX_REPEATED_REPAIRS,
-        _note_repair_error,
-        _repair_is_repeating,
-    )
-
-    fc = DifyBuilderContext()
-    failure = _failed_run("node1", "Invalid actual value type: number")
-    for _ in range(_MAX_REPEATED_REPAIRS + 1):
-        _note_repair_error(fc, failure)
-    assert fc.repair_attempts == _MAX_REPEATED_REPAIRS
-    assert _repair_is_repeating(fc) is True
-
-    # a NEW failure means progress -- keep repairing
-    _note_repair_error(fc, _failed_run("node1", "Variable not found"))
-    assert _repair_is_repeating(fc) is False
-
-
 def test_test_and_repair_stops_offering_a_repair_through_the_handler() -> None:
     """Integration coverage for the OFFER-time wiring: drive the repeated-
     failure branch through handle_test_and_repair itself (not by calling

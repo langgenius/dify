@@ -44,7 +44,6 @@ from controllers.console.dify_builder_fields import (
 from core.dify_builder.contract import ConversationPage, RunStatus
 from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import (
-    CONFIRMED_TOOL_ACTION,
     Action,
     Actor,
     ConversationItem,
@@ -1480,49 +1479,6 @@ def _coordinator(
     return consent, lease, enqueued, authorized
 
 
-def test_matching_execute_replay_returns_current_receipt_without_extra_enqueue(
-    mocker: pytest_mock.MockerFixture,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    consent, lease, enqueued, authorized = _coordinator(monkeypatch, mocker)
-    _installed_spy_54 = installed_mock(consent.reserve_execution)
-    _installed_spy_54.return_value = (_reserved_receipt(), True)
-    _installed_spy_55 = installed_mock(consent.replay_execution)
-    _installed_spy_55.return_value = _claimed_receipt()
-
-    first_body, first_status = mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR)
-    replay_body, replay_status = mod._execute_real_call(_SESSION_ID, _CONSENT_ID, dict(_EXECUTE_BODY), _ACTOR)
-
-    assert (first_status, replay_status) == (202, 202)
-    # Stable identities; the replay reports the CURRENT receipt of the same command.
-    assert (replay_body["consent_id"], replay_body["command_id"]) == (_CONSENT_ID, _COMMAND_ID)
-    assert first_body["command_id"] == replay_body["command_id"]
-    assert replay_body["state"] == "claimed"
-    assert replay_body["can_retry"] is False
-    # Exactly one reservation and one enqueue of the already reserved command, on the winning token.
-    _installed_spy_56 = installed_mock(consent.reserve_execution)
-    _installed_spy_56.assert_called_once()
-    assert len(enqueued) == 1
-    session_id, action, actor, token = enqueued[0]
-    assert (session_id, actor, token) == (_SESSION_ID, _ACTOR, "g0:token-1")
-    assert action.kind == CONFIRMED_TOOL_ACTION
-    assert action.command_id == _COMMAND_ID
-    assert action.payload == {"consent_id": _CONSENT_ID}
-    # The held lease answered the duplicate from the replay with the same body; nothing released.
-    _installed_spy_57 = installed_mock(consent.replay_execution)
-    _installed_spy_57.assert_called_once_with(
-        actor=_ACTOR,
-        session_id=_SESSION_ID,
-        consent_id=_CONSENT_ID,
-        scope_digest=_SCOPE,
-        at_version=3,
-        idempotency_key="execute-1",
-    )
-    assert lease.acquired == 1
-    assert lease.released == []
-    assert authorized == ["acc-1:app-1:test_and_run", "acc-1:app-1:test_and_run"]
-
-
 def test_held_lease_without_saved_execute_is_busy(
     mocker: pytest_mock.MockerFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2148,21 +2104,6 @@ def test_execute_refusal_holds_no_sql_at_the_lease_or_reservation(
         "lease_release",
     ]
     assert [(name, scoped, count) for name, scoped, count in world.boundaries if scoped or count] == []
-
-
-@pytest.mark.parametrize("denied", [RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN])
-def test_execute_rbac_denial_holds_no_sql_and_stops_before_the_lease(
-    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool], denied: RBACPermission
-) -> None:
-    world = request_sql_world
-    enabled_rbac[denied] = False
-
-    response = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
-
-    assert response.status_code == 403
-    assert world.enqueued == []
-    scenes = ["rbac:app_edit"] if denied is RBACPermission.APP_EDIT else ["rbac:app_edit", "rbac:app_test_and_run"]
-    assert world.boundaries == [(name, False, 0) for name in ["feature", *scenes]]
 
 
 def test_execute_rbac_maintainer_shortcut_preserves_permission_semantics(

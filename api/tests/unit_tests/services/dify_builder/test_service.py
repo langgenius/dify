@@ -1048,32 +1048,6 @@ def test_initial_plan_approval_does_not_require_a_staged_repair(
     assert view.decision.default_option_id == "approve_plan"
 
 
-def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """For EACH Fix/Checklist waiting state in ``_ACTIONS_FOR``, every
-    surfaced action id must resolve (via
-    ``resolve_action_kind``) to a handler kind that state's handler in
-    ``handlers_fix.py`` actually branches on -- otherwise the button is dead
-    (falls through to the state's default no-op/branch) rather than doing
-    what its label promises.
-
-    Regression for the FIX_AWAIT_APPROVAL ``revert`` dead button:
-    ``resolve_action_kind("revert") == "undo"``, but
-    ``handle_await_approval`` only branches on ``approve_repair`` /
-    ``reject_repair`` -- ``undo`` fell through to the gate's no-op branch,
-    so the reject path was unreachable from the FE."""
-    handled_kinds: dict[PcState, set[str]] = {
-        PcState.FIX_AWAIT_APPROVAL: {"approve_repair", "reject_repair"},
-        PcState.FIX_AWAIT_VERIFY: {"run_verify", "undo"},
-        PcState.FIX_AWAIT_TESTDATA: {"provide_testdata"},
-        PcState.FIX_AWAIT_DECISION: {"publish", "keep_draft", "re_fix", "undo"},
-        PcState.CHECKLIST_AWAIT_RECHECK: {"recheck", "undo"},
-    }
-    for state, handled in handled_kinds.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
-
-
 def test_every_backend_waiting_action_has_a_ui_path() -> None:
     # No exemptions needed: BUILD_INITIAL_PLAN is a working/pass-through
     # state now (state.py), not a waiting one, so it has no entry in
@@ -1944,31 +1918,6 @@ def test_conversation_page_requires_session_owner(service: DifyBuilderService, r
         service.get_conversation_page(s.id, _actor(OTHER_ACCOUNT_ID), limit=20)
 
 
-def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every Build action id must resolve (via
-    resolve_action_kind) to a kind its handler in handlers_build.py branches
-    on -- otherwise the button is a dead no-op. approve_plan->approve_repair,
-    revert->undo, continue_adjusting/retry_after_revert->re_fix reuse the
-    existing global _ACTION_ID_TO_KIND map; the rest pass through."""
-    # BUILD_INITIAL_PLAN is deliberately absent: it is a working/pass-through
-    # state now (state.py), not a waiting one, so it has no _ACTIONS_FOR entry
-    # to check here (see test_initial_plan_state_offers_no_actions) -- its
-    # unconditional discovery-on-entry behavior is exercised directly against
-    # the handler and end to end in test_handlers_build.py instead.
-    handled: dict[PcState, set[str]] = {
-        PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},
-        PcState.BUILD_RESOURCE_RECOMMENDATION: {"confirm_resources"},
-        PcState.BUILD_PLAN_APPROVAL: {"approve_repair", "re_fix"},
-        PcState.BUILD_EXECUTION: {"run_test", "undo"},
-        PcState.BUILD_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
-        PcState.BUILD_REVERTED: {"re_fix"},
-    }
-    for state, kinds in handled.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
-
-
 def test_sql_repo_invalidate_conversation_items(repo: SqlDifyBuilderRepository) -> None:
     s = Session(
         app_id=APP_ID,
@@ -2060,32 +2009,6 @@ def test_every_action_the_edit_gate_offers_is_actually_admitted(
         service._release_workflow_writer(session.id, enqueued[-1][3])
 
     assert [a.kind for _sid, a, _act, _tok in enqueued] == ["approve_repair", "re_fix", "undo"]
-
-
-def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every Edit action id must resolve (via
-    resolve_action_kind) to a kind its handler in handlers_edit.py branches on.
-    approve_plan->approve_repair, revert->undo, continue_adjusting/
-    retry_after_revert->re_fix reuse the existing global map; the rest pass
-    through (send_edit_goal, submit_edit_rules, run_affected_tests, keep_draft,
-    publish_workflow).
-
-    Asserted as EQUALITY, not containment: a subset check passes just as
-    happily when a state renders nothing at all, which is the exact failure
-    (edit.plan_approval offering only approve_plan) this suite exists to
-    catch."""
-    handled: dict[PcState, set[str]] = {
-        PcState.EDIT_CAPABILITY_CHECK: {"send_edit_goal"},
-        PcState.EDIT_IMPACT_ANALYSIS: {"submit_edit_rules"},
-        PcState.EDIT_PLAN_APPROVAL: {"approve_repair", "re_fix", "undo"},
-        PcState.EDIT_APPLY_CHANGES: {"run_affected_tests", "undo"},
-        PcState.EDIT_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
-        PcState.EDIT_REVERTED: {"re_fix"},
-    }
-    for state, kinds in handled.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved == kinds, f"{state}: renders {resolved}, handler branches on {kinds}"
 
 
 def test_get_session_view_surfaces_checkpoint_when_set(

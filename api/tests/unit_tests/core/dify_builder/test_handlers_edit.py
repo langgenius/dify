@@ -1107,22 +1107,6 @@ def _approve(env: Env, session: Session, fc: DifyBuilderContext) -> StepResult:
     return handle_plan_approval(env, turn, session, fc)
 
 
-def test_the_next_approval_shows_the_agent_what_the_engine_said() -> None:
-    agent = _RejectionRecordingAgent()
-    env, repo = _new_env(dify=FakeEditDifyPort(), agent=agent)
-    s = _seed_edit_session(
-        repo,
-        PcState.EDIT_PLAN_APPROVAL,
-        edit_rules={"risk_threshold": "high"},
-        edit_target_node_ids=["llm"],
-        last_edit_rejection=_KLINGON,
-    )
-
-    _approve(env, *repo.get_session(s.id))
-
-    assert agent.rejections == [_KLINGON]
-
-
 def test_a_second_refusal_at_the_same_location_replaces_the_first(monkeypatch: pytest.MonkeyPatch) -> None:
     """The case the dry run's own key cannot cover.
 

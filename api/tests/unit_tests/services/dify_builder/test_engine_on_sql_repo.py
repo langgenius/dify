@@ -1,17 +1,4 @@
-"""P3a acceptance: the real P1 engine runs end to end on the SQL ``Repository``.
-
-Wires the same engine pieces the P1 full-flow acceptance
-(``tests/unit_tests/core/dify_builder/test_fix_flow.py``) exercises --
-``Runner`` + ``fix_registry()`` + ``PlaceholderAgent`` + ``FakeDifyPort`` --
-but swaps the in-memory fake ``Repository`` for ``SqlDifyBuilderRepository``
-backed by an isolated SQLite database. Proves the CAS advance loop, the
-checkpoint/run persistence side effects, and the second (checklist) entry
-path all round-trip through a real ``UPDATE ... WHERE version=`` + a real
-``UNIQUE(session_id, seq)`` constraint, not just the Python-level checks the
-in-memory fake enforces.
-
-Test-only: no engine or repository changes belong in this file.
-"""
+"""Run Fix and checklist workflows through the engine and the SQLite-backed repository."""
 
 from datetime import datetime
 

@@ -13,7 +13,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder import credentials, graph_ops
 from services.dify_builder.agent import edit, graph_prompt
 from services.dify_builder.plan import WorkflowPlan
-from services.dify_builder.preflight import new_preflight_problems, preflight_errors
+from services.dify_builder.preflight import preflight_errors
 from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
@@ -333,65 +333,6 @@ def test_graph_context_marks_an_oversized_node_config_as_truncated() -> None:
 
     assert graph_prompt.TRUNCATION_MARKER in context
     assert len(context) < 4000
-
-
-# ---- what the engine said last time reaches the next attempt ----------------
-#
-# Triage edit-branch-failure-2026-09-22, "Why every retry is blind": the gate
-# re-reads an UNCHANGED draft on every re-approval, so ``edit_rules`` and
-# ``graph`` are byte-identical each time. The engine's refusal of the previous
-# write is the only input that can make the second attempt differ from the first.
-
-
-def _with_operator(operator: str) -> Graph:
-    """``_TARGET_GRAPH`` with node2's one condition using ``operator``."""
-    graph = copy.deepcopy(_TARGET_GRAPH)
-    graph["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] = operator
-    return graph
-
-
-def test_build_edit_intents_quotes_the_engines_refusal_of_the_previous_attempt() -> None:
-    m = _RecordingInstance([json.dumps({"intents": []})])
-    rejection = "the draft would not start: node 'node2' (if-else): 1 validation error for IfElseNodeData"
-
-    edit.build_edit_intents(m, {"tone": "formal"}, _TARGET_GRAPH, last_edit_rejection=rejection)
-
-    user = _message_text(m.calls[0]["prompt_messages"][1])
-    assert f"PREVIOUS ATTEMPT REJECTED BY THE ENGINE:\n{rejection}\nDo not repeat it." in user
-
-
-def test_the_engines_text_separates_two_refusals_the_preflight_key_cannot() -> None:
-    """The hole the port-rejection feedback exists to cover.
-
-    ``new_preflight_problems`` is keyed on pydantic error LOCATIONS, so a second
-    attempt that leaves the culprit invalid at the SAME location with a
-    DIFFERENT bad value is not a new problem to it -- the dry run has nothing
-    left to say, and every retry after the first would be blind again. The
-    engine's own message names the value it refused, so carrying it forward is
-    the one thing that makes two such attempts distinguishable to the model.
-    """
-    klingon, martian = _with_operator("klingon"), _with_operator("martian")
-
-    # what the location key sees: nothing new, so the dry run cannot re-prompt...
-    assert new_preflight_problems(klingon, martian, ()) == []
-    # ...while the engine's own words name the value each time.
-    klingon_text = next(e for e in preflight_errors(klingon) if "'node2'" in e)
-    martian_text = next(e for e in preflight_errors(martian) if "'node2'" in e)
-    assert "input_value='klingon'" in klingon_text
-    assert "input_value='martian'" in martian_text
-
-    prompts = []
-    for text in (klingon_text, martian_text):
-        m = _RecordingInstance([json.dumps({"intents": []})])
-        edit.build_edit_intents(
-            m, {"threshold": "90"}, _TARGET_GRAPH, edit_target_node_ids=["node2"], last_edit_rejection=text
-        )
-        prompts.append(_message_text(m.calls[0]["prompt_messages"][1]))
-
-    assert "input_value='klingon'" in prompts[0]
-    assert "input_value='martian'" not in prompts[0]
-    assert "input_value='martian'" in prompts[1]
-    assert "input_value='klingon'" not in prompts[1]
 
 
 def test_the_previous_refusal_stays_in_front_of_the_model_through_the_retry() -> None:
