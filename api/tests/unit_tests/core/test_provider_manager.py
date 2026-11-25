@@ -1297,7 +1297,12 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance(sqlite_s
 
 
 def _fallback_provider_configuration(
-    *, provider: str, models: list[str], configured: bool, disabled_models: tuple[str, ...] = ()
+    *,
+    provider: str,
+    models: list[str],
+    configured: bool,
+    disabled_models: tuple[str, ...] = (),
+    model_type: ModelType = ModelType.LLM,
 ) -> ProviderConfiguration:
     """Build a real local provider catalog; predefined schemas require no plugin requests."""
     return ProviderConfiguration(
@@ -1305,13 +1310,13 @@ def _fallback_provider_configuration(
         provider=ProviderEntity(
             provider=provider,
             label=I18nObject(en_US=provider),
-            supported_model_types=[ModelType.LLM],
+            supported_model_types=[model_type],
             configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
             models=[
                 AIModelEntity(
                     model=model,
                     label=I18nObject(en_US=model),
-                    model_type=ModelType.LLM,
+                    model_type=model_type,
                     fetch_from=FetchFrom.PREDEFINED_MODEL,
                     model_properties={},
                 )
@@ -1324,9 +1329,7 @@ def _fallback_provider_configuration(
         custom_configuration=CustomConfiguration(
             provider=CustomProviderConfiguration(credentials={"api_key": "synthetic"}) if configured else None
         ),
-        model_settings=[
-            ModelSettings(model=model, model_type=ModelType.LLM, enabled=False) for model in disabled_models
-        ],
+        model_settings=[ModelSettings(model=model, model_type=model_type, enabled=False) for model in disabled_models],
     )
 
 
@@ -1335,11 +1338,16 @@ def _fallback_provider_manager(*configurations: ProviderConfiguration) -> Provid
     manager = ProviderManager(
         model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"), session_maker=sessionmaker()
     )
+    _seed_provider_configurations(manager, *configurations)
+    return manager
+
+
+def _seed_provider_configurations(manager: ProviderManager, *configurations: ProviderConfiguration) -> None:
+    """Serve ``get_configurations`` from the manager's per-tenant cache instead of DB and plugin lookups."""
     catalog = ProviderConfigurations(tenant_id="tenant-id")
     for configuration in configurations:
         catalog[configuration.provider.provider] = configuration
     manager._configurations_cache["tenant-id"] = catalog
-    return manager
 
 
 def test_get_first_provider_first_model_returns_none_when_no_models() -> None:
@@ -1669,9 +1677,6 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(
     sqlite_session.add_all(existing_defaults)
     sqlite_session.commit()
     original_defaults = {(record.id, record.provider_name, record.model_name) for record in existing_defaults}
-    configurations = MagicMock()
-    configurations.__contains__.return_value = True
-    configurations.get_models.return_value = [Mock(model="gpt-4"), Mock(model="text-embedding-3-small")]
 
     def fail_after_flush(_session: Session, _flush_context: object) -> None:
         raise RuntimeError("Persistence failed")
@@ -1680,16 +1685,25 @@ def test_replace_default_model_records_rolls_back_when_persistence_fails(
     failing_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     event.listen(failing_session_maker, "after_flush", fail_after_flush)
     manager = _build_provider_manager(failing_session_maker)
-    with (
-        patch.object(manager, "get_configurations", return_value=configurations),
-        pytest.raises(RuntimeError, match="Persistence failed"),
-    ):
+    _seed_provider_configurations(
+        manager,
+        _fallback_provider_configuration(provider="langgenius/openai/openai", models=["gpt-4"], configured=True),
+        _fallback_provider_configuration(
+            provider="langgenius/jina/jina",
+            models=["jina-embeddings-v3"],
+            configured=True,
+            model_type=ModelType.TEXT_EMBEDDING,
+        ),
+    )
+    # Valid settings reach the write transaction: the LLM default is updated, the embedding default is inserted
+    # and the rerank default is deleted, so every write path is rolled back together.
+    with pytest.raises(RuntimeError, match="Persistence failed"):
         manager.replace_default_model_records(
             "tenant-id",
             [
-                DefaultModelSetting(model_type=ModelType.LLM, provider="openai", model="gpt-4"),
+                DefaultModelSetting(model_type=ModelType.LLM, provider="langgenius/openai/openai", model="gpt-4"),
                 DefaultModelSetting(
-                    model_type=ModelType.TEXT_EMBEDDING, provider="openai", model="text-embedding-3-small"
+                    model_type=ModelType.TEXT_EMBEDDING, provider="langgenius/jina/jina", model="jina-embeddings-v3"
                 ),
             ],
         )
