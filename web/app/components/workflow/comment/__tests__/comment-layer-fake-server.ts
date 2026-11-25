@@ -164,11 +164,15 @@ export function resetFakeServer() {
   setServer(listItem('first', 'First thread', 100), listItem('second', 'Second thread', 700))
 }
 
-// A request that finishes when the test says so.
+// A request that finishes when the test says so. The UI updates optimistically, so a test can
+// settle it before the request reaches the fake handler that awaits it; a rejection then has no
+// handler yet and Chromium reports it as unhandled. Mark it handled up front; the handler still
+// receives the rejection when the request arrives.
 export const deferred = <T>() => {
   let settle!: { resolve: (value: T) => void; reject: (error: Error) => void }
   const promise = new Promise<T>((resolve, reject) => {
     settle = { resolve, reject }
   })
+  promise.catch(() => {})
   return { promise, ...settle }
 }
