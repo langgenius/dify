@@ -15,7 +15,6 @@ const service = vi.hoisted(() => ({
   scans: vi.fn(),
   act: vi.fn(),
   retry: vi.fn(),
-  rewrite: vi.fn(),
 }))
 vi.mock('@/service/console', async (original) => {
   const actual = await original<typeof import('@/service/console')>()
@@ -30,7 +29,6 @@ vi.mock('@/service/console', async (original) => {
       [`${path}.findings.get`]: service.findings,
       [`${path}.scans.get`]: service.scans,
       [`${path}.findings.byFindingId.actions.post`]: service.act,
-      [`${path}.findings.byFindingId.rewrite.post`]: service.rewrite,
       [`${path}.retry.post`]: service.retry,
     }),
   }
@@ -594,27 +592,26 @@ describe('Tidy', () => {
       },
       nextCursor: null,
     })
-    service.rewrite.mockRejectedValueOnce(
-      new ORPCError('tidy_rewrite_document_busy', { status: 409 }),
+    service.act.mockRejectedValueOnce(
+      new ORPCError('knowledge_fs_conflict', {
+        status: 409,
+        data: { details: { parameters: { status: 'too_long' } } },
+      }),
     )
-    service.rewrite.mockResolvedValue({ documentId: 'b', documentRevision: 2, taskId: 't' })
+    service.act.mockResolvedValue({})
     const user = userEvent.setup()
     renderPage()
 
-    // Only a text document can be rewritten: adopting the Markdown side would edit the PDF.
+    // Any document type can be patched: only the indexed passage changes, never the source file.
     const scanned = within(await screen.findByRole('listitem', { name: 'scanned' }))
-    const [keepNotes, keepScan] = scanned.getAllByRole('button', {
-      name: 'knowledgeSpace.tidy.adopt',
-    })
-    expect(keepNotes).toBeDisabled()
-    expect(keepScan).toBeEnabled()
-    expect(screen.getAllByText('knowledgeSpace.tidy.adoptUnsupported')).not.toHaveLength(0)
+    for (const button of scanned.getAllByRole('button', { name: 'knowledgeSpace.tidy.adopt' }))
+      expect(button).toBeEnabled()
 
     // Notes A is right: the passage in Notes B is replaced by A's statement, editable first.
     const amount = within(screen.getByRole('listitem', { name: 'amount' }))
     await user.click(amount.getAllByRole('button', { name: 'knowledgeSpace.tidy.adopt' })[0]!)
     const dialog = within(screen.getByRole('dialog'))
-    expect(service.rewrite).not.toHaveBeenCalled()
+    expect(service.act).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog').textContent).toMatch(/rewriteDescription.*Notes B/)
     expect(dialog.getByText('报销5000元')).toBeVisible()
     const replacement = dialog.getByRole('textbox')
@@ -624,21 +621,21 @@ describe('Tidy', () => {
 
     // The server names why it refused; the dialog stays open for another try.
     await user.click(dialog.getByRole('button', { name: 'knowledgeSpace.tidy.rewriteConfirm' }))
-    expect(await dialog.findByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.rewriteBusy')
+    expect(await dialog.findByRole('alert')).toHaveTextContent('knowledgeSpace.tidy.rewriteTooLong')
     await user.click(dialog.getByRole('button', { name: 'knowledgeSpace.tidy.rewriteConfirm' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(service.rewrite).toHaveBeenLastCalledWith(
+    expect(service.act).toHaveBeenLastCalledWith(
       expect.objectContaining({
         params: expect.objectContaining({ finding_id: 'amount' }),
         body: {
+          action: 'adopt',
           expectedRevision: 4,
-          documentId: 'b',
-          passage: '报销5000元',
+          documentId: 'a',
           replacement: '报销 15,000 元',
         },
       }),
     )
-    expect(service.act).not.toHaveBeenCalled()
+    expect(service.act).toHaveBeenCalledTimes(2)
   })
   it('offers keeping both overlapping documents on equal footing with disabling one', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }

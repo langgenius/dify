@@ -19,7 +19,6 @@ import {
   disablePlan,
   evidenceOf,
   fileTypeLabel,
-  isRewritable,
   mergePlan,
   newestDocument,
   relativeTime,
@@ -750,11 +749,6 @@ export function PairGroupCard({
               ...(group.similar ? [t(($) => $['tidy.pairAlsoSimilar'], { percent })] : []),
             ]}
           />
-          {editable && !group.documentIds.every((id) => isRewritable(cards[id])) && (
-            <p className="system-xs-regular text-text-tertiary">
-              {t(($) => $['tidy.adoptUnsupported'])}
-            </p>
-          )}
           {editable && (
             <div className="mt-auto flex flex-col gap-2 border-t border-divider-subtle pt-3">
               <p className="system-xs-medium text-text-tertiary">
@@ -840,12 +834,12 @@ export function PairGroupCard({
                         variant="primary"
                         className="self-start"
                         // The statement is kept; the passage in the other document is rewritten.
-                        disabled={busy || !isRewritable(cards[otherOf(id)])}
+                        disabled={busy}
                         onClick={() =>
                           onRewrite({
                             finding,
+                            keptDocumentId: id,
                             keptTitle: titleOf(id),
-                            targetDocumentId: otherOf(id),
                             targetTitle: titleOf(otherOf(id)),
                             passage: evidenceOf(finding, otherOf(id)).text,
                             replacement: evidenceOf(finding, id).text,

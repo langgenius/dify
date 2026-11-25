@@ -205,37 +205,36 @@ export function relativeTime(value: string | undefined, locale: string, now = Da
   return format.format(0, 'minute')
 }
 
-/** Stored sources that are plain text end to end; a rewrite is a text substitution in them. */
-const REWRITABLE_MIME_TYPES = new Set(['text/markdown', 'text/x-markdown', 'text/plain'])
-
-/** Whether one passage of this document can be rewritten in place (see the server's same rule). */
-export function isRewritable(card: TidyDocumentCard | undefined) {
-  return REWRITABLE_MIME_TYPES.has(card?.mimeType.split(';')[0]?.trim().toLowerCase() ?? '')
-}
-
 /** Adopt one side of a conflict: replace `passage` in the other document with `replacement`. */
 export type RewriteRequest = {
   finding: TidyFinding
   /** The document whose statement is kept. */
+  keptDocumentId: string
   keptTitle: string
-  /** The document that is rewritten. */
-  targetDocumentId: string
+  /** The document whose passage is rewritten. */
   targetTitle: string
   passage: string
   replacement: string
 }
 
-const REWRITE_ERRORS = [
-  'tidy_rewrite_source_managed',
-  'tidy_rewrite_document_busy',
-  'tidy_rewrite_unsupported_document',
-  'tidy_rewrite_passage_not_found',
-  'tidy_rewrite_passage_ambiguous',
-  'tidy_rewrite_no_change',
+/** Why the server would not edit a passage in place (`details.parameters.status` of a conflict). */
+const REWRITE_REFUSALS = [
+  'document_busy',
+  'not_indexed',
+  'passage_not_found',
+  'passage_ambiguous',
+  'no_change',
+  'too_long',
+  'unsupported',
 ] as const
-export type RewriteErrorCode = (typeof REWRITE_ERRORS)[number]
+export type RewriteRefusal = (typeof REWRITE_REFUSALS)[number]
 
 /** The server's reason for refusing a rewrite, when it gave one the page can explain. */
-export function rewriteErrorCode(code: unknown): RewriteErrorCode | undefined {
-  return REWRITE_ERRORS.find((known) => known === code)
+export function rewriteRefusal(data: unknown): RewriteRefusal | undefined {
+  if (typeof data !== 'object' || data === null || !('details' in data)) return
+  const details = data.details
+  if (typeof details !== 'object' || details === null || !('parameters' in details)) return
+  const parameters = details.parameters
+  if (typeof parameters !== 'object' || parameters === null || !('status' in parameters)) return
+  return REWRITE_REFUSALS.find((known) => known === parameters.status)
 }

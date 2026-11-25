@@ -11556,37 +11556,6 @@ Set the malware scan policy of an Agent Knowledge Base
 | 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
-| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-
-### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/rewrite
-**Adopt one side of a conflict: rewrite the passage in the other document as a new revision**
-
-The upload is compare-and-swap on the document, so a document that changed meanwhile is
-refused upstream. The finding is marked reviewed afterwards; if that fails the rewrite still
-stands and the next scan retires the finding.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| control_space_id | path |  | Yes | string |
-| finding_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [KnowledgeFSTidyRewritePayload](#knowledgefstidyrewritepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 202 | Rewrite accepted | **application/json**: [KnowledgeFSTidyRewriteResponse](#knowledgefstidyrewriteresponse)<br> |
-| 400 | Bad Request | **application/json**: [KnowledgeFsInvalidRequestError](#knowledgefsinvalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [KnowledgeFsResourceNotFoundError](#knowledgefsresourcenotfounderror)<br>[KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [KnowledgeFsConflictError](#knowledgefsconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[KnowledgeFsUpstreamUnavailableError](#knowledgefsupstreamunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -31932,9 +31901,10 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string, <br>**Available values:** "disable_document", "dismiss", "review", "undo" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| action | string, <br>**Available values:** "adopt", "disable_document", "dismiss", "review", "undo" | *Enum:* `"adopt"`, `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
+| replacement | string |  | No |
 
 #### KnowledgeFSTidyCurrentScanResponse
 
@@ -32025,26 +31995,6 @@ What the review page shows about a document a finding quotes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | resumed | integer |  | Yes |
-
-#### KnowledgeFSTidyRewritePayload
-
-Adopt one side of a conflict: replace ``passage`` in ``documentId`` with ``replacement``.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| documentId | string |  | Yes |
-| expectedRevision | integer |  | Yes |
-| passage | string |  | Yes |
-| replacement | string |  | Yes |
-
-#### KnowledgeFSTidyRewriteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| documentId | string |  | Yes |
-| documentRevision | integer |  | Yes |
-| finding | [KnowledgeFSTidyFindingResponse](#knowledgefstidyfindingresponse) |  | No |
-| taskId | string |  | Yes |
 
 #### KnowledgeFSTidyScanListResponse
 

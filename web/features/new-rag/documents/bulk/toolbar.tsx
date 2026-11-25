@@ -14,6 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ReindexConfirmDialog } from '../reindex-confirm-dialog'
 import { documentBulkPendingActionAtom } from '../state/bulk'
 import { reindexUnavailabilityAtom } from '../state/results'
 import { documentCanDownloadAtom, documentCanWriteAtom } from '../state/runtime'
@@ -46,6 +47,7 @@ function BulkReindexAction() {
   const unavailableReason = useAtomValueRawSync(reindexUnavailabilityAtom)
   const selectionLimitExceeded = useAtomValueRawSync(documentSelectionLimitExceededAtom)
   const { busy, pending, run } = useBulkReindexAction()
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const disabledReason =
     unavailableReason === 'sources'
       ? t(($) => $.sourcesErrorDescription)
@@ -71,10 +73,15 @@ function BulkReindexAction() {
         disabled={disabled || reindexDisabled || (busy && !pending)}
         loading={pending}
         size="small"
-        onClick={() => void run()}
+        onClick={() => setConfirmOpen(true)}
       >
         {t(($) => $.reindexDocuments)}
       </Button>
+      <ReindexConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        onConfirm={() => void run()}
+      />
       {disabled && disabledReason && (
         <span
           id="document-reindex-unavailable"

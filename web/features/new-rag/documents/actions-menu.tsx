@@ -25,6 +25,7 @@ import {
   documentShowsAvailabilityAction,
   taskCanRetry,
 } from './model'
+import { ReindexConfirmDialog } from './reindex-confirm-dialog'
 import {
   useDocumentRowPendingAction,
   useDownloadDocumentAction,
@@ -150,11 +151,17 @@ function RetryDocumentMenuItem({ document }: { document: LogicalDocument }) {
   )
 }
 
-function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
+function ReindexDocumentMenuItem({
+  document,
+  onOpen,
+}: {
+  document: LogicalDocument
+  onOpen: () => void
+}) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
   const canEdit = useDocumentCanEdit(document.id)
   const { status } = useDocumentActionFacts(document.id)
-  const { busy, run } = useReindexDocumentAction(document, status)
+  const { busy } = useReindexDocumentAction(document, status)
   const disabled = !canEdit || !documentCanReindex(status)
 
   return (
@@ -162,7 +169,7 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
       aria-describedby={disabled ? `new-document-${document.id}-actions-unavailable` : undefined}
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={busy || disabled}
-      onClick={() => void run()}
+      onClick={onOpen}
     >
       <span aria-hidden className="i-ri-loop-left-line size-4" />
       {t(($) => $.reindexDocument, { ns: 'knowledgeDocuments' })}
@@ -170,12 +177,35 @@ function ReindexDocumentMenuItem({ document }: { document: LogicalDocument }) {
   )
 }
 
-function ReprocessDocumentMenuItem({ document }: { document: LogicalDocument }) {
+/** Runs the reindex once confirmed; it outlives the menu, which closes when an item is chosen. */
+function ReindexDocumentConfirmation({
+  document,
+  onOpenChange,
+  open,
+}: {
+  document: LogicalDocument
+  onOpenChange: (open: boolean) => void
+  open: boolean
+}) {
+  const { status } = useDocumentActionFacts(document.id)
+  const { run } = useReindexDocumentAction(document, status)
+  return (
+    <ReindexConfirmDialog open={open} onOpenChange={onOpenChange} onConfirm={() => void run()} />
+  )
+}
+
+function ReprocessDocumentMenuItem({
+  document,
+  onReindex,
+}: {
+  document: LogicalDocument
+  onReindex: () => void
+}) {
   const { status } = useDocumentActionFacts(document.id)
   return status === 'failed' ? (
     <RetryDocumentMenuItem document={document} />
   ) : (
-    <ReindexDocumentMenuItem document={document} />
+    <ReindexDocumentMenuItem document={document} onOpen={onReindex} />
   )
 }
 
@@ -266,6 +296,7 @@ export function DocumentActionsMenu({
   const pendingAction = useDocumentRowPendingAction(document.id)
   const busy = Boolean(pendingAction)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [reindexDialogOpen, setReindexDialogOpen] = useState(false)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
   return (
@@ -294,7 +325,10 @@ export function DocumentActionsMenu({
         </MenuTrigger>
         <MenuContent align="end" className="w-50">
           <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
-          <ReprocessDocumentMenuItem document={document} />
+          <ReprocessDocumentMenuItem
+            document={document}
+            onReindex={() => setReindexDialogOpen(true)}
+          />
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
           <MenuSeparator className="my-px" />
@@ -315,6 +349,11 @@ export function DocumentActionsMenu({
           <RenameDocumentForm document={document} onSaved={() => setRenameDialogOpen(false)} />
         </DialogContent>
       </Dialog>
+      <ReindexDocumentConfirmation
+        document={document}
+        open={reindexDialogOpen}
+        onOpenChange={setReindexDialogOpen}
+      />
     </>
   )
 }

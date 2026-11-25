@@ -119,16 +119,23 @@ class KnowledgeFSTidyScanQuery(BaseModel):
 
 class KnowledgeFSTidyActionPayload(BaseModel):
     expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
-    action: Literal["dismiss", "review", "disable_document", "undo"]
+    action: Literal["dismiss", "review", "disable_document", "undo", "adopt"]
     documentId: str | None = None  # noqa: N815  # Public field name.
+    # ``adopt`` only: ``documentId`` is the side that is right, and this text replaces the
+    # conflicting passage of the other document. Only the knowledge base's indexed copy changes.
+    replacement: str | None = Field(default=None, min_length=1, max_length=20_000)
 
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     def require_document(self) -> "KnowledgeFSTidyActionPayload":
-        """A document disable must explicitly identify the user's selected evidence side."""
+        """Actions on one evidence side must explicitly identify the side the user selected."""
         if self.action == "disable_document" and not self.documentId:
             raise ValueError("Choose the document to disable")
+        if self.action == "adopt" and not (self.documentId and self.replacement and self.replacement.strip()):
+            raise ValueError("Choose the document to keep and the new wording")
+        if self.action != "adopt" and self.replacement is not None:
+            raise ValueError("Only adopting a side rewrites a passage")
         return self
 
 
@@ -148,23 +155,3 @@ class KnowledgeFSTidyScanListResponse(ResponseModel):
 
 class KnowledgeFSTidyRetryResponse(ResponseModel):
     resumed: int
-
-
-class KnowledgeFSTidyRewritePayload(BaseModel):
-    """Adopt one side of a conflict: replace ``passage`` in ``documentId`` with ``replacement``."""
-
-    expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
-    documentId: str = Field(min_length=1, max_length=64)  # noqa: N815  # Public field name.
-    passage: str = Field(min_length=1, max_length=8000)
-    replacement: str = Field(min_length=1, max_length=8000)
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class KnowledgeFSTidyRewriteResponse(ResponseModel):
-    documentId: str  # noqa: N815  # Public field name.
-    documentRevision: int  # noqa: N815  # Public field name.
-    taskId: str  # noqa: N815  # Public field name.
-    # None when the rewrite was accepted but the finding could not be marked handled; the next
-    # scan retires it once the new revision is published.
-    finding: KnowledgeFSTidyFindingResponse | None = None

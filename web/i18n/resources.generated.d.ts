@@ -3831,6 +3831,8 @@ export default interface Resources {
     noMatchingDocuments: 'No documents match this search.'
     parentChildChunkCount: '{{parentCount}} parents / {{childCount}} children'
     partialDocumentResults: 'More documents may match. Load more to continue searching.'
+    reindexConfirmDescription: "Reindexing rebuilds every chunk and index entry from the source file. Edits made to chunks in the knowledge base, such as adopting another document's statement when resolving a conflict, will be overwritten by the source file's content. Search keeps using the current index until reindexing finishes."
+    reindexConfirmTitle: 'Reindex from the source file?'
     reindexDocument: 'Re-index'
     retrievalCountValue: '{{value}} in last 7 days'
     retryReindexDocument: 'Re-index again'
@@ -4503,7 +4505,6 @@ export default interface Resources {
     taskActionFailed: "We couldn't update this task. Refresh and try again."
     tasksErrorDescription: "We couldn't load background tasks. Try again."
     'tidy.adopt': 'Use this statement'
-    'tidy.adoptUnsupported': 'Only Markdown and plain-text documents uploaded directly can be rewritten. For other documents, correct the source, upload it again, then mark this handled.'
     'tidy.allKinds': 'All types'
     'tidy.chooseKeep': 'Choose which one to keep'
     'tidy.complete': 'Scanned'
@@ -4572,17 +4573,18 @@ export default interface Resources {
     'tidy.review': 'Mark reviewed'
     'tidy.reviewNotice': 'Suggestions require review. No findings does not prove there are no conflicts. Original documents are never changed automatically.'
     'tidy.reviewed': 'Reviewed'
-    'tidy.rewriteAccepted': 'Rewrite submitted. It takes effect once “{{title}}” has been reprocessed.'
-    'tidy.rewriteAmbiguous': 'This passage occurs more than once in the document, so it is unclear which one to change. Edit the source and upload it again.'
+    'tidy.rewriteAccepted': 'Updated this passage in “{{title}}”.'
+    'tidy.rewriteAmbiguous': 'This passage occurs more than once in the chunk, so it is unclear which one to change. Correct the source file and upload it again.'
     'tidy.rewriteBusy': 'This document is still being processed. Try again once it is ready.'
     'tidy.rewriteConfirm': 'Rewrite'
     'tidy.rewriteCurrent': 'Current text'
-    'tidy.rewriteDescription': 'This passage in “{{title}}” will be replaced with the text below, as a new version of that document. Only the content stored in the knowledge base changes; the file you uploaded is not modified.'
+    'tidy.rewriteDescription': "This passage in “{{title}}” will be replaced with the text below. Only the data in the knowledge base changes; the source file is not modified. If the document is reindexed later, or its data source syncs new content, the source file's content will overwrite this edit."
     'tidy.rewriteNoChange': 'The replacement is the same as the current text.'
-    'tidy.rewriteNotFound': "This passage could not be found in the document's stored source, so it cannot be rewritten automatically. Edit the source and upload it again."
+    'tidy.rewriteNotFound': 'This passage has changed and the text to replace can no longer be found. Refresh the page and review it again.'
     'tidy.rewriteReplacement': 'Replace with'
-    'tidy.rewriteSourceManaged': 'This document is synced from a data source, and the next sync would overwrite the rewrite. Edit it in the data source.'
     'tidy.rewriteTitle': 'Use the statement from “{{title}}”?'
+    'tidy.rewriteTooLong': 'The edited passage exceeds the length limit for a single chunk. Shorten it and try again.'
+    'tidy.rewriteUnavailable': 'Passages cannot be edited directly in this environment. Correct the source file, upload it again, then mark this as handled.'
     'tidy.scanning': 'Scanning'
     'tidy.schedule': 'Scans published documents when enabled, then checks for new versions about every 5 minutes. Document processing and retrieval remain available.'
     'tidy.sectionConflict': 'Conflict · Different answers to the same thing'
