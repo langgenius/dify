@@ -1642,6 +1642,7 @@ export type PluginParameterAutoGenerate = {
 export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
 export type PluginParameterOption = {
+  children?: Array<PluginParameterOption>
   icon?: string | null
   label: I18nObject
   value: string
@@ -2028,6 +2029,7 @@ export type ToolParameter = {
         [key: string]: unknown
       }
     | null
+  dynamic_select_lazy_load?: boolean
   form: ToolParameterForm
   human_description?: I18nObject | null
   input_schema?: {
@@ -2072,6 +2074,7 @@ export type ToolParameterType =
   | 'date'
   | 'date-range'
   | 'dynamic-select'
+  | 'dynamic-tree-select'
   | 'file'
   | 'files'
   | 'model-selector'

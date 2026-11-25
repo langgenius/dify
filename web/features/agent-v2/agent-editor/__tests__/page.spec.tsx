@@ -214,11 +214,14 @@ describe('Configure chat sessions', () => {
   it.skip('clears Build through confirmation and leaves later Preview messages intact', async () => {
     const user = userEvent.setup()
     createEnvironment().render()
-    expect(await screen.findByText('Earlier answer')).toBeVisible()
+    await waitFor(() => expect(api.history).toHaveBeenCalled())
+    // The history response mounts the lazy chat renderer.
+    await act(async () => vi.dynamicImportSettled())
+    expect(await screen.findByText('Earlier request')).toBeVisible()
     await user.click(restartButton())
     expect(api.refresh).not.toHaveBeenCalled()
     await confirm(user)
-    await waitFor(() => expect(screen.queryByText('Earlier answer')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Earlier request')).not.toBeInTheDocument())
     await changeMode(user, 'preview')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     await send(user, 'preview')

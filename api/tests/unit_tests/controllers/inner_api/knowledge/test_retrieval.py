@@ -58,6 +58,11 @@ def _payload() -> dict[str, object]:
 
 @contextmanager
 def _plugin_inner_auth() -> Generator[None]:
+    """Temporarily enable plugin authentication for an inner API test.
+
+    Preconditions: the test uses the shared configuration override boundary.
+    Postconditions: both keys are restored on normal exit or a propagated error.
+    """
     with (
         config_overrides_context(PLUGIN_DAEMON_KEY="plugin-daemon-key", INNER_API_KEY_FOR_PLUGIN="inner-key"),
     ):

@@ -1046,8 +1046,29 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManagement = hasPermission(workspacePermissionKeys, 'plugin.install')
   const { refreshPluginList } = useRefreshPluginList()
-  const query = useQuery(pluginTaskListQueryOptions({ enabled: canManagement }))
-  const { data, isFetched, isRefetching, refetch } = query
+  const pluginTaskQuery = useQuery(pluginTaskListQueryOptions({ enabled: canManagement }))
+  const {
+    data,
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
+    isFetched,
+    isFetchedAfterMount,
+    isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
+    refetch,
+  } = pluginTaskQuery
 
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
@@ -1064,12 +1085,13 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
       (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
     )
     const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
+    const categoryManifest =
+      category && Object.values(PluginCategoryEnum).includes(category as PluginCategoryEnum)
+        ? ({ category: category as PluginCategoryEnum } as unknown as PluginDeclaration)
+        : undefined
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(
-        category ? { category: category as PluginCategoryEnum } : undefined,
-        !category,
-      )
-  }, [category, data, isRefetching, refreshPluginList])
+      refreshPluginList(categoryManifest, !categoryManifest)
+  }, [isRefetching, data, refreshPluginList, category])
 
   const handleRefetch = useCallback(() => {
     refetch()
@@ -1087,8 +1109,26 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 
   return {
     data,
-    pluginTasks: data?.tasks || [],
+    error,
+    isError,
+    isPending,
+    isLoading,
+    isFetching,
     isFetched,
+    isFetchedAfterMount,
+    isRefetching,
+    isSuccess,
+    isPlaceholderData,
+    isStale,
+    status,
+    fetchStatus,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    failureCount,
+    failureReason,
+    errorUpdateCount,
+    refetch,
+    pluginTasks: data?.tasks || [],
     handleRefetch,
     handleInstallTaskStart,
   }

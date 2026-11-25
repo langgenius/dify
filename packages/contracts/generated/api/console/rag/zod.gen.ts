@@ -1101,6 +1101,7 @@ export const zToolParameterForm = z.enum(['form', 'llm', 'schema'])
  * PluginParameterOption
  */
 export const zPluginParameterOption = z.object({
+  children: z.array(z.lazy((): any => zPluginParameterOption)).optional(),
   icon: z.string().nullish(),
   label: zI18nObject,
   value: z.string(),
@@ -1127,6 +1128,7 @@ export const zToolParameterType = z.enum([
   'date',
   'date-range',
   'dynamic-select',
+  'dynamic-tree-select',
   'file',
   'files',
   'model-selector',
@@ -1183,6 +1185,7 @@ export const zToolParameter = z.object({
       z.record(z.string(), z.unknown()),
     ])
     .nullish(),
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   form: zToolParameterForm,
   human_description: zI18nObject.nullish(),
   input_schema: z.record(z.string(), z.unknown()).nullish(),
@@ -1274,6 +1277,7 @@ export const zDatasourceParameter = z.object({
     ])
     .nullish(),
   description: zI18nObject,
+  dynamic_select_lazy_load: z.boolean().optional().default(false),
   label: zI18nObject,
   max: z.union([z.number(), z.int()]).nullish(),
   min: z.union([z.number(), z.int()]).nullish(),

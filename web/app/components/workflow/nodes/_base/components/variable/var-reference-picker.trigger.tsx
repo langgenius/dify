@@ -26,6 +26,7 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
@@ -68,6 +69,8 @@ type Props = Readonly<{
   placeholder?: string
   readonly: boolean
   schemaWithDynamicSelect?: Partial<Omit<FormInputSchema, 'default'>>
+  /** Lazy-load tool dynamic-select options when the constant-mode select opens. */
+  onConstantFieldOpenChange?: (open: boolean) => void
   setControlFocus: (value: number) => void
   setOpen: (value: boolean) => void
   showErrorIcon?: boolean
@@ -112,6 +115,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
   placeholder,
   readonly,
   schemaWithDynamicSelect,
+  onConstantFieldOpenChange,
   setControlFocus,
   setOpen,
   showErrorIcon = false,
@@ -348,10 +352,20 @@ const VarReferencePickerTrigger: FC<Props> = ({
             )}
             {isConstant ? (
               <ConstantField
-                value={value as string}
+                value={
+                  schemaWithDynamicSelect?.type === FormTypeEnum.dynamicTreeSelect
+                    ? Array.isArray(value)
+                      ? value
+                      : typeof value === 'string'
+                        ? value
+                        : ''
+                    : typeof value === 'string'
+                      ? value
+                      : ''
+                }
                 onChange={
                   onChange as (
-                    value: string | number,
+                    value: string | number | string[],
                     varKindType: VarKindType,
                     varInfo?: Var,
                   ) => void
@@ -359,6 +373,7 @@ const VarReferencePickerTrigger: FC<Props> = ({
                 schema={schemaWithDynamicSelect as CredentialFormSchemaSelect}
                 readonly={readonly}
                 isLoading={isLoading}
+                onOpenChange={onConstantFieldOpenChange}
               />
             ) : (
               resolvedVariablePicker

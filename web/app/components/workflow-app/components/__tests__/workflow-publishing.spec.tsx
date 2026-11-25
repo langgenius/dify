@@ -116,6 +116,7 @@ beforeEach(() => {
           form: 'llm',
           required: false,
           multiple: false,
+          dynamic_select_lazy_load: false,
         },
       ],
     },

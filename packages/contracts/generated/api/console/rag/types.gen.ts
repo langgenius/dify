@@ -832,6 +832,7 @@ export type ToolParameter = {
         [key: string]: unknown
       }
     | null
+  dynamic_select_lazy_load?: boolean
   form: ToolParameterForm
   human_description?: I18nObject | null
   input_schema?: {
@@ -909,6 +910,7 @@ export type DatasourceParameter = {
       }
     | null
   description: I18nObject
+  dynamic_select_lazy_load?: boolean
   label: I18nObject
   max?: number | number | null
   min?: number | number | null
@@ -948,6 +950,7 @@ export type PluginParameterAutoGenerate = {
 export type ToolParameterForm = 'form' | 'llm' | 'schema'
 
 export type PluginParameterOption = {
+  children?: Array<PluginParameterOption>
   icon?: string | null
   label: I18nObject
   value: string
@@ -966,6 +969,7 @@ export type ToolParameterType =
   | 'date'
   | 'date-range'
   | 'dynamic-select'
+  | 'dynamic-tree-select'
   | 'file'
   | 'files'
   | 'model-selector'

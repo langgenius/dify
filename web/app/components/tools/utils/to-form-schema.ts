@@ -11,6 +11,13 @@ type FormValueInput = {
   value?: unknown
 }
 
+type ToolFormOption = {
+  label: TypeWithI18N
+  value: string
+  show_on: { variable: string; value: string }[]
+  children?: ToolFormOption[]
+}
+
 /**
  * Form schema type for tool parameters.
  * This type represents the schema returned by toolParametersToFormSchemas.
@@ -26,17 +33,14 @@ export type ToolFormSchema = {
   default?: ToolParameter['default']
   tooltip?: TypeWithI18N
   show_on: { variable: string; value: string }[]
-  options?: {
-    label: TypeWithI18N
-    value: string
-    show_on: { variable: string; value: string }[]
-  }[]
+  options?: ToolFormOption[]
   placeholder?: TypeWithI18N
   min?: number
   max?: number
   llm_description?: string
   human_description?: TypeWithI18N
   multiple?: boolean
+  dynamic_select_lazy_load?: boolean
   url?: string
   scope?: string
   input_schema?: Field | null

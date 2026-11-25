@@ -63,29 +63,50 @@ const toDynamicOption = ({ value, label, icon }: PluginParameterOption): FormOpt
   show_on: [],
 })
 
-export function pluginDynamicOptionsMutationOptions(
-  plugin_id: string,
-  provider: string,
-  action: string,
-  parameter: string,
-  // The backend requires a provider type; callers without one render tool options.
-  provider_type: 'tool' | 'trigger' = 'tool',
-  extra?: Record<string, unknown>,
-) {
+type PluginDynamicParameterInput = {
+  plugin_id: string
+  provider: string
+  action: string
+  parameter: string
+  credential_id?: string | null
+  parameter_values?: Record<string, unknown>
+}
+
+const dynamicParameterQuery = ({
+  credential_id,
+  parameter_values,
+  ...query
+}: PluginDynamicParameterInput) => ({
+  ...query,
+  ...(credential_id ? { credential_id } : {}),
+  ...(parameter_values && Object.keys(parameter_values).length > 0
+    ? { parameter_values: JSON.stringify(parameter_values) }
+    : {}),
+})
+
+export function pluginDynamicOptionsMutationOptions({
+  provider_type = 'tool',
+  ...input
+}: PluginDynamicParameterInput & { provider_type?: 'tool' | 'trigger' }) {
   return mutationOptions({
     mutationFn: () =>
       consoleClient.workspaces.current.plugin.parameters.dynamicOptions
-        .get({
-          query: {
-            plugin_id,
-            provider,
-            action,
-            parameter,
-            provider_type,
-            ...extra,
-          },
-        })
+        .get({ query: { ...dynamicParameterQuery(input), provider_type } })
         .then(({ options }) => ({ options: options.map(toDynamicOption) })),
+  })
+}
+
+const toTreeFormOption = (option: PluginParameterOption): FormOption => ({
+  ...toDynamicOption(option),
+  children: option.children?.map(toTreeFormOption),
+})
+
+export function pluginDynamicTreeOptionsMutationOptions(input: PluginDynamicParameterInput) {
+  return mutationOptions({
+    mutationFn: () =>
+      consoleClient.workspaces.current.plugin.parameters.dynamicTreeOptions
+        .get({ query: dynamicParameterQuery(input) })
+        .then(({ options }) => ({ options: options.map(toTreeFormOption) })),
   })
 }
 

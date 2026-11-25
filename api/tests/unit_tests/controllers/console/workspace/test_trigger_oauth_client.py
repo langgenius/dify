@@ -19,6 +19,7 @@ from constants import HEADER_NAME_CSRF_TOKEN, HIDDEN_VALUE, UNKNOWN_VALUE
 from controllers.console.workspace.plugin import (
     PluginFetchDynamicSelectOptionsApi,
     PluginFetchDynamicSelectOptionsWithCredentialsApi,
+    PluginFetchDynamicTreeSelectOptionsApi,
 )
 from controllers.console.workspace.trigger_providers import (
     TriggerOAuthAuthorizeApi,
@@ -241,6 +242,9 @@ def harness(
         login_manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        api.add_resource(
+            PluginFetchDynamicTreeSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-tree-options"
+        )
         api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
         api.add_resource(
             PluginFetchDynamicSelectOptionsWithCredentialsApi,

@@ -5046,6 +5046,7 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| children | [ [PluginParameterOption](#pluginparameteroption) ] | The child options of the option | No |
 | icon | string | The icon of the option, can be a url or a base64 encoded image | No |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
@@ -5558,6 +5559,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
 | default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| dynamic_select_lazy_load | boolean | When true, DYNAMIC_SELECT/DYNAMIC_TREE_SELECT options load on panel open (lazy); when false (default), options prefetch after mount. | No |
 | form | [ToolParameterForm](#toolparameterform) | The form of the parameter, schema/form/llm | Yes |
 | human_description | [I18nObject](#i18nobject) | The description presented to the user | No |
 | input_schema | object |  | No |
@@ -5565,7 +5567,7 @@ Tool-specific parameter declaration and invocation-value normalization.
 | llm_description | string |  | No |
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
-| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| multiple | boolean | Whether the select, dynamic-select, or dynamic-tree-select parameter accepts multiple values | No |
 | name | string | The name of the parameter | Yes |
 | options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
 | placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |

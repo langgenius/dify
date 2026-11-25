@@ -227,6 +227,7 @@ describe('Leaving Build', () => {
     expect(view.onUrlUpdate).not.toHaveBeenCalled()
   })
 
+  // Match other multi-step Build scenarios: this one discards a stream and re-enters Build.
   it('stops streaming before discarding, waits to change URL, and ignores late completion', async () => {
     const user = userEvent.setup()
     const discard = createDeferred<{ result: string }>()
@@ -277,7 +278,7 @@ describe('Leaving Build', () => {
     expect(api.getBuildDraft).not.toHaveBeenCalled()
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
     expect(screen.queryByText('Built answer')).not.toBeInTheDocument()
-  })
+  }, 10000)
 
   it('keeps the draft and confirmation open when discard fails, then supports retry', async () => {
     const user = userEvent.setup()
