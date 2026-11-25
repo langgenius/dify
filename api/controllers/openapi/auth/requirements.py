@@ -81,12 +81,21 @@ class Requirement(ABC):
     @abstractmethod
     def run(self, subject: Subject, ctx: Context, session: Session) -> None: ...
 
+    def admits(self, token_type: TokenType) -> bool:
+        """Whether a token of this kind can ever pass, before any request: true unless the requirement refuses the
+        kind itself."""
+        return True
+
 
 class CheckSubject(Requirement):
     rank = Rank.FIRST
 
     def __init__(self, *, allowed: Sequence[type[Subject]]) -> None:
         self.allowed = tuple(allowed)
+
+    @override
+    def admits(self, token_type: TokenType) -> bool:
+        return any(subject.subject_type == token_type.subject for subject in self.allowed)
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
@@ -151,6 +160,11 @@ class CheckWorkspaceMember(Requirement):
 class CheckScope(Requirement):
     def __init__(self, scope: Scope) -> None:
         self.scope = scope
+
+    @override
+    def admits(self, token_type: TokenType) -> bool:
+        scopes = token_type.subject.scopes
+        return Scope.FULL in scopes or self.scope in scopes
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:

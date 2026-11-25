@@ -1,6 +1,7 @@
 """The catalog on /openapi/v1: every guarded route is in it, and its schemas are a shape an agent can read raw."""
 
 import hashlib
+import json
 import re
 from collections.abc import Iterator
 
@@ -16,9 +17,11 @@ from controllers.openapi._catalog import (
     CATALOG_HEADER,
     CATALOG_PATH,
     CatalogOp,
+    _catalog_path,
     build_catalog,
     catalog_for,
     iter_handlers,
+    op_registry,
 )
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import Hinted
@@ -224,3 +227,16 @@ def test_a_guarded_route_refuses_a_request_built_from_another_catalog(
     assert refused.headers[CATALOG_HEADER] == current
     assert admitted.status_code == 422
     assert unnamed.status_code == 422
+
+
+def test_the_op_registry_holds_each_catalog_op_with_its_spec_and_rule_built_once(app: Flask) -> None:
+    raw, _ = catalog_for(app)
+    with app.app_context():
+        registry = op_registry()
+        again = op_registry()
+
+    assert again is registry
+    assert {op: registered.entry for op, registered in registry.items()} == json.loads(raw)["ops"]
+    for op, registered in registry.items():
+        assert registered.spec.catalog.op == op
+        assert registered.entry["path"] == _catalog_path(registered.rule.rule)
