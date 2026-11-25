@@ -13,16 +13,16 @@ export type AgentV2NodeType = CommonNodeType &
     agent_declared_outputs?: DeclaredOutputConfig[]
     agent_output_routes?: WorkflowOutputRoutes
     agent_node_kind: 'dify_agent'
-    readonly agent_session_generation?: WorkflowNodeJobConfig['session_generation']
     agent_task?: string
     version: '2'
   }
 
-export function isAgentV2NodeData(data: Record<string, unknown>): data is AgentV2NodeType {
+export function isAgentV2NodeData(data: CommonNodeType): data is AgentV2NodeType {
+  const payload = data as { agent_node_kind?: string; version?: string }
   return (
     (data.type === BlockEnum.Agent || data.type === BlockEnum.AgentV2) &&
-    data.agent_node_kind === 'dify_agent' &&
-    data.version === '2'
+    payload.agent_node_kind === 'dify_agent' &&
+    payload.version === '2'
   )
 }
 

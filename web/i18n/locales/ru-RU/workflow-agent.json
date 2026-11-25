@@ -50,8 +50,6 @@
   "nodes.agent.roster.more": "Больше действий с агентом",
   "nodes.agent.roster.openPanel": "Открыть подробности {{name}}",
   "nodes.agent.roster.panelLabel": "Подробности {{name}}",
-  "nodes.agent.sessionContinuity.description": "Если настройка включена, агент сохраняет свою историю в этом чате. Если она выключена, агент начинает новую сессию для каждого сообщения пользователя.",
-  "nodes.agent.sessionContinuity.title": "Продолжать сессию агента",
   "nodes.agent.strategy.configureTip": "Пожалуйста, настройте агентскую стратегию.",
   "nodes.agent.strategy.configureTipDesc": "После настройки агентской стратегии этот узел автоматически загрузит оставшиеся конфигурации. Стратегия будет влиять на механизм многоступенчатого мышления инструмента.",
   "nodes.agent.strategy.label": "Агентная стратегия",
