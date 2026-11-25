@@ -72,7 +72,6 @@ from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
-from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
@@ -289,8 +288,6 @@ class AppVersionRestoreApi(Resource):
             )
         except IsDraftWorkflowError as exc:
             raise VersionNotRestorable() from exc
-        except WorkflowDraftInitializationBusyError as exc:
-            raise ServiceUnavailable(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             raise VersionNotFound() from exc
         except ValueError as exc:

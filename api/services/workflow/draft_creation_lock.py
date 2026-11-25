@@ -18,19 +18,13 @@ _DRAFT_CREATION_WAIT_SECONDS = 60
 
 
 @contextmanager
-def lock_draft_creation(*, tenant_id: str, app_id: str, session: Session, acquire: bool = True) -> Generator[None]:
+def lock_draft_creation(*, tenant_id: str, app_id: str, session: Session) -> Generator[None]:
     """Serialize a missing draft using a short Redis lease for its admitted App.
 
-    The outer caller owns commit or rollback within this scope. A nested save
-    using the same session reuses that lease. With acquire=False the caller
-    must already hold the lease. Contention or Redis failure aborts the save.
+    The caller owns commit or rollback within this scope. Contention or Redis
+    failure aborts the save.
     """
     key = f"workflow:draft-create:{tenant_id}:{app_id}"
-    if key in session.info:
-        yield
-        return
-    if not acquire:
-        raise RuntimeError("Draft initialization requires a lease through the caller's commit.")
 
     try:
         lock: Lock = redis_client.lock(
@@ -43,14 +37,12 @@ def lock_draft_creation(*, tenant_id: str, app_id: str, session: Session, acquir
     except RedisError as exc:
         raise WorkflowDraftInitializationBusyError() from exc
 
-    session.info[key] = True
     try:
         yield
     except BaseException:
         session.rollback()
         raise
     finally:
-        del session.info[key]
         try:
             lock.release()
         except RedisError:

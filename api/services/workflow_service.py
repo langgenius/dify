@@ -3,7 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
@@ -308,31 +308,6 @@ class WorkflowService:
             .execution_options(populate_existing=True, autoflush=False)
         )
 
-    @contextmanager
-    def draft_for_update_or_creation(
-        self, app_model: App, *, session: Session, acquire_creation_lock: bool = True
-    ) -> Generator[Workflow | None]:
-        """Yield a refreshed draft or a lease-protected absence for this admitted App.
-
-        The caller owns the write transaction through commit in this scope.
-        Only a missing draft needs the Redis lease before a second lookup.
-        With acquire_creation_lock=False, an outer caller owns any required
-        lease through its commit.
-        """
-        if self.is_workflow_exist(app_model, session=session):
-            draft = self.get_draft_workflow_for_update(app_model, session=session)
-            if draft is not None:
-                yield draft
-                return
-
-        with lock_draft_creation(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            session=session,
-            acquire=acquire_creation_lock,
-        ):
-            yield self.get_draft_workflow_for_update(app_model, session=session)
-
     @staticmethod
     def get_published_workflow_by_id(
         app_model: App,
@@ -541,6 +516,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        serialize_creation: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -549,13 +525,11 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
-        The caller supplies an admitted App and a transaction with no pending
-        draft edits. Only initialization can acquire the App's Redis lease.
-        Read and refresh the draft under its row lock before comparing the hash.
-        A conflict writes nothing. With commit=False the caller owns any
-        initialization lease through commit or rollback. Collaborative saves
-        preserve independently persisted fields and merge an explicit per-ID
-        environment patch.
+        The Console editor and OpenAPI starter opt in to serialized creation
+        and supply a transaction this method can commit. A hashless request
+        rechecks the draft under the Redis lease before inserting and committing.
+        Other callers retain the existing save behavior. Collaborative saves
+        preserve independently persisted fields and merge a per-ID patch.
 
         :raises WorkflowHashNotEqualError: The draft state differs from the request.
         :raises WorkflowDraftInitializationBusyError: Initialization could not acquire its lease.
@@ -563,13 +537,22 @@ class WorkflowService:
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
-        draft_scope = (
-            self.draft_for_update_or_creation(app_model, session=session, acquire_creation_lock=commit)
-            if unique_hash is None
-            else nullcontext(self.get_draft_workflow_for_update(app_model, session=session))
-        )
-        with draft_scope as workflow:
-            if unique_hash != (workflow.unique_hash if workflow is not None else None):
+        initializing = serialize_creation and unique_hash is None
+        if initializing:
+            if not commit:
+                raise ValueError("Serialized draft creation requires the save to commit.")
+            if self.is_workflow_exist(app_model, session=session):
+                raise WorkflowHashNotEqualError()
+
+        with (
+            lock_draft_creation(tenant_id=app_model.tenant_id, app_id=app_model.id, session=session)
+            if initializing
+            else nullcontext()
+        ):
+            workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+            if (workflow is not None or serialize_creation) and unique_hash != (
+                workflow.unique_hash if workflow is not None else None
+            ):
                 raise WorkflowHashNotEqualError()
 
             # Collaboration persists features and variables through dedicated endpoints. A graph save
@@ -766,9 +749,8 @@ class WorkflowService:
 
         Preconditions: the caller has admitted the App, account and source ID.
         Postconditions: the source and destination draft stay locked while their
-        graph and Agent bindings are copied atomically. A missing draft uses the
-        same Redis lease as an initial save through commit. A validation or
-        lease-acquisition failure commits no draft changes.
+        graph and Agent bindings are copied atomically; a concurrent Composer
+        save cannot interleave. Validation failure commits no draft changes.
         """
         source_workflow = self.get_published_workflow_by_id(
             app_model=app_model,
@@ -782,30 +764,30 @@ class WorkflowService:
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        with self.draft_for_update_or_creation(app_model, session=session) as draft_workflow:
-            draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                source_workflow=source_workflow,
-                draft_workflow=draft_workflow,
-                account=account,
-                updated_at_factory=naive_utc_now,
-            )
+        draft_workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account=account,
+            updated_at_factory=naive_utc_now,
+        )
 
-            if is_new_draft:
-                session.add(draft_workflow)
+        if is_new_draft:
+            session.add(draft_workflow)
 
-            from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-            session.flush()
-            retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
-                session=session,
-                source_workflow=source_workflow,
-                draft_workflow=draft_workflow,
-                account_id=account.id,
-            )
+        session.flush()
+        retirement_candidates = WorkflowAgentPublishService.restore_agent_node_bindings_to_draft(
+            session=session,
+            source_workflow=source_workflow,
+            draft_workflow=draft_workflow,
+            account_id=account.id,
+        )
 
-            session.commit()
+        session.commit()
         WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,

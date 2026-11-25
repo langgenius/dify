@@ -145,27 +145,26 @@ def test_publish_locks_and_refreshes_the_latest_draft_graph(
     assert draft.graph_dict == old_graph
     locking_reads: list[str] = []
 
-    def record_lock(state: ORMExecuteState) -> None:
+    def record_workflow_lock(state: ORMExecuteState) -> None:
         if state.is_select and isinstance(state.statement, ClauseElement):
             statement = str(state.statement.compile(dialect=postgresql.dialect()))
-            if "FOR UPDATE" in statement:
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
                 locking_reads.append(statement)
 
-    event.listen(sqlite_session, "do_orm_execute", record_lock)
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
     try:
         # This test owns the publication transaction, not process-global signal
         # subscribers that other suites may import with their own Flask bindings.
         with workflow_service_module.app_published_workflow_was_updated.muted():
             published = service.publish_workflow(session=sqlite_session, app_model=app, account=account)
     finally:
-        event.remove(sqlite_session, "do_orm_execute", record_lock)
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
     assert published.graph_dict == new_graph
     assert draft.graph_dict == new_graph
-    (draft_lock,) = locking_reads
-    assert "FROM workflows" in draft_lock
+    assert len(locking_reads) == 1
 
 
-def test_restore_locks_the_source_and_existing_destination_draft(
+def test_restore_locks_both_the_source_and_destination_draft(
     sqlite_session: Session, sqlite_engine: _workflow_service_Engine
 ) -> None:
     service = WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
@@ -177,25 +176,23 @@ def test_restore_locks_the_source_and_existing_destination_draft(
     sqlite_session.commit()
     locking_reads: list[str] = []
 
-    def record_lock(state: ORMExecuteState) -> None:
+    def record_workflow_lock(state: ORMExecuteState) -> None:
         if state.is_select and isinstance(state.statement, ClauseElement):
             statement = str(state.statement.compile(dialect=postgresql.dialect()))
-            if "FOR UPDATE" in statement:
+            if "FROM workflows" in statement and "FOR UPDATE" in statement:
                 locking_reads.append(statement)
 
-    event.listen(sqlite_session, "do_orm_execute", record_lock)
+    event.listen(sqlite_session, "do_orm_execute", record_workflow_lock)
     try:
         with workflow_service_module.app_draft_workflow_was_synced.muted():
             restored = service.restore_published_workflow_to_draft(
                 app_model=app, workflow_id=source.id, account=account, session=sqlite_session
             )
     finally:
-        event.remove(sqlite_session, "do_orm_execute", record_lock)
+        event.remove(sqlite_session, "do_orm_execute", record_workflow_lock)
     assert restored.id == draft.id
     assert restored.graph_dict == source.graph_dict
-    source_lock, draft_lock = locking_reads
-    assert "FROM workflows" in source_lock
-    assert "FROM workflows" in draft_lock
+    assert len(locking_reads) == 2
 
 
 def test_draft_sync_rejects_a_hash_when_the_draft_is_missing(sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -215,6 +212,7 @@ def test_draft_sync_rejects_a_hash_when_the_draft_is_missing(sqlite_session_fact
                 environment_variables=[],
                 conversation_variables=[],
                 session=session,
+                serialize_creation=True,
                 commit=False,
                 sync_agent_bindings=False,
             )
@@ -245,6 +243,7 @@ def test_first_draft_save_aborts_when_redis_lock_times_out(
                 environment_variables=[],
                 conversation_variables=[],
                 session=session,
+                serialize_creation=True,
             )
         assert service.get_draft_workflow(app, session=session) is None
         commands.assert_called_once()
@@ -284,6 +283,7 @@ def test_draft_sync_checks_the_hash_against_the_refreshed_draft(
                 environment_variables=[],
                 conversation_variables=[],
                 session=stale_session,
+                serialize_creation=True,
                 commit=False,
                 sync_agent_bindings=False,
             )
@@ -323,6 +323,7 @@ def test_first_draft_save_rechecks_after_taking_the_redis_lock(
             environment_variables=[],
             conversation_variables=[],
             session=session,
+            serialize_creation=True,
         )
     with sqlite_session_factory() as reader:
         assert list(reader.scalars(select(Workflow.id))) == [winner.id]
@@ -732,8 +733,6 @@ class TestWorkflowServiceCases:
             account = TestWorkflowAssociatedDataFactory.create_account()
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
             features = {"file_upload": {"enabled": False}}
-            sqlite_session.add(app)
-            sqlite_session.flush()
 
             with (
                 patch("services.workflow_service.app_draft_workflow_was_synced"),
@@ -843,9 +842,7 @@ class TestWorkflowServiceCases:
                 sync_agent_bindings=False,
             )
 
-            locking_read = str(statements[0].compile(dialect=postgresql.dialect()))
-            assert "FROM workflows" in locking_read
-            assert "FOR UPDATE" in locking_read
+            assert "FOR UPDATE" in str(statements[0].compile(dialect=postgresql.dialect()))
             assert result.environment_variables == [remote_variable]
             assert commits == []
 
@@ -993,9 +990,6 @@ class TestWorkflowServiceCases:
                 )
             ]
 
-            sqlite_session.add(app)
-            sqlite_session.flush()
-
             with patch("services.workflow_service.app_draft_workflow_was_synced"):
                 workflow = workflow_service.sync_draft_workflow(
                     app_model=app,
@@ -1091,7 +1085,7 @@ class TestWorkflowServiceCases:
                 _conversation_variables=[],
                 _rag_pipeline_variables=[],
             )
-            sqlite_session.add_all([app, source_workflow, draft_workflow])
+            sqlite_session.add_all([source_workflow, draft_workflow])
             sqlite_session.commit()
 
             with (
@@ -1542,7 +1536,7 @@ class TestWorkflowServiceCases:
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
 
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
-            sqlite_session.add_all([app, draft])
+            sqlite_session.add(draft)
             sqlite_session.commit()
 
             with patch("services.workflow_service.app_published_workflow_was_updated"):
@@ -1574,7 +1568,7 @@ class TestWorkflowServiceCases:
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
 
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
-            sqlite_session.add_all([app, draft])
+            sqlite_session.add(draft)
             sqlite_session.commit()
 
             with (
@@ -1600,7 +1594,7 @@ class TestWorkflowServiceCases:
             graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
 
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
-            sqlite_session.add_all([app, draft])
+            sqlite_session.add(draft)
             sqlite_session.commit()
 
             with (
@@ -1635,7 +1629,7 @@ class TestWorkflowServiceCases:
                     version=Workflow.VERSION_DRAFT,
                     graph=graph,
                 )
-                sqlite_session.add_all([app, draft])
+                sqlite_session.add(draft)
                 sqlite_session.commit()
 
                 with (
@@ -1657,9 +1651,6 @@ class TestWorkflowServiceCases:
             """
             app = TestWorkflowAssociatedDataFactory.create_app()
             account = TestWorkflowAssociatedDataFactory.create_account()
-
-            sqlite_session.add(app)
-            sqlite_session.flush()
 
             with pytest.raises(ValueError, match="No valid workflow found"):
                 workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
@@ -1699,7 +1690,7 @@ class TestWorkflowServiceCases:
             llm_node["data"]["model_selector"] = ["env", "shared_model"]
             draft = TestWorkflowAssociatedDataFactory.create_workflow(graph=graph)
             draft.environment_variables = environment_variables
-            sqlite_session.add_all([app, draft])
+            sqlite_session.add(draft)
             sqlite_session.commit()
 
             with (
@@ -1738,7 +1729,7 @@ class TestWorkflowServiceCases:
                 "edges": [],
             }
             draft = TestWorkflowAssociatedDataFactory.create_workflow(version=Workflow.VERSION_DRAFT, graph=graph)
-            sqlite_session.add_all([app, draft])
+            sqlite_session.add(draft)
             sqlite_session.commit()
 
             with (

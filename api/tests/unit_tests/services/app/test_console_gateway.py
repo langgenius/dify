@@ -828,6 +828,7 @@ def test_create_draft_saves_the_starter_graph_of_the_apps_mode(
     ).create_draft(context, app_id)
 
     assert [sync["graph"] for sync in syncs] == [console_gateway._STARTER_DRAFT_GRAPHS[mode]]
+    assert syncs[0]["serialize_creation"] is True
     assert syncs[0]["graph"] is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
     with sqlite_session_factory() as session:
         draft = session.scalar(

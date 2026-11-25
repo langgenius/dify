@@ -4833,7 +4833,7 @@ Get draft workflow for an application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft
-**Save the admitted application's draft or report a stale draft hash**
+**Sync draft workflow**
 
 Sync draft workflow configuration
 

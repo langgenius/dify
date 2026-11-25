@@ -612,6 +612,7 @@ class AppLifecycleGateway(AppLifecycle):
                     environment_variables=[],
                     conversation_variables=[],
                     session=session,
+                    serialize_creation=True,
                 )
             except WorkflowHashNotEqualError:
                 # A hashless save only conflicts if a draft already exists.

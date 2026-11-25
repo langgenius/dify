@@ -4,7 +4,6 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping
-from contextlib import ExitStack
 from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -684,55 +683,13 @@ class AppDslService:
         preserve_agent_bindings: bool = False,
         draft_hash: str | None = None,
     ) -> App:
-        """Create an App or overwrite one while keeping any first-draft lease through commit."""
-        with ExitStack() as draft_scope:
-            return self._persist_app_dsl(
-                draft_scope=draft_scope,
-                app=app,
-                data=data,
-                account=account,
-                name=name,
-                description=description,
-                icon_type=icon_type,
-                icon=icon,
-                icon_background=icon_background,
-                dependencies=dependencies,
-                import_app_id=import_app_id,
-                allow_premium_site_settings=allow_premium_site_settings,
-                preserve_agent_bindings=preserve_agent_bindings,
-                draft_hash=draft_hash,
-            )
-
-    def _persist_app_dsl(
-        self,
-        *,
-        draft_scope: ExitStack,
-        app: App | None,
-        data: dict[str, Any],
-        account: Account,
-        name: str | None,
-        description: str | None,
-        icon_type: str | None,
-        icon: str | None,
-        icon_background: str | None,
-        dependencies: list[PluginDependency] | None,
-        import_app_id: str | None,
-        allow_premium_site_settings: bool,
-        preserve_agent_bindings: bool,
-        draft_hash: str | None,
-    ) -> App:
-        """Write the admitted import with the caller's draft scope active through commit.
-
-        Validate the App and workspace before taking the draft lease. An
-        overwrite with a stale draft hash leaves metadata and dependencies
-        untouched. A workflow import that can create a draft shares the same
-        Redis lease as the ordinary first-save route.
-        """
+        """Create a new app or update an existing one."""
         app_data = data.get("app", {})
         app_mode = app_data.get("mode")
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
         locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
@@ -741,16 +698,6 @@ class AppDslService:
         target_tenant_id = app.tenant_id if app is not None else account.current_tenant_id
         if target_tenant_id is None:
             raise ValueError("Current tenant is not set")
-
-        app_is_new = app is None
-        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-            workflow_data = data.get("workflow")
-            if not workflow_data or not isinstance(workflow_data, dict):
-                raise ValueError("Missing workflow data for workflow/advanced chat app")
-            if app is not None and draft_hash is None:
-                locked_draft = draft_scope.enter_context(
-                    WorkflowService().draft_for_update_or_creation(app, session=self._session)
-                )
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
@@ -819,7 +766,10 @@ class AppDslService:
         # Initialize app based on mode
         match app_mode:
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
-                workflow_data = data["workflow"]
+                workflow_data = data.get("workflow")
+                if not workflow_data or not isinstance(workflow_data, dict):
+                    raise ValueError("Missing workflow data for workflow/advanced chat app")
+
                 environment_variables_list = workflow_data.get("environment_variables", [])
                 environment_variables = [
                     variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
@@ -831,11 +781,10 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                if app_is_new:
-                    locked_draft = draft_scope.enter_context(
-                        workflow_service.draft_for_update_or_creation(app, session=self._session)
-                    )
-                unique_hash = locked_draft.unique_hash if locked_draft is not None else None
+                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow(
+                    app_model=app, session=self._session
+                )
+                unique_hash = current_draft_workflow.unique_hash if current_draft_workflow else None
                 graph = workflow_data.get("graph", {})
                 if not isinstance(graph, dict):
                     raise ValueError("Workflow graph must be a mapping")

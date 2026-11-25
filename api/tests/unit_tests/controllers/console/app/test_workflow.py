@@ -449,6 +449,7 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+        assert sync_draft_workflow.call_args.kwargs["serialize_creation"] is True
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])

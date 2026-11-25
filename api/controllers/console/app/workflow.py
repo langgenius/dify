@@ -666,7 +666,9 @@ class DraftWorkflowApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def post(self, current_user: Account, app_model: App):
-        """Save the admitted application's draft or report a stale draft hash."""
+        """
+        Sync draft workflow
+        """
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -719,6 +721,7 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                serialize_creation=True,
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
@@ -1699,8 +1702,6 @@ class DraftWorkflowRestoreApi(Resource):
             )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
-        except WorkflowDraftInitializationBusyError as exc:
-            raise ServiceUnavailable(str(exc)) from exc
         except WorkflowNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
