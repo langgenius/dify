@@ -35,6 +35,7 @@ from extensions.ext_login import (
     unauthorized_handler,
 )
 from extensions.ext_redis import RedisClientWrapper
+from libs.external_api import ErrorResponse
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_activation_service import AccountActivationService
@@ -378,9 +379,9 @@ class TestActivateApi:
         response = console_client.post("/console/api/activate", json=payload, headers=headers)
 
         assert response.status_code == HTTPStatus.FORBIDDEN
-        body = response.get_json()
-        assert isinstance(body, dict)
-        assert body["code"] == "invitation_account_mismatch"
+        body = ErrorResponse.model_validate_json(response.get_data())
+        assert body.code == "invitation_account_mismatch"
+        assert body.status == HTTPStatus.FORBIDDEN
 
         invitation = InvitationLookup(workspace_id="workspace-123", email="invitee@example.com", token="valid-token")
         assert resolvable_activation_service.check(invitation).is_valid
