@@ -1,6 +1,8 @@
+import type { QueryClient } from '@tanstack/react-query'
 import type { IChatItem } from './chat/type'
 import type { ChatItem, ChatItemInTree } from './types'
 import type { AppConversationData, ConversationItem } from '@/models/share'
+import type { shareConversationsQueryOptions } from '@/service/share-queries'
 import { UUID_NIL } from './constants'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -277,6 +279,20 @@ function withGeneratedConversation(
   return { ...data, data: list }
 }
 
+/**
+ * Writes a generated conversation into the conversation list cache. A list that has not loaded
+ * stays stale, so the next mount still loads the full list.
+ */
+function writeGeneratedConversation(
+  queryClient: QueryClient,
+  queryKey: ReturnType<typeof shareConversationsQueryOptions>['queryKey'],
+  conversation: ConversationItem,
+) {
+  const loaded = queryClient.getQueryData(queryKey) !== undefined
+  queryClient.setQueryData(queryKey, (data) => withGeneratedConversation(data, conversation))
+  if (!loaded) queryClient.invalidateQueries({ queryKey, exact: true, refetchType: 'none' })
+}
+
 export {
   buildChatItemTree,
   getLastAnswer,
@@ -287,5 +303,5 @@ export {
   getRawUserVariablesFromUrlParams,
   getThreadMessages,
   isValidGeneratedAnswer,
-  withGeneratedConversation,
+  writeGeneratedConversation,
 }

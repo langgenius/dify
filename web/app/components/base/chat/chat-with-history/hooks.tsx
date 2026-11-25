@@ -41,7 +41,7 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
-  withGeneratedConversation,
+  writeGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -471,9 +471,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const currentChatInstanceRef = useRef<{
     handleStop: () => void
   }>({ handleStop: noop })
+  // The conversation whose generated name is still loading. Leaving it drops the late name,
+  // so a conversation pinned or deleted meanwhile does not come back to this list.
+  const pendingNameConversationIdRef = useRef('')
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
       currentChatInstanceRef.current.handleStop()
+      if (conversationId !== pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -503,6 +508,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const handlePinConversation = useCallback(
     async (conversationId: string) => {
       await pinConversation(appSourceType, appId, conversationId)
+      if (conversationId === pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       toast.success(t(($) => $['api.success'], { ns: 'common' }))
       handleUpdateConversationList()
     },
@@ -583,6 +590,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setShowNewConversationItemInList(false)
       invalidateShareConversations()
       // The generated name stays in the list cache until the list is loaded again after it.
+      pendingNameConversationIdRef.current = newConversationId
       queryClient
         .query(
           shareConversationNameQueryOptions({
@@ -591,11 +599,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
             appId,
           }),
         )
-        .then((conversation) =>
-          queryClient.setQueryData(conversationListQueryOptions.queryKey, (data) =>
-            withGeneratedConversation(data, conversation),
-          ),
-        )
+        .then((conversation) => {
+          if (pendingNameConversationIdRef.current !== newConversationId) return
+          pendingNameConversationIdRef.current = ''
+          writeGeneratedConversation(
+            queryClient,
+            conversationListQueryOptions.queryKey,
+            conversation,
+          )
+        })
         .catch(noop)
     },
     [

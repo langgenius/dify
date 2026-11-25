@@ -18,6 +18,7 @@ import {
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
+import { shareQueryKeys } from '@/service/share-queries'
 import { createDeferred } from '@/test/deferred'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
 import { createTestQueryClient } from '@/test/query-client'
@@ -361,6 +362,43 @@ describe('useEmbeddedChatbot', () => {
       await waitFor(() =>
         expect(result.current.conversationList.map(({ id, name }) => ({ id, name }))).toEqual([
           { id: 'conversation-new', name: 'Generated' },
+        ]),
+      )
+    })
+
+    it('should load the full list on the next mount after a failed list load', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result, queryClient, unmount } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      unmount()
+
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({
+          data: [
+            createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+            createConversationItem({ id: 'conversation-1' }),
+          ],
+        }),
+      )
+      const remounted = renderHook(() => useEmbeddedChatbot(AppSourceType.webApp), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-new',
+          'conversation-1',
         ]),
       )
     })

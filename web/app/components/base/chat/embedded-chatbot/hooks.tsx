@@ -29,7 +29,7 @@ import {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
-  withGeneratedConversation,
+  writeGeneratedConversation,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -377,9 +377,14 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const currentChatInstanceRef = useRef<{
     handleStop: () => void
   }>({ handleStop: noop })
+  // The conversation whose generated name is still loading. Leaving it drops the late name,
+  // so a conversation pinned or deleted meanwhile does not come back to this list.
+  const pendingNameConversationIdRef = useRef('')
   const handleChangeConversation = useCallback(
     (conversationId: string) => {
       currentChatInstanceRef.current.handleStop()
+      if (conversationId !== pendingNameConversationIdRef.current)
+        pendingNameConversationIdRef.current = ''
       setNewConversationId('')
       handleConversationIdInfoChange(conversationId)
       if (conversationId) setClearChatList(false)
@@ -416,6 +421,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       invalidateShareConversations()
       if (isTryApp) return
       // The generated name stays in the list cache until the list is loaded again after it.
+      pendingNameConversationIdRef.current = newConversationId
       queryClient
         .query(
           shareConversationNameQueryOptions({
@@ -424,11 +430,15 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
             appId,
           }),
         )
-        .then((conversation) =>
-          queryClient.setQueryData(conversationListQueryOptions.queryKey, (data) =>
-            withGeneratedConversation(data, conversation),
-          ),
-        )
+        .then((conversation) => {
+          if (pendingNameConversationIdRef.current !== newConversationId) return
+          pendingNameConversationIdRef.current = ''
+          writeGeneratedConversation(
+            queryClient,
+            conversationListQueryOptions.queryKey,
+            conversation,
+          )
+        })
         .catch(noop)
     },
     [

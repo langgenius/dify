@@ -337,6 +337,70 @@ describe('useChatWithHistory', () => {
       )
     })
 
+    it('should load the full list on the next mount after a failed list load', async () => {
+      mockFetchConversations.mockRejectedValue(new Error('history unavailable'))
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+      )
+      const { result, queryClient, unmount } = await renderWithClient(() => useChatWithHistory())
+      queryClient.setQueryDefaults(shareQueryKeys.conversations, { staleTime: 5 * 60 * 1000 })
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      await waitFor(() => expect(result.current.conversationList[0]!.name).toBe('Generated'))
+      unmount()
+
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({
+          data: [
+            createConversationItem({ id: 'conversation-new', name: 'Generated' }),
+            createConversationItem({ id: 'conversation-1' }),
+          ],
+        }),
+      )
+      const remounted = renderHook(() => useChatWithHistory(), {
+        wrapper: createWrapper(queryClient),
+      })
+
+      await waitFor(() =>
+        expect(remounted.result.current.conversationList.map(({ id }) => id)).toEqual([
+          'conversation-new',
+          'conversation-1',
+        ]),
+      )
+    })
+
+    it('should drop a late generated name after the conversation was left and pinned', async () => {
+      mockFetchConversations.mockResolvedValue(
+        createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
+      )
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockPinConversation.mockResolvedValue(undefined)
+      const { promise: generatedName, resolve: resolveGeneratedName } =
+        createDeferred<ConversationItem>()
+      mockGenerationConversationName.mockReturnValue(generatedName)
+      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
+
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+      act(() => {
+        result.current.handleChangeConversation('conversation-1')
+      })
+      await act(() => result.current.handlePinConversation('conversation-new'))
+      await waitFor(() =>
+        expect(queryClient.isFetching({ queryKey: shareQueryKeys.conversations })).toBe(0),
+      )
+      await act(async () => {
+        resolveGeneratedName(createConversationItem({ id: 'conversation-new', name: 'Generated' }))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      })
+
+      expect(result.current.conversationList.map(({ id }) => id)).toEqual(['conversation-1'])
+    })
+
     it('should keep a generated name that arrives after the list reload when changing conversation', async () => {
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [] }))
       mockFetchChatList.mockResolvedValue({ data: [] })
