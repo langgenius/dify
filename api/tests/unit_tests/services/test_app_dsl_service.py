@@ -1,7 +1,6 @@
 from collections.abc import Callable
 from functools import partial
 from io import BytesIO
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 from uuid import uuid4
@@ -996,30 +995,14 @@ def test_create_or_update_app_removes_imported_workflow_viewport(
 
 
 def test_create_or_update_app_forwards_imported_agent_purge_ids(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    workflow_dsl_service: AppDslService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    session = sqlite_session
-    service = AppDslService(session=session)
     app = _app(tenant_id="tenant-1", mode=AppMode.WORKFLOW)
-    session.add(app)
-    session.commit()
-    workflow = SimpleNamespace(id="workflow-1")
-    workflow_service = SimpleNamespace(
-        get_draft_workflow_for_update=Mock(return_value=None),
-        sync_draft_workflow=Mock(return_value=workflow),
-    )
-    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
-    monkeypatch.setattr(
-        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
-        Mock(return_value={"nodes": [], "edges": []}),
-    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
     monkeypatch.setattr(
         "services.app_dsl_service.AgentDslService.import_workflow_packages",
-        Mock(return_value=(workflow, [], {"retired-agent"})),
-    )
-    monkeypatch.setattr(
-        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
-        Mock(),
+        lambda *_args, **_kwargs: ({"nodes": [], "edges": []}, [], {"retired-agent"}),
     )
     retire_unowned = Mock()
     monkeypatch.setattr(
@@ -1027,14 +1010,14 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(
         retire_unowned,
     )
 
-    service._create_or_update_app(
+    workflow_dsl_service._create_or_update_app(
         app=app,
         data={
             "app": {"mode": AppMode.WORKFLOW.value},
             "workflow": {"graph": {"nodes": [], "edges": []}},
             "agent_packages": {"package-1": {}},
         },
-        account=Mock(id="account-1"),
+        account=_account(),
     )
 
     retire_unowned.assert_called_once_with(
