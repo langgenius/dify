@@ -709,29 +709,29 @@ class TestRagPipelineTaskProxyCasesServices:
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
-        def test_delay_method(
+        def test_delay_publishes_uploaded_file_to_cloud_sandbox_queue(
             self,
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            celery_app: Celery,
+            tenant_queue_commands: MagicMock,
         ) -> None:
-            """Test delay method integration."""
-            # Arrange
             mock_feature_service.get_workspace_plan.return_value = CloudPlan.SANDBOX
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            dispatch_mock = mocker.patch.object(proxy, "_dispatch")
+            tenant_queue_commands.return_value = None
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
+            upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+            mock_file_service_class.return_value.upload_text.return_value = upload_file
 
-            mock_file_service = Mock()
-            mock_file_service_class.return_value = mock_file_service
-            mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
-            mock_file_service.upload_text.return_value = mock_upload_file
-
-            # Act
             proxy.delay()
 
-            # Assert
-            dispatch_mock.assert_called_once()
+            assert _drain("pipeline", celery_app) == [
+                (
+                    "tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task",
+                    {"rag_pipeline_invoke_entities_file_id": upload_file.id, "tenant_id": "tenant-123"},
+                )
+            ]
+            assert _drain("priority_pipeline", celery_app) == []
 
         def test_delay_method_with_empty_entities(self, caplog: pytest.LogCaptureFixture) -> None:
             """Test delay method with empty rag_pipeline_invoke_entities."""
