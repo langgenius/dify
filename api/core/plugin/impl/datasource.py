@@ -1,5 +1,5 @@
-from collections.abc import Callable, Generator, Mapping
-from typing import Any, Protocol
+from collections.abc import Callable, Generator, Iterable, Mapping
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict
 
@@ -103,6 +103,26 @@ class PluginDatasourceSinglePayload(PluginDatasourcePayloadModel):
     data: PluginDatasourceProviderPayload | None = None
 
 
+class OnlineDriveDownloadStreamRequester(Protocol):
+    """Request one online-drive download stream from the plugin daemon."""
+
+    def request_stream(
+        self,
+        method: Literal["POST"],
+        path: str,
+        response_model: type[OnlineDriveDownloadMessage],
+        *,
+        headers: dict[str, str],
+        data: dict[str, Any],
+    ) -> Iterable[DatasourceMessage]:
+        """Inputs: A POST route, download response model, headers, and JSON request data.
+        Preconditions: The supplied request targets the online-drive download endpoint.
+        Result/effects: Returns a lazy stream of typed datasource messages without buffering.
+        Failure: Transport, parsing, and iteration errors propagate unchanged.
+        """
+        ...
+
+
 class PluginDatasourceManager(BasePluginClient):
     def __init__(
         self,
@@ -111,17 +131,19 @@ class PluginDatasourceManager(BasePluginClient):
         get_plugin_icon_url: Callable[[str, str], str] = PluginService.get_plugin_icon_url,
         datasource_provider_list_requester: DatasourceProviderListRequester | None = None,
         schema_ref_resolver: DatasourceSchemaRefResolver | None = None,
+        online_drive_download_stream_requester: OnlineDriveDownloadStreamRequester | None = None,
     ) -> None:
-        """Inputs: Identifier is ``None`` or non-empty; callbacks implement their typed protocols;
-        absent optional callbacks select production defaults.
-        Preconditions: An injected requester applies the transformer to daemon JSON.
-        Result/effects: Initializes the base client and stores callbacks without invoking them.
-        Failure: Empty ID preserves ``BasePluginClient`` validation; used callback errors propagate.
+        """Inputs: Identifier is None or non-empty; injected callbacks implement their typed protocols;
+        absent optional dependencies select production defaults.
+        Preconditions: A provider-list requester applies the transformer; the download requester returns typed messages.
+        Result/effects: Initializes the base client and stores dependencies without invoking them.
+        Failure: Empty ID preserves BasePluginClient validation; selected dependency errors propagate.
         """
         super().__init__(plugin_unique_identifier=plugin_unique_identifier)
         self._get_plugin_icon_url = get_plugin_icon_url
         self._datasource_provider_list_requester = datasource_provider_list_requester
         self._schema_ref_resolver = schema_ref_resolver
+        self._online_drive_download_stream_requester = online_drive_download_stream_requester
 
     def _resolve_schema_refs(self, schema: SchemaType) -> SchemaType:
         """Resolve one datasource output schema. Inputs: A schema value accepted by the Dify resolver.
@@ -416,30 +438,47 @@ class PluginDatasourceManager(BasePluginClient):
         request: OnlineDriveDownloadFileRequest,
         provider_type: str,
     ) -> Generator[DatasourceMessage]:
-        """
-        Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
+        """Invoke the datasource and lazily yield its online-drive download messages.
+
+        Inputs: Tenant/user/provider identifiers, credentials, and a validated download request.
+        Preconditions: The datasource provider identifier is valid for plugin dispatch.
+        Result/effects: Uses the injected requester when present; otherwise retains the BasePluginClient transport.
+        Failure: Request, response-validation, and iteration errors propagate unchanged.
         """
 
         datasource_provider_id = GenericProviderID(datasource_provider)
+        path = f"plugin/{tenant_id}/dispatch/datasource/online_drive_download_file"
+        data: dict[str, Any] = {
+            "user_id": user_id,
+            "data": {
+                "provider": datasource_provider_id.provider_name,
+                "datasource": datasource_name,
+                "credentials": credentials,
+                "request": request.model_dump(),
+            },
+        }
+        headers = {
+            "X-Plugin-ID": datasource_provider_id.plugin_id,
+            "Content-Type": "application/json",
+        }
 
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/online_drive_download_file",
-            OnlineDriveDownloadMessage,
-            data={
-                "user_id": user_id,
-                "data": {
-                    "provider": datasource_provider_id.provider_name,
-                    "datasource": datasource_name,
-                    "credentials": credentials,
-                    "request": request.model_dump(),
-                },
-            },
-            headers={
-                "X-Plugin-ID": datasource_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
+        requester = self._online_drive_download_stream_requester
+        if requester is not None:
+            response = requester.request_stream(
+                "POST",
+                path,
+                OnlineDriveDownloadMessage,
+                headers=headers,
+                data=data,
+            )
+        else:
+            response = self._request_with_plugin_daemon_response_stream(
+                "POST",
+                path,
+                OnlineDriveDownloadMessage,
+                data=data,
+                headers=headers,
+            )
         yield from response
 
     def validate_provider_credentials(

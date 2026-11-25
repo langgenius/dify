@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
 from typing import TypedDict, Unpack
 
@@ -495,10 +495,38 @@ class TestPluginDatasourceManager:
 
         assert stream_mock.call_count == 1
 
-    def test_online_drive_download_file_streaming(self, mocker: MockerFixture) -> None:
-        manager = PluginDatasourceManager()
-        stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
-        stream_mock.return_value = iter(["download"])
+    def test_online_drive_download_file_streaming(self) -> None:
+        class FakeOnlineDriveDownloadStreamRequester:
+            def __init__(self, messages: list[OnlineDriveDownloadMessage]) -> None:
+                self.messages = messages
+                self.calls: list[
+                    tuple[
+                        str,
+                        str,
+                        type[OnlineDriveDownloadMessage],
+                        dict[str, str],
+                        dict[str, object],
+                    ]
+                ] = []
+
+            def request_stream(
+                self,
+                method: str,
+                path: str,
+                response_model: type[OnlineDriveDownloadMessage],
+                *,
+                headers: dict[str, str],
+                data: dict[str, object],
+            ) -> Iterator[OnlineDriveDownloadMessage]:
+                self.calls.append((method, path, response_model, headers, data))
+                return iter(self.messages)
+
+        download = OnlineDriveDownloadMessage(
+            message=OnlineDriveDownloadMessage.TextMessage(text="download")
+        )
+        request = OnlineDriveDownloadFileRequest(id="file-1")
+        requester = FakeOnlineDriveDownloadStreamRequester([download])
+        manager = PluginDatasourceManager(online_drive_download_stream_requester=requester)
 
         assert list(
             manager.online_drive_download_file(
@@ -507,13 +535,31 @@ class TestPluginDatasourceManager:
                 "org/plugin/provider",
                 "drive",
                 {"k": "v"},
-                OnlineDriveDownloadFileRequest(id="file-1"),
+                request,
                 "online_drive",
             )
-        ) == ["download"]
+        ) == [download]
 
-        stream_mock.assert_called_once()
-        assert stream_mock.call_args.args[2] is OnlineDriveDownloadMessage
+        assert requester.calls == [
+            (
+                "POST",
+                "plugin/tenant-1/dispatch/datasource/online_drive_download_file",
+                OnlineDriveDownloadMessage,
+                {
+                    "X-Plugin-ID": "org/plugin",
+                    "Content-Type": "application/json",
+                },
+                {
+                    "user_id": "user-1",
+                    "data": {
+                        "provider": "provider",
+                        "datasource": "drive",
+                        "credentials": {"k": "v"},
+                        "request": request.model_dump(),
+                    },
+                },
+            )
+        ]
 
     def test_validate_provider_credentials_returns_true_when_stream_yields_result(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
