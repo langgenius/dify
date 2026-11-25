@@ -69,6 +69,36 @@ describe('composeMutationOptions', () => {
     expect(calls).toEqual(['policy:start', 'caller', 'policy:end'])
   })
 
+  it('keeps a mutation pending until the policy finishes even when the caller callback rejects', async () => {
+    const policyDone = createDeferred<void>()
+    let policyFinished = false
+    const client = createQueryClient()
+    const observer = new MutationObserver(
+      client,
+      composeMutationOptions(
+        {
+          onSuccess: async () => {
+            await policyDone.promise
+            policyFinished = true
+          },
+        },
+        {
+          mutationFn: async () => 'saved',
+          onSuccess: () => Promise.reject(new Error('caller failed')),
+        },
+      ),
+    )
+
+    const running = observer.mutate(undefined).catch(() => undefined)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(observer.getCurrentResult().status).toBe('pending')
+
+    policyDone.resolve()
+    await running
+    expect(policyFinished).toBe(true)
+    expect(observer.getCurrentResult().error).toEqual(new Error('caller failed'))
+  })
+
   it('keeps each side on its own onMutate result when both define onMutate', async () => {
     const policyError = vi.fn()
     const callerError = vi.fn()
