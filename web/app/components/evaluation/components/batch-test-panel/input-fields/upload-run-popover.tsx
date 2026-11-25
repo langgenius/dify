@@ -124,7 +124,7 @@ const UploadRunPopover = ({
               </div>
             ) : (
               <div
-                className="flex h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-start hover:border-components-button-secondary-border"
+                className="flex min-h-20 w-full items-center justify-center gap-3 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg p-3 text-start hover:border-components-button-secondary-border"
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={handleDropFile}
               >

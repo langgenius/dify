@@ -165,7 +165,7 @@
   "results.queryCount_many": "{{count}} استعلامًا",
   "results.queryCount_one": "{{count}} استعلام",
   "results.queryCount_other": "{{count}} استعلام",
-  "results.queryCount_two": "{{count}} استعلامان",
+  "results.queryCount_two": "استعلامان ({{count}})",
   "results.queryCount_zero": "{{count}} استعلام",
   "results.status.failed": "فشل",
   "results.status.passed": "نجح",
