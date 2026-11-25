@@ -13,12 +13,30 @@ def test_processing_rule_rejects_negative_chunk_overlap(field: str) -> None:
 
 
 @pytest.mark.parametrize("field", ["segmentation", "subchunk_segmentation"])
-@pytest.mark.parametrize("max_tokens", [0, -1, -50])
-def test_processing_rule_rejects_nonpositive_max_tokens(field: str, max_tokens: int) -> None:
+@pytest.mark.parametrize("max_tokens", [-1, -50])
+def test_processing_rule_rejects_negative_max_tokens(field: str, max_tokens: int) -> None:
     with pytest.raises(ValidationError) as exc_info:
         Rule.model_validate({field: {"max_tokens": max_tokens, "chunk_overlap": 0}})
 
     assert exc_info.value.errors()[0]["loc"] == (field, "max_tokens")
+
+
+@pytest.mark.parametrize("field", ["segmentation", "subchunk_segmentation"])
+def test_processing_rule_rejects_zero_max_tokens_without_full_doc_parent_mode(field: str) -> None:
+    with pytest.raises(ValidationError, match=f"{field}\\.max_tokens must be greater than 0"):
+        Rule.model_validate({field: {"max_tokens": 0, "chunk_overlap": 0}})
+
+
+def test_processing_rule_allows_zero_max_tokens_for_full_doc_parent_mode() -> None:
+    rule = Rule.model_validate(
+        {
+            "parent_mode": "full-doc",
+            "segmentation": {"separator": "\n", "max_tokens": 0},
+        }
+    )
+
+    assert rule.segmentation is not None
+    assert rule.segmentation.max_tokens == 0
 
 
 @pytest.mark.parametrize("field", ["segmentation", "subchunk_segmentation"])
