@@ -1,14 +1,13 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { AppData } from '@/models/share'
+import type { RecordedStreamCall } from '@/test/stream-recorder'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { onTestFinished } from 'vite-plus/test'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
-// oxlint-disable-next-line no-restricted-imports -- Exercise the existing chat SSE transport at its network boundary.
-import { sseGet } from '@/service/base'
 import { submitHumanInputForm as submitWebAppHumanInputForm } from '@/service/share'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
@@ -20,8 +19,12 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ChatWrapper from '../chat-wrapper'
 import { ChatWithHistoryContext } from '../context'
 
-// oxlint-disable-next-line typescript/no-deprecated -- Existing workflow event transport boundary.
-const workflowEvents = vi.mocked(sseGet)
+const { sseGet, ssePost } = vi.hoisted(() => ({
+  sseGet: vi.fn<RecordedStreamCall>(),
+  ssePost: vi.fn<RecordedStreamCall>(),
+}))
+
+const workflowEvents = sseGet
 
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
@@ -33,14 +36,26 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
   useParams: () => ({ token: 'test-token' }),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  sseGet: vi.fn(),
-  ssePost: vi.fn(),
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: sseGet })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
 }))
 vi.mock('@/service/share', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/share')>()),
   submitHumanInputForm: vi.fn().mockResolvedValue(undefined),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 
 const createForm = (formVersion: HumanInputFormData['form_version']): HumanInputFormData =>

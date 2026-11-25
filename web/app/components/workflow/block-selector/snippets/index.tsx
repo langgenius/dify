@@ -14,11 +14,12 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { useInfiniteSnippetList } from '@/service/use-snippets'
+import { snippetListInfiniteOptions } from '@/service/snippet-queries'
 import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
@@ -73,13 +74,15 @@ const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }:
   const keyword = deferredSearchText.trim() || undefined
 
   const { data, isLoading, isFetching, isFetchingNextPage, fetchNextPage, hasNextPage } =
-    useInfiniteSnippetList({
-      page: 1,
-      limit: 30,
-      keyword,
-      ...(tagIds.length ? { tag_ids: tagIds } : {}),
-      is_published: true,
-    })
+    useInfiniteQuery(
+      snippetListInfiniteOptions({
+        page: 1,
+        limit: 30,
+        keyword,
+        ...(tagIds.length ? { tag_ids: tagIds } : {}),
+        is_published: true,
+      }),
+    )
 
   const snippets = useMemo(() => {
     return (data?.pages ?? []).flatMap(({ data }) => data)

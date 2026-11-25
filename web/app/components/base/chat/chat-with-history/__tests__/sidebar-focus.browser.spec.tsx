@@ -7,7 +7,7 @@ import {
 } from '@/app/components/base/chat/constants'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AppSourceType } from '@/service/share'
-import { shareQueryKeys } from '@/service/use-share'
+import { shareQueryKeys } from '@/service/share-queries'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
 import { createChatConfigFixture } from '@/test/fixtures/chat'
 import { createTestNavigation } from '@/test/next-navigation'

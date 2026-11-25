@@ -12,7 +12,7 @@ import {
   PreviewCard,
   PreviewCardContent,
 } from '@langgenius/dify-ui/preview-card'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
@@ -24,7 +24,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import { CustomConfigurationStatusEnum, ModelFeatureEnum, ModelTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
@@ -97,7 +96,9 @@ function Popup({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const { mutateAsync: installPackageFromMarketPlace } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
   const { refreshPluginList } = useRefreshPluginList()
   const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(
@@ -150,7 +151,9 @@ function Popup({
         const pluginInfo = await fetchPluginInfoFromMarketPlace({ org, name })
         const uniqueIdentifier = pluginInfo.data.plugin.latest_package_identifier
         if (!uniqueIdentifier) return
-        const { all_installed, task_id } = await installPackageFromMarketPlace(uniqueIdentifier)
+        const { all_installed, task_id } = await installPackageFromMarketPlace({
+          body: { plugin_unique_identifiers: [uniqueIdentifier] },
+        })
         if (!all_installed) {
           const { check } = checkTaskStatus()
           const { status } = await check({

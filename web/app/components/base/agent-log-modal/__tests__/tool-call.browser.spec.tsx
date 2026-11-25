@@ -1,5 +1,4 @@
 import { useLocale } from '#i18n'
-import { basePath } from '@/utils/var'
 import ToolCallItem from '../tool-call'
 import { renderAgentLog } from './browser-test-env'
 
@@ -8,22 +7,6 @@ vi.mock('#i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('#i18n')>()),
   useLocale: vi.fn(() => 'en'),
 }))
-
-beforeAll(() => {
-  // Launch the real worker from its local asset URL so Monaco does not need a blob worker
-  // to import the script from the Browser Mode server.
-  vi.stubGlobal('MonacoEnvironment', {
-    getWorkerUrl: (_moduleId: string, label: string) => {
-      const url = new URL(`${basePath}/vs/base/worker/workerMain.js`, window.location.origin)
-      url.hash = label
-      return url.href
-    },
-  })
-})
-
-afterAll(() => {
-  vi.unstubAllGlobals()
-})
 
 const toolCall = {
   status: 'success',

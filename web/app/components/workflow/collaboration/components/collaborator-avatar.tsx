@@ -6,7 +6,6 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from '@langgenius/dify-ui/avatar'
-import { useAvatarSrc } from '@/hooks/use-avatar-src'
 import { getAvatarInitial } from '@/utils/avatar'
 import { getUserColor } from '../utils/user-color'
 
@@ -27,8 +26,6 @@ type CollaboratorAvatarProps = Omit<AvatarProps, 'children'> & {
 }
 
 export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvatarProps) {
-  const { src, onLoadingStatusChange } = useAvatarSrc(collaborator.avatarUrl)
-
   return (
     <Avatar aria-hidden="true" {...props}>
       <AvatarFallback
@@ -36,7 +33,7 @@ export function CollaboratorAvatar({ collaborator, ...props }: CollaboratorAvata
       >
         {getAvatarInitial(collaborator.name)}
       </AvatarFallback>
-      <AvatarImage src={src} alt="" onLoadingStatusChange={onLoadingStatusChange} />
+      <AvatarImage src={collaborator.avatarUrl || undefined} alt="" />
     </Avatar>
   )
 }
@@ -63,14 +60,13 @@ export function CollaboratorAvatarStack({
 
   return (
     <AvatarGroup size={size}>
-      {visible.map((collaborator, index) => (
+      {visible.map((collaborator) => (
         <CollaboratorAvatar
           key={collaborator.id}
           collaborator={collaborator}
           role="img"
           aria-hidden={undefined}
           aria-label={collaborator.name}
-          style={{ zIndex: visible.length - index }}
         />
       ))}
       {overflowCount > 0 && <AvatarGroupCount>+{overflowCount}</AvatarGroupCount>}

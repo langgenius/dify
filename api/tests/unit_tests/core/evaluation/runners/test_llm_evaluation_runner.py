@@ -17,7 +17,12 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
     runner.evaluate_metrics(
         node_run_result_list=[
             NodeRunResult(
-                process_data={"prompts": [{"role": "user", "text": "What is Dify?"}]},
+                process_data={
+                    "prompts": [
+                        {"role": "system", "text": "Use this source: Dify is an LLM application development platform."},
+                        {"role": "user", "text": "What is Dify?"},
+                    ]
+                },
                 outputs={"text": "An LLM application platform."},
             )
         ],
@@ -42,6 +47,49 @@ def test_llm_runner_uses_explicit_retrieval_context_for_faithfulness() -> None:
     items = evaluation_instance.llm_items
     assert items[0].context == ["Dify is an LLM application development platform."]
     assert items[0].expected_output == "Dify is a platform."
+
+
+def test_llm_runner_keeps_only_selected_context_seen_in_prompt_roles() -> None:
+    """Only selected text present in a final prompt can become Faithfulness evidence."""
+    evaluation_instance = CapturingEvaluationInstance()
+    runner = LLMEvaluationRunner(evaluation_instance)
+
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                process_data={
+                    "prompts": [
+                        {"role": "system", "text": "Ground the answer in system evidence."},
+                        {"role": "user", "text": "Use user evidence for the answer."},
+                    ]
+                },
+                outputs={"text": "Answer"},
+            )
+        ],
+        default_metric=DefaultMetric(metric="faithfulness", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant",
+        context_list=[["system evidence", "user evidence", "unseen evidence"]],
+    )
+
+    assert evaluation_instance.llm_items[0].context == ["system evidence", "user evidence"]
+
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                process_data={"prompts": [{"role": "system", "text": "Answer using your general knowledge."}]},
+                outputs={"text": "Answer"},
+            )
+        ],
+        default_metric=DefaultMetric(metric="faithfulness", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant",
+        context_list=[["unused evidence"]],
+    )
+
+    assert evaluation_instance.llm_items[0].context == []
 
 
 def test_llm_runner_strips_inline_reasoning_from_evaluation_output() -> None:

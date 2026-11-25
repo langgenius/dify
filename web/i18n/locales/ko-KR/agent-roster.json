@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "필터 지우기",
   "roster.createAgent": "에이전트 만들기",
   "roster.createDialog.description": "이 워크스페이스에 재사용 가능한 Agent 를 만듭니다.",
   "roster.createDialog.title": "에이전트 만들기",
@@ -24,6 +25,7 @@
   "roster.editInfo": "정보 편집",
   "roster.empty": "아직 에이전트가 없습니다",
   "roster.emptySearch": "일치하는 에이전트가 없습니다",
+  "roster.emptySearchDescription": "다른 검색어를 사용하거나 현재 필터를 지워 보세요.",
   "roster.filters.all": "전체",
   "roster.filters.createdByMe": "내가 만든 항목",
   "roster.filters.drafts": "초안",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "인라인 에이전트 생성에 실패했습니다. 새로 고침 후 다시 시도하세요.",
   "roster.nodeSelector.dialogLabel": "에이전트 선택",
   "roster.nodeSelector.manageInAgentConsole": "Agents에서 관리",
-  "roster.nodeSelector.searchPlaceholder": "검색…",
+  "roster.nodeSelector.searchPlaceholder": "에이전트 검색…",
   "roster.nodeSelector.startFromScratch": "처음부터 시작",
   "roster.references.label": "{{name}}을(를) 사용하는 워크플로",
   "roster.references.trigger": "{{name}}을(를) 사용하는 워크플로",

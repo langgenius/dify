@@ -1,7 +1,8 @@
+import type { StreamSender } from '@/service/event-stream'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { ssePost } from '@/service/base'
+import { streamEvents } from '@/service/event-stream'
 
 type SendOptions = {
   onNotifyError?: (message: string, code?: string) => void
@@ -13,7 +14,7 @@ export const useTextGeneration = () => {
   const [completion, setCompletion] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
   const handleSend = async (
-    url: string,
+    send: StreamSender,
     data: Record<string, unknown>,
     { onNotifyError }: SendOptions = {},
   ) => {
@@ -25,14 +26,15 @@ export const useTextGeneration = () => {
     setCompletion('')
     setMessageId('')
     let res: string[] = []
-    ssePost(
-      url,
-      {
-        body: {
-          response_mode: 'streaming',
-          ...data,
-        },
-      },
+    streamEvents(
+      (options) =>
+        send(
+          {
+            response_mode: 'streaming',
+            ...data,
+          },
+          options,
+        ),
       {
         onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
           res.push(data)

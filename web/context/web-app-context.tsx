@@ -3,7 +3,7 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppData, AppMeta } from '@/models/share'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import {
@@ -15,7 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
-import { useGetWebAppAccessModeByCode } from '@/service/use-share'
+import { webAppAccessModeQueryOptions } from '@/service/share-queries'
 import { parseWebAppAddress } from '@/service/webapp-address'
 
 type WebAppStore = {
@@ -106,7 +106,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     }
   }, [searchParamsString, updateEmbeddedUserId, updateEmbeddedConversationId])
 
-  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+  const { isLoading, data: accessModeResult } = useQuery(webAppAccessModeQueryOptions(shareCode))
 
   useEffect(() => {
     if (accessModeResult?.accessMode) updateWebAppAccessMode(accessModeResult.accessMode)

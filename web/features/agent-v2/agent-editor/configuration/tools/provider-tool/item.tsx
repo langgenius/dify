@@ -13,6 +13,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AuthCategory, Authorized, usePluginAuth } from '@/app/components/plugins/plugin-auth'
@@ -23,7 +24,7 @@ import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/compo
 import { BlockEnum } from '@/app/components/workflow/types'
 import { getMarketplacePluginIconUrl } from '@/features/marketplace/api'
 import { useResolvedTheme } from '@/features/theme/hooks'
-import { usePluginManifestInfo } from '@/service/use-plugins'
+import { marketplacePluginManifestQueryOptions } from '@/service/plugin-list-queries'
 import { useAgentOrchestrateReadOnly } from '../../read-only-context'
 
 function ProviderIcon({
@@ -301,8 +302,8 @@ export const AgentProviderToolItem = memo(
     const theme = useResolvedTheme()
     const shouldFetchPluginManifest =
       isInstalled === false && !!tool.pluginId && !tool.pluginUniqueIdentifier
-    const { data: pluginManifestData } = usePluginManifestInfo(
-      shouldFetchPluginManifest ? tool.pluginId! : '',
+    const { data: pluginManifestData } = useQuery(
+      marketplacePluginManifestQueryOptions(shouldFetchPluginManifest ? tool.pluginId! : ''),
     )
     const pluginManifest = pluginManifestData?.data.plugin
     const configuredIcon = theme === 'dark' && tool.iconDark ? tool.iconDark : tool.icon

@@ -158,10 +158,7 @@ it('opens row resource details and submits the selected row through the shared d
   })
 })
 
-// Skipped: flaky in CI. A request outside the fake API's handlers (`GET /account/profile`) or a
-// network error on the token list is logged during the run and fails the test. Re-enable once the
-// spec serves every request it triggers.
-it.skip('fails without queueing offline, allows retry, and focuses Create when the last token disappears', async () => {
+it('fails without queueing offline, allows retry, and focuses Create when the last token disappears', async () => {
   listTokens().mockResolvedValueOnce(listResponse([first]))
   deleteToken().mockRejectedValueOnce(networkError())
   const { screen, dialog } = await setup()
@@ -187,10 +184,7 @@ it.skip('fails without queueing offline, allows retry, and focuses Create when t
   expect(deleteToken()).toHaveBeenCalledTimes(2)
 })
 
-// Skipped: flaky in CI. A request outside the fake API's handlers (`GET /account/profile`) or a
-// network error on the token list is logged during the run and fails the test. Re-enable once the
-// spec serves every request it triggers.
-it.skip('returns to the preceding page when deletion removes the last page', async () => {
+it('returns to the preceding page when deletion removes the last page', async () => {
   const firstPage = Array.from({ length: 20 }, (_, index) => ({
     ...next,
     token_id: `5e6f7a8b-9c0d-4e1f-8a2b-${String(index).padStart(12, '0')}`,
