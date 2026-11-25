@@ -3,8 +3,8 @@ from collections.abc import Iterator, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
+from importlib.util import module_from_spec
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Protocol
 from unittest.mock import create_autospec, patch
 
@@ -1398,8 +1398,12 @@ def test_summary_commit_retries_use_fresh_sessions_and_persist_outcome(
         delays.append(seconds)
 
     global_sleep = time.sleep
-    # Rebind only this adapter; background workers share the real time module.
-    monkeypatch.setattr(summary_module, "time", SimpleNamespace(sleep=wait))
+    # Patch an independent stdlib module, leaving background workers untouched.
+    assert time.__spec__ is not None
+    summary_time = module_from_spec(time.__spec__)
+    assert summary_time is not time
+    monkeypatch.setattr(summary_time, "sleep", wait)
+    monkeypatch.setattr(summary_module, "time", summary_time)
     assert time.sleep is global_sleep
     event.listen(sqlite_session_factory.class_, "before_commit", fail_summary_commit)
     try:
