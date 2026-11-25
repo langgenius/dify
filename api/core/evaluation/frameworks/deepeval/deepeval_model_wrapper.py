@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, override
 
 from pydantic import BaseModel
 
-from core.evaluation import get_evaluation_credit_usage_metadata
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from libs.structured_output_schema import to_strict_json_schema
 
 # DeepEval reads these settings while its package is imported. Evaluation runs

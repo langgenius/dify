@@ -12,8 +12,8 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field, create_model, model_validator
 
-from core.evaluation import get_evaluation_credit_usage_metadata
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolDefinition,

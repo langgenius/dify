@@ -4,7 +4,7 @@ from typing import Any, TypeVar, override
 from pydantic import BaseModel
 from ragas.llms.base import InstructorBaseRagasLLM
 
-from core.evaluation import get_evaluation_credit_usage_metadata
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from libs.structured_output_schema import to_strict_json_schema
 
 _OutputT = TypeVar("_OutputT", bound=BaseModel)

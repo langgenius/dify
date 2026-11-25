@@ -3,7 +3,7 @@ from typing import Any, override
 
 from ragas.embeddings.base import BaseRagasEmbedding
 
-from core.evaluation import get_evaluation_credit_usage_metadata
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 
 
 class DifyEmbeddingsWrapper(BaseRagasEmbedding):
