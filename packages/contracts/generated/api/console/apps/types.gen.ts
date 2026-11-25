@@ -623,6 +623,7 @@ export type ConversationLogExportCreatePayload = {
   annotation_status?: 'all' | 'annotated' | 'not_annotated'
   end?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
@@ -630,6 +631,7 @@ export type ConversationLogExportCreatePayload = {
 }
 
 export type ConversationLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -663,6 +665,8 @@ export type ConversationLogExportPreviewResponse = {
 }
 
 export type ConversationLogExportStatusResponse = {
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -1205,12 +1209,14 @@ export type WorkflowLogExportCreatePayload = {
   created_at__after?: string | null
   created_at__before?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   status?: WorkflowExecutionStatus | null
 }
 
 export type WorkflowLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -1224,6 +1230,8 @@ export type WorkflowLogExportPreviewResponse = {
 }
 
 export type WorkflowLogExportStatusResponse = {
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -2202,8 +2210,10 @@ export type LogExportIdentityLabel = {
 }
 
 export type ConversationLogExportLatestTaskResponse = {
+  estimated_rows?: number | null
   filters: ConversationLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -2211,6 +2221,11 @@ export type ConversationLogExportLatestTaskResponse = {
 export type ConversationLogExportCountsResponse = {
   conversation_count: number
   message_count: number
+}
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
 }
 
 export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
@@ -2611,8 +2626,10 @@ export type WorkflowExecutionStatus =
   | 'succeeded'
 
 export type WorkflowLogExportLatestTaskResponse = {
+  estimated_rows?: number | null
   filters: WorkflowLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -3357,6 +3374,8 @@ export type ConversationLogExportFiltersResponse = {
   sort_by: ConversationSort
   start: string | null
 }
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type SimpleAccount = {
   email: string

@@ -230,16 +230,22 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
     response = export_client.client.post(
         export_client.path,
         headers=export_client.headers,
-        json={"status": "failed", "created_at__after": "2026-01-02T12:00:00+08:00", "end_user_ids": [end_user_id]},
+        json={
+            "status": "failed",
+            "created_at__after": "2026-01-02T12:00:00+08:00",
+            "end_user_ids": [end_user_id],
+            "estimated_rows": 0,
+        },
     )
 
     assert response.status_code == 202
     task_id = response.get_json()["task_id"]
     assert str(UUID(task_id)) == task_id
-    assert response.json == {"task_id": task_id, "status": "pending"}
+    assert response.json == {"task_id": task_id, "status": "pending", "estimated_rows": 0}
     key = export_client.task_key(task_id)
     ttl, raw = export_client.redis.client.ttl(key), export_client.redis.get(key)
     task = WorkflowLogExportTask.model_validate_json(raw)
+    assert task.estimated_rows == 0
     assert (task.task_id, task.tenant_id, task.app_id, task.requested_by) == (
         task_id,
         export_client.tenant_id,
@@ -273,7 +279,13 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
 
 @pytest.mark.parametrize(
     ("payload", "expected_status"),
-    [({"page": 1}, 422), ({"created_at__after": "2026-01-02", "created_at__before": "2026-01-01"}, 400)],
+    [
+        ({"page": 1}, 422),
+        ({"created_at__after": "2026-01-02", "created_at__before": "2026-01-01"}, 400),
+        ({"estimated_rows": -1}, 422),
+        ({"estimated_rows": 1.5}, 422),
+        ({"estimated_rows": True}, 422),
+    ],
 )
 def test_create_workflow_log_export_rejects_invalid_filters(
     export_client: _ExportClient, payload: object, expected_status: int
@@ -350,12 +362,16 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
             "account_ids": [export_client.account_id],
             "keyword": export_client.run_id,
             "created_at__after": "2026-01-02T00:00:00Z",
+            "estimated_rows": 3,
         },
     )
     assert response.status_code == 202
     task_id = response.get_json()["task_id"]
     pending = export_client.get_status(task_id)
-    assert (pending.status_code, pending.json) == (200, {"task_id": task_id, "status": "pending"})
+    assert (pending.status_code, pending.json) == (
+        200,
+        {"task_id": task_id, "status": "pending", "estimated_rows": 3, "progress": None},
+    )
     arguments = export_client.publish.call_args.kwargs["kwargs"]
     with export_client.client.application.app_context():
         prepare_log_export_task.run(**arguments)
@@ -394,9 +410,20 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     assert json.loads(row["app_response"]) == {"result": "ready"}
     export_client.storage.save_from_path.assert_called_once()
     ready = export_client.get_status(task_id)
-    assert (ready.status_code, ready.json) == (200, {"task_id": task_id, "status": "ready"})
+    assert (ready.status_code, ready.json) == (
+        200,
+        {
+            "task_id": task_id,
+            "status": "ready",
+            "estimated_rows": 3,
+            "progress": {"stage": "uploading", "rows_written": 1},
+        },
+    )
     assert ready.headers["Cache-Control"] == "no-store"
-    assert export_client.get_latest().get_json()["task"]["status"] == "ready"
+    latest = export_client.get_latest().get_json()["task"]
+    assert latest["status"] == "ready"
+    assert latest["estimated_rows"] == 3
+    assert latest["progress"] == ready.json["progress"]
 
 
 def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
@@ -409,7 +436,12 @@ def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
     assert task.status is LogExportStatus.FAILED
     export_client.storage.save_from_path.assert_not_called()
-    assert export_client.get_status(task.task_id).json == {"task_id": task.task_id, "status": "failed"}
+    assert export_client.get_status(task.task_id).json == {
+        "task_id": task.task_id,
+        "status": "failed",
+        "estimated_rows": None,
+        "progress": None,
+    }
 
 
 def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _ExportClient) -> None:
@@ -443,6 +475,8 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
         "task": {
             "task_id": submitted.get_json()["task_id"],
             "status": "pending",
+            "estimated_rows": None,
+            "progress": None,
             "identity_labels": labels,
             "filters": {
                 "keyword": "report",

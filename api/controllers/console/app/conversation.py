@@ -51,6 +51,7 @@ from fields.conversation_fields import (
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
+from fields.log_export_fields import LogExportEstimatedRows, LogExportProgressResponse, LogExportTaskResponse
 from libs.datetime_utils import parse_time_range
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
@@ -145,6 +146,7 @@ class ConversationLogExportCreatePayload(ChatConversationFilterQuery):
     model_config = ConfigDict(extra="forbid")
 
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: LogExportEstimatedRows = None
 
 
 class _ConversationLogValidationError(BaseHTTPException):
@@ -171,14 +173,13 @@ class ConversationLogExportPreviewResponse(ResponseModel):
     counts: ConversationLogExportCountsResponse | None = Field(description="Null if the count query timed out")
 
 
-class ConversationLogExportTaskResponse(ResponseModel):
-    task_id: str
+class ConversationLogExportTaskResponse(LogExportTaskResponse):
     status: Literal["pending"]
 
 
-class ConversationLogExportStatusResponse(ResponseModel):
-    task_id: str
+class ConversationLogExportStatusResponse(LogExportTaskResponse):
     status: ConversationLogExportStatus
+    progress: LogExportProgressResponse | None = None
 
 
 class ConversationLogExportFiltersResponse(ResponseModel):
@@ -504,6 +505,7 @@ class ConversationLogExportApi(Resource):
                 requested_by=request_context.account_id,
                 filters=filters,
                 identity_labels=payload.identity_labels,
+                estimated_rows=payload.estimated_rows,
             )
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc

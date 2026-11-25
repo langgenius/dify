@@ -21760,6 +21760,7 @@ Submit unpaginated preview filters and their display labels for the export.
 | account_ids | [ string (uuid) ] | Include logs from these workspace accounts | No |
 | end | string | Exclusive end time in the account timezone (YYYY-MM-DD HH:MM) | No |
 | end_user_ids | [ string (uuid) ] | Include logs from these end users | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | sources | [ string ] | Source IDs from the Agent Logs filters | No |
 | start | string | Inclusive start time in the account timezone (YYYY-MM-DD HH:MM) | No |
@@ -21792,8 +21793,10 @@ Agent log export file not found.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | filters | [AgentLogExportFilters](#agentlogexportfilters) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -21807,6 +21810,8 @@ Agent log export file not found.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -21830,6 +21835,7 @@ The Agent log export is not ready for download.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | status | string |  | Yes |
 | task_id | string |  | Yes |
 
@@ -25462,6 +25468,7 @@ The conversation has no message from which to generate a name.
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
 | end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | keyword | string | Search keyword | No |
 | sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
@@ -25499,8 +25506,10 @@ Submitted filters for the export, with any date bounds in UTC.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | filters | [ConversationLogExportFiltersResponse](#conversationlogexportfiltersresponse) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -25514,6 +25523,8 @@ Submitted filters for the export, with any date bounds in UTC.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -25537,6 +25548,7 @@ The conversation log export is not ready for download.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | status | string |  | Yes |
 | task_id | string |  | Yes |
 
@@ -32805,6 +32817,21 @@ There is already an export for this requester and app, or the workspace export l
 | ---- | ---- | ----------- | -------- |
 | LogExportLimitReachedError |  | There is already an export for this requester and app, or the workspace export limit was reached. |  |
 
+#### LogExportProgressResponse
+
+The last reported stage and CSV data-row count for the current attempt.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| rows_written | integer |  | Yes |
+| stage | [LogExportStage](#logexportstage) |  | Yes |
+
+#### LogExportStage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportStage | string |  |  |
+
 #### LogExportStatus
 
 | Name | Type | Description | Required |
@@ -40046,6 +40073,7 @@ Submit unpaginated preview filters and their display labels for the export.
 | created_at__after | string | Inclusive lower bound on log creation time | No |
 | created_at__before | string | Inclusive upper bound on log creation time | No |
 | end_user_ids | [ string (uuid) ] | End user IDs to include | No |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
 | keyword | string | Search keyword for Workflow Logs | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter | No |
@@ -40095,8 +40123,10 @@ Submitted filters for the export, with log time bounds in UTC.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | filters | [WorkflowLogExportFiltersResponse](#workflowlogexportfiltersresponse) |  | Yes |
 | identity_labels | [ [LogExportIdentityLabel](#logexportidentitylabel) ], <br>**Default:**  |  | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -40110,6 +40140,8 @@ Submitted filters for the export, with log time bounds in UTC.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
+| progress | [LogExportProgressResponse](#logexportprogressresponse) |  | No |
 | status | [LogExportStatus](#logexportstatus) |  | Yes |
 | task_id | string |  | Yes |
 
@@ -40133,6 +40165,7 @@ The Workflow log export is not ready for download.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| estimated_rows | integer | CSV row count from the preview at submission, if available. | No |
 | status | string |  | Yes |
 | task_id | string |  | Yes |
 

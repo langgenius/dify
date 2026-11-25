@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   create: vi.fn(),
   latest: vi.fn(),
+  status: vi.fn(),
   workspace: vi.fn(),
   features: vi.fn(),
 }))
@@ -47,6 +48,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       }),
       'agent.byAgentId.logExports.latest.get': mocks.latest,
       'agent.byAgentId.logExports.preview.get': mocks.preview,
+      'agent.byAgentId.logExports.byTaskId.get': mocks.status,
       'agent.byAgentId.logExports.post': mocks.create,
     }),
   }
@@ -167,8 +169,10 @@ it('keeps identities selectable after narrowing the list and exports both select
     return { ...emptyLogs, data, total: data.length } satisfies AgentLogListResponse
   })
   mocks.sources.mockResolvedValue(emptySources)
-  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 1 } })
-  mocks.create.mockResolvedValue({ task_id: 'test-export', status: 'pending' })
+  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 3 } })
+  const exportTaskId = '41d982c1-6581-44c9-ae35-b6a7365aa446'
+  mocks.create.mockResolvedValue({ task_id: exportTaskId, status: 'pending', estimated_rows: 3 })
+  mocks.status.mockResolvedValue({ task_id: exportTaskId, status: 'ready', estimated_rows: 3 })
   mocks.latest.mockResolvedValue({ task: null })
   const workspace = { ...initialWorkspaceSummary, id: 'workspace-1', role: 'owner' } as const
   mocks.workspace.mockResolvedValue(workspace)
@@ -206,10 +210,22 @@ it('keeps identities selectable after narrowing the list and exports both select
     await expect.poll(() => mocks.logs.mock.lastCall?.[0].query).toMatchObject(identities)
 
     const dialog = screen.getByRole('dialog', { name: 'Export logs' })
-    await expect.element(dialog.getByText('Log 1 · CSV row 1.')).toBeVisible()
+    await expect.element(dialog.getByText('Log 1 · CSV rows 3.')).toBeVisible()
     expect(mocks.preview.mock.lastCall?.[0].query).toMatchObject(identities)
     await dialog.getByRole('button', { name: 'Export as CSV' }).click()
-    await expect.poll(() => mocks.create.mock.lastCall?.[0].body).toMatchObject(identities)
+    await expect
+      .poll(() => mocks.create.mock.lastCall?.[0].body)
+      .toMatchObject({
+        ...identities,
+        estimated_rows: 3,
+      })
+    await expect.element(dialog).not.toBeInTheDocument()
+    const progress = screen.getByRole('dialog', { name: 'Export', exact: true })
+    await expect.element(progress.getByRole('button', { name: 'Download' })).toBeEnabled()
+    expect(mocks.status.mock.lastCall?.[0].params).toEqual({
+      agent_id: 'agent-1',
+      task_id: exportTaskId,
+    })
   } finally {
     queryClient.clear()
   }

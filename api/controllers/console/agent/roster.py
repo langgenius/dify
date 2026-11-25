@@ -80,6 +80,7 @@ from fields.agent_fields import (
 )
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
+from fields.log_export_fields import LogExportEstimatedRows, LogExportProgressResponse, LogExportTaskResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
@@ -350,6 +351,7 @@ class AgentLogExportCreatePayload(AgentLogExportPreviewQuery):
     model_config = ConfigDict(extra="forbid")
 
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: LogExportEstimatedRows = None
 
 
 class AgentLogIdentitySearchQuery(BaseModel):
@@ -377,14 +379,13 @@ class AgentLogExportPreviewResponse(ResponseModel):
     counts: AgentLogExportCountsResponse | None = Field(description="Matching log and CSV row counts, null on timeout")
 
 
-class AgentLogExportTaskResponse(ResponseModel):
-    task_id: str
+class AgentLogExportTaskResponse(LogExportTaskResponse):
     status: Literal["pending"]
 
 
-class AgentLogExportStatusResponse(ResponseModel):
-    task_id: str
+class AgentLogExportStatusResponse(LogExportTaskResponse):
     status: LogExportStatus
+    progress: LogExportProgressResponse | None = None
 
 
 class AgentLogExportLatestTaskResponse(AgentLogExportStatusResponse):
@@ -1164,7 +1165,11 @@ class AgentLogExportApi(Resource):
         try:
             payload = AgentLogExportCreatePayload.model_validate(request.get_json(silent=True))
             task = application_services().agent_log_exports.create_task(
-                context, str(agent_id), payload.to_query(), identity_labels=payload.identity_labels
+                context,
+                str(agent_id),
+                payload.to_query(),
+                identity_labels=payload.identity_labels,
+                estimated_rows=payload.estimated_rows,
             )
         except ValidationError as exc:
             raise InvalidArgumentError(

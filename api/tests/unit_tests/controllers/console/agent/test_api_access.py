@@ -425,16 +425,18 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
             "start": "2026-07-23 15:00",
             "end": "2026-07-23 16:00",
             "identity_labels": labels,
+            "estimated_rows": 5,
         },
     )
     assert response.status_code == HTTPStatus.ACCEPTED
     task_id = response.get_json()["task_id"]
-    assert response.json == {"task_id": task_id, "status": "pending"}
+    assert response.json == {"task_id": task_id, "status": "pending", "estimated_rows": 5}
     task_key = f"agent_log_export:{{{harness.tenant_id}}}:{agent_id}:{task_id}"
     task = AgentLogExportTask.model_validate_json(harness.redis.get(task_key))
     assert task.app_id == agent_id
     assert task.tenant_id == harness.tenant_id
     assert task.requested_by == harness.account_id
+    assert task.estimated_rows == 5
     assert task.filters.sources == (f"webapp:{app_id}",)
     assert task.filters.end_user_ids == (end_user_id,)
     assert task.filters.account_ids == (harness.account_id,)
@@ -447,7 +449,10 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     arguments = {"tenant_id": harness.tenant_id, "app_id": agent_id, "task_id": task_id, "export_kind": "agent"}
     publish.assert_called_once_with(kwargs=arguments, task_id=task_id, expires=task.expires_at)
     pending = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
-    assert (pending.status_code, pending.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "pending"})
+    assert (pending.status_code, pending.json) == (
+        HTTPStatus.OK,
+        {"task_id": task_id, "status": "pending", "estimated_rows": 5, "progress": None},
+    )
 
     for source in ("webapp:", "webapp:not-an-app-id", "workflow:"):
         assert (
@@ -490,11 +495,21 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert rows[account_message_id]["end_user_id"] == ""
     save_from_path.assert_called_once()
     status = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
-    assert (status.status_code, status.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "ready"})
+    assert (status.status_code, status.json) == (
+        HTTPStatus.OK,
+        {
+            "task_id": task_id,
+            "status": "ready",
+            "estimated_rows": 5,
+            "progress": {"stage": "uploading", "rows_written": 2},
+        },
+    )
     assert status.headers["Cache-Control"] == "no-store"
     latest = harness.client.get(f"{base}/latest", headers=harness.headers)
     assert latest.status_code == HTTPStatus.OK
     assert latest.get_json()["task"]["identity_labels"] == labels
+    assert latest.get_json()["task"]["estimated_rows"] == 5
+    assert latest.get_json()["task"]["progress"] == status.json["progress"]
 
 
 def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_filters(harness: Harness) -> None:
@@ -532,6 +547,8 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
         "task": {
             "task_id": task.task_id,
             "status": "processing",
+            "estimated_rows": None,
+            "progress": None,
             "identity_labels": [],
             "filters": {
                 "sources": ["webapp"],

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { CloudSandboxPlanState } from './cloud-sandbox-retention'
 import type { LogExportCreateErrorKind, LogExportPhase } from './use-log-export'
 import { Button } from '@langgenius/dify-ui/button'
@@ -24,10 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import useTimestamp from '@/hooks/use-timestamp'
 import { downloadUrl } from '@/utils/download'
+import { LogExportProgressDialog } from './progress-dialog'
 
 export function LogExportSelect<T extends string>({
   label,
@@ -76,6 +78,7 @@ type LastLogExportProps = {
   statusLabel?: string
   identities: string[]
   sources?: string[]
+  onViewProgress?: () => void
 }
 
 function LastLogExport({
@@ -87,6 +90,7 @@ function LastLogExport({
   statusLabel,
   identities,
   sources = [],
+  onViewProgress,
   timezone,
 }: LastLogExportProps & { timezone: string }) {
   const { t } = useTranslation(['appLog', 'common', 'time'])
@@ -148,6 +152,17 @@ function LastLogExport({
           {t(($) => $['operation.download'], { ns: 'common' })}
         </Button>
       )}
+      {onViewProgress && (
+        <Button
+          type="button"
+          size="small"
+          variant="secondary"
+          className="shrink-0"
+          onClick={onViewProgress}
+        >
+          {t(($) => $['export.viewProgress'], { ns: 'appLog' })}
+        </Button>
+      )}
     </div>
   )
 }
@@ -165,6 +180,7 @@ type LogExportDialogProps = {
   counts?: { rows: number; logs?: number; conversations?: number }
   previewDescription: string
   lastExport?: LastLogExportProps | null
+  progress?: Omit<ComponentProps<typeof LogExportProgressDialog>, 'appName' | 'finalFocus'>
   onExport: () => void
   onRetryStatus: () => void
   children: ReactNode
@@ -183,11 +199,13 @@ export function LogExportDialog({
   counts,
   previewDescription,
   lastExport,
+  progress,
   onExport,
   onRetryStatus,
   children,
 }: LogExportDialogProps) {
   const { t } = useTranslation(['appLog', 'common'])
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const busy = phase === 'checking' || phase === 'exporting'
   const retryStatus = phase === 'retry-status'
   const taskInProgress = lastExport?.status === 'pending' || lastExport?.status === 'processing'
@@ -234,91 +252,100 @@ export function LogExportDialog({
   if (planState === 'pending') return null
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && submitting) return
-        onOpenChange(next)
-      }}
-    >
-      <DialogTrigger render={<Button variant="secondary" />}>
-        <span className="i-ri-download-2-line size-4" aria-hidden />
-        {title}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {planState === 'sandbox' ? t(($) => $['export.upgradeTitle'], { ns: 'appLog' }) : title}
-          </DialogTitle>
-          <DialogDescription>
-            {planState === 'sandbox'
-              ? t(($) => $['export.upgradeDescription'], { ns: 'appLog' })
-              : appName}
-          </DialogDescription>
-          <DialogHeaderCloseButton aria-label={closeLabel} disabled={submitting} />
-        </DialogHeader>
-        {planState === 'sandbox' ? (
-          <DialogFooter>
-            <DialogClose render={<Button variant="secondary" />}>{cancelLabel}</DialogClose>
-            <UpgradeBtn isShort className="shrink-0" loc="logs-export" />
-          </DialogFooter>
-        ) : (
-          <form
-            className="contents"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (retryStatus) onRetryStatus()
-              else if (canExport) onExport()
-            }}
-          >
-            <DialogBody className="space-y-4">
-              <fieldset disabled={phase !== 'selecting'} className="min-w-0 space-y-4">
-                {children}
-              </fieldset>
-              {!taskInProgress && !retryStatus && (
-                <div className="grid rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
-                  {pendingPreview && countSummary && showDescription && (
-                    <p aria-hidden className="invisible col-start-1 row-start-1">
-                      {countSummary} {previewDescription}
-                    </p>
-                  )}
-                  <p className="col-start-1 row-start-1">
-                    <span role="status">{summary}</span>
-                    {showDescription && (
-                      <>
-                        {' '}
-                        <span>{previewDescription}</span>
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
-              {error && (
-                <p role="alert" className="system-sm-regular text-text-destructive">
-                  {error}
-                </p>
-              )}
-              {lastExport && <LastLogExport {...lastExport} timezone={timezone} />}
-            </DialogBody>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && submitting) return
+          onOpenChange(next)
+        }}
+      >
+        <DialogTrigger ref={triggerRef} render={<Button variant="secondary" />}>
+          <span className="i-ri-download-2-line size-4" aria-hidden />
+          {title}
+        </DialogTrigger>
+        <DialogContent finalFocus={progress?.open ? false : undefined}>
+          <DialogHeader>
+            <DialogTitle>
+              {planState === 'sandbox'
+                ? t(($) => $['export.upgradeTitle'], { ns: 'appLog' })
+                : title}
+            </DialogTitle>
+            <DialogDescription>
+              {planState === 'sandbox'
+                ? t(($) => $['export.upgradeDescription'], { ns: 'appLog' })
+                : appName}
+            </DialogDescription>
+            <DialogHeaderCloseButton aria-label={closeLabel} disabled={submitting} />
+          </DialogHeader>
+          {planState === 'sandbox' ? (
             <DialogFooter>
-              <DialogClose
-                disabled={submitting}
-                render={<Button type="button" variant="secondary" />}
-              >
-                {busy ? closeLabel : cancelLabel}
-              </DialogClose>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={!retryStatus && !canExport}
-                loading={busy}
-              >
-                {actionLabel}
-              </Button>
+              <DialogClose render={<Button variant="secondary" />}>{cancelLabel}</DialogClose>
+              <UpgradeBtn isShort className="shrink-0" loc="logs-export" />
             </DialogFooter>
-          </form>
-        )}
-      </DialogContent>
-    </Dialog>
+          ) : (
+            <form
+              className="contents"
+              onSubmit={(event) => {
+                event.preventDefault()
+                if (retryStatus) onRetryStatus()
+                else if (canExport) onExport()
+              }}
+            >
+              <DialogBody className="space-y-4">
+                <fieldset disabled={phase !== 'selecting'} className="min-w-0 space-y-4">
+                  {children}
+                </fieldset>
+                {!taskInProgress && !retryStatus && (
+                  <div className="grid rounded-lg bg-background-section-burn px-3 py-2.5 system-sm-regular text-text-secondary">
+                    {pendingPreview && countSummary && showDescription && (
+                      <p aria-hidden className="invisible col-start-1 row-start-1">
+                        {countSummary} {previewDescription}
+                      </p>
+                    )}
+                    <p className="col-start-1 row-start-1">
+                      <span role="status">{summary}</span>
+                      {showDescription && (
+                        <>
+                          {' '}
+                          <span>{previewDescription}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {error && (
+                  <p role="alert" className="system-sm-regular text-text-destructive">
+                    {error}
+                  </p>
+                )}
+                {lastExport && phase !== 'checking' && (
+                  <LastLogExport {...lastExport} timezone={timezone} />
+                )}
+              </DialogBody>
+              <DialogFooter>
+                <DialogClose
+                  disabled={submitting}
+                  render={<Button type="button" variant="secondary" />}
+                >
+                  {busy ? closeLabel : cancelLabel}
+                </DialogClose>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={!retryStatus && !canExport}
+                  loading={busy}
+                >
+                  {actionLabel}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+      {progress && (
+        <LogExportProgressDialog {...progress} appName={appName} finalFocus={triggerRef} />
+      )}
+    </>
   )
 }

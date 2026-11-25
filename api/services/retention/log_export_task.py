@@ -108,6 +108,7 @@ class LogExportTask[FiltersT](BaseModel):
     created_at: datetime
     expires_at: datetime
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: int | None = Field(default=None, ge=0, exclude_if=lambda value: value is None)
     status: LogExportStatus = LogExportStatus.PENDING
     storage_key: str | None = None
     progress: LogExportProgress | None = Field(default=None, exclude_if=lambda value: value is None)
@@ -123,8 +124,9 @@ class LogExportTask[FiltersT](BaseModel):
         requested_by: str,
         filters: FiltersT,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> Self:
-        """Build a one-day pending task with UTC filters and display labels for those filters."""
+        """Build a one-day pending task with normalized filters and optional preview metadata."""
         created_at = utc_now()
         return cls(
             task_id=str(uuid4()),
@@ -133,6 +135,7 @@ class LogExportTask[FiltersT](BaseModel):
             requested_by=requested_by,
             filters=filters,
             identity_labels=identity_labels,
+            estimated_rows=estimated_rows,
             created_at=created_at,
             expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )

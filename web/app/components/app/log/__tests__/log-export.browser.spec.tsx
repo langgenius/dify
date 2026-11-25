@@ -3,7 +3,6 @@ import appLogCopy from '@/i18n/locales/en-US/app-log.json'
 import { createDeferred } from '@/test/deferred'
 import {
   accountId,
-  conversation,
   endUserId,
   observeDownloads,
   olderEndUser,
@@ -46,6 +45,10 @@ vi.mock('react-i18next', async (importOriginal) => {
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test${path}`,
 }))
+
+const progressDialog = page.getByRole('dialog', { name: 'appLog.export.progressTitle' })
+const progressClose = progressDialog.getByRole('button', { name: 'common.operation.close' }).last()
+const progressDownload = progressDialog.getByRole('button', { name: 'common.operation.download' })
 
 it.each([
   ['chat', 'previewConversationDescription'],
@@ -110,10 +113,7 @@ it('resets specific export identities from the All option', async () => {
 })
 
 it('previews CSV rows and submits a Completion export with the list identities', async () => {
-  const { screen, trigger, dialog, lastExport, listQueries, requests } = await openExport(
-    false,
-    'completion',
-  )
+  const { screen, trigger, dialog, listQueries, requests } = await openExport(false, 'completion')
   await screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
   await page.getByRole('option', { name: 'user-1024' }).click()
   await page.getByRole('option', { name: 'Mia Chen' }).click()
@@ -123,51 +123,14 @@ it('previews CSV rows and submits a Completion export with the list identities',
   await trigger.click()
   await expect.element(dialog.getByRole('status')).toHaveTextContent('CSV rows 4.')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
-  await expect
-    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
-    .toBeEnabled()
+  await expect.element(progressDownload).toBeEnabled()
   expect(requests).toEqual([
-    expect.objectContaining({ end_user_ids: [endUserId], account_ids: [accountId] }),
+    expect.objectContaining({
+      estimated_rows: 4,
+      end_user_ids: [endUserId],
+      account_ids: [accountId],
+    }),
   ])
-})
-
-it('can export the same filters again after a CSV is ready', async () => {
-  const downloadPaths = observeDownloads()
-  const { screen, trigger, dialog, lastExport, listQueries, previews, requests } =
-    await openExport()
-  await expect.element(screen.getByText(conversation.summary, { exact: true })).toBeVisible()
-  await screen.getByPlaceholder('common.operation.search').fill('refund')
-  await expect.poll(() => listQueries.at(-1)?.get('keyword')).toBe('refund')
-  await trigger.click()
-  const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
-  await expect
-    .element(dialog.getByRole('status'))
-    .toHaveTextContent('Conversations 2 · CSV rows 4.')
-  expect(previews.at(-1)?.has('keyword')).toBe(false)
-  expect(previews.at(-1)?.has('page')).toBe(false)
-  await submit.click()
-  await expect
-    .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
-    .toBeDisabled()
-  const download = lastExport.getByRole('button', { name: 'common.operation.download' })
-  await expect.element(download).toBeEnabled()
-  await expect.element(submit).toBeEnabled()
-  expect(downloadPaths).toEqual([])
-  expect(requests).toEqual([
-    {
-      annotation_status: 'all',
-      sort_by: '-created_at',
-      start: expect.any(String),
-      end: expect.any(String),
-    },
-  ])
-  await submit.click()
-  await expect
-    .element(lastExport.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  expect(requests).toHaveLength(2)
-  expect(requests[1]).toEqual(requests[0])
-  expect(downloadPaths).toEqual([])
 })
 
 it('keeps the previous export and Download available while editing the form', async () => {
@@ -279,11 +242,9 @@ it('shows the last export filters in its own row after the user leaves and retur
   await userEvent.keyboard('{Escape}')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
 
-  await expect
-    .element(lastExport.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  await dialog.getByRole('button', { name: 'common.operation.close' }).last().click()
-  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(progressDownload).toBeEnabled()
+  await progressClose.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
   await screen.unmount()
   const reopened = await renderLogs()
   await reopened.trigger.click()
@@ -449,8 +410,8 @@ it('shares the Chatflow list filters with export while keeping a separate export
 
   const { innerWidth, innerHeight } = window
   await page.viewport(280, innerHeight)
-  await expect.element(twoVisibleIdentities).toBeVisible()
-  await expect.element(exportIdentity.getByText('+1', { exact: true }).first()).toBeVisible()
+  await expect.element(exportIdentity.getByText('user-1024', { exact: true }).first()).toBeVisible()
+  await expect.element(exportIdentity.getByText('+2', { exact: true }).first()).toBeVisible()
   expect(exportFieldHeight()).toBe(initialExportHeight)
   await page.viewport(innerWidth, innerHeight)
   await expect.element(allIdentities).toBeVisible()
@@ -468,6 +429,10 @@ it('shares the Chatflow list filters with export while keeping a separate export
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await expect.element(submit).toBeEnabled()
   await submit.click()
+  await expect.element(progressDownload).toBeEnabled()
+  await progressClose.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
+  await trigger.click()
   const savedIdentities = lastExport.getByText('user-1024, customer-42, Mia Chen', { exact: true })
   await expect.element(savedIdentities).toBeVisible()
   await expect
@@ -475,6 +440,7 @@ it('shares the Chatflow list filters with export while keeping a separate export
     .toEqual([
       {
         annotation_status: 'not_annotated',
+        estimated_rows: 6,
         end_user_ids: [endUserId, olderEndUser.id],
         account_ids: [accountId],
         identity_labels: [

@@ -2,6 +2,7 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import type { LogFilterOptions, QueryParam } from './log-filters'
 import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
 import type { LogIdentity } from '@/features/log-export/log-identity'
+import { skipToken } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
@@ -35,7 +36,6 @@ export function ConversationLogExportDialog({
   timezone: string
 }) {
   const { t } = useTranslation(['appLog'])
-  const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(currentQueryParams)
   const { period, customRange, annotation_status, identities, sort_by } = selection
   const params = { app_id: appId }
@@ -44,15 +44,22 @@ export function ConversationLogExportDialog({
     planState,
     timezone,
   )
-  const { create, reset, latest, preview, dialogState } = useLogExport({
-    enabled: open && planState === 'unrestricted',
+  const { create, latest, preview, dialogState, progressState, onViewProgress } = useLogExport({
+    enabled: planState === 'unrestricted',
     latestOptions: exportsApi.latest.get.queryOptions({ ...logExportRequest, input: { params } }),
     previewOptions: exportsApi.preview.get.queryOptions({
       ...logExportRequest,
       input: { params, query },
     }),
     createOptions: exportsApi.post.mutationOptions(logExportRequest),
+    statusOptions: (taskId) =>
+      exportsApi.byTaskId.get.queryOptions({
+        ...logExportRequest,
+        input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
+      }),
   })
+  const fileUrl = (taskId: string) =>
+    `${API_PREFIX}/apps/${appId}/conversation-log-exports/${taskId}/file`
   const task = latest?.task
   const counts = preview?.counts
   const disabled = dialogState.phase !== 'selecting'
@@ -76,14 +83,11 @@ export function ConversationLogExportDialog({
       appName={appName}
       planState={planState}
       timezone={timezone}
-      open={open}
       onOpenChange={(next) => {
-        if (next) {
-          setSelection(currentQueryParams)
-          reset()
-        }
-        setOpen(next)
+        if (next) setSelection(currentQueryParams)
+        dialogState.onOpenChange(next)
       }}
+      progress={progressState && { ...progressState, fileUrl: fileUrl(progressState.taskId) }}
       counts={
         counts
           ? {
@@ -96,7 +100,8 @@ export function ConversationLogExportDialog({
       lastExport={
         task && {
           status: task.status,
-          fileUrl: `${API_PREFIX}/apps/${appId}/conversation-log-exports/${task.task_id}/file`,
+          fileUrl: fileUrl(task.task_id),
+          onViewProgress,
           start: task.filters.start,
           end: task.filters.end,
           keyword: task.filters.keyword,
@@ -107,7 +112,11 @@ export function ConversationLogExportDialog({
       onExport={() =>
         create({
           params,
-          body: { ...query, identity_labels: identities?.length ? identities : undefined },
+          body: {
+            ...query,
+            estimated_rows: counts?.message_count,
+            identity_labels: identities?.length ? identities : undefined,
+          },
         })
       }
     >

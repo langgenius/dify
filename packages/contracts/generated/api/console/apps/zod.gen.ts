@@ -615,6 +615,7 @@ export const zCompletionMessagePayload = z.object({
  * ConversationLogExportTaskResponse
  */
 export const zConversationLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   status: z.literal('pending'),
   task_id: z.string(),
 })
@@ -1285,6 +1286,7 @@ export const zWorkflowTriggerListResponse = z.object({
  * WorkflowLogExportTaskResponse
  */
 export const zWorkflowLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   status: z.literal('pending'),
   task_id: z.string(),
 })
@@ -2225,22 +2227,6 @@ export const zConversationLogExportPreviewResponse = z.object({
  * LogExportStatus
  */
 export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
-
-/**
- * ConversationLogExportStatusResponse
- */
-export const zConversationLogExportStatusResponse = z.object({
-  status: zLogExportStatus,
-  task_id: z.string(),
-})
-
-/**
- * WorkflowLogExportStatusResponse
- */
-export const zWorkflowLogExportStatusResponse = z.object({
-  status: zLogExportStatus,
-  task_id: z.string(),
-})
 
 /**
  * ConversationVariableResponse
@@ -3686,6 +3672,7 @@ export const zConversationLogExportCreatePayload = z.object({
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().nullish(),
   end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   keyword: z.string().nullish(),
   sort_by: z
@@ -3705,6 +3692,7 @@ export const zWorkflowLogExportCreatePayload = z.object({
   created_at__after: z.iso.datetime().nullish(),
   created_at__before: z.iso.datetime().nullish(),
   end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   keyword: z.string().nullish(),
   status: zWorkflowExecutionStatus.nullish(),
@@ -3734,6 +3722,41 @@ export const zSimpleMessageDetail = z.object({
   inputs: z.record(z.string(), zAnyJsonValue),
   message: z.string(),
   query: z.string(),
+})
+
+/**
+ * LogExportStage
+ */
+export const zLogExportStage = z.enum(['preparing', 'uploading', 'writing'])
+
+/**
+ * LogExportProgressResponse
+ *
+ * The last reported stage and CSV data-row count for the current attempt.
+ */
+export const zLogExportProgressResponse = z.object({
+  rows_written: z.int().gte(0),
+  stage: zLogExportStage,
+})
+
+/**
+ * ConversationLogExportStatusResponse
+ */
+export const zConversationLogExportStatusResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
+ * WorkflowLogExportStatusResponse
+ */
+export const zWorkflowLogExportStatusResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
 })
 
 /**
@@ -4189,8 +4212,10 @@ export const zWorkflowLogExportFiltersResponse = z.object({
  * WorkflowLogExportLatestTaskResponse
  */
 export const zWorkflowLogExportLatestTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   filters: zWorkflowLogExportFiltersResponse,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
   task_id: z.string(),
 })
@@ -4877,8 +4902,10 @@ export const zConversationLogExportFiltersResponse = z.object({
  * ConversationLogExportLatestTaskResponse
  */
 export const zConversationLogExportLatestTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   filters: zConversationLogExportFiltersResponse,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
   task_id: z.string(),
 })

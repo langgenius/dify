@@ -470,6 +470,7 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
  * AgentLogExportTaskResponse
  */
 export const zAgentLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   status: z.literal('pending'),
   task_id: z.string(),
 })
@@ -1322,14 +1323,6 @@ export const zAgentLogExportPreviewResponse = z.object({
 export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
 
 /**
- * AgentLogExportStatusResponse
- */
-export const zAgentLogExportStatusResponse = z.object({
-  status: zLogExportStatus,
-  task_id: z.string(),
-})
-
-/**
  * AgentLogSourceResponse
  */
 export const zAgentLogSourceResponse = z.object({
@@ -1947,6 +1940,7 @@ export const zAgentLogExportCreatePayload = z.object({
   account_ids: z.array(z.uuid()).optional(),
   end: z.string().nullish(),
   end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   sources: z.array(z.string()).optional(),
   start: z.string().nullish(),
@@ -1980,11 +1974,38 @@ export const zAgentLogExportFilters = z.object({
 })
 
 /**
+ * LogExportStage
+ */
+export const zLogExportStage = z.enum(['preparing', 'uploading', 'writing'])
+
+/**
+ * LogExportProgressResponse
+ *
+ * The last reported stage and CSV data-row count for the current attempt.
+ */
+export const zLogExportProgressResponse = z.object({
+  rows_written: z.int().gte(0),
+  stage: zLogExportStage,
+})
+
+/**
+ * AgentLogExportStatusResponse
+ */
+export const zAgentLogExportStatusResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
  * AgentLogExportLatestTaskResponse
  */
 export const zAgentLogExportLatestTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   filters: zAgentLogExportFilters,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
   task_id: z.string(),
 })

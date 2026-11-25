@@ -57,6 +57,7 @@ from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
     ConversationLogExportTask,
 )
+from services.retention.log_export_task import LogExportProgress, LogExportStage
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from tests.helpers.unit.log_export_fixtures import LogExportRedisIo, LogExportStorageIo
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_end_user, make_message
@@ -519,7 +520,7 @@ def test_app_logs_support_identity_search_preview_and_export(
     assert result.status_code == 202
     task = harness.dispatch.call_args.args[0]
     assert task.filters.end_user_ids == (end_user_id,)
-    assert result.get_json() == {"task_id": task.task_id, "status": "pending"}
+    assert result.get_json() == {"task_id": task.task_id, "status": "pending", "estimated_rows": None}
 
 
 @pytest.mark.parametrize("kind", ["chat", "completion", "export-preview"])
@@ -633,6 +634,7 @@ def test_create_conversation_log_export_persists_normalized_filters(
             "sort_by": "-created_at",
             "end_user_ids": [end_user_id],
             "account_ids": [harness.account.id],
+            "estimated_rows": 1_200,
         }
     )
 
@@ -641,7 +643,8 @@ def test_create_conversation_log_export_persists_normalized_filters(
     ttl, raw = harness.redis.client.ttl(key), harness.redis.get(key)
     task = ConversationLogExportTask.model_validate_json(raw)
     harness.dispatch.assert_called_once_with(task)
-    assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending"}
+    assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending", "estimated_rows": 1_200}
+    assert task.estimated_rows == 1_200
     assert task.requested_by == harness.account.id
     assert task.status == "pending"
     assert task.expires_at - task.created_at == timedelta(days=1)
@@ -680,12 +683,18 @@ def test_create_conversation_log_export_records_publish_failure(
 def test_get_conversation_log_export_status(
     harness: _Harness, created_export: tuple[str, ConversationLogExportTask], status: ConversationLogExportStatus
 ) -> None:
-    """Return the stored phase and task ID without exposing filters or the storage key."""
+    """Return task progress when reported alongside status without exposing storage details."""
     key, task = created_export
+    progress = (
+        LogExportProgress(stage=LogExportStage.WRITING, rows_written=1_000)
+        if status is ConversationLogExportStatus.PROCESSING
+        else None
+    )
     stored = task.model_copy(
         update={
             "status": status,
             "storage_key": "private/export.csv" if status is ConversationLogExportStatus.READY else None,
+            "progress": progress,
         }
     )
     harness.redis.get.return_value = stored.model_dump_json()
@@ -694,7 +703,12 @@ def test_get_conversation_log_export_status(
 
     assert response.status_code == 200
     assert response.cache_control.no_store
-    assert response.get_json() == {"task_id": task.task_id, "status": status.value}
+    assert response.get_json() == {
+        "task_id": task.task_id,
+        "status": status.value,
+        "estimated_rows": None,
+        "progress": {"stage": "writing", "rows_written": 1_000} if progress else None,
+    }
     harness.redis.get.assert_called_once_with(key)
     harness.dispatch.assert_called_once()
 
@@ -722,6 +736,7 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
             "sort_by": "-created_at",
             "end_user_ids": [end_user_id],
             "account_ids": [harness.account.id],
+            "estimated_rows": 1_200,
             "identity_labels": [
                 *labels,
                 {"id": end_user_id, "source": "account", "label": "Wrong source"},
@@ -730,11 +745,13 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
         }
     )
     assert second.status_code == 202
+    assert second.get_json()["estimated_rows"] == 1_200
     latest = harness.get("export-latest")
     assert latest.status_code == 200
     assert latest.get_json() == {
         "task": {
             **second.get_json(),
+            "progress": None,
             "identity_labels": labels,
             "filters": {
                 "keyword": "invoice",

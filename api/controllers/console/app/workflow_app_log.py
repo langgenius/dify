@@ -33,6 +33,7 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
+from fields.log_export_fields import LogExportEstimatedRows, LogExportProgressResponse, LogExportTaskResponse
 from fields.member_fields import SimpleAccount
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc
@@ -267,16 +268,16 @@ class WorkflowLogExportCreatePayload(WorkflowLogExportPreviewQuery):
     """Submit unpaginated preview filters and their display labels for the export."""
 
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: LogExportEstimatedRows = None
 
 
-class WorkflowLogExportTaskResponse(ResponseModel):
-    task_id: str
+class WorkflowLogExportTaskResponse(LogExportTaskResponse):
     status: Literal["pending"]
 
 
-class WorkflowLogExportStatusResponse(ResponseModel):
-    task_id: str
+class WorkflowLogExportStatusResponse(LogExportTaskResponse):
     status: LogExportStatus
+    progress: LogExportProgressResponse | None = None
 
 
 class WorkflowLogExportFiltersResponse(ResponseModel):
@@ -450,6 +451,7 @@ class WorkflowLogExportApi(Resource):
                 requested_by=request_context.account_id,
                 filters=payload.to_filters(),
                 identity_labels=payload.identity_labels,
+                estimated_rows=payload.estimated_rows,
             )
         except LogExportLimitReachedError as exc:
             raise LogExportLimitReachedHTTPError() from exc

@@ -454,12 +454,14 @@ export type AgentLogExportCreatePayload = {
   account_ids?: Array<string>
   end?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   sources?: Array<string>
   start?: string | null
 }
 
 export type AgentLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -488,6 +490,8 @@ export type AgentLogExportPreviewResponse = {
 }
 
 export type AgentLogExportStatusResponse = {
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -1230,8 +1234,10 @@ export type LogExportIdentityLabel = {
 }
 
 export type AgentLogExportLatestTaskResponse = {
+  estimated_rows?: number | null
   filters: AgentLogExportFilters
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -1239,6 +1245,11 @@ export type AgentLogExportLatestTaskResponse = {
 export type AgentLogExportCountsResponse = {
   log_count: number
   row_count: number
+}
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
 }
 
 export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
@@ -1911,6 +1922,8 @@ export type AgentLogExportFilters = {
   sources: Array<string>
   start: string | null
 }
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type AgentLogFeedbackResponse = {
   content?: string | null

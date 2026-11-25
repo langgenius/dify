@@ -96,6 +96,7 @@ class ConversationLogExportService:
         requested_by: str,
         filters: ConsoleConversationLogFilters,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> ConversationLogExportTask:
         """Save and dispatch a pending task for an admitted app and caller before returning its ID.
 
@@ -112,6 +113,7 @@ class ConversationLogExportService:
             identity_labels=filter_log_export_identity_labels(
                 identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
             ),
+            estimated_rows=estimated_rows,
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

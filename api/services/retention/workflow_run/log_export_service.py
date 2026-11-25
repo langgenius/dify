@@ -70,6 +70,7 @@ class WorkflowLogExportService:
         requested_by: str,
         filters: WorkflowLogExportFilters,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> WorkflowLogExportTask:
         """Save and dispatch a pending task with its admitted scope, filters and selected labels."""
         task = WorkflowLogExportTask.pending(
@@ -80,6 +81,7 @@ class WorkflowLogExportService:
             identity_labels=filter_log_export_identity_labels(
                 identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
             ),
+            estimated_rows=estimated_rows,
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

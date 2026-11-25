@@ -1,6 +1,7 @@
 import type {
   ConversationLogExportCreatePayload,
   ConversationLogExportLatestTaskResponse,
+  ConversationLogExportStatusResponse,
   ConversationWithSummary,
 } from '@dify/contracts/api/console/apps/types.gen'
 import { page } from 'vite-plus/test/browser'
@@ -10,7 +11,7 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Logs from '../index'
 
-const taskId = 'bfb96e29-3cf9-4874-9c82-12a54749767a'
+export const taskId = 'bfb96e29-3cf9-4874-9c82-12a54749767a'
 export const previousTaskId = '6b37bf24-2bfe-4b69-821c-3687c7b83bec'
 export const endUserId = 'e0c627f9-78d3-4dce-86a0-a19e245f465b'
 export const accountId = '3eb56edf-8a82-42b0-bca3-93128b83d64d'
@@ -54,13 +55,17 @@ export async function openExport(
   responses?: {
     waitForPreview?: (query: URLSearchParams) => Promise<void> | undefined
     waitForLatest?: () => Promise<void> | undefined
+    previewRows?: number
+    previewFailure?: boolean
     createFailure?: 'response-lost' | 'active-export' | 'workspace-limit'
+    getTaskStatus?: () => Pick<ConversationLogExportStatusResponse, 'status' | 'progress'>
   },
 ) {
   const appId = crypto.randomUUID()
   const listQueries: URLSearchParams[] = []
   const previews: URLSearchParams[] = []
   const requests: ConversationLogExportCreatePayload[] = []
+  const statusTaskIds: string[] = []
   let task: ConversationLogExportLatestTaskResponse | null = hasExistingTask
     ? {
         task_id: previousTaskId,
@@ -112,12 +117,14 @@ export async function openExport(
       case 'conversation-log-exports/preview': {
         previews.push(url.searchParams)
         await responses?.waitForPreview?.(url.searchParams)
+        if (responses?.previewFailure)
+          return Response.json({ message: 'Preview unavailable' }, { status: 500 })
         const identities =
           url.searchParams.getAll('end_user_ids').length +
           url.searchParams.getAll('account_ids').length
         const count = identities || 2
         return Response.json({
-          counts: { conversation_count: count, message_count: count * 2 },
+          counts: { conversation_count: count, message_count: responses?.previewRows ?? count * 2 },
         })
       }
       case 'conversation-log-exports': {
@@ -128,6 +135,7 @@ export async function openExport(
         task = {
           task_id: requests.length === 1 ? taskId : crypto.randomUUID(),
           status: 'pending',
+          estimated_rows: filters.estimated_rows,
           identity_labels: filters.identity_labels ?? [],
           filters: {
             start: filters.start ? `${filters.start.replace(' ', 'T')}:00Z` : null,
@@ -142,16 +150,36 @@ export async function openExport(
         statusReads = 0
         if (responses?.createFailure === 'response-lost') throw new TypeError('Failed to fetch')
         if (responses?.createFailure === 'active-export') return limitReached()
-        return Response.json({ task_id: task.task_id, status: task.status }, { status: 202 })
+        return Response.json(
+          {
+            task_id: task.task_id,
+            status: task.status,
+            estimated_rows: task.estimated_rows,
+          },
+          { status: 202 },
+        )
       }
       case 'conversation-log-exports/latest':
         await responses?.waitForLatest?.()
         if (!task) return Response.json({ task: null })
-        statusReads++
-        return Response.json({
-          task: { ...task, status: statusReads === 1 ? 'processing' : 'ready' },
-        })
+        task = {
+          ...task,
+          ...(responses?.getTaskStatus?.() ?? {
+            status: task.status !== 'ready' && ++statusReads === 1 ? 'processing' : 'ready',
+          }),
+        }
+        return Response.json({ task })
       default:
+        if (task && route === `conversation-log-exports/${task.task_id}`) {
+          statusTaskIds.push(task.task_id)
+          task = { ...task, ...(responses?.getTaskStatus?.() ?? { status: 'ready' }) }
+          return Response.json({
+            task_id: task.task_id,
+            status: task.status,
+            progress: task.progress,
+            estimated_rows: task.estimated_rows,
+          })
+        }
         throw new Error(`Unexpected request ${url.pathname}`)
     }
   })
@@ -191,6 +219,7 @@ export async function openExport(
     appId,
     previews,
     requests,
+    statusTaskIds,
     renderLogs,
   }
 }

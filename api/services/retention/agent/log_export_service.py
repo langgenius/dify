@@ -50,6 +50,7 @@ class AgentLogExportService:
         query: AgentLogExportQuery,
         *,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> AgentLogExportTask:
         """Save and dispatch a task with the admitted scope, resolved filters and selected labels."""
         filters = self._logs.resolve_log_export_filters(context, agent_id, query)
@@ -61,6 +62,7 @@ class AgentLogExportService:
             identity_labels=filter_log_export_identity_labels(
                 identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
             ),
+            estimated_rows=estimated_rows,
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task

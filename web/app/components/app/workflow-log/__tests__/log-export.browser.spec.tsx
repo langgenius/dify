@@ -78,6 +78,7 @@ async function renderLogs({
         task = {
           task_id: taskId,
           status: 'pending',
+          estimated_rows: filters.estimated_rows,
           identity_labels: filters.identity_labels ?? [],
           filters: {
             created_at__after: filters.created_at__after ?? null,
@@ -88,11 +89,24 @@ async function renderLogs({
             keyword: null,
           },
         }
-        return Response.json({ task_id: taskId, status: 'pending' }, { status: 202 })
+        return Response.json(
+          { task_id: taskId, status: 'pending', estimated_rows: task.estimated_rows },
+          { status: 202 },
+        )
       }
       case 'workflow-log-exports/latest':
         return Response.json({
-          task: task ? { ...task, status: ++reads === 1 ? 'processing' : 'ready' } : null,
+          task: task
+            ? { ...task, status: task.status !== 'ready' && ++reads === 1 ? 'processing' : 'ready' }
+            : null,
+        })
+      case `workflow-log-exports/${taskId}`:
+        if (!task) throw new Error('The export must be created before reading its status')
+        task = { ...task, status: 'ready' }
+        return Response.json({
+          task_id: taskId,
+          status: 'ready',
+          estimated_rows: task.estimated_rows,
         })
       default:
         throw new Error(`Unexpected request ${url.pathname}`)
@@ -197,6 +211,7 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
     .toEqual([
       {
         status: 'succeeded',
+        estimated_rows: 3,
         created_at__after: listFilters.get('created_at__after'),
         created_at__before: exportEnd,
         end_user_ids: [olderEndUserId],
@@ -208,12 +223,14 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
       },
     ])
 
-  const last = dialog.getByRole('group', { name: 'appLog.export.last' })
+  await expect.element(dialog).not.toBeInTheDocument()
+  const progress = page.getByRole('dialog', { name: 'appLog.export.progressTitle' })
   await expect
-    .element(last.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  await dialog.getByRole('button', { name: 'common.operation.close', exact: true }).first().click()
+    .element(progress.getByRole('button', { name: 'common.operation.download' }))
+    .toBeEnabled()
+  await progress.getByRole('button', { name: 'common.operation.close', exact: true }).last().click()
   await trigger.click()
+  const last = dialog.getByRole('group', { name: 'appLog.export.last' })
   const download = last.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeVisible()
   await expect.element(last.getByText(/appLog.status.succeeded/)).toBeVisible()
