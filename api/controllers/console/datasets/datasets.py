@@ -774,6 +774,7 @@ class DatasetApiKeyApi(Resource):
 
     @error_responses(ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
+    @console_ns.doc(params={"payload": {"required": False}})
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @console_account_admission(

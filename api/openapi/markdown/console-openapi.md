@@ -6215,7 +6215,7 @@ Reject invalid input before creating a key.
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+|  No | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
 
 #### Responses
 

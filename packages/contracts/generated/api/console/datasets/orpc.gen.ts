@@ -314,7 +314,7 @@ export const post = oc
     summary: 'Create a key from a JSON scope object or an empty body',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostDatasetsApiKeysBody }))
+  .input(z.object({ body: zPostDatasetsApiKeysBody.optional() }).optional())
   .output(zPostDatasetsApiKeysResponse)
   .errors({ max_keys_exceeded: { status: 400, data: zMaxKeysExceededError } })
 
