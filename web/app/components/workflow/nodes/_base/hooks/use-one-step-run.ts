@@ -56,9 +56,11 @@ import {
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
+import { markErrorHandled } from '@/service/handled-error'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
@@ -401,7 +403,14 @@ const useOneStepRun = <T>({
       }
 
       // run fail may also update the inspect vars when the node set the error default output.
-      const vars = await fetchNodeInspectVars(resource, id)
+      let vars: Awaited<ReturnType<typeof fetchNodeInspectVars>>
+      try {
+        vars = await fetchNodeInspectVars(resource, id)
+      } catch (error) {
+        toastRequestError(error)
+        updateNodeInspectRunningState(id, false)
+        return
+      }
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -556,6 +565,8 @@ const useOneStepRun = <T>({
           ? error.message
           : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
       )
+      // The failure is reported here, so `handleRun` must not report it again.
+      markErrorHandled(error)
       throw error
     }
   }, [resource, id, handleNodeDataUpdate, data, t])
@@ -642,6 +653,7 @@ const useOneStepRun = <T>({
             : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
         )
         cancelWebhookSingleRun()
+        markErrorHandled(error)
         if (error instanceof Error) throw error
         throw new Error(String(error))
       } finally {
@@ -685,6 +697,7 @@ const useOneStepRun = <T>({
 
         toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
         cancelPluginSingleRun()
+        markErrorHandled(requestError)
         throw requestError
       }
 
@@ -1069,6 +1082,7 @@ const useOneStepRun = <T>({
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
       console.error(e)
+      toastRequestError(e)
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {

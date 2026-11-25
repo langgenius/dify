@@ -15,8 +15,8 @@ import {
 } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { getHttpErrorBodyMessage, httpErrorFromResponse, isHttpErrorStatus } from './http-error'
-import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { markErrorHandled, markSilentRequestError } from './handled-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
@@ -47,32 +47,32 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
+/** Error feedback belongs to the query cache; this hook keeps only the transport's own outcomes. */
 const afterResponseErrorCode = (
   otherOptions: IOtherOptions,
   requestGuard: RequestGuard | undefined,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
-    if (isHttpErrorStatus(response.status)) {
-      const error = await httpErrorFromResponse(response)
-      const errorData = error.data
-      const handled = requestGuard?.handleError(response.status, errorData, error)
-      if (handled || requestGuard?.isActive() === false) throw error
-      const shouldNotifyError =
-        response.status >= 400 &&
-        response.status !== 401 &&
-        errorData &&
-        !otherOptions.silent &&
-        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
-
-      const errorMessage = getHttpErrorBodyMessage(errorData)
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
-
-      if (response.status === 403 && errorData?.code === 'already_setup')
-        globalThis.location.href = `${globalThis.location.origin}/signin`
+    if (!isHttpErrorStatus(response.status)) return
+    const error = await httpErrorFromResponse(response)
+    const errorData = error.data
+    if (
+      requestGuard?.handleError(response.status, errorData, error) ||
+      requestGuard?.isActive() === false
+    ) {
+      markErrorHandled(error)
       throw error
-    } else {
-      clearRequestErrorToasts(request)
     }
+    // TODO: remove with the `silent` option once every caller states its feedback through `meta`.
+    if (otherOptions.silent) markSilentRequestError(error)
+    // A late 404 for an app being deleted is expected, so nothing reports it.
+    if (shouldSuppressAppDeletionErrorToast(request.url, response.status)) markErrorHandled(error)
+
+    if (response.status === 403 && errorData?.code === 'already_setup') {
+      markErrorHandled(error)
+      globalThis.location.href = `${globalThis.location.origin}/signin`
+    }
+    throw error
   }
 }
 

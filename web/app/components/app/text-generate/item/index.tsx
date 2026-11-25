@@ -107,11 +107,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
     if (!childMessageId) return
-    await updateFeedback(
-      { messageId: childMessageId, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
-    )
+    try {
+      await updateFeedback(
+        { messageId: childMessageId, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      )
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     setChildFeedback(childFeedback)
   }
 
@@ -144,13 +149,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
+    try {
+      const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
+      setCompletionRes(res.answer)
+      setChildFeedback({
+        rating: null,
+      })
+      setChildMessageId(res.id)
+    } catch (error) {
+      toastRequestError(error)
+    } finally {
+      stopQuerying()
+    }
   }
 
   useEffect(() => {
@@ -211,9 +221,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           throw error
         }
       } else {
-        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
-          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-        await submitHumanInputForm(formToken, submission, formVersion)
+        try {
+          if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+            await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+          await submitHumanInputForm(formToken, submission, formVersion)
+        } catch (error) {
+          toastRequestError(error)
+          throw error
+        }
       }
     },
     [appSourceType, prepareHumanInputSubmission],

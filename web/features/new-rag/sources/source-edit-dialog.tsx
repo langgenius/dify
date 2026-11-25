@@ -27,6 +27,7 @@ import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
@@ -537,7 +538,7 @@ function WebsiteSourceEditDialogContent({
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [previewing, setPreviewing] = useState(false)
   const [previewRequested, setPreviewRequested] = useState(false)
-  const [previewError, setPreviewError] = useState(false)
+  const [previewError, setPreviewError] = useState<{ message?: string } | false>(false)
   const previewAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
   const providerOptions = useMemo(
@@ -680,7 +681,7 @@ function WebsiteSourceEditDialogContent({
       if (previewAttemptRef.current !== attempt) return
       previewJobIdRef.current = undefined
       if (response.status !== 'completed' || !response.result) {
-        setPreviewError(true)
+        setPreviewError({})
         return
       }
       setPreviewPages(
@@ -691,8 +692,9 @@ function WebsiteSourceEditDialogContent({
           title: page.title ?? page.source_url,
         })),
       )
-    } catch {
-      if (previewAttemptRef.current === attempt) setPreviewError(true)
+    } catch (error) {
+      if (previewAttemptRef.current === attempt)
+        setPreviewError({ message: getRequestErrorMessage(error) })
     } finally {
       if (previewAttemptRef.current === attempt) setPreviewing(false)
     }
@@ -827,7 +829,7 @@ function WebsiteSourceEditDialogContent({
               )}
               {previewError && (
                 <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-                  {t(($) => $.providerLoadFailed)}
+                  {previewError.message ?? t(($) => $.providerLoadFailed)}
                 </p>
               )}
               {previewPages.length > 0 && (

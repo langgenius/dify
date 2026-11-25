@@ -3,12 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { FakeXMLHttpRequest } from '@/test/fake-xhr'
 
-const notifyRequestError = vi.hoisted(() => vi.fn())
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-vi.mock('../../request-error-toast', () => ({
-  clearRequestErrorToasts: vi.fn(),
-  notifyRequestError,
-}))
 
 const loadConsoleClient = async () => (await import('@/service/console')).consoleClient
 
@@ -31,7 +26,6 @@ describe('console contract uploads', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
-    notifyRequestError.mockReset()
     document.cookie = `${CSRF_COOKIE_NAME()}=; expires=Thu, 01 Jan 1970 00:00:00 GMT`
   })
 
@@ -64,7 +58,7 @@ describe('console contract uploads', () => {
     await expect(pending).resolves.toEqual(uploadedFile)
   })
 
-  it('rejects with the backend error code without a request toast when silent', async () => {
+  it('rejects with the backend error code', async () => {
     const consoleClient = await loadConsoleClient()
     const pending = consoleClient.files.upload.post(
       { body: { file: new File(['x'], 'run.exe') } },
@@ -79,7 +73,6 @@ describe('console contract uploads', () => {
     const error = await pending.catch((reason: unknown) => reason)
     expect(error).toBeInstanceOf(ORPCError)
     expect(error).toMatchObject({ code: 'file_extension_blocked', status: 400 })
-    expect(notifyRequestError).not.toHaveBeenCalled()
   })
 
   it('aborts the XHR through the call signal', async () => {

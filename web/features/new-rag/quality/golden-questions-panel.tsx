@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
@@ -250,7 +251,10 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           body: { node_ids: expectedEvidenceIds },
           params: { control_space_id: knowledgeSpaceId },
         })
-        .catch(() => undefined)
+        .catch((error) => {
+          toastRequestError(error)
+          return undefined
+        })
     setDialog((current) => {
       if (current?.mode !== 'edit' || current.id !== item.id) return current
       return { ...current, evidenceOptions: evidenceOptions?.candidates ?? [] }
