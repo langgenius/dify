@@ -823,6 +823,8 @@ function AddSourcePageContent({
   }, [sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
       context: { silent: true },
       enabled: websiteSourceSelected,
@@ -832,6 +834,8 @@ function AddSourcePageContent({
   )
   const datasourceAuthQuery = useQuery(
     consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
@@ -844,6 +848,8 @@ function AddSourcePageContent({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({

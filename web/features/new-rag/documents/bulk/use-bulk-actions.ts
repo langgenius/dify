@@ -103,6 +103,7 @@ export function useBulkReindexAction() {
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -233,6 +234,7 @@ export function useBulkAvailabilityAction() {
   const { mutateAsync: updateDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
@@ -303,6 +305,7 @@ export function useBulkRemoveAction() {
   const { mutateAsync: removeDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

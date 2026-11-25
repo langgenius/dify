@@ -142,6 +142,7 @@ function DocumentMetadataCardContent() {
   }
 
   const createFieldMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ name, type }: { name: string; type: DocumentMetadataType }) => {
       if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
@@ -191,6 +192,7 @@ function DocumentMetadataCardContent() {
   const saveMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onError: (error) => {
         toast.error(
           getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),

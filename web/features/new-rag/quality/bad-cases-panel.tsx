@@ -94,18 +94,20 @@ function BadCasePromotionDialog({
   const createGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
       {
         context: { silent: true },
+        meta: { errorToast: false },
       },
     ),
   )
   const { mutateAsync: updateBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
-      { context: { silent: true } },
+      { context: { silent: true }, meta: { errorToast: false } },
     ),
   )
 
@@ -225,7 +227,7 @@ function BadCaseRow({
   const [pending, setPending] = useState(false)
   const { mutateAsync: updateBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
-      { context: { silent: true } },
+      { context: { silent: true }, meta: { errorToast: false } },
     ),
   )
 

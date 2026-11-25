@@ -22,8 +22,6 @@ const config: KnipConfig = {
         'app/components/plugins/marketplace/detail-dialog/image-preview-message.ts!',
         'app/components/plugins/marketplace/standalone/server.ts!',
         'app/components/plugins/marketplace/standalone/client.ts!',
-        // TODO: remove once call sites import them (langgenius/dify#47216).
-        'app/query-error-toast.ts!',
       ],
       project: [
         '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',

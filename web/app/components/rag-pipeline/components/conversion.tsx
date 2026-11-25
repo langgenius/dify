@@ -37,6 +37,7 @@ const Conversion = () => {
   const { mutate: convert, isPending } = useMutation(
     consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const datasetACLCapabilities = React.useMemo(

@@ -152,8 +152,12 @@ export const retryErrorDocs = ({
   datasetId: string
   document_ids: string[]
 }) => {
-  return consoleClient.datasets.byDatasetId.retry.post({
-    params: { dataset_id: datasetId },
-    body: { document_ids },
-  })
+  return consoleClient.datasets.byDatasetId.retry.post(
+    {
+      params: { dataset_id: datasetId },
+      body: { document_ids },
+    },
+    // The retry action reports its own failure.
+    { context: { silent: true } },
+  )
 }
