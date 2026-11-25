@@ -97,6 +97,7 @@
   "history.status.cancelled": "रद्द",
   "history.status.completed": "पूर्ण",
   "history.status.failed": "विफल",
+  "history.status.notCompleted": "कार्य पूरा नहीं हो सका",
   "history.status.partiallyFailed": "विफलताओं के साथ पूर्ण",
   "history.status.pending": "लंबित",
   "history.status.running": "चल रहा है",

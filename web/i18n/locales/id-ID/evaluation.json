@@ -97,6 +97,7 @@
   "history.status.cancelled": "Dibatalkan",
   "history.status.completed": "Selesai",
   "history.status.failed": "Gagal",
+  "history.status.notCompleted": "Tugas tidak dapat diselesaikan",
   "history.status.partiallyFailed": "Selesai dengan kegagalan",
   "history.status.pending": "Menunggu",
   "history.status.running": "Berjalan",
