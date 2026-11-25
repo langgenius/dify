@@ -31,6 +31,7 @@ import {
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import { createPolicyQueryUtils } from './mutation-policies'
 import { upsertStartedPluginTask } from './plugin-task-cache'
+import { setSkillDetailCache } from './skill-cache'
 import {
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
@@ -382,6 +383,28 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       workspaces: {
+        byWorkspaceId: {
+          members: {
+            pendingInvitations: {
+              revoke: {
+                post: {
+                  mutationOptions: {
+                    // A failed revoke may mean the invitation was already accepted or revoked.
+                    onSettled: (_data, _error, { params }, _result, { client }) => {
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.workspaces.current.members.get.key(),
+                        consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
+                          input: { params: { workspace_id: params.workspace_id } },
+                        }),
+                        consoleQuery.features.get.queryKey(),
+                      ])
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         current: {
           customizedSnippets: {
             post: {
@@ -608,6 +631,22 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           members: {
+            // Invitations change seats (plan usage), the member list, and pending invitations.
+            inviteEmail: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (response, _variables, _result, { client }) => {
+                    void invalidateQueryKeys(client, [
+                      consoleQuery.features.get.queryKey(),
+                      consoleQuery.workspaces.current.members.get.key(),
+                      consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
+                        input: { params: { workspace_id: response.tenant_id } },
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
             byMemberId: {
               delete: {
                 mutationOptions: {
@@ -975,6 +1014,21 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           skills: {
             bySkillId: {
+              // Metadata writes return the full detail: write it instead of refetching it.
+              patch: {
+                mutationOptions: {
+                  onSuccess: (detail, { params, body }, _result, { client }) => {
+                    setSkillDetailCache(consoleQuery, client, params.skill_id, detail)
+                    const input = { params: { skill_id: params.skill_id } }
+                    void invalidateQueryKeys(client, [
+                      consoleQuery.workspaces.current.skills.bySkillId.versions.get.key({ input }),
+                      consoleQuery.workspaces.current.agents.byAgentId.skills.get.key(),
+                      consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+                      ...(body.tags ? [consoleQuery.workspaces.current.skills.tags.get.key()] : []),
+                    ])
+                  },
+                },
+              },
               restore: {
                 post: {
                   mutationOptions: {
@@ -1839,8 +1893,14 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             publish: {
               post: {
                 mutationOptions: {
-                  onSuccess: (_data, variables, _result, context) =>
-                    Promise.all([
+                  onSuccess: (_data, variables, _result, context) => {
+                    // Evaluation metrics follow the published graph; the publisher does not wait for them.
+                    void invalidateEvaluationDefaultMetrics(
+                      consoleQuery,
+                      context.client,
+                      variables.params.app_id,
+                    )
+                    return Promise.all([
                       context.client.invalidateQueries({
                         queryKey: consoleQuery.apps.byAppId.workflows.publish.get.key({
                           input: { params: variables.params },
@@ -1861,6 +1921,35 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                           input: { params: variables.params },
                         }),
                       }),
+                    ])
+                  },
+                },
+              },
+              // Not awaited: the publisher reports the result before the refresh finishes.
+              evaluation: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      void invalidateQueryKeys(client, [
+                        consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
+                        consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
+                        consoleQuery.apps.byAppId.triggers.get.key({ input: { params } }),
+                        consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
+                      ])
+                      void invalidateEvaluationDefaultMetrics(consoleQuery, client, params.app_id)
+                    },
+                  },
+                },
+              },
+            },
+            convertType: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateQueryKeys(client, [
+                      consoleQuery.apps.byAppId.workflows.publish.get.key({ input: { params } }),
+                      consoleQuery.apps.byAppId.get.queryKey({ input: { params } }),
+                      consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
                     ]),
                 },
               },
@@ -3721,6 +3810,19 @@ function setCommentResolved(
   )
 }
 
+function invalidateEvaluationDefaultMetrics(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  appId: string,
+) {
+  return client.invalidateQueries({
+    queryKey: query.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key({
+      type: 'query',
+      input: { params: { evaluate_target_id: appId, evaluate_target_type: 'apps' } },
+    }),
+  })
+}
+
 function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
 }
@@ -3822,7 +3924,7 @@ function invalidateHumanInputChannelQueries(
   ])
 }
 
-function invalidateSkillVersionQueries(
+export function invalidateSkillVersionQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,
   skillId: string,
