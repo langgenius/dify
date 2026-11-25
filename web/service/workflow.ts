@@ -3,11 +3,7 @@ import type {
   WorkflowFeaturesConfigPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
-import type {
-  BlockEnum,
-  ConversationVariable,
-  EnvironmentVariable,
-} from '@/app/components/workflow/types'
+import type { ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
 import type { ConsoleClientContext } from '@/service/console'
 import type { FetchWorkflowDraftResponse, HumanInputFormData, VarInInspect } from '@/types/workflow'
 import { zConsoleHumanInputV2SubmitPayload } from '@dify/contracts/api/console/form/zod.gen'
@@ -54,22 +50,6 @@ export const singleNodeRun = (
         body,
       })
   }
-}
-
-export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}) => {
-  return consoleClient.apps.byAppId.workflows.defaultWorkflowBlockConfigs.byBlockType.get({
-    params: { app_id: appId, block_type: blockType },
-    query: { q: JSON.stringify(query) },
-  })
-}
-
-export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
-  return consoleClient.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.byBlockType.get(
-    {
-      params: { pipeline_id: pipelineId, block_type: blockType },
-      query: { q: JSON.stringify(query) },
-    },
-  )
 }
 
 const fetchAllInspectVarsOnePage = (resource: EditorResource, page: number) => {
