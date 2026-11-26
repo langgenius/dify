@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/testscope"
 )
 
 // Service is the core job lifecycle manager backed by SQLite and tmux.
@@ -72,6 +74,17 @@ func (s *Service) PrepareRuntime() error {
 		return err
 	}
 
+	if s.config.NativeScopeID != "" {
+		if err := s.db.EnableNativeDurability(); err != nil {
+			return err
+		}
+		if err := s.db.InitNativeOutputBudget(s.config.NativeScopeID, s.config.NativeOutputBytes); err != nil {
+			return err
+		}
+		if err := s.db.BindNativeScope(s.config.NativeScopeID, s.config.NativeScopeGeneration); err != nil {
+			return err
+		}
+	}
 	s.installRunner()
 	return s.tmux.StartServer()
 }
@@ -129,6 +142,24 @@ func (s *Service) StartBackgroundPipeMonitor() {
 
 // RunJob creates and starts a new tmux-backed job, then waits for initial output.
 func (s *Service) RunJob(req *RunJobRequest) (*JobResult, error) {
+	if s.config.NativeScopeConfigPath != "" {
+		nativeCwd := "/workspace"
+		cwd := nativeCwd
+		if req.Cwd != nil {
+			cwd = *req.Cwd
+		}
+		if err := testscope.ValidateJob(cwd, req.Env); err != nil {
+			return nil, NewServerError(422, "native_job_policy", err.Error())
+		}
+		jobs, err := s.db.ListJobs(nil)
+		if err != nil {
+			return nil, err
+		}
+		if len(jobs) >= 64 {
+			return nil, NewServerError(409, "native_job_limit", "scope job capacity exhausted")
+		}
+		req.Cwd = &nativeCwd
+	}
 	log.Printf("RunJob: script=%d bytes, cwd=%v, env_keys=%d", len(req.Script), req.Cwd, len(req.Env))
 	cwd, err := s.resolveCwd(req.Cwd)
 	if err != nil {
@@ -791,6 +822,9 @@ func (s *Service) normalExitCommitPending(row *JobRow) bool {
 }
 
 func (s *Service) outputLogPath(row *JobRow) string {
+	if s.config.NativeJobsDir != "" {
+		return filepath.Join(s.config.JobsDir(), row.JobID, "output.log")
+	}
 	return filepath.Join(s.config.StateDir, row.OutputPath)
 }
 
@@ -811,6 +845,13 @@ func (s *Service) statusViewFromRow(row *JobRow) *JobStatusView {
 
 func (s *Service) jobResultFromView(view *JobStatusView, row *JobRow, window *OutputWindow) *JobResult {
 	outputPath := s.outputLogPath(row)
+	if s.config.NativeOutputBytes > 0 {
+		_, violationErr := os.Stat(filepath.Join(filepath.Dir(s.config.NativeScopeConfigPath), "violation"))
+		if err := testscope.CheckOutputSpool(s.config.JobsDir(), s.config.NativeOutputBytes); err != nil || !os.IsNotExist(violationErr) {
+			code := 125
+			return &JobResult{JobID: view.JobID, Done: true, Status: StatusFailed, ExitCode: &code, Truncated: true}
+		}
+	}
 	absPath, _ := filepath.Abs(outputPath)
 	return &JobResult{
 		JobID:      view.JobID,
@@ -832,12 +873,18 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		cwd = s.config.DefaultCwd
 	}
 
-	info, err := os.Stat(cwd)
-	if err != nil || !info.IsDir() {
-		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
+	abs, err := filepath.Abs(cwd)
+	if err == nil && cwd != "" {
+		root := filepath.VolumeName(abs) + string(os.PathSeparator)
+		name, err := filepath.Rel(root, abs)
+		if err == nil && filepath.IsLocal(name) {
+			info, err := fs.Stat(os.DirFS(root), filepath.ToSlash(name))
+			if err == nil && info.IsDir() {
+				return abs, nil
+			}
+		}
 	}
-	abs, _ := filepath.Abs(cwd)
-	return abs, nil
+	return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
 }
 
 func (s *Service) allocateJobDir() (string, string, error) {

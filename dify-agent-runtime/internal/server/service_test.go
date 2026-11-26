@@ -145,3 +145,40 @@ func setupModeTestService(t *testing.T, mode jobmode.Mode, status JobStatusName)
 	}
 	return service, persisted
 }
+
+func TestNativeOutputViolationCannotReturnSuccessfulResult(t *testing.T) {
+	service, row := setupModeTestService(t, jobmode.Stdio, StatusExited)
+	scopeDir := t.TempDir()
+	service.config.NativeScopeConfigPath = filepath.Join(scopeDir, "worker.json")
+	service.config.NativeOutputBytes = 4096
+	if err := os.WriteFile(filepath.Join(scopeDir, "violation"), []byte("native_scope_output_limit_exceeded"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	zero := 0
+	result := service.jobResultFromView(&JobStatusView{JobID: row.JobID, Status: StatusExited, Done: true, ExitCode: &zero}, row, &OutputWindow{})
+	if result.Status != StatusFailed || result.ExitCode == nil || *result.ExitCode != 125 {
+		t.Fatalf("durable budget refusal reported success: %+v", result)
+	}
+}
+
+func TestGCLeavesUnfinishedJobAvailable(t *testing.T) {
+	service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
+	service.tmux = newTestTmuxController(t)
+	if _, err := service.tmux.runTmux("new-session", "-d", "-s", row.SessionName, "sleep 300"); err != nil {
+		t.Fatal(err)
+	}
+	created := FormatTimestamp(time.Now().Add(-25 * time.Hour))
+	if _, err := service.db.db.Exec("UPDATE jobs SET created_at = ?, updated_at = ? WHERE job_id = ?", created, created, row.JobID); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(service.outputLogPath(row), []byte("early"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.GCOnce(); err != nil {
+		t.Fatal(err)
+	}
+	result, err := service.WaitJob(row.JobID, &WaitJobRequest{})
+	if err != nil || result.Done || result.Output != "early" {
+		t.Fatalf("unfinished job: result=%+v, err=%v", result, err)
+	}
+}

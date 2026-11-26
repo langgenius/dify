@@ -1,0 +1,64 @@
+#include <tunables/global>
+
+# Trusted bootstrap profile. No host capabilities are granted by this profile;
+# mount/net-admin/chroot capabilities exist only inside the fresh user namespace.
+# The host administrator installs this profile through normal provisioning.
+profile dify-native-test-supervisor flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include if exists <dify-native-userns>
+  /usr/** rmix,
+  /bin/** rix,
+  /sbin/** rix,
+  /lib{,32,64}/** rmix,
+  /etc/ssl/** r,
+  /etc/{ld.so.cache,nsswitch.conf,hosts,resolv.conf,passwd,group,localtime} r,
+  /dev/{null,zero,random,urandom,tty,ptmx} rw,
+  /dev/pts/** rw,
+  /proc/ r,
+  /proc/** r,
+  # Go's trusted CLONE_NEWUSER bootstrap writes only these child mapping files.
+  # Submitted jobs cannot reach parent proc and cannot create new namespaces.
+  /proc/[0-9]*/{uid_map,gid_map,setgroups} w,
+  /sys/fs/cgroup/** r,
+  /sys/fs/cgroup/system.slice/dify-native.service/** rw,
+  /var/lib/dify-native/ rw,
+  /var/lib/dify-native/** rwklix,
+  /run/dify-native/** rwk,
+  /home/dify/ rw,
+  /home/dify/** rwkix,
+  /workspace/ rw,
+  /workspace/** rwkix,
+  /tmp/ rw,
+  /tmp/** rwkix,
+  /.job/** rix,
+  /inputs/** r,
+  /base/** r,
+  /etc/passwd r,
+  network inet stream,
+  network inet6 stream,
+  network unix stream,
+  network netlink raw,
+  capability sys_admin,
+  capability sys_chroot,
+  capability net_admin,
+  capability setpcap,
+  capability setuid,
+  capability setgid,
+  signal (send,receive) peer=dify-native-test-supervisor,
+  signal (receive) peer=unconfined,
+  mount options=(rw, rprivate) -> /,
+  mount fstype=proc -> /proc/,
+  mount fstype=proc -> /var/lib/dify-native/scopes/*/payload/proc/,
+  mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/payload/,
+  mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/payload/.job/,
+  mount fstype=tmpfs -> /var/lib/dify-native/scopes/*/spool/,
+  mount options=(rbind) /{usr,bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{usr,bin,sbin,lib,lib64}/,
+  mount options=(rbind) /usr/{bin,sbin,lib,lib64}/ -> /var/lib/dify-native/scopes/*/payload/{bin,sbin,lib,lib64}/,
+  mount options=(rbind) /etc/ssl/ -> /var/lib/dify-native/scopes/*/payload/etc/ssl/,
+  mount options=(bind) /dev/{null,zero,random,urandom,tty} -> /var/lib/dify-native/scopes/*/payload/dev/{null,zero,random,urandom,tty},
+  mount options=(rbind) /var/lib/dify-native/snapshots/*/ -> /var/lib/dify-native/scopes/*/payload/base/,
+  mount options=(rbind) /var/lib/dify-native/scopes/*/payload/inputs/ -> /var/lib/dify-native/scopes/*/payload/inputs/,
+  # Every copied submount is remounted through the classic mediated API.
+  mount options=(ro,remount,bind,nosuid,nodev,noexec) -> /var/lib/dify-native/scopes/*/payload/**,
+  mount options=(ro,remount,bind,nosuid,nodev) -> /var/lib/dify-native/scopes/*/payload/**,
+}
