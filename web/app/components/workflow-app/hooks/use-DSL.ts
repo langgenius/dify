@@ -10,6 +10,7 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -34,13 +35,15 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       if (!workflowId) {
         let syncFailed = false
+        let syncError: unknown
         await doSyncWorkflowDraft(undefined, {
-          onError: () => {
+          onError: (error) => {
             syncFailed = true
+            syncError = error
           },
         })
         if (syncFailed) {
-          toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+          toast.error(getRequestErrorMessage(syncError) ?? t(($) => $.exportFailed, { ns: 'app' }))
           return false
         }
       }

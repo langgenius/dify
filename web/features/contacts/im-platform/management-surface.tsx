@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { providerMetadata, toDetailView } from './credentials'
@@ -82,7 +83,10 @@ function ConfigurationSession({
         </DialogHeader>
         {detail.isError ? (
           <div role="alert" className="p-6">
-            <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+            <p>
+              {getRequestErrorMessage(detail.error) ??
+                t(($) => $['imPlatform.loadError.description'])}
+            </p>
             <Button onClick={() => detail.refetch()}>
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
@@ -228,7 +232,10 @@ export function ContactsImPlatformManagementSurface() {
         className="max-w-190 rounded-xl border border-divider-subtle bg-background-default-subtle p-5"
       >
         <div className="system-md-semibold">{t(($) => $['imPlatform.loadError.title'])}</div>
-        <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+        <p>
+          {getRequestErrorMessage(integrationsQuery.error ?? providersQuery.error) ??
+            t(($) => $['imPlatform.loadError.description'])}
+        </p>
         <Button
           onClick={() => {
             void integrationsQuery.refetch()
@@ -391,7 +398,8 @@ export function ContactsImPlatformManagementSurface() {
                 {channelError(deleteMutation.error).code ===
                 ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
-                  : t(($) => $['imPlatform.delete.failed'])}
+                  : (getRequestErrorMessage(deleteMutation.error) ??
+                    t(($) => $['imPlatform.delete.failed']))}
               </div>
             </AlertDialogBody>
           )}

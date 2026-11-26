@@ -7,7 +7,7 @@
   "apps.fullTip1des": "Sie haben das Limit für das Erstellen von Apps in diesem Plan erreicht.",
   "apps.fullTip2": "Limit erreicht",
   "apps.fullTip2des": "Es wird empfohlen, inaktive Anwendungen zu bereinigen, um Speicherplatz freizugeben, oder uns zu kontaktieren.",
-  "buyPermissionDeniedTip": "Bitte kontaktieren Sie Ihren Unternehmensadministrator, um zu abonnieren",
+  "buyPermissionDeniedTip": "Bitte wenden Sie sich an den Eigentümer oder einen Administrator Ihres Workspaces, um ein Abonnement abzuschließen.",
   "errors.annualDiscountActive": "Nach Ablauf deines aktuellen Rabatts kannst du zur jährlichen Abrechnung wechseln.",
   "errors.operationFailed": "Diese Anfrage konnte nicht abgeschlossen werden. Bitte versuchen Sie es später erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an den Support.",
   "errors.requestInProgress": "Ihre vorherige Anfrage wird noch bearbeitet. Bitte versuchen Sie es gleich noch einmal.",

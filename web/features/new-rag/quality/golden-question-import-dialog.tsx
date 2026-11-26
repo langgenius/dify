@@ -14,12 +14,16 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useMutation } from '@tanstack/react-query'
+import { useIsMutating, useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { useKnowledgeSpace } from '../space/context'
 import { maxGoldenQuestionCsvBytes, maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
+
+const goldenQuestionBulkImport =
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.bulkImport.post
 
 export function GoldenQuestionImportDialog({
   onOpenChange,
@@ -28,8 +32,16 @@ export function GoldenQuestionImportDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
+  // A pending import keeps the dialog open, so its failure has somewhere to show.
+  const importing = useIsMutating({ mutationKey: goldenQuestionBulkImport.mutationKey() }) > 0
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && importing) return
+        onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent className="w-180">
         <GoldenQuestionImportSession onOpenChange={onOpenChange} />
       </DialogContent>
@@ -44,12 +56,15 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   const [rows, setRows] = useState<KnowledgeFsGoldenQuestionBulkImportRowPayload[]>([])
   const [fileName, setFileName] = useState('')
   const [csvError, setCsvError] = useState<GoldenQuestionCsvError>()
-  const [submitError, setSubmitError] = useState(false)
+  const [submitError, setSubmitError] = useState<string>()
   const [reading, setReading] = useState(false)
   // Only the latest file selection may publish rows; earlier reads can resolve later.
   const readGenerationRef = useRef(0)
   const mutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.bulkImport.post.mutationOptions(),
+    goldenQuestionBulkImport.mutationOptions({
+      // The dialog shows the failure next to its submit button.
+      meta: { errorToast: false },
+    }),
   )
   const previewRows = (() => {
     const occurrences = new Map<string, number>()
@@ -69,7 +84,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
     setRows([])
     setFileName(file.name)
     setCsvError(undefined)
-    setSubmitError(false)
+    setSubmitError(undefined)
     mutation.reset()
     if (file.size > maxGoldenQuestionCsvBytes) {
       setReading(false)
@@ -98,14 +113,14 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   }
 
   const submit = async () => {
-    setSubmitError(false)
+    setSubmitError(undefined)
     try {
       await mutation.mutateAsync({
         body: { rows },
         params: { control_space_id: knowledgeSpaceId },
       })
-    } catch {
-      setSubmitError(true)
+    } catch (error) {
+      setSubmitError(getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
     }
   }
 
@@ -121,6 +136,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogDescription>
         )}
         <DialogHeaderCloseButton
+          disabled={mutation.isPending}
           aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
         />
       </DialogHeader>
@@ -216,7 +232,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
             )}
             {submitError && (
               <p role="alert" className="mt-3 body-xs-regular text-text-destructive">
-                {t(($) => $.unknownError, { ns: 'dataset' })}
+                {submitError}
               </p>
             )}
           </DialogBody>

@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { consoleClient } from '@/service/console'
-import { billingErrorMessageKey } from '../../billing-error'
+import { getBillingErrorMessage } from '../../billing-error'
 import { ALL_PLANS } from '../../config'
 import { CloudPlanFeatures } from './features'
 import { RollingPrice } from './rolling-price'
@@ -113,7 +113,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
       if (!url) throw new Error('Missing billing URL')
       window.location.href = url
     } catch (error) {
-      toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+      toast.error(getBillingErrorMessage(error, t))
     } finally {
       setPendingAction(null)
     }

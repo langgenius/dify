@@ -7,7 +7,7 @@ import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { CONTACT_IM_SYNC_POLL_INTERVAL_MS } from './hooks'
 
@@ -79,7 +79,7 @@ export function ContactImDirectorySyncSection({
       : runQuery.isPending
         ? t(($) => $['imPlatform.sync.loading'])
         : requestError
-          ? t(($) => $['imPlatform.sync.startFailed'])
+          ? (getRequestErrorMessage(runQuery.error) ?? t(($) => $['imPlatform.sync.startFailed']))
           : undefined
   return (
     <div className="mt-2 rounded-xl bg-background-section-burn px-4 py-3">
@@ -143,7 +143,8 @@ export function ContactImDirectorySyncSection({
       )}
       {(requestError || startSync.isError) && (
         <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $['imPlatform.sync.startFailed'])}
+          {getRequestErrorMessage(startSync.error ?? runQuery.error) ??
+            t(($) => $['imPlatform.sync.startFailed'])}
           {requestError && (
             <Button className="ms-3" onClick={() => runQuery.refetch()} size="small">
               {t(($) => $['imPlatform.action.retry'])}

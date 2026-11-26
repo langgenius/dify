@@ -119,7 +119,7 @@ export const useNodesSyncDraft = (snippetId: string) => {
           const isDraftNotSync = isDefined && error.code === 'draft_workflow_not_sync'
           if (isDraftNotSync && !notRefreshWhenSyncError) handleRefreshWorkflowDraft(onRefresh)
           if (!isDraftNotSync) toastRequestError(error)
-          callback?.onError?.()
+          callback?.onError?.(error)
           return undefined
         }
 

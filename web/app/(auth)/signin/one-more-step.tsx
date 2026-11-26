@@ -15,6 +15,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +26,7 @@ import { languages } from '@/i18n/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -107,9 +108,12 @@ const OneMoreStep = () => {
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
     } catch (error: unknown) {
-      if (getHttpErrorStatus(error) === 400)
+      if (error instanceof ORPCError && error.code === 'invalid_invitation_code')
         toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
-      else if (error instanceof Error) toast.error(error.message)
+      else
+        toast.error(
+          getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
     }
   }
 

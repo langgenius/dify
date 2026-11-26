@@ -7,7 +7,7 @@
   "apps.fullTip1des": "이 계획에서 앱을 구축할 수 있는 한계에 도달했습니다.",
   "apps.fullTip2": "계획 한도에 도달했습니다.",
   "apps.fullTip2des": "비활성 애플리케이션을 정리하여 사용량을 줄이거나 저희에게 문의하는 것이 좋습니다.",
-  "buyPermissionDeniedTip": "구독하려면 엔터프라이즈 관리자에게 문의하세요",
+  "buyPermissionDeniedTip": "구독하려면 워크스페이스 소유자 또는 관리자에게 문의하세요.",
   "errors.annualDiscountActive": "현재 할인이 종료되면 연간 결제로 전환할 수 있습니다.",
   "errors.operationFailed": "이 요청을 완료할 수 없습니다. 나중에 다시 시도해 주세요. 문제가 계속되면 지원팀에 문의하세요.",
   "errors.requestInProgress": "이전 요청이 아직 처리 중입니다. 잠시 후 다시 시도해 주세요.",

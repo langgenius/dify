@@ -44,6 +44,7 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { VarType } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { syncHumanInputDraft } from '../../human-input/shared/sync-draft'
 import { isOutput } from '../../human-input/utils'
 import { getRequestURLCount } from '../message-template-utils'
@@ -149,22 +150,15 @@ const MessageTemplateSession = ({
     },
   })
   const pending = testMutation.isPending
-  const mutationError = testMutation.error
-    ? t(
-        ($) =>
-          $[
-            testMutation.error instanceof Error &&
-            testMutation.error.message === 'template-draft-not-saved'
-              ? 'nodes.humanInputV2.template.testSaveFailed'
-              : typeof testMutation.error === 'object' &&
-                  'status' in testMutation.error &&
-                  testMutation.error.status === 501
-                ? 'nodes.humanInputV2.template.testUnavailable'
-                : 'nodes.humanInputV2.template.testFailed'
-          ],
-        { ns: 'workflow' },
-      )
-    : undefined
+  const testError = testMutation.error
+  const mutationError = !testError
+    ? undefined
+    : testError instanceof Error && testError.message === 'template-draft-not-saved'
+      ? t(($) => $['nodes.humanInputV2.template.testSaveFailed'], { ns: 'workflow' })
+      : typeof testError === 'object' && 'status' in testError && testError.status === 501
+        ? t(($) => $['nodes.humanInputV2.template.testUnavailable'], { ns: 'workflow' })
+        : (getRequestErrorMessage(testError) ??
+          t(($) => $['nodes.humanInputV2.template.testFailed'], { ns: 'workflow' }))
 
   const variables = Array.from(
     new Map(

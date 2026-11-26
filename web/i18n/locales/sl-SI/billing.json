@@ -7,7 +7,7 @@
   "apps.fullTip1des": "Dosegli ste omejitev za izdelavo aplikacij v tem načrtu.",
   "apps.fullTip2": "Dosežena meja načrta",
   "apps.fullTip2des": "Priporočljivo je, da očistite neaktivne aplikacije, da sprostite prostor, ali nas kontaktirate.",
-  "buyPermissionDeniedTip": "Za naročnino kontaktirajte svojega skrbnika podjetja",
+  "buyPermissionDeniedTip": "Za naročnino se obrnite na lastnika ali skrbnika delovnega prostora.",
   "errors.annualDiscountActive": "Na letno obračunavanje lahko preidete po izteku trenutnega popusta.",
   "errors.operationFailed": "Te zahteve ni bilo mogoče dokončati. Poskusite znova pozneje. Če težava ne izgine, se obrnite na podporo.",
   "errors.requestInProgress": "Vaša prejšnja zahteva se še obdeluje. Poskusite znova čez trenutek.",

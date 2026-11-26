@@ -7,7 +7,7 @@
   "apps.fullTip1des": "Has alcanzado el límite de aplicaciones de construcción en este plan",
   "apps.fullTip2": "Límite de plan alcanzado",
   "apps.fullTip2des": "Se recomienda limpiar las aplicaciones inactivas para liberar espacio de uso, o contactarnos.",
-  "buyPermissionDeniedTip": "Por favor, contacta al administrador de tu empresa para suscribirte",
+  "buyPermissionDeniedTip": "Contacta con el propietario o un administrador de tu espacio de trabajo para suscribirte.",
   "errors.annualDiscountActive": "Puedes cambiar a la facturación anual cuando termine tu descuento actual.",
   "errors.operationFailed": "No pudimos completar esta solicitud. Inténtalo de nuevo más tarde. Si el problema persiste, contacta con el soporte.",
   "errors.requestInProgress": "Tu solicitud anterior aún se está procesando. Inténtalo de nuevo en un momento.",

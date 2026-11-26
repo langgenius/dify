@@ -46,7 +46,10 @@ function SettingsPage({ readonly }: { readonly: boolean }) {
   return (
     <div>
       <FileScanSetting controller={fileScan} />
-      <button type="button" onClick={() => void fileScan.save().then(setResult)}>
+      <button
+        type="button"
+        onClick={() => void fileScan.save().then((result) => setResult(result.status))}
+      >
         page save
       </button>
       <button type="button" onClick={fileScan.reset}>

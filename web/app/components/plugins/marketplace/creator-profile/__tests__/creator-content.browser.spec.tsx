@@ -149,3 +149,61 @@ it('keeps one load-more request active and appends its real card before removing
   expect(fake.marketplace.publisherPlugins).toHaveBeenCalledOnce()
   expect(fake.marketplace.publisherTemplates).not.toHaveBeenCalled()
 })
+
+it('reports a failed first page instead of an empty list and retries it', async () => {
+  const fake = installFakeApi({
+    marketplace: {
+      publisherPlugins: () => ({
+        data: {
+          plugins: [
+            {
+              type: 'plugin',
+              org: 'dify',
+              name: 'delta',
+              labels: { 'en-US': 'Delta' },
+              brief: { 'en-US': 'Delta plugin' },
+              install_count: 4,
+              created_at: '2026-01-04T00:00:00Z',
+              updated_at: '2026-02-04T00:00:00Z',
+            } as Partial<MarketplacePlugin> as MarketplacePlugin,
+          ],
+          total: 1,
+        },
+      }),
+      publisherTemplates: () => ({ data: { templates: [], total: 0 } }),
+    },
+  })
+  onTestFinished(fake)
+  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
+  const screen = await render(
+    <UrlState>
+      <CreatorContent
+        creations={[]}
+        locale="en-US"
+        inventory={{
+          uniqueHandle: 'scarlettmao',
+          pluginHasMore: true,
+          templateHasMore: false,
+          pluginNextPage: 1,
+          templateNextPage: 2,
+          loadFailed: true,
+        }}
+        getCreationAction={(creation) => ({ type: 'link', href: `/creation/${creation.id}` })}
+      />
+    </UrlState>,
+  )
+
+  await expect
+    .element(screen.getByText('plugin.marketplace.creatorProfile.loadMoreFailed'))
+    .toBeVisible()
+  await expect
+    .element(screen.getByText('plugin.marketplace.creatorProfile.empty'))
+    .not.toBeInTheDocument()
+
+  await screen.getByRole('button', { name: 'plugin.marketplace.creatorProfile.loadMore' }).click()
+
+  await expect.element(screen.getByRole('link', { name: 'Delta' })).toBeVisible()
+  expect(fake.marketplace.publisherPlugins).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ query: expect.objectContaining({ page: '1' }) }),
+  )
+})

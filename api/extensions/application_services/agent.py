@@ -20,6 +20,7 @@ from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.config_service import AgentConfigService
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
@@ -68,6 +69,7 @@ class AgentAppServices:
     sandbox: AgentAppSandboxService
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
+    config_assets: AgentConfigService
 
 
 def _can_restore_version(
@@ -96,7 +98,7 @@ def build_agent_app_services(
         notify_updated=notify_agent_app_updated,
     )
     return AgentAppServices(
-        access=AgentAppAccessService(references=apps),
+        access=AgentAppAccessService(store=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
         lifecycle=deletion_service,
         detail=detail,
@@ -114,6 +116,7 @@ def build_agent_app_services(
             inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
             store=apps,
             authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),

@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import type { NodeOutPutVar } from '../../../../types'
 import { act, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { createNode } from '../../../../__tests__/fixtures'
 import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env'
 import { BlockEnum, InputVarType, VarType } from '../../../../types'
@@ -129,6 +130,37 @@ it('shows a server failure and retries without presenting local content as the r
   expect(screen.queryByText(props.content)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
   expect(await screen.findByText('Retried preview')).toBeInTheDocument()
+})
+
+it('shows the server message when the preview request fails', async () => {
+  preview.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'invalid_param',
+      message: 'Server says why',
+    }),
+  )
+  renderPreview({ hooksStoreProps: { doSyncWorkflowDraft: savedDraft } })
+  await userEvent.setup().click(screen.getByRole('button', { name: previewLabel }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+})
+
+it('shows the server message when the draft save fails', async () => {
+  renderPreview({
+    hooksStoreProps: {
+      doSyncWorkflowDraft: async (_notRefresh, callbacks) => {
+        callbacks?.onError?.(
+          createHttpError(new Response(null, { status: 400 }), {
+            code: 'draft_workflow_not_sync',
+            message: 'Draft save rejected',
+          }),
+        )
+        return null
+      },
+    },
+  })
+  await userEvent.setup().click(screen.getByRole('button', { name: previewLabel }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Draft save rejected')
+  expect(preview).not.toHaveBeenCalled()
 })
 
 it('renders historical readonly content without loading the current draft', async () => {

@@ -9,7 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
 import { goldenQuestionQueriesKey } from '../quality/quality-model'
@@ -55,7 +55,10 @@ export function RetrievalQualityWorkflow() {
     }),
   )
   const { mutateAsync: createGoldenQuestion } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
+      // The promotion dialog shows the failure next to its submit button.
+      meta: { errorToast: false },
+    }),
   )
   const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
   const knowledgeSpaceId = useAtomValueRawSync(retrievalKnowledgeSpaceIdAtom)
@@ -146,8 +149,10 @@ export function RetrievalQualityWorkflow() {
       })
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)
-    } catch {
-      setGoldenPromotionError(t(($) => $.unknownError, { ns: 'dataset' }))
+    } catch (error) {
+      setGoldenPromotionError(
+        getRequestErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }),
+      )
     } finally {
       setQualityPendingKey(undefined)
     }

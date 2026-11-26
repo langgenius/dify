@@ -199,12 +199,15 @@ function ConnectedSourceEditDialogContent({
   )
   const {
     data: connectionsData,
+    error: connectionsQueryError,
     fetchNextPage,
     hasNextPage,
     isError: connectionsError,
     isFetchNextPageError,
     isFetchingNextPage,
     isPending: connectionsPending,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
@@ -327,15 +330,16 @@ function ConnectedSourceEditDialogContent({
           <div className="py-8">
             <p role="alert" className="system-sm-regular text-text-destructive">
               {datasourcePluginsQuery.isError || connectionsError
-                ? t(($) => $.providerLoadFailed)
+                ? (getRequestErrorMessage(datasourcePluginsQuery.error ?? connectionsQueryError) ??
+                  t(($) => $.providerLoadFailed))
                 : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
             </p>
-            {isFetchNextPageError && !connection && (
+            {connectionsError && !connection && (
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}
@@ -502,10 +506,13 @@ function WebsiteSourceEditDialogContent({
   )
   const {
     data: connectionsData,
+    error: connectionsError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
@@ -795,16 +802,16 @@ function WebsiteSourceEditDialogContent({
           ) : (
             <div>{sourceNameField}</div>
           )}
-          {initialSource.connectionId && !connection && isFetchNextPageError && (
+          {initialSource.connectionId && !connection && connectionsError && (
             <div className="mt-4">
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $.providerLoadFailed)}
+                {getRequestErrorMessage(connectionsError) ?? t(($) => $.providerLoadFailed)}
               </p>
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}

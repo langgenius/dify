@@ -37,6 +37,157 @@ func setHome(t *testing.T) string {
 	return home
 }
 
+func TestStateEndpointsRestoreBothTreesWithRuntimeStateExcluded(t *testing.T) {
+	home, workspace := setHome(t), t.TempDir()
+	defaultState := filepath.Join(home, snapshot.RuntimeStateDir)
+	cfg := testConfig()
+	cfg.WorkspaceDir, cfg.AuthToken = workspace, "test-token"
+	cfg.StateDir = filepath.Join(workspace, ".xdg", "shellctl")
+	cfg.RuntimeDir = filepath.Join(home, "cfg", "run")
+	for _, dir := range []string{defaultState, cfg.StateDir, cfg.RuntimeDir} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	put := func(name, data string) {
+		t.Helper()
+		if err := os.WriteFile(name, []byte(data), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	homeFile := filepath.Join(home, "cfg", "config.txt")
+	workspaceFile := filepath.Join(workspace, ".xdg", "notes.txt")
+	defaultStateFile := filepath.Join(defaultState, "job-db")
+	oldRunner := filepath.Join(cfg.RuntimeDir, "source-runner")
+	staleHome := filepath.Join(home, "warm-image-file")
+	staleWorkspace := filepath.Join(workspace, "old-read-only-directory")
+	put(homeFile, "saved home")
+	put(workspaceFile, "saved workspace")
+	put(defaultStateFile, "source runtime")
+	put(cfg.DBPath(), "source database")
+	put(oldRunner, "source runner")
+	stateParent := filepath.Dir(cfg.StateDir)
+	if err := os.Chmod(stateParent, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	// State saves now take the suspension path, so the route needs a Service
+	// with a real (empty) state DB. The DB lives outside cfg.StateDir so it
+	// does not interfere with the archive fixture.
+	svc := NewService(cfg)
+	db := setupTestDB(t, t.TempDir())
+	t.Cleanup(func() { _ = db.Close() })
+	svc.db = db
+	srv := httptest.NewServer(Handler(svc, cfg))
+	t.Cleanup(srv.Close)
+
+	post := func(path, token string, body io.Reader) (*http.Response, []byte) {
+		t.Helper()
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+path, body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := srv.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		data, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp, data
+	}
+
+	resp, _ := post("/v1/state/save", "", nil)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated state save = %d", resp.StatusCode)
+	}
+	resp, archive := post("/v1/state/save", cfg.AuthToken, nil)
+	sum := sha256.Sum256(archive)
+	if resp.StatusCode != http.StatusOK || resp.Trailer.Get(TrailerSnapshotStatus) != SnapshotStatusOK ||
+		resp.Trailer.Get(TrailerSnapshotSha256) != hex.EncodeToString(sum[:]) {
+		t.Fatalf("save state: status %d, trailers %v", resp.StatusCode, resp.Trailer)
+	}
+	put(homeFile, "warm home")
+	put(workspaceFile, "warm workspace")
+	put(defaultStateFile, "new runtime")
+	put(cfg.DBPath(), "new database")
+	if err := os.Chmod(stateParent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(oldRunner); err != nil {
+		t.Fatal(err)
+	}
+	tmux, err := net.Listen("unix", cfg.TmuxSocket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = tmux.Close() })
+	socket, err := os.Lstat(cfg.TmuxSocket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{staleHome, staleWorkspace} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+		put(filepath.Join(dir, "stale-file"), "stale")
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatal(err)
+		}
+	}
+	resp, reply := post("/v1/state/restore", cfg.AuthToken, bytes.NewReader(archive))
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("restore state: status %d, reply %s", resp.StatusCode, reply)
+	}
+	for name, want := range map[string]string{
+		homeFile: "saved home", workspaceFile: "saved workspace",
+		defaultStateFile: "new runtime", cfg.DBPath(): "new database",
+	} {
+		if got, err := os.ReadFile(name); err != nil || string(got) != want {
+			t.Errorf("%s = %q, %v, want %q", name, got, err, want)
+		}
+	}
+	actual, err := os.Lstat(cfg.TmuxSocket())
+	if err != nil || actual.Mode()&os.ModeSocket == 0 || !os.SameFile(socket, actual) {
+		t.Fatalf("live tmux socket changed during restore: %v, %v", actual, err)
+	}
+	ancestor, err := os.Stat(stateParent)
+	if err != nil || ancestor.Mode().Perm() != 0o700 {
+		t.Fatalf("runtime state ancestor permissions changed: %v, %v", ancestor, err)
+	}
+	for _, name := range []string{staleHome, staleWorkspace, oldRunner} {
+		if _, err := os.Lstat(name); !os.IsNotExist(err) {
+			t.Errorf("stale file survived: %s (%v)", name, err)
+		}
+	}
+}
+
+func TestStateEndpointsRequireConfiguredToken(t *testing.T) {
+	srv := newSnapshotTestServer(t, testConfig())
+	for _, endpoint := range []string{"/v1/state/save", "/v1/state/restore"} {
+		t.Run(endpoint, func(t *testing.T) {
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL+endpoint, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Authorization", "Bearer arbitrary")
+			resp, err := srv.Client().Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode != http.StatusUnauthorized {
+				t.Fatalf("status = %d, want 401", resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestSnapshotSaveSuccessWithTrailers(t *testing.T) {
 	home := setHome(t)
 	if err := os.WriteFile(filepath.Join(home, "data.txt"), []byte("hello"), 0o644); err != nil {

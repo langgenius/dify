@@ -6,6 +6,7 @@ import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { TransferMethod } from '@/types/app'
 import { uploadPublicFile } from './public-upload'
 import { FileAppearanceTypeEnum } from './types'
@@ -13,7 +14,7 @@ import { FileAppearanceTypeEnum } from './types'
 /**
  * Get appropriate error message for file upload errors
  * @param error - The error object from upload failure
- * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param defaultMessage - Fallback when the server returned no message
  * @param t - Translation function
  * @returns Localized error message
  */
@@ -22,14 +23,10 @@ export const getFileUploadErrorMessage = (
   defaultMessage: string,
   t: TFunction<['common']>,
 ): string => {
-  const errorCode = error instanceof ORPCError ? error.code : undefined
-
-  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
-
-  if (errorCode === 'file_extension_blocked')
+  if (error instanceof ORPCError && error.code === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
 
-  return defaultMessage
+  return getRequestErrorMessage(error) ?? defaultMessage
 }
 
 type FileUploadResponse = {

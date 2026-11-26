@@ -38,13 +38,14 @@ import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/re
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactAvatar } from './contact-avatar'
 import { formatContactRelativeTime } from './relative-time'
 
-function imErrorKey(error: unknown, loading = false) {
+function imErrorKey(error: unknown) {
   const code =
     error instanceof ORPCError &&
     error.data &&
@@ -60,7 +61,7 @@ function imErrorKey(error: unknown, loading = false) {
     code === 'im_binding_not_found'
   )
     return 'imBinding.notFound'
-  return loading ? 'imBinding.loadFailed' : 'imBinding.failed'
+  return undefined
 }
 
 const imIdentityAvatarColors = [
@@ -163,6 +164,10 @@ function ImBindingEditor({
   onUnbind?: () => void
 }) {
   const { t } = useTranslation(['contacts'])
+  const imErrorMessage = (error: unknown, fallback: string) => {
+    const key = imErrorKey(error)
+    return key ? t(($) => $[key]) : (getRequestErrorMessage(error) ?? fallback)
+  }
   const { imCentrallyManaged: centrallyManaged } = useContactsFeatureContext()
   const providerLabel = getContactChannelLabel(provider)
   const boundIdentity = getBoundIMIdentity(contact, binding)
@@ -364,7 +369,10 @@ function ImBindingEditor({
                     {identities.isError && (
                       <div className="px-3 py-2">
                         <p role="alert" className="system-xs-regular text-text-destructive">
-                          {t(($) => $[imErrorKey(identities.error, true)])}
+                          {imErrorMessage(
+                            identities.error,
+                            t(($) => $['imBinding.loadFailed']),
+                          )}
                         </p>
                         <Button
                           className="mt-2"
@@ -414,7 +422,10 @@ function ImBindingEditor({
         )}
         {Boolean(error) && (
           <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-            {t(($) => $[imErrorKey(error)])}
+            {imErrorMessage(
+              error,
+              t(($) => $['imBinding.failed']),
+            )}
           </p>
         )}
       </div>
@@ -608,7 +619,8 @@ function ContactIMChannels({
       {configured.isError && canBind && (
         <div className="mt-2">
           <p role="alert" className="system-xs-regular text-text-destructive">
-            {t(($) => $['imBinding.channelsLoadFailed'])}
+            {getRequestErrorMessage(configured.error) ??
+              t(($) => $['imBinding.channelsLoadFailed'])}
           </p>
           <Button
             size="small"

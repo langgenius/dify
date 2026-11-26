@@ -1829,6 +1829,24 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
+  it('shows the server message when staging a file fails', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.stageUpload.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+    )
+    await renderPage()
+
+    await user.upload(
+      screen.getByLabelText('knowledgeSpace.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
   it('does not check document or vector quota when creating an empty space', async () => {
     const user = userEvent.setup()
     systemFeaturesStateMock.deploymentEdition = 'CLOUD'

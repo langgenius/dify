@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { toast } from '@/app/notifications'
 import { getMarketplaceTemplateIconUrl } from '@/features/marketplace/api'
+import { getRequestErrorMessage } from '@/service/http-error'
 import {
   fetchMarketplaceTemplateDSL,
   useMarketplaceTemplateDetail,
@@ -64,8 +65,11 @@ const ImportFromMarketplaceTemplateModal = ({
     try {
       const dsl = await fetchMarketplaceTemplateDSL(templateId)
       onConfirm(dsl)
-    } catch {
-      toast.error(t(($) => $['marketplace.template.importFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(
+        getRequestErrorMessage(error) ??
+          t(($) => $['marketplace.template.importFailed'], { ns: 'app' }),
+      )
     } finally {
       setImporting(false)
       isImportingRef.current = false

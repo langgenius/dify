@@ -23,6 +23,7 @@ export default function EmailChangeModal({ email, onClose }: Props) {
   )
   const { mutateAsync: checkEmailUnique } = useMutation(
     consoleQuery.account.changeEmail.checkEmailUnique.post.mutationOptions({
+      // Advisory check: known conflicts show at the field, and sending the code reports the rest.
       meta: { errorToast: false },
     }),
   )

@@ -29,12 +29,14 @@ from models.agent import (
     AgentStatus,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
+    WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model, build_initial_agent_soul
 from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
+from models.workflow import Workflow
 from repositories.agent_app_composer_queries import (
     composer_snapshot,
     publication_source,
@@ -71,7 +73,12 @@ from repositories.app.agent_runtime_app import (
     ensure_workflow_agent_backing_app,
     resolve_agent_runtime_app,
 )
-from repositories.app.console_repository import ConsoleAppRepository, StageTargetEvaluationCleanup, console_app_actor
+from repositories.app.console_repository import (
+    ConsoleAppRepository,
+    StageTargetEvaluationCleanup,
+    console_app_actor,
+    find_console_app,
+)
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from repositories.tag_repository import TagRepository
@@ -104,6 +111,16 @@ from services.agent.build_session_store import (
 )
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.agent_config_contracts import (
+    AgentConfigNodeUnboundError,
+    AgentConfigRuntimeMissingError,
+    AgentConfigSelection,
+    AgentConfigVersionMissingError,
+    AgentConfigWorkflowMissingError,
+)
+from services.agent_config_contracts import (
+    AgentConfigVersionKind as ConfigSelectionKind,
+)
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
@@ -582,6 +599,123 @@ class AgentAppRepository:
                 mapping.app_id = app_id
                 mapping.conversation_id = conversation_id
             return AgentBuildRefresh(conversation_id=conversation_id, retired_binding_id=retired_binding_id)
+
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Select the eligible Agent's config and prepare a normal draft for asset writes.
+
+        Runtime App resolution may also create and commit a missing hidden
+        backing App for a workflow-only Agent, including on reads.
+        """
+        tenant_id = context.active_workspace_id
+        with self._session_factory() as session:
+            if resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id) is None:
+                raise AgentConfigRuntimeMissingError
+            return self._config_selection(
+                session, context, agent_id, version_id=version_id, build=build, for_write=for_write
+            )
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Resolve a draft node's Agent without creating a runtime App or editing its active snapshot."""
+        tenant_id = context.active_workspace_id
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=tenant_id, app_id=app_id)
+            if app is None:
+                raise AgentConfigWorkflowMissingError
+            if AppMode.value_of(app.mode) not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+                raise AgentConfigWorkflowMissingError(
+                    "App mode is not in the supported list: {'workflow', 'advanced-chat'}"
+                )
+            if node_id:
+                agent_id = session.scalar(
+                    select(WorkflowAgentNodeBinding.agent_id)
+                    .join(Workflow, Workflow.id == WorkflowAgentNodeBinding.workflow_id)
+                    .where(
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.app_id == app_id,
+                        Workflow.version == Workflow.VERSION_DRAFT,
+                        WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                        WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+                        WorkflowAgentNodeBinding.node_id == node_id,
+                    )
+                    .limit(1)
+                )
+            else:
+                agent_id = app.bound_agent_id_with_session(session=session)
+            if not agent_id:
+                raise AgentConfigNodeUnboundError
+            return self._config_selection(
+                session, context, agent_id, version_id=version_id, build=build, for_write=for_write
+            )
+
+    @staticmethod
+    def _config_selection(
+        session: Session,
+        context: RequestContext,
+        agent_id: str,
+        *,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Resolve shared, private Build, or immutable config and commit explicit draft preparation."""
+        tenant_id = context.active_workspace_id
+        account_id = context.account_id
+        if version_id:
+            return AgentConfigSelection(tenant_id, agent_id, account_id, version_id, ConfigSelectionKind.SNAPSHOT)
+        try:
+            if build:
+                draft = find_agent_draft(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=account_id,
+                )
+                if draft is None:
+                    raise AgentConfigVersionMissingError
+                return AgentConfigSelection(tenant_id, agent_id, account_id, draft.id, ConfigSelectionKind.BUILD_DRAFT)
+            agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            if for_write:
+                draft = get_or_create_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    created_by=account_id,
+                )
+                draft_id = draft.id
+                session.commit()
+                return AgentConfigSelection(tenant_id, agent_id, account_id, draft_id, ConfigSelectionKind.DRAFT)
+            state = read_composer_state(session, agent=agent)
+        except (AgentComposerAgentMissingError, AgentBuildAgentNotFoundError) as exc:
+            raise AgentConfigRuntimeMissingError from exc
+        except (AgentComposerSnapshotMissingError, AgentBuildBaseUnavailableError) as exc:
+            raise AgentConfigVersionMissingError from exc
+        snapshot = state.active_config_snapshot
+        draft_summary = state.draft
+        stale_inline = (
+            agent.scope == AgentScope.WORKFLOW_ONLY
+            and snapshot is not None
+            and draft_summary is not None
+            and draft_summary.base_snapshot_id != snapshot.id
+        )
+        if draft_summary is not None and not stale_inline:
+            return AgentConfigSelection(tenant_id, agent_id, account_id, draft_summary.id, ConfigSelectionKind.DRAFT)
+        if snapshot is None:
+            raise AgentConfigVersionMissingError
+        return AgentConfigSelection(tenant_id, agent_id, account_id, snapshot.id, ConfigSelectionKind.SNAPSHOT)
 
     def get_composer(self, *, tenant_id: str, agent_id: str) -> AgentComposerState:
         """Return the tenant's Agent configuration without writing a draft."""
