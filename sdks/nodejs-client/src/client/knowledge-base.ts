@@ -653,7 +653,8 @@ export class KnowledgeBaseClient extends DifyClient {
     ensureNonEmptyString(datasetId, 'datasetId')
     ensureNonEmptyString(request.datasource_type, 'datasource_type')
     ensureNonEmptyString(request.start_node_id, 'start_node_id')
-    const shouldStream = request.response_mode === 'streaming'
+    // Published runs are queued and always return JSON batch metadata.
+    const shouldStream = !request.is_published && request.response_mode === 'streaming'
     if (shouldStream) {
       return this.http.requestStream<PipelineStreamEvent>({
         method: 'POST',

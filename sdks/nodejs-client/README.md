@@ -76,13 +76,13 @@ await workflowClient.run({
 await kbClient.listDatasets({ page: 1, limit: 20 })
 await kbClient.createDataset({ name: 'KB', indexing_technique: 'economy' })
 
-// RAG pipeline (may require service API route registration)
+// Draft RAG pipeline (may require service API route registration)
 const pipelineStream = await kbClient.runPipeline('dataset-id', {
   inputs: {},
   datasource_type: 'online_document',
   datasource_info_list: [],
   start_node_id: 'start-node-id',
-  is_published: true,
+  is_published: false,
   response_mode: 'streaming',
 })
 for await (const event of pipelineStream) {
@@ -101,6 +101,7 @@ Notes:
 - Pagination cursors for `getConversations`, `getConversationMessages`, and `getConversationVariables` may be omitted, `null`, or `''` to request the first page.
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 - `stream.toText()` rejects with `APIError` when Dify sends an `error` event, even if the HTTP status is 200. Iterating the stream directly still yields these events for custom handling.
+- Published RAG pipelines (`is_published: true`) always return JSON batch metadata in `result.data`, including when `response_mode` is `'streaming'`. Only draft runs return an event stream.
 
 ## Maintainers
 

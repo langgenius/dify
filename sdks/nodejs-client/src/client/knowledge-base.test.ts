@@ -260,7 +260,7 @@ describe('KnowledgeBaseClient', () => {
         is_published: true,
       },
     })
-    expect(requestStream).toHaveBeenCalledWith({
+    expect(request).toHaveBeenCalledWith({
       method: 'POST',
       path: '/datasets/ds/pipeline/run',
       data: {
