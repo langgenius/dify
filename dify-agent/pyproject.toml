@@ -72,7 +72,7 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 override-dependencies = ["filelock==4.2.1"]
 
 [tool.uv.sources]
-graphon = { git = "https://github.com/langgenius/graphon", tag = "v0.8.0-fix.1" }
+graphon = { url = "https://github.com/langgenius/graphon/archive/refs/tags/v0.8.0-fix.1.tar.gz" }
 
 [dependency-groups]
 dev = [
