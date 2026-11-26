@@ -57,6 +57,7 @@ class _DifyCoreToolsCaller(BaseModel):
     agent_id: str | None = None
     agent_config_version_id: str | None = None
     trace_session_id: str | None = Field(default=None, exclude_if=_is_none)
+    request_headers: dict[str, str] | None = Field(default=None, exclude_if=_is_none)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -139,6 +140,7 @@ class DifyCoreToolsClient:
                 agent_id=execution_context.agent_id,
                 agent_config_version_id=execution_context.agent_config_version_id,
                 trace_session_id=execution_context.trace_id,
+                request_headers=execution_context.request_headers,
             ),
             tool=_DifyCoreToolsRequestTool(
                 provider_type=tool_config.provider_type,
