@@ -11,6 +11,7 @@ import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 type InitPasswordFormValues = {
   password: string
@@ -85,7 +86,8 @@ const InitPasswordPopup = () => {
       </Field>
       {hasFormError && (
         <p role="alert" className="mb-4 system-sm-regular text-text-destructive">
-          {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {getRequestErrorMessage(validatePassword.error) ??
+            t(($) => $['api.actionFailed'], { ns: 'common' })}
         </p>
       )}
       <Button type="submit" variant="primary" loading={isSubmitting} className="w-full">
