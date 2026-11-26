@@ -1,9 +1,10 @@
 import contextlib
-from collections.abc import Generator
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 
 import core.app.app_config.easy_ui_based_app.model_config.converter as model_config_converter_module
 import core.app.apps.completion.app_generator as module
+import core.plugin.impl.base as plugin_client_module
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.apps.completion.app_generator import CompletionAppGenerator
@@ -24,8 +26,7 @@ from core.entities.provider_entities import (
     CustomProviderConfiguration,
     SystemConfiguration,
 )
-from core.plugin.entities.plugin_daemon import PluginModelSchemaEntity
-from core.plugin.impl.model import PluginModelClient
+from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginModelSchemaEntity
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderManager
 from core.workflow.file_reference import resolve_file_record_id
@@ -482,21 +483,11 @@ class TestCompletionAppGenerator:
         monkeypatch.setattr(
             model_config_converter_module, "create_plugin_provider_manager", lambda **_kwargs: provider_manager
         )
-        daemon_requests: list[dict[str, object]] = []
-
-        def schema_dispatch(
-            _client: PluginModelClient,
-            method: str,
-            path: str,
-            _type: type[PluginModelSchemaEntity],
-            headers: dict[str, str] | None = None,
-            data: bytes | dict[str, object] | None = None,
-            _params: dict[str, object] | None = None,
-            _files: dict[str, object] | None = None,
-        ) -> Generator[PluginModelSchemaEntity]:
-            """Serve the real daemon schema endpoint; everything above this boundary stays real."""
-            daemon_requests.append({"method": method, "path": path, "headers": headers, "data": data})
-            yield PluginModelSchemaEntity(
+        daemon_requests: list[httpx.Request] = []
+        schema_response = PluginDaemonBasicResponse[PluginModelSchemaEntity](
+            code=0,
+            message="",
+            data=PluginModelSchemaEntity(
                 model_schema=AIModelEntity(
                     model="model",
                     label=I18nObject(en_US="Model"),
@@ -504,9 +495,17 @@ class TestCompletionAppGenerator:
                     fetch_from=FetchFrom.PREDEFINED_MODEL,
                     model_properties={ModelPropertyKey.MODE: LLMMode.COMPLETION.value},
                 )
+            ),
+        )
+
+        def schema_dispatch(request: httpx.Request) -> httpx.Response:
+            daemon_requests.append(request)
+            return httpx.Response(
+                200,
+                text=f"data: {schema_response.model_dump_json()}\n\n",
+                headers={"Content-Type": "text/event-stream"},
             )
 
-        monkeypatch.setattr(PluginModelClient, "_request_with_plugin_daemon_response_stream", schema_dispatch)
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
         init_records = mocker.patch.object(
             generator,
@@ -538,14 +537,16 @@ class TestCompletionAppGenerator:
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
-        generator.generate(
-            session=sqlite_session,
-            app_model=_build_app_model(),
-            user=_build_user(),
-            args={"query": "q", "inputs": {}, "files": [], "model_config": override_config},
-            invoke_from=InvokeFrom.DEBUGGER,
-            streaming=True,
-        )
+        with httpx.Client(transport=httpx.MockTransport(schema_dispatch)) as client, monkeypatch.context() as patch:
+            patch.setattr(plugin_client_module, "_httpx_client", client)
+            generator.generate(
+                session=sqlite_session,
+                app_model=_build_app_model(),
+                user=_build_user(),
+                args={"query": "q", "inputs": {}, "files": [], "model_config": override_config},
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+            )
 
         assert get_app_config.call_args.kwargs["override_config_dict"] == override_config
         generate_entity = init_records.call_args.args[0]
@@ -564,9 +565,12 @@ class TestCompletionAppGenerator:
             "openai"
         )
         assert len(daemon_requests) == 1
-        assert daemon_requests[0]["method"] == "POST"
-        assert daemon_requests[0]["path"] == "plugin/tenant/dispatch/model/schema"
-        assert daemon_requests[0]["data"] == {
+        request = daemon_requests[0]
+        assert request.method == "POST"
+        assert request.url.path == "/plugin/tenant/dispatch/model/schema"
+        assert request.headers["Content-Type"] == "application/json"
+        assert request.headers["X-Plugin-ID"] == "langgenius/openai"
+        assert json.loads(request.content) == {
             "data": {
                 "provider": "openai",
                 "model_type": "llm",
