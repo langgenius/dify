@@ -695,7 +695,10 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
     clientMock.cancel
       .mockRejectedValueOnce(
-        createHttpError(new Response(null, { status: 409 }), { message: 'conflict' }),
+        createHttpError(new Response(null, { status: 409 }), {
+          code: 'knowledge_fs_space_not_found',
+          message: 'conflict',
+        }),
       )
       .mockResolvedValueOnce(run('canceled'))
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -704,8 +707,8 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
-    // The cancel failure carries the server's message in place of the generic copy.
-    expect(screen.getByText('conflict')).toBeInTheDocument()
+    // The cancel failure carries its translated reason in place of the generic copy.
+    expect(screen.getByText('requestErrors.code.knowledge_fs_space_not_found')).toBeInTheDocument()
     expect(screen.queryByText('knowledgeSources.crawlFailedDescription')).not.toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
 

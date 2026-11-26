@@ -80,7 +80,8 @@ describe('KnowledgeFsApiAccessDialog', () => {
     await screen.getByRole('button', { name: 'Open API access' }).click()
 
     const dialog = screen.getByRole('dialog', { name: 'knowledgeSpace.apiAgentAccess' })
-    await expect.element(dialog.getByText('API gateway unavailable')).toBeVisible()
+    // A message without a cataloged code gives way to the dialog's own text.
+    await expect.element(dialog.getByText('dataset.unavailable')).toBeVisible()
     await expect.element(dialog.getByText('appApi.loading')).not.toBeInTheDocument()
   })
 

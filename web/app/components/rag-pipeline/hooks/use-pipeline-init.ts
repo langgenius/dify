@@ -1,5 +1,5 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
+import { isDefinedError, ORPCError } from '@orpc/client'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toIconInfo } from '@/app/components/datasets/dataset-fields'
@@ -63,7 +63,11 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: unknown) {
-      if (!(error instanceof ORPCError) || error.code !== 'draft_workflow_not_exist') {
+      const draftMissing =
+        error instanceof ORPCError &&
+        isDefinedError(error) &&
+        error.code === 'draft_workflow_not_exist'
+      if (!draftMissing) {
         // The editor stays on its loading state, so the failure is reported here.
         toastActionError(error)
         return
