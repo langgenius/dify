@@ -21,9 +21,3 @@ def normalize_media_mime(mime_type: str | None) -> str:
     """
     normalized = (mime_type or "").split(";", 1)[0].strip().lower()
     return _MIME_ALIASES.get(normalized, normalized)
-
-
-def media_mime_aliases(mime_type: str) -> tuple[str, ...]:
-    """Return known MIME aliases that normalize to ``mime_type``."""
-    normalized = normalize_media_mime(mime_type)
-    return tuple(alias for alias, target in _MIME_ALIASES.items() if target == normalized)

@@ -2,6 +2,7 @@ import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { ThoughtItem } from '../type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act } from '@testing-library/react'
+import { getFilePreviewKind } from '@/app/components/base/file-uploader/utils'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
@@ -3647,6 +3648,81 @@ describe('useChat', () => {
 
     const lastResumeResponse = resumeResult.current.chatList[1]
     expect(lastResumeResponse!.message_files).toHaveLength(1)
+  })
+
+  it('should preserve filename, MIME type, size, transfer_method, and PDF preview on live send and resume message_file events', () => {
+    let resumeCallbacks: HookCallbacks
+    vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+      resumeCallbacks = options as HookCallbacks
+    })
+    let sendCallbacks: HookCallbacks
+    vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+      sendCallbacks = options as HookCallbacks
+    })
+
+    const { result: sendResult } = renderHookWithConsoleQuery(() => useChat())
+    act(() => {
+      sendResult.current.handleSend(streams.sender('url'), { query: 'export report' }, {})
+    })
+
+    const prevChatTree = [
+      {
+        id: 'q-resume-pdf',
+        content: 'export report',
+        isAnswer: false,
+        children: [
+          {
+            id: 'm-resume-pdf',
+            content: 'working',
+            isAnswer: true,
+            siblingIndex: 0,
+          },
+        ],
+      },
+    ]
+    const { result: resumeResult } = renderHookWithConsoleQuery(() =>
+      useChat(undefined, undefined, prevChatTree),
+    )
+    act(() => {
+      resumeResult.current.handleResume('m-resume-pdf', 'wr-pdf', { isPublicAPI: true })
+    })
+
+    const streamedPdf = {
+      id: 'mf-pdf-1',
+      type: 'custom',
+      belongs_to: 'assistant',
+      url: '/files/tools/tool-pdf-1.pdf?timestamp=1&nonce=n&sign=s',
+      filename: 'report.pdf',
+      mime_type: 'application/pdf',
+      size: 4096,
+      transfer_method: 'tool_file',
+      upload_file_id: 'tool-pdf-1',
+    }
+
+    act(() => {
+      sendCallbacks.onFile(streamedPdf)
+      resumeCallbacks.onFile(streamedPdf)
+    })
+
+    const expectedFile = {
+      id: 'mf-pdf-1',
+      name: 'report.pdf',
+      type: 'application/pdf',
+      size: 4096,
+      progress: 100,
+      transferMethod: 'tool_file',
+      supportFileType: 'document',
+      uploadedId: 'tool-pdf-1',
+      url: '/files/tools/tool-pdf-1.pdf?timestamp=1&nonce=n&sign=s',
+    }
+
+    const sendFile = sendResult.current.chatList[1]!.message_files![0]!
+    expect(sendFile).toEqual(expectedFile)
+    expect(getFilePreviewKind(sendFile)).toBe('pdf')
+
+    const resumeFile = resumeResult.current.chatList[1]!.message_files![0]!
+    expect(resumeFile).toEqual(expectedFile)
+    expect(getFilePreviewKind(resumeFile)).toBe('pdf')
   })
 
   it('should cover parallel_id tracing matches in iteration and loop finish', () => {

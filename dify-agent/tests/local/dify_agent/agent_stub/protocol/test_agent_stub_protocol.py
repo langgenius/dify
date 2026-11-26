@@ -66,7 +66,7 @@ def test_invalid_file_reference_has_no_record_id(reference: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "mapping,filename,mime_type,size,expected",
+    "mapping,filename,mime_type,size,delivered_to_user,expected",
     [
         (
             AgentStubFileMapping(
@@ -76,6 +76,7 @@ def test_invalid_file_reference_has_no_record_id(reference: str) -> None:
             None,
             None,
             None,
+            False,
             '\nTool generated media file: {"transfer_method":"tool_file",'
             '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ=="}'
             " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
@@ -88,16 +89,33 @@ def test_invalid_file_reference_has_no_record_id(reference: str) -> None:
             "图.png",
             "image/png",
             3,
+            False,
             '\nTool generated media file: {"transfer_method":"tool_file",'
             '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",'
             '"filename":"图.png","mime_type":"image/png","size":3}'
             " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
         ),
         (
+            AgentStubFileMapping(
+                transfer_method="tool_file",
+                reference="dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",
+            ),
+            "report.pdf",
+            "application/pdf",
+            128,
+            True,
+            '\nTool generated media file: {"transfer_method":"tool_file",'
+            '"reference":"dify-file-ref:eyJyZWNvcmRfaWQiOiIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDEifQ==",'
+            '"filename":"report.pdf","mime_type":"application/pdf","size":128}'
+            " (already delivered to the user as an attachment; call `read_media` with `file` set to this object"
+            " only if you need to inspect its content).\n",
+        ),
+        (
             AgentStubFileMapping(transfer_method="remote_url", url="https://example.com/chart.png?key=original"),
             "chart.png",
             None,
             None,
+            False,
             '\nTool generated media link: {"transfer_method":"remote_url",'
             '"url":"https://example.com/chart.png?key=original","filename":"chart.png"}'
             " (call `read_media` with `file` set to this object only if you need to inspect its content).\n",
@@ -109,9 +127,19 @@ def test_format_media_observation_wire_format(
     filename: str | None,
     mime_type: str | None,
     size: int | None,
+    delivered_to_user: bool,
     expected: str,
 ) -> None:
-    assert format_media_observation(mapping, filename=filename, mime_type=mime_type, size=size) == expected
+    assert (
+        format_media_observation(
+            mapping,
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            delivered_to_user=delivered_to_user,
+        )
+        == expected
+    )
 
 
 def test_agent_stub_connections_url_handles_trailing_slash_and_no_trailing_slash() -> None:

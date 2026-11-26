@@ -52,7 +52,7 @@ from dify_agent.layers.dify_plugin.tool_client import (
 )
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import Capability as ExecutionContextCapability
-from dify_agent.layers.read_media.mime import media_mime_aliases, normalize_media_mime
+from dify_agent.layers.read_media.mime import normalize_media_mime
 
 
 # Plugin tools intentionally do not expose a per-tool strictness override in the
@@ -62,13 +62,6 @@ from dify_agent.layers.read_media.mime import media_mime_aliases, normalize_medi
 PLUGIN_TOOL_STRICT = False
 PLUGIN_FILE_DEFAULT_TYPE = "custom"
 _SUPPORTED_REMOTE_URL_PREFIXES = ("http://", "https://")
-_READ_MEDIA_HINT_SUFFIX = (
-    " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
-)
-_DELIVERED_BLOB_HINT_SUFFIX = (
-    " (already delivered to the user as an attachment; call `read_media` with `file` set to this object"
-    " only if you need to inspect its content).\n"
-)
 
 
 class Config(DifyPluginToolsLayerConfig):
@@ -532,9 +525,6 @@ def _guess_extension_for_mime_type(mime_type: str) -> str:
         x_candidate = f"{main_type}/x-{sub_type}"
         if x_candidate not in candidates:
             candidates.append(x_candidate)
-    for alias in media_mime_aliases(canonical):
-        if alias not in candidates:
-            candidates.append(alias)
     for candidate in candidates:
         extension = mimetypes.guess_extension(candidate)
         if extension:
@@ -598,12 +588,6 @@ def _resolve_blob_file_info(
     if not _has_safe_extension(extension) or not _extension_matches_mime_type(filename, extension, mime_type):
         filename = stem + _guess_extension_for_mime_type(mime_type)
     return filename, mime_type
-
-
-def _with_delivered_attachment_hint(observation: str) -> str:
-    if observation.endswith(_READ_MEDIA_HINT_SUFFIX):
-        return observation.removesuffix(_READ_MEDIA_HINT_SUFFIX) + _DELIVERED_BLOB_HINT_SUFFIX
-    return observation
 
 
 async def _convert_tool_response_to_text(
@@ -738,9 +722,13 @@ async def _media_response_to_text(
             mime_type = mime_type or mimetypes.guess_type(filename or "")[0]
         else:
             raise ValueError("media output is incomplete or has no usable locator")
-        observation = format_media_observation(mapping, filename=filename, mime_type=mime_type, size=size)
-        if tool_file_id is not None and context.execution_context.agent_mode == "agent_app":
-            observation = _with_delivered_attachment_hint(observation)
+        observation = format_media_observation(
+            mapping,
+            filename=filename,
+            mime_type=mime_type,
+            size=size,
+            delivered_to_user=tool_file_id is not None and context.execution_context.agent_mode == "agent_app",
+        )
         return observation, tool_file_id
     except Exception as exc:
         return f"\nTool media unavailable ({filename}, {mime_type}, {size} bytes): {exc}.\n", None

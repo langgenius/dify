@@ -5,6 +5,7 @@ import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, StreamCallbacks, StreamSender } from '@/service/event-stream'
+import type { VisionFile } from '@/types/app'
 import type { ReasoningChunkResponse } from '@/types/workflow'
 import { findLast, findLastIndex, uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -42,13 +43,12 @@ import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
-type HistoryMessageFile = MessageFileInput
 type HistoryConversationMessage = {
   id: string
   answer?: string
   status?: string
   message?: { role: string; text: string; files?: FileEntity[] }[]
-  message_files?: HistoryMessageFile[]
+  message_files?: MessageFileInput[]
   agent_thoughts?: ThoughtItem[] | null
   retriever_resources?: ChatItem['citation']
   metadata?: {
@@ -85,6 +85,72 @@ type SendCallback = {
 type UseChatOptions = {
   isNewAgent?: boolean
   timezone?: string
+}
+
+const defaultStreamingMimeType = (fileType: string) =>
+  fileType === 'image'
+    ? 'image/png'
+    : fileType === 'video'
+      ? 'video/mp4'
+      : fileType === 'audio'
+        ? 'audio/mpeg'
+        : 'application/octet-stream'
+
+const defaultStreamingSupportFileType = (fileType: string) =>
+  fileType === 'image'
+    ? 'image'
+    : fileType === 'video'
+      ? 'video'
+      : fileType === 'audio'
+        ? 'audio'
+        : fileType === 'custom'
+          ? 'custom'
+          : 'document'
+
+const defaultStreamingFilename = (fileType: string) =>
+  `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`
+
+/** Normalize SSE `message_file` payloads into display `FileEntity` objects while keeping legacy fallbacks. */
+function normalizeStreamingFile(file: VisionFile): FileEntity {
+  const fileType = file.type || 'image'
+
+  if ('transferMethod' in file) {
+    const baseFile = file as Partial<FileEntity>
+    return {
+      id: baseFile.id || file.id || '',
+      type: baseFile.type || defaultStreamingMimeType(fileType),
+      transferMethod:
+        baseFile.transferMethod ||
+        (fileType === 'image' ? TransferMethod.remote_url : TransferMethod.local_file),
+      uploadedId: baseFile.uploadedId || file.id || '',
+      supportFileType: baseFile.supportFileType || defaultStreamingSupportFileType(fileType),
+      progress: baseFile.progress ?? 100,
+      name: baseFile.name || defaultStreamingFilename(fileType),
+      url: baseFile.url || file.url,
+      size: baseFile.size ?? 0,
+    }
+  }
+
+  const fallbackTransferMethod =
+    fileType === 'image' ? TransferMethod.remote_url : TransferMethod.local_file
+  const [processed] = getProcessedFilesFromResponse([
+    toFileResponse({
+      id: file.id,
+      filename: file.filename ?? undefined,
+      size: file.size ?? undefined,
+      url: file.url,
+      upload_file_id: file.upload_file_id,
+      type: defaultStreamingSupportFileType(fileType),
+      mime_type: file.mime_type || defaultStreamingMimeType(fileType),
+      transfer_method: file.transfer_method || fallbackTransferMethod,
+    }),
+  ])
+
+  return {
+    ...processed!,
+    name: processed!.name || defaultStreamingFilename(fileType),
+    supportFileType: processed!.supportFileType || defaultStreamingSupportFileType(fileType),
+  }
 }
 
 /** Upsert file metadata by ID while retaining the order files first arrived in. */
@@ -785,48 +851,7 @@ export const useChat = (
           }
         },
         onFile(file) {
-          // Convert simple file type to MIME type for non-agent mode
-          // Backend sends: { id, type: "image", belongs_to, url }
-          // Frontend expects: { id, type: "image/png", transferMethod, url, uploadedId, supportFileType, name, size }
-
-          // Determine file type for MIME conversion
-          const fileType = (file as { type?: string }).type || 'image'
-
-          // If file already has transferMethod, use it as base and ensure all required fields exist
-          // Otherwise, create a new complete file object
-          const baseFile = 'transferMethod' in file ? (file as Partial<FileEntity>) : null
-
-          const convertedFile: FileEntity = {
-            id: baseFile?.id || (file as { id: string }).id,
-            type:
-              baseFile?.type ||
-              (fileType === 'image'
-                ? 'image/png'
-                : fileType === 'video'
-                  ? 'video/mp4'
-                  : fileType === 'audio'
-                    ? 'audio/mpeg'
-                    : 'application/octet-stream'),
-            transferMethod:
-              (baseFile?.transferMethod as FileEntity['transferMethod']) ||
-              (fileType === 'image' ? 'remote_url' : 'local_file'),
-            uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
-            supportFileType:
-              baseFile?.supportFileType ||
-              (fileType === 'image'
-                ? 'image'
-                : fileType === 'video'
-                  ? 'video'
-                  : fileType === 'audio'
-                    ? 'audio'
-                    : 'document'),
-            progress: baseFile?.progress ?? 100,
-            name:
-              baseFile?.name ||
-              `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
-            url: baseFile?.url || (file as { url?: string }).url,
-            size: baseFile?.size ?? 0, // Generated files don't have a known size
-          }
+          const convertedFile = normalizeStreamingFile(file)
           updateChatTreeNode(messageId, (responseItem) => {
             attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
           })
@@ -1428,48 +1453,7 @@ export const useChat = (
           }
         },
         onFile(file) {
-          // Convert simple file type to MIME type for non-agent mode
-          // Backend sends: { id, type: "image", belongs_to, url }
-          // Frontend expects: { id, type: "image/png", transferMethod, url, uploadedId, supportFileType, name, size }
-
-          // Determine file type for MIME conversion
-          const fileType = (file as { type?: string }).type || 'image'
-
-          // If file already has transferMethod, use it as base and ensure all required fields exist
-          // Otherwise, create a new complete file object
-          const baseFile = 'transferMethod' in file ? (file as Partial<FileEntity>) : null
-
-          const convertedFile: FileEntity = {
-            id: baseFile?.id || (file as { id: string }).id,
-            type:
-              baseFile?.type ||
-              (fileType === 'image'
-                ? 'image/png'
-                : fileType === 'video'
-                  ? 'video/mp4'
-                  : fileType === 'audio'
-                    ? 'audio/mpeg'
-                    : 'application/octet-stream'),
-            transferMethod:
-              (baseFile?.transferMethod as FileEntity['transferMethod']) ||
-              (fileType === 'image' ? 'remote_url' : 'local_file'),
-            uploadedId: baseFile?.uploadedId || (file as { id: string }).id,
-            supportFileType:
-              baseFile?.supportFileType ||
-              (fileType === 'image'
-                ? 'image'
-                : fileType === 'video'
-                  ? 'video'
-                  : fileType === 'audio'
-                    ? 'audio'
-                    : 'document'),
-            progress: baseFile?.progress ?? 100,
-            name:
-              baseFile?.name ||
-              `generated_${fileType}.${fileType === 'image' ? 'png' : fileType === 'video' ? 'mp4' : fileType === 'audio' ? 'mp3' : 'bin'}`,
-            url: baseFile?.url || (file as { url?: string }).url,
-            size: baseFile?.size ?? 0, // Generated files don't have a known size
-          }
+          const convertedFile = normalizeStreamingFile(file)
 
           attachStreamingFile(responseItem, convertedFile, options.isNewAgent)
 

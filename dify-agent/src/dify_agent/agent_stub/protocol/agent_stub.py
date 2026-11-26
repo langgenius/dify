@@ -236,11 +236,14 @@ def format_media_observation(
     filename: str | None = None,
     mime_type: str | None = None,
     size: int | None = None,
+    delivered_to_user: bool = False,
 ) -> str:
     """Render a copyable lightweight handle, omitting unavailable metadata.
 
     No multimodal content is attached. Both the API and agent runtime use this
     client-safe format so the model can pass the object back to read_media.
+    Set ``delivered_to_user=True`` when the runtime also delivers the persisted
+    file directly to the user as an attachment.
     """
     summary = mapping.model_dump(mode="json", exclude_none=True)
     summary.update(
@@ -251,10 +254,11 @@ def format_media_observation(
         }
     )
     kind = "link" if mapping.transfer_method == "remote_url" else "file"
+    hint_prefix = "already delivered to the user as an attachment; " if delivered_to_user else ""
     return (
         f"\nTool generated media {kind}: "
         + json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
-        + " (call `read_media` with `file` set to this object only if you need to inspect its content).\n"
+        + f" ({hint_prefix}call `read_media` with `file` set to this object only if you need to inspect its content).\n"
     )
 
 

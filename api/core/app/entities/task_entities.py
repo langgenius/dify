@@ -165,6 +165,11 @@ class MessageFileStreamResponse(StreamResponse):
     type: str
     belongs_to: str
     url: str
+    filename: str | None = None
+    mime_type: str | None = None
+    size: int | None = None
+    transfer_method: str | None = None
+    upload_file_id: str | None = None
 
 
 class MessageReplaceStreamResponse(StreamResponse):

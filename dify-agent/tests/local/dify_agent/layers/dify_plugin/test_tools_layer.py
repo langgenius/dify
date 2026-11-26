@@ -697,6 +697,92 @@ async def test_truncated_blob_chunk_is_not_uploaded_while_sibling_outputs_succee
 
 
 @pytest.mark.anyio
+async def test_invalid_base64_blob_and_blob_chunk_are_isolated_without_uploading():
+    allocations = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/dispatch/tool/invoke"):
+            return _stream(
+                [
+                    {"type": "text", "message": {"text": "partial:"}},
+                    {
+                        "type": "blob",
+                        "message": {"blob": "bad!"},
+                        "meta": {"filename": "corrupt-single.pdf", "mime_type": "application/pdf"},
+                    },
+                    {
+                        "type": "blob",
+                        "message": {"blob": "abc"},
+                        "meta": {"filename": "bad-padding.png", "mime_type": "image/png"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "corrupt-chunked",
+                            "sequence": 0,
+                            "total_length": 6,
+                            "blob": base64.b64encode(b"ab").decode(),
+                            "end": False,
+                        },
+                        "meta": {"filename": "corrupt-chunked.pdf", "mime_type": "application/pdf"},
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "corrupt-chunked",
+                            "sequence": 1,
+                            "total_length": 6,
+                            "blob": "bad!",
+                            "end": False,
+                        },
+                    },
+                    {
+                        "type": "blob_chunk",
+                        "message": {
+                            "id": "corrupt-chunked",
+                            "sequence": 2,
+                            "total_length": 6,
+                            "blob": base64.b64encode(b"ef").decode(),
+                            "end": True,
+                        },
+                    },
+                    {
+                        "type": "blob",
+                        "message": {"blob": base64.b64encode(b"healthy").decode()},
+                        "meta": {"filename": "healthy.png", "mime_type": "image/png"},
+                    },
+                ]
+            )
+        if request.url.path == "/inner/api/agent/files/upload-request":
+            allocations.append(json.loads(request.content)["filename"])
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=test"})
+        return httpx.Response(201, json={"reference": _FILE_REFERENCE})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await invoke_native_tool(_deps(client, max_bytes=1024), tools_layer.Toolset("tools"), "create", {})
+
+    assert allocations == ["healthy.png"]
+    assert result.output.startswith("partial:")
+    assert result.output.count("Tool media unavailable") == 3
+    assert (
+        "\nTool media unavailable (corrupt-single.pdf, application/pdf, None bytes):"
+        " Invalid base64-encoded blob payload.\n"
+    ) in result.output
+    assert (
+        "\nTool media unavailable (bad-padding.png, image/png, None bytes): Invalid base64-encoded blob payload.\n"
+    ) in result.output
+    assert (
+        "\nTool media unavailable (corrupt-chunked.pdf, application/pdf, 6 bytes):"
+        " Invalid base64-encoded blob payload.\n"
+    ) in result.output
+    assert '"filename":"healthy.png"' in result.output
+    assert '"filename":"corrupt-single.pdf"' not in result.output
+    assert '"filename":"bad-padding.png"' not in result.output
+    assert '"filename":"corrupt-chunked.pdf"' not in result.output
+    assert _tool_returns(result)[0].metadata == {"dify_plugin_blob_files": [_FILE_ID]}
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "stream_body",
     [

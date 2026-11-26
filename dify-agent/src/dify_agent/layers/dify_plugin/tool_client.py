@@ -17,12 +17,23 @@ to the package whose declaration and credentials were prepared by the API.
 from __future__ import annotations
 
 import base64
+import binascii
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Self
 
 import httpx
-from pydantic import BaseModel, Field, PrivateAttr, ValidationError, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    ModelWrapValidatorHandler,
+    PrivateAttr,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from dify_agent.layers.dify_plugin.configs import DifyPluginToolCredentialType
 from dify_agent.plugin_daemon_transport import (
@@ -54,6 +65,20 @@ class FileChunk:
         self.data = bytearray(self.total_length)
 
 
+def _decode_blob_bytes(raw_blob: object) -> bytes:
+    """Decode wire base64 strings strictly while accepting in-memory bytes."""
+    if isinstance(raw_blob, bytes):
+        return raw_blob
+    if isinstance(raw_blob, bytearray):
+        return bytes(raw_blob)
+    if isinstance(raw_blob, str):
+        try:
+            return base64.b64decode(raw_blob, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("Invalid base64-encoded blob payload") from exc
+    raise ValueError("Blob payload must be a base64 string or bytes")
+
+
 class DifyPluginToolInvokeMessage(BaseModel):
     """Subset of Dify tool stream messages needed for agent observations."""
 
@@ -67,12 +92,22 @@ class DifyPluginToolInvokeMessage(BaseModel):
     class BlobMessage(BaseModel):
         blob: bytes
 
+        @field_validator("blob", mode="before")
+        @classmethod
+        def _validate_blob(cls, value: object) -> bytes:
+            return _decode_blob_bytes(value)
+
     class BlobChunkMessage(BaseModel):
         id: str
         sequence: int
         total_length: int
         blob: bytes
         end: bool
+
+        @field_validator("blob", mode="before")
+        @classmethod
+        def _validate_blob(cls, value: object) -> bytes:
+            return _decode_blob_bytes(value)
 
     class FileMessage(BaseModel):
         file_marker: str = "file_marker"
@@ -129,18 +164,55 @@ class DifyPluginToolInvokeMessage(BaseModel):
 
     @property
     def chunk_error(self) -> str | None:
-        """Internal chunk-merging error attached only when ``isolate_errors=True``."""
+        """Internal blob or chunk decoding/merging error attached only when error isolation is enabled."""
         return self._chunk_error
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _validate_with_optional_blob_isolation(
+        cls,
+        value: object,
+        handler: ModelWrapValidatorHandler[Self],
+        info: ValidationInfo,
+    ) -> Self:
+        isolate_blob_errors = isinstance(info.context, Mapping) and bool(info.context.get("isolate_blob_errors"))
+        if not isolate_blob_errors or not isinstance(value, Mapping):
+            return handler(value)
+
+        raw_type = value.get("type")
+        raw_message = value.get("message")
+        if (
+            raw_type in {cls.MessageType.BLOB, cls.MessageType.BLOB.value}
+            and isinstance(raw_message, Mapping)
+            and "blob" in raw_message
+        ):
+            try:
+                decoded = _decode_blob_bytes(raw_message["blob"])
+            except ValueError as exc:
+                item = handler({**value, "message": None})
+                item._chunk_error = str(exc)
+                return item
+            return handler({**value, "message": {**raw_message, "blob": decoded}})
+
+        if (
+            raw_type in {cls.MessageType.BLOB_CHUNK, cls.MessageType.BLOB_CHUNK.value}
+            and isinstance(raw_message, Mapping)
+            and "blob" in raw_message
+        ):
+            try:
+                decoded = _decode_blob_bytes(raw_message["blob"])
+            except ValueError as exc:
+                placeholder = cls.BlobChunkMessage.model_validate({**raw_message, "blob": b""})
+                item = handler({**value, "message": placeholder})
+                item._chunk_error = str(exc)
+                return item
+            return handler({**value, "message": {**raw_message, "blob": decoded}})
+
+        return handler(value)
 
     @field_validator("message", mode="before")
     @classmethod
     def decode_message(cls, value: object, info: ValidationInfo) -> object:
-        if isinstance(value, dict) and "blob" in value:
-            try:
-                value = {**value, "blob": base64.b64decode(value["blob"])}
-            except Exception:
-                return value
-
         msg_type = info.data.get("type") if isinstance(info.data, dict) else None
         if msg_type == cls.MessageType.JSON and isinstance(value, dict) and "json_object" not in value:
             return {"json_object": value}
@@ -210,6 +282,7 @@ class DifyPluginDaemonToolClient:
                     "tool_parameters": dict(tool_parameters),
                 },
                 response_model=DifyPluginToolInvokeMessage,
+                validation_context={"isolate_blob_errors": True},
             )
         ]
         return merge_blob_chunks(raw_messages, max_file_size=self.max_file_size, isolate_errors=True)
@@ -220,6 +293,7 @@ class DifyPluginDaemonToolClient:
         path: str,
         request_data: Mapping[str, object],
         response_model: type[T],
+        validation_context: dict[str, object] | None = None,
     ) -> AsyncIterator[T]:
         """Send one daemon stream request and yield typed items.
 
@@ -280,7 +354,7 @@ class DifyPluginDaemonToolClient:
                 if wrapped.data is None:
                     raise DifyPluginToolClientError("Plugin daemon returned an empty stream item.")
                 try:
-                    yield response_model.model_validate(wrapped.data)
+                    yield response_model.model_validate(wrapped.data, context=validation_context)
                 except ValidationError as exc:
                     raise DifyPluginToolClientError(
                         "Invalid plugin daemon tool message payload.",
@@ -302,6 +376,11 @@ class DifyPluginDaemonToolClient:
 def _has_valid_size(meta: Mapping[str, object]) -> bool:
     size = meta.get("size")
     return isinstance(size, int) and not isinstance(size, bool)
+
+
+def _backfill_size(meta: dict[str, object], total_length: int) -> None:
+    if not _has_valid_size(meta) and total_length >= 0:
+        meta["size"] = total_length
 
 
 def _chunk_error_message(*, error: str, meta: dict[str, object] | None) -> DifyPluginToolInvokeMessage:
@@ -328,11 +407,11 @@ def merge_blob_chunks(
     from every chunk is retained; later values override earlier ones for the same
     file, including when the final chunk has no metadata.
 
-    When ``isolate_errors=True``, chunk-level size, sequence, completeness, or
-    framing failures are isolated per ``chunk_id`` into a single ``BLOB_CHUNK``
-    item carrying ``chunk_error`` instead of aborting the whole tool stream, and
-    any stream that ends without ``end=True`` emits one incomplete ``BLOB_CHUNK``
-    item per unfinished file.
+    When ``isolate_errors=True``, chunk-level decoding, size, sequence,
+    completeness, or framing failures are isolated per ``chunk_id`` into a single
+    ``BLOB_CHUNK`` item carrying ``chunk_error`` instead of aborting the whole
+    tool stream, and any stream that ends without ``end=True`` emits one
+    incomplete ``BLOB_CHUNK`` item per unfinished file.
     """
     files: dict[str, FileChunk] = {}
     failed_files: dict[str, tuple[DifyPluginToolInvokeMessage, dict[str, object]]] = {}
@@ -342,17 +421,13 @@ def merge_blob_chunks(
         *,
         chunk_id: str,
         error: str,
-        existing_meta: Mapping[str, object] | None,
-        resp_meta: Mapping[str, object] | None,
+        meta: Mapping[str, object] | None,
         total_length: int,
     ) -> None:
         if not isolate_errors:
             raise ValueError(error)
-        failed_meta: dict[str, object] = dict(existing_meta) if existing_meta else {}
-        if isinstance(resp_meta, Mapping):
-            failed_meta.update(resp_meta)
-        if not _has_valid_size(failed_meta) and total_length >= 0:
-            failed_meta["size"] = total_length
+        failed_meta: dict[str, object] = dict(meta) if isinstance(meta, Mapping) else {}
+        _backfill_size(failed_meta, total_length)
         failed_message = _chunk_error_message(error=error, meta=failed_meta or None)
         merged_messages.append(failed_message)
         failed_files[chunk_id] = (failed_message, failed_meta)
@@ -363,11 +438,13 @@ def merge_blob_chunks(
                 if isolate_errors:
                     merged_messages.append(
                         _chunk_error_message(
-                            error="Blob chunk responses must carry BlobChunkMessage payloads.",
+                            error=resp.chunk_error or "Blob chunk responses must carry BlobChunkMessage payloads.",
                             meta=dict(resp.meta) if isinstance(resp.meta, Mapping) else None,
                         )
                     )
                     continue
+                if resp.chunk_error is not None:
+                    raise ValueError(resp.chunk_error)
                 raise TypeError("Blob chunk responses must carry BlobChunkMessage payloads.")
 
             chunk_id = resp.message.id
@@ -379,9 +456,20 @@ def merge_blob_chunks(
                 failed_message, failed_meta = failed_files[chunk_id]
                 if isinstance(resp.meta, Mapping):
                     failed_meta.update(resp.meta)
-                    if not _has_valid_size(failed_meta) and total_length >= 0:
-                        failed_meta["size"] = total_length
+                    _backfill_size(failed_meta, total_length)
                     failed_message.meta = failed_meta or None
+                continue
+
+            if resp.chunk_error is not None:
+                chunk = files.pop(chunk_id, None)
+                if chunk is not None and isinstance(resp.meta, Mapping):
+                    chunk.meta.update(resp.meta)
+                _fail_chunk(
+                    chunk_id=chunk_id,
+                    error=resp.chunk_error,
+                    meta=chunk.meta if chunk is not None else resp.meta,
+                    total_length=chunk.total_length if chunk is not None else total_length,
+                )
                 continue
 
             if chunk_id not in files:
@@ -392,8 +480,7 @@ def merge_blob_chunks(
                     _fail_chunk(
                         chunk_id=chunk_id,
                         error=f"Invalid blob chunk total_length: {total_length}",
-                        existing_meta=None,
-                        resp_meta=resp.meta,
+                        meta=resp.meta,
                         total_length=total_length,
                     )
                     continue
@@ -401,8 +488,7 @@ def merge_blob_chunks(
                     _fail_chunk(
                         chunk_id=chunk_id,
                         error=f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB",
-                        existing_meta=None,
-                        resp_meta=resp.meta,
+                        meta=resp.meta,
                         total_length=total_length,
                     )
                     continue
@@ -418,8 +504,7 @@ def merge_blob_chunks(
                 _fail_chunk(
                     chunk_id=chunk_id,
                     error=f"File is too large which reached the limit of {max_file_size / 1024 / 1024}MB",
-                    existing_meta=chunk.meta,
-                    resp_meta=None,
+                    meta=chunk.meta,
                     total_length=total_length,
                 )
                 continue
@@ -428,8 +513,7 @@ def merge_blob_chunks(
                 _fail_chunk(
                     chunk_id=chunk_id,
                     error=f"File chunk is too large which reached the limit of {max_chunk_size / 1024}KB",
-                    existing_meta=chunk.meta,
-                    resp_meta=None,
+                    meta=chunk.meta,
                     total_length=total_length,
                 )
                 continue
@@ -443,8 +527,7 @@ def merge_blob_chunks(
                 _fail_chunk(
                     chunk_id=chunk_id,
                     error="Plugin file chunks have an invalid sequence or length",
-                    existing_meta=chunk.meta,
-                    resp_meta=None,
+                    meta=chunk.meta,
                     total_length=chunk.total_length,
                 )
                 continue
@@ -465,6 +548,8 @@ def merge_blob_chunks(
                 )
                 del files[chunk_id]
         else:
+            if not isolate_errors and resp.chunk_error is not None:
+                raise ValueError(resp.chunk_error)
             merged_messages.append(resp)
 
     if isolate_errors and files:

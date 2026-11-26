@@ -12,7 +12,11 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import AppAdditionalFeatures
-from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
+from core.app.entities.queue_entities import (
+    QueueAnnotationReplyEvent,
+    QueueMessageFileEvent,
+    QueueRetrieverResourcesEvent,
+)
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -21,13 +25,19 @@ from graphon.file import FileTransferMethod, FileType
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, Conversation, MessageAnnotation, MessageFile
-from tests.helpers.unit.model_factories import make_app, make_conversation
+from models.model import App, Conversation, MessageAnnotation, MessageFile, UploadFile
+from models.tools import ToolFile
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_upload_file
 
 
 @dataclass(frozen=True)
 class _AppConfigWithFeatures:
     additional_features: AppAdditionalFeatures
+
+
+@dataclass(frozen=True)
+class _AppConfigWithTenant:
+    tenant_id: str
 
 
 @dataclass(frozen=True)
@@ -641,6 +651,146 @@ class TestMessageCycleManagerOptimization:
         response = message_cycle_manager.message_file_to_stream_response(SimpleNamespace(message_file_id="missing"))
 
         assert response is None
+
+    def test_message_file_to_stream_response_includes_tool_file_metadata_scoped_to_tenant(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
+        """Include ToolFile metadata when the attachment belongs to the app tenant."""
+        TypeBase.metadata.create_all(sqlite_engine, tables=[ToolFile.__table__])
+        message_cycle_manager._application_generate_entity.task_id = "task-tool-meta"
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithTenant(tenant_id="tenant-1")
+
+        report_tool = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/report",
+            name="../dir/report.pdf",
+            mimetype="application/pdf",
+            size=4096,
+        )
+        unnamed_tool = ToolFile(
+            tenant_id="tenant-1",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/unnamed",
+            name="..",
+            mimetype="application/pdf",
+            size=-1,
+        )
+        foreign_tool = ToolFile(
+            tenant_id="tenant-2",
+            user_id="account-id",
+            conversation_id=None,
+            file_key="generated/secret",
+            name="secret.pdf",
+            mimetype="application/pdf",
+            size=1024,
+        )
+        cycle_db.add_all([report_tool, unnamed_tool, foreign_tool])
+        cycle_db.flush()
+
+        report_file = _message_file(
+            file_id="file-report",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{report_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        report_file.upload_file_id = report_tool.id
+        unnamed_file = _message_file(
+            file_id="file-unnamed",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{unnamed_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        unnamed_file.upload_file_id = unnamed_tool.id
+        foreign_file = _message_file(
+            file_id="file-foreign",
+            message_id="msg-meta",
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{foreign_tool.id}.pdf",
+            file_type=FileType.DOCUMENT,
+        )
+        foreign_file.upload_file_id = foreign_tool.id
+        cycle_db.add_all([report_file, unnamed_file, foreign_file])
+        cycle_db.commit()
+
+        with patch("core.app.task_pipeline.message_cycle_manager.sign_tool_file", return_value="signed-pdf"):
+            report_resp = message_cycle_manager.message_file_to_stream_response(
+                QueueMessageFileEvent(message_file_id="file-report")
+            )
+            unnamed_resp = message_cycle_manager.message_file_to_stream_response(
+                QueueMessageFileEvent(message_file_id="file-unnamed")
+            )
+            foreign_resp = message_cycle_manager.message_file_to_stream_response(
+                QueueMessageFileEvent(message_file_id="file-foreign")
+            )
+
+        assert report_resp is not None
+        assert report_resp.filename == "report.pdf"
+        assert report_resp.mime_type == "application/pdf"
+        assert report_resp.size == 4096
+        assert report_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert report_resp.upload_file_id == report_tool.id
+
+        assert unnamed_resp is not None
+        assert unnamed_resp.filename == f"{unnamed_tool.id}.pdf"
+        assert unnamed_resp.mime_type == "application/pdf"
+        assert unnamed_resp.size is None
+        assert unnamed_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert unnamed_resp.upload_file_id == unnamed_tool.id
+
+        assert foreign_resp is not None
+        assert foreign_resp.filename is None
+        assert foreign_resp.mime_type is None
+        assert foreign_resp.size is None
+        assert foreign_resp.transfer_method == FileTransferMethod.TOOL_FILE
+        assert foreign_resp.upload_file_id == foreign_tool.id
+
+    def test_message_file_to_stream_response_includes_upload_file_metadata(
+        self, message_cycle_manager, cycle_db: Session, sqlite_engine: Engine
+    ):
+        """Include UploadFile metadata when streaming a local_file attachment."""
+        TypeBase.metadata.create_all(sqlite_engine, tables=[UploadFile.__table__])
+        message_cycle_manager._application_generate_entity.task_id = "task-upload-meta"
+        message_cycle_manager._application_generate_entity.app_config = _AppConfigWithTenant(tenant_id="tenant-1")
+
+        upload = make_upload_file(
+            tenant_id="tenant-1",
+            name="brief.pdf",
+            mime_type="application/pdf",
+            size=2048,
+            extension="pdf",
+        )
+        cycle_db.add(upload)
+        cycle_db.flush()
+
+        local_file = MessageFile(
+            message_id="msg-upload",
+            type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-id",
+            belongs_to=MessageFileBelongsTo.USER,
+            url=f"http://example.com/files/{upload.id}/file-preview",
+            upload_file_id=upload.id,
+        )
+        local_file.id = "file-local"
+        cycle_db.add(local_file)
+        cycle_db.commit()
+
+        response = message_cycle_manager.message_file_to_stream_response(
+            QueueMessageFileEvent(message_file_id="file-local")
+        )
+
+        assert response is not None
+        assert response.filename == "brief.pdf"
+        assert response.mime_type == "application/pdf"
+        assert response.size == 2048
+        assert response.transfer_method == FileTransferMethod.LOCAL_FILE
+        assert response.upload_file_id == upload.id
 
     def test_message_replace_to_stream_response_returns_reason(self, message_cycle_manager):
         """Include the provided replacement reason in the stream payload."""

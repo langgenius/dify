@@ -21,6 +21,7 @@ import json
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from dify_agent.layers.dify_plugin.tool_client import (
     DifyPluginDaemonToolClient,
@@ -173,6 +174,148 @@ def test_wire_payload_cannot_inject_chunk_error() -> None:
     assert "chunk_error" not in message.model_dump()
 
 
+@pytest.mark.parametrize(
+    ("raw_blob", "expected"),
+    [
+        (b"raw-bytes", b"raw-bytes"),
+        (bytearray(b"mut-bytes"), b"mut-bytes"),
+        (base64.b64encode(b"wire-bytes").decode(), b"wire-bytes"),
+        ("", b""),
+    ],
+)
+def test_blob_and_blob_chunk_accept_bytes_bytearray_and_valid_base64(raw_blob: object, expected: bytes) -> None:
+    blob_message = DifyPluginToolInvokeMessage.model_validate({"type": "blob", "message": {"blob": raw_blob}})
+    chunk_message = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "f1",
+                "sequence": 0,
+                "total_length": len(expected),
+                "blob": raw_blob,
+                "end": True,
+            },
+        }
+    )
+
+    assert isinstance(blob_message.message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert blob_message.message.blob == expected
+    assert isinstance(chunk_message.message, DifyPluginToolInvokeMessage.BlobChunkMessage)
+    assert chunk_message.message.blob == expected
+
+
+@pytest.mark.parametrize("bad_blob", ["bad!", "abc", "YQ==!", "中文", 123, None])
+def test_strict_validation_rejects_invalid_base64_for_blob_and_blob_chunk(bad_blob: object) -> None:
+    with pytest.raises(ValidationError):
+        DifyPluginToolInvokeMessage.model_validate({"type": "blob", "message": {"blob": bad_blob}})
+
+    with pytest.raises(ValidationError):
+        DifyPluginToolInvokeMessage.model_validate(
+            {
+                "type": "blob_chunk",
+                "message": {
+                    "id": "f1",
+                    "sequence": 0,
+                    "total_length": 4,
+                    "blob": bad_blob,
+                    "end": True,
+                },
+            }
+        )
+
+
+def test_merge_blob_chunks_raises_when_isolation_disabled_on_decode_errors() -> None:
+    bad_blob = DifyPluginToolInvokeMessage.model_validate(
+        {"type": "blob", "message": {"blob": "bad!"}, "meta": {"filename": "broken.pdf"}},
+        context={"isolate_blob_errors": True},
+    )
+    bad_chunk = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {"id": "c1", "sequence": 0, "total_length": 4, "blob": "abc", "end": True},
+            "meta": {"filename": "broken_chunk.pdf"},
+        },
+        context={"isolate_blob_errors": True},
+    )
+
+    with pytest.raises(ValueError, match="Invalid base64-encoded blob payload"):
+        merge_blob_chunks([bad_blob], isolate_errors=False)
+
+    with pytest.raises(ValueError, match="Invalid base64-encoded blob payload"):
+        merge_blob_chunks([bad_chunk], isolate_errors=False)
+
+
+def test_merge_blob_chunks_locks_chunk_id_failure_on_invalid_base64_and_preserves_siblings() -> None:
+    bad_blob = DifyPluginToolInvokeMessage.model_validate(
+        {"type": "blob", "message": {"blob": "bad!"}, "meta": {"filename": "bad-single.pdf"}},
+        context={"isolate_blob_errors": True},
+    )
+    chunk_0_ok = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "mid-fail",
+                "sequence": 0,
+                "total_length": 6,
+                "blob": base64.b64encode(b"ab").decode(),
+                "end": False,
+            },
+            "meta": {"filename": "mid-fail.pdf"},
+        },
+        context={"isolate_blob_errors": True},
+    )
+    chunk_1_bad = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "mid-fail",
+                "sequence": 1,
+                "total_length": 6,
+                "blob": "not-valid-base64!",
+                "end": False,
+            },
+            "meta": {"mime_type": "application/pdf"},
+        },
+        context={"isolate_blob_errors": True},
+    )
+    chunk_2_after_fail = DifyPluginToolInvokeMessage.model_validate(
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "mid-fail",
+                "sequence": 2,
+                "total_length": 6,
+                "blob": base64.b64encode(b"ef").decode(),
+                "end": True,
+            },
+        },
+        context={"isolate_blob_errors": True},
+    )
+    good_chunk = blob_chunk(chunk_id="good", sequence=0, total_length=2, blob=b"ok", end=True)
+    good_chunk.meta = {"filename": "good.png", "mime_type": "image/png"}
+
+    merged = merge_blob_chunks(
+        [bad_blob, chunk_0_ok, chunk_1_bad, chunk_2_after_fail, good_chunk],
+        isolate_errors=True,
+    )
+
+    assert len(merged) == 3
+    assert merged[0].type is DifyPluginToolInvokeMessage.MessageType.BLOB
+    assert merged[0].message is None
+    assert merged[0].chunk_error == "Invalid base64-encoded blob payload"
+    assert merged[0].meta == {"filename": "bad-single.pdf"}
+
+    assert merged[1].type is DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK
+    assert merged[1].message is None
+    assert merged[1].chunk_error == "Invalid base64-encoded blob payload"
+    assert merged[1].meta == {"filename": "mid-fail.pdf", "mime_type": "application/pdf", "size": 6}
+
+    assert merged[2].type is DifyPluginToolInvokeMessage.MessageType.BLOB
+    assert isinstance(merged[2].message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert merged[2].message.blob == b"ok"
+    assert merged[2].meta == {"filename": "good.png", "mime_type": "image/png"}
+
+
 def test_merge_blob_chunks_isolates_failures_and_incomplete_streams() -> None:
     negative_len = blob_chunk(chunk_id="neg-len", sequence=0, total_length=-1, blob=b"x", end=False)
     negative_len.meta = {"filename": "negative.bin"}
@@ -281,6 +424,75 @@ def test_merge_blob_chunks_isolates_failures_and_incomplete_streams() -> None:
 
 
 @pytest.mark.anyio
+async def test_daemon_tool_client_isolates_invalid_base64_blob_and_chunk_in_stream() -> None:
+    frames = [
+        {"type": "text", "message": {"text": "lead:"}},
+        {"type": "blob", "message": {"blob": "bad!"}, "meta": {"filename": "corrupt.png", "mime_type": "image/png"}},
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "bad-chunk",
+                "sequence": 0,
+                "total_length": 4,
+                "blob": "abc",
+                "end": False,
+            },
+            "meta": {"filename": "corrupt.pdf", "mime_type": "application/pdf"},
+        },
+        {
+            "type": "blob_chunk",
+            "message": {
+                "id": "bad-chunk",
+                "sequence": 1,
+                "total_length": 4,
+                "blob": base64.b64encode(b"xy").decode(),
+                "end": True,
+            },
+        },
+        {
+            "type": "blob",
+            "message": {"blob": base64.b64encode(b"valid").decode()},
+            "meta": {"filename": "valid.png", "mime_type": "image/png"},
+        },
+    ]
+    stream_body = "".join(f"data: {json.dumps({'code': 0, 'message': '', 'data': frame})}\n" for frame in frames)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=stream_body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+        client = DifyPluginDaemonToolClient(
+            plugin_daemon_url="http://daemon.test",
+            plugin_daemon_api_key="secret",
+            tenant_id="tenant",
+            plugin_id="files",
+            user_id="user",
+            http_client=http_client,
+        )
+        merged = await client.invoke(
+            provider="files",
+            tool_name="create",
+            credential_type="unauthorized",
+            credentials={},
+            tool_parameters={},
+        )
+
+    assert len(merged) == 4
+    assert merged[0].type is DifyPluginToolInvokeMessage.MessageType.TEXT
+    assert merged[1].type is DifyPluginToolInvokeMessage.MessageType.BLOB
+    assert merged[1].message is None
+    assert merged[1].chunk_error == "Invalid base64-encoded blob payload"
+    assert merged[1].meta == {"filename": "corrupt.png", "mime_type": "image/png"}
+    assert merged[2].type is DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK
+    assert merged[2].message is None
+    assert merged[2].chunk_error == "Invalid base64-encoded blob payload"
+    assert merged[2].meta == {"filename": "corrupt.pdf", "mime_type": "application/pdf", "size": 4}
+    assert merged[3].type is DifyPluginToolInvokeMessage.MessageType.BLOB
+    assert isinstance(merged[3].message, DifyPluginToolInvokeMessage.BlobMessage)
+    assert merged[3].message.blob == b"valid"
+
+
+@pytest.mark.anyio
 async def test_daemon_tool_client_uses_configured_max_file_size_for_blob_chunks() -> None:
     chunk_size = 8192
     chunk_count = (30 * 1024 * 1024 // chunk_size) + 1  # 3841 chunks = 30 MiB + 8 KiB
@@ -368,6 +580,7 @@ async def test_daemon_tool_client_uses_configured_max_file_size_for_blob_chunks(
     [
         "data: {not-valid-json\n",
         f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {}}})}\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'blob_chunk', 'message': {'id': 'f1', 'blob': 'bad!'}}})}\n",
     ],
 )
 async def test_daemon_tool_client_wraps_invalid_stream_validation_errors(stream_body: str) -> None:

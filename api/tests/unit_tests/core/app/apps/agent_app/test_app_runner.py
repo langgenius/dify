@@ -1510,6 +1510,11 @@ def test_parallel_tool_blob_attachments_preserve_thought_ownership_in_sse_respon
     assert report_sse.id == report_attachment.id
     assert report_sse.belongs_to == MessageFileBelongsTo.ASSISTANT
     assert report_sse.type == FileType.DOCUMENT
+    assert report_sse.filename == "report.pdf"
+    assert report_sse.mime_type == "application/pdf"
+    assert report_sse.size == 24
+    assert report_sse.transfer_method == FileTransferMethod.TOOL_FILE
+    assert report_sse.upload_file_id == report_file.id
     assert f"/files/tools/{report_file.id}.pdf?" in report_sse.url
     assert "timestamp=" in report_sse.url
     assert "sign=" in report_sse.url
@@ -1540,6 +1545,11 @@ def test_parallel_tool_blob_attachments_preserve_thought_ownership_in_sse_respon
     assert chart_sse.id == chart_attachment.id
     assert chart_sse.belongs_to == MessageFileBelongsTo.ASSISTANT
     assert chart_sse.type == FileType.IMAGE
+    assert chart_sse.filename == "chart.png"
+    assert chart_sse.mime_type == "image/png"
+    assert chart_sse.size == 12
+    assert chart_sse.transfer_method == FileTransferMethod.TOOL_FILE
+    assert chart_sse.upload_file_id == chart_file.id
     assert f"/files/tools/{chart_file.id}.png?" in chart_sse.url
     assert "timestamp=" in chart_sse.url
     assert "sign=" in chart_sse.url

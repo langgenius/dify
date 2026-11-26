@@ -14,10 +14,12 @@ from sqlalchemy.engine import ExecutionContext
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom as _agent_observability_service_InvokeFrom
+from core.tools.signature import verify_tool_file_signature
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
 from fields.agent_fields import AgentLogMessageListResponse
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod, FileType
+from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import WorkflowNodeJobConfig
@@ -241,18 +243,42 @@ def test_log_files_are_batch_loaded_tenant_scoped_and_read_only(
         for file in files[:2]:
             assert file.upload_file_id == msg_upload.id
             assert file.url
-            assert f"/files/{msg_upload.id}/" in urlsplit(file.url).path
+            parsed_upload = urlsplit(file.url)
+            upload_query = parse_qs(parsed_upload.query)
+            assert f"/files/{msg_upload.id}/" in parsed_upload.path
             assert "untrusted.test" not in file.url
-            assert "sign=" in file.url
-            assert "timestamp=" in file.url
+            assert file_helpers.verify_file_signature(
+                upload_file_id=msg_upload.id,
+                timestamp=upload_query["timestamp"][0],
+                nonce=upload_query["nonce"][0],
+                sign=upload_query["sign"][0],
+            )
+            assert not file_helpers.verify_file_signature(
+                upload_file_id=str(uuid4()),
+                timestamp=upload_query["timestamp"][0],
+                nonce=upload_query["nonce"][0],
+                sign=upload_query["sign"][0],
+            )
         assert files[2].url == remote_url
         assert files[2].mime_type == remote_mime_type
         for file in files[3:]:
             assert file.url
+            parsed_tool = urlsplit(file.url)
+            tool_query = parse_qs(parsed_tool.query)
             assert "untrusted.test" not in file.url
-            assert urlsplit(file.url).path == f"/files/tools/{msg_tool.id}.pdf"
-            assert parse_qs(urlsplit(file.url).query)["sign"]
-            assert "timestamp=" in file.url
+            assert parsed_tool.path == f"/files/tools/{msg_tool.id}.pdf"
+            assert verify_tool_file_signature(
+                msg_tool.id,
+                tool_query["timestamp"][0],
+                tool_query["nonce"][0],
+                tool_query["sign"][0],
+            )
+            assert not verify_tool_file_signature(
+                str(uuid4()),
+                tool_query["timestamp"][0],
+                tool_query["nonce"][0],
+                tool_query["sign"][0],
+            )
             assert file.upload_file_id == msg_tool.id
             assert file.mime_type == "application/pdf"
             assert file.size == msg_tool.size
