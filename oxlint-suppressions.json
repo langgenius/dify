@@ -143,9 +143,6 @@
     }
   },
   "web/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
     "eslint-react/set-state-in-effect": {
       "count": 1
     },
@@ -193,9 +190,6 @@
     }
   },
   "web/app/components/app/configuration/dataset-config/settings-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -275,11 +269,6 @@
       "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "web/app/components/app/workflow-log/list.tsx": {
-    "eslint-react/set-state-in-effect": {
       "count": 2
     }
   },
@@ -418,10 +407,10 @@
   },
   "web/app/components/base/chat/embedded-chatbot/hooks.tsx": {
     "dify/require-disable-directive-description": {
-      "count": 2
+      "count": 1
     },
     "eslint-react/set-state-in-effect": {
-      "count": 3
+      "count": 2
     },
     "typescript/no-explicit-any": {
       "count": 14
@@ -1165,9 +1154,6 @@
     }
   },
   "web/app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    },
     "no-restricted-globals": {
       "count": 2
     }
@@ -1288,11 +1274,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/plugins/install-plugin/install-bundle/item/github-item.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/plugins/install-plugin/install-bundle/steps/hooks/use-install-multi-state.ts": {
@@ -2003,9 +1984,6 @@
   "web/app/components/workflow/nodes/code/use-config.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 6
     }
   },
   "web/app/components/workflow/nodes/data-source-empty/hooks.ts": {
@@ -2180,11 +2158,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/knowledge-retrieval/node.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/knowledge-retrieval/types.ts": {
@@ -2977,7 +2950,7 @@
   },
   "web/service/device-flow.ts": {
     "no-restricted-globals": {
-      "count": 5
+      "count": 2
     }
   },
   "web/service/fetch.spec.ts": {
@@ -2999,11 +2972,6 @@
   "web/service/http-error.spec.ts": {
     "typescript/no-deprecated": {
       "count": 10
-    }
-  },
-  "web/service/marketplace-templates.ts": {
-    "no-restricted-globals": {
-      "count": 1
     }
   },
   "web/service/marketplace.ts": {

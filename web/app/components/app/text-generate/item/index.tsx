@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
@@ -173,10 +174,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLog = async () => {
     if (!onOpenLog) return
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
+    let data: Awaited<ReturnType<typeof fetchTextGenerationMessage>>
+    try {
+      data = await fetchTextGenerationMessage(
+        { appId: params.appId as string, messageId: messageId! },
+        { silent: true },
+      )
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const promptLog = buildPromptLogItem(data)
     onOpenLog({
       id: promptLog.id,
@@ -201,7 +208,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       if (!connectionsReady) return
       const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
-        await submitHumanInputFormService(formToken, submission, formVersion)
+        try {
+          await submitHumanInputFormService(formToken, submission, formVersion, { silent: true })
+        } catch (error) {
+          toastRequestError(error)
+          throw error
+        }
       } else {
         if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
           await prepareHumanInputFormSubmission(prepareHumanInputSubmission)

@@ -1,10 +1,8 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
-import {
-  invalidateTaggedResources,
-  refreshAgentTagCatalogs,
-} from '@/service/console/query-policies'
+import { refreshAgentTagCatalogs } from '@/service/console/policies/shared'
+import { invalidateTaggedResources } from '@/service/console/policies/tags'
 
 type ApplyTagBindingsInput = {
   currentTagIds: string[]
@@ -18,6 +16,7 @@ export const useApplyTagBindingsMutation = () => {
 
   return useMutation({
     mutationKey: ['tag-bindings', 'apply'],
+    meta: { errorToast: false },
     mutationFn: async ({ currentTagIds, nextTagIds, targetId, type }: ApplyTagBindingsInput) => {
       const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
       const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))

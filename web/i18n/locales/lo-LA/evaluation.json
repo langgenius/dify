@@ -97,6 +97,7 @@
   "history.status.cancelled": "ຍົກເລີກແລ້ວ",
   "history.status.completed": "ສຳເລັດແລ້ວ",
   "history.status.failed": "ລົ້ມເຫຼວ",
+  "history.status.notCompleted": "ບໍ່ສາມາດເຮັດວຽກໃຫ້ສຳເລັດໄດ້",
   "history.status.partiallyFailed": "ສຳເລັດແຕ່ມີບາງລາຍການລົ້ມເຫຼວ",
   "history.status.pending": "ລໍຖ້າ",
   "history.status.running": "ກຳລັງດຳເນີນການ",
@@ -167,5 +168,7 @@
   "results.status.passed": "ຜ່ານ",
   "results.title": "ລາຍລະອຽດການທົດສອບ",
   "title": "ການປະເມີນ",
-  "unavailableUntilPublished": "ເຜີຍແຜ່ກ່ອນເພື່ອຕັ້ງຄ່າການປະເມີນ."
+  "unavailableUntilPublished": "ເຜີຍແຜ່ກ່ອນເພື່ອຕັ້ງຄ່າການປະເມີນ.",
+  "upgradePreview.description": "ອັບເກຣດເປັນແຜນ Professional ຫຼື Team ເພື່ອຕັ້ງຄ່າຕົວຊີ້ວັດ ແລະ ດຳເນີນການທົດສອບແບບກຸ່ມກັບຂໍ້ມູນຂອງທ່ານເອງ.",
+  "upgradePreview.title": "ທ່ານກຳລັງເບິ່ງຕົວຢ່າງການປະເມີນດ້ວຍຂໍ້ມູນຕົວຢ່າງ"
 }

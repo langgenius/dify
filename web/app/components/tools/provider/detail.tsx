@@ -46,6 +46,7 @@ import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -134,7 +135,16 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
-    await updateCustomCollection(data)
+    try {
+      await updateCustomCollection(data, { silent: true })
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
+    // Schema edits change the actions the settings drawer reads from this query.
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.api.tools.get.key(),
+    })
     onRefreshData()
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
@@ -172,9 +182,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   ) => {
     if (!canManageTools) return
 
-    await saveWorkflowToolProvider(data)
+    try {
+      await saveWorkflowToolProvider(data, { silent: true })
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     queryClient.invalidateQueries({
       queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.workflow.tools.get.key(),
     })
     onRefreshData()
     getWorkflowToolProvider()

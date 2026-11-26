@@ -40,7 +40,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     isError,
     percent,
     resetStatus,
-    refetch,
+    invalidate,
   } = useEmbeddingStatus({
     datasetId,
     documentId,
@@ -65,6 +65,7 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   )
   const pauseMutation = usePauseIndexing({
     context: { silent: true },
+    meta: { errorToast: false },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -75,11 +76,12 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   })
   const resumeMutation = useResumeIndexing({
     context: { silent: true },
+    meta: { errorToast: false },
     datasetId,
     documentId,
     onSuccess: () => {
       handleSuccess()
-      refetch()
+      invalidate()
       detailUpdate()
     },
     onError: handleError,

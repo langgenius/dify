@@ -41,22 +41,32 @@ const mocks = vi.hoisted(() => ({
   ),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  const consoleClient = {
-    apps: {
-      byAppId: {
-        export: { get: mocks.exportAppDsl },
-        workflows: {
-          draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  // Keep the real policies (including read freshness) over stubbed export requests.
+  const consoleClient = new Proxy(actual.consoleClient, {
+    get(target, property, receiver) {
+      if (property !== 'apps') return Reflect.get(target, property, receiver)
+      return new Proxy(target.apps, {
+        get(apps, appsProperty, appsReceiver) {
+          if (appsProperty !== 'byAppId') return Reflect.get(apps, appsProperty, appsReceiver)
+          return {
+            ...apps.byAppId,
+            export: { get: mocks.exportAppDsl },
+            workflows: {
+              ...apps.byAppId.workflows,
+              draft: {
+                ...apps.byAppId.workflows.draft,
+                environmentVariables: { get: mocks.getEnvironmentVariables },
+              },
+            },
+          }
         },
-      },
+      })
     },
-  }
-  return {
-    consoleClient,
-    consoleQuery: createTanstackQueryUtils(consoleClient, { path: ['console'] }),
-  }
+  })
+  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
 })
 
 vi.mock('@/utils/download', () => ({

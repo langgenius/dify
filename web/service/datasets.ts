@@ -29,11 +29,6 @@ export type DocumentDownloadZipRequest = {
   documentIds: string[]
 }
 
-type BatchReq = {
-  datasetId: string
-  batchId: string
-}
-
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export const updateDatasetSetting = (
@@ -77,12 +72,6 @@ export const createExternalKnowledgeBase = (
 export const fetchIndexingStatus = ({ datasetId, documentId }: CommonDocReq) => {
   return consoleClient.datasets.byDatasetId.documents.byDocumentId.indexingStatus.get({
     params: { dataset_id: datasetId, document_id: documentId },
-  })
-}
-
-export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
-  return consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get({
-    params: { dataset_id: datasetId, batch: batchId },
   })
 }
 
@@ -163,8 +152,12 @@ export const retryErrorDocs = ({
   datasetId: string
   document_ids: string[]
 }) => {
-  return consoleClient.datasets.byDatasetId.retry.post({
-    params: { dataset_id: datasetId },
-    body: { document_ids },
-  })
+  return consoleClient.datasets.byDatasetId.retry.post(
+    {
+      params: { dataset_id: datasetId },
+      body: { document_ids },
+    },
+    // The retry action reports its own failure.
+    { context: { silent: true } },
+  )
 }

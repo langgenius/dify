@@ -101,7 +101,6 @@ const ChatWrapper = ({
       const options =
         consoleQuery.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get.queryOptions({
           input: { params: { app_id: appId, message_id: messageId } },
-          staleTime: 0,
           retry: false,
         })
       onCancel(() => {

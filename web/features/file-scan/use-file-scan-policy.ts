@@ -57,9 +57,11 @@ function useFileScanPolicy(product: FileScanProduct, resourceId: string, active:
     }),
   )
   const datasetMutation = useMutation(
-    datasetPolicy.put.mutationOptions({ context: { silent: true } }),
+    datasetPolicy.put.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
   )
-  const spaceMutation = useMutation(spacePolicy.put.mutationOptions({ context: { silent: true } }))
+  const spaceMutation = useMutation(
+    spacePolicy.put.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
+  )
   const query = product === 'dataset' ? datasetQuery : spaceQuery
   const mutation = product === 'dataset' ? datasetMutation : spaceMutation
 

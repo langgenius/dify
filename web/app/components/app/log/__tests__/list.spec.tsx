@@ -58,7 +58,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
       'features.get': () => createFeaturesFixture(),
+      'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
+      'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
       'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
@@ -69,9 +72,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
-      'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
-      'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
-      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
 })

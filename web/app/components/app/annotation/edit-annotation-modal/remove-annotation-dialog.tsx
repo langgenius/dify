@@ -33,6 +33,7 @@ export function RemoveAnnotationDialog({
   const actionsRef = useRef<AlertDialogActions>(null)
   const removal = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions({
+      meta: { errorToast: false },
       context: { silent: true },
       onSuccess: () => {
         actionsRef.current?.close()

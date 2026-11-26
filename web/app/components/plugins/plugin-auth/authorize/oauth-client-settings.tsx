@@ -21,7 +21,6 @@ import { toast } from '@/app/notifications'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useDeletePluginOAuthCustomClientHook,
-  useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
 
@@ -76,7 +75,6 @@ const OAuthClientSettings = ({
   )
   const { mutateAsync: setPluginOAuthCustomClient } =
     useSetPluginOAuthCustomClientHook(pluginPayload)
-  const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
     if (doingActionRef.current) return false
@@ -100,7 +98,6 @@ const OAuthClientSettings = ({
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
-      invalidPluginOAuthClientSchema()
       return true
     } finally {
       handleSetDoingAction(false)
@@ -110,7 +107,6 @@ const OAuthClientSettings = ({
     onOpenChange,
     onUpdate,
     onClientTypeChange,
-    invalidPluginOAuthClientSchema,
     setPluginOAuthCustomClient,
     t,
     handleSetDoingAction,
@@ -140,7 +136,6 @@ const OAuthClientSettings = ({
       onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
-      invalidPluginOAuthClientSchema()
     } finally {
       handleSetDoingAction(false)
     }
@@ -148,7 +143,6 @@ const OAuthClientSettings = ({
     onUpdate,
     onClientTypeChange,
     schemas,
-    invalidPluginOAuthClientSchema,
     deletePluginOAuthCustomClient,
     t,
     handleSetDoingAction,

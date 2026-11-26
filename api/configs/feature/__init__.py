@@ -1858,8 +1858,12 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 
 
 class EvaluationConfig(BaseSettings):
-    """Configuration for the evaluation runtime."""
+    """Deployment availability and runtime settings for Evaluation."""
 
+    ENABLE_EVALUATION: bool = Field(
+        description="Enable Evaluation on deployments and workspaces that support it.",
+        default=False,
+    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,

@@ -34,7 +34,10 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const [duplicateDialog] = useState(() => createDialogHandle())
   const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const agentUpdate = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
   const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())

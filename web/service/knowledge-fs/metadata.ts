@@ -54,6 +54,5 @@ export function knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId: string) 
     },
     select: (response: { data: KnowledgeFsMetadataFieldResponse[] }) =>
       response.data.map(knowledgeFsMetadataFieldFromApi),
-    staleTime: 30_000,
   }
 }

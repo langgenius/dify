@@ -97,6 +97,7 @@
   "history.status.cancelled": "Geannuleerd",
   "history.status.completed": "Voltooid",
   "history.status.failed": "Mislukt",
+  "history.status.notCompleted": "Taak kon niet worden voltooid",
   "history.status.partiallyFailed": "Voltooid met fouten",
   "history.status.pending": "In afwachting",
   "history.status.running": "Bezig",
@@ -167,5 +168,7 @@
   "results.status.passed": "Geslaagd",
   "results.title": "Testdetails",
   "title": "Evaluatie",
-  "unavailableUntilPublished": "Publiceer eerst om de evaluatie in te stellen."
+  "unavailableUntilPublished": "Publiceer eerst om de evaluatie in te stellen.",
+  "upgradePreview.description": "Upgrade naar een Professional- of Team-abonnement om metrics te configureren en batchtests op je eigen gegevens uit te voeren.",
+  "upgradePreview.title": "Je bekijkt een voorbeeld van evaluatie met voorbeeldgegevens"
 }

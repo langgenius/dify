@@ -665,6 +665,7 @@ export const get27Errors = {
 export const post18Errors = {
   agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },

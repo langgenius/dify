@@ -659,10 +659,13 @@ describe('AgentFiles', () => {
         fileName: 'diagram.png',
       })
     })
-    expect(mocks.downloadFile).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1', name: 'diagram.png' },
-      query: { draft_type: 'draft', version_id: undefined },
-    })
+    expect(mocks.downloadFile).toHaveBeenCalledWith(
+      {
+        params: { agent_id: 'agent-1', name: 'diagram.png' },
+        query: { draft_type: 'draft', version_id: undefined },
+      },
+      { context: { silent: true } },
+    )
   })
 
   it('should download the selected file from the preview header action', async () => {
@@ -684,10 +687,13 @@ describe('AgentFiles', () => {
         fileName: 'diagram.png',
       })
     })
-    expect(mocks.downloadFile).toHaveBeenCalledWith({
-      params: { agent_id: 'agent-1', name: 'diagram.png' },
-      query: { draft_type: 'draft', version_id: undefined },
-    })
+    expect(mocks.downloadFile).toHaveBeenCalledWith(
+      {
+        params: { agent_id: 'agent-1', name: 'diagram.png' },
+        query: { draft_type: 'draft', version_id: undefined },
+      },
+      { context: { silent: true } },
+    )
     const trialFile = consoleQuery.trialApps.byAppId.agent.config.files.byName
     for (const operation of [trialFile.preview.get, trialFile.download.get]) {
       expect(queryClient.getQueryState(operation.queryKey({ input: skipToken }))).toMatchObject({

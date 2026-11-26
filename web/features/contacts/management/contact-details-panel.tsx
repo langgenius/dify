@@ -463,17 +463,29 @@ function ContactIMChannels({
   const [open, setOpen] = useState(false)
   const api = consoleQuery.workspaces.current.humanInput.v2
   const defaultSave = useMutation(
-    api.contacts.byContactId.imBindings.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.put.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const overrideSave = useMutation(
-    api.contacts.byContactId.imOverride.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.put.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const save = context.imCentrallyManaged ? overrideSave : defaultSave
   const remove = useMutation(
-    api.contacts.byContactId.imOverride.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const unbind = useMutation(
-    api.contacts.byContactId.imBindings.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const canBind =
     canManage && context.imCentrallyManaged !== undefined && contact.type !== 'external'

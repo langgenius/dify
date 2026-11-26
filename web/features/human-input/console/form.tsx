@@ -55,10 +55,9 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
     consoleQuery.form.humanInput.v2.byFormToken.get.queryOptions({
       input: { params: { form_token: formToken } },
       context: { silent: true },
+      meta: { errorToast: false },
       select: normalizeConsoleFormDefinition,
       retry: false,
-      staleTime: 0,
-      gcTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
@@ -75,6 +74,7 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
   const submission = useMutation(
     consoleQuery.form.humanInput.v2.byFormToken.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const errorKind =

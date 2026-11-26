@@ -24,7 +24,7 @@ import { toast } from '@/app/notifications'
 import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-task-failure'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
@@ -324,35 +324,14 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       mountedRef.current = false
     }
   }, [])
-  const cancelTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-        ),
-      ),
-  })
-  const retryTask = useMutation({
-    mutationFn: async () =>
-      backgroundTaskFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post(
-          {
-            params: {
-              control_space_id: knowledgeSpaceId,
-              task_id: task.id,
-              task_kind: task.taskKind,
-            },
-          },
-          { context: { silent: true } },
-        ),
-      ),
-  })
+  const cancelTask = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+  )
+  const retryTask = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
+      { context: { silent: true }, meta: { errorToast: false } },
+    ),
+  )
   const refreshDocumentsAndTasks = () => {
     void Promise.allSettled([
       queryClient.invalidateQueries({
@@ -374,8 +353,18 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
     setPending(true)
     setActionFailure(undefined)
     try {
-      const updated =
-        action === 'cancel' ? await cancelTask.mutateAsync() : await retryTask.mutateAsync()
+      const input = {
+        params: {
+          control_space_id: knowledgeSpaceId,
+          task_id: task.id,
+          task_kind: task.taskKind,
+        },
+      }
+      const updated = backgroundTaskFromApi(
+        action === 'cancel'
+          ? await cancelTask.mutateAsync(input)
+          : await retryTask.mutateAsync(input),
+      )
       if (
         !mountedRef.current ||
         !canReadRef.current ||

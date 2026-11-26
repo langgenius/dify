@@ -12,6 +12,7 @@ import type {
   IOnMessageReplace,
   StreamSender,
 } from './event-stream'
+import type { ConsoleClientContext } from '@/service/console'
 import type { Model, ModelModeType } from '@/types/app'
 import { consoleClient } from './console'
 import { streamEvents } from './event-stream'
@@ -127,13 +128,19 @@ type InstructionGenerateRequest = Omit<
   flow_id?: string
 }
 
-export const generateBasicAppFirstTimeRule = (body: RuleGenerateRequest) => {
-  return consoleClient.ruleGenerate.post({ body: body as PostRuleGenerateData['body'] })
+export const generateBasicAppFirstTimeRule = (
+  body: RuleGenerateRequest,
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.ruleGenerate.post(
+    { body: body as PostRuleGenerateData['body'] },
+    { context },
+  )
 }
 
-export const generateRule = (body: InstructionGenerateRequest) => {
+export const generateRule = (body: InstructionGenerateRequest, context?: ConsoleClientContext) => {
   return consoleClient.instructionGenerate
-    .post({ body: body as PostInstructionGenerateData['body'] })
+    .post({ body: body as PostInstructionGenerateData['body'] }, { context })
     .then(toGenRes)
 }
 
@@ -179,14 +186,18 @@ export const fetchPromptTemplate = ({
     .then(toPromptTemplates)
 }
 
-export const fetchTextGenerationMessage = ({
-  appId,
-  messageId,
-}: {
-  appId: string
-  messageId: string
-}) => {
-  return consoleClient.apps.byAppId.messages.byMessageId.get({
-    params: { app_id: appId, message_id: messageId },
-  })
+export const fetchTextGenerationMessage = (
+  {
+    appId,
+    messageId,
+  }: {
+    appId: string
+    messageId: string
+  },
+  context?: ConsoleClientContext,
+) => {
+  return consoleClient.apps.byAppId.messages.byMessageId.get(
+    { params: { app_id: appId, message_id: messageId } },
+    { context },
+  )
 }

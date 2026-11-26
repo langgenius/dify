@@ -28,9 +28,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { Uploader } from '@/features/dsl-import/uploader'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { canCreateAndModifySnippets } from './utils/permission'
@@ -117,12 +117,13 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const { mutateAsync: importSnippet, isPending: isImporting } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.post.mutationOptions({
+      meta: { errorToast: false },
       context: { silent: true },
     }),
   )
   const { mutateAsync: confirmSnippetImport, isPending: isConfirmingImport } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.byImportId.confirm.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false }, context: { silent: true } },
     ),
   )
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(

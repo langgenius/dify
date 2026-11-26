@@ -38,7 +38,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { appWorkflowQueryOptions, workflowVersionHistoryKey } from '@/service/workflow-queries'
+import { workflowVersionHistoryKey } from '@/service/workflow-queries'
 
 type PublishWorkflowError = ErrorFromErrorMap<
   InferContractRouterErrorMap<typeof contract.apps.byAppId.workflows.publish.post>
@@ -58,7 +58,6 @@ const FeaturesTrigger = () => {
   )
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore((s) => s.accessControl.canReleaseAndVersion)
-  // Publishing or switching the workflow kind needs a plan that includes Evaluation, so hide them on Sandbox.
   const { data: evaluationEnabled = false } = useQuery(
     consoleQuery.features.get.queryOptions({ select: (features) => features.evaluation_enabled }),
   )
@@ -87,6 +86,11 @@ const FeaturesTrigger = () => {
     )
   }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
+  // An ordinary publish keeps the active workflow's kind.
+  const canPublishWorkflow =
+    hasWorkflowNodes &&
+    canReleaseAndVersion &&
+    (appDetail?.workflow_kind !== 'evaluation' || evaluationEnabled)
   const startNode = nodes.find((node) => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -155,7 +159,10 @@ const FeaturesTrigger = () => {
     mutateAsync: publishWorkflow,
     reset: resetPublishError,
   } = useMutation(
-    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
+      meta: { errorToast: false },
+      context: { silent: true },
+    }),
   )
   const triggerNodeLimitExceeded = isTriggerNodeLimitError(publishError)
   const { mutateAsync: publishEvaluationWorkflow } = useMutation(
@@ -163,13 +170,6 @@ const FeaturesTrigger = () => {
   )
   const { isPending: workflowKindChangePending, mutateAsync: convertWorkflowKind } = useMutation(
     consoleQuery.apps.byAppId.workflows.convertType.post.mutationOptions(),
-  )
-  const invalidateAppWorkflow = useCallback(
-    (workflowAppId: string) =>
-      queryClient.invalidateQueries({
-        queryKey: appWorkflowQueryOptions(workflowAppId).queryKey,
-      }),
-    [queryClient],
   )
   // const { validateBeforeRun } = useWorkflowRunValidation()
   const needWarningNodes = useChecklist(nodes, edges)
@@ -214,38 +214,8 @@ const FeaturesTrigger = () => {
           if (res.warning) toast.warning(res.warning)
           else if (options?.showSuccessToast !== false)
             toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          if (publishKind === 'evaluation') {
-            void Promise.all([
-              invalidateAppWorkflow(appID),
-              queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.get.queryKey({
-                  input: { params: { app_id: appID } },
-                }),
-              }),
-              queryClient.invalidateQueries({
-                queryKey: consoleQuery.apps.byAppId.triggers.get.key({
-                  input: { params: { app_id: appID } },
-                }),
-              }),
-            ]).catch((error) => console.warn('[evaluation] refresh after publish failed', error))
-          }
-          void queryClient
-            .invalidateQueries({
-              queryKey:
-                consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.defaultMetrics.get.key(
-                  {
-                    type: 'query',
-                    input: {
-                      params: {
-                        evaluate_target_id: appID,
-                        evaluate_target_type: 'apps',
-                      },
-                    },
-                  },
-                ),
-            })
-            .catch((error) => console.warn('[evaluation] refresh default metrics failed', error))
-          if (publishKind === 'evaluation' || appDetail?.workflow_kind === 'evaluation') {
+          // Evaluation publishes refresh this list in their policy.
+          if (publishKind === 'default' && appDetail?.workflow_kind === 'evaluation') {
             void queryClient
               .invalidateQueries({
                 queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
@@ -284,7 +254,6 @@ const FeaturesTrigger = () => {
       handleSyncWorkflowDraft,
       publishWorkflow,
       publishEvaluationWorkflow,
-      invalidateAppWorkflow,
       appID,
       appDetail?.workflow_kind,
       t,
@@ -314,24 +283,13 @@ const FeaturesTrigger = () => {
         params: { app_id: appID },
         query: { target_type: targetKind === 'standard' ? 'workflow' : 'evaluation' },
       })
-      await Promise.all([
-        invalidateAppWorkflow(appID),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.get.queryKey({
-            input: { params: { app_id: appID } },
-          }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.availableEvaluationWorkflows.get.key(),
-        }),
-      ])
       toast.success(
         targetKind === 'standard'
           ? t(($) => $['common.switchedToStandardWorkflow'], { ns: 'workflow' })
           : t(($) => $['common.switchedToEvaluationWorkflow'], { ns: 'workflow' }),
       )
     },
-    [appID, convertWorkflowKind, invalidateAppWorkflow, queryClient, t],
+    [appID, convertWorkflowKind, t],
   )
 
   const onPublisherToggle = useCallback(
@@ -380,7 +338,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded: triggerNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || !canReleaseAndVersion,
+          publishDisabled: !canPublishWorkflow,
         }}
       />
     </>

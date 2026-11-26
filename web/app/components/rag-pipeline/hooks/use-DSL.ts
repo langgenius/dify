@@ -21,6 +21,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipeline, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (include: boolean) => {
       const { knowledgeName } = workflowStore.getState()
       if (!pipelineId) return false

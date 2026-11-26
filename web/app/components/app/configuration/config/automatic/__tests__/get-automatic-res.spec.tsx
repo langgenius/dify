@@ -218,6 +218,7 @@ describe('GetAutomaticRes', () => {
           instruction: 'basic instruction',
           no_variable: false,
         }),
+        { silent: true },
       )
     })
 
@@ -290,6 +291,7 @@ describe('GetAutomaticRes', () => {
           ideal_output: 'ideal output',
           model_config: expect.objectContaining({ mode: 'chat' }),
         }),
+        { silent: true },
       )
     })
 

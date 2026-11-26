@@ -29,7 +29,7 @@ export function availablePlatformCandidatesOptions(
               { workspaceId },
             ],
             context: { silent: true },
-            staleTime: 30_000,
+            meta: { errorToast: false },
           }),
         )
         signal.throwIfAborted()
@@ -52,7 +52,7 @@ export function availablePlatformCandidatesOptions(
                   { workspaceId },
                 ],
                 context: { silent: true },
-                staleTime: 30_000,
+                meta: { errorToast: false },
               }),
             )
           : undefined

@@ -24,7 +24,6 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
 import { useDeleteWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
 import {
-  appWorkflowQueryOptions,
   lastRunQueryKey,
   restoreWorkflowMutationOptions,
   workflowVersionHistoryInfiniteOptions,
@@ -89,11 +88,6 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
   const invalidAllLastRun = useCallback(
     () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
     [queryClient, resource],
-  )
-  const invalidateAppWorkflow = useCallback(
-    (appId: string) =>
-      queryClient.invalidateQueries({ queryKey: appWorkflowQueryOptions(appId).queryKey }),
-    [queryClient],
   )
   const { deleteAllInspectVars } = workflowStore.getState()
   const { t } = useTranslation(['billing', 'common', 'workflow', 'workflowHistory'])
@@ -355,7 +349,6 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
       if (!id) return
       try {
         await updateWorkflow({ resource, versionId: id, ...rest })
-        if (id === latestVersionId && resource.kind === 'app') invalidateAppWorkflow(resource.appId)
       } catch (error) {
         toast.error(
           getErrorMessage(error) ??
@@ -365,7 +358,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
         setEditModalOpen(false)
       }
     },
-    [resource, invalidateAppWorkflow, latestVersionId, t, updateWorkflow],
+    [resource, t, updateWorkflow],
   )
 
   return (

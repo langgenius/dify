@@ -43,7 +43,12 @@ function PlatformContactPickerContent({
   const contacts = candidates.data?.pages.flatMap((page) => page.data) ?? []
   const pending = candidates.isPending
   const error = candidates.error
-  const add = useMutation(api.contacts.platform.post.mutationOptions({ context: { silent: true } }))
+  const add = useMutation(
+    api.contacts.platform.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
+  )
   useEffect(() => {
     onBusyChange(add.isPending)
   }, [add.isPending, onBusyChange])

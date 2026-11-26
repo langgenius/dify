@@ -18,11 +18,12 @@ import {
 type DemoStepGuideProps = {
   step: 'members' | 'comment' | 'playing'
   target: HTMLElement | null
+  onShown: () => void
   onAction: () => void
   onExit: () => void
 }
 
-export function DemoStepGuide({ step, target, onAction, onExit }: DemoStepGuideProps) {
+export function DemoStepGuide({ step, target, onShown, onAction, onExit }: DemoStepGuideProps) {
   const { t } = useTranslation(['collaborationDemo'])
   const titleRef = useRef<HTMLHeadingElement>(null)
   const members = step === 'members'
@@ -41,7 +42,13 @@ export function DemoStepGuide({ step, target, onAction, onExit }: DemoStepGuideP
       <CoachmarkPortal>
         <CoachmarkSpotlight />
         <CoachmarkPositioner side={members ? 'bottom' : 'inline-end'}>
-          <CoachmarkPopup initialFocus={titleRef} className="min-h-39.5">
+          <CoachmarkPopup
+            ref={(popup) => {
+              if (popup) onShown()
+            }}
+            initialFocus={titleRef}
+            className="min-h-39.5"
+          >
             <CoachmarkArrow />
             <CoachmarkTitle
               ref={titleRef}

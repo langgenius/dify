@@ -97,6 +97,7 @@
   "history.status.cancelled": "Cancelled",
   "history.status.completed": "Completed",
   "history.status.failed": "Failed",
+  "history.status.notCompleted": "Task could not be completed",
   "history.status.partiallyFailed": "Completed with failures",
   "history.status.pending": "Pending",
   "history.status.running": "Running",
@@ -167,5 +168,7 @@
   "results.status.passed": "Passed",
   "results.title": "Test Details",
   "title": "Evaluation",
-  "unavailableUntilPublished": "Publish first to set up evaluation."
+  "unavailableUntilPublished": "Publish first to set up evaluation.",
+  "upgradePreview.description": "Upgrade to a Professional or Team plan to configure metrics and run batch tests on your own data.",
+  "upgradePreview.title": "You're previewing Evaluation with sample data"
 }

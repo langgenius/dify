@@ -203,6 +203,7 @@ describe('GetCodeGeneratorResModal', () => {
           language: 'python',
           model_config: expect.objectContaining({ mode: 'completion' }),
         }),
+        { silent: true },
       )
     })
 

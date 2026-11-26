@@ -29,6 +29,8 @@ export function useKnowledgeModelSetupGuard(knowledgeSpaceId: string) {
   const settingsQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.get.queryOptions({
       context: { silent: true },
+      // ensureModelReady refetches on demand and reports a failed check itself.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
     }),
   )

@@ -200,18 +200,21 @@ it('applies generated prompt, variables and opening statement after confirming t
     enabled: true,
     opening_statement: 'hello there',
   })
-  expect(generate).toHaveBeenCalledExactlyOnceWith({
-    body: {
-      instruction: 'Help plan a city trip',
-      no_variable: false,
-      model_config: {
-        name: 'gpt-4o-mini',
-        provider: 'openai',
-        mode: 'chat',
-        completion_params: {},
+  expect(generate).toHaveBeenCalledExactlyOnceWith(
+    {
+      body: {
+        instruction: 'Help plan a city trip',
+        no_variable: false,
+        model_config: {
+          name: 'gpt-4o-mini',
+          provider: 'openai',
+          mode: 'chat',
+          completion_params: {},
+        },
       },
     },
-  })
+    { context: { silent: true } },
+  )
 })
 
 it('does not prompt for known tools or existing variables', async () => {

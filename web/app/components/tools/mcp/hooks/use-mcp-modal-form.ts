@@ -84,7 +84,10 @@ type MCPModalFormActions = {
  */
 export const useMCPModalForm = (data?: ToolWithProvider) => {
   const { mutateAsync: uploadRemoteFile } = useMutation(
-    consoleQuery.remoteFiles.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.remoteFiles.upload.post.mutationOptions({
+      meta: { errorToast: false },
+      context: { silent: true },
+    }),
   )
   const isCreate = !data
   const originalServerUrl = data?.server_url

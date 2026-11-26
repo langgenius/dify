@@ -20,6 +20,7 @@ import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -157,7 +158,6 @@ function AgentFileItem({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const workflowDownloadQuery = useQuery({
@@ -174,7 +174,6 @@ function AgentFileItem({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const trialDownloadQuery = useQuery(
@@ -186,7 +185,6 @@ function AgentFileItem({
               query: { version_id: apiContext.versionId },
             }
           : skipToken,
-      staleTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
@@ -210,30 +208,39 @@ function AgentFileItem({
 
       const fileName = getAgentFilePreviewKey(targetFile)
       const result = apiContext.trialAppId
-        ? await consoleClient.trialApps.byAppId.agent.config.files.byName.download.get({
-            params: { app_id: apiContext.trialAppId, name: fileName },
-            query: { version_id: apiContext.versionId },
-          })
+        ? await consoleClient.trialApps.byAppId.agent.config.files.byName.download.get(
+            {
+              params: { app_id: apiContext.trialAppId, name: fileName },
+              query: { version_id: apiContext.versionId },
+            },
+            { context: { silent: true } },
+          )
         : apiContext.workflow
-          ? await consoleClient.apps.byAppId.agent.config.files.byName.download.get({
-              params: { app_id: apiContext.workflow.appId, name: fileName },
-              query: {
-                node_id: apiContext.workflow.nodeId,
-                draft_type: apiContext.draftType,
-                version_id: apiContext.versionId,
+          ? await consoleClient.apps.byAppId.agent.config.files.byName.download.get(
+              {
+                params: { app_id: apiContext.workflow.appId, name: fileName },
+                query: {
+                  node_id: apiContext.workflow.nodeId,
+                  draft_type: apiContext.draftType,
+                  version_id: apiContext.versionId,
+                },
               },
-            })
-          : await consoleClient.agent.byAgentId.config.files.byName.download.get({
-              params: { agent_id: apiContext.agentId, name: fileName },
-              query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
-            })
+              { context: { silent: true } },
+            )
+          : await consoleClient.agent.byAgentId.config.files.byName.download.get(
+              {
+                params: { agent_id: apiContext.agentId, name: fileName },
+                query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
+              },
+              { context: { silent: true } },
+            )
       downloadUrl({ url: result.url, fileName: targetFile.name })
     },
     [apiContext],
   )
   const downloadFileAction = useCallback(
     (targetFile: AgentFileNode) => {
-      void downloadFile(targetFile).catch(noop)
+      void downloadFile(targetFile).catch((error: unknown) => toastRequestError(error))
     },
     [downloadFile],
   )
