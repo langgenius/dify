@@ -77,7 +77,9 @@ the background (`mutation-invalidation.ts`). The domain is the first path segmen
 awaited, starts after the mutation's callbacks, skips queries read by a request that
 started after the write succeeded (a written query is read again, since a patched list
 may not match the server), and waits while another mutation of the same
-domain is pending, so the last one refreshes for all. A read that remounts its owner on
+domain is pending, so the last one refreshes for all. It never cancels an unobserved
+read or a first load (an awaited `queryClient.query()`); one that started before the
+write is marked stale when it lands. A read that remounts its owner on
 new data and is kept current by it (a streaming chat's history) sets
 `meta: { invalidateAfterWrites: false }` in its `queryOptions` policy.
 

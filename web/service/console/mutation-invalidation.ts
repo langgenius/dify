@@ -6,7 +6,6 @@ import type {
   QueryClient,
   QueryKey,
 } from '@tanstack/react-query'
-import { invalidateQueryKeys } from './policies/shared'
 
 // The part of a mutation the fallback reads, whatever its data and error types.
 type AnyMutation = { options: { mutationKey?: MutationKey; meta?: MutationMeta } }
@@ -77,6 +76,9 @@ type QueryOrigin = { fetchStartedAt: number; dataFrom: number }
  *   not fetched twice. A read that started before the write is refreshed, whether it is still
  *   running or already returned its old data, and so is a query the policy wrote into.
  * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
+ * - It never cancels a read it cannot restart. A pre-write read of an unobserved query, or a
+ *   first load, may be an imperative `query()` someone awaits: it is left to finish and is
+ *   marked stale when it lands. Observed queries with data restart as `invalidateQueries` does.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
  *   sibling's optimistic value (TkDodo's `isMutating({ mutationKey }) === 1` guard).
@@ -140,17 +142,34 @@ export function createMutationInvalidation() {
 
         const entry = deferred.get(domain)
         deferred.delete(domain)
-        if (entry)
-          void invalidateQueryKeys(
-            client,
-            [...entry.targets].map(consolePathKey),
-            needsRefresh(entry.succeededAt),
-          )
+        if (entry) refresh(client, [...entry.targets], needsRefresh(entry.succeededAt))
       })
       return () => {
         unsubscribeQueries()
         unsubscribeMutations()
       }
     },
+  }
+}
+
+// A read `invalidateQueries` would not restart: a first load, or an unobserved query.
+const isUnrestartedFetch = (query: Query) =>
+  query.state.fetchStatus === 'fetching' && (query.state.data === undefined || !query.isActive())
+
+function refresh(client: QueryClient, targets: string[], needsRefresh: (query: Query) => boolean) {
+  const cache = client.getQueryCache()
+  for (const target of targets) {
+    const queryKey = consolePathKey(target)
+    for (const query of cache.findAll({ queryKey, predicate: isUnrestartedFetch })) {
+      if (!needsRefresh(query)) continue
+      // Its response predates the write: once it lands, mark it stale (and refetch if observed).
+      void query.promise
+        ?.catch(() => undefined)
+        .then(() => client.invalidateQueries({ queryKey: query.queryKey, exact: true }))
+    }
+    void client.invalidateQueries({
+      queryKey,
+      predicate: (query) => !isUnrestartedFetch(query) && needsRefresh(query),
+    })
   }
 }

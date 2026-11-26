@@ -141,12 +141,12 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(client.getQueryData(appsListKey())).toBe(2))
   })
 
-  it('restarts a read that started before the write even when the policy wrote the response', async () => {
+  it('lets an unobserved pre-write read finish, then marks it stale', async () => {
     const client = createClient()
     const staleRead = createDeferred<string>()
     const queryFn = vi.fn().mockReturnValueOnce(staleRead.promise).mockResolvedValue('fresh')
-    // An unobserved read that started before the write: invalidation alone would let it land.
-    void client.query({ queryKey: appDetailKey(), queryFn }).catch(() => undefined)
+    // An imperative read someone awaits, such as a download URL: cancelling it would lose it.
+    const pending = client.query({ queryKey: appDetailKey(), queryFn })
     tick()
 
     await mutate(client, {
@@ -158,9 +158,11 @@ describe('mutation invalidation fallback', () => {
     })
     await settle()
     staleRead.resolve('stale')
-    await settle()
 
-    expect(client.getQueryData(appDetailKey())).not.toBe('stale')
+    await expect(pending).resolves.toBe('stale')
+    // Its response predates the write, so the next reader fetches again.
+    await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
+    expect(queryFn).toHaveBeenCalledTimes(1)
   })
 
   it('refreshes data from the same millisecond as the success', async () => {
