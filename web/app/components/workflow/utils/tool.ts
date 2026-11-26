@@ -29,13 +29,14 @@ export const getToolCheckParams = (
 
   return {
     toolInputsSchema: (() => {
-      const formInputs: InputVar[] = []
+      const formInputs: (InputVar & { multiple?: boolean })[] = []
       toolInputVarSchema.forEach((item: any) => {
         formInputs.push({
           label: item.label[language] || item.label.en_US,
           variable: item.variable,
           type: item.type,
           required: item.required,
+          ...(item.multiple ? { multiple: true } : {}),
         })
       })
       return formInputs

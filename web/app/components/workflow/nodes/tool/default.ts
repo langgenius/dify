@@ -52,7 +52,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
               })
           } else {
             const isEmptyMultiSelect =
-              field.type === 'select' &&
+              (field.type === 'select' || field.type === 'dynamic-select') &&
               field.multiple &&
               Array.isArray(value) &&
               value.length === 0
@@ -76,7 +76,10 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         .forEach((field: any) => {
           const value = payload.tool_configurations[field.variable]
           const isEmptyMultiSelect =
-            field.type === 'select' && field.multiple && Array.isArray(value) && value.length === 0
+            (field.type === 'select' || field.type === 'dynamic-select') &&
+            field.multiple &&
+            Array.isArray(value) &&
+            value.length === 0
           if (
             !errorMessages &&
             (value === undefined || value === null || value === '' || isEmptyMultiSelect)
