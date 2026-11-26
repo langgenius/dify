@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import copy from 'copy-to-clipboard'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useEffect, useId, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
 import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
@@ -32,6 +32,7 @@ type WorkflowPreviewProps = Pick<ResultPanelProps, 'renderFailureActions'>
 const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
   const { t } = useTranslation(['common', 'runLog', 'workflow'])
   const panelId = useId()
+  const panelRef = useRef<HTMLDivElement>(null)
   const appId = useAtomValue(editorAppIdAtom)
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
@@ -87,8 +88,8 @@ const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
 
   const resize = useCallback(
     (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = window.innerWidth - e.clientX
+      if (isResizing && panelRef.current) {
+        const newWidth = panelRef.current.getBoundingClientRect().right - e.clientX
         if (newWidth >= 400 && newWidth <= maxPanelWidth) setPreviewPanelWidth(newWidth)
       }
     },
@@ -124,6 +125,7 @@ const WorkflowPreview = ({ renderFailureActions }: WorkflowPreviewProps) => {
 
   return (
     <div
+      ref={panelRef}
       id={panelId}
       className="relative flex h-full flex-col rounded-s-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{ width: `${panelWidth}px` }}
