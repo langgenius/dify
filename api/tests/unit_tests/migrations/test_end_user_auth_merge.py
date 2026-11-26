@@ -32,17 +32,15 @@ def test_auth_and_evaluation_merge_has_no_schema_operations() -> None:
     assert migration.downgrade() is None
 
 
-def test_merge_has_one_head_and_preserves_all_histories_without_schema_operations() -> None:
+def test_auth_merge_preserves_both_histories_without_schema_operations() -> None:
     migration = import_module("migrations.versions.2026_11_17_1400-a7e4c9d2b610_merge_end_user_auth_histories")
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
     scripts = ScriptDirectory.from_config(configuration)
 
-    assert scripts.get_heads() == [migration.revision]
     assert set(migration.down_revision) == {"b6d8f2a4c901", "3b7a9d1e6c42"}
     reachable_revisions = {revision.revision for revision in scripts.iterate_revisions(migration.revision, "base")}
     assert set(migration.down_revision) <= reachable_revisions
-    assert reachable_revisions == {revision.revision for revision in scripts.walk_revisions()}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
 
@@ -79,5 +77,21 @@ def test_evaluation_merge_preserves_both_parents_without_schema_operations() -> 
     migration = import_module("migrations.versions.2026_11_17_1115-b6d8f2a4c901_merge_end_user_auth_and_evaluation")
 
     assert set(migration.down_revision) == {"9f2c7a6e4b31", "f8b6e2c4a901"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None
+
+
+def test_onboarding_merge_preserves_both_histories_under_one_head() -> None:
+    migration = import_module("migrations.versions.2026_11_26_1730-151fcf64f8b2_merge_end_user_auth_and_onboarding")
+    configuration = Config()
+    configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
+    scripts = ScriptDirectory.from_config(configuration)
+
+    head = scripts.get_current_head()
+    assert head is not None
+    assert set(migration.down_revision) == {"a7e4c9d2b610", "c17c8ae11622"}
+    reachable = {revision.revision for revision in scripts.iterate_revisions(head, "base")}
+    assert {migration.revision, *migration.down_revision} <= reachable
+    assert reachable == {revision.revision for revision in scripts.walk_revisions()}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
