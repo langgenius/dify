@@ -59,9 +59,10 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
 type Deferred = { targets: Set<string>; succeededAt: number }
 
 /**
- * Where a query's current data comes from, in the order events happened: the start of the
- * read that returned it, or the write that set it. Response arrival time cannot tell a read
- * that started before a write from one that started after it.
+ * When the read behind a query's current data started, in the order events happened. Response
+ * arrival time cannot tell a read that started before a write from one that started after it.
+ * A cache write does not count: a policy may patch rows of a filtered or paginated list it
+ * cannot reconcile (membership, totals), so written queries are still read again.
  */
 type QueryOrigin = { fetchStartedAt: number; dataFrom: number }
 
@@ -72,9 +73,9 @@ type QueryOrigin = { fetchStartedAt: number; dataFrom: number }
  * writes; this one is never awaited.
  *
  * - It starts once the mutation's own callbacks have settled, and skips queries whose data was
- *   requested or written after the request succeeded, so a policy's primary refresh is not
- *   fetched twice. A read that started before the write is refreshed, whether it is still
- *   running or already returned its old data.
+ *   read by a request that started after the write succeeded, so a policy's awaited refresh is
+ *   not fetched twice. A read that started before the write is refreshed, whether it is still
+ *   running or already returned its old data, and so is a query the policy wrote into.
  * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
@@ -111,7 +112,8 @@ export function createMutationInvalidation() {
         const origin = origins.get(query) ?? { fetchStartedAt: 0, dataFrom: 0 }
         if (action.type === 'fetch') origin.fetchStartedAt = ++sequence
         else if (action.type === 'success')
-          origin.dataFrom = action.manual ? ++sequence : origin.fetchStartedAt
+          // A write keeps the origin of the read it patched.
+          origin.dataFrom = action.manual ? origin.dataFrom : origin.fetchStartedAt
         else return
         origins.set(query, origin)
       })

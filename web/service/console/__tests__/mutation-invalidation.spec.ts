@@ -108,23 +108,37 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('second'))
   })
 
-  it('skips queries the policy already refreshed or wrote after the request succeeded', async () => {
+  it('skips queries the policy already read again after the request succeeded', async () => {
     const client = createClient()
     const appsList = await mountQuery(client, appsListKey())
     const appDetail = await mountQuery(client, appDetailKey())
 
     await mutate(client, {
       mutationKey: renameApp(),
+      // A policy's awaited refresh of its primary source.
+      onSuccess: () => client.invalidateQueries({ queryKey: appDetailKey() }),
+    })
+    await settle()
+
+    expect(appDetail).toHaveBeenCalledTimes(2)
+    expect(appsList).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads a query the policy wrote into again, since a patched list may not match', async () => {
+    const client = createClient()
+    const appsList = await mountQuery(client, appsListKey())
+
+    await mutate(client, {
+      mutationKey: renameApp(),
       onSuccess: () => {
         tick()
-        client.setQueryData(appDetailKey(), 'from response')
+        client.setQueryData<unknown>(appsListKey() as QueryKey, 'patched row')
       },
     })
     await settle()
 
-    expect(appDetail).toHaveBeenCalledTimes(1)
-    expect(client.getQueryData(appDetailKey())).toBe('from response')
     expect(appsList).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(client.getQueryData(appsListKey())).toBe(2))
   })
 
   it('restarts a read that started before the write even when the policy wrote the response', async () => {
