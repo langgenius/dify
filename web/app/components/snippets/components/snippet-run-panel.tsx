@@ -5,7 +5,7 @@ import type { InputVar as WorkflowInputVar } from '@/app/components/workflow/typ
 import type { InputVar } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import copy from 'copy-to-clipboard'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -225,6 +225,7 @@ const SnippetRunPanel = ({ fields }: SnippetRunPanelProps) => {
           >
             {t(($) => $.tracing, { ns: 'runLog' })}
           </TabsTab>
+          <TabsIndicator />
         </TabsList>
         <div
           className={`h-0 grow overflow-y-auto rounded-b-2xl ${currentTab === 'RESULT' || currentTab === 'TRACING' ? 'bg-background-section-burn!' : 'bg-components-panel-bg'}`}
