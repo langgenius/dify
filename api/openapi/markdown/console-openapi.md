@@ -643,6 +643,8 @@ name/pagination filters; the response contains detached Agent tags.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
+**Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft**
+
 Transcribe audio using the current Agent debug configuration
 
 #### Parameters
@@ -669,6 +671,8 @@ Transcribe audio using the current Agent debug configuration
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-chat/finalize
+**Drain the admitted account's Build turn to the first message-end event**
+
 Run a build-draft Agent App turn that asks the agent to push config updates
 
 #### Parameters
@@ -833,6 +837,8 @@ Get suggested questions for an Agent App message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
+**Stop a task owned by the admitted account after resolving the Agent's runtime App**
+
 Stop a running Agent App chat message generation
 
 #### Parameters
@@ -1581,6 +1587,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/text-to-audio
+**Synthesize an owned message or preview text using the existing runtime App**
+
 Preview an Agent TTS voice or read an Agent chat message
 
 #### Parameters
@@ -1606,6 +1614,8 @@ Preview an Agent TTS voice or read an Agent chat message
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
+**Require an existing runtime App, then discover provider voices without a DB session**
+
 Get available TTS voices for an Agent and language
 
 #### Parameters

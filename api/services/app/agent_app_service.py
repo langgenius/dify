@@ -49,7 +49,13 @@ class AgentAppAccessStore(Protocol):
         """Select the config of a tenant workflow node."""
         ...
 
-    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
+    def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Return the tenant's existing runtime App ID without creating it."""
+        ...
+
+    def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Return the tenant's runtime App ID and materialize it for inline Agents if needed."""
+        ...
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]: ...
 
@@ -301,7 +307,12 @@ class AgentAppAccessService:
         )
 
     def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        """Require an existing runtime App in the admitted workspace without writing."""
         return self._store.resolve_existing_runtime_app_id(tenant_id=context.active_workspace_id, agent_id=agent_id)
+
+    def resolve_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        """Resolve the admitted workspace's runtime App, creating a missing inline backing App if needed."""
+        return self._store.resolve_runtime_app_id(tenant_id=context.active_workspace_id, agent_id=agent_id)
 
     def list_referencing_workflows(self, context: RequestContext, agent_id: str) -> list[AgentReferencingWorkflow]:
         return self._store.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)
