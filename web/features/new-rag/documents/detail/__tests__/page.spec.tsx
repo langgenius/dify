@@ -16,6 +16,7 @@ import { zGetFeaturesVectorSpaceResponse } from '@dify/contracts/api/console/fea
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
@@ -524,6 +525,8 @@ vi.mock('@tanstack/react-virtual', () => ({
 }))
 
 type DetailRenderOptions = {
+  /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
+  errorToasts?: boolean
   onUrlUpdate?: ComponentProps<typeof QueryTestingAdapter>['onUrlUpdate']
   searchParams?: string
   settle?: boolean
@@ -572,7 +575,9 @@ function seedDocumentsList(queryClient: ReturnType<typeof createConsoleQueryClie
 
 async function render(ui: ReactElement, options: DetailRenderOptions = {}) {
   const onUrlUpdate = options.onUrlUpdate ?? vi.fn()
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createConsoleQueryClient(
+    options.errorToasts ? { caches: createErrorToastCaches() } : undefined,
+  )
   // The page retries transient failures itself; keep those retries immediate.
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),
@@ -1989,6 +1994,52 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows a failed task interrupt once, with the server reason in the task row', async () => {
+    const user = userEvent.setup()
+    const message = 'The task has already finished'
+    documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(
+      within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    )
+
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(message)
+    expect(toastState.error).not.toHaveBeenCalled()
+  })
+
+  it('keeps a rate-limited task interrupt failure in the row once write access is confirmed', async () => {
+    const user = userEvent.setup()
+    // The knowledge rate limit fails with a plain 403, like a permission denial.
+    const message = 'Sorry, you have reached the knowledge base request rate limit.'
+    documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(
+      within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    )
+
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(message)
+    expect(toastState.error).not.toHaveBeenCalled()
+  })
+
   it('loads task document titles only while the task drawer is open', async () => {
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
     const user = userEvent.setup()
@@ -2019,6 +2070,26 @@ describe('DocumentDetailPage', () => {
       },
     })
     await waitFor(() => expect(documentQuery.refetch).toHaveBeenCalled())
+  })
+
+  it('reports a failed re-index cancel once, with the server reason', async () => {
+    const user = userEvent.setup()
+    const message = 'The re-index has already finished'
+    taskSnapshotQuery.data = task({ state: 'running' })
+    documentQuery.data = logicalDocument({ latestTask: taskSnapshotQuery.data })
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeDocuments.cancelDocumentReindex' }),
+    )
+
+    await waitFor(() => expect(toastState.error).toHaveBeenCalled())
+    expect(toastState.error).toHaveBeenCalledExactlyOnceWith(message)
   })
 
   it('cancels a newly accepted re-index before task discovery catches up', async () => {

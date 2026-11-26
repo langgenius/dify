@@ -10,6 +10,7 @@ import {
 } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { consoleQueryKey } from '@/test/console/operation-hooks'
@@ -660,6 +661,8 @@ function seedPreloadedPages() {
 }
 
 type RenderOptions = {
+  /** Mirror the app's cache-level error toasts, so a failure's messages can be counted. */
+  errorToasts?: boolean
   onUrlUpdate?: ComponentProps<typeof QueryTestingAdapter>['onUrlUpdate']
   searchParams?: string
   settle?: boolean
@@ -667,7 +670,9 @@ type RenderOptions = {
 
 async function render(ui: ReactElement, options: RenderOptions = {}) {
   const onUrlUpdate = vi.fn<NonNullable<RenderOptions['onUrlUpdate']>>(options.onUrlUpdate)
-  queryClient = createConsoleQueryClient()
+  queryClient = createConsoleQueryClient(
+    options.errorToasts ? { caches: createErrorToastCaches() } : undefined,
+  )
   queryClient.setDefaultOptions({
     ...queryClient.getDefaultOptions(),
     queries: { ...queryClient.getDefaultOptions().queries, retryDelay: 0 },
@@ -5592,6 +5597,83 @@ describe('DocumentsPage', () => {
     const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
     expect(within(panel).getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
     expect(within(panel).queryByText('knowledgeTasks.noBackgroundTasks')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed interrupt once, with the server reason in the task panel', async () => {
+    const user = userEvent.setup()
+    const message = 'The task has already finished'
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message }),
+    )
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(message)
+    expect(toastMock.error).not.toHaveBeenCalled()
+  })
+
+  it('keeps a rate-limited interrupt failure visible once write access is confirmed', async () => {
+    const user = userEvent.setup()
+    // The knowledge rate limit fails with a plain 403, like a permission denial.
+    const message = 'Sorry, you have reached the knowledge base request rate limit.'
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    await waitFor(() => expect(permissionStateMock.refreshAfterDenial).toHaveBeenCalledOnce())
+    const panel = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(message)
+    expect(
+      within(panel).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    ).toBeVisible()
+    expect(toastMock.error).not.toHaveBeenCalled()
+  })
+
+  it('drops an interrupt failure when the recheck confirms write access was revoked', async () => {
+    const user = userEvent.setup()
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message: 'Permission denied' }),
+    )
+    permissionStateMock.refreshAfterDenial.mockResolvedValue({
+      data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
+      error: null,
+    })
+    documentsQuery.data = { pages: [{ items: [document({})] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'running' })] }] }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />, { errorToasts: true })
+    await user.click(
+      screen.getByRole('button', {
+        name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'knowledgeTasks.interruptTask' }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+      ).not.toBeInTheDocument(),
+    )
+    expect(screen.queryByText('Permission denied')).not.toBeInTheDocument()
   })
 
   it('prevents duplicate interrupt requests and refreshes both resources', async () => {
