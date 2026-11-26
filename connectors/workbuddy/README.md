@@ -8,9 +8,9 @@ Needs git, tar, zip and Node 22.18 or newer (to run `.ts` files directly).
 
 ```sh
 git fetch --tags origin
-node connectors/workbuddy/package.ts dify                    # newest stable tag
-node connectors/workbuddy/package.ts dify --tag <release>  # a given release tag
-node connectors/workbuddy/package.ts dify --worktree       # skill from the working tree, no tag
+node connectors/workbuddy/package.ts dify-mcp                  # newest stable tag
+node connectors/workbuddy/package.ts dify-mcp --tag <release>  # a given release tag
+node connectors/workbuddy/package.ts dify-mcp --worktree       # skill from the working tree, no tag
 ```
 
 The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used, or `worktree` with `--worktree`; check it is the source you expect. `--tag` and `--worktree` cannot be combined. The script fails when a relative link in `skill-intro.md` points to a file the skill does not have, or when the zip is over WorkBuddy's 20 MB limit. The tag must be a release that contains the MCP flow (`skills/difyctl/references/mcp.md`). Older tags build a package whose intro points at a missing file.
@@ -29,7 +29,7 @@ File upload is not available over MCP. A file is passed to an app as a URL in it
 ## Notes
 
 - An MCP connector ships `connector-meta.json`, `mcp.json` and `icon.png`, plus `token-schema.json` when `auth_mode` is `token`.
-- `skill-meta.json` holds the skill header fields only WorkBuddy reads. The script adds them to the packaged `SKILL.md`. Keep them out of the skill in `skills/`.
+- `skill-meta.json` holds the skill header fields only WorkBuddy reads. The script adds them to the packaged `SKILL.md`. Keep them out of the skill in `skills/`. Its `skill` names the folder in `skills/` to ship, and `name` is the skill's name inside the package; the script renames the folder and the `name` in `SKILL.md` to it.
 - `skill-intro.md` (optional) is text only for this connector's agent, such as how to log in. The script inserts it at the top of the packaged `SKILL.md` body.
 - Bump `version` in `connector-meta.json` on every submission.
 - Upload the zip on the WorkBuddy open platform: https://open.workbuddy.cn

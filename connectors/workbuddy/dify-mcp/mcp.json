@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "dify": {
+    "dify-mcp": {
       "type": "streamableHttp",
       "url": "https://${DIFY_HOST}/openapi/v1/mcp",
       "headers": {

@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -14,13 +15,13 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 type FieldValue = string | readonly string[]
-type SkillMeta = { skill: string; fields: Record<string, FieldValue> }
+type SkillMeta = { skill: string; name: string; fields: Record<string, FieldValue> }
 type ConnectorMeta = { version: string; auth_mode?: string }
 
 const WORKBUDDY_DIR = fileURLToPath(new URL('.', import.meta.url))
 const REPO_ROOT = join(WORKBUDDY_DIR, '..', '..')
 const BUILD_NAME = 'build'
-const CONNECTOR_NAME = /^[a-z0-9][a-z0-9-]*$/
+const SLUG = /^[a-z0-9][a-z0-9-]*$/
 const ARCHIVE_MAX_BYTES = 256 * 1024 * 1024
 const BUILD_DIR = join(WORKBUDDY_DIR, BUILD_NAME)
 const ICON_FILE = 'icon.png'
@@ -51,6 +52,7 @@ const REQUIRED_SKILL_FIELDS = [
 const STABLE_TAG = /^(\d+)\.(\d+)\.(\d+)$/
 const FRONTMATTER_FENCE = '---'
 const KEY_LINE = /^([A-Z_][\w-]*):/i
+const NAME_KEY = 'name'
 
 function latestStableTag(tags: readonly string[]): string {
   const stable = tags
@@ -84,6 +86,17 @@ function frontmatterCloseIndex(lines: readonly string[]): number {
 function insertAfterFrontmatter(skillMd: string, text: string): string {
   const lines = skillMd.split('\n')
   lines.splice(frontmatterCloseIndex(lines) + 1, 0, '', text.trimEnd())
+  return lines.join('\n')
+}
+
+function renameSkill(skillMd: string, name: string): string {
+  const lines = skillMd.split('\n')
+  const closeIndex = frontmatterCloseIndex(lines)
+  const nameIndex = lines.findIndex(
+    (line, i) => i > 0 && i < closeIndex && KEY_LINE.exec(line)?.[1] === NAME_KEY,
+  )
+  if (nameIndex === -1) throw new Error(`SKILL.md frontmatter has no "${NAME_KEY}"`)
+  lines[nameIndex] = `${NAME_KEY}: ${name}`
   return lines.join('\n')
 }
 
@@ -190,7 +203,7 @@ function main() {
     if (values.worktree) throw new Error(`${USAGE}\n--tag and --worktree cannot be combined`)
   }
 
-  if (!CONNECTOR_NAME.test(connector))
+  if (!SLUG.test(connector))
     throw new Error(
       `invalid connector name "${connector}": use lowercase letters, digits and hyphens`,
     )
@@ -207,6 +220,8 @@ function main() {
   const missing = copiedFiles.filter((name) => !existsSync(join(sourceDir, name)))
   if (missing.length > 0) throw new Error(`${sourceDir}: missing ${missing.join(', ')}`)
   const meta = readJson<SkillMeta>(join(sourceDir, SKILL_META_FILE))
+  if (!SLUG.test(meta.name ?? ''))
+    throw new Error(`${SKILL_META_FILE}: "name" must use lowercase letters, digits and hyphens`)
 
   const tag = values.worktree ? null : resolveTag(values.tag)
   const source = tag === null ? WORKTREE_LABEL : `tag ${tag}`
@@ -218,13 +233,18 @@ function main() {
   mkdirSync(outDir, { recursive: true })
 
   extractSkill(tag, meta.skill, outDir)
+  const skillDir = join(outDir, SKILLS_DIR, meta.name)
+  renameSync(join(outDir, SKILLS_DIR, meta.skill), skillDir)
 
-  const skillPath = join(outDir, SKILLS_DIR, meta.skill, SKILL_FILE)
-  let skillMd = insertFrontmatter(readFileSync(skillPath, 'utf8'), skillFields(meta, version))
+  const skillPath = join(skillDir, SKILL_FILE)
+  let skillMd = insertFrontmatter(
+    renameSkill(readFileSync(skillPath, 'utf8'), meta.name),
+    skillFields(meta, version),
+  )
   const introPath = join(sourceDir, SKILL_INTRO_FILE)
   if (existsSync(introPath)) {
     const intro = readFileSync(introPath, 'utf8')
-    assertIntroLinksExist(intro, join(outDir, SKILLS_DIR, meta.skill), source)
+    assertIntroLinksExist(intro, skillDir, source)
     skillMd = insertAfterFrontmatter(skillMd, intro)
   }
   writeFileSync(skillPath, skillMd)
