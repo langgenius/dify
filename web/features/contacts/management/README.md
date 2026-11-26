@@ -31,5 +31,5 @@ on cancellation or non-progressing pagination. Only search and contact-type
 filters are shareable URL state; loaded page count is local query state.
 
 Member invitations and member removal use their existing generated workspace
-member operations. Contact-upgrade and contact-retention workflows are not
-exposed because no backend contract supports them.
+member operations. Enterprise member removal can keep the same Contact as a
+Platform Contact in the current workspace.

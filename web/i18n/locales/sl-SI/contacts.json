@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Se izvaja",
   "imPlatform.sync.status.success": "Uspešno",
   "imPlatform.title": "Kanali",
+  "memberRemoval.keepPlatform": "Obdrži kot stik platforme",
+  "memberRemoval.keepPlatformDescription": "Oseba bo po preklicu dostopa ostala med stiki tega delovnega prostora.",
   "platformPicker.addForbidden": "Za dodajanje stikov s platforme potrebujete centralizirano upravljanje neposrednega sporočanja in dovoljenje za upravljanje stikov."
 }

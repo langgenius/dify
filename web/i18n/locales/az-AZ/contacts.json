@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "İcra olunur",
   "imPlatform.sync.status.success": "Uğurlu",
   "imPlatform.title": "Kanallar",
+  "memberRemoval.keepPlatform": "Platforma kontaktı kimi saxla",
+  "memberRemoval.keepPlatformDescription": "Üzvün giriş icazəsi ləğv edildikdən sonra o, cari iş sahəsinin kontaktlarında qalacaq.",
   "platformPicker.addForbidden": "Platforma kontaktlarını əlavə etmək üçün ani mesajlaşmanın mərkəzləşdirilmiş idarə edilməsi və kontaktları idarə etmək icazəsi tələb olunur."
 }

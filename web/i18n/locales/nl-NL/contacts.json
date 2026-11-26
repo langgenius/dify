@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Wordt uitgevoerd",
   "imPlatform.sync.status.success": "Geslaagd",
   "imPlatform.title": "Kanalen",
+  "memberRemoval.keepPlatform": "Behouden als platformcontact",
+  "memberRemoval.keepPlatformDescription": "Deze persoon blijft in de contacten van deze werkruimte staan nadat de toegang is ingetrokken.",
   "platformPicker.addForbidden": "Om platformcontacten toe te voegen zijn centraal IM-beheer en toestemming om contacten te beheren vereist."
 }

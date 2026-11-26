@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Виконується",
   "imPlatform.sync.status.success": "Успішно",
   "imPlatform.title": "Канали",
+  "memberRemoval.keepPlatform": "Зберегти як контакт платформи",
+  "memberRemoval.keepPlatformDescription": "Після відкликання доступу учасник залишиться в контактах цього робочого простору.",
   "platformPicker.addForbidden": "Для додавання контактів платформи потрібні централізоване керування месенджерами та дозвіл на керування контактами."
 }

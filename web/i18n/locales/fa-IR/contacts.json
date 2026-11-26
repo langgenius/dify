@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "در حال اجرا",
   "imPlatform.sync.status.success": "موفق",
   "imPlatform.title": "کانال‌ها",
+  "memberRemoval.keepPlatform": "نگه‌داشتن به‌عنوان مخاطب پلتفرم",
+  "memberRemoval.keepPlatformDescription": "پس از لغو دسترسی، این فرد در فهرست مخاطبان فضای کاری فعلی باقی می‌ماند.",
   "platformPicker.addForbidden": "افزودن مخاطبان پلتفرم به مدیریت متمرکز پیام‌رسانی فوری و مجوز مدیریت مخاطبان نیاز دارد."
 }

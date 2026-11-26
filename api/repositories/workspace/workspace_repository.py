@@ -7,7 +7,7 @@ from typing import override
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.human_input_v2.shared import AccountId
+from core.human_input_v2.shared import AccountId, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models.account import (
@@ -509,8 +509,13 @@ class WorkspaceRepository(
         account_id: str,
         owner_id: str,
         actor_account_id: str,
+        keep_as_platform_contact: bool = False,
     ) -> WorkspaceMemberRemoval:
-        """Remove one membership and hand the member's resources to ``owner_id``; the account itself is kept."""
+        """Remove a membership and transfer its resources to ``owner_id`` without deleting the account.
+
+        Retention requires an active account and reuses its stable Contact identity. The
+        Platform entry, membership deletion, and resource changes commit or roll back together.
+        """
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             membership = session.scalar(
@@ -544,6 +549,10 @@ class WorkspaceRepository(
                 removed_account_id=account_id,
                 replacement_owner_account_id=owner_id,
             )
+            if keep_as_platform_contact:
+                contacts = SQLAlchemyContactRepository(session)
+                contact_id = contacts.provision_account_backed_contact(AccountId(account_id))
+                contacts.create_platform_entry(TenantId(workspace_id), contact_id, AccountId(actor_account_id))
             session.delete(membership)
             return WorkspaceMemberRemoval(account_id, account.email)
 

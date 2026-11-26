@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "Wird ausgeführt",
   "imPlatform.sync.status.success": "Erfolgreich",
   "imPlatform.title": "Kanäle",
+  "memberRemoval.keepPlatform": "Als Plattformkontakt behalten",
+  "memberRemoval.keepPlatformDescription": "Die Person bleibt in den Kontakten dieses Arbeitsbereichs, nachdem ihr der Zugriff entzogen wurde.",
   "platformPicker.addForbidden": "Zum Hinzufügen von Plattformkontakten sind eine zentrale IM-Verwaltung und die Berechtigung zur Kontaktverwaltung erforderlich."
 }

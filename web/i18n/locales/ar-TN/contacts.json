@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "قيد التشغيل",
   "imPlatform.sync.status.success": "نجاح",
   "imPlatform.title": "القنوات",
+  "memberRemoval.keepPlatform": "الاحتفاظ به كجهة اتصال على المنصة",
+  "memberRemoval.keepPlatformDescription": "سيبقى هذا العضو ضمن جهات الاتصال في مساحة العمل الحالية بعد إزالة صلاحية وصوله.",
   "platformPicker.addForbidden": "تتطلب إضافة جهات اتصال المنصة تفعيل الإدارة المركزية للمراسلة الفورية والحصول على إذن إدارة جهات الاتصال."
 }

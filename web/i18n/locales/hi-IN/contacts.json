@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "चल रहा है",
   "imPlatform.sync.status.success": "सफल",
   "imPlatform.title": "चैनल",
+  "memberRemoval.keepPlatform": "प्लेटफ़ॉर्म संपर्क के रूप में रखें",
+  "memberRemoval.keepPlatformDescription": "ऐक्सेस हटाए जाने के बाद भी यह व्यक्ति इस कार्यक्षेत्र की संपर्क सूची में रहेगा।",
   "platformPicker.addForbidden": "प्लेटफ़ॉर्म के संपर्क जोड़ने के लिए इंस्टेंट मैसेजिंग का केंद्रीकृत प्रबंधन और संपर्क प्रबंधित करने की अनुमति चाहिए।"
 }

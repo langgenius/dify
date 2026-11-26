@@ -243,11 +243,26 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
             response, status = unwrap(api.delete)(api, context, "member")
             assert status == 200
             assert response == {"result": "success", "tenant_id": "workspace"}
-            services.workspaces.members.remove.assert_called_once_with("workspace", "member", "actor")
+            services.workspaces.members.remove.assert_called_once_with(
+                "workspace", "member", "actor", keep_as_platform_contact=False
+            )
         else:
             api = MemberUpdateRoleApi()
             assert unwrap(api.put)(api, context, "member") == {"result": "success"}
             services.workspaces.members.update_role.assert_called_once_with("workspace", "member", "editor", "actor")
+
+
+@pytest.mark.parametrize(("query_value", "keep"), [("true", True), ("false", False)])
+def test_remove_member_passes_platform_contact_option(app: Flask, services: Mock, query_value: str, keep: bool) -> None:
+    api = MemberCancelInviteApi()
+    member_id = uuid4()
+    with app.test_request_context("/", method="DELETE", query_string={"keep_as_platform_contact": query_value}):
+        _, status = unwrap(api.delete)(api, RequestContext("request", None, "actor", "workspace"), member_id)
+
+    assert status == HTTPStatus.OK
+    services.workspaces.members.remove.assert_called_once_with(
+        "workspace", str(member_id), "actor", keep_as_platform_contact=keep
+    )
 
 
 @pytest.mark.parametrize("operation", ["remove", "update_role"])

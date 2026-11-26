@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "In esecuzione",
   "imPlatform.sync.status.success": "Riuscito",
   "imPlatform.title": "Canali",
+  "memberRemoval.keepPlatform": "Mantieni come contatto della piattaforma",
+  "memberRemoval.keepPlatformDescription": "La persona resterà tra i contatti di questo spazio di lavoro dopo la revoca dell’accesso.",
   "platformPicker.addForbidden": "Per aggiungere contatti della piattaforma sono necessarie la gestione centralizzata della messaggistica istantanea e l’autorizzazione a gestire i contatti."
 }

@@ -135,7 +135,14 @@ class WorkspaceMemberStore(Protocol):
         account_id: str,
         owner_id: str,
         actor_account_id: str,
-    ) -> WorkspaceMemberRemoval: ...
+        keep_as_platform_contact: bool,
+    ) -> WorkspaceMemberRemoval:
+        """Delete the scoped membership and transfer its resources in one transaction.
+
+        If requested, the active member's existing Contact identity becomes a Platform
+        Contact in the same transaction. Otherwise no Platform entry is written.
+        """
+        ...
 
     def update_member_role(
         self,
@@ -151,6 +158,9 @@ class WorkspaceMemberStore(Protocol):
 class WorkspaceMemberAccessGateway(Protocol):
     @property
     def rbac_enabled(self) -> bool: ...
+
+    @property
+    def platform_contacts_enabled(self) -> bool: ...
 
     def ensure_role_enabled(self, role: str) -> None: ...
 
@@ -200,15 +210,29 @@ class WorkspaceMemberService:
     def get_role(self, workspace_id: str, account_id: str | None) -> TenantAccountRole | None:
         return self._workspaces.member_role(workspace_id, account_id)
 
-    def check_permission(self, workspace_id: str, operator_id: str, member_id: str | None, action: str) -> None:
+    def check_permission(
+        self,
+        workspace_id: str,
+        operator_id: str,
+        member_id: str | None,
+        action: str,
+        *,
+        keep_as_platform_contact: bool = False,
+    ) -> None:
+        """Authorize a membership action, including any Platform Contact retention on removal."""
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
         if member_id == operator_id:
             raise CannotOperateSelfError("Cannot operate self.")
+        if keep_as_platform_contact and not self._access.platform_contacts_enabled:
+            raise NoPermissionError("Keeping Platform Contacts requires Enterprise.")
         if self._access.rbac_enabled:
             permission = "workspace.member.manage" if action in {"add", "remove"} else "workspace.role.manage"
-            if permission not in self._access.permission_keys(workspace_id, operator_id):
+            permissions = self._access.permission_keys(workspace_id, operator_id)
+            if permission not in permissions:
                 raise NoPermissionError(f"No permission to {action} member.")
+            if keep_as_platform_contact and "contact.manage" not in permissions:
+                raise NoPermissionError("No permission to manage contacts.")
             if action == "remove" and member_id and self._access.is_owner(workspace_id, operator_id, member_id):
                 raise NoPermissionError(f"No permission to {action} member.")
             return
@@ -260,31 +284,40 @@ class WorkspaceMemberService:
     def assign_role(self, workspace_id: str, operator_id: str, member_id: str, role_id: str) -> None:
         self._access.assign_role(workspace_id, operator_id, member_id, role_id)
 
-    def remove(self, workspace_id: str, account_id: str, operator_id: str) -> None:
+    def remove(
+        self, workspace_id: str, account_id: str, operator_id: str, *, keep_as_platform_contact: bool = False
+    ) -> None:
         """Remove a member under the workspace invitation lock; see ``remove_locked``."""
         with self._invitation_links.acquire(workspace_id):
-            self.remove_locked(workspace_id, account_id, operator_id)
+            self.remove_locked(workspace_id, account_id, operator_id, keep_as_platform_contact=keep_as_platform_contact)
 
-    def remove_locked(self, workspace_id: str, account_id: str, operator_id: str) -> None:
+    def remove_locked(
+        self, workspace_id: str, account_id: str, operator_id: str, *, keep_as_platform_contact: bool = False
+    ) -> None:
         """Remove a member while the caller holds the workspace invitation lock.
 
         Postconditions on success: the membership is gone, the member's resources belong to the
         workspace owner, and no invitation link for the account in this workspace is accepted.
         The account and its invitations to other workspaces are kept.
+        Requested Contact retention leaves the same Contact ID visible as a Platform Contact.
 
         Raises:
             AccountNotFoundError: The member account does not exist.
             CannotOperateSelfError: The operator tries to remove themselves.
-            NoPermissionError: The operator cannot remove the member.
+            NoPermissionError: The operator cannot remove the member or retain the Contact.
             MemberNotInTenantError: The account is not a member of the workspace.
             ValueError: The workspace has no owner to receive the member's resources.
         """
         account = self._accounts.get(account_id)
         if account is None:
             raise AccountNotFoundError()
-        self.check_permission(workspace_id, operator_id, account_id, "remove")
+        self.check_permission(
+            workspace_id, operator_id, account_id, "remove", keep_as_platform_contact=keep_as_platform_contact
+        )
         if self.get_role(workspace_id, account_id) is None:
             raise MemberNotInTenantError("Member not in tenant.")
+        if keep_as_platform_contact and account.status != "active":
+            raise NoPermissionError("Only active members can be kept as Platform Contacts.")
         owner_id = (
             self._access.owner_id(workspace_id, operator_id)
             if self._access.rbac_enabled
@@ -298,6 +331,7 @@ class WorkspaceMemberService:
             account_id=account_id,
             owner_id=owner_id,
             actor_account_id=operator_id,
+            keep_as_platform_contact=keep_as_platform_contact,
         )
         self._access.member_removed(workspace_id, removal)
 

@@ -261,6 +261,8 @@
   "imPlatform.title": "渠道",
   "memberRemoval.accessImpact": "{{memberName}} 将立即失去此工作区的访问权限。",
   "memberRemoval.contentImpact": "其创建的应用和知识库会保留在此工作区。此操作无法撤销。",
+  "memberRemoval.keepPlatform": "保留为平台联系人",
+  "memberRemoval.keepPlatformDescription": "移除访问权限后，该成员仍会保留在此工作区的联系人目录中。",
   "memberRemoval.remove": "移除",
   "memberRemoval.title": "从工作区移除 {{memberName}}？",
   "memberRemoval.workspaceTitle": "将 {{memberName}} 从 {{workspaceName}} 移除？",

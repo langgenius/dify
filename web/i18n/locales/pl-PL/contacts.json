@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "W toku",
   "imPlatform.sync.status.success": "Sukces",
   "imPlatform.title": "Kanały",
+  "memberRemoval.keepPlatform": "Zachowaj jako kontakt platformy",
+  "memberRemoval.keepPlatformDescription": "Po odebraniu dostępu ta osoba pozostanie na liście kontaktów tego obszaru roboczego.",
   "platformPicker.addForbidden": "Dodawanie kontaktów z platformy wymaga centralnego zarządzania komunikatorami i uprawnienia do zarządzania kontaktami."
 }

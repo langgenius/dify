@@ -10,6 +10,7 @@ from redis import RedisError
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.shared import AccountId, TenantId
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole as _workspace_member_query_service_TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
@@ -20,6 +21,8 @@ from models.dataset import Dataset
 from models.human_input_v2 import HumanInputContactIdentity
 from models.model import App, AppMode
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.human_input_v2.contact import ContactType
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -171,6 +174,55 @@ class TestMemberServiceCases:
         assert sqlite_session.get(Account, member_id) is not None
         assert account_domain.members.get_role(workspace_id, member_id) is None
         account_domain.access.member_removed.assert_called_once()
+
+    @staticmethod
+    @pytest.mark.parametrize("keep", [False, True])
+    def test_member_removal_applies_platform_contact_preference(
+        account_domain: AccountDomain,
+        sqlite_session: Session,
+        members: tuple[str, str, str],
+        keep: bool,
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        other_workspace = Tenant(name="Other workspace")
+        sqlite_session.add(other_workspace)
+        contacts = SQLAlchemyContactRepository(sqlite_session)
+        contact_id = contacts.provision_account_backed_contact(AccountId(member_id))
+        sqlite_session.commit()
+        account_domain.access.platform_contacts_enabled = True
+        account_domain.access.rbac_enabled = True
+        account_domain.access.permission_keys.return_value = {"workspace.member.manage", "contact.manage"}
+        account_domain.access.owner_id.return_value = owner_id
+
+        account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=keep)
+
+        assert account_domain.members.get_role(workspace_id, member_id) is None
+        assert contacts.get_contacts_by_id(TenantId(other_workspace.id), contact_id) is None
+        contact = contacts.get_contacts_by_id(TenantId(workspace_id), contact_id)
+        if keep:
+            assert contact is not None
+            assert contact.id == contact_id
+            assert contact.type is ContactType.PLATFORM
+        else:
+            assert contact is None
+
+    @staticmethod
+    @pytest.mark.parametrize("platform_contacts_enabled", [False, True])
+    def test_contact_retention_requires_enterprise_and_contact_permission(
+        account_domain: AccountDomain, members: tuple[str, str, str], platform_contacts_enabled: bool
+    ) -> None:
+        workspace_id, owner_id, member_id = members
+        account_domain.access.platform_contacts_enabled = platform_contacts_enabled
+        account_domain.access.rbac_enabled = True
+        account_domain.access.permission_keys.return_value = (
+            {"workspace.member.manage"} if platform_contacts_enabled else {"workspace.member.manage", "contact.manage"}
+        )
+
+        with pytest.raises(NoPermissionError):
+            account_domain.members.remove(workspace_id, member_id, owner_id, keep_as_platform_contact=True)
+
+        assert account_domain.members.get_role(workspace_id, member_id) == TenantAccountRole.NORMAL
+        account_domain.delivery.revoke_pending.assert_not_called()
 
     @staticmethod
     def test_removing_a_pending_member_retires_only_this_workspaces_links(

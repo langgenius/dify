@@ -147,5 +147,7 @@
   "imPlatform.sync.status.running": "ກຳລັງດຳເນີນ",
   "imPlatform.sync.status.success": "ສຳເລັດ",
   "imPlatform.title": "ຊ່ອງທາງ",
+  "memberRemoval.keepPlatform": "ເກັບໄວ້ເປັນຜູ້ຕິດຕໍ່ແພລດຟອມ",
+  "memberRemoval.keepPlatformDescription": "ບຸກຄົນນີ້ຈະຍັງຢູ່ໃນລາຍຊື່ຕິດຕໍ່ຂອງພື້ນທີ່ເຮັດວຽກນີ້ຫຼັງຈາກຖືກຖອນສິດເຂົ້າເຖິງ.",
   "platformPicker.addForbidden": "ການເພີ່ມລາຍຊື່ຕິດຕໍ່ຈາກແພລດຟອມຕ້ອງເປີດໃຊ້ການຈັດການ IM ແບບລວມສູນ ແລະ ມີສິດຈັດການລາຍຊື່ຕິດຕໍ່."
 }
