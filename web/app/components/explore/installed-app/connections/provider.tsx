@@ -171,7 +171,10 @@ function useConnectionData({
       if (!body || !canConfirm) return false
       try {
         await save.mutateAsync({ params, body })
-        return activeScopeRef.current === scope
+        const refreshed = await configuration.refetch()
+        return (
+          activeScopeRef.current === scope && refreshed.data?.reauthorization_required === false
+        )
       } catch {
         return false
       }

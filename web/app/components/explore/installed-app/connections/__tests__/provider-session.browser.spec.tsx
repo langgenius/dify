@@ -10,10 +10,20 @@ import {
   captureWorkflowRunConfiguration,
   isWorkflowRunSnapshotCurrent,
 } from '@/app/components/share/text-generation/workflow-run-configuration'
+import { TEST_APP_ID } from '@/test/console/ids'
 import { createDeferred } from '@/test/deferred'
+import { apiError, setupFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
+import { InstalledConnectionSetup } from '..'
 import { InstalledAppConnectionsProvider } from '../provider'
 import { useInstalledAppConnections } from '../use-installed-app-connections'
+
+const revisionOne = '00000000-0000-4000-8000-000000000011'
+const revisionTwo = '00000000-0000-4000-8000-000000000012'
+const workspaceKey = '00000000-0000-4000-8000-000000000021'
+const alternativeKey = '00000000-0000-4000-8000-000000000022'
+const createdConversation = '00000000-0000-4000-8000-000000000032'
+const anotherConversation = '00000000-0000-4000-8000-000000000033'
 
 const mocks = vi.hoisted(() => ({
   parameters: vi.fn(),
@@ -23,23 +33,53 @@ const mocks = vi.hoisted(() => ({
   preflight: vi.fn(),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'installedApps.byInstalledAppId.parameters.get': mocks.parameters,
-      'installedApps.byInstalledAppId.connections.configuration.get': mocks.configuration,
-      'installedApps.byInstalledAppId.connections.configuration.put': mocks.save,
-      'installedApps.byInstalledAppId.connections.get': mocks.list,
-      'installedApps.byInstalledAppId.connections.preflight.post': mocks.preflight,
-    }),
-  }
+// boundary: permission and provider transport is outside connection confirmation.
+vi.mock('@/hooks/use-credential-permissions', () => ({
+  useCredentialPermissions: () => ({
+    canUseCredential: true,
+    canCreateCredential: false,
+    canManageCredential: false,
+  }),
+}))
+
+// boundary: third-party plugin authorization is outside connection confirmation.
+vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
+  usePluginAuth: () => ({
+    isAuthorized: true,
+    canOAuth: false,
+    canApiKey: false,
+    isLoading: false,
+    notAllowCustomCredential: true,
+    invalidPluginCredentialInfo: vi.fn(),
+    credentials: [],
+  }),
+}))
+
+setupFakeApi({
+  console: {
+    installedApps: {
+      byInstalledAppId: {
+        parameters: { get: (input) => mocks.parameters(input) },
+        connections: {
+          get: (input) => mocks.list(input),
+          configuration: {
+            get: (input) => mocks.configuration(input),
+            put: (input) => mocks.save(input),
+          },
+          preflight: { post: (input) => mocks.preflight(input) },
+        },
+      },
+    },
+    workspaces: {
+      current: {
+        tools: { builtin: { get: () => [] } },
+      },
+    },
+  },
 })
 
 const credential = {
-  id: 'workspace-key',
+  id: workspaceKey,
   provider: 'langgenius/github/github',
   name: 'Workspace key',
   credential_type: 'api-key' as const,
@@ -50,10 +90,10 @@ const credential = {
   expires_at: null,
   last_active_at: null,
 }
-const alternative = { ...credential, id: 'alternative-key' }
+const alternative = { ...credential, id: alternativeKey }
 const parameters: InstalledAppParametersResponse = {
   annotation_reply: {},
-  connection_revision: 'revision-one',
+  connection_revision: revisionOne,
   requires_end_user_connections: true,
   connection_requirements: [
     {
@@ -153,18 +193,32 @@ function ChatSession({ onComplete, onSwitch }: { onComplete: () => void; onSwitc
   )
 }
 
-function App() {
-  const [conversationId, setConversationId] = useState<string>()
+function SetupControls() {
+  const state = useInstalledAppConnections()
+  return (
+    <>
+      <InstalledConnectionSetup onStart={() => {}} />
+      <button disabled={!state.canRun}>Run</button>
+    </>
+  )
+}
+
+function App({
+  initialConversation,
+  showSetup = false,
+}: {
+  initialConversation?: string
+  showSetup?: boolean
+}) {
+  const [conversationId, setConversationId] = useState(initialConversation)
   const [client] = useState(createTestQueryClient)
   return (
     <QueryClientProvider client={client}>
-      <InstalledAppConnectionsProvider
-        installedAppId="installed-app"
-        conversationId={conversationId}
-      >
+      <InstalledAppConnectionsProvider installedAppId={TEST_APP_ID} conversationId={conversationId}>
+        {showSetup && <SetupControls />}
         <ChatSession
-          onComplete={() => setConversationId('created-conversation')}
-          onSwitch={() => setConversationId('another-conversation')}
+          onComplete={() => setConversationId(createdConversation)}
+          onSwitch={() => setConversationId(anotherConversation)}
         />
       </InstalledAppConnectionsProvider>
     </QueryClientProvider>
@@ -175,7 +229,7 @@ it('keeps streamed content when the first response gains a conversation ID and r
   const screen = await render(<App />)
   await expect
     .element(screen.getByRole('status', { name: 'Run revision' }))
-    .toHaveTextContent('revision-one')
+    .toHaveTextContent(revisionOne)
 
   await screen.getByRole('button', { name: 'Complete first response' }).click()
 
@@ -183,15 +237,15 @@ it('keeps streamed content when the first response gains a conversation ID and r
   await expect
     .poll(() =>
       mocks.configuration.mock.calls.some(
-        ([input]) => input.query.conversation_id === 'created-conversation',
+        ([input]) => input.query.conversation_id === createdConversation,
       ),
     )
     .toBe(true)
-  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: 'revision-two' })
+  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: revisionTwo })
   await screen.getByRole('button', { name: 'Refresh requirements' }).click()
   await expect
     .element(screen.getByRole('status', { name: 'Run revision' }))
-    .toHaveTextContent('revision-two')
+    .toHaveTextContent(revisionTwo)
   await expect.element(screen.getByText('The streamed answer')).toBeVisible()
 })
 
@@ -206,24 +260,24 @@ it.each(['success', 'failure'] as const)(
     const screen = await render(<App />)
     await expect
       .element(screen.getByRole('status', { name: 'Run revision' }))
-      .toHaveTextContent('revision-one')
+      .toHaveTextContent(revisionOne)
     await screen.getByRole('button', { name: 'Change connection' }).click()
     await expect.poll(() => mocks.save.mock.calls.length).toBe(1)
     await screen.getByRole('button', { name: 'Switch conversation' }).click()
     await expect
       .poll(() =>
         mocks.configuration.mock.calls.some(
-          ([input]) => input.query.conversation_id === 'another-conversation',
+          ([input]) => input.query.conversation_id === anotherConversation,
         ),
       )
       .toBe(true)
     if (outcome === 'success')
       save.resolve({ connections: { tool: alternative }, reauthorization_required: false })
-    else save.reject(new Error('Old conversation save failed'))
+    else save.reject(apiError({ status: 503, message: 'Old conversation save failed' }))
     await save.promise.catch(() => {})
     await expect
       .element(screen.getByRole('status', { name: 'Run revision' }))
-      .toHaveTextContent('revision-one')
+      .toHaveTextContent(revisionOne)
     await expect
       .element(screen.getByRole('status', { name: 'Selected connection' }))
       .toHaveTextContent(credential.id)
@@ -232,6 +286,37 @@ it.each(['success', 'failure'] as const)(
       .toHaveTextContent('none')
   },
 )
+
+it('allows running after confirmation accepts a changed connection revision', async () => {
+  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: revisionTwo })
+  mocks.configuration.mockResolvedValue({
+    connections: { tool: credential },
+    reauthorization_required: true,
+  })
+  mocks.save.mockResolvedValue({
+    connections: { tool: alternative },
+    reauthorization_required: false,
+  })
+  mocks.configuration
+    .mockResolvedValueOnce({
+      connections: { tool: credential },
+      reauthorization_required: true,
+    })
+    .mockResolvedValueOnce({
+      connections: { tool: alternative },
+      reauthorization_required: false,
+    })
+
+  const screen = await render(<App showSetup initialConversation={createdConversation} />)
+  await expect.element(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  const start = screen.getByRole('button', {
+    name: 'share.connections.setup.startUsingApp',
+  })
+  await expect.element(start).toBeEnabled()
+  await start.click()
+
+  await expect.element(screen.getByRole('button', { name: 'Run' })).toBeEnabled()
+})
 
 function CaptureRun({ onCapture }: { onCapture: (snapshot: WorkflowRunSnapshot) => void }) {
   const state = useInstalledAppConnections()
@@ -258,13 +343,13 @@ function ModalWorkflowApp() {
     <QueryClientProvider client={client}>
       {open && (
         <InstalledAppConnectionsProvider
-          installedAppId="installed-app"
+          installedAppId={TEST_APP_ID}
           conversationId={conversationId}
         >
           <CaptureRun onCapture={setSnapshot} />
           <ChatSession
             onComplete={() => {}}
-            onSwitch={() => setConversationId('another-conversation')}
+            onSwitch={() => setConversationId(anotherConversation)}
           />
         </InstalledAppConnectionsProvider>
       )}
@@ -298,7 +383,7 @@ it('keeps homepage modal runs valid only while their provider conversation and r
   await expect
     .poll(() =>
       mocks.configuration.mock.calls.some(
-        ([input]) => input.query.conversation_id === 'another-conversation',
+        ([input]) => input.query.conversation_id === anotherConversation,
       ),
     )
     .toBe(true)
@@ -309,11 +394,11 @@ it('keeps homepage modal runs valid only while their provider conversation and r
   await queue.click()
   await check.click()
   await expect.element(status).toHaveTextContent('current')
-  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: 'revision-two' })
+  mocks.parameters.mockResolvedValue({ ...parameters, connection_revision: revisionTwo })
   await screen.getByRole('button', { name: 'Refresh requirements' }).click()
   await expect
     .element(screen.getByRole('status', { name: 'Run revision' }))
-    .toHaveTextContent('revision-two')
+    .toHaveTextContent(revisionTwo)
   await check.click()
   await expect.element(status).toHaveTextContent('expired')
 
