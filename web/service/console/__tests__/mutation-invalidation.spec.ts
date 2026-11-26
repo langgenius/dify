@@ -124,6 +124,31 @@ describe('mutation invalidation fallback', () => {
     expect(appsList).toHaveBeenCalledTimes(2)
   })
 
+  // Replacing a running read records a new start (TanStack dispatches `fetch` again).
+  it('skips a background read the policy replaced with its awaited refresh', async () => {
+    const client = createClient()
+    const background = createDeferred<string>()
+    const queryFn = vi
+      .fn()
+      .mockResolvedValueOnce('first')
+      .mockReturnValueOnce(background.promise)
+      .mockResolvedValue('refreshed')
+    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('first'))
+    tick()
+    void observer.refetch()
+
+    await mutate(client, {
+      mutationKey: renameApp(),
+      onSuccess: () => client.invalidateQueries({ queryKey: appsListKey() }),
+    })
+    await settle()
+
+    expect(observer.getCurrentResult().data).toBe('refreshed')
+    expect(queryFn).toHaveBeenCalledTimes(3)
+  })
+
   it('reads a query the policy wrote into again, since a patched list may not match', async () => {
     const client = createClient()
     const appsList = await mountQuery(client, appsListKey())
