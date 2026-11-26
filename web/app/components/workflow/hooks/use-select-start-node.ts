@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { editorCollaborationEnabledAtom } from '../editor-resource/state'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import { useCollaborativeWorkflow } from './use-collaborative-workflow'
@@ -41,13 +42,15 @@ export function getStartNodeData(
 }
 
 export function useSelectStartNode() {
-  const enabled = useAtomValue(editorCollaborationEnabledAtom)
+  const collaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
+  const hasLoroDraft = useStore((state) => !!state.loroDraft)
+  const enabled = collaborationEnabled && hasLoroDraft
   const flow = useStoreApi()
   const collaborative = useCollaborativeWorkflow()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const generateWebhook = useAutoGenerateWebhookUrl()
   const subscriptionRef = useRef<() => void>(undefined)
-  useEffect(() => () => subscriptionRef.current?.(), [])
+  useEffect(() => () => subscriptionRef.current?.(), [enabled])
 
   return useCallback(
     (makeNode: (nodes: Node[]) => Node | undefined, selected: () => void, replaceAll = false) => {

@@ -4,6 +4,7 @@ import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
 import { memo } from 'react'
 import { useReactFlow, useViewport } from 'reactflow'
+import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { CUSTOM_NODE } from './constants'
 import { useAutoGenerateWebhookUrl } from './hooks/use-auto-generate-webhook-url'
 import { useCollaborativeWorkflow } from './hooks/use-collaborative-workflow'
@@ -63,14 +64,14 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
 
       if (candidateNode.data.type === BlockEnum.Loop) draft.push(getLoopStartNode(candidateNode.id))
     })
-    setNodes(newNodes)
-    if (candidateNode.type === CUSTOM_NOTE_NODE)
-      saveStateToHistory(WorkflowHistoryEvent.NoteAdd, { nodeId: candidateNode.id })
-    else saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: candidateNode.id })
+    const isNote = candidateNode.type === CUSTOM_NOTE_NODE
+    const historyEvent = isNote ? WorkflowHistoryEvent.NoteAdd : WorkflowHistoryEvent.NodeAdd
+    collaborationManager.runDraftHistoryAction(historyEvent, () => setNodes(newNodes))
+    saveStateToHistory(historyEvent, { nodeId: candidateNode.id })
 
     workflowStore.setState({ candidateNode: undefined })
 
-    if (candidateNode.type === CUSTOM_NOTE_NODE) handleNodeSelect(candidateNode.id)
+    if (isNote) handleNodeSelect(candidateNode.id)
 
     if (candidateNode.data.type === BlockEnum.TriggerWebhook) {
       handleSyncWorkflowDraft(true, true, {
@@ -79,12 +80,7 @@ const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
     }
 
     if (shouldCreateInlineAgentBinding) {
-      createInlineAgentBindingForNode(candidateNode.id, {
-        onError: () => {
-          const { nodes, setNodes } = collaborativeWorkflow.getState()
-          setNodes(nodes.filter((node) => node.id !== candidateNode.id))
-        },
-      })
+      createInlineAgentBindingForNode(candidateNode.id)
       return
     }
 

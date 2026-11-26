@@ -20,7 +20,6 @@ import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resour
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrudCommon as useInspectVarsCrud } from '@/app/components/workflow/hooks/use-inspect-vars-crud-common'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowNodeCatalog } from '@/app/components/workflow/node-catalog'
 import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-input-v2/migration/provider'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
@@ -120,8 +119,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     [isCollaborationEnabled, isConnected],
   )
 
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  const filteredCursors = useMemo(
+    () => Object.fromEntries(Object.entries(cursors).filter(([userId]) => userId !== myUserId)),
+    [cursors, myUserId],
   )
 
   useEffect(() => {
@@ -133,7 +133,14 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     return () => {
       stopCursorTracking()
     }
-  }, [startCursorTracking, stopCursorTracking, reactFlow, isCollaborationEnabled])
+  }, [
+    appId,
+    currentUserId,
+    startCursorTracking,
+    stopCursorTracking,
+    reactFlow,
+    isCollaborationEnabled,
+  ])
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
@@ -255,7 +262,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     appACLCapabilities.canEdit,
   )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   useEffect(() => {
     if (!isCollaborationEnabled) return
     return collaborationManager.onClearRequested((confirm) => {
@@ -314,6 +320,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     let refreshSequence = 0
     const unsubscribe = collaborationManager.onWorkflowUpdate(async () => {
       const { loroDraft: activeDraft } = workflowStore.getState()
+      if (!activeDraft) return
       const sequence = ++refreshSequence
       try {
         const response = await fetchAppWorkflowDraft(appId)
@@ -321,16 +328,13 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         if (disposed || sequence !== refreshSequence || state.loroDraft !== activeDraft) return
 
         const nextEpoch = response.loro_draft_epoch
-        if (activeDraft && nextEpoch && nextEpoch !== activeDraft.epoch) {
+        if (nextEpoch && nextEpoch !== activeDraft.epoch) {
           const identity = { ...activeDraft, epoch: nextEpoch }
           if (!collaborationManager.replaceLoroDraft(appId, identity)) return
           workflowStore.setState({ loroDraft: identity, hasPendingLoroDraftChanges: false })
         }
         if (response.hash) state.setSyncWorkflowDraftHash(response.hash, response.graph)
         handleWorkflowDataUpdate(response)
-
-        if (response.graph && !activeDraft)
-          handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       } catch (error) {
         console.error('Failed to fetch updated workflow:', error)
       }
@@ -340,14 +344,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       disposed = true
       unsubscribe()
     }
-  }, [
-    appId,
-    getWorkflowDraftGraphForCanvas,
-    handleWorkflowDataUpdate,
-    handleUpdateWorkflowCanvas,
-    isCollaborationEnabled,
-    workflowStore,
-  ])
+  }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled, workflowStore])
 
   const {
     handleStartWorkflowRun,

@@ -278,6 +278,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         setNodes(payload.nodes)
         store.getState().setNodes(payload.nodes)
         setEdges(payload.edges)
+        store.getState().setEdges(payload.edges)
         workflowStore.setState({ contextMenuTarget: undefined })
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)

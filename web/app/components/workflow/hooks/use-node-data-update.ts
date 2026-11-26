@@ -26,16 +26,18 @@ export const useNodeDataUpdate = () => {
     ({ id, data, previousData }: NodeDataUpdatePayload) => {
       if (previousData && identity) {
         const appId = atomStore.get(editorAppIdAtom)
-        if (!appId || !collaborationManager.isDraftHistoryReady(appId, identity)) return
-        if (collaborationManager.updateDraftNodeData(id, previousData, data)) return
+        if (!appId || !collaborationManager.isDraftHistoryReady(appId, identity)) return false
+        if (collaborationManager.updateDraftNodeData(id, previousData, data)) return true
       }
       const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const nodeIndex = nodes.findIndex((node) => node.id === id)
+      if (nodeIndex === -1) return false
       const newNodes = produce(nodes, (draft) => {
-        const currentNode = draft.find((node) => node.id === id)!
-
-        if (currentNode) currentNode.data = { ...currentNode.data, ...data }
+        const currentNode = draft[nodeIndex]!
+        currentNode.data = { ...currentNode.data, ...data }
       })
       setNodes(newNodes)
+      return true
     },
     [atomStore, collaborativeWorkflow, identity],
   )
@@ -49,10 +51,9 @@ export const useNodeDataUpdate = () => {
         callback?: SyncDraftCallback
       },
     ) => {
-      if (getNodesReadOnly()) return
-
-      handleNodeDataUpdate(payload)
+      if (getNodesReadOnly() || !handleNodeDataUpdate(payload)) return false
       handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
+      return true
     },
     [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly],
   )

@@ -11,7 +11,11 @@ import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
 import { assert } from 'vite-plus/test'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
-import { createNode, createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createNode,
+  createNodeTracing,
+  createWorkflowRunningData,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { createTestWorkflowStore } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { CUSTOM_NODE, WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { WorkflowContext } from '@/app/components/workflow/context'
@@ -154,7 +158,15 @@ const paused: WorkflowPausedResponse = {
 
 const nodeTypes = { [CUSTOM_NODE]: CustomNode }
 
-async function setup({ canEdit = true, collaborationEnabled = false } = {}) {
+async function setup({
+  canEdit = true,
+  collaborationEnabled = false,
+  initialStoreState,
+}: {
+  canEdit?: boolean
+  collaborationEnabled?: boolean
+  initialStoreState?: Parameters<typeof createTestWorkflowStore>[0]
+} = {}) {
   const node = createNode({
     id: 'node-1',
     width: 240,
@@ -187,6 +199,7 @@ async function setup({ canEdit = true, collaborationEnabled = false } = {}) {
     isWorkflowDataLoaded: true,
     environmentVariables: [environment],
     loroDraft: collaborationEnabled ? { accountId: 'editor', epoch: 'shared' } : undefined,
+    ...initialStoreState,
   })
   const features = createFeaturesStore()
   const canvasUpdate = vi.fn<(message: EventEmitterValue) => void>()
@@ -263,6 +276,24 @@ afterEach(() => {
 it('runs the saved collaborative draft with test permission alone', async () => {
   const { result } = await setup({ canEdit: false, collaborationEnabled: true })
 
+  await act(async () => result.current.run.handleRun({ inputs: {} }))
+
+  expect(api.sync).not.toHaveBeenCalled()
+  expect(api.streamEvents).toHaveBeenCalledOnce()
+})
+
+it.each([
+  ['while viewing a past run', { historyWorkflowData: { id: 'earlier', status: 'succeeded' } }],
+  [
+    'while paused',
+    {
+      workflowRunningData: createWorkflowRunningData({
+        result: { ...createWorkflowRunningData().result, status: WorkflowRunningStatus.Paused },
+      }),
+    },
+  ],
+] as const)('runs the saved collaborative draft %s', async (_label, initialStoreState) => {
+  const { result } = await setup({ collaborationEnabled: true, initialStoreState })
   await act(async () => result.current.run.handleRun({ inputs: {} }))
 
   expect(api.sync).not.toHaveBeenCalled()

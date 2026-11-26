@@ -101,9 +101,13 @@ export class CollaborationManager {
     return this.eventEmitter.on('clearRequested', callback)
   }
 
+  shouldConfirmClear(willClear: () => boolean) {
+    return !!this.currentAppId && !this.clearing && !this.confirmedEmpty && willClear()
+  }
+
   guardClear(willClear: () => boolean, apply: () => void) {
     if (!this.canApplyLocalGraphMutation()) return
-    if (!this.currentAppId || this.clearing || this.confirmedEmpty || !willClear()) {
+    if (!this.shouldConfirmClear(willClear)) {
       apply()
       return
     }

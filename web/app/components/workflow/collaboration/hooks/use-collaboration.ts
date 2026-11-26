@@ -6,7 +6,7 @@ import type {
   OnlineUser,
 } from '../types/collaboration'
 import { useAtomValue } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
@@ -125,21 +125,21 @@ export function useCollaboration(
     prevIsConnectedRef.current = state.isConnected
   }, [state.isConnected])
 
-  const startCursorTracking = (
-    containerRef: React.RefObject<HTMLElement>,
-    reactFlowInstance?: ReactFlowInstance,
-  ) => {
-    if (!isEnabled) return
-    cursorServiceRef.current?.startTracking(
-      containerRef,
-      (position) => collaborationManager.emitCursorMove(position),
-      reactFlowInstance,
-    )
-  }
+  const startCursorTracking = useCallback(
+    (containerRef: React.RefObject<HTMLElement>, reactFlowInstance?: ReactFlowInstance) => {
+      if (!isEnabled) return
+      cursorServiceRef.current?.startTracking(
+        containerRef,
+        (position) => collaborationManager.emitCursorMove(position),
+        reactFlowInstance,
+      )
+    },
+    [isEnabled],
+  )
 
-  const stopCursorTracking = () => {
+  const stopCursorTracking = useCallback(() => {
     cursorServiceRef.current?.stopTracking()
-  }
+  }, [])
 
   const result = {
     ...(isEnabled ? state : initialState),

@@ -9,7 +9,10 @@ import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
+import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import { useNodesReadOnly, useWorkflow } from '../../hooks/use-workflow'
+import { BlockEnum } from '../../types'
 import {
   updateContentType,
   updateMethod,
@@ -39,6 +42,8 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
   const { inputs, setInputs } = useNodeCrud<WebhookTriggerNodeType>(id, payload)
   const appId = useAtomValue(editorAppIdAtom)
   const queryClient = useQueryClient()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const notifyVarError = useCallback(
@@ -156,8 +161,18 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
 
     if (!appId) return
 
-    const setUrls = (url: string, debugUrl?: string) =>
-      runDraftInitialization(() => setInputs(updateWebhookUrls(inputs, url, debugUrl)), inputs)
+    const setUrls = (url: string, debugUrl?: string) => {
+      const current = collaborativeWorkflow.getState().nodes.find((node) => node.id === id)
+      if (current?.data.type !== BlockEnum.TriggerWebhook || current.data.webhook_url) return
+      const previousData = current.data as WebhookTriggerNodeType
+      runDraftInitialization(() =>
+        handleNodeDataUpdateWithSyncDraft({
+          id,
+          previousData,
+          data: updateWebhookUrls(previousData, url, debugUrl),
+        }),
+      )
+    }
     try {
       const response = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.triggers.webhook.get.queryOptions({
@@ -171,7 +186,14 @@ export const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       console.error('Failed to generate webhook URL:', error)
       setUrls('')
     }
-  }, [appId, id, inputs, setInputs, queryClient])
+  }, [
+    appId,
+    id,
+    inputs.webhook_url,
+    collaborativeWorkflow,
+    handleNodeDataUpdateWithSyncDraft,
+    queryClient,
+  ])
 
   return {
     readOnly,

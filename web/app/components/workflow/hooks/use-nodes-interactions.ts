@@ -216,9 +216,23 @@ export const useNodesInteractions = () => {
       workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
       handleSyncWorkflowDraft(true, true)
       createInlineAgentBinding(nodeId, {
-        onError: () => {
-          options?.onError?.()
-        },
+        onError:
+          options?.onError ??
+          (() => {
+            const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+            const failed = nodes.find((node) => node.id === nodeId)
+            if (
+              !failed ||
+              !isAgentV2NodeData(failed.data) ||
+              !needsInlineAgentBindingCreation(failed.data)
+            )
+              return
+            collaborationManager.runDraftHistoryAction(WorkflowHistoryEvent.NodeDelete, () => {
+              setNodes(nodes.filter((node) => node.id !== nodeId))
+              setEdges(edges.filter((edge) => edge.source !== nodeId && edge.target !== nodeId))
+            })
+            handleSyncWorkflowDraft()
+          }),
         onSuccess: (binding) => {
           const node = collaborativeWorkflow.getState().nodes.find((node) => node.id === nodeId)
           if (!node || !isAgentV2NodeData(node.data)) return
@@ -705,15 +719,15 @@ export const useNodesInteractions = () => {
   )
 
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
+  const isDeletable = useCallback(
+    (node: Node) => !nodesMetaDataMap?.[getNodeCatalogType(node.data)]?.metaData.isUndeletable,
+    [nodesMetaDataMap],
+  )
   const performNodeDelete = useCallback(
     (nodeId: string): boolean => {
       const current = collaborativeWorkflow.getState()
       const currentNode = current.nodes.find((node) => node.id === nodeId)
-      if (
-        !currentNode ||
-        nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData.isUndeletable
-      )
-        return false
+      if (!currentNode || !isDeletable(currentNode)) return false
 
       if (
         currentNode.data.type === BlockEnum.Iteration ||
@@ -779,7 +793,7 @@ export const useNodesInteractions = () => {
       collaborativeWorkflow,
       saveStateToHistory,
       workflowStore,
-      nodesMetaDataMap,
+      isDeletable,
       deleteNodeInspectorVars,
     ],
   )
@@ -788,13 +802,18 @@ export const useNodesInteractions = () => {
     (ids: string[]) => {
       if (getNodesReadOnly()) return
 
-      const targets = new Set(ids)
+      const { nodes } = collaborativeWorkflow.getState()
+      const selection = new Set(ids)
+      const targets = new Set(
+        nodes.filter((node) => selection.has(node.id) && isDeletable(node)).map((node) => node.id),
+      )
+      if (!targets.size) return
       const willClear = () => collaborationManager.deletionWillClear(targets)
       const remove = () => {
         if (getNodesReadOnly()) return
         const deleted = collaborationManager.runDraftHistoryAction(
           WorkflowHistoryEvent.NodeDelete,
-          () => ids.map(performNodeDelete).some(Boolean),
+          () => Array.from(targets, performNodeDelete).some(Boolean),
         )
         if (deleted) handleSyncWorkflowDraft()
       }
@@ -802,12 +821,11 @@ export const useNodesInteractions = () => {
         if (historyAppId) collaborationManager.guardClear(willClear, remove)
         else remove()
       }
-      if (historyAppId && willClear()) {
+      if (historyAppId && collaborationManager.shouldConfirmClear(willClear)) {
         confirmClear()
         return
       }
 
-      const { nodes } = collaborativeWorkflow.getState()
       const container = nodes.find(
         (node) =>
           targets.has(node.id) &&
@@ -841,6 +859,7 @@ export const useNodesInteractions = () => {
       getNodesReadOnly,
       handleSyncWorkflowDraft,
       historyAppId,
+      isDeletable,
       performNodeDelete,
       t,
       workflowStore,
@@ -1344,15 +1363,7 @@ export const useNodesInteractions = () => {
       }
       if (isAgentV2NodeData(newNode.data) && needsInlineAgentBindingCreation(newNode.data)) {
         saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
-        createInlineAgentBindingForNode(newNode.id, {
-          onError: () => {
-            const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
-            setNodes(nodes.filter((node) => node.id !== newNode.id))
-            setEdges(
-              edges.filter((edge) => edge.source !== newNode.id && edge.target !== newNode.id),
-            )
-          },
-        })
+        createInlineAgentBindingForNode(newNode.id)
         return
       }
 

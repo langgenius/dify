@@ -223,6 +223,8 @@ it.each(['success', 'failure'] as const)(
     if (outcome === 'failure') {
       await act(async () => request.reject(new Error('Unavailable')))
       await waitFor(() => expect(nodes().map((node) => node.id)).toEqual(['existing-node']))
+      act(() => store.getState().flushPendingSync())
+      expect(sync).toHaveBeenCalledTimes(2)
       return
     }
     const binding = {

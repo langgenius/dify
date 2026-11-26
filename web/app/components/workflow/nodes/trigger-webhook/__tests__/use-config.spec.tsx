@@ -2,6 +2,7 @@ import type { WebhookTriggerNodeType } from '../types'
 import { act } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
+import { createDeferred } from '@/test/deferred'
 import { createEdge, createNode } from '../../../__tests__/fixtures'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { useConfig } from '../use-config'
@@ -125,6 +126,25 @@ describe('webhook/use-config', () => {
     const { result } = renderNodeConfig(useConfig, createPayload())
     await act(() => result.current.config.generateWebhookUrl())
     expect(result.current.flow.getNode('node')?.data.webhook_url).toBe('')
+  })
+  it('keeps a method edit made while the webhook URL request is pending', async () => {
+    const response = createDeferred<{ webhook_url: string; webhook_debug_url: string }>()
+    mockRequest.mockReturnValueOnce(response.promise)
+    const { result } = renderNodeConfig(useConfig, createPayload())
+    const request = result.current.config.generateWebhookUrl()
+    act(() => result.current.config.handleMethodChange('GET'))
+    await act(async () => {
+      response.resolve({
+        webhook_url: 'https://example.com/hook',
+        webhook_debug_url: 'https://example.com/debug',
+      })
+      await request
+    })
+
+    expect(result.current.flow.getNode('node')?.data).toMatchObject({
+      method: 'GET',
+      webhook_url: 'https://example.com/hook',
+    })
   })
   it('skips URL generation in a readonly snippet', async () => {
     const payload = createPayload()

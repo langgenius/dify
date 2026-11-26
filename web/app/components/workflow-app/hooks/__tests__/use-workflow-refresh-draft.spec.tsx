@@ -195,33 +195,6 @@ describe('useWorkflowRefreshDraft', () => {
     },
   )
 
-  it('discards a stale guarded response before it mutates the graph or draft metadata', async () => {
-    const deferred = createDeferred<FetchWorkflowDraftResponse>()
-    fetchDraft.mockReturnValue(deferred.promise)
-    let isCurrent = true
-    const { flow, refresh, store } = setup()
-    let request!: Promise<boolean>
-    act(() => {
-      request = refresh.current!.handleRefreshWorkflowDraft(false, {
-        shouldApply: () => isCurrent,
-      })
-    })
-    isCurrent = false
-
-    await act(async () => {
-      deferred.resolve(draftResponse)
-      expect(await request).toBe(false)
-    })
-
-    await expectGraph(flow, ['local-start', 'local-code'], ['local-edge'], localViewport)
-    expect(store.getState()).toMatchObject({
-      syncWorkflowDraftHash: 'local-hash',
-      syncWorkflowDraftIsEmpty: false,
-      environmentVariables: [],
-      conversationVariables: [],
-    })
-  })
-
   it('ignores an earlier overlapping refresh while the newest one is pending', async () => {
     const first = createDeferred<FetchWorkflowDraftResponse>()
     const second = createDeferred<FetchWorkflowDraftResponse>()

@@ -78,8 +78,8 @@ function GraphState() {
 afterEach(() => vi.restoreAllMocks())
 
 it.each([false, true])(
-  'preserves the other nodes and waits for a saved graph before requesting webhook URLs (collaboration %s)',
-  async (enabled) => {
+  'preserves the other nodes and waits for a saved graph before requesting webhook URLs (active collaborative draft %s)',
+  async (hasLoroDraft) => {
     const user = userEvent.setup()
     const pending = createDeferred<{ hash: string; updated_at: number }>()
     persistDraft.mockClear().mockReturnValue(pending.promise)
@@ -90,6 +90,9 @@ it.each([false, true])(
     })
     let notifyReady: ((ready: boolean) => void) | undefined
     vi.spyOn(collaborationManager, 'canPersistLocalGraph').mockReturnValue(false)
+    const isDraftReady = vi
+      .spyOn(collaborationManager, 'isDraftHistoryReady')
+      .mockReturnValue(false)
     vi.spyOn(collaborationManager, 'onGraphReadyChange').mockImplementation((listener) => {
       notifyReady = listener
       return () => {
@@ -134,8 +137,11 @@ it.each([false, true])(
       {
         queryClient,
         injectWorkflowStoreSliceFn: createWorkflowSlice as InjectWorkflowStoreSliceFn,
-        initialStoreState: { isWorkflowDataLoaded: true },
-        resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: enabled },
+        initialStoreState: {
+          isWorkflowDataLoaded: true,
+          loroDraft: hasLoroDraft ? { epoch: 'workflow-epoch', accountId: 'owner' } : undefined,
+        },
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow', collaborationEnabled: true },
         nodes: [
           placeholder,
           createNode({ id: 'other-node', data: { selected: true } }),
@@ -145,10 +151,11 @@ it.each([false, true])(
       },
     )
     await user.click(await screen.findByRole('button', { name: 'workflow.blocks.trigger-webhook' }))
-    if (enabled) {
+    if (hasLoroDraft) {
       expect(setNodes).not.toHaveBeenCalled()
       expect(sync).not.toHaveBeenCalled()
       expect(notifyReady).toBeDefined()
+      isDraftReady.mockReturnValue(true)
       act(() => notifyReady!(true))
       expect(setNodes).toHaveBeenCalledOnce()
       expect(sync).toHaveBeenCalledWith('app-1')
@@ -163,7 +170,7 @@ it.each([false, true])(
     expect(nodes[1].data.selected).toBe(false)
     expect(store.getState().hasSelectedStartNode).toBe(true)
     expect(store.getState().shouldAutoOpenStartNodeSelector).toBe(true)
-    if (!enabled)
+    if (!hasLoroDraft)
       expect(persistDraft).toHaveBeenCalledWith(
         expect.objectContaining({
           params: { app_id: 'app-1' },
@@ -192,7 +199,7 @@ it.each([false, true])(
       params: { app_id: 'app-1' },
       query: { node_id: 'placeholder-1' },
     })
-    if (!enabled) {
+    if (!hasLoroDraft) {
       expect(store.getState().syncWorkflowDraftHash).toBe('saved-hash')
       expect(store.getState().draftUpdatedAt).toBe(123000)
     }

@@ -9,6 +9,8 @@ import {
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
+import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store/store'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -54,8 +56,12 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
+const renderUseOneStepRun = (
+  type: BlockEnum = BlockEnum.IfElse,
+  { collaborationEnabled = false, canEdit = true } = {},
+) => {
   render(createElement(AppToaster))
+  const resource = { kind: 'app', collaborationEnabled, appId: 'app-id', mode: 'workflow' } as const
   const nodes = [
     createStartNode({ id: 'start', data: { variables: [] } }),
     createNode({ id: 'if-else-node', data: { type, title: 'Test node' } }),
@@ -66,7 +72,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
       const flow = useReactFlow()
       const config = useOneStepRun({
         id: 'if-else-node',
-        resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
+        resource,
 
         data: {
           type,
@@ -80,7 +86,11 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
       return { ...config, flow }
     },
     {
-      resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
+      resource,
+      hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canEdit } },
+      initialStoreState: {
+        loroDraft: collaborationEnabled ? { epoch: 'shared', accountId: 'editor' } : undefined,
+      },
       nodes,
       edges,
       historyStore: { nodes, edges },
@@ -193,6 +203,36 @@ describe('useOneStepRun single-run input vars', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     },
   )
+
+  it('stops a collaborative single step when the draft cannot be saved', async () => {
+    const sync = vi
+      .spyOn(collaborationManager, 'syncLoroDraft')
+      .mockRejectedValueOnce(new Error('Offline'))
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerSchedule, {
+      collaborationEnabled: true,
+    })
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(sync).toHaveBeenCalledExactlyOnceWith('app-id')
+    expect(runTrigger).not.toHaveBeenCalled()
+    expect(await screen.findByText('workflow.common.draftSaveFailed')).toBeInTheDocument()
+  })
+
+  it('runs a collaborative single step from the saved draft with test permission alone', async () => {
+    const sync = vi.spyOn(collaborationManager, 'syncLoroDraft')
+    runTrigger.mockResolvedValueOnce({ id: 'execution-1', status: 'succeeded' })
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerSchedule, {
+      collaborationEnabled: true,
+      canEdit: false,
+    })
+
+    await act(async () => result.current.handleRun({}))
+
+    expect(sync).not.toHaveBeenCalled()
+    expect(runTrigger).toHaveBeenCalledOnce()
+  })
 
   it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
     'reports a %s business failure once before stopping the run',

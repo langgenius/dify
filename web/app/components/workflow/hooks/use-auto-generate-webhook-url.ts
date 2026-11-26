@@ -35,7 +35,7 @@ export const useAutoGenerateWebhookUrl = () => {
         if (current?.data.type !== BlockEnum.TriggerWebhook || current.data.webhook_url) return
         initializeNodeData({
           id: nodeId,
-          previousData: node.data,
+          previousData: current.data,
           data: {
             webhook_url: response.webhook_url,
             webhook_debug_url: response.webhook_debug_url,

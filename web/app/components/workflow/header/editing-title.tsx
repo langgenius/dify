@@ -22,7 +22,17 @@ function EditingTitle() {
       className="flex h-4.5 min-w-75 items-center system-xs-regular whitespace-nowrap text-text-tertiary"
     >
       {joinFailure && (
-        <span>{t(($) => $['collaboration.joinUnavailable'], { ns: 'workflow' })}</span>
+        <span>
+          {t(
+            ($) =>
+              $[
+                joinFailure === 'denied'
+                  ? 'collaboration.joinDenied'
+                  : 'collaboration.joinUnavailable'
+              ],
+            { ns: 'workflow' },
+          )}
+        </span>
       )}
       {!joinFailure && !!draftUpdatedAt && (
         <span className="flex items-center gap-1">

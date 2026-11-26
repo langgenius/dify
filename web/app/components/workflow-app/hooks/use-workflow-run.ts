@@ -22,6 +22,7 @@ import {
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -128,6 +129,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: b
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
   const pathname = usePathname()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
@@ -227,15 +229,16 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: b
         })
       })
       setNodes(newNodes)
-      const requiresLoroSave =
-        canEdit &&
-        resource.kind === 'app' &&
-        resource.collaborationEnabled &&
-        !!workflowStore.getState().loroDraft
-      const saved = canEdit ? await doSyncWorkflowDraft() : null
-      if (!saved && requiresLoroSave) {
-        toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
-        return
+      if (!getNodesReadOnly()) {
+        const requiresLoroSave =
+          resource.kind === 'app' &&
+          resource.collaborationEnabled &&
+          !!workflowStore.getState().loroDraft
+        const saved = await doSyncWorkflowDraft()
+        if (!saved && requiresLoroSave) {
+          toast.error(t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }))
+          return
+        }
       }
 
       const {
@@ -471,7 +474,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft, canEdit: b
       store,
       resource,
       doSyncWorkflowDraft,
-      canEdit,
+      getNodesReadOnly,
       t,
       workflowStore,
       pathname,

@@ -8,10 +8,6 @@ import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 
-type RefreshWorkflowDraftOptions = {
-  shouldApply?: () => boolean
-}
-
 export const useWorkflowRefreshDraft = () => {
   const { appId } = useAtomValue(workflowAppIdentityAtom)
   const { data: appDetail } = useSuspenseQuery(
@@ -23,9 +19,7 @@ export const useWorkflowRefreshDraft = () => {
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
 
   const handleRefreshWorkflowDraft = useCallback(
-    (notUpdateCanvas?: boolean, options?: RefreshWorkflowDraftOptions) => {
-      if (options?.shouldApply && !options.shouldApply()) return Promise.resolve(false)
-
+    (notUpdateCanvas?: boolean) => {
       const {
         setSyncWorkflowDraftHash,
         setIsSyncingWorkflowDraft,
@@ -43,14 +37,14 @@ export const useWorkflowRefreshDraft = () => {
 
       const wasLoaded =
         isWorkflowDataLoaded || (isSyncingWorkflowDraft && refreshRef.current.wasLoaded)
-      if (isWorkflowDataLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(false)
+      if (isWorkflowDataLoaded) setIsWorkflowDataLoaded(false)
       const refreshSequence = refreshRef.current.sequence + 1
       refreshRef.current = { sequence: refreshSequence, wasLoaded }
       const isCurrent = () => refreshRef.current.sequence === refreshSequence
       setIsSyncingWorkflowDraft(true)
       return fetchAppWorkflowDraft(appId)
         .then((response) => {
-          if (!isCurrent() || (options?.shouldApply && !options.shouldApply())) return false
+          if (!isCurrent()) return false
 
           // Ensure we have a valid workflow structure with viewport
           if (!notUpdateCanvas && !loroDraft)
@@ -77,7 +71,7 @@ export const useWorkflowRefreshDraft = () => {
           return true
         })
         .catch(() => {
-          if (isCurrent() && wasLoaded && !options?.shouldApply) setIsWorkflowDataLoaded(true)
+          if (isCurrent() && wasLoaded) setIsWorkflowDataLoaded(true)
           return false
         })
         .finally(() => {

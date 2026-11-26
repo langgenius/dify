@@ -54,4 +54,15 @@ describe('EditingTitle', () => {
     expect(statusContent.getByText('workflow.common.unpublished')).toBeInTheDocument()
     expect(statusContent.queryByText('workflow.common.syncingData')).not.toBeInTheDocument()
   })
+
+  it('explains an access denial in the draft status', () => {
+    renderWorkflowComponent(<EditingTitle />, {
+      queryClient: createAccountProfileQueryClient({ timezone: 'UTC' }),
+      initialStoreState: { collaborationJoinFailure: 'denied' },
+    })
+
+    expect(
+      screen.getByRole('status', { name: 'workflow.common.workflowSaveStatus' }),
+    ).toHaveTextContent('workflow.collaboration.joinDenied')
+  })
 })
