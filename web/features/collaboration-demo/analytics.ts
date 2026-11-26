@@ -1,6 +1,6 @@
 import { trackEvent } from '@/app/components/base/amplitude'
 
-export type TourStep = 'members' | 'comment' | 'playback'
+type TourStep = 'members' | 'comment' | 'playback'
 
 export type TourOutcome = { action: 'tour_completed' } | { action: 'tour_skipped'; step: TourStep }
 
