@@ -112,6 +112,7 @@ const collaborationRuntime = vi.hoisted(() => ({
   isConnected: true,
   isEnabled: true,
   onlineUsers: [],
+  cursors: {},
   startCursorTracking: vi.fn(),
   stopCursorTracking: vi.fn(),
 }))
@@ -120,8 +121,8 @@ vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () =>
   useCollaboration: () => collaborationRuntime,
 }))
 // boundary: draft sync ends in a network save; the test observes the save call.
-vi.mock('@/app/components/workflow-app/draft/use-draft-save', () => ({
-  useWorkflowDraftSaveByCanEdit: () => ({
+vi.mock('@/app/components/workflow-app/hooks/use-nodes-sync-draft', () => ({
+  useNodesSyncDraftByCanEdit: () => ({
     doSyncWorkflowDraft: saveDraft,
     syncWorkflowDraftWhenPageClose: () => {},
     prepareWorkflowDraftForBuilder: async () => {},
@@ -263,7 +264,7 @@ it('allows canvas navigation but blocks node movement until Builder releases its
   expect(saveDraft).toHaveBeenCalledOnce()
 })
 
-it('preserves the manual view through collaboration recovery and still adopts the viewport on explicit reload', async () => {
+it('preserves the manual viewport through Builder refresh and collaboration recovery', async () => {
   // Drive the callback registered by production WorkflowMain and measure the real React Flow transform.
   await page.viewport(1100, 700)
   const workflowStore = createWorkflowStore()
@@ -290,9 +291,7 @@ it('preserves the manual view through collaboration recovery and still adopts th
     steps: 5,
   })
   await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
-  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(
-    'refreshed',
-  )
+  expect(await refreshDraft(false, { preserveViewport: true })).toBe(true)
   // CanvasLockSync releases this lock when the Builder session has completed.
   workflowStore.getState().setCanvasReadOnly(false)
   const moved = node.element().getBoundingClientRect()
@@ -313,13 +312,6 @@ it('preserves the manual view through collaboration recovery and still adopts th
   expect(recovered.element().getBoundingClientRect().x).toBeCloseTo(moved.x)
   expect(recovered.element().getBoundingClientRect().y).toBeCloseTo(moved.y)
   expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledWith(request)
-
-  workflowStore.getState().setWorkflowDraftConflict(true)
-  const conflict = screen.getByRole('alertdialog', { name: 'workflow.draftConflict.title' })
-  await conflict.getByRole('button', { name: 'workflow.draftConflict.confirmReload' }).click()
-  await expect.element(conflict).not.toBeInTheDocument()
-  await expect.poll(() => recovered.element().getBoundingClientRect().x).toBeCloseTo(initial.x)
-  expect(recovered.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
 })
 
 it('keeps the Builder prompt focused during native wheel panning in an ordinary Test Run', async () => {

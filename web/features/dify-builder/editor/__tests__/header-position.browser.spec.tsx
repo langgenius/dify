@@ -91,16 +91,15 @@ describe('Workflow header positioning', () => {
                   nodes={[
                     { id: 'selected-node', position: { x: 0, y: 100 }, data: { selected: true } },
                   ]}
-                >
-                  <Header
-                    normal={{
-                      components: {
-                        middle: <Button>Publish</Button>,
-                        actions: <DifyBuilderPanelToggle />,
-                      },
-                    }}
-                  />
-                </ReactFlow>
+                />
+                <Header
+                  normal={{
+                    components: {
+                      middle: <Button>Publish</Button>,
+                      actions: <DifyBuilderPanelToggle />,
+                    },
+                  }}
+                />
               </ReactFlowProvider>
             </section>
           </HooksStoreContext>

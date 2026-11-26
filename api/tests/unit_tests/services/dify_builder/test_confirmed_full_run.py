@@ -34,8 +34,6 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowRun,
 )
-from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
-from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.dify_builder import dify_port
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.effect_disclosure import disclose
@@ -78,11 +76,6 @@ class FullRunCase:
     native_finish: Callable[[WorkflowServiceDifyPort, str, str, dict[str, object], str], tuple[Run, object]]
 
 
-def prepared_agent_context() -> BuilderAgentExecutionContext:
-    return BuilderAgentExecutionContext(
-        ref=NativeTestContextRef(request_id="request", invocation_id="root", context_digest="a" * 64),
-        native_run_id=str(uuid4()),
-    )
 
 
 def _actor() -> Actor:

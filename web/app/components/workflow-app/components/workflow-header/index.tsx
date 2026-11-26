@@ -10,7 +10,6 @@ import { DifyBuilderChecklist } from '@/features/dify-builder/editor/checklist'
 import DifyBuilderPanelToggle from '@/features/dify-builder/editor/panel-toggle'
 import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
 import { workflowVersionHistoryKey } from '@/service/workflow-queries'
-import { WorkflowAppSaveStatus } from '../../draft/save-status'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
 
@@ -39,7 +38,6 @@ const WorkflowHeader = () => {
     return {
       normal: {
         components: {
-          title: <WorkflowAppSaveStatus />,
           middle: <FeaturesTrigger />,
           chatVariableTrigger: <ChatVariableTrigger />,
           actions: difyBuilderEnabled && (

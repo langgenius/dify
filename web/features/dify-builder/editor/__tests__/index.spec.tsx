@@ -1,6 +1,6 @@
 import type { SessionRunEvents } from '../../session/types'
 import type { SessionView } from '../../types'
-import type { WorkflowDraftRefreshResult } from '@/app/components/workflow-app/draft/use-draft-refresh'
+import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/use-canvas-refresh'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'

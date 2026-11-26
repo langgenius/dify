@@ -491,7 +491,7 @@ it.each(['fix', 'dismiss_fix', 'stop_and_switch_fix'] as const)(
           ...(operation !== 'fix' ? { fix_intent_id: 'intent-1' } : {}),
         },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(api.fix).not.toHaveBeenCalled()
     expect(api.action).not.toHaveBeenCalled()

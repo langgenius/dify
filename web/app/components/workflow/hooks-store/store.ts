@@ -52,10 +52,8 @@ export const fullWorkflowAccessControl: WorkflowAccessControl = {
 }
 
 type CommonHooksFnMap = {
-  onDraftChange: () => void
   onViewportInteraction: () => void
   onWorkflowHistoryOpen: () => void
-  canRefreshWorkflowDraft: () => boolean
   renderNodeDecoration?: (nodeId: string) => ReactNode
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
@@ -63,10 +61,7 @@ type CommonHooksFnMap = {
     options?: SyncDraftOptions,
   ) => Promise<SyncDraftResult | null | void>
   syncWorkflowDraftWhenPageClose: () => void
-  handleRefreshWorkflowDraft: (
-    notUpdateCanvas?: boolean,
-    options?: { background?: boolean; preserveViewport?: boolean },
-  ) => void
+  handleRefreshWorkflowDraft: (notUpdateCanvas?: boolean) => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
@@ -120,10 +115,8 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  onDraftChange = noop,
   onViewportInteraction = noop,
   onWorkflowHistoryOpen = noop,
-  canRefreshWorkflowDraft = () => true,
   renderNodeDecoration,
   doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
@@ -166,10 +159,8 @@ export const createHooksStore = ({
 }: Partial<Shape>) => {
   return createStore<Shape>((set) => ({
     refreshAll: (props) => set((state) => ({ ...state, ...props })),
-    onDraftChange,
     onViewportInteraction,
     onWorkflowHistoryOpen,
-    canRefreshWorkflowDraft,
     renderNodeDecoration,
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,

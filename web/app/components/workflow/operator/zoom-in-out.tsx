@@ -14,7 +14,7 @@ import { Fragment, memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useStore } from 'reactflow'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
-import { useScheduleDraftSave } from '../hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
 import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
@@ -58,7 +58,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const [open, setOpen] = useState(false)
   const { zoomIn, zoomOut, zoomTo, fitView } = useReactFlow()
   const zoom = useStore((state) => state.transform[2])
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
   const { canvasReadOnly, handleViewportUserInteraction } = useWorkflowViewport()
   const viewportReadOnly = workflowReadOnly && !canvasReadOnly

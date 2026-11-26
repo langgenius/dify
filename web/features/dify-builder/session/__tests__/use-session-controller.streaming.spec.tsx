@@ -262,7 +262,7 @@ describe('useDifyBuilderSessionController streaming', () => {
         params: { session_id: 'session-1' },
         query: { after_seq: 0, limit: 100 },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
   })
 
@@ -430,7 +430,7 @@ describe('useDifyBuilderSessionController streaming', () => {
         params: { session_id: 'session-1' },
         query: { after_seq: 0, limit: 100 },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
   })
 

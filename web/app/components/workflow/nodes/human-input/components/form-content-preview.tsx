@@ -15,7 +15,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { consoleClient } from '@/service/console'
@@ -169,7 +169,7 @@ const ServerPreviewTrigger = ({
   const { t } = useTranslation(['appDebug', 'workflow', 'common', 'workflowHumanInput'])
   const describeRequestError = useRequestErrorDescriber()
   const resource = useAtomValue(editorResourceAtom)
-  const { doSyncWorkflowDraft } = useScheduleDraftSave()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { hasSetInspectVar, systemVars, conversationVars } = useInspectVarsCrud()
   const panelWidth = useStore((state) => state.panelWidth)
   const [open, setOpen] = React.useState(false)

@@ -12,7 +12,7 @@ export const useImproveAppPrompt = (
   const defaultModelQuery = useQuery(
     consoleQuery.workspaces.current.defaultModel.get.queryOptions({
       input: { query: { model_type: 'llm' } },
-      context: { silent: true },
+      meta: { errorToast: false },
       select: (response) => response.data,
       retry: false,
     }),
@@ -20,7 +20,7 @@ export const useImproveAppPrompt = (
   const modelsQuery = useQuery(
     consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
       input: { params: { model_type: 'llm' } },
-      context: { silent: true },
+      meta: { errorToast: false },
       select: (response) => response.data,
       retry: false,
     }),
@@ -43,7 +43,7 @@ export const useImproveAppPrompt = (
           : 'unavailable'
   const mutation = useMutation(
     consoleQuery.workflowGenerate.improve.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

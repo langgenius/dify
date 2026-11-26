@@ -81,6 +81,7 @@ import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-
 import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -94,7 +95,6 @@ import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
-import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import { WorkflowCanvas } from './shortcuts/workflow-canvas'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
@@ -160,7 +160,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
-    const handleViewportInteraction = useWorkflowViewport()
+    const { handleViewportUserInteraction } = useWorkflowViewport()
     const store = useStoreApi()
     const collaborativeWorkflow = useCollaborativeWorkflow()
     const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
@@ -593,7 +593,7 @@ export const Workflow: FC<WorkflowProps> = memo(
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
             onMoveStart={(event) => {
-              if (event) handleViewportInteraction()
+              if (event) handleViewportUserInteraction()
             }}
             defaultViewport={viewport}
             fitView={!viewport}

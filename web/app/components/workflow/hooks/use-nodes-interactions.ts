@@ -73,7 +73,7 @@ import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useHelpline } from './use-helpline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { useNodesMetaData } from './use-nodes-meta-data'
-import { useScheduleDraftSave } from './use-schedule-draft-save'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
@@ -181,7 +181,7 @@ export const useNodesInteractions = () => {
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getAfterNodesInSameBranch } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { getWorkflowReadOnly } = useWorkflowReadOnly()

@@ -8,12 +8,12 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
-import { renderWorkflowComponent } from '@/app/components/workflow-app/__tests__/workflow-test-env'
 import {
   createEdge,
   createNode,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
+import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import agentDefault from '@/app/components/workflow/nodes/agent-v2/default'
 import codeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'

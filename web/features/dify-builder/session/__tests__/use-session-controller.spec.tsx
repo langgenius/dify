@@ -334,7 +334,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         params: { session_id: 'session-1' },
         query: { before_seq: 2, limit: 20 },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(store.get(difyBuilderConversationAtom).map((item) => item.seq)).toEqual([0, 1, 2])
     expect(store.get(difyBuilderConversationHasMoreAtom)).toBe(false)
@@ -371,7 +371,7 @@ describe('useDifyBuilderSessionController lifecycle', () => {
         params: { session_id: 'session-1' },
         query: { before_seq: 3, limit: 20 },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(store.get(difyBuilderConversationAtom)).toEqual([snapshotItem])
   })

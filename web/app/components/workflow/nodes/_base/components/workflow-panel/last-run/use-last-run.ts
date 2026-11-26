@@ -34,7 +34,7 @@ import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
-import { useScheduleDraftSave } from '../../../../../hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
 import { useSetWorkflowVarsWithValue } from '../../../../../hooks/use-set-workflow-vars-with-value'
 import { TabType } from '../types'
 
@@ -143,7 +143,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const isCustomRunNode = isSupportCustomRunForm(blockType)
   const isHumanInputNode =
     blockType === BlockEnum.HumanInput || blockType === BlockEnum.HumanInputV2
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const useGetDataForCheckMore = createGetDataForCheckMoreHook<T>(blockType)
   const { getData: getDataForCheckMore } = useGetDataForCheckMore(
     oneStepRunParams.id,

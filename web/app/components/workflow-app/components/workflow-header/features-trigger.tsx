@@ -33,7 +33,7 @@ import {
   useChecklist,
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks/use-checklist'
-import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
@@ -113,7 +113,7 @@ const FeaturesTrigger = () => {
   )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const startNodeIds = useMemo(
     () => nodes.filter((node) => node.data.type === BlockEnum.Start).map((node) => node.id),
     [nodes],

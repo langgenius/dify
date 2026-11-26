@@ -1,4 +1,3 @@
-import type { WorkflowDraftRefreshResult } from '@/app/components/workflow-app/draft/use-draft-refresh'
 import { useStore as useJotaiStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -173,3 +172,5 @@ export const useDifyBuilderCanvasRefresh = (
     [refresh, retry, cancel, reset, finishCommand],
   )
 }
+
+export type WorkflowDraftRefreshResult = 'refreshed' | 'superseded' | 'failed'
