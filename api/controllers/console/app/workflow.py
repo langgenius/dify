@@ -612,6 +612,14 @@ def _serialize_environment_variable(value: Any) -> EnvironmentVariableResponseDi
             return value
 
 
+def _check_draft_collaboration_entitlement(tenant_id: str) -> bool:
+    """Check the admitted tenant's draft transport outside a database transaction."""
+    try:
+        return FeatureService.can_use_workflow_collaboration(tenant_id)
+    except BillingUpstreamError as exc:
+        raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
     @error_responses(DraftWorkflowNotExist)
@@ -632,9 +640,7 @@ class DraftWorkflowApi(Resource):
     @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, session: Session, app_model: App):
-        """
-        Get draft workflow
-        """
+        """Return the admitted App's draft with its epoch when collaboration is entitled."""
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         with session:
@@ -651,17 +657,15 @@ class DraftWorkflowApi(Resource):
                 session=session,
                 draft_workflow=workflow,
             )
-        try:
-            if FeatureService.can_use_workflow_collaboration(tenant_id):
-                response.loro_draft_epoch = epoch
-        except BillingUpstreamError:
-            logger.warning("Workflow collaboration entitlement unavailable for tenant %s", tenant_id, exc_info=True)
+        if _check_draft_collaboration_entitlement(tenant_id):
+            response.loro_draft_epoch = epoch
         return response.model_dump(mode="json")
 
     @error_responses(DraftWorkflowNotSync)
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @console_ns.doc("sync_draft_workflow")
     @console_ns.doc(description="Sync draft workflow configuration")
@@ -676,10 +680,8 @@ class DraftWorkflowApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    def post(self, current_user: Account, app_model: App):
-        """
-        Sync draft workflow
-        """
+    def post(self, current_user: Account, session: Session, app_model: App):
+        """Save an admitted App's HTTP draft, or initialize it when collaboration is entitled."""
         content_type = request.headers.get("Content-Type", "")
 
         if "application/json" in content_type:
@@ -695,12 +697,9 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
-        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
-        # Require explicit confirmation for both regular saves and text/plain unload beacons.
-        try:
-            initialize_only = FeatureService.can_use_workflow_collaboration(app_model.tenant_id)
-        except BillingUpstreamError as exc:
-            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
+        with session:
+            tenant_id = app_model.tenant_id
+        initialize_only = _check_draft_collaboration_entitlement(tenant_id)
         if (
             not initialize_only
             and args_model.graph.get("nodes") == []
@@ -736,7 +735,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=[],
                 conversation_variables=conversation_variables,
-                session=db.session(),
+                session=session,
                 environment_variable_upserts=environment_variable_upserts,
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,

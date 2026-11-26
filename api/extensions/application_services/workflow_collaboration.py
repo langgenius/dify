@@ -60,16 +60,16 @@ def build_workflow_collaboration(
         update: bytes | None,
         allow_empty: bool,
     ) -> LoroDraftSyncResult:
-        """Load an admitted App and confirm its draft in a new database session."""
+        """Load an admitted App, then use a fresh transaction for the draft and its bindings."""
         with database_client() as session:
-            app = session.scalar(
-                select(App).where(
-                    App.id == editor.app_id, App.tenant_id == editor.tenant_id, App.status == AppStatus.NORMAL
+            with session:
+                app = session.scalar(
+                    select(App).where(
+                        App.id == editor.app_id, App.tenant_id == editor.tenant_id, App.status == AppStatus.NORMAL
+                    )
                 )
-            )
-        if app is None:
-            raise WorkflowNotFoundError("Draft workflow not found.")
-        with database_client() as session:
+            if app is None:
+                raise WorkflowNotFoundError("Draft workflow not found.")
             return workflows.sync_loro_draft(
                 app_model=app,
                 account_id=editor.account_id,

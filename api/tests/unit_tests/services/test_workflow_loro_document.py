@@ -1,11 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from loro import ExportMode, VersionVector
 
 from services import workflow_loro_document as draft
 
+if TYPE_CHECKING:
+    from loro import LoroValue
+
 
 def test_native_seed_roundtrip_and_dangling_edge_reappearance():
-    graph = {
+    graph: dict[str, LoroValue] = {
         "nodes": [
             {"id": "a", "selected": True, "data": {"_hover": True, "type": "if-else", "conditions": []}},
             {"id": "b", "data": {"rows": [[1], {"name": "a"}]}},
@@ -30,7 +37,13 @@ def test_native_seed_roundtrip_and_dangling_edge_reappearance():
         },
         {"id": "b", "data": {"rows": [[1], {"name": "a"}]}},
     ]
-    assert [edge["id"] for edge in expected["edges"]] == ["e", "legacy-edges-1", "legacy-edges-2"]
+    edges = expected["edges"]
+    assert isinstance(edges, list)
+    assert [edge["id"] if isinstance(edge, dict) else edge for edge in edges] == [
+        "e",
+        "legacy-edges-1",
+        "legacy-edges-2",
+    ]
     restored = draft.load_loro_draft(draft.export_loro_snapshot(doc), {})
     assert draft.project_loro_graph(restored) == expected
     restored.get_map("nodes").delete("b")
@@ -53,7 +66,7 @@ def test_shallow_boundary_and_idempotent_retransmission(monkeypatch):
     compacted = draft.load_loro_draft(draft.export_loro_snapshot(doc), {})
     assert compacted.is_shallow()
     with pytest.raises(draft.LoroDraftHistoryCompactedError):
-        draft.check_loro_version(compacted, VersionVector().encode())
+        draft.check_loro_version(compacted, VersionVector().encode(), pushing=False)
     snapshot = draft.export_loro_delta(compacted, None)
     assert draft.project_loro_graph(draft.load_loro_draft(snapshot, {})) == draft.project_loro_graph(doc)
 
@@ -61,7 +74,7 @@ def test_shallow_boundary_and_idempotent_retransmission(monkeypatch):
 def test_invalid_version_and_snapshot_input_are_rejected():
     doc = draft.load_loro_draft(None, {})
     with pytest.raises(draft.LoroDraftUpdateError, match="Invalid version vector"):
-        draft.check_loro_version(doc, b"broken")
+        draft.check_loro_version(doc, b"broken", pushing=False)
     with pytest.raises(draft.LoroDraftUpdateError, match="Expected a Loro delta"):
         draft.merge_loro_update(doc, draft.export_loro_snapshot(doc))
 
@@ -84,3 +97,13 @@ def test_malformed_update_and_schema_are_rejected():
     doc.get_map("graph").insert("schema_version", 1)
     with pytest.raises(draft.LoroDraftUpdateError):
         draft.project_loro_graph(doc)
+
+
+def test_agent_session_policy_rejects_non_mergeable_node_data():
+    doc = draft.load_loro_draft(None, {"nodes": [{"id": "agent"}]})
+    doc.get_map("nodes").ensure_mergeable_map("agent").insert("data", {"continue_agent_session": True})
+    projected = draft.project_loro_graph(doc)
+    saved: dict[str, LoroValue] = {"nodes": [{"id": "agent", "data": {"continue_agent_session": False}}]}
+
+    with pytest.raises(draft.LoroDraftUpdateError, match="Invalid Loro Agent session fields"):
+        draft.apply_loro_agent_session_policy(doc, projected, saved)

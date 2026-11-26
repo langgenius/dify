@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import partial
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -15,6 +16,7 @@ from models.workflow import Workflow, WorkflowLoroDraft, WorkflowType
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.workflow_loro_document import (
     LoroDraftEpochChangedError,
+    LoroDraftHistoryCompactedError,
     LoroDraftSyncResult,
     LoroDraftUpdateError,
     project_loro_graph,
@@ -337,22 +339,40 @@ def test_pull_uses_no_write_lock_after_seed(service, sqlite_session, draft, monk
     assert not result.changed
 
 
-def test_compaction_check_precedes_delta_import(service, sqlite_session, draft, monkeypatch):
+def test_compaction_recovers_a_push_at_the_open_shallow_boundary(service, sqlite_session, draft, monkeypatch):
     from services import workflow_loro_document as document
 
     app, row = draft
+    offline, version = _seed(service, app, row, sqlite_session)
+    other = offline.fork()
+    sync = partial(
+        service.sync_loro_draft,
+        app_model=app,
+        account_id=row.created_by,
+        epoch=row.id,
+        allow_empty=False,
+        session=sqlite_session,
+    )
+    base = VersionVector.decode(version)
+    other.get_map("nodes").ensure_mergeable_map("llm").ensure_mergeable_map("data").insert("title", "online")
     monkeypatch.setattr(document, "MAX_HISTORY_OPS", 1)
-    _seed(service, app, row, sqlite_session)
-    with pytest.raises(document.LoroDraftHistoryCompactedError):
-        service.sync_loro_draft(
-            app_model=app,
-            account_id=row.created_by,
-            epoch=row.id,
-            version=VersionVector().encode(),
-            update=b"invalid",
-            allow_empty=False,
-            session=sqlite_session,
-        )
+    saved = sync(version=version, update=other.export(ExportMode.Updates(base)))
+    pulled = sync(version=version, update=None)
+    assert pulled.version == saved.version
+    assert pulled.update is not None
+
+    offline.get_map("nodes").ensure_mergeable_map("llm").ensure_mergeable_map("data").insert("desc", "offline")
+    update = offline.export(ExportMode.Updates(base))
+    with pytest.raises(LoroDraftHistoryCompactedError):
+        sync(version=version, update=update)
+
+    recovered, fresh_version = _seed(service, app, row, sqlite_session)
+    recovered.get_map("nodes").ensure_mergeable_map("llm").ensure_mergeable_map("data").insert("desc", "offline")
+    rebased_update = recovered.export(ExportMode.Updates(VersionVector.decode(fresh_version)))
+    resumed = sync(version=fresh_version, update=rebased_update)
+    assert resumed.changed
+    assert row.graph_dict["nodes"][0]["data"]["title"] == "online"
+    assert row.graph_dict["nodes"][0]["data"]["desc"] == "offline"
 
 
 @pytest.mark.parametrize("size", [32, 100_000])

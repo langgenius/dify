@@ -695,8 +695,9 @@ class WorkflowService:
     ) -> LoroDraftSyncResult:
         """Merge updates for an admitted editor, committing history and projection before confirming.
 
-        The draft row lock serializes seed and merges across workers. A rejected or duplicate
-        update neither changes the saved graph nor repeats its Agent binding side effects.
+        The draft row lock serializes seed and merges across workers. A push must include
+        the retained frontier. Rejected and duplicate updates leave the saved graph and
+        Agent bindings untouched.
         """
         workflow, state = self._load_loro_draft_for_sync(app_model, session=session, read_only=update is None)
         current_epoch = state.epoch
@@ -712,7 +713,7 @@ class WorkflowService:
             else {}
         )
         doc = load_loro_draft(snapshot, seed)
-        known = check_loro_version(doc, version)
+        known = check_loro_version(doc, version, pushing=update is not None)
         before = doc.state_vv
         if update is not None:
             merge_loro_update(doc, update)

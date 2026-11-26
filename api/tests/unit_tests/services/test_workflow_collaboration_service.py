@@ -11,8 +11,7 @@ from enums import CloudPlan, DeploymentEdition
 from extensions.application_services.workflow_collaboration import build_workflow_collaboration
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import helpers as file_helpers
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import App, AppMode
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
@@ -53,8 +52,10 @@ def real_service(collaboration_redis: RedisClientWrapper, sqlite_engine: Engine,
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[Account.__table__, App.__table__, TenantAccountJoin.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
+        tenant = Tenant(name="Workflow workspace")
+        tenant.id = "t-1"
+        session.add(tenant)
         session.add(make_account(account_id="u-1"))
         session.add(TenantAccountJoin(tenant_id="t-1", account_id="u-1", role=TenantAccountRole.EDITOR))
         session.commit()
@@ -164,6 +165,22 @@ class TestWorkflowCollaborationService:
         socketio.enter_room.assert_not_called()
         broadcast_online_users.assert_not_called()
         socketio.emit.assert_not_called()
+
+    def test_existing_editor_cannot_sync_after_tenant_is_archived(
+        self, real_service: ServiceFixture, db_session: Session
+    ) -> None:
+        service, _repository, socketio = real_service
+        socketio.get_session.return_value = {"user_id": "u-1", "tenant_id": "t-1"}
+        db_session.add(_app(app_id="wf-1", tenant_id="t-1"))
+        db_session.commit()
+
+        with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, ENABLE_COLLABORATION_MODE=True):
+            assert service.authorize_and_join_workflow_room("wf-1", "sid-1") == "u-1"
+            db_session.get_one(Tenant, "t-1").status = TenantStatus.ARCHIVE
+            db_session.commit()
+
+            with pytest.raises(WorkflowCollaborationForbiddenError):
+                service.authorize_loro_draft_sync("sid-1")
 
     def test_repr_and_save_socket_identity(self, real_service: ServiceFixture) -> None:
         collaboration_service, _repository, socketio = real_service

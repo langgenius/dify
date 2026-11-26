@@ -161,7 +161,7 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
 def apply_loro_agent_session_policy(
     doc: LoroDoc, projected: Mapping[str, LoroValue], saved: Mapping[str, LoroValue]
 ) -> None:
-    """Merge binding-owned session fields back into the document before confirming the graph."""
+    """Apply saved binding fields to the same ordered nodes, rejecting invalid containers."""
     before_nodes, after_nodes = projected["nodes"], saved["nodes"]
     assert isinstance(before_nodes, list)
     assert isinstance(after_nodes, list)
@@ -174,11 +174,12 @@ def apply_loro_agent_session_policy(
                 if before_data.get(key) != after_data.get(key) or (key in before_data) != (key in after_data):
                     node_id = node["id"]
                     assert isinstance(node_id, str)
-                    data = nodes.ensure_mergeable_map(node_id).ensure_mergeable_map("data")
-                    if key in after_data:
-                        data.insert(key, after_data[key])
-                    else:
-                        data.delete(key)
+                    with _loro_input_error("Invalid Loro Agent session fields."):
+                        data = nodes.ensure_mergeable_map(node_id).ensure_mergeable_map("data")
+                        if key in after_data:
+                            data.insert(key, after_data[key])
+                        else:
+                            data.delete(key)
     doc.commit()
 
 
@@ -213,14 +214,17 @@ def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
         raise LoroDraftUpdateError("Missing causal dependencies.")
 
 
-def check_loro_version(doc: LoroDoc, version: bytes | None) -> VersionVector | None:
-    """Decode the client's base and verify it belongs to the retained history."""
+def check_loro_version(doc: LoroDoc, version: bytes | None, *, pushing: bool) -> VersionVector | None:
+    """Return a checked export base, requiring the inclusive shallow frontier for pushes."""
     if version is None:
         return None
     with _loro_input_error("Invalid version vector."):
         known = VersionVector.decode(version)
-    if doc.is_shallow() and not known.includes_vv(doc.shallow_since_vv):
-        raise LoroDraftHistoryCompactedError
+    if doc.is_shallow():
+        boundary = doc.frontiers_to_vv(doc.shallow_since_frontiers) if pushing else doc.shallow_since_vv
+        assert boundary is not None
+        if not known.includes_vv(boundary):
+            raise LoroDraftHistoryCompactedError
     if not doc.state_vv.includes_vv(known):
         raise LoroDraftUpdateError("Unknown version vector.")
     return known

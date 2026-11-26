@@ -14,7 +14,7 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable, UnprocessableEntity
 
@@ -396,18 +396,18 @@ class TestWorkflowCases:
         build_mock.assert_called_once()
 
     @staticmethod
-    def test_sync_draft_workflow_invalid_content_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_invalid_content_type(app: Flask, unbound_session: Session) -> None:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
         with app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"):
             with pytest.raises(HTTPException) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert exc.value.code == 415
 
     @staticmethod
-    def test_sync_draft_workflow_invalid_json(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_invalid_json(app: Flask, unbound_session: Session) -> None:
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
 
@@ -417,13 +417,15 @@ class TestWorkflowCases:
             data="[]",
             content_type="application/json",
         ):
-            response, status = raised_error(lambda: handler(api, _account(), app_model=_workflow_app()))
+            response, status = raised_error(
+                lambda: handler(api, _account(), unbound_session, app_model=_workflow_app())
+            )
 
         assert status == 400
         assert response["message"] == "Invalid JSON data"
 
     @staticmethod
-    def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
         workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
 
         monkeypatch.setattr(
@@ -439,21 +441,35 @@ class TestWorkflowCases:
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
+        app_model = _workflow_app()
+        sqlite_session.add(app_model)
+        sqlite_session.commit()
+        admitted = sqlite_session.scalar(select(_workflow_App).where(_workflow_App.id == app_model.id))
+        assert admitted is not None
+        assert sqlite_session.in_transaction()
+
+        def check_entitlement(tenant_id: str) -> bool:
+            assert tenant_id == admitted.tenant_id
+            assert not sqlite_session.in_transaction()
+            return False
+
+        monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", check_entitlement)
 
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
             json={"graph": {}, "features": {}, "hash": "h"},
         ):
-            response = handler(api, _account(), app_model=_workflow_app())
+            response = handler(api, _account(), sqlite_session, app_model=admitted)
 
         assert response["result"] == "success"
+        assert sync_draft_workflow.call_args.kwargs["session"] is sqlite_session
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
 
     @staticmethod
     def test_sync_draft_workflow_returns_503_if_entitlement_is_unavailable(
-        app: Flask, monkeypatch: pytest.MonkeyPatch
+        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
     ) -> None:
         check_entitlement = Mock(side_effect=BillingUpstreamUnavailableError("billing unavailable"))
         monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", check_entitlement)
@@ -468,7 +484,7 @@ class TestWorkflowCases:
             ),
             pytest.raises(ServiceUnavailable),
         ):
-            inspect.unwrap(api.post)(api, _account(), app_model=_workflow_app())
+            inspect.unwrap(api.post)(api, _account(), unbound_session, app_model=_workflow_app())
         save.assert_not_called()
 
     @staticmethod
@@ -477,6 +493,7 @@ class TestWorkflowCases:
     def test_sync_draft_workflow_rejects_empty_graph_without_confirmation(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
         content_type: str,
         confirmation: dict[str, bool],
     ) -> None:
@@ -493,7 +510,7 @@ class TestWorkflowCases:
             content_type=content_type,
         ):
             with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert exc.value.code == 400
         assert exc.value.description == "Saving an empty workflow requires force=true."
@@ -513,6 +530,7 @@ class TestWorkflowCases:
     def test_sync_draft_workflow_saves_confirmed_empty_or_nonempty_graph(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
         content_type: str,
         graph: dict[str, list[dict[str, str]]],
         confirmation: dict[str, bool],
@@ -533,7 +551,7 @@ class TestWorkflowCases:
             data=json.dumps({"graph": graph, "features": {}, "hash": "current-hash", **confirmation}),
             content_type=content_type,
         ):
-            response = handler(api, _account(), app_model=_workflow_app())
+            response = handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert response["result"] == "success"
         assert response["hash"] == "next-hash"
@@ -546,6 +564,7 @@ class TestWorkflowCases:
     def test_sync_draft_workflow_force_does_not_bypass_hash_conflict(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
         content_type: str,
     ) -> None:
         sync_draft_workflow = Mock(side_effect=workflow_module.WorkflowHashNotEqualError())
@@ -564,7 +583,7 @@ class TestWorkflowCases:
             content_type=content_type,
         ):
             with pytest.raises(DraftWorkflowNotSync) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert exc.value.code == 409
         sync_draft_workflow.assert_called_once()
@@ -576,6 +595,7 @@ class TestWorkflowCases:
     def test_sync_draft_workflow_rejects_non_boolean_force(
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        unbound_session: Session,
         content_type: str,
         force: str | int | None,
     ) -> None:
@@ -592,16 +612,20 @@ class TestWorkflowCases:
         ):
             if content_type == "application/json":
                 with pytest.raises(ValidationError, match="Input should be a valid boolean"):
-                    handler(api, _account(), app_model=_workflow_app())
+                    handler(api, _account(), unbound_session, app_model=_workflow_app())
             else:
-                response, status = raised_error(lambda: handler(api, _account(), app_model=_workflow_app()))
+                response, status = raised_error(
+                    lambda: handler(api, _account(), unbound_session, app_model=_workflow_app())
+                )
                 assert status == 400
                 assert response["message"] == "Invalid JSON data"
 
         workflow_service.assert_not_called()
 
     @staticmethod
-    def test_sync_draft_workflow_passes_environment_patch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_passes_environment_patch(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         workflow = _make_workflow(updated_at=None, created_at=datetime(2024, 1, 1))
         patched_variable = StringVariable(
             id="env-model",
@@ -644,7 +668,7 @@ class TestWorkflowCases:
                 },
             },
         ):
-            response = handler(api, _account(), app_model=_workflow_app())
+            response = handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
@@ -678,7 +702,9 @@ class TestWorkflowCases:
             )
 
     @staticmethod
-    def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_hash_mismatch(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         def _raise(*_args, **_kwargs):
             raise workflow_module.WorkflowHashNotEqualError()
 
@@ -694,10 +720,12 @@ class TestWorkflowCases:
             json={"graph": {}, "features": {}, "hash": "h"},
         ):
             with pytest.raises(DraftWorkflowNotSync):
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), unbound_session, app_model=_workflow_app())
 
     @staticmethod
-    def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_sync_draft_workflow_variable_validation_error(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+    ) -> None:
         def _raise(*_args, **_kwargs):
             raise workflow_module.VariableError("description too long")
 
@@ -715,7 +743,7 @@ class TestWorkflowCases:
             json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
         ):
             with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), unbound_session, app_model=_workflow_app())
 
         assert exc.value.description == "description too long"
 
@@ -963,6 +991,10 @@ class TestWorkflowCases:
 
         monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", check_entitlement)
         api = workflow_module.DraftWorkflowApi()
+        if entitled is None:
+            with pytest.raises(ServiceUnavailable):
+                inspect.unwrap(api.get)(api, sqlite_session, app_model=_workflow_app())
+            return
         response = inspect.unwrap(api.get)(api, sqlite_session, app_model=_workflow_app())
         assert response["id"] == workflow_id
         assert response.get("loro_draft_epoch") == ((stored_epoch or workflow_id) if entitled else None)

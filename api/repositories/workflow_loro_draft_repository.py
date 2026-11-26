@@ -6,7 +6,7 @@ from uuid import uuid4
 from sqlalchemy import CursorResult, Select, and_, select, update
 from sqlalchemy.orm import Session, sessionmaker, undefer
 
-from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.model import App, AppMode, AppStatus
 from models.workflow import Workflow, WorkflowLoroDraft
 
@@ -16,7 +16,7 @@ _HISTORY_OWNER = and_(WorkflowLoroDraft.workflow_id == Workflow.id, WorkflowLoro
 def read_draft_editor(
     sessions: sessionmaker[Session], *, app_id: str, tenant_id: str, account_id: str
 ) -> tuple[str | None, TenantAccountRole] | None:
-    """Return the maintainer and current role for an active member of an editable App.
+    """Return the maintainer and role for an active member of an editable App in an active tenant.
 
     The short read closes before RBAC and billing perform external I/O.
     """
@@ -24,13 +24,15 @@ def read_draft_editor(
         return (
             session.execute(
                 select(App.maintainer, TenantAccountJoin.role)
-                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
+                .join(Tenant, Tenant.id == App.tenant_id)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
                 .join(Account, Account.id == TenantAccountJoin.account_id)
                 .where(
                     App.id == app_id,
                     App.tenant_id == tenant_id,
                     App.status == AppStatus.NORMAL,
                     App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                    Tenant.status == TenantStatus.NORMAL,
                     Account.id == account_id,
                     Account.status == AccountStatus.ACTIVE,
                 )
