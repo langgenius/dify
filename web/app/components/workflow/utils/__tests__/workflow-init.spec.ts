@@ -15,6 +15,7 @@ import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/ite
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
+import { toGraphNodes } from '../published-workflow'
 import { initialEdges, initialNodes, preprocessNodesAndEdges } from '../workflow-init'
 
 beforeEach(() => {
@@ -87,6 +88,26 @@ describe.each([
 })
 
 describe('initialNodes', () => {
+  it.each([false, true])(
+    'lays out only unplaced imported nodes (unplaced first: %s)',
+    (unplacedFirst) => {
+      const placed = createNode({ id: 'placed', position: { x: 1200, y: 400 } })
+      const unplaced = { id: 'unplaced', data: { type: BlockEnum.Code, title: 'Code', desc: '' } }
+      const importedNodes = toGraphNodes({
+        nodes: unplacedFirst ? [unplaced, placed] : [placed, unplaced],
+      })
+
+      const result = initialNodes(importedNodes, [])
+
+      expect(result.find((node) => node.id === 'placed')!.position).toEqual({ x: 1200, y: 400 })
+      const position = result.find((node) => node.id === 'unplaced')!.position
+      expect(position).toEqual({ x: expect.any(Number), y: expect.any(Number) })
+      expect(Number.isFinite(position.x) && Number.isFinite(position.y)).toBe(true)
+      expect(unplaced).not.toHaveProperty('position')
+      expect(placed.position).toEqual({ x: 1200, y: 400 })
+    },
+  )
+
   it('should normalize legacy container and nested node layers regardless of node order', () => {
     const nodes = [
       createNode({

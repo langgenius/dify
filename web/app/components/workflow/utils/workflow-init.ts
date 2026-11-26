@@ -196,17 +196,16 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
 
 export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   const { nodes, edges } = preprocessNodesAndEdges(cloneDeep(originNodes), cloneDeep(originEdges))
-  const firstNode = nodes[0]
   const nodesById = new Map(nodes.map((node) => [node.id, node]))
 
-  if (!firstNode?.position) {
-    nodes.forEach((node, index) => {
+  nodes.forEach((node, index) => {
+    if (!node.position) {
       node.position = {
         x: START_INITIAL_POSITION.x + index * NODE_WIDTH_X_OFFSET,
         y: START_INITIAL_POSITION.y,
       }
-    })
-  }
+    }
+  })
 
   const iterationOrLoopNodeMap = nodes.reduce(
     (acc, node) => {
