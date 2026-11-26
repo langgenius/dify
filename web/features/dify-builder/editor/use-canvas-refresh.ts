@@ -53,12 +53,16 @@ export const useDifyBuilderCanvasRefresh = (
     [],
   )
 
-  const cancel = useCallback(() => {
-    refreshRequestIdRef.current += 1
-    if (sessionStore.get(difyBuilderCanvasRefreshingAtom)) lastRefreshRef.current = null
-    sessionStore.set(difyBuilderCanvasRefreshingAtom, false)
-    syncCanvasLock()
-  }, [sessionStore, syncCanvasLock])
+  const cancel = useCallback(
+    (awaitingDraftSave = false) => {
+      refreshRequestIdRef.current += 1
+      if (sessionStore.get(difyBuilderCanvasRefreshingAtom)) lastRefreshRef.current = null
+      sessionStore.set(difyBuilderCanvasRefreshingAtom, false)
+      // The shared save queue checks that the canvas is still editable when the write starts.
+      if (!awaitingDraftSave) syncCanvasLock()
+    },
+    [sessionStore, syncCanvasLock],
+  )
 
   const reset = useCallback(() => {
     refreshRequestIdRef.current += 1
@@ -72,10 +76,7 @@ export const useDifyBuilderCanvasRefresh = (
 
   const refresh = useCallback(
     async (force = false) => {
-      if (sessionStore.get(difyBuilderSessionBusyAtom)) {
-        syncCanvasLock()
-        return
-      }
+      if (sessionStore.get(difyBuilderSessionBusyAtom)) return
       const sessionId = sessionStore.get(difyBuilderSessionIdAtom)
       const version = sessionStore.get(difyBuilderViewVersionAtom)
       const phase =

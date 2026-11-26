@@ -691,7 +691,7 @@ export function useDifyBuilderSessionController(
       abortRef.current = controller
       const preparation = prepareDraft ? prepareCommand?.(true, signal) : undefined
       setIsBusy(true)
-      runEvents?.onCommandStarted?.()
+      runEvents?.onCommandStarted?.(Boolean(preparation))
       setLastError('')
       store.set(difyBuilderSessionErrorCodeAtom, null)
       let submitted = false

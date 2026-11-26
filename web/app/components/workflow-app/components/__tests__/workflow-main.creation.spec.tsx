@@ -160,9 +160,6 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     emitWorkflowUpdate: vi.fn(),
   },
 }))
-vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
-  useNodesReadOnlyByCanEdit: () => ({ getNodesReadOnly: () => false }),
-}))
 vi.mock('@/service/workflow', () => ({ syncWorkflowDraft: mocks.syncWorkflowDraft }))
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
