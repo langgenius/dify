@@ -98,6 +98,16 @@ const tagBinding = {
  *
  * A procedure whose policy lives in a domain file declares its `meta` there instead.
  */
+// A pipeline run with `is_preview` only computes chunks to show.
+const isPreviewRun = (variables: unknown) =>
+  typeof variables === 'object' &&
+  variables !== null &&
+  'body' in variables &&
+  typeof variables.body === 'object' &&
+  variables.body !== null &&
+  'is_preview' in variables.body &&
+  variables.body.is_preview === true
+
 const namedPolicies: ConsolePolicies = {
   login: { post: skip },
   // Both reload the page once they succeed.
@@ -127,6 +137,23 @@ const namedPolicies: ConsolePolicies = {
         checkout: { post: skip },
         // The discarded draft is removed by its owner; a refetch would read a missing draft.
         delete: skip,
+      },
+    },
+  },
+  rag: {
+    pipelines: {
+      byPipelineId: {
+        workflows: {
+          published: {
+            run: {
+              post: {
+                mutationOptions: {
+                  meta: { invalidate: (variables: unknown) => !isPreviewRun(variables) },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },

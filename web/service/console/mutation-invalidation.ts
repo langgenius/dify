@@ -8,7 +8,10 @@ import type {
 } from '@tanstack/react-query'
 
 // The part of a mutation the fallback reads, whatever its data and error types.
-type AnyMutation = { options: { mutationKey?: MutationKey; meta?: MutationMeta } }
+type AnyMutation = {
+  options: { mutationKey?: MutationKey; meta?: MutationMeta }
+  state: { variables?: unknown }
+}
 
 const ROOT = 'console'
 
@@ -52,6 +55,9 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
   if (!path?.length || path.at(-1) === 'get') return undefined
   const meta = mutation.options.meta
   if (meta?.invalidate === false) return undefined
+  // Per call: a write endpoint used read-only, such as a preview run.
+  if (typeof meta?.invalidate === 'function' && !meta.invalidate(mutation.state.variables))
+    return undefined
   const domain = domainOf(path)
   return { domain, targets: [domain, ...(meta?.alsoInvalidate ?? [])] }
 }

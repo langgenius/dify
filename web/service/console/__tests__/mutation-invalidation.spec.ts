@@ -454,4 +454,34 @@ describe('mutation invalidation fallback', () => {
     expect(preview).toHaveBeenCalledTimes(1)
     expect(pipeline).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    [true, 1],
+    [false, 2],
+  ])(
+    'refreshes after a pipeline run only when it is not a preview (is_preview: %s)',
+    async (isPreview, calls) => {
+      const client = createClient()
+      const published = await mountQuery(
+        client,
+        consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.queryKey({
+          input: { params: { pipeline_id: 'pipeline-1' } },
+        }),
+      )
+
+      await new MutationObserver(
+        client,
+        consoleQuery.rag.pipelines.byPipelineId.workflows.published.run.post.mutationOptions({
+          mutationFn: async () => ({}) as never,
+        }),
+      ).mutate({
+        params: { pipeline_id: 'pipeline-1' },
+        body: { is_preview: isPreview },
+      } as never)
+      await settle()
+
+      // A preview only computes chunks; refetching the pipeline would reset the edited form.
+      expect(published).toHaveBeenCalledTimes(calls)
+    },
+  )
 })

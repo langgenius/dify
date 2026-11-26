@@ -89,7 +89,9 @@ new data and is kept current by it (a streaming chat's history) sets
 - **Rely on the fallback** for everything else in the domain. Declare other domains a
   write changes with `meta: { alsoInvalidate: ['agent', 'workspaces.current.features'] }`
   in its policy, and set `meta: { invalidate: false }` when it changes no cached data
-  or its owner reconciles the cache itself (autosaves that write the response). Opt-outs
+  or its owner reconciles the cache itself (autosaves that write the response). A function
+  (`invalidate: (variables) => boolean`) decides per call, for a write endpoint also used
+  read-only, such as a pipeline run with `is_preview`. Opt-outs
   and declarations without another policy live in `policies/invalidation.ts`;
   `__tests__/mutation-coverage.spec.ts` fails for a write none of these cover.
 - **Call sites invalidate directly** only for a user-driven refresh or retry, a refresh

@@ -22,9 +22,11 @@ declare module '@tanstack/react-query' {
       deferAgentTagCatalogRefresh?: boolean
       /**
        * `false`: the console invalidation fallback skips this mutation, because it changes no
-       * cached data or its owner reconciles the cache itself. See `service/console/README.md`.
+       * cached data or its owner reconciles the cache itself. A function decides per call from
+       * the variables, for a write endpoint also used read-only (a preview run). See
+       * `service/console/README.md`.
        */
-      invalidate?: false
+      invalidate?: false | ((variables: unknown) => boolean)
       /**
        * Console paths (`'agent'`, `'workspaces.current.features'`) the fallback refreshes besides
        * the mutation's own domain, for known cross-domain effects.
