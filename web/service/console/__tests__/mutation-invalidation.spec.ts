@@ -127,6 +127,28 @@ describe('mutation invalidation fallback', () => {
     expect(appsList).toHaveBeenCalledTimes(2)
   })
 
+  it('restarts a read that started before the write even when the policy wrote the response', async () => {
+    const client = createClient()
+    const staleRead = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(staleRead.promise).mockResolvedValue('fresh')
+    // An unobserved read that started before the write: invalidation alone would let it land.
+    void client.query({ queryKey: appDetailKey(), queryFn }).catch(() => undefined)
+    tick()
+
+    await mutate(client, {
+      mutationKey: renameApp(),
+      onSuccess: () => {
+        tick()
+        client.setQueryData(appDetailKey(), 'from response')
+      },
+    })
+    await settle()
+    staleRead.resolve('stale')
+    await settle()
+
+    expect(client.getQueryData(appDetailKey())).not.toBe('stale')
+  })
+
   it('refreshes the domains a policy declares in alsoInvalidate', async () => {
     const client = createClient()
     const features = await mountQuery(client, featuresKey())

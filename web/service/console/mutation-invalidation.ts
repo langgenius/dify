@@ -36,7 +36,7 @@ export function domainOf(path: readonly string[]): string {
 }
 
 /** The query-key prefix that matches every query under a dotted console path. */
-export function consolePathKey(path: string): QueryKey {
+function consolePathKey(path: string): QueryKey {
   return [[ROOT, ...path.split('.')]]
 }
 
@@ -66,7 +66,8 @@ type Deferred = { targets: Set<string>; succeededAt: number }
  *
  * - It starts once the mutation's own callbacks have settled, and skips queries that were
  *   refreshed or written after the request succeeded, so a policy's primary refresh is not
- *   fetched twice.
+ *   fetched twice. A query still fetching is refreshed anyway: its read may predate the write
+ *   and would otherwise land over it.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
  *   sibling's optimistic value (TkDodo's `isMutating({ mutationKey }) === 1` guard).
@@ -112,9 +113,11 @@ export function createMutationInvalidation() {
   }
 }
 
-// Data read or written after the request succeeded already reflects it.
-const isOlderThan = (time: number) => (query: Query) => query.state.dataUpdatedAt < time
+// Data read or written after the request succeeded already reflects it, unless a read that
+// may have started before the write is still in flight.
+const needsRefresh = (time: number) => (query: Query) =>
+  query.state.dataUpdatedAt < time || query.state.fetchStatus === 'fetching'
 
 function refreshAfter(client: QueryClient, targets: string[], time: number) {
-  return invalidateQueryKeys(client, targets.map(consolePathKey), isOlderThan(time))
+  return invalidateQueryKeys(client, targets.map(consolePathKey), needsRefresh(time))
 }
