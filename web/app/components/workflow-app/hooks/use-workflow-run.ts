@@ -31,6 +31,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
+import { useCollaborativeWorkflow } from '../../workflow/hooks/use-collaborative-workflow'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -119,6 +120,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
@@ -211,14 +213,14 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     ) => {
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
           node.data._runningStatus = undefined
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       await doSyncWorkflowDraft()
 
       const {
@@ -451,6 +453,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       streamEvents(request, finalCallbacks)
     },
     [
+      collaborativeWorkflow,
       store,
       doSyncWorkflowDraft,
       workflowStore,
