@@ -96,6 +96,26 @@ describe('useDSLByCanEdit', () => {
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
+  it('shows the server message when the draft sync before export fails', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError(
+        createHttpError(
+          { status: 400, statusText: '', headers: new Headers() },
+          { message: 'Draft is invalid' },
+        ),
+      )
+      return null
+    })
+    const { result } = renderDSL(true)
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'Draft is invalid',
+    })
+  })
+
   it('allows export when draft synchronization is skipped for read-only access', async () => {
     mockDoSyncWorkflowDraft.mockResolvedValue(null)
     const { result } = renderDSL(false)
