@@ -102,7 +102,6 @@ const IntegrationSectionRenderer = ({
       return (
         <>
           <ModelProviderPage
-            hideSystemModelSelectorProviderSettingsFooter
             layout={renderScrollableLayout}
             onOpenMarketplace={onSwitchToMarketplace}
             searchText={providerSearchText}

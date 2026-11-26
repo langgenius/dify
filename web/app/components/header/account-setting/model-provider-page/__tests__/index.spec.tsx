@@ -31,6 +31,7 @@ import {
   QuotaUnitEnum,
 } from '../declarations'
 import ModelProviderPage from '../index'
+import { SystemModelDialog } from '../system-model-selector/dialog'
 
 const providerSummaryFixture = {
   provider: 'openai',
@@ -253,7 +254,10 @@ const renderModelProviderPage = (
     )
   }
   return renderWithConsoleQuery(
-    <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />,
+    <>
+      <ModelProviderPage searchText={searchText} stickyToolbar={stickyToolbar} />
+      <SystemModelDialog />
+    </>,
     {
       queryClient,
       systemFeatures: { enable_marketplace: enableMarketplace },

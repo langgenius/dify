@@ -22,7 +22,7 @@ import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import { useTrialCredits } from './provider-added-card/use-trial-credits'
-import SystemModelSelector from './system-model-selector'
+import { SystemModelTrigger } from './system-model-selector/trigger'
 
 const EMPTY_MODEL_PROVIDERS: ModelProviderSummaryListResponse['data'] = []
 const EMPTY_MODEL_PROVIDER_PLUGINS: ModelProviderSummaryListResponse['plugins'] = {}
@@ -39,7 +39,6 @@ type Props = Readonly<{
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
-  hideSystemModelSelectorProviderSettingsFooter?: boolean
 }>
 
 const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
@@ -55,7 +54,6 @@ const ModelProviderPage = ({
   onSearchTextChange,
   searchText,
   stickyToolbar,
-  hideSystemModelSelectorProviderSettingsFooter,
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation(['modelProvider'])
@@ -181,12 +179,10 @@ const ModelProviderPage = ({
     if (!canConfigureModels) return null
 
     return (
-      <SystemModelSelector
+      <SystemModelTrigger
         className={className}
         notConfigured={showWarning}
         isLoading={isDefaultModelLoading}
-        hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
-        onOpenMarketplace={onOpenMarketplace}
       />
     )
   }
