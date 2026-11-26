@@ -84,6 +84,14 @@ def _build_fake_qdrant_modules():
         def __init__(self, text):
             self.text = text
 
+    class TextQuery:
+        def __init__(self, text):
+            self.text = text
+
+    class TextScoringParams:
+        def __init__(self, type):
+            self.type = type
+
     class _Distance(UserDict):
         @override
         def __getitem__(self, key):
@@ -113,6 +121,8 @@ def _build_fake_qdrant_modules():
     qdrant_http_models.PayloadSchemaType = SimpleNamespace(KEYWORD="KEYWORD")
     qdrant_http_models.TextIndexParams = TextIndexParams
     qdrant_http_models.TextIndexType = SimpleNamespace(TEXT="TEXT")
+    qdrant_http_models.TextScoringParams = TextScoringParams
+    qdrant_http_models.TextScoringType = SimpleNamespace(BM25="bm25")
     qdrant_http_models.TokenizerType = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
     qdrant_http_models.VectorParams = VectorParams
     qdrant_http_models.Distance = _Distance()
@@ -122,6 +132,7 @@ def _build_fake_qdrant_modules():
     qdrant_http_models.MatchValue = MatchValue
     qdrant_http_models.MatchAny = MatchAny
     qdrant_http_models.MatchText = MatchText
+    qdrant_http_models.TextQuery = TextQuery
     qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
 
     qdrant_http.models = qdrant_http_models
@@ -205,6 +216,12 @@ def test_create_collection_and_add_texts(qdrant_module, monkeypatch: pytest.Monk
     vector.create_collection("collection_1", 3)
     vector._client.create_collection.assert_called_once()
     assert vector._client.create_payload_index.call_count == 4
+    text_index = next(
+        call.kwargs["field_schema"]
+        for call in vector._client.create_payload_index.call_args_list
+        if call.args[1] == "page_content"
+    )
+    assert text_index.kwargs["scoring"].type == "bm25"
     qdrant_module.redis_client.set.assert_called_once()
 
     # add_texts and generated batches
@@ -290,6 +307,7 @@ def test_search_and_helper_methods(qdrant_module):
             None,
         ),
     ]
+    _unscored_text_index(vector)
     cast(ScrollMock, vector._client.scroll).side_effect = scroll_results
     docs = vector.search_by_full_text("hello world", top_k=2, document_ids_filter=["d-1"])
     assert len(docs) == 2
@@ -319,6 +337,7 @@ def test_qdrant_full_text_search_does_not_starve_later_keywords(qdrant_module: t
     rare_match = qdrant_module.rest.PointStruct(
         id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
     )
+    _unscored_text_index(vector)
     scroll = cast(ScrollMock, vector._client.scroll)
     scroll.side_effect = [([common_first, common_second], None), ([rare_match], None)]
 
@@ -339,6 +358,7 @@ def test_qdrant_full_text_search_deduplicates_overlapping_keyword_matches(qdrant
     later_match = qdrant_module.rest.PointStruct(
         id="p3", payload={"page_content": "rare", "metadata": {"doc_id": "3"}}, vector=[0.3]
     )
+    _unscored_text_index(vector)
     cast(ScrollMock, vector._client.scroll).side_effect = [
         ([first_match, second_match], None),
         ([first_match, later_match], None),
@@ -357,6 +377,7 @@ def test_qdrant_full_text_search_stops_after_exhausting_duplicate_matches(qdrant
     second_match = qdrant_module.rest.PointStruct(
         id="p2", payload={"page_content": "common", "metadata": {"doc_id": "2"}}, vector=[0.2]
     )
+    _unscored_text_index(vector)
     scroll = cast(ScrollMock, vector._client.scroll)
     scroll.side_effect = [([first_match, second_match], None), ([first_match], None)]
 
@@ -364,6 +385,81 @@ def test_qdrant_full_text_search_stops_after_exhausting_duplicate_matches(qdrant
 
     assert [doc.metadata["doc_id"] for doc in docs] == ["1", "2"]
     assert scroll.call_count == 2
+
+
+def _unscored_text_index(vector) -> None:
+    # What Qdrant < 1.20, or a text index created without scoring, answers to a BM25 query.
+    vector._client.query_points.side_effect = sys.modules["qdrant_client.http.exceptions"].UnexpectedResponse(400)
+
+
+def test_qdrant_full_text_search_ranks_with_bm25(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    best = qdrant_module.rest.PointStruct(
+        id="p2", payload={"page_content": "rare common", "metadata": {"doc_id": "2"}}, vector=[0.2]
+    )
+    second = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    vector._client.query_points.return_value = SimpleNamespace(points=[best, second])
+
+    docs = vector.search_by_full_text("rare common rare", top_k=2, document_ids_filter=["d-1"])
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["2", "1"]
+    assert docs[0].vector == [0.2]
+    cast(ScrollMock, vector._client.scroll).assert_not_called()
+    kwargs = vector._client.query_points.call_args.kwargs
+    assert kwargs["query"].text == "rare common"
+    assert kwargs["using"] == "page_content"
+    assert kwargs["limit"] == 2
+    assert kwargs["with_vectors"] is True
+    assert [condition.key for condition in kwargs["query_filter"].must] == ["group_id", "metadata.document_id"]
+
+
+def test_qdrant_full_text_search_falls_back_when_text_index_cannot_score(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    match = qdrant_module.rest.PointStruct(
+        id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
+    )
+    _unscored_text_index(vector)
+    cast(ScrollMock, vector._client.scroll).side_effect = [([match], None)]
+
+    docs = vector.search_by_full_text("common", top_k=2)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["1"]
+
+
+def test_qdrant_full_text_search_falls_back_on_grpc_invalid_argument(qdrant_module: types.ModuleType) -> None:
+    import grpc
+
+    class InvalidArgumentError(grpc.RpcError, grpc.Call):
+        def code(self):
+            return grpc.StatusCode.INVALID_ARGUMENT
+
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    vector._client.query_points.side_effect = InvalidArgumentError()
+    cast(ScrollMock, vector._client.scroll).side_effect = [([], None)]
+
+    assert vector.search_by_full_text("common", top_k=2) == []
+    assert cast(ScrollMock, vector._client.scroll).call_count == 1
+
+
+def test_qdrant_full_text_search_raises_other_server_errors(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    unexpected = sys.modules["qdrant_client.http.exceptions"].UnexpectedResponse
+    vector._client.query_points.side_effect = unexpected(500)
+
+    with pytest.raises(unexpected):
+        vector.search_by_full_text("common", top_k=2)
+    cast(ScrollMock, vector._client.scroll).assert_not_called()
+
+
+def test_qdrant_full_text_search_skips_ranking_in_local_mode(qdrant_module: types.ModuleType) -> None:
+    vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
+    vector._client = qdrant_module.QdrantLocal()
+    cast(ScrollMock, vector._client.scroll).side_effect = [([], None)]
+
+    assert vector.search_by_full_text("common", top_k=2) == []
+    vector._client.query_points.assert_not_called()
 
 
 @pytest.mark.parametrize("top_k", [0, -1])
