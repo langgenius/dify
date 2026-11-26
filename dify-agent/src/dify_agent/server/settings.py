@@ -130,6 +130,11 @@ class ServerSettings(BaseSettings):
     api_token: str | None = None
     trajectory_enabled: bool = False
     application_tracing_enabled: bool = False
+    # A long-running Agent V2 invocation accumulates LLM context until a single serialized
+    # span can pass the exporter's default, and an oversized span drops the invocation from
+    # the trace instead of exporting it. The API side has had its own ceiling for a while
+    # (`OPS_AGENT_TRACE_MAX_BYTES`); this is the matching knob on the collector.
+    application_trace_max_batch_bytes: int = Field(default=1024 * 1024, gt=0)
     trajectory_otlp_traces_endpoint: AnyHttpUrl | None = None
     trajectory_otlp_headers: dict[str, SecretStr] = Field(default_factory=dict, repr=False)
     trajectory_service_name: str = Field(default="dify-agent-trajectory", min_length=1)

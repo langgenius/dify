@@ -541,3 +541,63 @@ def test_invalid_api_trace_context_is_rejected(field, value):
 def test_application_collection_is_disabled_by_default():
     assert ServerSettings().application_tracing_enabled is False
     assert configure_application_observability(ServerSettings()) is None
+
+
+def test_configured_batch_limit_reaches_the_exporter(inbox):
+    collector = configure_application_observability(
+        ServerSettings(
+            application_tracing_enabled=True,
+            inner_api_url=inbox.url,
+            inner_api_key="test-inner-key",
+            application_trace_max_batch_bytes=4 * 1024 * 1024,
+        )
+    )
+    assert collector is not None
+    try:
+        assert collector.exporter._max_batch_bytes == 4 * 1024 * 1024
+    finally:
+        asyncio.run(collector.aclose())
+
+
+@pytest.mark.parametrize(
+    ("limit", "expected"),
+    [
+        (1024 * 1024, SpanExportResult.FAILURE),
+        (4 * 1024 * 1024, SpanExportResult.SUCCESS),
+    ],
+)
+def test_a_span_over_one_mib_exports_once_the_limit_is_raised(inbox, limit, expected):
+    """A long invocation's serialized span can pass 1 MiB; the ceiling is configurable."""
+    tracing = tracing_context()
+    memory = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(memory))
+    tracer = provider.get_tracer("test")
+    attributes = {
+        DIFY_TRACING_RUN_ID_ATTRIBUTE: str(tracing.run_id),
+        DIFY_TRACING_INVOCATION_ID_ATTRIBUTE: str(tracing.invocation_id),
+        "accumulated-context": "x" * (1536 * 1024),
+    }
+    with tracer.start_as_current_span("long-turn", attributes=attributes):
+        pass
+    # Through the settings, not the constructor: the point of the change is that a
+    # deployment can move this ceiling without patching the exporter.
+    collector = configure_application_observability(
+        ServerSettings(
+            application_tracing_enabled=True,
+            inner_api_url=inbox.url,
+            inner_api_key="test-inner-key",
+            application_trace_max_batch_bytes=limit,
+        )
+    )
+    assert collector is not None
+    exporter = collector.exporter
+    try:
+        assert exporter.export(memory.get_finished_spans()) == expected
+        assert exporter.finish_invocation(tracing.run_id, tracing.invocation_id) is (
+            expected == SpanExportResult.SUCCESS
+        )
+        assert bool(inbox.batches) is (expected == SpanExportResult.SUCCESS)
+    finally:
+        provider.shutdown()
+        asyncio.run(collector.aclose())
