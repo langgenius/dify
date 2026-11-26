@@ -386,15 +386,15 @@ class QdrantVector(BaseVector):
                         match=models.MatchAny(any=document_ids_filter),
                     )
                 )
-        results = self._client.search(
+        results = self._client.query_points(
             collection_name=self._collection_name,
-            query_vector=query_vector,
+            query=query_vector,
             query_filter=filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
             score_threshold=score_threshold,
-        )
+        ).points
         docs = []
         for result in results:
             if result.payload is None:
