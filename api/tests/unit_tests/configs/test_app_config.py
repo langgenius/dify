@@ -1,4 +1,6 @@
+import threading
 from collections.abc import Callable
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import cast, override
 
@@ -12,7 +14,58 @@ from yarl import URL
 from configs.app_config import DifyConfig
 from configs.deploy import IMEventTransportMode
 from configs.feature import EvaluationConfig, OpsTraceConfig
+from configs.remote_settings_sources.enums import RemoteSettingsSourceName
 from enums import DeploymentEdition
+
+
+@pytest.mark.parametrize(
+    ("annotations", "valid"),
+    [('{"tasks.indexing_task":{"rate_limit":"10/s"}}', True), ("null", True), ("[]", False), ("invalid", False)],
+)
+def test_nacos_complex_settings_decode_json_without_decoding_plain_strings(
+    monkeypatch: pytest.MonkeyPatch, annotations: str, valid: bool
+) -> None:
+    """Load actual Nacos HTTP configuration through DifyConfig, including an optional mapping field."""
+    content = (
+        f'CELERY_TASK_ANNOTATIONS={annotations}\nDB_PASSWORD={{"literal":"password"}}\nSQLALCHEMY_POOL_SIZE=7\n'
+    ).encode()
+
+    class ConfigHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            """Serve a properties document for the real remote settings client."""
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+
+        @override
+        def log_message(self, format: str, *args: object) -> None:
+            """Keep the local transport fixture silent."""
+
+    for name in ("USERNAME", "PASSWORD", "ACCESS_KEY", "SECRET_KEY"):
+        monkeypatch.delenv(f"DIFY_ENV_NACOS_{name}", raising=False)
+    for name in ("CELERY_TASK_ANNOTATIONS", "DB_PASSWORD", "SQLALCHEMY_POOL_SIZE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setenv("no_proxy", "*")
+    with HTTPServer(("127.0.0.1", 0), ConfigHandler) as server:
+        monkeypatch.setenv("DIFY_ENV_NACOS_SERVER_ADDR", f"127.0.0.1:{server.server_port}")
+        listener = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        listener.start()
+        try:
+            if valid:
+                config = DifyConfig(_env_file=None, REMOTE_SETTINGS_SOURCE_NAME=RemoteSettingsSourceName.NACOS)
+                expected = None if annotations == "null" else {"tasks.indexing_task": {"rate_limit": "10/s"}}
+                actual = config.CELERY_TASK_ANNOTATIONS
+                assert actual == expected
+                assert config.DB_PASSWORD == '{"literal":"password"}'
+                assert config.SQLALCHEMY_POOL_SIZE == 7
+            else:
+                with pytest.raises(ValidationError, match="CELERY_TASK_ANNOTATIONS"):
+                    DifyConfig(_env_file=None, REMOTE_SETTINGS_SOURCE_NAME=RemoteSettingsSourceName.NACOS)
+        finally:
+            server.shutdown()
+            listener.join(timeout=2)
 
 
 def test_ops_trace_export_attempts_must_be_positive() -> None:

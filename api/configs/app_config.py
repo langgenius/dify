@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
-from typing import Any, override
+from types import UnionType
+from typing import Any, Union, get_args, get_origin, override
 
 from pydantic import model_validator
 from pydantic.fields import FieldInfo
@@ -32,6 +33,13 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
 
     @override
     def __call__(self) -> dict[str, Any]:
+        """Load the selected remote source and prepare its values for settings validation.
+
+        Plain strings retain their contents. Complex fields, including optional
+        mappings, use Pydantic's JSON decoding policy just like environment
+        settings; already decoded values are preserved. Malformed values still
+        fail decoding or the final settings validation.
+        """
         current_state = self.current_state
         remote_source_name = current_state.get("REMOTE_SETTINGS_SOURCE_NAME")
         if not remote_source_name:
@@ -52,6 +60,20 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
         for field_name, field in self.settings_cls.model_fields.items():
             field_value, field_key, value_is_complex = remote_source.get_field_value(field, field_name)
             field_value = remote_source.prepare_field_value(field_name, field, field_value, value_is_complex)
+            if isinstance(field_value, str):
+                complex_union = get_origin(field.annotation) in (UnionType, Union) and any(
+                    self.field_is_complex(FieldInfo.from_annotation(annotation))
+                    for annotation in get_args(field.annotation)
+                )
+                try:
+                    field_value = self.prepare_field_value(
+                        field_name, field, field_value, value_is_complex or complex_union
+                    )
+                except ValueError:
+                    # A union may also accept an ordinary string. Let final
+                    # model validation decide, as environment sources do.
+                    if not complex_union:
+                        raise
             if field_value is not None:
                 d[field_key] = field_value
 
