@@ -2,25 +2,18 @@ import type {
   CursorPosition,
   OnlineUser,
 } from '@/app/components/workflow/collaboration/types/collaboration'
-import { useEffect, useState } from 'react'
 import { useViewport } from 'reactflow'
-import { collaborationManager } from '../core/collaboration-manager'
 import { getUserColor } from '../utils/user-color'
 import { CollaboratorCursor } from './collaborator-cursor'
 
 type UserCursorsProps = {
-  visible: boolean
+  cursors: Record<string, CursorPosition>
   myUserId: string | null
   onlineUsers: OnlineUser[]
 }
 
-function UserCursors({ visible, myUserId, onlineUsers }: UserCursorsProps) {
-  const [cursors, setCursors] = useState<Record<string, CursorPosition>>({})
+function UserCursors({ cursors, myUserId, onlineUsers }: UserCursorsProps) {
   const { x, y, zoom } = useViewport()
-
-  useEffect(() => collaborationManager.onCursorUpdate(setCursors), [])
-
-  if (!visible) return null
 
   return (
     <div

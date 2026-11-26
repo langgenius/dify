@@ -156,10 +156,7 @@ describe('RunPanel', () => {
     )
 
     renderWorkflowComponent(
-      <RunPanel
-        runDetailUrl="/console/api/runs/failed-run-1"
-        tracingListUrl="/console/api/runs/failed-run-1/tracing"
-      />,
+      <RunPanel runOwner={{ kind: 'app', appId: 'app-1' }} runId="failed-run-1" />,
     )
 
     await screen.findByText('Workflow failed')

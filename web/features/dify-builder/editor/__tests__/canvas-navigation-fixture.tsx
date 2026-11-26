@@ -8,7 +8,7 @@ import { FeaturesProvider } from '@/app/components/base/features/context'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { createWorkflowAppStore as createWorkflowStore } from '@/app/components/workflow-app/__tests__/workflow-store'
 import WorkflowMain from '@/app/components/workflow-app/components/workflow-main'
-import { useWorkflowRefreshDraft } from '@/app/components/workflow-app/draft/use-draft-refresh'
+import { useWorkflowRefreshDraft } from '@/app/components/workflow-app/hooks/use-workflow-refresh-draft'
 import { createRunningWorkflowState } from '@/app/components/workflow-app/hooks/use-workflow-run-utils'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
@@ -81,6 +81,7 @@ export function Fixture({
   const [queryClient] = useState(() => {
     const query = createConsoleQueryWrapper({
       appDslVersion: '0.6.0',
+      features: { dify_builder_enabled: collaborationRecovery },
     }).queryClient
     query.setQueryData(
       consoleQuery.apps.byAppId.get.queryKey({

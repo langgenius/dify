@@ -11,6 +11,7 @@ import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-c
 
 type RefreshWorkflowDraftOptions = {
   shouldApply?: () => boolean
+  preserveViewport?: boolean
 }
 
 export const useWorkflowRefreshDraft = () => {
@@ -49,8 +50,12 @@ export const useWorkflowRefreshDraft = () => {
           if (options?.shouldApply && !options.shouldApply()) return false
 
           // Ensure we have a valid workflow structure with viewport
-          if (!notUpdateCanvas)
-            handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
+          if (!notUpdateCanvas) {
+            const graph = getWorkflowDraftGraphForCanvas(response.graph)
+            handleUpdateWorkflowCanvas(
+              options?.preserveViewport ? { ...graph, viewport: undefined } : graph,
+            )
+          }
           setSyncWorkflowDraftHash(response.hash, response.graph)
           setEnvSecrets(
             (response.environment_variables || [])

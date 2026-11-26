@@ -8,28 +8,18 @@ import type { consoleClient } from '@/service/console'
 import type { fetchRunDetail, fetchTracingList } from '@/service/log'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createStore, Provider } from 'jotai'
-import { queryClientAtom } from 'jotai-tanstack-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { FeaturesProvider } from '@/app/components/base/features'
-import {
-  createStartNode,
-  createWorkflowRunningData,
-} from '@/app/components/workflow/__tests__/fixtures'
+import { createStartNode } from '@/app/components/workflow/__tests__/fixtures'
 import DatasetsDetailProvider from '@/app/components/workflow/datasets-detail-store/provider'
-import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { useStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { difyBuilderSessionBusyAtom } from '@/features/dify-builder/session/state'
-import { difyBuilderRuntimeAtom } from '@/features/dify-builder/state'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
 import { seedToolProviders } from '@/test/console/tool-providers'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import { createDifyBuilderRuntime } from '@/test/fixtures/dify-builder'
 import { createWorkflowResponseFixture } from '@/test/fixtures/workflow-response'
 import { renderWorkflowEditor } from '@/test/workflow-editor'
 import WorkflowPanel from '../workflow-panel'
@@ -103,7 +93,6 @@ const version = (overrides: Partial<WorkflowResponse> = {}): WorkflowResponse =>
 let versions: WorkflowResponse[]
 const nodes = [createStartNode({ id: 'start', data: { title: 'User input', variables: [] } })]
 const logItem = { id: 'log-1', content: 'Answer', isAnswer: true, workflow_run_id: 'run-1' }
-const startFix = vi.fn(async () => true)
 function OpenPanels() {
   const showLog = useStore((s) => s.setMessageLogItem)
   const showPreview = useStore((s) => s.setShowDebugAndPreviewPanel)
@@ -125,7 +114,6 @@ function OpenPanels() {
 function setup(
   initialStoreState: Partial<Shape> = {},
   mode: 'workflow' | 'advanced-chat' = 'workflow',
-  builder = { enabled: false, canEdit: true, busy: false },
 ) {
   const { queryClient } = createConsoleQueryWrapper({
     appDslVersion: '0.6.0',
@@ -147,48 +135,30 @@ function setup(
       workflow: { id: 'release-1', type: 'workflow' },
     }),
   )
-  const builderStore = createStore()
-  builderStore.set(queryClientAtom, queryClient)
-  builderStore.set(
-    difyBuilderRuntimeAtom,
-    createDifyBuilderRuntime({
-      appId: 'app-123',
-      enabled: builder.enabled,
-      canEdit: builder.canEdit,
-      session: { startFix },
-    }),
-  )
-  builderStore.set(difyBuilderSessionBusyAtom, builder.busy)
-  const resource = { kind: 'app', appId: 'app-123', mode, collaborationEnabled: false } as const
   const rendered = renderWorkflowEditor(
-    <Provider store={builderStore}>
-      <EditorResourceScope resource={resource}>
-        <NuqsTestingAdapter>
-          <FeaturesProvider>
-            <EventEmitterContextProvider>
-              <DatasetsDetailProvider nodes={nodes}>
-                <OpenPanels />
-                <WorkflowPanel />
-                <AppToaster timeout={0} />
-              </DatasetsDetailProvider>
-            </EventEmitterContextProvider>
-          </FeaturesProvider>
-        </NuqsTestingAdapter>
-      </EditorResourceScope>
-    </Provider>,
+    <NuqsTestingAdapter>
+      <FeaturesProvider>
+        <EventEmitterContextProvider>
+          <DatasetsDetailProvider nodes={nodes}>
+            <OpenPanels />
+            <WorkflowPanel />
+            <AppToaster timeout={0} />
+          </DatasetsDetailProvider>
+        </EventEmitterContextProvider>
+      </FeaturesProvider>
+    </NuqsTestingAdapter>,
     {
       queryClient,
       nodes,
       historyStore: { nodes, edges: [] },
       initialStoreState,
-      resource,
+      resource: { kind: 'app', appId: 'app-123', mode },
     },
   )
   return { ...rendered, user: userEvent.setup() }
 }
 let originalUrl: string
 beforeEach(() => {
-  startFix.mockClear()
   api.externalTrace.mockReset().mockResolvedValue({
     status: 'accepted',
     source_kind: 'workflow',
@@ -239,62 +209,6 @@ beforeEach(() => {
   api.remove.mockReset().mockImplementation(async () => {
     versions = []
   })
-})
-
-it.each([
-  { enabled: false, canEdit: true, busy: false },
-  { enabled: true, canEdit: false, busy: false },
-  { enabled: true, canEdit: true, busy: true },
-  { enabled: true, canEdit: true, busy: false },
-])('gates the live run Builder fix with workspace and session access: %j', async (builder) => {
-  const { user } = setup(
-    {
-      showDebugAndPreviewPanel: true,
-      workflowRunningData: createWorkflowRunningData({
-        result: {
-          ...createWorkflowRunningData().result,
-          id: 'failed-run',
-          status: WorkflowRunningStatus.Failed,
-        },
-      }),
-    },
-    'workflow',
-    builder,
-  )
-  if (!builder.enabled) {
-    await screen.findByRole('separator', { name: 'workflow.singleRun.testRun' })
-    expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
-    return
-  }
-  const fix = await screen.findByRole('button', { name: 'difyBuilder.fixRun' })
-  if (!builder.canEdit || builder.busy) {
-    expect(fix).toBeDisabled()
-    await user.click(fix)
-    expect(startFix).not.toHaveBeenCalled()
-  } else {
-    await user.click(fix)
-    expect(startFix).toHaveBeenCalledExactlyOnceWith('app-123', 'failed-run', undefined)
-  }
-})
-
-it('hides the live run fix while inspecting history', async () => {
-  setup(
-    {
-      showDebugAndPreviewPanel: true,
-      historyWorkflowData: { id: 'run-1', status: 'failed' },
-      workflowRunningData: createWorkflowRunningData({
-        result: {
-          ...createWorkflowRunningData().result,
-          id: 'failed-run',
-          status: WorkflowRunningStatus.Failed,
-        },
-      }),
-    },
-    'workflow',
-    { enabled: true, canEdit: true, busy: false },
-  )
-  await screen.findByRole('separator', { name: 'workflow.singleRun.testRun' })
-  expect(screen.queryByRole('button', { name: 'difyBuilder.fixRun' })).not.toBeInTheDocument()
 })
 afterEach(() => {
   window.history.replaceState({}, '', originalUrl)

@@ -42,11 +42,6 @@ vi.mock(
   }),
 )
 
-vi.mock('@/service/use-common', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-common')>()),
-  useModelParameterRules: () => ({ data: { data: [] }, isLoading: false }),
-}))
-
 vi.mock('../use-model', () => ({
   useDifyBuilderModel: () => ({
     model: { provider: 'openai', name: 'gpt-4o', mode: 'chat', completion_params: {} },

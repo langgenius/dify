@@ -5,7 +5,7 @@ import type {
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { ConversationItem, SessionView } from '../types'
 import type { MarkdownProps } from '@/app/components/base/markdown'
-import type { WorkflowDraftRefreshResult } from '@/app/components/workflow-app/draft/use-draft-refresh'
+import type { WorkflowDraftRefreshResult } from '@/features/dify-builder/editor/use-canvas-refresh'
 import { zDefaultModelDataResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -1245,7 +1245,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           scenario: 'build',
         },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(mocks.action).toHaveBeenCalledWith(
       {
@@ -1435,7 +1435,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
           failed_run_id: 'failed-run-42',
         },
       },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(mocks.syncDraft).toHaveBeenCalledTimes(preparationCount)
     expect(mocks.create).not.toHaveBeenCalled()
@@ -1457,7 +1457,7 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     )
     expect(mocks.get).toHaveBeenLastCalledWith(
       { params: { session_id: 'build-session' } },
-      { context: { silent: true }, signal: expect.any(AbortSignal) },
+      { signal: expect.any(AbortSignal) },
     )
     expect(mocks.create).not.toHaveBeenCalled()
   })

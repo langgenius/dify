@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { seedTags } from '@/test/console/tags'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 

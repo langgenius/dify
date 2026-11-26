@@ -18,11 +18,11 @@ export const controlSessionConversation = (
   operation === 'clear'
     ? consoleClient.difyBuilder.sessions.bySessionId.clear.post(
         { params: { session_id: sessionId }, body: { ...body, confirmed: true } },
-        { context: { silent: true }, signal },
+        { signal },
       )
     : consoleClient.difyBuilder.sessions.bySessionId.abandon.post(
         { params: { session_id: sessionId }, body },
-        { context: { silent: true }, signal },
+        { signal },
       )
 
 export const getSessionFixControl = (
@@ -32,7 +32,7 @@ export const getSessionFixControl = (
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.fixIntents.get(
     { params: { session_id: sessionId }, query },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const prepareSessionFix = (
@@ -42,7 +42,7 @@ export const prepareSessionFix = (
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.fixIntents.post(
     { params: { session_id: sessionId }, body },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const createFixSession = (
@@ -60,7 +60,7 @@ export const createFixSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const createChecklistFixSession = (
@@ -78,7 +78,7 @@ export const createChecklistFixSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const createBuildSession = (
@@ -100,7 +100,7 @@ export const createBuildSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const createEditSession = (
@@ -120,13 +120,13 @@ export const createEditSession = (
         ...(modelConfig ? { model_config: modelConfig } : {}),
       },
     },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const getSession = (sessionId: string, signal: AbortSignal) =>
   consoleClient.difyBuilder.sessions.bySessionId.get(
     { params: { session_id: sessionId } },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const controlSessionTask = (
@@ -137,7 +137,7 @@ export const controlSessionTask = (
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId[operation].post(
     { params: { session_id: sessionId }, body },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const getSessionConversation = (
@@ -147,13 +147,13 @@ export const getSessionConversation = (
 ) =>
   consoleClient.difyBuilder.sessions.bySessionId.conversation.get(
     { params: { session_id: sessionId }, query },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const getSessionStream = (sessionId: string, signal: AbortSignal) =>
   consoleClient.difyBuilder.sessions.bySessionId.stream.get(
     { params: { session_id: sessionId } },
-    { context: { silent: true }, signal },
+    { signal },
   )
 
 export const runSessionAction = (
