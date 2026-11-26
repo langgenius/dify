@@ -36,6 +36,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const createButtonRef = useRef<HTMLButtonElement>(null)
   const details = useMutation({
     networkMode: 'always',
+    meta: { errorToast: false },
     mutationFn: (apiTemplateId: string) => fetchExternalAPI({ apiTemplateId }),
   })
   const save = useSaveExternalApi()

@@ -42,21 +42,17 @@ export function workflowRunHistoryQueryOptions(resource: EditorResource) {
       return resource.mode === 'advanced-chat'
         ? consoleQuery.apps.byAppId.advancedChat.workflowRuns.get.queryOptions({
             input: { params: { app_id: resource.appId } },
-            staleTime: 0,
           })
         : consoleQuery.apps.byAppId.workflowRuns.get.queryOptions({
             input: { params: { app_id: resource.appId } },
-            staleTime: 0,
           })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflowRuns.get.queryOptions({
         input: { params: { pipeline_id: resource.pipelineId } },
-        staleTime: 0,
       })
     case 'snippet':
       return consoleQuery.snippets.bySnippetId.workflowRuns.get.queryOptions({
         input: { params: { snippet_id: resource.snippetId } },
-        staleTime: 0,
       })
   }
 }
@@ -145,14 +141,14 @@ export function lastRunQueryOptions(resource: EditorResource, nodeId: string) {
       return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
         input: { params: { app_id: resource.appId, node_id: nodeId } },
         retry: 0,
-        context: { silent: true },
+        meta: { errorToast: false },
       })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
         {
           input: { params: { pipeline_id: resource.pipelineId, node_id: nodeId } },
           retry: 0,
-          context: { silent: true },
+          meta: { errorToast: false },
         },
       )
     case 'snippet':
@@ -160,7 +156,7 @@ export function lastRunQueryOptions(resource: EditorResource, nodeId: string) {
         {
           input: { params: { snippet_id: resource.snippetId, node_id: nodeId } },
           retry: 0,
-          context: { silent: true },
+          meta: { errorToast: false },
         },
       )
   }
@@ -207,23 +203,22 @@ export function sysVarValuesQueryOptions(resource: EditorResource | undefined) {
 
 export function restoreWorkflowMutationOptions(resource: EditorResource) {
   return mutationOptions({
+    // Callers show their own restore failure message.
+    meta: { errorToast: false },
     mutationFn: (versionId: string) => {
       switch (resource.kind) {
         case 'app':
-          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post(
-            { params: { app_id: resource.appId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.apps.byAppId.workflows.byWorkflowId.restore.post({
+            params: { app_id: resource.appId, workflow_id: versionId },
+          })
         case 'knowledge-pipeline':
-          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post(
-            { params: { pipeline_id: resource.pipelineId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.rag.pipelines.byPipelineId.workflows.byWorkflowId.restore.post({
+            params: { pipeline_id: resource.pipelineId, workflow_id: versionId },
+          })
         case 'snippet':
-          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post(
-            { params: { snippet_id: resource.snippetId, workflow_id: versionId } },
-            { context: { silent: true } },
-          )
+          return consoleClient.snippets.bySnippetId.workflows.byWorkflowId.restore.post({
+            params: { snippet_id: resource.snippetId, workflow_id: versionId },
+          })
       }
     },
   })

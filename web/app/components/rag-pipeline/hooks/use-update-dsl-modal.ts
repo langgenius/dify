@@ -30,10 +30,14 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const { pipelineId } = useAtomValue(knowledgePipelineIdentityAtom)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { mutateAsync: importDSL } = useMutation(
-    consoleQuery.rag.pipelines.imports.post.mutationOptions(),
+    consoleQuery.rag.pipelines.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: importDSLConfirm } = useMutation(
-    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+    consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   // File state
   const [currentFile, setDSLFile] = useState<File>()

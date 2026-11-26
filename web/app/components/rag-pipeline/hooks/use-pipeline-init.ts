@@ -69,19 +69,16 @@ export const usePipelineInit = () => {
             shouldAutoOpenStartNodeSelector: true,
           })
           consoleClient.rag.pipelines.byPipelineId.workflows.draft
-            .post(
-              {
-                params: { pipeline_id: pipelineId },
-                body: {
-                  graph: {
-                    nodes: nodesTemplate,
-                    edges: edgesTemplate,
-                  },
-                  environment_variables: [],
+            .post({
+              params: { pipeline_id: pipelineId },
+              body: {
+                graph: {
+                  nodes: nodesTemplate,
+                  edges: edgesTemplate,
                 },
+                environment_variables: [],
               },
-              { context: { silent: true } },
-            )
+            })
             .then((res) => {
               const { setDraftUpdatedAt } = workflowStore.getState()
               setDraftUpdatedAt(res.updated_at)

@@ -72,11 +72,14 @@ const SnippetEvaluationPage = ({ snippetId }: SnippetEvaluationPageProps) => {
   }
 
   return (
-    <EvaluationPlanGuard fallbackHref={`/snippets/${snippetId}/orchestrate`}>
-      <SnippetLayout snippetId={snippetId} snippet={snippet} section="evaluation">
+    <SnippetLayout snippetId={snippetId} snippet={snippet} section="evaluation">
+      <EvaluationPlanGuard
+        fallbackHref={`/snippets/${snippetId}/orchestrate`}
+        resourceType="snippets"
+      >
         <Evaluation resourceType="snippets" resourceId={snippetId} />
-      </SnippetLayout>
-    </EvaluationPlanGuard>
+      </EvaluationPlanGuard>
+    </SnippetLayout>
   )
 }
 

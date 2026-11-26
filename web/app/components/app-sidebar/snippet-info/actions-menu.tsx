@@ -41,17 +41,17 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const { mutate: updateSnippet, isPending: isUpdatingSnippet } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: exportSnippet } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutate: deleteSnippet, isPending: isDeletingSnippet } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)

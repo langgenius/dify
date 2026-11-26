@@ -70,8 +70,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const marketplace = useMarketplace()
   const pluginDetails = useQuery(
     consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
-      input: pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
-      enabled: canUpdatePlugin,
+      input: canUpdatePlugin && pluginId ? { body: { plugin_ids: [pluginId] } } : skipToken,
       staleTime: 0,
       select: (response) =>
         response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined,
@@ -80,10 +79,14 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const pluginDetail = pluginDetails.data
 
   const { t } = useTranslation(['workflowAgent', 'plugin', 'common', 'appLog'])
+  // The dialog shows the upgrade failure inline, so neither request toasts it.
   const { mutateAsync: startMarketplacePluginUpgrade } = useMutation(
-    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions(),
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const upgrade = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ plugin, target }: PluginVersionSelection) => {
       let taskId = acceptedTaskId
       if (!taskId) {

@@ -28,6 +28,8 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { Uploader } from '@/features/dsl-import/uploader'
+import DSLImportWarningDescription from '@/features/dsl-import/warning-description'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -36,9 +38,7 @@ import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
-import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
-import { Uploader } from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -99,9 +99,12 @@ function CreateFromDSLModal({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const importMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (source: ImportSource) => {
       if (
         source.type === CreateFromDSLModalTab.FROM_FILE &&
@@ -125,7 +128,7 @@ function CreateFromDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()

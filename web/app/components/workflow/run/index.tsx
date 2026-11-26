@@ -98,7 +98,7 @@ function RunSession({
   const getResult = async (lifetime: RequestLifetime, runId: string) => {
     const request = ++lifetime.detailRequest
     try {
-      const res = await fetchRunDetail(runOwner, runId, { silent: true })
+      const res = await fetchRunDetail(runOwner, runId)
       if (!lifetime.active || request !== lifetime.detailRequest) return
       setRunDetail(res)
       if (getResultCallback) getResultCallback(res)
@@ -116,7 +116,7 @@ function RunSession({
   const getTracingList = async (lifetime: RequestLifetime, runId: string) => {
     const request = ++lifetime.tracingRequest
     try {
-      const { data: nodeList } = await fetchTracingList(runOwner, runId, { silent: true })
+      const { data: nodeList } = await fetchTracingList(runOwner, runId)
       if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
     } catch (err) {
       if (lifetime.active && request === lifetime.tracingRequest)

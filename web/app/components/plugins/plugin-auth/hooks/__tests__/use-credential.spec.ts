@@ -14,7 +14,6 @@ import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
   useInvalidPluginCredentialInfoHook,
-  useInvalidPluginOAuthClientSchemaHook,
   useSetPluginDefaultCredentialHook,
   useSetPluginOAuthCustomClientHook,
   useUpdatePluginCredentialHook,
@@ -204,29 +203,6 @@ describe('use-credential hooks', () => {
 
       expect(result.current.fetchStatus).toBe('idle')
       expect(request).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('useInvalidPluginOAuthClientSchemaHook', () => {
-    it('should invalidate the OAuth client schema of the provider', async () => {
-      const queryClient = new QueryClient()
-      const schemaKey = oauthClientSchema.queryKey({
-        input: { params: { provider: toolPayload.provider } },
-      })
-      queryClient.setQueryData(schemaKey, {
-        schema: [],
-        is_oauth_custom_client_enabled: false,
-        is_system_oauth_params_exists: false,
-        redirect_uri: '',
-      })
-      const { result } = renderHook(() => useInvalidPluginOAuthClientSchemaHook(toolPayload), {
-        wrapper: ({ children }) =>
-          createElement(QueryClientProvider, { client: queryClient }, children),
-      })
-
-      await result.current()
-
-      expect(queryClient.getQueryState(schemaKey)?.isInvalidated).toBe(true)
     })
   })
 

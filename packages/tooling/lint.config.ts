@@ -1936,6 +1936,7 @@ export const lintConfig = {
       ...handwrittenApiScope,
       rules: {
         'dify/no-module-scope-clock': 'error',
+        'dify/no-mutation-policy-bypass': 'error',
       },
     },
   ],

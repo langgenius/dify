@@ -15,22 +15,25 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
+import { indexingStatusBatchQueryOptions } from '@/app/components/datasets/create/embedding-process/use-indexing-status-polling'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import RuleDetail from './rule-detail'
+
+const EMPTY_STATUS_LIST: DocumentStatusResponse[] = []
 
 const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_icon'] =>
   typeof value === 'object' && value !== null && 'type' in value
@@ -58,42 +61,10 @@ const EmbeddingProcess = ({
       select: (data) => data.billing.subscription.plan,
     }),
   )
-  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<DocumentStatusResponse[]>(
-    [],
-  )
-  const [shouldPoll, setShouldPoll] = useState(true)
-  const { mutateAsync: fetchIndexingStatus } = useMutation(
-    consoleQuery.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mutationOptions(),
-  )
-
-  useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>
-
-    const fetchData = async () => {
-      await fetchIndexingStatus(
-        { params: { dataset_id: datasetId, batch: batchId } },
-        {
-          onSuccess: (res) => {
-            const indexingStatusDetailList = res.data
-            setIndexingStatusDetail(indexingStatusDetailList)
-            const isCompleted = indexingStatusDetailList.every((indexingStatusDetail) =>
-              ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status),
-            )
-            if (isCompleted) setShouldPoll(false)
-          },
-          onSettled: () => {
-            if (shouldPoll) timeoutId = setTimeout(fetchData, 2500)
-          },
-        },
-      )
-    }
-
-    fetchData()
-
-    return () => {
-      clearTimeout(timeoutId)
-    }
-  }, [shouldPoll])
+  const { data: indexingStatusBatchDetail = EMPTY_STATUS_LIST } = useQuery({
+    ...indexingStatusBatchQueryOptions({ datasetId, batchId }),
+    select: (response) => response.data,
+  })
 
   // get rule
   const firstDocument = documents[0]
