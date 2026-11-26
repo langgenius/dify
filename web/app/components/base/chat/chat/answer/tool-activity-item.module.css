@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Agent Tool Text';
-  src: url('../../../../billing/pricing/assets/inter-variable.woff2') format('woff2');
+  src: url('./assets/inter-variable.woff2') format('woff2');
   font-style: normal;
   font-weight: 100 900;
   font-display: swap;
