@@ -134,15 +134,13 @@ def _provider_configuration(
     Postconditions: returns a real validated configuration without patching the production registry.
     """
     return ProviderConfiguration.model_validate_with_configurate_methods_registry(
-        {
-            "tenant_id": TENANT_ID,
-            "provider": _provider_schema(models=models, configurate_methods=configurate_methods),
-            "preferred_provider_type": using_provider_type,
-            "using_provider_type": using_provider_type,
-            "system_configuration": system_configuration or SystemConfiguration(enabled=False),
-            "custom_configuration": custom_configuration or _custom_configuration(credentials={"api_key": "key"}),
-            "model_settings": [],
-        },
+        tenant_id=TENANT_ID,
+        provider=_provider_schema(models=models, configurate_methods=configurate_methods),
+        preferred_provider_type=using_provider_type,
+        using_provider_type=using_provider_type,
+        system_configuration=system_configuration or SystemConfiguration(enabled=False),
+        custom_configuration=custom_configuration or _custom_configuration(credentials={"api_key": "key"}),
+        model_settings=[],
         registry=registry if registry is not None else ProviderConfigurateMethodsRegistry(),
     )
 
@@ -266,12 +264,20 @@ class TestModelConfigConverter:
             provider_id: tuple(methods) for provider_id, methods in original_provider_configurate_methods.items()
         }
         registry = ProviderConfigurateMethodsRegistry()
-        initial_methods = [ConfigurateMethod.PREDEFINED_MODEL]
-        subsequent_methods = [ConfigurateMethod.CUSTOMIZABLE_MODEL]
+        initial_methods = [ConfigurateMethod.CUSTOMIZABLE_MODEL]
+        subsequent_methods = [ConfigurateMethod.PREDEFINED_MODEL]
 
-        initial_configuration = _provider_configuration(registry=registry, configurate_methods=initial_methods)
+        initial_configuration = _provider_configuration(
+            registry=registry,
+            configurate_methods=initial_methods,
+            system_configuration=_trial_system_configuration(restrict_models=[MODEL_NAME], is_valid=True),
+        )
         subsequent_configuration = _provider_configuration(registry=registry, configurate_methods=subsequent_methods)
 
+        assert initial_configuration.provider.configurate_methods == [
+            ConfigurateMethod.CUSTOMIZABLE_MODEL,
+            ConfigurateMethod.PREDEFINED_MODEL,
+        ]
         assert initial_configuration._get_original_provider_configurate_methods() == initial_methods
         assert subsequent_configuration._get_original_provider_configurate_methods() == subsequent_methods
         assert registry.methods_by_provider == {PROVIDER_ID: initial_methods}
