@@ -20,8 +20,9 @@ What `send` receives (`dify_trace_sdk.model`):
 - A `Trace` is a parent-first tree of completed `Span`s that uses OpenTelemetry ID formats.
   - Each span carries timing, inputs and outputs, status, and typed LLM fields (`model_name`, `model_provider`, `usage`, `cost`, `time_to_first_token`).
   - All values are strict JSON.
-- A message trace has a `message` root and an `llm` child.
-- A workflow run has a `workflow` span with node spans and loop or iteration wrapper spans. For chatflows these hang under the `message` root.
+- A message trace has a root span with `trace_entity_type="message"` and an `llm` child.
+- A workflow run has a span with `trace_entity_type="workflow"`, node spans and loop or iteration wrapper spans. For chatflows these hang under the message root, and the child workflow span keeps its `workflow` name.
+- Root span display names use the app's nonblank `app_name` metadata. Missing, blank or non-string names fall back to `message` or `workflow` according to the root record type.
 - Auxiliary operations join their message's trace as separate units. `trace.parent` names the message root span, and the first span of the unit points at it.
 - A workflow nested in another one is its own trace. Its root carries `parent_workflow_run_id` and `parent_node_execution_id`.
 - A unit can be sent again after a retryable failure. Derive vendor IDs deterministically from the trace and span IDs (`dify_trace_sdk.ids`), so a resend updates the same records instead of duplicating them.

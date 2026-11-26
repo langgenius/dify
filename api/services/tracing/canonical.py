@@ -2,7 +2,8 @@
 
 Identity is derived, never coordinated. A trace is named by the caller's trace
 ID, else by its root record: the message for chats and chatflows, the workflow
-run for workflow apps. Each span is named by the Dify record it represents.
+run for workflow apps. Root span display names use the app name when available;
+other spans are named by the Dify record they represent.
 Auxiliary operations (tool calls, retrieval, moderation, suggested questions,
 conversation naming) join their message's trace as separate units under its
 root span; a workflow run nested in another one is its own trace, linked
@@ -101,6 +102,15 @@ def _session_id(record: BaseTraceInfo, fallback: str | None) -> str | None:
     return explicit if isinstance(explicit, str) and explicit else fallback
 
 
+def _root_span_name(record: BaseTraceInfo, fallback: str) -> str:
+    """Read an assembled record's app name without changing its metadata.
+
+    Missing, blank or non-string names return the supplied legacy label.
+    """
+    app_name = record.metadata.get("app_name")
+    return app_name if isinstance(app_name, str) and app_name.strip() else fallback
+
+
 def _user_id(record: BaseTraceInfo) -> str | None:
     """The caller's own end-user identifier when there is one, else Dify's user ID."""
     value = record.metadata.get("end_user_session_id") or record.metadata.get("user_id")
@@ -188,7 +198,7 @@ class CanonicalTraceBuilder:
                 Span(
                     span_id=root_span_id,
                     parent_span_id=None,
-                    name="message",
+                    name=_root_span_name(record, "message"),
                     kind=SpanKind.CHAIN,
                     start_time=started_at,
                     end_time=ended_at,
@@ -239,7 +249,7 @@ class CanonicalTraceBuilder:
                 Span(
                     span_id=root_span_id,
                     parent_span_id=None,
-                    name="message",
+                    name=_root_span_name(record, "message"),
                     kind=SpanKind.CHAIN,
                     start_time=message_start,
                     end_time=max(record.end_time, message_start),
@@ -259,7 +269,7 @@ class CanonicalTraceBuilder:
             Span(
                 span_id=workflow_span_id,
                 parent_span_id=workflow_parent,
-                name="workflow",
+                name=_root_span_name(record, "workflow") if workflow_parent is None else "workflow",
                 kind=SpanKind.CHAIN,
                 start_time=workflow_start,
                 end_time=workflow_end,
@@ -270,6 +280,7 @@ class CanonicalTraceBuilder:
                 attributes=_attributes(
                     {
                         **record.metadata,
+                        "trace_entity_type": "workflow",
                         "workflow_id": record.workflow_id,
                         "workflow_run_id": record.workflow_run_id,
                         "workflow_app_log_id": record.workflow_app_log_id,

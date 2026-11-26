@@ -141,15 +141,18 @@ def test_message_trace_becomes_a_root_observation_and_a_generation() -> None:
     assert result.span_urls[trace.spans[1].span_id] == f"{result.trace_url}?observation={trace.spans[1].span_id}"
 
 
-def test_trace_fields_are_repeated_on_every_span() -> None:
+@pytest.mark.parametrize("root_name", ["workflow", "My Classifier", "分类助手"])
+def test_trace_fields_are_repeated_on_every_span(root_name: str) -> None:
     provider, egress = _provider(ACK)
+    trace = workflow_trace()
+    trace = trace.model_copy(update={"spans": (trace.root.model_copy(update={"name": root_name}), *trace.spans[1:])})
 
-    provider.send(CONFIG, workflow_trace())
+    provider.send(CONFIG, trace)
 
     for attributes in _sent_attributes(egress):
-        assert attributes["langfuse.trace.name"] == "workflow"
+        assert attributes["langfuse.trace.name"] == root_name
         assert attributes["langfuse.user.id"] == "account-1"
-        assert attributes["langfuse.session.id"] == workflow_trace().session_id
+        assert attributes["langfuse.session.id"] == trace.session_id
 
 
 @pytest.mark.parametrize(
