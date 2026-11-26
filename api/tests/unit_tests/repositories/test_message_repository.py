@@ -1036,10 +1036,12 @@ def test_migrated_message_access_uses_current_conversation_owner(
         message = _message(session, conversation)
         conversation.from_end_user_id = owner.id
     repository = MessageRepository(session_factory=sqlite_session_factory)
+    owner_actor = MessageEndUser(owner.id, follows_conversation_owner=True)
+    guest_actor = MessageEndUser(guest.id, follows_conversation_owner=True)
     page = repository.get_message_page(
         app_id=installation.app_id,
         app_owner_tenant_id=installation.app_owner_tenant_id,
-        actor=MessageEndUser(owner.id),
+        actor=owner_actor,
         conversation_id=conversation.id,
         first_id=None,
         limit=20,
@@ -1052,7 +1054,7 @@ def test_migrated_message_access_uses_current_conversation_owner(
             app_owner_tenant_id=installation.app_owner_tenant_id,
             session=session,
             expected_app_mode=mode,
-            actor=MessageEndUser(owner.id),
+            actor=owner_actor,
             message_id=message.id,
         )
         assert context.conversation.id == conversation.id
@@ -1063,14 +1065,14 @@ def test_migrated_message_access_uses_current_conversation_owner(
                 app_owner_tenant_id=installation.app_owner_tenant_id,
                 session=session,
                 expected_app_mode=mode,
-                actor=MessageEndUser(guest.id),
+                actor=guest_actor,
                 message_id=message.id,
             )
     with pytest.raises(ConversationNotExistsError):
         repository.get_message_page(
             app_id=installation.app_id,
             app_owner_tenant_id=installation.app_owner_tenant_id,
-            actor=MessageEndUser(guest.id),
+            actor=guest_actor,
             conversation_id=conversation.id,
             first_id=None,
             limit=20,
@@ -1086,7 +1088,7 @@ def test_migrated_message_access_uses_current_conversation_owner(
         feedback = repository.set_feedback(
             app_id=installation.app_id,
             app_owner_tenant_id=installation.app_owner_tenant_id,
-            actor=MessageEndUser(owner.id),
+            actor=owner_actor,
             message_id=message.id,
             rating=FeedbackRating.LIKE,
             content="Migrated",
@@ -1102,7 +1104,7 @@ def test_migrated_message_access_uses_current_conversation_owner(
             repository.set_feedback(
                 app_id=installation.app_id,
                 app_owner_tenant_id=installation.app_owner_tenant_id,
-                actor=MessageEndUser(guest.id),
+                actor=guest_actor,
                 message_id=message.id,
                 rating=FeedbackRating.DISLIKE,
                 content="Rejected",

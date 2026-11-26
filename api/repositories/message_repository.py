@@ -30,6 +30,7 @@ from services.entities.message_entities import (
     ConsoleMessageRecord,
     MessageAccount,
     MessageActor,
+    MessageEndUser,
     MessagePage,
     MessageRecord,
     MessageSource,
@@ -87,7 +88,7 @@ class MessageRepository:
                 conversation_id=conversation_id,
                 first_id=first_id,
                 use_id_tiebreaker=installed_app is not None,
-                actor=actor,
+                actor=actor if isinstance(actor, MessageEndUser) and actor.follows_conversation_owner else None,
             )
             messages = list(session.scalars(statement.limit(limit + 1)))
             has_more = len(messages) > limit
@@ -325,12 +326,11 @@ class MessageRepository:
                     session,
                     message_id=message_id,
                     app_id=app_id,
-                    source="console" if isinstance(actor, MessageAccount) else "api",
-                    account_id=account_id,
-                    end_user_id=end_user_id,
+                    actor=actor,
                     lock=(
                         dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-                        and end_user_id is not None
+                        and isinstance(actor, MessageEndUser)
+                        and actor.follows_conversation_owner
                         and app.mode == AppMode.ADVANCED_CHAT
                     ),
                 )
@@ -439,9 +439,7 @@ class MessageRepository:
             session,
             message_id=message_id,
             app_id=app_id,
-            source=source,
-            account_id=account_id,
-            end_user_id=end_user_id,
+            actor=actor,
         )
         if message is None:
             raise MessageNotExistsError()
@@ -533,9 +531,7 @@ class MessageRepository:
                 session,
                 message_id=message_id,
                 app_id=app_id,
-                source=source,
-                account_id=account_id,
-                end_user_id=end_user_id,
+                actor=actor,
             )
             if message is None:
                 raise MessageNotExistsError(f"Message {message_id} is unavailable for this app and actor")
@@ -635,21 +631,24 @@ class MessageRepository:
         *,
         message_id: str,
         app_id: str,
-        source: str,
-        account_id: str | None,
-        end_user_id: str | None,
+        actor: MessageActor,
         lock: bool = False,
     ) -> Message | None:
-        """Return a currently owned message while preserving its original sender.
+        """Read a message scoped to its sender, or to the current owner of transferred Web App history."""
+        account_id = actor.account_id if isinstance(actor, MessageAccount) else None
+        end_user_id = actor.end_user_id if isinstance(actor, MessageEndUser) else None
+        statement = select(Message).where(Message.id == message_id, Message.app_id == app_id)
+        if not isinstance(actor, MessageEndUser) or not actor.follows_conversation_owner:
+            return session.scalar(
+                statement.where(
+                    Message.from_source == ("console" if isinstance(actor, MessageAccount) else "api"),
+                    Message.from_account_id == account_id,
+                    Message.from_end_user_id == end_user_id,
+                )
+            )
 
-        The caller admits the actor and app before this read. A write caller may
-        lock the conversation to serialize against history migration.
-        """
-        statement = select(Message).where(
-            Message.id == message_id,
-            Message.app_id == app_id,
-            message_actor_scope(app_id, end_user_id=end_user_id, account_id=account_id),
-        )
+        # Lock Web App feedback writes against concurrent guest history migration.
+        statement = statement.where(message_actor_scope(app_id, end_user_id=end_user_id, account_id=account_id))
         if lock:
             statement = (
                 statement.join(Conversation, Conversation.id == Message.conversation_id)
