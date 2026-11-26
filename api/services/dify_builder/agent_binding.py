@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import workflow_callable_active_snapshot_filter
-from core.dify_builder.models import Actor
+from core.dify_builder.models import Actor, Graph
 from core.workflow.graph_topology import WorkflowGraphTopology
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
@@ -188,11 +188,18 @@ class AgentBindingService:
         *,
         actor: Actor,
         workflow: Workflow,
+        candidate_graph: Graph,
         node_id: str,
         selection: AgentBindingSelection,
         node_job: WorkflowNodeJobConfig,
         existing_node_data: Mapping[str, JsonValue] | None = None,
     ) -> dict[str, JsonValue]:
+        """Validate a candidate node against its graph in the owning draft transaction.
+
+        The caller supplies the proposed topology and holds the draft transaction.
+        On success the native data is staged for binding sync and the draft row
+        is untouched. Invalid or stale selections are rejected before saving.
+        """
         if not self.session.in_transaction():
             raise ValueError("Agent preparation requires the caller's draft transaction")
         if self._prepared and self._preparation_transaction is not self.session.get_transaction():
@@ -271,7 +278,7 @@ class AgentBindingService:
             current_snapshot_id=snapshot.id,
             node_job_config=node_job,
         )
-        graph = deepcopy(dict(workflow.graph_dict))
+        graph = deepcopy(candidate_graph)
         nodes = graph.setdefault("nodes", [])
         nodes[:] = [item for item in nodes if item.get("id") != node_id]
         nodes.append({"id": node_id, "data": data})

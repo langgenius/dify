@@ -40,7 +40,6 @@ the P2 plan's Global Constraints):
   matters for Agent-node workflows and is not part of this port's contract.
 """
 
-import json
 import logging
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import closing
@@ -304,7 +303,12 @@ def _prepare_native_agent_graph(
     authorization: "AgentBindingAuthorization | None",
     retained_binding_stamps: Mapping[str, str] | None = None,
 ) -> tuple[Graph, "AgentBindingService | None"]:
-    """Prepare all final Agent projections through one owner, in the caller's transaction."""
+    """Prepare Agent projections in the caller's locked draft transaction.
+
+    The returned graph is ready for an atomic draft and binding write. Keep the
+    stored draft unchanged until the save rechecks its hash. Invalid or stale
+    selections fail before changing the draft.
+    """
     from copy import deepcopy
 
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
@@ -342,7 +346,6 @@ def _prepare_native_agent_graph(
     ):
         raise BuilderExecutionPolicyError("agent_binding_not_prepared")
     service = AgentBindingService(session, authorization=authorization)
-    workflow.graph = json.dumps(graph)
     for node_id in sorted(nodes):
         data = nodes[node_id]
         selection = selections[node_id]
@@ -358,6 +361,7 @@ def _prepare_native_agent_graph(
         prepared = service.prepare_node(
             actor=actor,
             workflow=workflow,
+            candidate_graph=graph,
             node_id=node_id,
             selection=selection,
             node_job=job,
@@ -366,7 +370,6 @@ def _prepare_native_agent_graph(
         for node in graph["nodes"]:
             if node["id"] == node_id:
                 node["data"] = prepared
-        workflow.graph = json.dumps(graph)
     return graph, service
 
 
@@ -405,20 +408,12 @@ def _sync_graph_only(
         raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
 
 
-
-
-
-
-# Refusals meaning another delivery already owns this reserved command's launch.
-
-
 def _unsupported_run(error: BuilderExecutionPolicyError) -> Run:
     return Run(status="failed", execution_refusal=BuilderExecutionRefusal(reason_code=error.reason_code))
 
 
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
-
 
     def get_app_mode(self, app_id: str, actor: Actor) -> str:
         """Read mode from the persisted app using the same tenant guard as graphs."""
@@ -873,7 +868,7 @@ class WorkflowServiceDifyPort:
                 session,
                 app_id,
                 commit=binding_service is None,
-                )
+            )
             if binding_service is not None:
                 retirements = binding_service.sync_prepared_bindings(
                     actor=actor, workflow=updated, selections=selections
@@ -1181,8 +1176,10 @@ class WorkflowServiceDifyPort:
                         app_model=app,
                         streaming=True,
                         action=lambda rate_limit, request_id: rate_limit.generate(
-                            self._start_draft_debugger(app=app, account=account, draft=current, args=args, session=session),
-                            request_id
+                            self._start_draft_debugger(
+                                app=app, account=account, draft=current, args=args, session=session
+                            ),
+                            request_id,
                         ),
                     )
                 if isinstance(response, Mapping):
@@ -1237,12 +1234,6 @@ class WorkflowServiceDifyPort:
         if stored_status in {"succeeded", "failed", "stopped", "partial-succeeded"}:
             self._save_full_run_result(reservation.id, run)
         return run
-
-
-
-
-
-
 
     @staticmethod
     def _start_draft_debugger(
