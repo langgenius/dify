@@ -60,3 +60,28 @@ it('ignores empty selection ids and scroll targets absent from the current graph
     removeScroll()
   }
 })
+
+it.each([
+  { x: 1500, y: 900 },
+  { x: -1000, y: -500 },
+])('focuses a nested node relative to its parent at %j', (parentPosition) => {
+  // boundary: ReactFlow owns viewport updates; the listener owns coordinate calculation.
+  const setCenter = vi.fn<Parameters<typeof setupScrollToNodeListener>[1]['setCenter']>()
+  const nodes = [
+    { id: 'child', parentId: 'iteration', position: { x: 24, y: 68 } },
+    { id: 'iteration', position: parentPosition },
+  ]
+  const removeScroll = setupScrollToNodeListener(nodes, { setCenter })
+  try {
+    scrollToWorkflowNode('child')
+
+    expect(setCenter).toHaveBeenCalledExactlyOnceWith(
+      parentPosition.x + 24 + window.innerWidth * 0.25,
+      parentPosition.y + 68 + window.innerHeight * 0.25,
+      { zoom: 1, duration: 800 },
+    )
+    expect(nodes[0]!.position).toEqual({ x: 24, y: 68 })
+  } finally {
+    removeScroll()
+  }
+})

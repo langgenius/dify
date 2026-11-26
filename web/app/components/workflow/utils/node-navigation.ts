@@ -80,18 +80,30 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
  * @returns Cleanup function
  */
 export function setupScrollToNodeListener(
-  nodes: Pick<Node, 'id' | 'position'>[],
+  nodes: Pick<Node, 'id' | 'position' | 'parentId'>[],
   reactflow: Pick<ReactFlowInstance, 'setCenter'>,
 ): () => void {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]))
   // Event handler for scrolling to node
   const handleScrollToNode = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId } = event.detail
     if (nodeId) {
       // Find the target node
-      const node = nodes.find((n) => n.id === nodeId)
+      const node = nodesById.get(nodeId)
       if (node) {
         // Use ReactFlow's fitView API to scroll to the node
         const nodePosition = { x: node.position.x, y: node.position.y }
+        // Nested positions are relative to their parent; setCenter expects canvas coordinates.
+        const visited = new Set([node.id])
+        let parentId = node.parentId
+        while (parentId) {
+          const parent = nodesById.get(parentId)
+          if (!parent || visited.has(parent.id)) break
+          nodePosition.x += parent.position.x
+          nodePosition.y += parent.position.y
+          visited.add(parent.id)
+          parentId = parent.parentId
+        }
 
         // Calculate position to place node in top-left area
         // Move the center point right and down to show node in top-left
