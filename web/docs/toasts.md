@@ -46,7 +46,7 @@ A success toast is appropriate when the result is not on screen: a background jo
 - When a business flow owns the error feedback, set `meta: { errorToast: false }` on its mutation or query and present the failure once at that business boundary. Prefer inline errors; use a business-specific toast only when the feedback cannot live where the user acted. For multi-request actions, let the business flow choose one message for the overall result. An opted-out request with no other error presentation fails without any feedback.
 - A request called outside TanStack Query, such as a direct `consoleClient` call, has no automatic toast. Run a user action through a mutation, or present its failure where it is caught. Event streams and uploads report through their own error callbacks.
 - Failures that are not failed requests, such as a rejected clipboard write or a client-side exception, still need their own feedback.
-- When choosing the business error, preserve the actionable reason. Use [`useRequestErrorDescriber`]`()` or `describeRequestError(error, { t, fallback })`: a known code gets its translated text, upstream detail stays, and the caller's translated `fallback` replaces the server's text only for codes the catalog does not know. Add a `requestErrors` entry when the backend documents a new code. Opting a request out of the toast must not hide details such as name conflicts, quota limits, unsupported file types, or permission requirements.
+- When choosing the business error, preserve the actionable reason. Use [`useRequestErrorMessage`]`(error, fallback)`, `useRequestErrorDescriber()` or `describeRequestError(error, { t, fallback })`: a known code gets its translated text, upstream detail stays, and the caller's translated `fallback` replaces the server's text only for codes the catalog does not know. Add a `requestErrors` entry when the backend documents a new code. Opting a request out of the toast must not hide details such as name conflicts, quota limits, unsupported file types, or permission requirements.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
 ## Existing Code
@@ -55,6 +55,6 @@ Many existing calls predate these rules and are migrated in batches. Do not copy
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [`describeRequestError`]: ../service/request-error-message.ts
-[`useRequestErrorDescriber`]: ../service/use-request-error-message.ts
+[`useRequestErrorMessage`]: ../service/use-request-error-message.ts
 [form contract]: ../../packages/dify-ui/docs/forms.md
 [query error toasts]: ../app/query-error-toast.ts

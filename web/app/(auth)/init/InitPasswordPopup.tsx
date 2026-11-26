@@ -11,7 +11,7 @@ import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getRequestErrorMessage } from '@/service/http-error'
+import { useRequestErrorMessage } from '@/service/use-request-error-message'
 
 type InitPasswordFormValues = {
   password: string
@@ -43,6 +43,10 @@ const InitPasswordPopup = () => {
     [validatePassword.error, t],
   )
   const hasFormError = validatePassword.isError && !fieldErrors
+  const formErrorMessage = useRequestErrorMessage(
+    validatePassword.error,
+    t(($) => $['api.actionFailed'], { ns: 'common' }),
+  )
 
   const handleSubmit = ({ password }: InitPasswordFormValues) => {
     if (isSubmitting) return
@@ -86,8 +90,7 @@ const InitPasswordPopup = () => {
       </Field>
       {hasFormError && (
         <p role="alert" className="mb-4 system-sm-regular text-text-destructive">
-          {getRequestErrorMessage(validatePassword.error) ??
-            t(($) => $['api.actionFailed'], { ns: 'common' })}
+          {formErrorMessage}
         </p>
       )}
       <Button type="submit" variant="primary" loading={isSubmitting} className="w-full">

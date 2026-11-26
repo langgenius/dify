@@ -77,7 +77,7 @@ it('reports other failures inside the form until the password is edited', async 
   await userEvent.fill(password, 'secret')
   await userEvent.keyboard('{Enter}')
 
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('Internal error')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
 
   await userEvent.type(password, '!')

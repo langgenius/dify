@@ -151,7 +151,7 @@ it('retains the draft through a failed save and starts a new form only after clo
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })
 
-it('shows the server message when saving fails', async () => {
+it('shows the add failure when saving fails with an unknown code', async () => {
   const user = userEvent.setup()
   api.create.mockRejectedValueOnce(
     createHttpError(new Response(null, { status: 400 }), {
@@ -163,7 +163,7 @@ it('shows the server message when saving fails', async () => {
   await open(user)
   await fill(user)
   await user.click(screen.getByRole('button', { name: 'contacts.external.add' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  expect(await screen.findByRole('alert')).toHaveTextContent('contacts.external.result.failed')
 })
 
 it('edits through the generated PATCH and preserves an intentional empty name as a validation failure', async () => {
