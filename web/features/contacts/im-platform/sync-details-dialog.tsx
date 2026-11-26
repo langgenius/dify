@@ -68,7 +68,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest
   const runQuery = useQuery(
     api.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const run = runQuery.data?.run
@@ -81,7 +81,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         : skipToken,
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const items = itemsQuery.data?.pages.flatMap((page) => page.data) ?? []
@@ -112,6 +112,7 @@ function SyncDetailsContent({ runId }: { runId: string }) {
         ? item.result.reason
         : ''
   const report = useMutation({
+    meta: { errorToast: false },
     mutationFn: async () => {
       const { run: reportRun, items: reportItems } = await loadContactImSyncReport(
         queryClient,

@@ -7,11 +7,11 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
 import { toast } from '@/app/notifications'
-import { resolveLogicalDocumentCitation } from '@/features/new-rag/documents/resolve-logical-document-id'
 import { newKnowledgeDocumentDetailPath } from '@/features/new-rag/routes'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { resolveLogicalDocumentCitation } from '@/service/knowledge-fs/document-citation'
 import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import ProgressTooltip from './progress-tooltip'
@@ -133,7 +133,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
       })
       if (res?.url) downloadUrl({ url: res.url, fileName: data.documentName })
     } catch {
-      // The request layer reports the error; allow retry without an unhandled rejection.
+      // The mutation cache reports the error; allow retry without an unhandled rejection.
     }
   }
 

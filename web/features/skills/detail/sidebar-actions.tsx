@@ -16,7 +16,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -26,19 +26,7 @@ import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillArchiveBlob } from '../client'
 import { getSkillErrorCode } from '../error'
-import { SkillReferencesList, SkillReferencesListSkeleton } from './skill-metadata'
-
-function invalidateSkillListQueries(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
-  })
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'infinite' }),
-  })
-  void queryClient.invalidateQueries({
-    queryKey: consoleQuery.workspaces.current.skills.tags.get.key({ type: 'query' }),
-  })
-}
+import { SkillReferencesList, SkillReferencesListSkeleton } from '../references'
 
 function SkillDetailDeleteDialog({
   detail,
@@ -52,11 +40,10 @@ function SkillDetailDeleteDialog({
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const queryClient = useQueryClient()
   const router = useRouter()
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const referencesQuery = useQuery({
@@ -96,7 +83,6 @@ function SkillDetailDeleteDialog({
       {
         onSuccess: () => {
           toast.success(t(($) => $['skillManagement.deleteSuccess']))
-          invalidateSkillListQueries(queryClient)
           onOpenChange(false)
           router.push('/skills')
         },
@@ -212,15 +198,15 @@ export function SkillDetailSidebarActions({
 }) {
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
-  const queryClient = useQueryClient()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const router = useRouter()
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const exportMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => fetchSkillArchiveBlob(detail.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })
@@ -241,7 +227,6 @@ export function SkillDetailSidebarActions({
       },
       {
         onSuccess: (copiedSkill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: (error) => {

@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CustomizeDialog } from '@/app/components/app/overview/customize'
@@ -60,7 +60,6 @@ export function EnvironmentWebAppCard({
     'deployments',
     'navigation',
   ])
-  const queryClient = useQueryClient()
   const { data: appInfo } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -102,7 +101,7 @@ export function EnvironmentWebAppCard({
     subjectsQuery.data.subjects.length > 0
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
@@ -117,9 +116,8 @@ export function EnvironmentWebAppCard({
   const resetAccessTokenMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
-        context: { silent: true },
-        onSuccess: (updatedSite) => {
-          queryClient.setQueryData(siteQueryOptions.queryKey, updatedSite)
+        meta: { errorToast: false },
+        onSuccess: () => {
           setShowRegenerate(false)
           toast.success(t(($) => $['actionMsg.generatedSuccessfully'], { ns: 'common' }))
         },

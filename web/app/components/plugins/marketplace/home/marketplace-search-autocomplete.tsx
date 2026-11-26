@@ -31,7 +31,7 @@ import { getPluginDetailPath, getTemplateDetailPath } from '@/features/marketpla
 import { renderI18nObject } from '@/i18n/metadata'
 import { marketplaceQuery } from '@/service/marketplace'
 import { markMarketplaceSiteSearch } from '@/utils/marketplace-site-track'
-import { getPluginIconInMarketplace } from '../utils'
+import { getPluginIconInMarketplace } from '../plugin-card-adapter'
 
 type MarketplaceSearchScope = 'all' | 'plugins' | 'templates'
 

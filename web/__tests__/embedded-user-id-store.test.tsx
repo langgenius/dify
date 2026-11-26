@@ -10,15 +10,15 @@ const navigationMocks = vi.hoisted(() => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-const useGetWebAppAccessModeByCodeMock = vi.hoisted(() => vi.fn())
+const webAppAccessModeQueryOptionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/next/navigation', () => ({
   usePathname: navigationMocks.usePathname,
   useSearchParams: navigationMocks.useSearchParams,
 }))
 
-vi.mock('@/service/use-share', () => ({
-  useGetWebAppAccessModeByCode: (...args: unknown[]) => useGetWebAppAccessModeByCodeMock(...args),
+vi.mock('@/service/share-queries', () => ({
+  webAppAccessModeQueryOptions: (...args: unknown[]) => webAppAccessModeQueryOptionsMock(...args),
 }))
 
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
@@ -47,11 +47,12 @@ beforeEach(() => {
   navigationMocks.usePathname.mockReturnValue('/chatbot/sample-app')
   navigationMocks.useSearchParams.mockReset()
   navigationMocks.useSearchParams.mockReturnValue(new URLSearchParams())
-  useGetWebAppAccessModeByCodeMock.mockReset()
-  useGetWebAppAccessModeByCodeMock.mockReturnValue({
-    isLoading: false,
-    data: { accessMode: AccessMode.PUBLIC },
-  })
+  webAppAccessModeQueryOptionsMock.mockReset()
+  webAppAccessModeQueryOptionsMock.mockImplementation((code: string | null) => ({
+    queryKey: ['webapp-access-mode', code],
+    queryFn: () => ({ accessMode: AccessMode.PUBLIC }),
+    initialData: { accessMode: AccessMode.PUBLIC },
+  }))
   useWebAppStore.setState(initialWebAppStore, true)
 })
 
@@ -83,7 +84,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       })
     }
 
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith('redirected-app')
+    expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith('redirected-app')
   })
 
   it('does not derive a share code from an external redirect target', () => {
@@ -99,7 +100,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
       </WebAppStoreProvider>,
     )
 
-    expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+    expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith(null)
   })
 
   it.each(['/webapp-signin/check-code', '/console/webapp-signin/check-code'])(
@@ -114,7 +115,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
         </WebAppStoreProvider>,
       )
 
-      expect(useGetWebAppAccessModeByCodeMock).toHaveBeenCalledWith(null)
+      expect(webAppAccessModeQueryOptionsMock).toHaveBeenCalledWith(null)
     },
   )
 

@@ -14,11 +14,23 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.knowledge_fs_app_bindings import stage_published_agent_knowledge_bindings
+from services.agent.app_composer import AgentAppComposer
+from services.agent.build_config_gateway import AgentBuildConfigGateway
+from services.agent.build_session_service import AgentBuildSessionService
+from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
+from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.knowledge_spaces import (
+    authorize_composer_knowledge,
+    authorize_published_agent_knowledge_bindings,
+)
 from services.agent.observability_contracts import AgentObservability
+from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.agent.sandbox_service import AgentAppSandboxService
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
-from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
     AgentApiAccessService,
     AgentAppAccessService,
@@ -27,9 +39,9 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
-from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
+    inherit_agent_webapp_access,
     notify_agent_app_updated,
     notify_app_created,
     notify_app_deleted,
@@ -38,9 +50,11 @@ from services.app_service import AppService
 from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
+from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.model_provider.service import ModelProviderService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +66,8 @@ class AgentAppServices:
     collection: AgentAppCollectionService
     features: AgentAppFeatureConfigService
     sandbox: AgentAppSandboxService
+    build_session: AgentBuildSessionService
+    composer: AgentAppComposer
 
 
 def _can_restore_version(
@@ -64,8 +80,14 @@ def _can_restore_version(
 def build_agent_app_services(
     *, database_client: sessionmaker[Session], rbac_members: MemberService
 ) -> AgentAppServices:
+    """Wire Agent App use cases to the shared repository and their post-commit effects."""
     apps = AgentAppRepository(
-        session_factory=database_client, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+        session_factory=database_client,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+        stage_publication_bindings=partial(
+            stage_published_agent_knowledge_bindings,
+            load_stager=lambda: get_knowledge_fs_runtime(database_client).app_bindings,
+        ),
     )
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
@@ -89,8 +111,23 @@ def build_agent_app_services(
             ),
             notify_created=notify_app_created,
             detail=detail,
+            inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        composer=AgentAppComposer(
+            store=apps,
+            authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),
+            workspace_tools=list_workspace_dify_tools,
+            authorize_publication_bindings=partial(
+                authorize_published_agent_knowledge_bindings, session_maker=database_client
+            ),
+        ),
+        build_session=AgentBuildSessionService(
+            store=apps,
+            collect_resources=enqueue_agent_resource_collection,
+            config=AgentBuildConfigGateway(session_factory=database_client),
+            snapshots=AgentBuildSnapshotGateway(create_home_snapshot_client),
+        ),
         sandbox=AgentAppSandboxService(
             bindings=AgentSandboxRepository(session_factory=database_client, apps=apps),
             files=AgentSandboxFileGateway(

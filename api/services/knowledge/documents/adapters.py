@@ -2,6 +2,7 @@
 
 import copy
 import json
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from typing import Any, Literal
@@ -24,7 +25,7 @@ from libs.pagination import paginate_query
 from machinery.context import RequestContext
 from models import Account, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum, DocumentPipelineExecutionLog
-from models.enums import IndexingStatus
+from models.enums import DocumentCreatedFrom, IndexingStatus
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_doc_form,
     get_document_hit_count,
@@ -53,15 +54,18 @@ from services.knowledge.documents.application import (
     DocumentNotFoundError,
     DocumentProviderError,
     DocumentState,
+    DocumentTextUpload,
     DocumentZip,
 )
 from services.knowledge.entities.document_creation import DocumentCreationDataset, DocumentIndexingJobs
-from services.knowledge.entities.knowledge_entities import KnowledgeConfig
+from services.knowledge.entities.knowledge_entities import DataSource, FileInfo, InfoList, KnowledgeConfig
 from services.knowledge.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from services.rbac import contracts as rbac_contracts
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
+
+logger = logging.getLogger(__name__)
 
 
 @contextmanager
@@ -128,6 +132,7 @@ def _created_response(dataset: Dataset, documents: Sequence[Document], batch: st
 def _indexing_status(document: Document, counts: tuple[int, int]) -> dict[str, Any]:
     return {
         "id": document.id,
+        "display_status": document.display_status,
         "processing_started_at": document.processing_started_at,
         "parsing_completed_at": document.parsing_completed_at,
         "cleaning_completed_at": document.cleaning_completed_at,
@@ -345,13 +350,23 @@ class SQLAlchemyDocumentOperations:
         with self._sessions() as session:
             dataset = _require_dataset(session, ref)
             self._actor(session, context)
+            if config.original_document_id:
+                original = _require_document(session, ref.document(config.original_document_id))
+                if original.display_status != "available":
+                    raise ValueError("Document is not available")
             DatasetService.check_doc_form(dataset, config.doc_form, session=session)
             return DocumentCreationDataset(
                 dataset.tenant_id, dataset.indexing_technique, dataset.embedding_model, dataset.embedding_model_provider
             )
 
     def _persist_creation(
-        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        config: KnowledgeConfig,
+        *,
+        initialize: bool,
+        created_from: str,
     ) -> tuple[dict[str, Any], DocumentIndexingJobs]:
         """Keep ORM values local and materialize the response before closing the session."""
         jobs: DocumentIndexingJobs | None = None
@@ -364,7 +379,7 @@ class SQLAlchemyDocumentOperations:
                     else _require_dataset(session, ref)
                 )
                 documents, batch, jobs = DocumentService.save_prepared_documents(
-                    dataset, config, account, session=session
+                    dataset, config, account, created_from=created_from, session=session
                 )
                 if initialize:
                     dataset.name = documents[0].name[:18] + "..."
@@ -384,7 +399,13 @@ class SQLAlchemyDocumentOperations:
             raise
 
     def _run_creation(
-        self, context: RequestContext, ref: DatasetRef, config: KnowledgeConfig, *, initialize: bool
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        config: KnowledgeConfig,
+        *,
+        initialize: bool,
+        created_from: str = DocumentCreatedFrom.WEB,
     ) -> dict[str, Any]:
         lock = (
             nullcontext()
@@ -394,7 +415,9 @@ class SQLAlchemyDocumentOperations:
         result = None
         try:
             with lock:
-                result, jobs = self._persist_creation(context, ref, config, initialize=initialize)
+                result, jobs = self._persist_creation(
+                    context, ref, config, initialize=initialize, created_from=created_from
+                )
                 # No session or ORM entity crosses the task boundary. Keep the
                 # creation lock until committed documents have been dispatched.
                 DocumentService.dispatch_document_indexing(jobs)
@@ -412,13 +435,65 @@ class SQLAlchemyDocumentOperations:
         assert result is not None
         return result
 
-    def create_documents(self, context: RequestContext, ref: DatasetRef, settings: Mapping[str, Any]) -> dict[str, Any]:
+    def _prepare_text_creation(
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        snapshot: DocumentCreationDataset,
+        config: KnowledgeConfig,
+        text_upload: DocumentTextUpload,
+    ) -> KnowledgeConfig:
+        """Upload and prepare the source before any document write can attach it."""
+        files = FileService(self._sessions)
+        upload = files.upload_text(
+            text=text_upload.text,
+            text_name=text_upload.name,
+            user_id=context.account_id,
+            tenant_id=ref.tenant_id,
+        )
+        try:
+            source = DataSource(
+                info_list=InfoList(data_source_type="upload_file", file_info_list=FileInfo(file_ids=[upload.id]))
+            )
+            config = config.model_copy(update={"data_source": source})
+            DocumentService.document_create_args_validate(config)
+            return DocumentService.prepare_document_creation(snapshot, config)
+        except Exception:
+            try:
+                files.delete_file(upload.id)
+            except Exception:
+                logger.exception("Failed to clean up unattached text upload %s", upload.id)
+            raise
+
+    def create_documents(
+        self,
+        context: RequestContext,
+        ref: DatasetRef,
+        settings: Mapping[str, Any],
+        *,
+        created_from: str = DocumentCreatedFrom.WEB,
+        text_upload: DocumentTextUpload | None = None,
+    ) -> dict[str, Any]:
+        """Validate and prepare inputs before persistence, cleaning up only uploads that cannot be attached."""
         config = KnowledgeConfig.model_validate(settings)
-        DocumentService.document_create_args_validate(config)
+        if text_upload is None:
+            DocumentService.document_create_args_validate(config)
         with _translate_errors():
             snapshot = self._creation_dataset(context, ref, config)
-            config = DocumentService.prepare_document_creation(snapshot, config)
-            return self._run_creation(context, ref, config, initialize=False)
+            if (
+                not snapshot.indexing_technique
+                and config.indexing_technique == IndexTechniqueType.HIGH_QUALITY
+                and config.embedding_model_provider
+                and config.embedding_model
+            ):
+                DatasetService.check_embedding_model_setting(
+                    ref.tenant_id, config.embedding_model_provider, config.embedding_model
+                )
+            if text_upload is None:
+                config = DocumentService.prepare_document_creation(snapshot, config)
+            else:
+                config = self._prepare_text_creation(context, ref, snapshot, config, text_upload)
+            return self._run_creation(context, ref, config, initialize=False, created_from=created_from)
 
     def initialize_dataset(self, context: RequestContext, settings: Mapping[str, Any]) -> dict[str, Any]:
         config = KnowledgeConfig.model_validate(settings)

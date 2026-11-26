@@ -1,17 +1,26 @@
+import type { ReactNode } from 'react'
 import type { ChatItem } from '../../types'
 import { page } from 'vite-plus/test/browser'
+import { createTestNavigation } from '@/test/next-navigation'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import Chat from '../index'
 import { chatItem, renderChatOwner } from './chat-owner-preset'
 
 vi.unmock('react-i18next')
-// boundary: layout is rendered without a Next application/router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)
   onTestFinished(guardUnexpectedFetch())
 })
+
+// Chat reads route params; the real hooks run inside a test App Router.
+async function renderChat(ui: ReactNode) {
+  const { NavigationProvider } = createTestNavigation({ url: '/chat' })
+  const screen = await renderChatOwner(<NavigationProvider>{ui}</NavigationProvider>)
+  return {
+    rerender: (next: ReactNode) => screen.rerender(<NavigationProvider>{next}</NavigationProvider>),
+  }
+}
 
 const history: ChatItem[] = Array.from({ length: 16 }, (_, i) =>
   chatItem({
@@ -33,7 +42,7 @@ const shell = (messages: ChatItem[], sidebarCollapseState = true) => (
 
 // https://github.com/langgenius/dify/issues/46120: lazy Markdown expands after the initial scroll.
 it.fails('scrolls restored history above the composer after lazy Markdown content appears', async () => {
-  await renderChatOwner(shell(history))
+  await renderChat(shell(history))
   const last = page.getByText(/^Message 16:/)
   const footer = page.getByTestId('chat-footer')
   await expect.element(last).toBeVisible()
@@ -46,7 +55,7 @@ it.fails('scrolls restored history above the composer after lazy Markdown conten
 })
 
 it('keeps the final message above a growing composer and aligns it after a real viewport/sidebar resize', async () => {
-  const screen = await renderChatOwner(shell(history))
+  const screen = await renderChat(shell(history))
   const container = page.getByTestId('chat-container')
   const footer = page.getByTestId('chat-footer')
   const last = page.getByText(/^Message 16:/)
@@ -89,7 +98,7 @@ it('keeps the final message above a growing composer and aligns it after a real 
 })
 
 it('respects manual scroll during updates and resumes auto-scroll for a different conversation', async () => {
-  const screen = await renderChatOwner(shell(history))
+  const screen = await renderChat(shell(history))
   const container = page.getByTestId('chat-container')
   await expect.element(page.getByText(/^Message 16:/)).toBeVisible()
   await expect.element(container).toBeVisible()

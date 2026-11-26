@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useKnowledgeSpace, useKnowledgeSpacePermission } from '../space/context'
@@ -123,18 +124,17 @@ function GoldenQuestionEditorDialog({
   const { t } = useTranslation(['dataset', 'knowledgeQuality'])
   const { space } = useKnowledgeSpace()
   const knowledgeSpaceId = space.control_space_id
-  const queryClient = useQueryClient()
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const updateMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(
       {
-        context: { silent: true },
+        meta: { errorToast: false },
       },
     ),
   )
@@ -161,9 +161,6 @@ function GoldenQuestionEditorDialog({
         })
         toast.success(t(($) => $['qualityPage.createdToast'], { ns: 'knowledgeQuality' }))
       }
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
-      })
       close()
     } catch (error) {
       setError(getErrorMessage(error) ?? t(($) => $.unknownError, { ns: 'dataset' }))
@@ -218,7 +215,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
   const query = useInfiniteQuery(queryOptions)
   const deleteMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const items = query.data?.pages.flatMap((page) => page.data) ?? []
@@ -252,7 +249,10 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
           body: { node_ids: expectedEvidenceIds },
           params: { control_space_id: knowledgeSpaceId },
         })
-        .catch(() => undefined)
+        .catch((error) => {
+          toastRequestError(error)
+          return undefined
+        })
     setDialog((current) => {
       if (current?.mode !== 'edit' || current.id !== item.id) return current
       return { ...current, evidenceOptions: evidenceOptions?.candidates ?? [] }
@@ -285,8 +285,9 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
       )
       const failedIds = new Set([...ids].filter((id) => !deletedIds.has(id)))
       setSelected((current) => new Set([...current].filter((id) => !deletedIds.has(id))))
-      await invalidate().catch(() => undefined)
       if (failedIds.size > 0) {
+        // A rejected delete may still have reached the server.
+        await invalidate().catch(() => undefined)
         setDeleteIds(failedIds)
         toast.error(t(($) => $.unknownError, { ns: 'dataset' }))
         return false

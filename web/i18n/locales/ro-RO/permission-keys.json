@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Publică și gestionează versiunile agentului",
   "agent.acl.test_and_run": "Testează și rulează agentul",
   "agent.create": "Creează agenți",
+  "agent.tag.manage": "Gestionează etichetele agenților",
   "api_extension.manage": "Gestionează configurația extensiei API",
   "app.access_config": "Configurează permisiunile de acces ale aplicației",
   "app.acl.access_config": "Vizualizează și gestionează permisiunile de acces",

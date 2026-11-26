@@ -194,7 +194,7 @@ describe('MainNavLayout', () => {
     },
   )
 
-  it.each(['/datasets/new/knowledge-1/sources', '/datasets/new/create'])(
+  it.each(['/datasets/new/knowledge-1/sources', '/datasets/new/create', '/collaboration-demo'])(
     'hides global navigation and ignores a retained legacy detail sidebar on New Knowledge route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)

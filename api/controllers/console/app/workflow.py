@@ -79,7 +79,6 @@ from fields.workflow_run_fields import (
 )
 from graphon.enums import NodeType
 from graphon.file import File
-from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
@@ -98,7 +97,11 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.errors.llm import InvokeRateLimitError
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
@@ -1369,6 +1372,8 @@ class PublishedWorkflowApi(Resource):
                     marked_name=args.marked_name or "",
                     marked_comment=args.marked_comment or "",
                 )
+            except EvaluationDisabledError as exc:
+                raise NotFound() from exc
             except EvaluationPlanRequiredError as exc:
                 raise PaidPlanRequiredError() from exc
             except EvaluationEntitlementUnavailableError as exc:
@@ -1428,6 +1433,8 @@ class EvaluationPublishedWorkflowApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:
@@ -1468,6 +1475,8 @@ class WorkflowKindConvertApi(Resource):
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:
@@ -2116,11 +2125,12 @@ class WorkflowOnlineUsersApi(Resource):
             for app_id, users_json in zip(app_id_batch, users_json_batch, strict=False):
                 users_json_by_app_id[app_id] = users_json
 
-        results = []
+        users_by_app_id: dict[str, list[dict[str, str]]] = {}
+        account_ids: list[str] = []
         for app_id in ordered_accessible_app_ids:
             users_json = users_json_by_app_id.get(app_id, {})
 
-            users = []
+            users: list[dict[str, str]] = []
             for _, user_info_json in users_json.items():
                 try:
                     user_info = json.loads(user_info_json)
@@ -2135,23 +2145,24 @@ class WorkflowOnlineUsersApi(Resource):
                 if not isinstance(user_id, str) or not isinstance(username, str):
                     continue
 
-                avatar = user_info.get("avatar")
-                if avatar is not None and not isinstance(avatar, str):
-                    avatar = None
+                users.append({"user_id": user_id, "username": username})
+                account_ids.append(user_id)
+            users_by_app_id[app_id] = users
 
-                if isinstance(avatar, str) and avatar and not avatar.startswith(("http://", "https://")):
-                    try:
-                        avatar = file_helpers.get_signed_file_url(avatar)
-                    except Exception as exc:
-                        logger.warning(
-                            "Failed to sign workflow online user avatar; using original value. "
-                            "app_id=%s avatar=%s error=%s",
-                            app_id,
-                            avatar,
-                            exc,
-                        )
-
-                users.append({"user_id": user_id, "username": username, "avatar": avatar})
-            results.append({"app_id": app_id, "users": users})
+        avatar_urls: dict[str, str] = {}
+        if account_ids:
+            try:
+                avatar_urls = application_services().accounts.avatar.resolve_current_for_accounts(
+                    account_ids=tuple(dict.fromkeys(account_ids))
+                )
+            except Exception:
+                logger.warning("Failed to resolve workflow online user avatars", exc_info=True)
+        results = [
+            {
+                "app_id": app_id,
+                "users": [{**user, "avatar": avatar_urls.get(user["user_id"])} for user in users_by_app_id[app_id]],
+            }
+            for app_id in ordered_accessible_app_ids
+        ]
 
         return WorkflowOnlineUsersResponse.model_validate({"data": results}).model_dump(mode="json")

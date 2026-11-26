@@ -26,8 +26,8 @@ import { creatorIdsParser } from '@/app/components/datasets/creator-filter-query
 import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
+import { TagFilter } from '@/features/tag-management/tag-filter'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -106,10 +106,10 @@ export function NewKnowledgeList() {
   )
   const deletion = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
-  const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)
   const [highlightedControlSpaceId, setHighlightedControlSpaceId] = useState<string>()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
@@ -262,7 +262,7 @@ export function NewKnowledgeList() {
             type="knowledge"
             value={tagIds}
             onChange={(nextTagIds) => void setTagIds(nextTagIds)}
-            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            onOpenTagManagement={() => setShowTagManagementDialog(true)}
             showLeadingIcon={false}
             triggerClassName="min-w-0"
           />
@@ -395,7 +395,7 @@ export function NewKnowledgeList() {
                     })
                   }
                   highlighted={highlightedControlSpaceId === knowledgeSpace.control_space_id}
-                  onOpenTagManagement={() => setShowTagManagementModal(true)}
+                  onOpenTagManagement={() => setShowTagManagementDialog(true)}
                 />
               ))}
             </ul>
@@ -468,10 +468,10 @@ export function NewKnowledgeList() {
           </AlertDialogContent>
         )}
       </AlertDialog>
-      <TagManagementModal
+      <TagManagementDialog
         type="knowledge"
-        show={showTagManagementModal}
-        onClose={() => setShowTagManagementModal(false)}
+        show={showTagManagementDialog}
+        onClose={() => setShowTagManagementDialog(false)}
         onTagsChange={() => {
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.get.key(),

@@ -27,6 +27,7 @@ import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ConnectedSourceEditForm } from './setup/connected-source-configuration'
 import { CrawlPreviewPageSelection } from './setup/crawl-selection'
 import { WebsiteDatasourceParameterForm } from './setup/datasource-parameter-form'
@@ -206,7 +207,8 @@ function ConnectedSourceEditDialogContent({
     isPending: connectionsPending,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -506,7 +508,8 @@ function WebsiteSourceEditDialogContent({
     isFetchNextPageError,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -533,7 +536,7 @@ function WebsiteSourceEditDialogContent({
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
   const [previewing, setPreviewing] = useState(false)
   const [previewRequested, setPreviewRequested] = useState(false)
-  const [previewError, setPreviewError] = useState(false)
+  const [previewError, setPreviewError] = useState<{ message?: string } | false>(false)
   const previewAttemptRef = useRef(0)
   const previewJobIdRef = useRef<string | undefined>(undefined)
   const providerOptions = useMemo(
@@ -676,7 +679,7 @@ function WebsiteSourceEditDialogContent({
       if (previewAttemptRef.current !== attempt) return
       previewJobIdRef.current = undefined
       if (response.status !== 'completed' || !response.result) {
-        setPreviewError(true)
+        setPreviewError({})
         return
       }
       setPreviewPages(
@@ -687,8 +690,9 @@ function WebsiteSourceEditDialogContent({
           title: page.title ?? page.source_url,
         })),
       )
-    } catch {
-      if (previewAttemptRef.current === attempt) setPreviewError(true)
+    } catch (error) {
+      if (previewAttemptRef.current === attempt)
+        setPreviewError({ message: getRequestErrorMessage(error) })
     } finally {
       if (previewAttemptRef.current === attempt) setPreviewing(false)
     }
@@ -757,21 +761,14 @@ function WebsiteSourceEditDialogContent({
         <DialogBody>
           {initialSource.type === 'web' ? (
             <div>
-              {providerConfigurationReady ? (
-                <WebsiteDatasourceParameterForm
-                  additionalPrimaryField={sourceNameField}
-                  disabled={pending}
-                  parameters={displayedParameters}
-                  schemas={parameterSchemas}
-                  onChange={(parameters) => {
-                    setNextParameters(parameters)
-                    resetPreview()
-                  }}
-                />
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {sourceNameField}
-                  {providerLoading ? (
+              {/* The form also renders the loading and error states so the name field keeps its
+                  place, and its focus, when the provider declaration arrives. */}
+              <WebsiteDatasourceParameterForm
+                additionalPrimaryField={sourceNameField}
+                disabled={pending}
+                parameters={displayedParameters}
+                primaryFallback={
+                  providerConfigurationReady ? undefined : providerLoading ? (
                     <div
                       role="status"
                       aria-label={tCommon(($) => $.loading)}
@@ -786,9 +783,14 @@ function WebsiteSourceEditDialogContent({
                         ? t(($) => $.providerLoadFailed)
                         : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
                     </p>
-                  )}
-                </div>
-              )}
+                  )
+                }
+                schemas={providerConfigurationReady ? parameterSchemas : []}
+                onChange={(parameters) => {
+                  setNextParameters(parameters)
+                  resetPreview()
+                }}
+              />
             </div>
           ) : (
             <div>{sourceNameField}</div>
@@ -825,7 +827,7 @@ function WebsiteSourceEditDialogContent({
               )}
               {previewError && (
                 <p role="alert" className="mt-2 system-sm-regular text-text-destructive">
-                  {t(($) => $.providerLoadFailed)}
+                  {previewError.message ?? t(($) => $.providerLoadFailed)}
                 </p>
               )}
               {previewPages.length > 0 && (

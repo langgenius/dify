@@ -15,7 +15,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
+import { TagFilter } from '@/features/tag-management/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'

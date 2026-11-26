@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
-import { get, post, request, upload } from './base'
+import { request } from './base'
 import { consoleClient } from './console'
 
 const refresh = vi.hoisted(() => vi.fn())
@@ -16,67 +16,6 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.restoreAllMocks())
-
-describe('upload HTTP failure contract', () => {
-  const createUpload = (status: number, response: unknown) => {
-    const xhr = new XMLHttpRequest()
-    vi.spyOn(xhr, 'open').mockImplementation(() => {})
-    vi.spyOn(xhr, 'setRequestHeader').mockImplementation(() => {})
-    vi.spyOn(xhr, 'getAllResponseHeaders').mockReturnValue('X-Request-Id: upload-123\r\n')
-    Object.defineProperties(xhr, {
-      readyState: { value: 1, configurable: true },
-      status: { value: status },
-      statusText: { value: '' },
-      response: { value: response },
-    })
-    vi.spyOn(xhr, 'send').mockImplementation(() => {
-      Object.defineProperty(xhr, 'readyState', { value: 4 })
-      xhr.dispatchEvent(new Event('readystatechange'))
-    })
-    return xhr
-  }
-
-  it.each([200, 201])('resolves successful HTTP %s uploads', async (status) => {
-    const response = { id: 'file-1' }
-    await expect(
-      upload({ xhr: createUpload(status, response), data: new FormData() }),
-    ).resolves.toEqual(response)
-  })
-
-  it('rejects HTTP failures with the same ORPCError as fetch requests', async () => {
-    const data = {
-      code: 'file_extension_blocked',
-      message: 'File type not allowed',
-      details: { request_id: 'upload-123' },
-    }
-    const error = await upload({ xhr: createUpload(400, data), data: new FormData() }).catch(
-      (error: unknown) => error,
-    )
-    expect(error).toBeInstanceOf(ORPCError)
-    expect(error).toMatchObject({
-      code: data.code,
-      message: data.message,
-      status: 400,
-      data,
-    })
-    if (!(error instanceof ORPCError)) throw new TypeError('Expected an upload HTTP failure')
-    expect(error.cause).toEqual({ headers: new Headers({ 'X-Request-Id': 'upload-123' }) })
-  })
-
-  it.each([
-    ['error', 'TypeError'],
-    ['abort', 'AbortError'],
-    ['timeout', 'TimeoutError'],
-  ])('keeps upload %s distinct from HTTP failures', async (event, name) => {
-    const xhr = createUpload(0, null)
-    vi.mocked(xhr.send).mockImplementation(() => {
-      Object.defineProperty(xhr, 'readyState', { value: 4 })
-      xhr.dispatchEvent(new Event('readystatechange'))
-      xhr.dispatchEvent(new Event(event))
-    })
-    await expect(upload({ xhr, data: new FormData() })).rejects.toMatchObject({ name })
-  })
-})
 
 describe('HTTP failure contract', () => {
   it.each([400, 403, 404, 422, 429, 500, 503])(
@@ -101,7 +40,7 @@ describe('HTTP failure contract', () => {
         }),
       )
 
-      const error = await post('/test-errors', { body: {} }, { silent: true }).catch(
+      const error = await request('/test-errors', { body: {}, method: 'POST' }).catch(
         (error: unknown) => error,
       )
 
@@ -133,7 +72,7 @@ describe('HTTP failure contract', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(body, { status: 502, statusText: 'Bad Gateway' }),
       )
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+      await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
         defined: false,
         message: 'Bad Gateway',
         status: 502,
@@ -144,14 +83,14 @@ describe('HTTP failure contract', () => {
   it('accepts the legacy error field and uses a status fallback for invalid messages', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     fetch.mockResolvedValueOnce(Response.json({ error: 'Upload rejected' }, { status: 413 }))
-    await expect(post('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'POST' })).rejects.toMatchObject({
       message: 'Upload rejected',
       status: 413,
     })
     fetch.mockResolvedValueOnce(
       Response.json({ message: { internal: 'invalid' } }, { status: 500 }),
     )
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
       message: 'HTTP 500',
       status: 500,
     })
@@ -161,7 +100,7 @@ describe('HTTP failure contract', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ code: 'invalid_credentials', message: 'Invalid password' }, { status: 401 }),
     )
-    await expect(post('/login', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/login', { method: 'POST' })).rejects.toMatchObject({
       defined: false,
       code: 'invalid_credentials',
       message: 'Invalid password',
@@ -178,7 +117,7 @@ describe('HTTP failure contract', () => {
         Response.json({ code: 'forbidden', message: 'Access denied' }, { status: 403 }),
       )
     refresh.mockResolvedValue(undefined)
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
       defined: false,
       message: 'Access denied',
       status: 403,
@@ -197,7 +136,7 @@ describe('HTTP failure contract', () => {
       refresh.mockRejectedValue(refreshError)
       const initialUrl = window.location.href
 
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toBe(refreshError)
+      await expect(request('/test-errors', { method: 'GET' })).rejects.toBe(refreshError)
       expect(refresh).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(initialUrl)
     },
@@ -218,9 +157,7 @@ describe('HTTP failure contract', () => {
       new DOMException('Cancelled', 'AbortError'),
     ]) {
       fetch.mockRejectedValueOnce(error)
-      const caught = await request('/test-errors', {}, { silent: true }).catch(
-        (error: unknown) => error,
-      )
+      const caught = await request('/test-errors', {}).catch((error: unknown) => error)
       expect(caught).toBeInstanceOf(Error)
       expect(caught).not.toBeInstanceOf(ORPCError)
       if (error.name === 'AbortError') expect(caught).toBe(error)
@@ -254,7 +191,7 @@ describe('HTTP failure contract', () => {
       )
     })
 
-    const pending = get('/test-errors', { signal: controller.signal }).catch(
+    const pending = request('/test-errors', { method: 'GET', signal: controller.signal }).catch(
       (error: unknown) => error,
     )
     await bodyRead
@@ -270,9 +207,7 @@ describe('HTTP failure contract', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ code: 'forbidden', message: 'Profile is read-only' }, { status: 403 }),
     )
-    const error = await consoleClient.account.profile
-      .get({}, { context: { silent: true } })
-      .catch((error: unknown) => error)
+    const error = await consoleClient.account.profile.get({}).catch((error: unknown) => error)
     expect(error).toBeInstanceOf(ORPCError)
     expect(error).toMatchObject({ message: 'Profile is read-only', status: 403, code: 'forbidden' })
   })

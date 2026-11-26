@@ -120,7 +120,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -904,7 +904,7 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
