@@ -5,6 +5,7 @@ from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
+from services.agent_config_contracts import AgentConfigSelection
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
@@ -26,7 +27,28 @@ from services.entities.app_entities import (
 from services.rbac.contracts import ResourcePermissionSnapshot
 
 
-class AgentAppReferences(Protocol):
+class AgentAppAccessStore(Protocol):
+    """Resolve Agent App targets, configuration versions, and referencing workflows."""
+
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Select config from the admitted Agent, preparing the write draft when needed."""
+        ...
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the config of a tenant workflow node."""
+        ...
+
     def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]: ...
@@ -251,16 +273,38 @@ class AgentAppCollectionService:
 
 
 class AgentAppAccessService:
-    def __init__(self, *, references: AgentAppReferences) -> None:
-        self._references = references
+    def __init__(self, *, store: AgentAppAccessStore) -> None:
+        """Use the injected store to resolve tenant-scoped Agent App data."""
+        self._store = store
 
-    def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
-        return self._references.resolve_existing_runtime_app_id(
-            tenant_id=context.active_workspace_id, agent_id=agent_id
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Return the selected asset version with no live ORM objects or session."""
+        return self._store.resolve_config_selection(
+            context, agent_id, version_id=version_id, build=build, for_write=for_write
         )
 
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the admitted workflow configuration before opening any asset store."""
+        return self._store.resolve_workflow_config_selection(
+            context, app_id, node_id=node_id, version_id=version_id, build=build, for_write=for_write
+        )
+
+    def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
+        return self._store.resolve_existing_runtime_app_id(tenant_id=context.active_workspace_id, agent_id=agent_id)
+
     def list_referencing_workflows(self, context: RequestContext, agent_id: str) -> list[AgentReferencingWorkflow]:
-        return self._references.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)
+        return self._store.list_referencing_workflows(tenant_id=context.active_workspace_id, agent_id=agent_id)
 
 
 class AgentAppFeatureConfigService:

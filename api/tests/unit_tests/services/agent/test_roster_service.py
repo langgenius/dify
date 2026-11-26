@@ -887,30 +887,6 @@ def test_load_agent_composer_does_not_select_personal_build_draft(sqlite_session
     assert not sqlite_session.dirty
 
 
-def test_prepare_agent_composer_draft_creates_only_for_explicit_write(sqlite_session: Session) -> None:
-    agent = _agent()
-    snapshot = _snapshot()
-    agent.active_config_snapshot_id = snapshot.id
-    sqlite_session.add_all([agent, snapshot])
-    sqlite_session.commit()
-    result = AgentComposerService.load_agent_composer(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id
-    )
-    assert result["draft"] is None
-    draft = AgentComposerService.prepare_agent_composer_draft(
-        session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-    )
-    sqlite_session.commit()
-    assert draft.config_snapshot_dict == snapshot.config_snapshot_dict
-    assert draft.created_by == "account-2"
-    assert (
-        AgentComposerService.prepare_agent_composer_draft(
-            session=sqlite_session, tenant_id=agent.tenant_id, agent_id=agent.id, account_id="account-2"
-        ).id
-        == draft.id
-    )
-
-
 def test_save_agent_app_composer_rejects_version_save_strategy(sqlite_session: Session):
     session = sqlite_session
     payload = ComposerSavePayload.model_validate(
@@ -5338,51 +5314,6 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     }
     assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
-
-
-def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
-    session = sqlite_session
-
-    def boom(cls, **kwargs):
-        raise ValueError("no draft workflow")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", classmethod(boom))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: _workflow(workflow_id="wf-1"))
-    )
-    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        is None
-    )
-
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_get_workflow_binding",
-        classmethod(
-            lambda cls, **kwargs: WorkflowAgentNodeBinding(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                workflow_id="workflow-1",
-                workflow_version="draft",
-                node_id="node-1",
-                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
-                node_job_config=WorkflowNodeJobConfig(),
-                agent_id="agent-7",
-            )
-        ),
-    )
-    assert (
-        AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
-        == "agent-7"
-    )
 
 
 def test_save_as_new_agent_preserves_omitted_node_job(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
