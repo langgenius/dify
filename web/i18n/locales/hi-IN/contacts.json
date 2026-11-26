@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "संपर्क हटाया नहीं जा सका। फिर से प्रयास करें।",
   "directory.removalSingleTitle": "{{name}} को हटाएँ?",
   "directory.resultCount": "परिणाम: {{count}}",
-  "imPlatform.action.configure": "कॉन्फ़िगर करें",
   "imPlatform.action.configureChannel": "{{provider}} कॉन्फ़िगर करें",
   "imPlatform.action.connect": "कनेक्ट करें",
   "imPlatform.action.copied": "कॉपी किया गया",

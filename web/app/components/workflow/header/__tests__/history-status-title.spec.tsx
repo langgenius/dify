@@ -25,12 +25,6 @@ describe('Paused workflow history titles', () => {
         initialStoreState: {
           historyWorkflowData: { id: 'paused-run', status: 'paused' },
         },
-        hooksStoreProps: {
-          getWorkflowRunAndTraceUrl: () => ({
-            runUrl: '/runs/paused-run',
-            traceUrl: '/runs/paused-run/trace',
-          }),
-        },
       },
     )
 

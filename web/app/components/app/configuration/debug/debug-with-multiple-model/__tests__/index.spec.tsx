@@ -31,7 +31,7 @@ import { APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import DebugWithMultipleModel from '../index'
 
 const api = vi.hoisted(() => ({
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   suggestions:

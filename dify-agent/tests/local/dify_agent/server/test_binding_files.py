@@ -5,6 +5,8 @@ import base64
 import json
 import os
 import shlex
+import subprocess
+import sys
 from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -234,6 +236,24 @@ def test_resolve_binding_path_supports_workspace_home_absolute_and_parent_paths(
     assert resolve_binding_path("~/outputs/out.csv", layout) == "/home/agent/outputs/out.csv"
     assert resolve_binding_path("/var/data/out.csv", layout) == "/var/data/out.csv"
     assert resolve_binding_path("../shared/out.csv", layout) == "/shared/out.csv"
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="FIFO previews require a POSIX filesystem")
+def test_read_script_rejects_fifo_without_waiting_for_a_writer(tmp_path: Path) -> None:
+    fifo = tmp_path / "pipe"
+    os.mkfifo(fifo)
+
+    result = subprocess.run(
+        [sys.executable, "-c", binding_files_module._READ_BINDING_FILE_SCRIPT, str(fifo), "pipe", "1024"],
+        capture_output=True,
+        text=True,
+        timeout=2,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "FileNotFoundError" in result.stdout
+    assert "<<<DIFY_BINDING_FILE_BEGIN>>>" not in result.stdout
 
 
 @pytest.mark.anyio

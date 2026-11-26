@@ -7,8 +7,5 @@ export const uploadPublicFile = async (
   onUploadProgress: (progress: { loaded: number; total: number }) => void,
 ) => {
   const { webAppClient } = await import('@/service/webapp-client')
-  return webAppClient.files.upload.post(
-    { body: { file } },
-    { context: { silent: true, onUploadProgress } },
-  )
+  return webAppClient.files.upload.post({ body: { file } }, { context: { onUploadProgress } })
 }

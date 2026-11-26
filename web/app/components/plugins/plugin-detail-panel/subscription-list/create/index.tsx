@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import { getRequestErrorMessage } from '@/service/http-error'
 import {
   initiateTriggerOAuthMutationOptions,
   triggerOAuthConfigQueryOptions,
@@ -242,9 +243,10 @@ export const CreateSubscriptionButton = ({
               }
             })
           },
-          onError: () => {
+          onError: (error) => {
             toast.error(
-              t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+              getRequestErrorMessage(error) ??
+                t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
             )
           },
         })

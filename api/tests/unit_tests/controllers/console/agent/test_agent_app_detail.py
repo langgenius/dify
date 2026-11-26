@@ -4,13 +4,10 @@ import json
 from http import HTTPStatus
 from uuid import uuid4
 
-from flask import Flask
 from sqlalchemy import event, select
-from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session
 
-from controllers.console.agent.roster import _serialize_agent_app_detail
 from events.app_event import app_was_updated
-from models import Account, Tenant
 from models.agent import Agent, AgentDebugConversation, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
 from models.model import App, AppMode, AppModelConfig, Site
@@ -20,31 +17,17 @@ from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
 
 
-def _legacy_detail(
-    app: Flask, sessions: sessionmaker[Session], harness: Harness, agent_id: str, app_id: str
-) -> dict[str, object]:
-    with app.test_request_context(f"/console/api/agent/{agent_id}"), sessions() as session:
-        model = session.get(App, app_id)
-        account = session.get(Account, harness.account_id)
-        tenant = session.get(Tenant, harness.tenant_id)
-        assert model is not None
-        assert account is not None
-        assert tenant is not None
-        account.set_current_tenant_with_session(tenant, session=session)
-        result = _serialize_agent_app_detail(session, model, current_user=account, agent_id=agent_id)
-        session.commit()
-        return result
-
-
-def test_get_matches_legacy_response_and_reuses_build_conversation(harness: Harness) -> None:
+def test_get_reuses_build_conversation(harness: Harness) -> None:
+    """Repeat the admitted request and verify only one Build conversation is persisted."""
     agent_id, app_id = harness.create_agent(published=True)
-    expected = _legacy_detail(harness.client.application, harness.sessions, harness, agent_id, app_id)
     response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == expected
     assert response.get_json()["id"] == agent_id
     assert response.get_json()["app_id"] == app_id
     assert response.get_json()["access_ready"] is True
+    repeated = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert repeated.status_code == HTTPStatus.OK
+    assert repeated.get_json() == response.get_json()
     with harness.sessions() as session:
         assert (
             len(
@@ -54,7 +37,7 @@ def test_get_matches_legacy_response_and_reuses_build_conversation(harness: Harn
         )
 
 
-def test_get_with_config_and_site_matches_legacy_response(harness: Harness) -> None:
+def test_get_renders_model_config_and_site(harness: Harness) -> None:
     agent_id, app_id = harness.create_agent()
     with harness.sessions.begin() as session:
         app = session.get(App, app_id)
@@ -69,10 +52,8 @@ def test_get_with_config_and_site_matches_legacy_response(harness: Harness) -> N
         session.add_all([config, site])
         session.flush()
         app.app_model_config_id = config.id
-    expected = _legacy_detail(harness.client.application, harness.sessions, harness, agent_id, app_id)
     response = harness.client.get(f"/console/api/agent/{agent_id}", headers=harness.headers)
     assert response.status_code == HTTPStatus.OK
-    assert response.get_json() == expected
     assert response.get_json()["model_config"]["opening_statement"] == "Hello"
     assert response.get_json()["site"]["title"] == "Agent Site"
 

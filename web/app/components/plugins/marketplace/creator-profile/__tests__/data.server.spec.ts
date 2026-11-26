@@ -252,6 +252,13 @@ describe('loadCreatorProfile', () => {
     })
 
     expect(loaded?.viewModel.creations.map(({ kind }) => kind)).toEqual(['template'])
+    // The failed first page stays retryable and the list reports the failure.
+    expect(loaded?.inventory).toMatchObject({
+      loadFailed: true,
+      pluginHasMore: true,
+      pluginNextPage: 1,
+      templateNextPage: 2,
+    })
   })
 
   it('returns null when the primary creator does not exist', async () => {

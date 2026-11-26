@@ -5,6 +5,7 @@ import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { createHttpError } from '@/service/http-error'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { seedAppDetail } from '@/test/console/query-data'
@@ -97,6 +98,13 @@ const notExistError = () =>
     message: 'Draft workflow not exist.',
     status: 404,
   })
+
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const draftResponse = {
   id: 'draft-id',
@@ -223,6 +231,25 @@ describe('useWorkflowInit', () => {
     })
   })
 
+  it('should show the server message when the draft fails to load', async () => {
+    mockFetchWorkflowDraft.mockReset().mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+  })
+
+  it('should show the server message when creating the first draft fails', async () => {
+    mockSyncWorkflowDraft.mockRejectedValue(draftUnavailableError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+  })
+
   it('should keep readonly users local when the first workflow draft does not exist', async () => {
     appDetail = createAppDetailFixture({
       id: 'app-1',
@@ -253,6 +280,23 @@ describe('useWorkflowInit', () => {
       syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
+  })
+
+  it('should load the draft created by another editor during initialization', async () => {
+    mockFetchWorkflowDraft.mockResolvedValueOnce(draftResponse)
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Draft already saved.',
+        status: 409,
+      }),
+    )
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.data?.hash).toBe(draftResponse.hash)
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {

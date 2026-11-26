@@ -3,10 +3,11 @@ import type {
   TriggerDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { ExportSecretEnvironmentVariable } from '@/app/components/workflow/export-secret-env-event'
+import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
-import { useStoreApi } from 'reactflow'
+import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
   isChatflowAtom,
@@ -15,6 +16,7 @@ import {
 import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
@@ -31,9 +33,6 @@ const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,
 })
 const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
-const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
   ssr: false,
 })
 const WorkflowOnboardingModal = dynamic(() => import('./workflow-onboarding-modal'), {
@@ -69,7 +68,9 @@ const WorkflowChildren = () => {
   const appId = useAtomValue(workflowAppIdentityAtom).appId
   const isChatflow = useAtomValue(isChatflowAtom)
   const { eventEmitter } = useEventEmitterContextContext()
-  const [secretEnvList, setSecretEnvList] = useState<ExportSecretEnvironmentVariable[]>([])
+  const [exportSecretsDialog] = useState(() =>
+    createAlertDialogHandle<ExportSecretEnvironmentVariable[]>(),
+  )
   const showFeaturesPanel = useStore((s) => s.showFeaturesPanel)
   const showImportDSLModal = useStore((s) => s.showImportDSLModal)
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
@@ -79,7 +80,7 @@ const WorkflowChildren = () => {
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
-  const reactFlowStore = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const availableNodesMetaData = useWorkflowNodeCatalog()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
@@ -87,7 +88,8 @@ const WorkflowChildren = () => {
   const { exportCheck, handleExportDSL, isExporting } = useDSL()
 
   eventEmitter?.useSubscription((event) => {
-    if (isExportSecretEnvironmentEvent(event)) setSecretEnvList(event.payload.data)
+    if (isExportSecretEnvironmentEvent(event))
+      exportSecretsDialog.openWithPayload(event.payload.data)
   })
 
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
@@ -99,6 +101,12 @@ const WorkflowChildren = () => {
   const handleSelectStartNode = useCallback(
     (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
       if (!canEdit) return
+
+      const { nodes, setNodes, setEdges } = collaborativeWorkflow.getState()
+      if (nodes.some((node) => node.data.type !== BlockEnum.StartPlaceholder)) {
+        handleOnboardingClose()
+        return
+      }
 
       const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
       if (!nodeDefault?.defaultValue) return
@@ -136,8 +144,7 @@ const WorkflowChildren = () => {
         position: START_INITIAL_POSITION,
       })
 
-      const { setNodes, setEdges } = reactFlowStore.getState()
-      setNodes([newNode])
+      if (!setNodes([newNode])) return
       setEdges([])
 
       setShowOnboarding?.(false)
@@ -157,8 +164,9 @@ const WorkflowChildren = () => {
       availableNodesMetaData,
       autoGenerateWebhookUrl,
       canEdit,
+      collaborativeWorkflow,
+      handleOnboardingClose,
       handleSyncWorkflowDraft,
-      reactFlowStore,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,
       setShowOnboarding,
@@ -186,13 +194,26 @@ const WorkflowChildren = () => {
           onImport={handlePaneContextmenuCancel}
         />
       )}
-      {canImportExportDSL && secretEnvList.length > 0 && (
-        <AppExportConfirmModal
-          envList={secretEnvList}
-          onConfirm={handleExportDSL!}
-          isExporting={isExporting}
-          onClose={() => setSecretEnvList([])}
-        />
+      {canImportExportDSL && (
+        <AlertDialog
+          handle={exportSecretsDialog}
+          onOpenChange={(open, details) => {
+            if (!open && isExporting && details.reason !== 'imperative-action') details.cancel()
+          }}
+        >
+          {({ payload }) =>
+            payload && (
+              <ExportSecretsDialogContent
+                envList={payload}
+                isExporting={isExporting}
+                onConfirm={async (includeSecret) => {
+                  if (isExporting) return
+                  if (await handleExportDSL?.(includeSecret)) exportSecretsDialog.close()
+                }}
+              />
+            )
+          }
+        </AlertDialog>
       )}
       <WorkflowHeader />
     </>

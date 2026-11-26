@@ -17,6 +17,7 @@ import { AppToaster } from '@/app/notifications/app-toaster'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
@@ -44,6 +45,7 @@ const mocks = vi.hoisted(() => {
     state,
     push: vi.fn(),
     detailRefetch: vi.fn(),
+    deleteDocuments: vi.fn(),
     checkProgress:
       vi.fn<
         typeof import('@/service/console').consoleClient.datasets.batchImportStatus.byJobId.get
@@ -166,6 +168,7 @@ describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.upload.mockResolvedValue({ id: 'file-1', name: 'chunks.csv', size: 10 })
+    mocks.deleteDocuments.mockResolvedValue({ result: 'success' })
     mocks.detailRefetch.mockImplementation(
       async () => mocks.state.documentDetail ?? new Promise(() => {}),
     )
@@ -396,6 +399,27 @@ describe('DocumentDetail', () => {
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
+    it('shows the server message in the dialog when deletion fails', async () => {
+      mocks.state.dataset = {
+        embedding_available: true,
+        permission_keys: [DatasetACLPermission.Edit, DatasetACLPermission.DeleteFile],
+      }
+      mocks.deleteDocuments.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+      )
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+      await user.click(
+        screen.getByRole('menuitem', { name: 'datasetDocuments.list.action.delete' }),
+      )
+      const dialog = screen.getByRole('alertdialog')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.sure' }))
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+      expect(mocks.push).not.toHaveBeenCalled()
+    })
+
     it('invalidates chunk lists after disabling the document', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -605,7 +629,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         doc_metadata: [],
         built_in_field_enabled: false,
       }),
-      'datasets.byDatasetId.documents.delete': async () => ({ result: 'success' }),
+      'datasets.byDatasetId.documents.delete': (input: unknown) => mocks.deleteDocuments(input),
       'datasets.byDatasetId.documents.status.byAction.batch.patch': async () => ({
         result: 'success',
       }),

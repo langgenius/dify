@@ -5,6 +5,7 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
+import { createHttpError } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
@@ -1084,6 +1085,39 @@ describe('useChat', () => {
       expect(onConversationComplete).not.toHaveBeenCalled()
       expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
       expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('reports a failed history refresh request with its server message', async () => {
+      const onGetConversationMessages = vi
+        .fn()
+        .mockRejectedValue(
+          createHttpError(
+            { status: 429, statusText: '', headers: new Headers() },
+            { message: 'Too many requests' },
+          ),
+        )
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat({ suggested_questions_after_answer: { enabled: true } } as ChatConfig),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          streams.sender('chat-messages'),
+          { query: 'test' },
+          { onGetConversationMessages, onGetSuggestedQuestions: vi.fn() },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onData('Streamed answer', true, {
+          messageId: 'answer-1',
+          conversationId: 'conversation-1',
+        })
+        await callbacks.onCompleted()
+      })
+
+      expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Too many requests')
     })
 
     it.each(['denied', 'navigation', 'new request', 'stop', 'unmount'] as const)(
@@ -2624,6 +2658,41 @@ describe('useChat', () => {
         expect(toast.error).not.toHaveBeenCalled()
       },
     )
+
+    it.each([
+      [
+        'the server message',
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_param',
+          message: 'Server says why',
+        }),
+        'appDebug.operation.stopResponding: Server says why',
+      ],
+      [
+        'the localized fallback',
+        new Error('Stop request failed'),
+        'appDebug.operation.stopResponding: common.api.actionFailed',
+      ],
+    ])('should report %s when a new agent cannot stop', async (_case, error, message) => {
+      const stopChat = vi.fn(() => Promise.reject(error))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, stopChat, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(streams.sender('chat-messages'), { query: 'test' }, {})
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onWorkflowStarted({ task_id: 'task-123' })
+        await result.current.handleStop()
+      })
+
+      expect(stopChat).toHaveBeenCalledWith('task-123')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+      expect(result.current.isResponding).toBe(true)
+    })
 
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()

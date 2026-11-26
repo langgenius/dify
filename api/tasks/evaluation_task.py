@@ -29,6 +29,7 @@ from clients.agent_backend import (
     create_agent_backend_run_client,
 )
 from configs import dify_config
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.evaluation.agent.agent_v2_trace_collector import AgentV2TraceCollector
 from core.evaluation.agent.customized_workflow_adapter import (
@@ -61,6 +62,7 @@ from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunne
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.model_context import use_credit_usage_metadata
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.node_events import NodeRunResult
@@ -1020,13 +1022,14 @@ def _evaluate_agent_row(
         }
     if target_error is None and agent_item is not None and run_data.default_metrics:
         try:
-            evaluated = evaluation_instance.evaluate_agent(
-                [agent_item],
-                [metric.metric for metric in run_data.default_metrics],
-                run_data.evaluation_model_provider,
-                run_data.evaluation_model,
-                run_data.tenant_id,
-            )
+            with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT_V2}):
+                evaluated = evaluation_instance.evaluate_agent(
+                    [agent_item],
+                    [metric.metric for metric in run_data.default_metrics],
+                    run_data.evaluation_model_provider,
+                    run_data.evaluation_model,
+                    run_data.tenant_id,
+                )
             if not evaluated:
                 raise RuntimeError("Agent evaluator returned no result.")
             result = evaluated[0].model_copy(
@@ -1396,16 +1399,18 @@ def _execute_evaluation_runner(
 
             try:
                 runner = _create_runner(EvaluationService.category_for_node_type(node_info.type), evaluation_instance)
-                evaluated = runner.evaluate_metrics(
-                    node_run_result_list=node_run_results,
-                    default_metric=default_metric,
-                    model_provider=run_data.evaluation_model_provider,
-                    model_name=run_data.evaluation_model,
-                    tenant_id=run_data.tenant_id,
-                    dataset_items=dataset_items,
-                    node_info=node_info,
-                    context_list=context_list,
-                )
+                # App targets currently admit only Workflow mode, and Snippets execute as Workflows.
+                with use_credit_usage_metadata({"app_type": CreditUsageAppType.WORKFLOW}):
+                    evaluated = runner.evaluate_metrics(
+                        node_run_result_list=node_run_results,
+                        default_metric=default_metric,
+                        model_provider=run_data.evaluation_model_provider,
+                        model_name=run_data.evaluation_model,
+                        tenant_id=run_data.tenant_id,
+                        dataset_items=dataset_items,
+                        node_info=node_info,
+                        context_list=context_list,
+                    )
                 _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
             except Exception:
                 failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)
@@ -1566,15 +1571,16 @@ def _evaluate_retrieval_results(
     for metric_position, default_metric in enumerate(run_data.default_metrics, start=1):
         _cooperative_checkpoint(session, lease)
         try:
-            evaluated = runner.evaluate_metrics(
-                node_run_result_list=typed_successful_results,
-                default_metric=default_metric,
-                model_provider=run_data.evaluation_model_provider,
-                model_name=run_data.evaluation_model,
-                tenant_id=run_data.tenant_id,
-                dataset_items=successful_items,
-                node_info=node_info,
-            )
+            with use_credit_usage_metadata({"app_type": CreditUsageAppType.UNKNOWN}):
+                evaluated = runner.evaluate_metrics(
+                    node_run_result_list=typed_successful_results,
+                    default_metric=default_metric,
+                    model_provider=run_data.evaluation_model_provider,
+                    model_name=run_data.evaluation_model,
+                    tenant_id=run_data.tenant_id,
+                    dataset_items=successful_items,
+                    node_info=node_info,
+                )
             _stamp_and_merge(evaluated, dataset_indices, node_info, results_by_index)
         except Exception:
             failure = new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED)

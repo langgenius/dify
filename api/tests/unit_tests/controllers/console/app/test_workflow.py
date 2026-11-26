@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
+from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
@@ -449,6 +449,7 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+        assert sync_draft_workflow.call_args.kwargs["serialize_creation"] is True
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
@@ -656,9 +657,23 @@ class TestWorkflowCases:
             )
 
     @staticmethod
-    def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        def _raise(*_args, **_kwargs):
-            raise workflow_module.WorkflowHashNotEqualError()
+    @pytest.mark.parametrize(
+        ("draft_hash", "service_error", "http_error"),
+        [
+            ("stale", workflow_module.WorkflowHashNotEqualError(), DraftWorkflowNotSync),
+            (None, workflow_module.WorkflowDraftInitializationBusyError(), ServiceUnavailable),
+        ],
+        ids=["stale-hash", "initialization-busy"],
+    )
+    def test_sync_draft_workflow_reports_save_conflicts(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        draft_hash: str | None,
+        service_error: Exception,
+        http_error: type[HTTPException],
+    ) -> None:
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
+            raise service_error
 
         service = SimpleNamespace(sync_draft_workflow=_raise)
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
@@ -669,9 +684,9 @@ class TestWorkflowCases:
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
-            json={"graph": {}, "features": {}, "hash": "h"},
+            json={"graph": {}, "features": {}, "hash": draft_hash},
         ):
-            with pytest.raises(DraftWorkflowNotSync):
+            with pytest.raises(http_error):
                 handler(api, _account(), app_model=_workflow_app())
 
     @staticmethod

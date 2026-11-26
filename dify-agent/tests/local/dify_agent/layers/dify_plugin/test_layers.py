@@ -321,6 +321,60 @@ async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_d
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize("parameter_type", ["select", "dynamic-select"])
+@pytest.mark.parametrize("source", ["llm", "runtime", "default"])
+async def test_native_plugin_tool_preserves_multiple_select_arrays(parameter_type, source):
+    selected = ["apac,east", "emea"]
+    parameter = {
+        "name": "regions",
+        "type": parameter_type,
+        "form": "llm" if source == "llm" else "form",
+        "multiple": True,
+    }
+    if source == "default":
+        parameter["default"] = selected
+    properties = {"primary": {"type": "string"}}
+    if source == "llm":
+        properties["regions"] = {"type": "array", "items": {"type": "string"}}
+    config = tools_layer.Config(
+        tools=[
+            {
+                "plugin_id": "search",
+                "provider": "search",
+                "tool_name": "search",
+                "credential_type": "unauthorized",
+                "parameters": [parameter, {"name": "primary", "type": parameter_type, "form": "llm"}],
+                "parameters_json_schema": {"type": "object", "properties": properties},
+                "runtime_parameters": {"regions": selected} if source == "runtime" else {},
+            }
+        ]
+    )
+    # Prepared declarations cross the API/runtime boundary as JSON.
+    config = tools_layer.Config.model_validate_json(config.model_dump_json())
+    sent = []
+
+    def handler(request):
+        sent.append(json.loads(request.content)["data"]["tool_parameters"])
+        return httpx.Response(
+            200, text='data: {"code":0,"message":"","data":{"type":"text","message":{"text":"ok"}}}\n'
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        deps = Deps(
+            layers={
+                "tools": {"config": config.model_dump(mode="json"), "state": {}},
+                "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
+            },
+            services=Services(client, client, plugin_daemon_api_key="daemon-secret"),
+            run_id="test",
+        )
+        arguments = {"primary": "emea", **({"regions": selected} if source == "llm" else {})}
+        result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "search", arguments)
+        assert result.output == "ok"
+    assert sent == [{"primary": "emea", "regions": selected}]
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "value,download_uri,expected_url",
     [

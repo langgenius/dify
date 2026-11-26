@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 // Records the Request the WebApp client hands to the shared public request layer.
-const sent = vi.hoisted(() => vi.fn<(request: Request) => void>())
+const sent = vi.hoisted(() => vi.fn<(request: Request, timeout?: false) => void>())
 vi.mock('../base', () => ({
-  request: async (_url: string, _init: unknown, options: { request: Request }) => {
-    sent(options.request)
+  request: async (_url: string, _init: unknown, options: { request: Request; timeout?: false }) => {
+    sent(options.request, options.timeout)
     return Response.json({ id: 'file-1', name: 'notes.txt', size: 7 }, { status: 201 })
   },
 }))
@@ -59,5 +59,20 @@ describe('webAppClient environment app rewrite', () => {
     const request = sent.mock.calls[0]![0]
     expect(new URL(request.url).pathname).toMatch(/\/environment\/env-code\/files\/upload$/)
     expect(await request.blob().then((blob) => blob.text())).toContain('filename="notes.txt"')
+  })
+
+  it.each([
+    ['a plain request', {}, undefined],
+    ['an event stream', { stream: true }, false],
+    ['a request without a time limit', { timeout: false }, false],
+  ] as const)('sets the request time limit for %s', async (_name, context, timeout) => {
+    const { webAppClient } = await import('../webapp-client')
+
+    await webAppClient.files.upload.post(
+      { body: { file: new File(['content'], 'notes.txt') } },
+      { context },
+    )
+
+    expect(sent.mock.calls[0]![1]).toBe(timeout)
   })
 })

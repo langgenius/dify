@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import TokenForm from './token-form'
 
 export type SavedTokenFormPayload = {
@@ -20,9 +21,8 @@ export default function SavedTokenForm({
   const [sessionVersion, setSessionVersion] = useState<number | null>(null)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       input: { params: { token_id: tokenId } },
-      staleTime: 0,
     }),
   )
   if (query.data)
@@ -30,7 +30,7 @@ export default function SavedTokenForm({
       <>
         {query.isError && (
           <p role="alert" className="px-6 text-text-warning">
-            {t(($) => $['resourceAccessToken.loadError'])}
+            {getRequestErrorMessage(query.error) ?? t(($) => $['resourceAccessToken.loadError'])}
           </p>
         )}
         <TokenForm
@@ -54,7 +54,7 @@ export default function SavedTokenForm({
       </DialogTitle>
       {query.isError ? (
         <div role="alert">
-          {t(($) => $['resourceAccessToken.loadError'])}
+          {getRequestErrorMessage(query.error) ?? t(($) => $['resourceAccessToken.loadError'])}
           <Button onClick={() => query.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>

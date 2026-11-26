@@ -205,29 +205,28 @@ export function useAgentSkillDetail({
   })
   const workflowSkillInspectQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
-      input: {
-        params: {
-          app_id: apiContext.workflow?.appId ?? '',
-          name: skill.name,
-        },
-        query: {
-          node_id: apiContext.workflow?.nodeId,
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        isOpen && apiContext.workflow
+          ? {
+              params: { app_id: apiContext.workflow.appId, name: skill.name },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    enabled: isOpen && !!apiContext.workflow,
   })
   const trialSkillInspectQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.skills.byName.inspect.get.queryOptions({
-      input: apiContext.trialAppId
-        ? {
-            params: { app_id: apiContext.trialAppId, name: skill.name },
-            query: { version_id: apiContext.versionId },
-          }
-        : skipToken,
-      enabled: !!apiContext.trialAppId && isOpen,
+      input:
+        isOpen && apiContext.trialAppId
+          ? {
+              params: { app_id: apiContext.trialAppId, name: skill.name },
+              query: { version_id: apiContext.versionId },
+            }
+          : skipToken,
     }),
   )
   const inspectQuery = apiContext.trialAppId
@@ -256,46 +255,47 @@ export function useAgentSkillDetail({
   const shouldLoadFileData = isOpen && !!selectedPreviewPath && isFileDataPreview
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.preview.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: skill.name,
-        },
-        query: {
-          path: selectedPreviewPath ?? '',
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadTextPreview &&
+        !apiContext.workflow &&
+        !apiContext.trialAppId &&
+        selectedPreviewPath
+          ? {
+              params: { agent_id: apiContext.agentId, name: skill.name },
+              query: {
+                path: selectedPreviewPath,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    enabled: shouldLoadTextPreview && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
-      input: {
-        params: {
-          app_id: apiContext.workflow?.appId ?? '',
-          name: skill.name,
-        },
-        query: {
-          node_id: apiContext.workflow?.nodeId,
-          path: selectedPreviewPath ?? '',
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadTextPreview && apiContext.workflow && selectedPreviewPath
+          ? {
+              params: { app_id: apiContext.workflow.appId, name: skill.name },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                path: selectedPreviewPath,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    enabled: shouldLoadTextPreview && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.preview.get.queryOptions({
-      input: apiContext.trialAppId
-        ? {
-            params: { app_id: apiContext.trialAppId, name: skill.name },
-            query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
-          }
-        : skipToken,
-      enabled: !!apiContext.trialAppId && shouldLoadTextPreview,
+      input:
+        shouldLoadTextPreview && apiContext.trialAppId && selectedPreviewPath
+          ? {
+              params: { app_id: apiContext.trialAppId, name: skill.name },
+              query: { path: selectedPreviewPath, version_id: apiContext.versionId },
+            }
+          : skipToken,
     }),
   )
   const previewQuery = apiContext.trialAppId
@@ -305,51 +305,46 @@ export function useAgentSkillDetail({
       : agentPreviewQuery
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: skill.name,
-        },
-        query: {
-          path: selectedPreviewPath ?? '',
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadFileData && !apiContext.workflow && !apiContext.trialAppId && selectedPreviewPath
+          ? {
+              params: { agent_id: apiContext.agentId, name: skill.name },
+              query: {
+                path: selectedPreviewPath,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
-    enabled: shouldLoadFileData && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
-      input: {
-        params: {
-          app_id: apiContext.workflow?.appId ?? '',
-          name: skill.name,
-        },
-        query: {
-          node_id: apiContext.workflow?.nodeId,
-          path: selectedPreviewPath ?? '',
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadFileData && apiContext.workflow && selectedPreviewPath
+          ? {
+              params: { app_id: apiContext.workflow.appId, name: skill.name },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                path: selectedPreviewPath,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
-    enabled: shouldLoadFileData && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
-      input: apiContext.trialAppId
-        ? {
-            params: { app_id: apiContext.trialAppId, name: skill.name },
-            query: { path: selectedPreviewPath ?? '', version_id: apiContext.versionId },
-          }
-        : skipToken,
-      enabled: !!apiContext.trialAppId && shouldLoadFileData,
-      staleTime: 0,
+      input:
+        shouldLoadFileData && apiContext.trialAppId && selectedPreviewPath
+          ? {
+              params: { app_id: apiContext.trialAppId, name: skill.name },
+              query: { path: selectedPreviewPath, version_id: apiContext.versionId },
+            }
+          : skipToken,
       refetchOnWindowFocus: false,
     }),
   )
@@ -403,14 +398,13 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
-                context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: { app_id: apiContext.trialAppId, name: skill.name },
                   query: { path, version_id: apiContext.versionId },
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -420,7 +414,7 @@ export function useAgentSkillDetail({
           const result = await queryClient.query({
             ...consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions(
               {
-                context: { silent: true },
+                meta: { errorToast: false },
                 input: {
                   params: {
                     app_id: apiContext.workflow.appId,
@@ -435,7 +429,6 @@ export function useAgentSkillDetail({
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -444,7 +437,7 @@ export function useAgentSkillDetail({
 
         const result = await queryClient.query({
           ...consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
-            context: { silent: true },
+            meta: { errorToast: false },
             input: {
               params: {
                 agent_id: apiContext.agentId,
@@ -457,7 +450,6 @@ export function useAgentSkillDetail({
               },
             },
           }),
-          staleTime: 0,
         })
         const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
         downloadBlob({ data, fileName: file.name })

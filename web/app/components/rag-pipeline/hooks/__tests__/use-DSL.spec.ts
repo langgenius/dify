@@ -3,6 +3,7 @@ import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { createHttpError } from '@/service/http-error'
 import { createRagPipelineSliceSlice } from '../../store'
 import { useDSLByCanEdit } from '../use-DSL'
 
@@ -95,6 +96,26 @@ describe('useDSLByCanEdit', () => {
     expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
+  it('shows the server message when the draft sync before export fails', async () => {
+    mockDoSyncWorkflowDraft.mockImplementation(async (_options, callback) => {
+      callback.onError(
+        createHttpError(
+          { status: 400, statusText: '', headers: new Headers() },
+          { message: 'Draft is invalid' },
+        ),
+      )
+      return null
+    })
+    const { result } = renderDSL(true)
+    await act(async () => {
+      expect(await result.current.handleExportDSL()).toBe(false)
+    })
+    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
+      type: 'error',
+      message: 'Draft is invalid',
+    })
+  })
+
   it('allows export when draft synchronization is skipped for read-only access', async () => {
     mockDoSyncWorkflowDraft.mockResolvedValue(null)
     const { result } = renderDSL(false)
@@ -114,13 +135,10 @@ describe('useDSLByCanEdit', () => {
           expect(await result.current.handleExportDSL(include)).toBe(true)
         })
 
-        expect(mockExportPipelineConfig).toHaveBeenCalledExactlyOnceWith(
-          {
-            params: { pipeline_id: 'test-pipeline-id' },
-            query: { include_secret: String(include) },
-          },
-          { context: { silent: true } },
-        )
+        expect(mockExportPipelineConfig).toHaveBeenCalledExactlyOnceWith({
+          params: { pipeline_id: 'test-pipeline-id' },
+          query: { include_secret: String(include) },
+        })
         expect(mockDownloadBlob).toHaveBeenCalledExactlyOnceWith({
           fileName: 'Test Knowledge Base.pipeline',
           data: expect.any(Blob),
@@ -147,6 +165,19 @@ describe('useDSLByCanEdit', () => {
         })
       })
     })
+
+    it('shows the server message when the export request fails', async () => {
+      mockExportPipelineConfig.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+      )
+      const { result } = renderDSL(true)
+
+      await act(async () => {
+        expect(await result.current.handleExportDSL()).toBe(false)
+      })
+
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'Server says why' })
+    })
   })
 
   describe('exportCheck', () => {
@@ -160,10 +191,9 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          { params: { pipeline_id: 'test-pipeline-id' } },
-          { context: { silent: true } },
-        )
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith({
+          params: { pipeline_id: 'test-pipeline-id' },
+        })
         expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       })
       expect(mockDownloadBlob).toHaveBeenCalledOnce()
@@ -212,6 +242,19 @@ describe('useDSLByCanEdit', () => {
           message: 'app.exportFailed',
         })
       })
+    })
+
+    it('shows the server message when the draft check fails', async () => {
+      mockFetchWorkflowDraft.mockRejectedValue(
+        createHttpError(new Response(null, { status: 403 }), { message: 'Server says why' }),
+      )
+      const { result } = renderDSL(true)
+
+      await act(async () => {
+        await result.current.exportCheck()
+      })
+
+      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'Server says why' })
     })
   })
 })

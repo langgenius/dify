@@ -43,7 +43,6 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
           { body: { file: fileItem.file, source: 'datasets' } },
           {
             context: {
-              silent: true,
               onUploadProgress: ({ loaded, total }) => {
                 const progress = Math.floor((loaded / total) * 100)
                 updateFile({

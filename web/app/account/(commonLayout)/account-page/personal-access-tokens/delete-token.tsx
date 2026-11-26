@@ -14,6 +14,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 export default function DeleteToken({
   handle,
@@ -26,7 +27,7 @@ export default function DeleteToken({
   const finalFocusRef = useRef<HTMLButtonElement>(null)
   const mutation = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   return (
@@ -68,7 +69,8 @@ export default function DeleteToken({
               </AlertDialogDescription>
               {mutation.isError && (
                 <p role="alert" className="system-xs-regular text-text-warning">
-                  {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                  {getRequestErrorMessage(mutation.error) ??
+                    t(($) => $['api.actionFailed'], { ns: 'common' })}
                 </p>
               )}
               <div className="flex justify-end gap-2">

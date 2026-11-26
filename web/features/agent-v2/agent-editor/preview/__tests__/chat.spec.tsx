@@ -21,8 +21,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { AgentBuildChat } from '../build-chat'
 import { AgentPreviewChat } from '../preview-chat'
 
-// oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing SSE transport used by Agent preview.
-const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+const ssePost = vi.hoisted(() => vi.fn<import('@/test/stream-recorder').RecordedStreamCall>())
 const api = vi.hoisted(() => ({
   history: vi.fn(),
   suggestions: vi.fn(),
@@ -472,12 +471,9 @@ describe('Agent sends and interruptions', () => {
           await screen.findByRole('button', { name: 'appDebug.operation.stopResponding' }),
         )
       else await act(async () => controllerRef.current?.stop())
-      expect(api.stop).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: { agent_id: 'agent-1', task_id: 'task-0' },
-        },
-        { context: { silent: true } },
-      )
+      expect(api.stop).toHaveBeenCalledExactlyOnceWith({
+        params: { agent_id: 'agent-1', task_id: 'task-0' },
+      })
       await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
       await act(async () => {
         stream().onError?.('Connection closed')
@@ -670,12 +666,9 @@ describe('Agent stop and failure ownership', () => {
     })
     await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
     await waitFor(() => expect(abortControllers[0]?.signal.aborted).toBe(true))
-    expect(api.stop).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { agent_id: 'agent-1', task_id: 'task-thought' },
-      },
-      { context: { silent: true } },
-    )
+    expect(api.stop).toHaveBeenCalledExactlyOnceWith({
+      params: { agent_id: 'agent-1', task_id: 'task-thought' },
+    })
     await send(user, 'Next turn')
     await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'appDebug.operation.stopResponding' }))
@@ -703,10 +696,9 @@ describe('Agent stop and failure ownership', () => {
     await receive(1)
     await stop()
     expect(api.stop).toHaveBeenCalledTimes(2)
-    expect(api.stop).toHaveBeenLastCalledWith(
-      { params: { agent_id: 'agent-1', task_id: 'task-1' } },
-      { context: { silent: true } },
-    )
+    expect(api.stop).toHaveBeenLastCalledWith({
+      params: { agent_id: 'agent-1', task_id: 'task-1' },
+    })
     await act(async () => firstStop.resolve({ result: 'success' }))
     expect(abortControllers[1]?.signal.aborted).toBe(false)
     await stop()
@@ -758,9 +750,16 @@ describe('Agent stop and failure ownership', () => {
 it.each(['sse', 'http'])(
   'renders a persistent safe error from the real %s transport',
   async (transport) => {
-    const actual = await vi.importActual<typeof import('@/service/base')>('@/service/base')
-    // oxlint-disable-next-line typescript/no-deprecated -- Restore the real SSE parser for the transport regression test.
-    ssePost.mockImplementation(actual.ssePost)
+    // Send the recorded agent chat through the real stream adapter and generated client.
+    const { streamEvents } =
+      await vi.importActual<typeof import('@/service/event-stream')>('@/service/event-stream')
+    const { agentChatMessagesSender } = await vi.importActual<
+      typeof import('@/service/console-chat-messages')
+    >('@/service/console-chat-messages')
+    ssePost.mockImplementation((url, { body = {} }, callbacks) => {
+      const agentId = /^agent\/([^/]+)\/chat-messages$/.exec(url)![1]!
+      streamEvents((options) => agentChatMessagesSender(agentId)(body, options), callbacks)
+    })
     const payload = {
       event: 'error',
       message: 'SECRET provider details',
@@ -774,7 +773,7 @@ it.each(['sse', 'http'])(
         : new Response(
             new ReadableStream({
               start(controller) {
-                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`))
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`))
                 controller.close()
               },
             }),

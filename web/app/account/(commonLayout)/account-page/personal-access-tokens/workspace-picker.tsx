@@ -21,7 +21,7 @@ export default function WorkspacePicker({
   const keyword = useDebounce(search.trim(), { wait: 200 })
   const query = useInfiniteQuery(
     consoleQuery.account.personalAccessTokenWorkspaces.get.infiniteOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       initialPageParam: 0,
       input: (cursor) => ({ query: { cursor, limit: 20, keyword } }),
       getNextPageParam: (page) => page.next_cursor ?? undefined,
