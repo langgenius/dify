@@ -59,6 +59,31 @@ function createToolCollection(overrides: Partial<ToolWithProvider> = {}): ToolWi
 }
 
 describe('getToolCheckParams', () => {
+  it.each(['mcp-record-id', 'mcp-server-id'])(
+    'uses MCP parameter schemas for provider reference %s',
+    (providerId) => {
+      const provider = createToolCollection({
+        id: 'mcp-record-id',
+        server_identifier: 'mcp-server-id',
+        type: CollectionType.mcp,
+      })
+      const result = getToolCheckParams(
+        createToolData({ provider_id: providerId, provider_type: CollectionType.mcp }),
+        [],
+        [],
+        [],
+        'en_US',
+        [provider],
+      )
+
+      expect(result.toolInputsSchema).toEqual([
+        { label: 'Query', variable: 'query', type: 'text-input', required: true },
+      ])
+      expect(result.toolSettingSchema.map((field) => field.variable)).toEqual(['api_key'])
+      expect(result.notAuthed).toBe(false)
+    },
+  )
+
   it('should separate llm inputs from settings', () => {
     const result = getToolCheckParams(createToolData(), [createToolCollection()], [], [], 'en_US')
 

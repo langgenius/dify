@@ -421,6 +421,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
           customTools || [],
           workflowTools || [],
           language,
+          mcpTools || [],
         )
 
       if (node!.data.type === BlockEnum.DataSource)
@@ -706,6 +707,9 @@ export const useChecklistBeforePublish = () => {
       select: selectToolsWithProvider,
     }),
   )
+  const { data: mcpTools } = useQuery(
+    consoleQuery.workspaces.current.tools.mcp.get.queryOptions({ select: selectToolsWithProvider }),
+  )
   const resourceKind = useAtomValue(editorResourceKindAtom)
   const shouldCheckStartNode = resourceKind === 'app'
 
@@ -860,6 +864,7 @@ export const useChecklistBeforePublish = () => {
           customTools || [],
           workflowTools || [],
           language,
+          mcpTools || [],
         )
 
       if (node!.data.type === BlockEnum.DataSource)
@@ -1013,6 +1018,7 @@ export const useChecklistBeforePublish = () => {
     buildInTools,
     customTools,
     workflowTools,
+    mcpTools,
     language,
     getCheckData,
     queryClient,

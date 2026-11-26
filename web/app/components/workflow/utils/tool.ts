@@ -13,6 +13,7 @@ export const getToolCheckParams = (
   customTools: ToolWithProvider[],
   workflowTools: ToolWithProvider[],
   language: string,
+  mcpTools: ToolWithProvider[] = [],
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
   const currentTools =
@@ -20,7 +21,9 @@ export const getToolCheckParams = (
       ? buildInTools
       : provider_type === CollectionType.custom
         ? customTools
-        : workflowTools
+        : provider_type === CollectionType.mcp
+          ? mcpTools
+          : workflowTools
   const currCollection = currentTools.find((item) => matchesProviderReference(item, provider_id))
   const currTool = currCollection?.tools.find((tool) => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
