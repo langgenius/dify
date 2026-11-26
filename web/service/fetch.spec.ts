@@ -10,6 +10,7 @@ import {
 import { request } from './base'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
+import { isErrorHandled, isSilentRequestError } from './handled-error'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -217,7 +218,7 @@ describe('base', () => {
       })
     })
 
-    it('should display the response error field when message is absent', async () => {
+    it('should leave error toasts to the query cache', async () => {
       const errorResponse = new Response(
         JSON.stringify({
           code: 'invalid_param',
@@ -234,9 +235,28 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
+      const error = await base('/imports').catch((reason: unknown) => reason)
 
-      expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
+      expect(error).toBeInstanceOf(ORPCError)
+      expect(isErrorHandled(error)).toBe(false)
+      expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('should mark errors from silent requests for the caches to skip', async () => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+        Response.json({ message: 'Invalid DSL kind' }, { status: 400 }),
+      )
+
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the transport's silent marking directly.
+      const silentError = await base('/imports', {}, { silent: true }).catch(
+        (reason: unknown) => reason,
+      )
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the transport's silent marking directly.
+      const reportedError = await base('/imports').catch((reason: unknown) => reason)
+
+      expect(isSilentRequestError(silentError)).toBe(true)
+      expect(isErrorHandled(silentError)).toBe(false)
+      expect(isSilentRequestError(reportedError)).toBe(false)
     })
 
     it('should not display an empty error toast when message and error are absent', async () => {
@@ -260,7 +280,7 @@ describe('base', () => {
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should suppress a late workflow 404 for the app being deleted', async () => {
+    it('should mark a late workflow 404 for the app being deleted', async () => {
       const appId = 'deleting-app'
       markAppDeletionStarted(appId)
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -278,16 +298,17 @@ describe('base', () => {
       )
 
       try {
-        await expect(
-          base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(ORPCError)
-        expect(toast.error).not.toHaveBeenCalled()
+        const error = await base(`/apps/${appId}/workflows/draft/system-variables`).catch(
+          (reason: unknown) => reason,
+        )
+        expect(error).toBeInstanceOf(ORPCError)
+        expect(isErrorHandled(error)).toBe(true)
       } finally {
         markAppDeletionFailed(appId)
       }
     })
 
-    it('should suppress a workflow 404 that settles after app deletion succeeds', async () => {
+    it('should mark a workflow 404 that settles after app deletion succeeds', async () => {
       const appId = 'deleted-app'
       markAppDeletionStarted(appId)
       markAppDeletionSucceeded(appId)
@@ -305,13 +326,14 @@ describe('base', () => {
         ),
       )
 
-      await expect(
-        base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(ORPCError)
-      expect(toast.error).not.toHaveBeenCalled()
+      const error = await base(`/apps/${appId}/workflows/draft/conversation-variables`).catch(
+        (reason: unknown) => reason,
+      )
+      expect(error).toBeInstanceOf(ORPCError)
+      expect(isErrorHandled(error)).toBe(true)
     })
 
-    it('should restore workflow 404 notifications when app deletion fails', async () => {
+    it('should report workflow 404s again when app deletion fails', async () => {
       const appId = 'failed-deletion-app'
       markAppDeletionStarted(appId)
       markAppDeletionFailed(appId)
@@ -329,10 +351,11 @@ describe('base', () => {
         ),
       )
 
-      await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        ORPCError,
+      const error = await base(`/apps/${appId}/workflows/draft/variables`).catch(
+        (reason: unknown) => reason,
       )
-      expect(toast.error).toHaveBeenCalledWith('Visible error')
+      expect(error).toBeInstanceOf(ORPCError)
+      expect(isErrorHandled(error)).toBe(false)
     })
 
     it.each([
@@ -351,7 +374,7 @@ describe('base', () => {
         path: '/apps/deleting-app/workflows/draft/system-variables',
         status: 500,
       },
-    ])('should still display $title while an app is being deleted', async ({ path, status }) => {
+    ])('should still report $title while an app is being deleted', async ({ path, status }) => {
       const appId = 'deleting-app'
       markAppDeletionStarted(appId)
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -369,8 +392,9 @@ describe('base', () => {
       )
 
       try {
-        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
-        expect(toast.error).toHaveBeenCalledWith('Visible error')
+        const error = await base(path).catch((reason: unknown) => reason)
+        expect(error).toBeInstanceOf(ORPCError)
+        expect(isErrorHandled(error)).toBe(false)
       } finally {
         markAppDeletionFailed(appId)
       }

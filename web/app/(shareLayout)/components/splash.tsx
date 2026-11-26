@@ -20,7 +20,7 @@ import {
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLoginStatus, webAppLogout } from '@/service/common'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
@@ -72,6 +72,7 @@ function Splash({ children }: PropsWithChildren) {
   const [initializationError, setInitializationError] = useState<{
     shareCode: string
     status?: number
+    message?: string
   }>()
   useEffect(() => {
     const scope = captureAppAccessScope()
@@ -150,11 +151,16 @@ function Splash({ children }: PropsWithChildren) {
               setInitializationError({
                 shareCode: effectiveShareCode,
                 status: getHttpErrorStatus(error),
+                message: getRequestErrorMessage(error),
               })
               return
             }
             if (getHttpErrorStatus(error) === 404) {
-              setInitializationError({ shareCode: effectiveShareCode, status: 404 })
+              setInitializationError({
+                shareCode: effectiveShareCode,
+                status: 404,
+                message: getRequestErrorMessage(error),
+              })
               return
             }
             await webAppLogout(address)
@@ -167,6 +173,7 @@ function Splash({ children }: PropsWithChildren) {
         setInitializationError({
           shareCode: effectiveShareCode,
           status: getHttpErrorStatus(error),
+          message: getRequestErrorMessage(error),
         })
       }
     }
@@ -214,6 +221,7 @@ function Splash({ children }: PropsWithChildren) {
         <AppUnavailable
           code={initializationError.status ?? t(($) => $['common.appUnavailable'], { ns: 'share' })}
           isUnknownReason={initializationError.status !== 404}
+          unknownReason={initializationError.message}
         />
       </div>
     )
