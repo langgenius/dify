@@ -13,6 +13,7 @@ import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
@@ -70,15 +71,18 @@ const ChangePasswordForm = () => {
   const handleChangePassword = useCallback(async () => {
     if (!valid()) return
     try {
-      await changeWebAppPasswordWithToken({
-        token,
-        new_password: password,
-        password_confirm: confirmPassword,
-      })
+      await changeWebAppPasswordWithToken(
+        {
+          token,
+          new_password: password,
+          password_confirm: confirmPassword,
+        },
+        { silent: true },
+      )
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }, [password, token, valid, confirmPassword])
 

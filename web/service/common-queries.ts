@@ -1,11 +1,16 @@
+import type { ConsoleClientContext } from './console'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import { clearPageLeaveGuards, confirmPageLeave } from '@/utils/page-leave-guard'
 import { basePath } from '@/utils/var'
 import { consoleQuery } from './console'
 
-export function logoutMutationOptions({ redirectTo = '/signin' }: { redirectTo?: string } = {}) {
+export function logoutMutationOptions({
+  redirectTo = '/signin',
+  context,
+}: { redirectTo?: string; context?: ConsoleClientContext } = {}) {
   return consoleQuery.logout.post.mutationOptions({
+    context,
     onMutate: () => {
       // A cancelled native beforeunload prompt would otherwise leave this document
       // alive after the server has logged out. Obtain consent before ending the session.

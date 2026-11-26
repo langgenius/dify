@@ -68,6 +68,7 @@ export default function SystemModelSession() {
   const saveMutation = useMutation(
     consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (res) => {
         if (res.result !== 'success') return
 

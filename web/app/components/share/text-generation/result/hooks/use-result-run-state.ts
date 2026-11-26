@@ -3,6 +3,7 @@ import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { toastRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -159,17 +160,23 @@ export const useResultRunState = ({
   const handleFeedback = useCallback(
     async (nextFeedback: FeedbackType) => {
       if (!messageId) return
-      await updateFeedback(
-        {
-          messageId,
-          body: {
-            rating: nextFeedback.rating,
-            content: nextFeedback.content,
+      try {
+        await updateFeedback(
+          {
+            messageId,
+            body: {
+              rating: nextFeedback.rating,
+              content: nextFeedback.content,
+            },
           },
-        },
-        appSourceType,
-        appId,
-      )
+          appSourceType,
+          appId,
+          { silent: true },
+        )
+      } catch (error) {
+        toastRequestError(error)
+        throw error
+      }
       setFeedback(nextFeedback)
     },
     [appId, appSourceType, messageId],

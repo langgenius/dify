@@ -274,13 +274,20 @@ export const pinConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch({
-      params: { installed_app_id: installedAppId, c_id: id },
-    })
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch(
+      {
+        params: { installed_app_id: installedAppId, c_id: id },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.pin.patch({ params: { c_id: id } })
+    return webAppClient.conversations.byCId.pin.patch(
+      { params: { c_id: id } },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -288,13 +295,20 @@ export const unpinConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch({
-      params: { installed_app_id: installedAppId, c_id: id },
-    })
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch(
+      {
+        params: { installed_app_id: installedAppId, c_id: id },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.unpin.patch({ params: { c_id: id } })
+    return webAppClient.conversations.byCId.unpin.patch(
+      { params: { c_id: id } },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -302,13 +316,17 @@ export const delConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete({
-      params: { installed_app_id: installedAppId, c_id: id },
-    })
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete(
+      {
+        params: { installed_app_id: installedAppId, c_id: id },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.delete({ params: { c_id: id } })
+    return webAppClient.conversations.byCId.delete({ params: { c_id: id } }, { context: options })
   return unsupportedTrialAppRequest()
 }
 
@@ -317,14 +335,21 @@ export const renameConversation = async (
   installedAppId = '',
   id: string,
   name: string,
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post({
-      params: { installed_app_id: installedAppId, c_id: id },
-      body: { name },
-    })
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post(
+      {
+        params: { installed_app_id: installedAppId, c_id: id },
+        body: { name },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.name.post({ params: { c_id: id }, body: { name } })
+    return webAppClient.conversations.byCId.name.post(
+      { params: { c_id: id }, body: { name } },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -383,40 +408,82 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
   return webAppClient.parameters.get() as Promise<ChatConfig>
 }
 
-export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.samlLogin({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchWebSAMLSSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.samlLogin(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
-export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.oidcLogin({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchWebOIDCSSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.oidcLogin(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
-export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.oAuth2Login({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchWebOAuth2SSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.oAuth2Login(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
-export const fetchMembersSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.members.samlLogin({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchMembersSAMLSSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.members.samlLogin(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
-export const fetchMembersOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.members.oidcLogin({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchMembersOIDCSSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.members.oidcLogin(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
-export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
-  return webAppClient.enterprise.sso.members.oAuth2Login({
-    query: { app_code: appCode, redirect_url: redirectUrl },
-  })
+export const fetchMembersOAuth2SSOUrl = async (
+  appCode: string,
+  redirectUrl: string,
+  options?: { silent?: boolean },
+) => {
+  return webAppClient.enterprise.sso.members.oAuth2Login(
+    {
+      query: { app_code: appCode, redirect_url: redirectUrl },
+    },
+    { context: options },
+  )
 }
 
 export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId = '') => {
@@ -434,17 +501,24 @@ export const updateFeedback = async (
   { messageId, body }: { messageId: string; body: MessageFeedbackPayload },
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.feedbacks.post({
-      params: { installed_app_id: installedAppId, message_id: messageId },
-      body,
-    })
+    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.feedbacks.post(
+      {
+        params: { installed_app_id: installedAppId, message_id: messageId },
+        body,
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.messages.byMessageId.feedbacks.post({
-      params: { message_id: messageId },
-      body,
-    })
+    return webAppClient.messages.byMessageId.feedbacks.post(
+      {
+        params: { message_id: messageId },
+        body,
+      },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -470,14 +544,21 @@ export const saveMessage = (
   messageId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.post({
-      params: { installed_app_id: installedAppId },
-      body: { message_id: messageId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.post(
+      {
+        params: { installed_app_id: installedAppId },
+        body: { message_id: messageId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.post({ body: { message_id: messageId } })
+    return webAppClient.savedMessages.post(
+      { body: { message_id: messageId } },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -498,13 +579,20 @@ export const removeMessage = (
   messageId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
+  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete({
-      params: { installed_app_id: installedAppId, message_id: messageId },
-    })
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete(
+      {
+        params: { installed_app_id: installedAppId, message_id: messageId },
+      },
+      { context: options },
+    )
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.byMessageId.delete({ params: { message_id: messageId } })
+    return webAppClient.savedMessages.byMessageId.delete(
+      { params: { message_id: messageId } },
+      { context: options },
+    )
   return unsupportedTrialAppRequest()
 }
 
@@ -587,20 +675,26 @@ const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>
 const requestAccessToken = ({
   userId,
   appCode,
+  silent,
 }: {
   userId?: string
   appCode: string
+  silent?: boolean
 }): Promise<AccessTokenResponse> => {
   const headers: Record<string, string> = { [WEB_APP_SHARE_CODE_HEADER_NAME]: appCode }
   const accessToken = getWebAppAccessToken()
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
   return webAppClient.passport.get(
     { query: userId ? { user_id: userId } : {} },
-    { context: { headers } },
+    { context: { headers, silent } },
   )
 }
 
-export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
+export const fetchAccessToken = (params: {
+  userId?: string
+  appCode: string
+  silent?: boolean
+}) => {
   const address = resolveWebAppAddress()
   if (address?.kind !== 'environment') return requestAccessToken(params)
 

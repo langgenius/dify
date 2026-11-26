@@ -145,20 +145,27 @@ export const useAvailableEvaluationWorkflows = (
 export const getEvaluationFile = (
   { resourceType, resourceId }: EvaluationResourceProps,
   fileId: string,
+  options?: { silent?: boolean },
 ) => {
   if (resourceType === 'datasets') {
-    return consoleClient.datasets.byDatasetId.evaluation.files.byFileId.get({
-      params: { dataset_id: resourceId, file_id: fileId },
-    })
+    return consoleClient.datasets.byDatasetId.evaluation.files.byFileId.get(
+      {
+        params: { dataset_id: resourceId, file_id: fileId },
+      },
+      { context: options },
+    )
   }
 
-  return consoleClient.byEvaluateTargetType.byEvaluateTargetId.evaluation.files.byFileId.get({
-    params: {
-      evaluate_target_id: resourceId,
-      evaluate_target_type: resourceType,
-      file_id: fileId,
+  return consoleClient.byEvaluateTargetType.byEvaluateTargetId.evaluation.files.byFileId.get(
+    {
+      params: {
+        evaluate_target_id: resourceId,
+        evaluate_target_type: resourceType,
+        file_id: fileId,
+      },
     },
-  })
+    { context: options },
+  )
 }
 
 export const useEvaluationConfigQuery = ({ resourceType, resourceId }: EvaluationResourceProps) => {
@@ -276,34 +283,61 @@ export const useEvaluationRunDetailQuery = (
 
 export const useEvaluationActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const datasetConfigMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.put.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.put.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const targetConfigMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.put.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.put.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const datasetRunMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.run.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.run.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const targetRunMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.run.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.run.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const datasetCancelMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.cancel.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.cancel.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const targetCancelMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.cancel.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.cancel.post.mutationOptions(
+      { context: { silent: true }, meta: { errorToast: false } },
+    ),
   )
   const datasetRetryMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.retry.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.retry.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const targetRetryMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.retry.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.retry.post.mutationOptions(
+      { context: { silent: true }, meta: { errorToast: false } },
+    ),
   )
   const datasetTemplateMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.template.download.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.template.download.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
   const targetTemplateMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.datasetTemplate.download.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.datasetTemplate.download.post.mutationOptions(
+      { context: { silent: true }, meta: { errorToast: false } },
+    ),
   )
 
   const saveConfig = (body: EvaluationConfigPayload) => {

@@ -38,23 +38,29 @@ describe('uninstallPlugin', () => {
   it('should delete credentials for an ordinary uninstall by default', async () => {
     await uninstallPlugin('installation-id')
 
-    expect(mockUninstallPost).toHaveBeenCalledWith({
-      body: {
-        plugin_installation_id: 'installation-id',
-        preserve_credentials: false,
+    expect(mockUninstallPost).toHaveBeenCalledWith(
+      {
+        body: {
+          plugin_installation_id: 'installation-id',
+          preserve_credentials: false,
+        },
       },
-    })
+      { context: { silent: undefined } },
+    )
   })
 
   it('should preserve credentials when requested for a replacement', async () => {
     await uninstallPlugin('installation-id', { preserveCredentials: true })
 
-    expect(mockUninstallPost).toHaveBeenCalledWith({
-      body: {
-        plugin_installation_id: 'installation-id',
-        preserve_credentials: true,
+    expect(mockUninstallPost).toHaveBeenCalledWith(
+      {
+        body: {
+          plugin_installation_id: 'installation-id',
+          preserve_credentials: true,
+        },
       },
-    })
+      { context: { silent: undefined } },
+    )
   })
 })
 

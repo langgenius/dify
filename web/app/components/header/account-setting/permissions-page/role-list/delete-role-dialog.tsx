@@ -35,6 +35,7 @@ export default function DeleteRoleDialog({
   const { mutate, isPending, reset } = useMutation(
     deleteRole.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => {
         finalFocusRef.current = fallbackFocus.current
         handle.close()

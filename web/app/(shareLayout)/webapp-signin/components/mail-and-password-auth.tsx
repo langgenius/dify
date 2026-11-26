@@ -15,6 +15,7 @@ import {
   resolveWebAppLoginRedirect,
 } from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { emailRegex } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import Link from '@/next/link'
@@ -60,13 +61,14 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         remember_me: true,
       }
 
-      // Failed logins reject: `authentication_failed` is toasted below, other errors by the request layer.
-      const res = await webAppLogin(loginData)
+      // Failed logins reject: `authentication_failed` gets its own message, other request errors the server's.
+      const res = await webAppLogin(loginData, { silent: true })
       setWebAppAccessToken(res.data.access_token)
 
       const { access_token } = await fetchAccessToken({
         appCode: loginRedirect.appCode,
         userId: embeddedUserId || undefined,
+        silent: true,
       })
       setWebAppPassport(loginRedirect.address, access_token)
       navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
@@ -77,6 +79,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         typeof authenticationError.message === 'string'
       )
         toast.error(authenticationError.message)
+      else toastRequestError(error)
     } finally {
       setIsLoading(false)
     }

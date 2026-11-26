@@ -248,6 +248,7 @@ describe('useResultRunState', () => {
       },
       AppSourceType.installedApp,
       'app-2',
+      { silent: true },
     )
     expect(result.current.feedback).toEqual({
       rating: 'like',

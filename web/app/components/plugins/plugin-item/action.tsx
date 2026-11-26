@@ -21,6 +21,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
+import { toastRequestError } from '@/app/query-error-toast'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import PluginInfoContent from '../plugin-page/plugin-info'
@@ -82,14 +83,14 @@ const Action: FC<Props> = ({
   const handleDelete = useCallback(async () => {
     showDeleting()
     try {
-      const res = await uninstallPlugin(installationId)
+      const res = await uninstallPlugin(installationId, { silent: true })
       if (res.success) {
         hideDeleteConfirm()
         invalidateInstalledPluginList(category)
         onDelete()
       }
     } catch (error) {
-      console.error('uninstallPlugin error', error)
+      toastRequestError(error)
     } finally {
       hideDeleting()
     }

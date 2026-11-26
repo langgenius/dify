@@ -158,6 +158,7 @@ it.each([false, true])(
       AppSourceType.webApp,
       'app-1',
       'conversation-1',
+      { silent: true },
     )
   },
 )
@@ -180,6 +181,7 @@ it('renames the conversation after saving, with pending state blocking duplicate
     'app-1',
     'conversation-1',
     'New Name',
+    { silent: true },
   )
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   await act(async () => request.resolve(undefined))
@@ -219,6 +221,7 @@ it('deletes the selected conversation and returns to the application title after
     AppSourceType.webApp,
     'app-1',
     'conversation-1',
+    { silent: true },
   )
   expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)).toEqual({
     'app-1': { 'user-1': '' },

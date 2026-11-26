@@ -8,6 +8,7 @@ import { useLocale } from '#i18n'
 import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
@@ -35,14 +36,14 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await verifyWebAppResetPasswordCode({ email, code, token })
+      const ret = await verifyWebAppResetPasswordCode({ email, code, token }, { silent: true })
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
         router.push(`/webapp-reset-password/set-password?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     } finally {
       setIsLoading(false)
     }
@@ -50,14 +51,14 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await sendWebAppResetPasswordCode(email, locale)
+      const res = await sendWebAppResetPasswordCode(email, locale, { silent: true })
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
-      console.error(error)
+      toastRequestError(error)
     }
   }
 
