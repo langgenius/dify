@@ -9,7 +9,7 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, overload
 from uuid import uuid4
 
 from sqlalchemy import select
@@ -192,6 +192,18 @@ class CreditPoolService:
             .with_for_update()
         )
 
+    @overload
+    @classmethod
+    def get_pool(
+        cls, tenant_id: str, pool_type: str | ProviderQuotaType = "trial", *, session: None = None
+    ) -> CreditPoolBalance: ...
+
+    @overload
+    @classmethod
+    def get_pool(
+        cls, tenant_id: str, pool_type: str | ProviderQuotaType = "trial", *, session: Session
+    ) -> TenantCreditPool | CreditPoolBalance | None: ...
+
     @classmethod
     def get_pool(
         cls,
@@ -200,7 +212,7 @@ class CreditPoolService:
         *,
         session: Session | None = None,
     ) -> TenantCreditPool | CreditPoolBalance | None:
-        """get tenant credit pool"""
+        """Read the Cloud balance without a session. Local pool reads require a session and may find no row."""
         normalized_pool_type = cls._normalize_pool_type(pool_type)
         if cls._use_billing_quota():
             from services.billing_service import BillingService

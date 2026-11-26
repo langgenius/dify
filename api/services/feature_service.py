@@ -1,4 +1,5 @@
 from configs import dify_config
+from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
@@ -38,6 +39,21 @@ class FeatureService:
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         return CloudPlan(billing_info.subscription.plan)
+
+    @classmethod
+    def get_credit_pool_type(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> ProviderQuotaType | None:
+        """Return the hosted credit pool a workspace spends from, or ``None`` outside Cloud.
+
+        Only Cloud bills hosted model calls against a credit pool, and the plan selects the
+        bucket: Sandbox spends trial credits while every paid plan spends paid credits. A
+        caller that already loaded the subscription passes ``plan`` to skip a second lookup;
+        billing failures propagate so the caller decides whether to fail closed.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+
+        workspace_plan = plan if plan is not None else cls.get_workspace_plan(tenant_id)
+        return ProviderQuotaType.TRIAL if workspace_plan == CloudPlan.SANDBOX else ProviderQuotaType.PAID
 
     @classmethod
     def can_use_workflow_collaboration(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
@@ -170,13 +186,14 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return cls._fulfill_trial_models_from_env()
+        """List providers offering this workspace's credit pool; propagate subscription lookup failures.
 
-        subscription_plan = cls.get_workspace_plan(tenant_id)
-        quota_types = ("PAID", "TRIAL") if subscription_plan.is_paid else ("TRIAL",)
-        return cls._fulfill_trial_models_from_env(quota_types)
+        Outside Cloud this remains the deployment's provider list, not an entitlement to hosted credits.
+        """
+        credit_pool_type = cls.get_credit_pool_type(tenant_id)
+        if credit_pool_type is None:
+            return cls._fulfill_trial_models_from_env()
+        return cls._fulfill_trial_models_from_env((credit_pool_type.name,))
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
