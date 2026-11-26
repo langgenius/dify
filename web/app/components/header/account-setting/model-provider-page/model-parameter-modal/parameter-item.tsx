@@ -323,6 +323,7 @@ function ParameterItem({
         return (
           <div className="ms-4 w-50 rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
+              aria-labelledby={labelId}
               compact
               className="min-h-5.5 text-[13px]"
               placeholderClassName="truncate"
@@ -359,8 +360,11 @@ function ParameterItem({
         return (
           <div className="ms-4 w-full rounded-lg bg-components-input-bg-normal px-2 py-1">
             <PromptEditor
+              aria-labelledby={labelId}
+              aria-multiline
               compact
               className="min-h-14 text-[13px]"
+              placeholderClassName="line-clamp-2 h-auto"
               value={renderValue as string}
               onChange={(text) => {
                 handleInputChange(text)

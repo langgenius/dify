@@ -261,7 +261,7 @@ describe('ParameterItem', () => {
           />,
         )
 
-        const editor = screen.getByRole('textbox')
+        const editor = screen.getByRole('textbox', { name: 'Temperature' })
         expect(await within(editor).findByText('LLM Node')).toBeVisible()
         expect(within(editor).getByText('output')).toBeVisible()
         expect(within(editor).getByText('workflow.blocks.start')).toBeVisible()
