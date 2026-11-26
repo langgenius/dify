@@ -86,6 +86,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 def test_response_stream_excludes_frame_variable_values() -> None:
     pool = VariablePool()
     pool.add(("env", "secret"), SecretVariable(name="secret", value="private-environment-value"))
+    pool.add(("sys", "query"), "first-history-marker")
     state = RuntimeState(workflow_id="workflow", variable_pool=pool, start_at=0.0)
     params = build_test_graph_init_params()
     graph = (
@@ -96,7 +97,7 @@ def test_response_stream_excludes_frame_variable_values() -> None:
         .add_node(
             AnswerNode(
                 "answer",
-                AnswerNodeData(title="Answer", answer="Public response"),
+                AnswerNodeData(title="Answer", answer="Echo: {{#sys.query#}}"),
                 init_params=params,
                 runtime_state=state,
             ),
@@ -104,32 +105,17 @@ def test_response_stream_excludes_frame_variable_values() -> None:
         )
         .build()
     )
-    engine = Engine(graph=graph, runtime_state=state, command_channel=InMemoryChannel())
-
-    events = list(iter_dify_graph_engine_events(engine))
-
-    assert not any(isinstance(event, (FrameStartedEvent, FrameVariablesUpdatedEvent)) for event in events)
-    assert "".join(event.chunk for event in events if isinstance(event, NodeRunStreamChunkEvent)) == "Public response"
-    assert isinstance(events[-1], GraphRunSucceededEvent)
-
-
-def test_workflow_entry_disables_unused_frame_observations() -> None:
-    state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0.0)
-    params = build_test_graph_init_params()
-    graph = (
-        Graph.new()
-        .add_root(
-            StartNode("start", StartNodeData(title="Start", variables=[]), init_params=params, runtime_state=state)
-        )
-        .build()
-    )
     entry = WorkflowEntry(graph_config=params.graph_config, graph=graph, call_depth=0, graph_runtime_state=state)
 
-    events = list(entry.graph_engine.run())
+    events = list(entry.run())
 
     assert not any(isinstance(event, (FrameStartedEvent, FrameVariablesUpdatedEvent)) for event in events)
+    assert "".join(event.chunk for event in events if isinstance(event, NodeRunStreamChunkEvent)) == (
+        "Echo: first-history-marker"
+    )
     assert any(isinstance(event, NodeRunSucceededEvent) and event.node_id == "start" for event in events)
     assert isinstance(events[-1], GraphRunSucceededEvent)
+    assert events[-1].outputs["answer"] == "Echo: first-history-marker"
 
 
 def _build_issue_170_mock_config() -> tuple[WorkflowRunner, MockConfig]:

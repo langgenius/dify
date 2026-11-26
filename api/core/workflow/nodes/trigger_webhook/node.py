@@ -5,7 +5,6 @@ from typing import Any, override
 from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
-from factories.variable_factory import build_segment_with_type
 from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
 from graphon.file import FileTransferMethod
 from graphon.node_events import NodeRunResult
@@ -78,7 +77,12 @@ class TriggerWebhookNode(Node[WebhookData]):
             outputs=outputs,
         )
 
-    def generate_file_var(self, param_name: str, file: dict[str, Any]):
+    def generate_file_var(self, param_name: str, file: dict[str, Any]) -> FileVariable | None:
+        """Resolve a webhook file through the tenant-scoped file factory.
+
+        Populate the transfer-specific ID in ``file``; factory value errors are logged and return None.
+        Reference and transfer-method errors propagate.
+        """
         file_id = resolve_file_record_id(file.get("reference") or file.get("related_id"))
         transfer_method_value = file.get("transfer_method")
         if transfer_method_value:
@@ -93,8 +97,7 @@ class TriggerWebhookNode(Node[WebhookData]):
 
             try:
                 file_obj = self._file_reference_factory.build_from_mapping(mapping=file)
-                file_segment = build_segment_with_type(SegmentType.FILE, file_obj)
-                return FileVariable(name=param_name, value=file_segment.value, selector=[self.id, param_name])
+                return FileVariable(name=param_name, value=file_obj, selector=[self.id, param_name])
             except ValueError:
                 logger.error(
                     "Failed to build FileVariable for webhook file parameter %s",

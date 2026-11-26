@@ -1257,6 +1257,63 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             await adapter.request(messages, None, ModelRequestParameters())
         self.assertEqual(requests[1][1]["content"], "checking")
 
+    async def test_agent_runs_fragmented_tool_call_and_replays_signed_content(self) -> None:
+        for fragment_id in ("call-1", ""):
+            with self.subTest(fragment_id=fragment_id):
+                requests = []
+                seen_queries = []
+                block = TextPromptMessageContent(data="<think>checking", opaque_body={"signature": "signed"})
+                messages = [
+                    AssistantPromptMessage(
+                        content=[block],
+                        opaque_body=False,
+                        tool_calls=[_tool_call("lookup", '{"query":', call_id="call-1")],
+                    ),
+                    AssistantPromptMessage(
+                        content=" details</think>",
+                        tool_calls=[_tool_call("", '"first"', call_id=fragment_id)],
+                    ),
+                    AssistantPromptMessage(tool_calls=[_tool_call("", "}", call_id=fragment_id)]),
+                ]
+
+                def handler(request: httpx.Request) -> httpx.Response:
+                    requests.append(json.loads(request.content)["target"]["prompt_messages"])
+                    if len(requests) == 1:
+                        return build_stream_response(
+                            *[
+                                LLMResultChunk(
+                                    model="demo-model", delta=LLMResultChunkDelta(index=index, message=message)
+                                )
+                                for index, message in enumerate(messages)
+                            ]
+                        )
+                    return build_stream_response(*single_text_chunk("done"))
+
+                async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+                    adapter = DifyLLMAdapterModel("demo-model", self.make_provider(), model_provider="openai")
+                    agent = Agent(adapter)
+
+                    @agent.tool_plain
+                    async def lookup(query: str) -> str:
+                        seen_queries.append(query)
+                        return f"result for {query}"
+
+                    result = await agent.run("look up first")
+
+                self.assertEqual(seen_queries, ["first"])
+                self.assertEqual(result.output, "done")
+                self.assertEqual(len(requests), 2)
+                self.assertEqual(
+                    AssistantPromptMessage.model_validate(requests[1][1]),
+                    AssistantPromptMessage(
+                        content=[block, TextPromptMessageContent(data=" details</think>")],
+                        opaque_body=False,
+                        tool_calls=[_tool_call("lookup", '{"query":"first"}', call_id="call-1")],
+                    ),
+                )
+                self.assertEqual(requests[1][2]["tool_call_id"], "call-1")
+                self.assertEqual(requests[1][2]["content"], "result for first")
+
     async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
         messages = [
             ModelRequest(parts=[SystemPromptPart("request system"), UserPromptPart("hello")]),

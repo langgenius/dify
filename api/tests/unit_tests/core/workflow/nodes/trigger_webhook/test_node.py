@@ -135,48 +135,25 @@ def test_webhook_node_file_conversion_to_file_variable():
 
     node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
 
-    # Mock the file reference boundary and variable factory
-    with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
-    ):
-        # Setup mocks
-        mock_file_obj = Mock()
-        mock_file_obj.to_dict.return_value = file_dict
-        mock_file_factory.return_value = mock_file_obj
-
-        mock_segment = Mock()
-        mock_segment.value = mock_file_obj
-        mock_segment_factory.return_value = mock_segment
-
-        mock_file_var_instance = Mock()
-        mock_file_variable.return_value = mock_file_var_instance
-
-        # Run the node
+    file_obj = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id=file_dict["related_id"],
+        filename=file_dict["filename"],
+    )
+    with patch.object(node._file_reference_factory, "build_from_mapping", return_value=file_obj) as mock_file_factory:
         result = node._run()
 
-        # Verify successful execution
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-
-        # Verify file factory was called with correct parameters
         mock_file_factory.assert_called_once_with(
             mapping=expected_factory_mapping(file_dict),
         )
 
-        # Verify segment factory was called to create FileSegment
-        mock_segment_factory.assert_called_once()
-
-        # Verify FileVariable was created with correct parameters
-        mock_file_variable.assert_called_once()
-        call_args = mock_file_variable.call_args[1]
-        assert call_args["name"] == "image_upload"
-        # value should be whatever build_segment_with_type.value returned
-        assert call_args["value"] == mock_segment.value
-        assert call_args["selector"] == ["webhook-node-1", "image_upload"]
-
-        # Verify output contains the FileVariable, not the original dict
-        assert result.outputs["image_upload"] == mock_file_var_instance
+        file_variable = result.outputs["image_upload"]
+        assert isinstance(file_variable, FileVariable)
+        assert file_variable.name == "image_upload"
+        assert file_variable.value == file_obj
+        assert file_variable.selector == ["webhook-node-1", "image_upload"]
         assert result.outputs["message"] == "Test message"
 
 
@@ -323,35 +300,22 @@ def test_webhook_node_file_conversion_mixed_parameters():
 
     node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
 
-    with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
-    ):
-        # Setup mocks for file
-        mock_file_obj = Mock()
-        mock_file_factory.return_value = mock_file_obj
-
-        mock_segment = Mock()
-        mock_segment.value = mock_file_obj
-        mock_segment_factory.return_value = mock_segment
-
-        mock_file_var = Mock()
-        mock_file_variable.return_value = mock_file_var
-
-        # Run the node
+    file_obj = File(
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id=file_dict["related_id"],
+        filename=file_dict["filename"],
+    )
+    with patch.object(node._file_reference_factory, "build_from_mapping", return_value=file_obj) as mock_file_factory:
         result = node._run()
 
-        # Verify successful execution
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-
-        # Verify all parameters are present
         assert result.outputs["text_param"] == "Hello World"
         assert result.outputs["number_param"] == 42
         assert result.outputs["bool_param"] is True
-        assert result.outputs["file_param"] == mock_file_var
+        assert isinstance(result.outputs["file_param"], FileVariable)
+        assert result.outputs["file_param"].value == file_obj
 
-        # Verify file conversion was called
         mock_file_factory.assert_called_once_with(
             mapping=expected_factory_mapping(file_dict),
         )
@@ -359,7 +323,11 @@ def test_webhook_node_file_conversion_mixed_parameters():
 
 def test_webhook_node_different_file_types():
     """Test webhook node file conversion with different file types."""
-    image_dict = create_test_file_dict("image.jpg", "image")
+    file_dicts = {
+        "image": create_test_file_dict("image.jpg", "image"),
+        "document": create_test_file_dict("document.pdf", "document"),
+        "video": create_test_file_dict("video.mp4", "video"),
+    }
 
     data = WebhookData(
         title="Test Webhook Different File Types",
@@ -378,46 +346,30 @@ def test_webhook_node_different_file_types():
                 "headers": {},
                 "query_params": {},
                 "body": {},
-                "files": {
-                    "image": image_dict,
-                    "document": create_test_file_dict("document.pdf", "document"),
-                    "video": create_test_file_dict("video.mp4", "video"),
-                },
+                "files": file_dicts,
             }
         }
     )
 
     node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
 
-    with (
-        patch.object(node._file_reference_factory, "build_from_mapping") as mock_file_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.build_segment_with_type") as mock_segment_factory,
-        patch("core.workflow.nodes.trigger_webhook.node.FileVariable") as mock_file_variable,
-    ):
-        # Setup mocks for all files
-        mock_file_objs = [Mock() for _ in range(3)]
-        mock_segments = [Mock() for _ in range(3)]
-        mock_file_vars = [Mock() for _ in range(3)]
-
-        # Map each segment.value to its corresponding mock file obj
-        for seg, f in zip(mock_segments, mock_file_objs, strict=False):
-            seg.value = f
-
-        mock_file_factory.side_effect = mock_file_objs
-        mock_segment_factory.side_effect = mock_segments
-        mock_file_variable.side_effect = mock_file_vars
-
-        # Run the node
+    file_objs = [
+        File(
+            file_type=FileType(file_dict["type"]),
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            related_id=file_dict["related_id"],
+            filename=file_dict["filename"],
+        )
+        for file_dict in file_dicts.values()
+    ]
+    with patch.object(node._file_reference_factory, "build_from_mapping", side_effect=file_objs) as mock_file_factory:
         result = node._run()
 
-        # Verify successful execution
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-
-        # Verify all file types were converted
         assert mock_file_factory.call_count == 3
-        assert result.outputs["image"] == mock_file_vars[0]
-        assert result.outputs["document"] == mock_file_vars[1]
-        assert result.outputs["video"] == mock_file_vars[2]
+        for name, file_obj in zip(file_dicts, file_objs, strict=True):
+            assert isinstance(result.outputs[name], FileVariable)
+            assert result.outputs[name].value == file_obj
 
 
 def test_webhook_node_file_conversion_with_non_dict_wrapper():

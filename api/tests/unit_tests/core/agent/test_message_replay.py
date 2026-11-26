@@ -1,6 +1,5 @@
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Literal
 
 import pytest
 from sqlalchemy.orm import Session
@@ -28,7 +27,7 @@ from services.workflow_run_agg import WorkflowRunAgg
 @pytest.mark.usefixtures("agent_runtime_app")
 @pytest.mark.parametrize("mode", ["blocking", "streaming", "react"])
 def test_tool_rounds_preserve_model_messages(
-    mode: Literal["blocking", "streaming", "react"],
+    mode: str,
     sqlite_session: Session,
     agent_records: tuple[Conversation, Message],
     agent_generate_entity: AgentChatAppGenerateEntity,

@@ -11,6 +11,10 @@ also return text before a model request is made.
 The runtime builds a model through the Dify API metered gateway with borrowed
 lifespan HTTP services. Credentials stay API-owned; no model/client is persisted.
 
+Within a run, the adapter retains assistant content blocks and provider state for tool turns and replays them with the matching tool results.
+Named tool calls replace argument snapshots; unnamed updates append argument fragments, using the latest call when no ID is supplied.
+The retained provider payload belongs to that run's model adapter and is not restored from history in a later run.
+
 If the gateway or provider rejects marked `read_media` content before the first
 streamed chunk with HTTP 400, 413, 415 or 422, or a request-parameter error, the
 runtime replaces those attachments with locator-bearing text and retries once.

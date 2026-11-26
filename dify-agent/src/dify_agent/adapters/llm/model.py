@@ -429,6 +429,7 @@ class DifyStreamedResponse(StreamedResponse):
         init=False,
         repr=False,
     )
+    _latest_tool_call_ids: tuple[str, str | None] | None = field(default=None, init=False, repr=False)
     _timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     _embedded_thinking_parser: "_EmbeddedThinkingParser" = field(default_factory=lambda: _EmbeddedThinkingParser())
     _dify_usage: LLMUsage | None = field(default=None, init=False, repr=False)
@@ -522,8 +523,9 @@ class DifyStreamedResponse(StreamedResponse):
           argument snapshots rather than deltas. Separate single-item chunks repeating the same
           non-empty plugin id map to ``(provider_id, 1)`` and update that call in place rather than
           guessing parallel boundaries from partial JSON arguments.
-        - Missing, blank, or ``"null"``/``"none"`` plugin ids allocate ``chunk-{chunk_sequence}-tool-{index}``
-          (with ``-<n>`` suffix on collision) and record ``renamed_provider_id=None``.
+        - Named calls with missing, blank, or ``"null"``/``"none"`` plugin ids allocate
+          ``chunk-{chunk_sequence}-tool-{index}`` (with ``-<n>`` suffix on collision).
+          Unnamed fragments without an id reuse the latest created call, including across text chunks.
         """
         if not tool_calls:
             return []
@@ -542,15 +544,19 @@ class DifyStreamedResponse(StreamedResponse):
         allocated: list[tuple[str, str | None]] = []
         for index, provider_id in enumerate(provider_ids):
             if provider_id is None:
-                base = f"chunk-{chunk_sequence}-tool-{index}"
-                tool_call_id = _next_available_id(
-                    base,
-                    self._reserved_tool_call_ids,
-                    start_suffix=2,
-                    keep_base=True,
-                )
-                self._reserved_tool_call_ids.add(tool_call_id)
-                allocated.append((tool_call_id, None))
+                if not tool_calls[index].function.name and self._latest_tool_call_ids is not None:
+                    allocated.append(self._latest_tool_call_ids)
+                else:
+                    base = f"chunk-{chunk_sequence}-tool-{index}"
+                    tool_call_id = _next_available_id(
+                        base,
+                        self._reserved_tool_call_ids,
+                        start_suffix=2,
+                        keep_base=True,
+                    )
+                    self._reserved_tool_call_ids.add(tool_call_id)
+                    self._latest_tool_call_ids = (tool_call_id, None)
+                    allocated.append(self._latest_tool_call_ids)
                 continue
 
             occurrence = occurrences.get(provider_id, 0) + 1
@@ -574,6 +580,7 @@ class DifyStreamedResponse(StreamedResponse):
                 assignment = (tool_call_id, provider_id)
 
             self._assigned_tool_call_ids[slot] = assignment
+            self._latest_tool_call_ids = assignment
             allocated.append(assignment)
 
         return allocated
@@ -1068,6 +1075,11 @@ def _chunk_to_stream_events(
     embedded_thinking_parser: "_EmbeddedThinkingParser",
     tool_call_ids: Sequence[tuple[str, str | None]],
 ) -> list[ModelResponseStreamEvent]:
+    """Convert a gateway chunk using allocated call IDs, preserving snapshot and fragment semantics.
+
+    Named tool calls replace their snapshots; unnamed calls append arguments to their allocated slot.
+    Unsupported content raises before a response is returned.
+    """
     events: list[ModelResponseStreamEvent] = []
     message = chunk.delta.message
 
@@ -1082,20 +1094,28 @@ def _chunk_to_stream_events(
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 
     for tool_call, (tool_call_id, provider_tool_call_id) in zip(message.tool_calls, tool_call_ids, strict=True):
-        events.append(
-            parts_manager.handle_tool_call_part(
+        provider_details = (
+            {_PROVIDER_TOOL_CALL_ID_DETAIL: provider_tool_call_id} if provider_tool_call_id is not None else None
+        )
+        if tool_call.function.name:
+            event = parts_manager.handle_tool_call_part(
                 vendor_part_id=tool_call_id,
                 tool_name=tool_call.function.name,
                 args=tool_call.function.arguments,
                 tool_call_id=tool_call_id,
                 provider_name=provider_name,
-                provider_details=(
-                    {_PROVIDER_TOOL_CALL_ID_DETAIL: provider_tool_call_id}
-                    if provider_tool_call_id is not None
-                    else None
-                ),
+                provider_details=provider_details,
             )
-        )
+        else:
+            event = parts_manager.handle_tool_call_delta(
+                vendor_part_id=tool_call_id,
+                args=tool_call.function.arguments,
+                tool_call_id=tool_call_id,
+                provider_name=provider_name,
+                provider_details=provider_details,
+            )
+        if event is not None:
+            events.append(event)
 
     return events
 
