@@ -57,9 +57,9 @@ import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
 import { MembersHeaderCard } from './members-header-card'
 import { MembersPageSkeleton } from './members-page-skeleton'
+import { keepPlatformContactField, useMemberRemoval } from './use-member-removal'
 
 const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
-const keepPlatformContactField = 'keep_as_platform_contact'
 
 type MembersLanguage = ReturnType<typeof getAccessControlTemplateLanguage>
 
@@ -129,18 +129,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   const [invitedEmails, setInvitedEmails] = useState<ReadonlySet<string>>(() => new Set())
   const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const [removeDialog] = useState(() =>
-    createAlertDialogHandle<{
-      member: AccountWithRoleResponse
-      adjacentFocusTargets: HTMLElement[]
-      fallbackFocus: { current: HTMLElement | null }
-    }>(),
-  )
-  const removal = useMutation(
-    consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      meta: { errorToast: false },
-    }),
-  )
+  const removal = useMemberRemoval(listRef)
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
 
   const memberLimit =
@@ -339,7 +328,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                             'button[aria-haspopup="dialog"]',
                           ),
                         )
-                        removeDialog.openWithPayload({
+                        removal.dialog.openWithPayload({
                           member: account,
                           adjacentFocusTargets,
                           fallbackFocus: { current: null },
@@ -441,7 +430,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
             )}
           </AlertDialog>
           <AlertDialog
-            handle={removeDialog}
+            handle={removal.dialog}
             onOpenChange={(open, details) => {
               if (!open && removal.isPending && details.reason !== 'imperative-action')
                 details.cancel()
@@ -476,28 +465,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                     return false
                   }}
                 >
-                  <form
-                    className="contents"
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      if (!payload || removal.isPending) return
-                      const keepPlatformContact = new FormData(event.currentTarget).has(
-                        keepPlatformContactField,
-                      )
-                      removal.mutate(
-                        {
-                          params: { member_id: payload.member.id },
-                          ...(keepPlatformContact && { query: { keep_as_platform_contact: true } }),
-                        },
-                        {
-                          onSuccess: () => {
-                            payload.fallbackFocus.current = listRef.current
-                            removeDialog.close()
-                          },
-                        },
-                      )
-                    }}
-                  >
+                  <form className="contents" onSubmit={removal.getSubmitHandler(payload)}>
                     {showContactsRemovalDesign && payload ? (
                       <>
                         <AlertDialogHeader>
