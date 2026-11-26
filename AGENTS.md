@@ -4,6 +4,8 @@ Dify is an open-source platform for building LLM applications, agentic workflows
 
 Before starting backend development, read the [architecture](docs/BACKEND_ARCHITECTURE.md), [repositories](docs/BACKEND_REPOSITORIES.md), [SQLAlchemy](docs/BACKEND_SQLALCHEMY.md), and [database schema](docs/BACKEND_DATABASE_SCHEMA.md) guides.
 
+See the [contribution guidelines](CONTRIBUTING.md#ai-assisted-contributions) for the open pull request limit and contributor exemptions.
+
 ## Repository Gotchas
 
 - Run backend commands through `uv run --project api <command>`.
