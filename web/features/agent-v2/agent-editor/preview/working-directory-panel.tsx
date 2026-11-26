@@ -13,7 +13,7 @@ import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-stat
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { isDefinedError } from '@orpc/client'
+import { ORPCError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -240,6 +240,27 @@ export function AgentWorkingDirectoryPanel({
   )
 }
 
+// The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
+const isNoActiveBindingError = (error: unknown) =>
+  error instanceof ORPCError && error.defined && error.code === 'no_active_binding'
+
+// An expanded folder is reported through the query cache, which must not see the empty case.
+function withNoActiveBindingAsEmpty<TContext, TData, TOptions extends object>(
+  options: TOptions & { queryFn: (context: TContext) => TData | Promise<TData> },
+) {
+  return {
+    ...options,
+    queryFn: async (context: TContext): Promise<TData | { entries: [] }> => {
+      try {
+        return await options.queryFn(context)
+      } catch (error) {
+        if (isNoActiveBindingError(error)) return { entries: [] }
+        throw error
+      }
+    },
+  }
+}
+
 function AgentWorkingDirectoryContent({
   source,
   open,
@@ -307,25 +328,19 @@ function AgentWorkingDirectoryContent({
   }
   const fileListQueryOptions = getFileListQueryOptions(directoryPath)
   const fileListQuery = useQuery({ ...fileListQueryOptions, retry: false })
-  // The sandbox operations document `no_active_binding` (404): the directory is empty, not failed.
-  const hasNoActiveBinding =
-    isDefinedError(fileListQuery.error) && fileListQuery.error.code === 'no_active_binding'
+  const hasNoActiveBinding = isNoActiveBindingError(fileListQuery.error)
   const expandedFolderQueries = useQueries({
     queries: loadedFolderPaths.map((path) => ({
-      ...getFileListQueryOptions(path),
+      ...withNoActiveBindingAsEmpty(getFileListQueryOptions(path)),
       retry: false,
       // A folder that fails to expand has no error slot in the tree, so the query cache reports it.
       meta: undefined,
     })),
   })
-  const expandedFolders = expandedFolderQueries.map((query) => {
-    const noActiveBinding = isDefinedError(query.error) && query.error.code === 'no_active_binding'
-
-    return {
-      entries: noActiveBinding ? [] : query.data?.entries,
-      isLoaded: query.isSuccess || noActiveBinding,
-    }
-  })
+  const expandedFolders = expandedFolderQueries.map((query) => ({
+    entries: query.data?.entries,
+    isLoaded: query.isSuccess,
+  }))
   const workingDirectoryFiles = expandedFolders.reduce(
     (files, folder, index) => {
       return mergeSandboxFileTree(

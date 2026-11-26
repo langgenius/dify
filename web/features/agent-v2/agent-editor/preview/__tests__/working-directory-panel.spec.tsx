@@ -1,4 +1,5 @@
 import type { AgentWorkingDirectorySource } from '../working-directory-panel'
+import { ORPCError } from '@orpc/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -426,6 +427,33 @@ describe('AgentWorkingDirectoryPanel', () => {
     await waitFor(() =>
       expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Sandbox unavailable'),
     )
+  })
+
+  it('opens a folder without an active binding as empty, without reporting it', async () => {
+    const user = userEvent.setup()
+    mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {
+      const path = input.query?.path ?? '~'
+      return {
+        meta: { errorToast: false },
+        queryFn: async () => {
+          if (path !== '~')
+            throw new ORPCError('no_active_binding', {
+              status: 404,
+              defined: true,
+              message: 'No active binding',
+              data: { code: 'no_active_binding', message: 'No active binding', status: 404 },
+            })
+          return { path, entries: [{ name: 'reports', type: 'dir' }] }
+        },
+      }
+    })
+    renderWorkingDirectoryPanel({ reportErrors: true })
+
+    const folderTrigger = await screen.findByRole('button', { name: 'reports' })
+    await user.click(folderTrigger)
+
+    await waitFor(() => expect(folderTrigger).toHaveAttribute('aria-expanded', 'true'))
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('lets keyboard users expand and enter a folder with separate controls', async () => {
