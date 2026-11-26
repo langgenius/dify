@@ -55,7 +55,7 @@ const knowledgeSpacePageTitle = (
   if (section === 'sources') return t(($) => $.sources)
   if (section === 'documents') return t(($) => $.documents)
   if (section === 'retrieval') return t(($) => $['retrievalTest.title'])
-  if (section === 'tidy') return 'Tidy'
+  if (section === 'tidy') return t(($) => $['tidy.name'])
   if (section === 'quality') return t(($) => $.quality)
   if (section === 'settings') return tCommon(($) => $['datasetMenus.settings'])
 
@@ -391,7 +391,7 @@ export function KnowledgeSpaceShell({
             </Link>
             <Link
               href={tidyPath}
-              aria-label="Tidy"
+              aria-label={t(($) => $['tidy.name'])}
               aria-current={tidyActive ? 'page' : undefined}
               className={cn(
                 navItemClassName,
@@ -402,7 +402,7 @@ export function KnowledgeSpaceShell({
               )}
             >
               {navIcon(tidyActive ? 'i-ri-sparkling-fill' : 'i-ri-sparkling-line')}
-              {sidebarExpanded && 'Tidy'}
+              {sidebarExpanded && t(($) => $['tidy.name'])}
             </Link>
             <Link
               href={settingsPath}
