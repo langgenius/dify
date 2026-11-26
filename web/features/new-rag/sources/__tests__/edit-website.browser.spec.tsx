@@ -56,7 +56,7 @@ describe('Sources: edit-website', () => {
       .click()
     await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
 
-    const failure = page.getByRole('alert').filter({ hasText: 'knowledgeSpace.providerLoadFailed' })
+    const failure = page.getByRole('alert').filter({ hasText: 'Connections unavailable' })
     await expect.element(failure).toBeVisible()
     await page.getByRole('button', { name: 'common.operation.retry' }).click()
     await expect.element(failure).not.toBeInTheDocument()

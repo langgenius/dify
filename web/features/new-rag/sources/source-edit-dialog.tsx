@@ -509,7 +509,6 @@ function WebsiteSourceEditDialogContent({
     error: connectionsError,
     fetchNextPage,
     hasNextPage,
-    isError: connectionsError,
     isFetchingNextPage,
     isFetchNextPageError,
     isRefetching: connectionsRefetching,
