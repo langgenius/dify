@@ -76,7 +76,7 @@ function EditConnectionDialog({ overview }: { overview: ExternalAgentOverview })
   const [recovery, setRecovery] = useState<EditRecovery>()
   const save = useMutation(
     consoleQuery.externalAgents.byAgentId.connection.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )

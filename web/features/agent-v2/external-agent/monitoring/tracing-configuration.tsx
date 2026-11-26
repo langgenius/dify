@@ -95,12 +95,12 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
   )
   const save = useMutation(
     consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const remove = useMutation(
     consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const [editor] = useState(() =>
@@ -143,7 +143,7 @@ function ExternalAgentTracingConfigurationSession({ agentId }: { agentId: string
     return queryClient.query(
       consoleQuery.externalAgents.byAgentId.tracingConfig.byProvider.get.queryOptions({
         input: { params: { agent_id: agentId, provider } },
-        context: { silent: true },
+        meta: { errorToast: false },
         staleTime: 0,
         retry: false,
       }),

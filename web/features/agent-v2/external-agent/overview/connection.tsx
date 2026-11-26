@@ -27,7 +27,7 @@ export function ExternalAgentConnection(props: ExternalAgentConnectionProps) {
     overview.connectedBy
   const tracing = useMutation(
     consoleQuery.externalAgents.byAgentId.tracing.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const verifiedDate = overview.verifiedAt

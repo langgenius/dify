@@ -40,14 +40,11 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.customizedSnippets.post': mockMutateAsync,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'snippets.bySnippetId.workflows.draft.post': mockSyncDraftWorkflow,
     }),
   }

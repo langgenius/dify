@@ -52,7 +52,7 @@ function SignedResultFile({
             expected_generation: access.generation,
           },
         },
-        context: { silent: true },
+        meta: { errorToast: false },
         initialData: initialAccess,
         gcTime: 0,
         retry: false,

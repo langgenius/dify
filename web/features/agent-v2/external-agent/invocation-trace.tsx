@@ -16,7 +16,7 @@ function TraceRawData({ invocationId, stepKey }: { invocationId: string; stepKey
   const raw = useQuery(
     consoleQuery.externalAgentInvocations.byInvocationId.trace.steps.byStepKey.get.queryOptions({
       input: { params: { invocation_id: invocationId, step_key: stepKey } },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   if (raw.error) return null
@@ -106,7 +106,7 @@ function TraceSession({ invocationId }: { invocationId: string }) {
     initialPageParam: { offset: 0 } as TraceCursor,
     getNextPageParam: (page) =>
       page.next_offset === null ? undefined : { offset: page.next_offset, revision: page.revision },
-    context: { silent: true },
+    meta: { errorToast: false },
     refetchOnWindowFocus: false,
     refetchInterval: (query) =>
       query.state.error || query.state.data?.pages[0]?.state !== 'collecting' ? false : 2_000,

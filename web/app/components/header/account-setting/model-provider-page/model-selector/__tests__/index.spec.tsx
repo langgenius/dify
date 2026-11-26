@@ -172,43 +172,49 @@ describe('ModelSelector', () => {
     expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('should close popup before running the empty-state configure action', async () => {
-    const user = userEvent.setup()
-    const onConfigureEmptyState = vi.fn()
-    renderWithQueryClient(
-      <ModelSelector models={[]} onConfigureEmptyState={onConfigureEmptyState} />,
-    )
+  describe('provider settings entry', () => {
+    const settingsName = 'modelProvider.modelProvider.selector.modelProviderSettings'
+    const configureName = 'modelProvider.modelProvider.selector.configure'
 
-    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await user.click(triggerButton)
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'true')
+    it('closes the popup, notifies the host and opens provider settings from the footer', async () => {
+      const user = userEvent.setup()
+      const onOpenProviderSettings = vi.fn()
+      renderWithQueryClient(
+        <ModelSelector models={[makeModel()]} onOpenProviderSettings={onOpenProviderSettings} />,
+      )
 
-    await user.click(
-      screen.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
-    )
+      const triggerButton = screen.getByRole('button', {
+        name: 'plugin.detailPanel.configureModel',
+      })
+      await user.click(triggerButton)
+      await user.click(screen.getByRole('button', { name: settingsName }))
 
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
-    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
-  })
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+      expect(onOpenProviderSettings).toHaveBeenCalledOnce()
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
+    })
 
-  it('should close the popup before opening provider settings', async () => {
-    const user = userEvent.setup()
-    const onHide = vi.fn()
-    renderWithQueryClient(<ModelSelector models={[makeModel()]} onHide={onHide} />)
+    it('opens provider settings from the empty-state configure action', async () => {
+      const user = userEvent.setup()
+      const onOpenProviderSettings = vi.fn()
+      renderWithQueryClient(
+        <ModelSelector models={[]} onOpenProviderSettings={onOpenProviderSettings} />,
+      )
 
-    const triggerButton = screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' })
-    await user.click(triggerButton)
-    await user.click(
-      screen.getByRole('button', {
-        name: 'modelProvider.modelProvider.selector.modelProviderSettings',
-      }),
-    )
+      const triggerButton = screen.getByRole('button', {
+        name: 'plugin.detailPanel.configureModel',
+      })
+      await user.click(triggerButton)
+      await user.click(screen.getByRole('button', { name: configureName }))
 
-    expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
-    expect(onHide).toHaveBeenCalledTimes(1)
-    await waitFor(() =>
-      expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
-    )
+      expect(triggerButton).toHaveAttribute('aria-expanded', 'false')
+      expect(onOpenProviderSettings).toHaveBeenCalledOnce()
+      await waitFor(() =>
+        expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('provider'),
+      )
+    })
   })
 
   it('should not open popup when disabled', async () => {

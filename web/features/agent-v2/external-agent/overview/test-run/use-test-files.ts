@@ -65,17 +65,17 @@ export function useTestAgentFiles({
   }, [])
   const paste = useMutation(
     consoleQuery.externalAgents.byAgentId.testFiles.pasteLink.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const upload = useMutation(
     consoleQuery.externalAgents.byAgentId.testFiles.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const release = useMutation(
     consoleQuery.externalAgents.byAgentId.testFiles.byLeaseId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const attachments = items.filter((item) => item.pageSessionId === pageSessionId)

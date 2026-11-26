@@ -13,8 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { hasPermission } from '@/utils/permission'
+import { canConfigureModelsAtom } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useLazyModelProviderDetail } from '../hooks'
 import LazyCustomModelActions from './lazy-custom-model-actions'
@@ -79,8 +78,7 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
   const configurativeMethods = provider.configurate_methods.filter(
     (method) => method !== ConfigurationMethodEnum.fetchFromRemote,
   )
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
   const [modelLoadBalancingModalProps, setModelLoadBalancingModalProps] =
     useState<ModelLoadBalancingModalProps | null>(null)

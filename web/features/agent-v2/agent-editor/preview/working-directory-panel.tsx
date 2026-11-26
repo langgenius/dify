@@ -279,9 +279,8 @@ function AgentWorkingDirectoryContent({
               path: toSandboxApiPath(path),
             },
           },
-          context: {
-            silent: true,
-          },
+          // `no_active_binding` renders as an empty directory, not a failure.
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
@@ -296,9 +295,7 @@ function AgentWorkingDirectoryContent({
                 path: toSandboxApiPath(path),
               },
             },
-            context: {
-              silent: true,
-            },
+            meta: { errorToast: false },
           },
         )
   const handleDirectoryPathChange = (path: AgentWorkingDirectoryPath) => {
@@ -359,9 +356,7 @@ function AgentWorkingDirectoryContent({
                 },
               }
             : skipToken,
-          context: {
-            silent: true,
-          },
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
@@ -378,9 +373,7 @@ function AgentWorkingDirectoryContent({
                   },
                 }
               : skipToken,
-            context: {
-              silent: true,
-            },
+            meta: { errorToast: false },
           },
         )
   const isFileDataPreview = hasFileDataPreview(selectedWorkingDirectoryFile?.icon)
@@ -485,7 +478,7 @@ function AgentWorkingDirectoryContent({
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
         } catch {
-          // The generated client reports the mutation failure through its shared error handler.
+          // The request failure is already reported.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -508,7 +501,7 @@ function AgentWorkingDirectoryContent({
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
       } catch {
-        // The generated client reports the mutation failure through its shared error handler.
+        // The request failure is already reported.
       } finally {
         setDownloadActionLoadingTarget(null)
       }
@@ -541,11 +534,11 @@ function AgentWorkingDirectoryContent({
               value={selectedRootPath}
               onValueChange={(path) => handleDirectoryPathChange(path as AgentWorkingDirectoryPath)}
             >
-              <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
+              <TabsList className="h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
                 <div className="flex h-full items-center gap-0.5">
                   <TabsTab
                     value={AGENT_SAVED_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
                   >
                     <span id={persistentFilesLabelId}>
                       {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
@@ -564,7 +557,7 @@ function AgentWorkingDirectoryContent({
                 <div className="flex h-full items-center gap-0.5">
                   <TabsTab
                     value={AGENT_TEMPORARY_FILES_ROOT_PATH}
-                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    className="h-full min-w-0 pt-0 pb-0 system-sm-semibold"
                   >
                     <span id={temporaryFilesLabelId}>
                       {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
@@ -580,13 +573,7 @@ function AgentWorkingDirectoryContent({
                     </InfotipContent>
                   </Infotip>
                 </div>
-                <TabsIndicator
-                  className="pointer-events-none absolute inset-s-0 bottom-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
-                  style={{
-                    translate: 'var(--active-tab-left)',
-                    width: 'var(--active-tab-width)',
-                  }}
-                />
+                <TabsIndicator />
               </TabsList>
               <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
                 <AgentWorkingDirectoryBreadcrumb

@@ -64,7 +64,7 @@ function ConnectExternalAgentDialog() {
   const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
   const executionEnabled = capabilities.data?.enabled === true
   const create = useMutation(
-    consoleQuery.externalAgents.post.mutationOptions({ context: { silent: true }, retry: false }),
+    consoleQuery.externalAgents.post.mutationOptions({ meta: { errorToast: false }, retry: false }),
   )
 
   function save(attempt: CreateRecovery, onRejected: (failure: unknown) => void) {

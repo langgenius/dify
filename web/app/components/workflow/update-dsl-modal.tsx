@@ -19,11 +19,11 @@ import { RiFileDownloadLine } from '@remixicon/react'
 import { useMutation } from '@tanstack/react-query'
 import { memo, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
-import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { Uploader } from '@/features/dsl-import/uploader'
+import DSLImportWarningDescription from '@/features/dsl-import/warning-description'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
@@ -156,9 +156,12 @@ function UpdateDSLModal({
   }
 
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const importMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (file: File) => {
       if (file.name.toLowerCase().endsWith('.ifpkg'))
         return requestImport({ body: { file, app_id: appId } })
@@ -183,7 +186,7 @@ function UpdateDSLModal({
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)

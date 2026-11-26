@@ -46,10 +46,7 @@ export function useTestAgentPageSession(overview: ExternalAgentOverview) {
       if (left) return
       left = true
       void consoleClient.externalAgentTests.leavePage
-        .post(
-          { body: { page_session_id: pageSessionId } },
-          { context: { keepalive: true, silent: true } },
-        )
+        .post({ body: { page_session_id: pageSessionId } }, { context: { keepalive: true } })
         .catch(() => {
           // Leaving is best effort; server TTL owns eventual cleanup.
         })
@@ -115,11 +112,13 @@ export function useTestAgentRun({
       : null
   const anchorId = activeRequest?.anchorId
   const start = useMutation(
-    consoleQuery.externalAgents.byAgentId.tests.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.externalAgents.byAgentId.tests.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const cancel = useMutation(
     consoleQuery.externalAgents.byAgentId.tests.byInvocationId.cancel.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const resultOptions = consoleQuery.externalAgents.byAgentId.tests.byInvocationId.get.queryOptions(
@@ -127,7 +126,7 @@ export function useTestAgentRun({
       input: anchorId
         ? { params: { agent_id: overview.asset.id, invocation_id: anchorId } }
         : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchOnMount: false,
       refetchOnWindowFocus: false,
       refetchInterval: (query) =>

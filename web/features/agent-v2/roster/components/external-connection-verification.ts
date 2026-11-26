@@ -70,7 +70,7 @@ export function useExternalConnectionVerification(
   const epochRef = useRef(0)
   const verification = useMutation(
     consoleQuery.externalAgents.verify.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )

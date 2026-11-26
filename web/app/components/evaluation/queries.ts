@@ -276,34 +276,54 @@ export const useEvaluationRunDetailQuery = (
 
 export const useEvaluationActions = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const datasetConfigMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.put.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const targetConfigMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.put.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const datasetRunMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.run.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.run.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const targetRunMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.run.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.run.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const datasetCancelMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.cancel.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.cancel.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const targetCancelMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.cancel.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.cancel.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
   const datasetRetryMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.retry.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.retry.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const targetRetryMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.retry.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.retry.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
   const datasetTemplateMutation = useMutation(
-    consoleQuery.datasets.byDatasetId.evaluation.template.download.post.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.evaluation.template.download.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const targetTemplateMutation = useMutation(
-    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.datasetTemplate.download.post.mutationOptions(),
+    consoleQuery.byEvaluateTargetType.byEvaluateTargetId.datasetTemplate.download.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
 
   const saveConfig = (body: EvaluationConfigPayload) => {

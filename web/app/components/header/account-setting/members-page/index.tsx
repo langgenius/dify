@@ -22,7 +22,6 @@ import { isDefinedError } from '@orpc/client'
 import {
   useMutation,
   usePrefetchQuery,
-  useQueryClient,
   useSuspenseQueries,
   useSuspenseQuery,
 } from '@tanstack/react-query'
@@ -131,7 +130,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   )
   const removal = useMutation(
     consoleQuery.workspaces.current.members.byMemberId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
@@ -161,19 +160,9 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
   const isMemberFull =
     features.plan !== 'team' && isQuotaReached({ usage: usedSeats, limit: features.members.limit })
   const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
-  const queryClient = useQueryClient()
   const revocation = useMutation(
     consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post.mutationOptions({
-      context: { silent: true },
-      onSettled: () => {
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.members.get.key(),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
-        })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-      },
+      meta: { errorToast: false },
     }),
   )
   const isInvitationGone = (error: typeof revocation.error) =>
@@ -190,7 +179,7 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
 
   const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

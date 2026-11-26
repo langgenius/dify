@@ -58,10 +58,12 @@ import {
 import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
+import { markErrorHandled } from '@/service/handled-error'
 import { fetchNodeInspectVars, singleNodeRun } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
@@ -446,7 +448,14 @@ const useOneStepRun = <T>({
       }
 
       // run fail may also update the inspect vars when the node set the error default output.
-      const vars = await fetchNodeInspectVars(resource, id)
+      let vars: Awaited<ReturnType<typeof fetchNodeInspectVars>>
+      try {
+        vars = await fetchNodeInspectVars(resource, id)
+      } catch (error) {
+        toastRequestError(error)
+        updateNodeInspectRunningState(id, false)
+        return
+      }
       if (
         data &&
         getExternalAgentInvocationId(data) &&
@@ -565,12 +574,9 @@ const useOneStepRun = <T>({
 
     try {
       const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
-          {
-            params: { app_id: resource.appId, node_id: id },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
+          params: { app_id: resource.appId, node_id: id },
+        })
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
@@ -607,6 +613,8 @@ const useOneStepRun = <T>({
           ? error.message
           : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
       )
+      // The failure is reported here, so `handleRun` must not report it again.
+      markErrorHandled(error)
       throw error
     }
   }, [resource, id, handleNodeDataUpdate, data, t])
@@ -625,7 +633,7 @@ const useOneStepRun = <T>({
         const response: any =
           await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
             { params: { app_id: resource.appId, node_id: id } },
-            { context: { silent: true }, signal: controller.signal },
+            { signal: controller.signal },
           )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
@@ -693,6 +701,7 @@ const useOneStepRun = <T>({
             : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
         )
         cancelWebhookSingleRun()
+        markErrorHandled(error)
         if (error instanceof Error) throw error
         throw new Error(String(error))
       } finally {
@@ -716,10 +725,7 @@ const useOneStepRun = <T>({
       let requestError: unknown
       const response: any =
         await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
-          .post(
-            { params: { app_id: resource.appId, node_id: id } },
-            { signal: controller.signal, context: { silent: true } },
-          )
+          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
           .catch((error: unknown) => {
             requestError = error
             return null
@@ -736,6 +742,7 @@ const useOneStepRun = <T>({
 
         toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
         cancelPluginSingleRun()
+        markErrorHandled(requestError)
         throw requestError
       }
 
@@ -1136,6 +1143,7 @@ const useOneStepRun = <T>({
     } catch (e: any) {
       if (!isCurrentRun()) return false
       console.error(e)
+      toastRequestError(e)
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {

@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import pytest
@@ -6,9 +7,11 @@ from pydantic import BaseModel, ValidationError
 from ragas.embeddings.base import BaseRagasEmbedding
 from ragas.llms.base import InstructorBaseRagasLLM
 
+from core.credit_usage import CreditUsageAppType
 from core.entities.embedding_type import EmbeddingInputType
 from core.evaluation.frameworks.ragas.ragas_embeddings_wrapper import DifyEmbeddingsWrapper
 from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+from core.model_context import use_credit_usage_metadata
 from core.model_manager import ModelManager
 from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
@@ -68,8 +71,13 @@ def test_dify_model_wrapper_uses_tenant_model_and_validates_structured_output(mo
         "core.plugin.impl.model_runtime_factory.create_plugin_model_manager",
         lambda **_kwargs: assembly.model_manager,
     )
-    assert wrapper._get_model_instance() is model_instance
-    assert model_requests == [{"tenant_id": "tenant", "provider": "provider", "model_type": "llm", "model": "model"}]
+    expected_model_request = {
+        "tenant_id": "tenant",
+        "provider": "provider",
+        "model_type": "llm",
+        "model": "model",
+        "request_metadata": {"app_type": "workflow", "created_by": "evaluation"},
+    }
 
     structured_calls: list[dict[str, object]] = []
     structured_output: dict[str, object] = {"verdict": 1}
@@ -82,8 +90,13 @@ def test_dify_model_wrapper_uses_tenant_model_and_validates_structured_output(mo
         "core.llm_generator.output_parser.structured_output.invoke_llm_with_structured_output",
         fake_structured_output,
     )
-    assert wrapper.generate("judge this", _JudgeOutput) == _JudgeOutput(verdict=1)
-    assert asyncio.run(wrapper.agenerate("judge async", _JudgeOutput)) == _JudgeOutput(verdict=1)
+    with use_credit_usage_metadata({"app_type": CreditUsageAppType.WORKFLOW}):
+        assert wrapper._get_model_instance() is model_instance
+        assert wrapper.generate("judge this", _JudgeOutput) == _JudgeOutput(verdict=1)
+        assert asyncio.run(wrapper.agenerate("judge async", _JudgeOutput)) == _JudgeOutput(verdict=1)
+        assert wrapper.invoke("plain judge") == "response"
+
+    assert model_requests == [expected_model_request] * 4
     assert structured_calls[0]["model_instance"] is model_instance
     assert structured_calls[0]["provider"] == "provider"
     assert structured_calls[0]["model_parameters"] == {"temperature": 0.0}
@@ -105,7 +118,6 @@ def test_dify_model_wrapper_uses_tenant_model_and_validates_structured_output(mo
         "judge this",
     ]
 
-    assert wrapper.invoke("plain judge") == "response"
     assert model_instance.invoke_calls[0]["model_parameters"] == {"temperature": 0.0}
 
     structured_output.clear()
@@ -154,28 +166,36 @@ def test_dify_embeddings_wrapper_uses_modern_ragas_contract_and_query_semantics(
 ) -> None:
     model_instance = _EmbeddingModel()
     manager = _EmbeddingManager(model_instance)
-    tenant_calls: list[tuple[str, str | None]] = []
+    tenant_calls: list[tuple[str, str | None, Mapping[str, object] | None]] = []
 
-    def for_tenant(_cls: type[ModelManager], tenant_id: str, user_id: str | None = None) -> _EmbeddingManager:
-        tenant_calls.append((tenant_id, user_id))
+    def for_tenant(
+        _cls: type[ModelManager],
+        tenant_id: str,
+        user_id: str | None = None,
+        *,
+        request_metadata: Mapping[str, object] | None = None,
+    ) -> _EmbeddingManager:
+        tenant_calls.append((tenant_id, user_id, request_metadata))
         return manager
 
     monkeypatch.setattr(ModelManager, "for_tenant", classmethod(for_tenant))
     wrapper = DifyEmbeddingsWrapper("tenant-1", "user-1")
     assert isinstance(wrapper, BaseRagasEmbedding)
-    assert wrapper.embed_texts(["one", "four", "five"]) == [[3.0, 1.0], [4.0, 1.0], [4.0, 1.0]]
-    assert wrapper.embed_text("semantic") == [8.0, 1.0]
-    assert asyncio.run(wrapper.aembed_text("async")) == [5.0, 1.0]
-    assert asyncio.run(wrapper.aembed_texts(["one", "two"])) == [[3.0, 1.0], [3.0, 1.0]]
+    with use_credit_usage_metadata({"app_type": CreditUsageAppType.WORKFLOW}):
+        assert wrapper.embed_texts(["one", "four", "five"]) == [[3.0, 1.0], [4.0, 1.0], [4.0, 1.0]]
+        assert wrapper.embed_text("semantic") == [8.0, 1.0]
+        assert asyncio.run(wrapper.aembed_text("async")) == [5.0, 1.0]
+        assert asyncio.run(wrapper.aembed_texts(["one", "two"])) == [[3.0, 1.0], [3.0, 1.0]]
 
-    query_wrapper = wrapper.for_answer_relevancy()
-    assert asyncio.run(query_wrapper.aembed_text("question")) == [8.0, 1.0]
-    assert asyncio.run(query_wrapper.aembed_texts(["generated"])) == [[9.0, 1.0]]
+        query_wrapper = wrapper.for_answer_relevancy()
+        assert asyncio.run(query_wrapper.aembed_text("question")) == [8.0, 1.0]
+        assert asyncio.run(query_wrapper.aembed_texts(["generated"])) == [[9.0, 1.0]]
+
     assert model_instance.calls[-2:] == [
         (["question"], EmbeddingInputType.QUERY),
         (["generated"], EmbeddingInputType.DOCUMENT),
     ]
-    assert tenant_calls == [("tenant-1", "user-1"), ("tenant-1", "user-1")]
+    assert tenant_calls == [("tenant-1", "user-1", {"app_type": "workflow", "created_by": "evaluation"})] * 2
     assert wrapper.embed_texts([]) == []
     monkeypatch.setattr(model_instance.model_type_instance, "get_model_schema", lambda *_args: None)
     assert DifyEmbeddingsWrapper._max_batch_size(model_instance) == 1

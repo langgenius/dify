@@ -9,7 +9,7 @@ export function EditConnectionApps({ agentId }: { agentId: string }) {
   const references = useQuery(
     consoleQuery.externalAgents.byAgentId.references.get.queryOptions({
       input: { params: { agent_id: agentId } },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   if (references.isPending) return <LoadingPlaceholder className="h-12" />

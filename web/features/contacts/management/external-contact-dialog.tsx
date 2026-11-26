@@ -60,16 +60,18 @@ function ExternalContactForm({
   const { t } = useTranslation(['contacts', 'common'])
   const create = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const update = useMutation(
     consoleQuery.workspaces.current.humanInput.v2.contacts.external.byContactId.patch.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const uploadAvatar = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [uploadedAvatar, setUploadedAvatar] = useState<{ id: string; url: string }>()

@@ -19,7 +19,7 @@ export function useExternalAgentBinding(nodeId: string) {
   const [hasError, setHasError] = useState(false)
   const rebind = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
 
@@ -36,12 +36,9 @@ export function useExternalAgentBinding(nodeId: string) {
         params: { app_id: resource.appId, node_id: nodeId },
         body: { target_agent_id: agent.id, expected_hash: saved.hash, include_matching: true },
       })
-      const draft = await consoleClient.apps.byAppId.workflows.draft.get(
-        {
-          params: { app_id: resource.appId },
-        },
-        { context: { silent: true } },
-      )
+      const draft = await consoleClient.apps.byAppId.workflows.draft.get({
+        params: { app_id: resource.appId },
+      })
       if (!Array.isArray(draft.graph.nodes)) throw new TypeError('Draft graph is unavailable')
       const bindings = new Map(
         draft.graph.nodes.map((value) => {

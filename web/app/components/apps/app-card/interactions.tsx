@@ -120,12 +120,9 @@ function AppCardOperationsMenuItems({
     try {
       await openAsyncWindow(
         async () => {
-          const { installed_apps } = await consoleClient.installedApps.get(
-            {
-              query: { app_id: app.id },
-            },
-            { context: { silent: true } },
-          )
+          const { installed_apps } = await consoleClient.installedApps.get({
+            query: { app_id: app.id },
+          })
           if (installed_apps?.length > 0)
             return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
           throw new Error(t(($) => $.notPublishedYet, { ns: 'app' }))
@@ -245,10 +242,14 @@ export function AppCardInteractions({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { push } = useRouter()
   const { mutate: starApp, isPending: isStarring } = useMutation(
-    consoleQuery.apps.byAppId.star.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.star.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutate: unstarApp, isPending: isUnstarring } = useMutation(
-    consoleQuery.apps.byAppId.star.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.star.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const operationsMenu = useStepByStepTourControlledMenu({

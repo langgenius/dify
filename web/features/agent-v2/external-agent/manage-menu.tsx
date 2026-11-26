@@ -29,13 +29,13 @@ export function ExternalAgentManageMenu({
   const [confirmation] = useState(() => createAlertDialogHandle<ExternalAgentConfirmationRequest>())
   const toggle = useMutation(
     consoleQuery.externalAgents.byAgentId.enabled.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
   const deletion = useMutation(
     consoleQuery.externalAgents.byAgentId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )

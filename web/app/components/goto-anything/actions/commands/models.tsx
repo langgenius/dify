@@ -1,13 +1,14 @@
 import type { SlashCommand } from './types'
-
-export const SYSTEM_MODELS_PATH = '/integrations/model-provider?dialog=system-models'
+import { systemModelDialog } from '@/app/components/header/account-setting/model-provider-page/system-model-selector/handle'
 
 export const modelsCommand: SlashCommand = {
   name: 'models',
   description: 'Configure default workspace models',
   mode: 'direct',
 
-  execute: (_args, context) => context.navigate(SYSTEM_MODELS_PATH),
+  isAvailable: (context) => context.canConfigureModels,
+
+  execute: () => systemModelDialog.open(null),
 
   search(args: string, context) {
     return [

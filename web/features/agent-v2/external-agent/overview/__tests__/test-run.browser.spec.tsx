@@ -291,7 +291,7 @@ it('keeps a closed test running, restores its input through the result toast, an
   await rendered.unmount()
   await expect.poll(() => api.leave.mock.calls.length).toBe(1)
   expect(api.leave.mock.calls[0]![0]).toEqual({ body: { page_session_id: sessionId } })
-  expect(api.leave.mock.calls[0]![1]).toEqual({ context: { keepalive: true, silent: true } })
+  expect(api.leave.mock.calls[0]![1]).toEqual({ context: { keepalive: true } })
 })
 
 it('preserves input across a generation change and rejects a late result from the previous configuration', async () => {

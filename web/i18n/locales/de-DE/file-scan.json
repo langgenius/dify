@@ -50,7 +50,7 @@
   "scanner.lastTested": "Zuletzt getestet: {{time}}",
   "scanner.loadFailed": "Die Scanner konnten nicht geladen werden.",
   "scanner.neverTested": "Noch nicht getestet",
-  "scanner.readOnly": "Nur Eigentümer und Administratoren des Arbeitsbereichs können Scanner verwalten.",
+  "scanner.readOnly": "Sie haben keine Berechtigung, Scanner zu verwalten.",
   "scanner.status.active": "Aktiv",
   "scanner.status.error": "Fehler",
   "scanner.test": "Testen",

@@ -115,16 +115,13 @@ it('lets an Editor classify a disabled External Agent using its resource permiss
       }),
     )
     .toBeVisible()
-  expect(api.bind).toHaveBeenCalledExactlyOnceWith(
-    {
-      body: {
-        tag_ids: ['finance'],
-        target_id: vendorId,
-        type: 'agent',
-      },
+  expect(api.bind).toHaveBeenCalledExactlyOnceWith({
+    body: {
+      tag_ids: ['finance'],
+      target_id: vendorId,
+      type: 'agent',
     },
-    { context: { silent: true } },
-  )
+  })
   expect(api.unbind).not.toHaveBeenCalled()
   await expect
     .element(page.getByRole('button', { name: 'Connect external agent', exact: true }))
