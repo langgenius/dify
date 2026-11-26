@@ -26,7 +26,7 @@ import { isInstalledAppPath } from '@/app/components/explore/installed-app/route
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import {
   captureAppAccessScope,
   hasAppAccessError,
@@ -595,7 +595,7 @@ export const useChat = (
           await stopChat(taskIdRef.current)
         } catch (error) {
           // Stopping locally must still finish; only the server stop failure is reported.
-          toastRequestError(error)
+          reportRequestError(error)
         }
       })()
     }
@@ -738,7 +738,7 @@ export const useChat = (
                 )
                 setSuggestedQuestions(data)
               } catch (error) {
-                toastRequestError(error)
+                reportRequestError(error)
                 setSuggestedQuestions([])
               }
             }
@@ -1312,7 +1312,7 @@ export const useChat = (
                 )
               } catch (error) {
                 // Keep the streamed answer and its settlement when history cannot be refreshed.
-                if (isCurrentRequest()) toastRequestError(error)
+                if (isCurrentRequest()) reportRequestError(error)
                 return
               }
               if (!isCurrentRequest()) return
@@ -1400,7 +1400,7 @@ export const useChat = (
                 if (isCurrentRequest()) setSuggestedQuestions(data)
               } catch (error) {
                 if (isCurrentRequest()) {
-                  toastRequestError(error)
+                  reportRequestError(error)
                   setSuggestedQuestions([])
                 }
               }

@@ -50,7 +50,7 @@ import { selectToolsWithProvider } from '@/app/components/tools/utils/query-sele
 import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
@@ -514,7 +514,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           setVars(data)
           setIsLoadedVars(true)
         } catch (error) {
-          toastRequestError(error)
+          reportRequestError(error)
         }
       })()
     }, [resource])

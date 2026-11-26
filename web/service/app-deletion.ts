@@ -1,3 +1,5 @@
+import { registerRequestGuard } from './request-guard'
+
 type AppDeletionState = {
   pendingCount: number
   deleted: boolean
@@ -37,13 +39,20 @@ export const markAppDeletionFailed = (appId: string) => {
 
 export const isAppDeletingOrDeleted = (appId: string) => appDeletionStates.has(appId)
 
-export const shouldSuppressAppDeletionErrorToast = (requestUrl: string, status: number) => {
-  if (status !== 404) return false
-
+const workflowRequestAppId = (requestUrl: string) => {
   const match = new URL(requestUrl, globalThis.location?.origin).pathname.match(
     /\/apps\/([^/]+)\/workflows(?:\/|$)/,
   )
-  if (!match?.[1]) return false
-
-  return isAppDeletingOrDeleted(decodeURIComponent(match[1]))
+  return match?.[1] ? decodeURIComponent(match[1]) : undefined
 }
+
+// A late 404 from a workflow of an app being deleted is expected, so nothing reports it.
+registerRequestGuard((url) => {
+  const appId = workflowRequestAppId(url)
+  if (!appId) return undefined
+  return {
+    beforeRequest: () => {},
+    isActive: () => true,
+    handleError: (status) => status === 404 && isAppDeletingOrDeleted(appId),
+  }
+})

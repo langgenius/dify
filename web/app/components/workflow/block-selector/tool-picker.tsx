@@ -16,7 +16,7 @@ import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { selectToolsWithProvider } from '@/app/components/tools/utils/query-select'
-import { toastRequestError } from '@/app/query-error-toast'
+import { reportRequestError } from '@/app/query-error-toast'
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
 import { marketplaceCollectionPluginsQueryOptions } from '@/service/plugin-list-queries'
@@ -146,7 +146,7 @@ export function ToolPickerContent({
     try {
       await createCustomCollection(data)
     } catch (error) {
-      toastRequestError(error)
+      reportRequestError(error)
       return
     }
     hideEditCustomCollectionModal()
