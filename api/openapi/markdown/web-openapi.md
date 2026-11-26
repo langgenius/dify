@@ -56,6 +56,57 @@ Create a chat message for conversational applications.
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /chat-messages/{task_id}/inputs
+Queue a steering input on an admitted Agent App web run
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RunInputRequest](#runinputrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Input queued | **application/json**: [WebAgentChatInputResponse](#webagentchatinputresponse)<br> |
+| 404 | Task or opted-in web run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Run is not accepting this input | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /chat-messages/{task_id}/inputs/{input_id}/interrupt
+Prioritize a steering input, stop the run, and replay pending inputs on the next turn
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| input_id | path | Input ID | Yes | string (uuid) |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RunInputText](#runinputtext)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Handoff settled | **application/json**: [WebAgentChatHandoffResponse](#webagentchathandoffresponse)<br> |
+| 404 | Task or opted-in web run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Input cannot be handed off | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
 
@@ -2285,6 +2336,29 @@ Keep the existing resolved-form wire shape without exposing storage metadata.
 | title | string |  | No |
 | word_count | integer |  | No |
 
+#### RunInputRequest
+
+Request body for queueing steering input on a running run.
+
+The caller-provided id makes retries idempotent: the same id and text is a
+no-op, while the same id with different text conflicts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| text | string |  | Yes |
+
+#### RunInputText
+
+Text prioritized over a run's pending inputs by the interrupt route.
+
+Shares the ``RunInputRequest.text`` contract; the input id travels in the
+path so a retried cut-in keeps its caller-provided id.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
 #### SSOProtocol
 
 | Name | Type | Description | Required |
@@ -2514,6 +2588,24 @@ in form definition, or a variable while the workflow is running.
 | email | string |  | Yes |
 | is_valid | boolean |  | Yes |
 | token | string |  | Yes |
+
+#### WebAgentChatHandoffResponse
+
+Settled steering handoff: pending inputs to replay on the next turn.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| pending_inputs | [ [RunInputRequest](#runinputrequest) ] |  | Yes |
+
+#### WebAgentChatInputResponse
+
+Receipt for an accepted steering input; acceptance is not delivery.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| status | string |  | Yes |
 
 #### WebAppAuthModel
 

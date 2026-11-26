@@ -32,6 +32,12 @@ import { toast } from '@/app/notifications'
 import { isAppAccessError } from '@/features/app-access-error/state'
 import { resolveWebAppAddress } from './webapp-address'
 
+/** A steering input the Agent App run actually delivered into its history. */
+export type AgentDeliveredInput = {
+  input_id: string
+  text: string
+}
+
 export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
@@ -65,6 +71,13 @@ export type StreamCallbacks = {
   onFile?: (file: VisionFile) => void
   onMessageEnd?: (messageEnd: MessageEnd) => void
   onMessageReplace?: IOnMessageReplace
+  /** Fired when an admitted Agent App preview run starts accepting steering inputs. */
+  onAgentQueueReady?: (
+    taskId: string,
+    identity?: { conversationId?: string; messageId?: string },
+  ) => void
+  /** Fired when a steering input was delivered into the run's history. */
+  onAgentInputDelivered?: (input: AgentDeliveredInput) => void
   onError?: IOnError
   /** Replaces the default global error notification for this request. */
   onNotifyError?: IOnError
@@ -180,6 +193,24 @@ const isRecord = (value: unknown): value is Frame => typeof value === 'object' &
 
 /** Frame fields are passed on as the backend sent them, as the legacy parser did. */
 const field = (frame: Frame | undefined, key: string) => frame?.[key] as string | undefined
+
+/** Parse one delivered steering input; anything malformed is dropped. */
+export const parseAgentDeliveredInput = (value: unknown): AgentDeliveredInput | undefined => {
+  if (!isRecord(value)) return undefined
+  const { input_id, text } = value
+  if (typeof input_id !== 'string' || !input_id) return undefined
+  if (typeof text !== 'string' || !text) return undefined
+  return { input_id, text }
+}
+
+/** Parse the persisted steering_inputs list carried on message metadata. */
+export const parseAgentDeliveredInputs = (metadata: unknown): AgentDeliveredInput[] => {
+  if (!isRecord(metadata) || !Array.isArray(metadata.steering_inputs)) return []
+  return metadata.steering_inputs.flatMap((entry) => {
+    const parsed = parseAgentDeliveredInput(entry)
+    return parsed ? [parsed] : []
+  })
+}
 
 const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
   isRecord(value) && Symbol.asyncIterator in value
@@ -309,6 +340,20 @@ const consumeFrames = async (
         errorCode: field(frame, 'code'),
       })
       return false
+    }
+    if (event === 'agent_queue_ready') {
+      const taskId = field(frame, 'task_id')
+      if (typeof taskId === 'string' && taskId)
+        callbacks.onAgentQueueReady?.(taskId, {
+          conversationId: field(frame, 'conversation_id'),
+          messageId: field(frame, 'message_id'),
+        })
+      return true
+    }
+    if (event === 'agent_input_delivered') {
+      const input = parseAgentDeliveredInput(frame.input)
+      if (input) callbacks.onAgentInputDelivered?.(input)
+      return true
     }
     if (event === 'message' || event === 'agent_message') {
       // Answers arrive split across frames, so they are passed on without formatting.

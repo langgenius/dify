@@ -1150,6 +1150,15 @@ export type RetrieverResource = {
   word_count?: number | null
 }
 
+export type RunInputRequest = {
+  input_id: string
+  text: string
+}
+
+export type RunInputText = {
+  text: string
+}
+
 export type SsoProtocol = 'oauth2' | 'oidc' | 'saml'
 
 export type SavedMessageCreatePayload = {
@@ -1318,6 +1327,16 @@ export type VerificationTokenResponse = {
   email: string
   is_valid: boolean
   token: string
+}
+
+export type WebAgentChatHandoffResponse = {
+  input_id: string
+  pending_inputs: Array<RunInputRequest>
+}
+
+export type WebAgentChatInputResponse = {
+  input_id: string
+  status: 'queued'
 }
 
 export type WebAppAuthModel = {
@@ -1584,6 +1603,59 @@ export type PostChatMessagesResponses = {
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
+
+export type PostChatMessagesByTaskIdInputsData = {
+  body: RunInputRequest
+  path: {
+    task_id: string
+  }
+  query?: never
+  url: '/chat-messages/{task_id}/inputs'
+}
+
+export type PostChatMessagesByTaskIdInputsErrors = {
+  404: ErrorResponse
+  409: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostChatMessagesByTaskIdInputsError =
+  PostChatMessagesByTaskIdInputsErrors[keyof PostChatMessagesByTaskIdInputsErrors]
+
+export type PostChatMessagesByTaskIdInputsResponses = {
+  202: WebAgentChatInputResponse
+}
+
+export type PostChatMessagesByTaskIdInputsResponse =
+  PostChatMessagesByTaskIdInputsResponses[keyof PostChatMessagesByTaskIdInputsResponses]
+
+export type PostChatMessagesByTaskIdInputsByInputIdInterruptData = {
+  body: RunInputText
+  path: {
+    input_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/chat-messages/{task_id}/inputs/{input_id}/interrupt'
+}
+
+export type PostChatMessagesByTaskIdInputsByInputIdInterruptErrors = {
+  404: ErrorResponse
+  409: ErrorResponse
+  503: ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostChatMessagesByTaskIdInputsByInputIdInterruptError =
+  PostChatMessagesByTaskIdInputsByInputIdInterruptErrors[keyof PostChatMessagesByTaskIdInputsByInputIdInterruptErrors]
+
+export type PostChatMessagesByTaskIdInputsByInputIdInterruptResponses = {
+  200: WebAgentChatHandoffResponse
+}
+
+export type PostChatMessagesByTaskIdInputsByInputIdInterruptResponse =
+  PostChatMessagesByTaskIdInputsByInputIdInterruptResponses[keyof PostChatMessagesByTaskIdInputsByInputIdInterruptResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
   body?: never

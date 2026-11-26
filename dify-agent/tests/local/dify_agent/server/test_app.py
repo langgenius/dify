@@ -184,6 +184,7 @@ class FakeHttpxModule:
     "path",
     [
         "/runs",
+        "/runs/run-1/inputs",
         "/execution-bindings",
         "/home-snapshots/from-binding",
         "/execution-bindings/files/list",

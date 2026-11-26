@@ -18,6 +18,7 @@ from services.agent.app_composer import AgentAppComposer
 from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
+from services.agent.chat_steering import AgentChatSteeringService
 from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
@@ -62,6 +63,7 @@ class AgentAppServices:
     sandbox: AgentAppSandboxService
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
+    chat_steering: AgentChatSteeringService
 
 
 def _can_restore_version(
@@ -113,6 +115,7 @@ def build_agent_app_services(
             config=AgentBuildConfigGateway(session_factory=database_client),
             snapshots=AgentBuildSnapshotGateway(create_home_snapshot_client),
         ),
+        chat_steering=AgentChatSteeringService(owners=apps),
         sandbox=AgentAppSandboxService(
             bindings=AgentSandboxRepository(session_factory=database_client, apps=apps),
             files=AgentSandboxFileGateway(

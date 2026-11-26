@@ -398,6 +398,7 @@ export default interface Resources {
     'agentDetail.configure.preview.errors.agentModelRequestLimitExceeded': 'This agent run was stopped at the model request limit. Try again, or break the task into smaller steps.'
     'agentDetail.configure.preview.errors.agentRunLimitExceeded': 'This agent run was stopped at the time limit. Try again, or break the task into smaller steps.'
     'agentDetail.configure.preview.inputPlaceholder': 'Message {{name}}'
+    'agentDetail.configure.preview.queue.sendFailed': 'Could not queue this instruction. Try again.'
     'agentDetail.configure.preview.restart': 'Start fresh'
     'agentDetail.configure.preview.sandboxNotice': 'Agent runs in a Linux sandbox.'
     'agentDetail.configure.preview.sandboxNoticeTooltip': 'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'

@@ -6,7 +6,7 @@ import type { ComponentProps } from 'react'
 import type { AgentPreviewChatController } from '../chat-conversation'
 import type { VoiceRecorder } from '@/app/components/base/voice-input/recorder'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -26,6 +26,9 @@ const api = vi.hoisted(() => ({
   history: vi.fn(),
   suggestions: vi.fn(),
   stop: vi.fn(),
+  queue: vi.fn(),
+  enqueue: vi.fn(),
+  interrupt: vi.fn(),
   transcribe: vi.fn(),
   uploadRemote: vi.fn(),
   error: vi.fn<typeof import('@/app/notifications').toast.error>(),
@@ -67,6 +70,9 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'agent.byAgentId.chatMessages.get': api.history,
+      'agent.byAgentId.chatMessages.byTaskId.queue.get': api.queue,
+      'agent.byAgentId.chatMessages.byTaskId.inputs.post': api.enqueue,
+      'agent.byAgentId.chatMessages.byTaskId.inputs.byInputId.interrupt.post': api.interrupt,
       'remoteFiles.upload.post': api.uploadRemote,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
@@ -126,6 +132,11 @@ beforeEach(() => {
   )
   api.suggestions.mockResolvedValue({ data: ['What comes next?'] })
   api.stop.mockResolvedValue({ result: 'success' })
+  api.queue.mockResolvedValue({ accepting_inputs: true, entries: [] })
+  api.enqueue.mockImplementation(async (request) => ({
+    input_id: request.body.input_id,
+    status: 'queued',
+  }))
   api.transcribe.mockResolvedValue({ text: 'Transcribed request' })
   api.uploadRemote.mockResolvedValue({
     id: 'uploaded-1',
@@ -285,6 +296,35 @@ describe('Agent conversation history', () => {
       expect(input()).toHaveValue('Keep my draft')
     },
   )
+
+  it('renders persisted steering inputs from history metadata', async () => {
+    messages.set('conversation-1', [
+      createMessage({
+        metadata: {
+          steering_inputs: [
+            { input_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', text: 'Earlier steer' },
+            { input_id: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff', text: 'Second steer' },
+          ],
+        },
+      }),
+    ])
+    renderChat({ conversationId: 'conversation-1' })
+
+    // Steering inputs render as ordinary user rows, in delivery order, before
+    // the answer — not nested inside the answer bubble.
+    const questions = await screen.findAllByTestId('question-content')
+    expect(questions.map((q) => q.textContent)).toEqual([
+      'Earlier question',
+      'Earlier steer',
+      'Second steer',
+    ])
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Earlier steer'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Second steer'),
+    ).not.toBeInTheDocument()
+  })
 
   it.each([false, true])(
     'uses the configured show thoughts setting (%s) in preview',
@@ -808,3 +848,243 @@ it.each(['sse', 'http'])(
     }
   },
 )
+
+describe('Agent preview asynchronous steering', () => {
+  async function ready(
+    index = 0,
+    taskId = `task-${index}`,
+    identity = { conversationId: 'conversation-1', messageId: `message-${index}` },
+  ) {
+    await waitFor(() => expect(ssePost.mock.calls[index]).toBeDefined())
+    await act(async () => {
+      stream(index).onAgentQueueReady?.(taskId, identity)
+    })
+  }
+
+  it.each(['preview', 'build'] as const)(
+    'cuts into the live run and replays frozen inputs on the next turn: %s',
+    async (mode) => {
+      const user = userEvent.setup()
+      renderChat({ mode })
+      await send(user, 'Start the run')
+      await ready()
+
+      // The new text goes through the scoped interrupt — no enqueue, no GET.
+      const receipt = createDeferred<{
+        input_id: string
+        pending_inputs: { input_id: string; text: string }[]
+      }>()
+      api.interrupt.mockReturnValue(receipt.promise)
+      await user.type(input(), 'Please also check the logs')
+      await user.keyboard('{Enter}')
+
+      await waitFor(() => expect(api.interrupt).toHaveBeenCalledOnce())
+      const request = api.interrupt.mock.calls[0]![0]
+      expect(request.params.agent_id).toBe('agent-1')
+      expect(request.params.task_id).toBe('task-0')
+      expect(request.params.input_id).toMatch(/^[0-9a-f-]{36}$/)
+      expect(request.body).toEqual({ text: 'Please also check the logs' })
+      expect(api.enqueue).not.toHaveBeenCalled()
+      expect(api.queue).not.toHaveBeenCalled()
+      // No second turn while the old run is still settling.
+      expect(ssePost).toHaveBeenCalledOnce()
+
+      const firstId = request.params.input_id as string
+      const older = [
+        { input_id: 'aaaaaaaa-0000-4000-8000-000000000001', text: 'older one' },
+        { input_id: 'bbbbbbbb-0000-4000-8000-000000000002', text: 'older two' },
+      ]
+      await act(async () => {
+        receipt.resolve({
+          input_id: firstId,
+          pending_inputs: [...older, { input_id: firstId, text: 'Please also check the logs' }],
+        })
+      })
+
+      // The settled receipt starts exactly one ordinary turn in the same
+      // conversation; the prioritized text opens it.
+      await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+      expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({
+        query: 'Please also check the logs',
+        conversation_id: 'conversation-1',
+      })
+      // The older inputs replay FIFO into the new run once it is ready.
+      await ready(1)
+      await waitFor(() => expect(api.enqueue).toHaveBeenCalledTimes(2))
+      expect(api.enqueue.mock.calls[0]![0].body).toEqual({
+        input_id: older[0]!.input_id,
+        text: 'older one',
+      })
+      expect(api.enqueue.mock.calls[1]![0].body).toEqual({
+        input_id: older[1]!.input_id,
+        text: 'older two',
+      })
+      expect(api.enqueue.mock.calls[0]![0].params.task_id).toBe('task-1')
+      expect(api.enqueue.mock.calls[1]![0].params.task_id).toBe('task-1')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(api.queue).not.toHaveBeenCalled()
+    },
+  )
+
+  it('renders delivered steering inputs in the transcript exactly once', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await send(user, 'Start the run')
+    await ready()
+
+    const input = { input_id: '11111111-2222-3333-4444-555555555555', text: 'Steer mid-run' }
+    expect(screen.queryByText('Steer mid-run')).not.toBeInTheDocument()
+
+    await act(async () => {
+      stream(0).onAgentInputDelivered?.(input)
+    })
+    await receive(0)
+
+    const questionRows = await screen.findAllByTestId('question-content')
+    expect(questionRows.map((q) => q.textContent)).toEqual(['Start the run', 'Steer mid-run'])
+    expect(
+      within(screen.getByTestId('chat-answer-container')).queryByText('Steer mid-run'),
+    ).not.toBeInTheDocument()
+
+    // A repeated delivery of the same id does not duplicate the transcript row.
+    await act(async () => {
+      stream(0).onAgentInputDelivered?.(input)
+    })
+    expect(screen.getAllByText('Steer mid-run')).toHaveLength(1)
+    // The delivery path never opened a second SSE turn.
+    expect(ssePost).toHaveBeenCalledOnce()
+    expect(api.queue).not.toHaveBeenCalled()
+  })
+
+  it('keeps the draft and retries the same cut-in after the old run settles', async () => {
+    const user = userEvent.setup()
+    renderChat()
+    await send(user, 'Start the run')
+    await ready()
+
+    api.interrupt.mockRejectedValueOnce(new Error('network down'))
+    await user.type(input(), 'Steer this instead')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(api.interrupt).toHaveBeenCalledOnce())
+    expect(await screen.findByRole('alert')).toHaveTextContent('sendFailed')
+    expect(input()).toHaveValue('Steer this instead')
+    expect(ssePost).toHaveBeenCalledOnce()
+    const firstRequest = api.interrupt.mock.calls[0]![0]
+
+    // The old run finishes; retrying the retained draft still targets the
+    // original task + input id, and the next turn starts only after the
+    // settled receipt arrives.
+    await complete(0)
+    const receipt = createDeferred<{
+      input_id: string
+      pending_inputs: { input_id: string; text: string }[]
+    }>()
+    api.interrupt.mockReturnValue(receipt.promise)
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(api.interrupt).toHaveBeenCalledTimes(2))
+    const retry = api.interrupt.mock.calls[1]![0]
+    expect(retry.params.task_id).toBe(firstRequest.params.task_id)
+    expect(retry.params.input_id).toBe(firstRequest.params.input_id)
+    expect(retry.body).toEqual({ text: 'Steer this instead' })
+    expect(ssePost).toHaveBeenCalledOnce()
+
+    const inputId = retry.params.input_id as string
+    await act(async () => {
+      receipt.resolve({
+        input_id: inputId,
+        pending_inputs: [{ input_id: inputId, text: 'Steer this instead' }],
+      })
+    })
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({ query: 'Steer this instead' })
+    expect(api.queue).not.toHaveBeenCalled()
+  })
+
+  it('keeps the draft and retries the same cut-in when the replacement send fails', async () => {
+    const user = userEvent.setup()
+    const saveDraft = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
+    renderChat({ onSaveDraftBeforeRun: saveDraft })
+    await send(user, 'Start the run')
+    await ready()
+
+    const first = createDeferred<{
+      input_id: string
+      pending_inputs: { input_id: string; text: string }[]
+    }>()
+    api.interrupt.mockReturnValue(first.promise)
+    saveDraft.mockRejectedValueOnce(new Error('save failed'))
+    await user.type(input(), 'Cut in now')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(api.interrupt).toHaveBeenCalledOnce())
+    const firstId = api.interrupt.mock.calls[0]![0].params.input_id as string
+    await act(async () => {
+      first.resolve({
+        input_id: firstId,
+        pending_inputs: [{ input_id: firstId, text: 'Cut in now' }],
+      })
+    })
+
+    // The receipt settled, but the replacement turn's autosave failed: the
+    // draft stays for retry and no second turn was dispatched.
+    expect(await screen.findByRole('alert')).toHaveTextContent('sendFailed')
+    expect(input()).toHaveValue('Cut in now')
+    expect(ssePost).toHaveBeenCalledOnce()
+
+    // Retrying the retained draft re-issues the identical freeze, and the
+    // next turn launches once the dispatch send succeeds.
+    const second = createDeferred<{
+      input_id: string
+      pending_inputs: { input_id: string; text: string }[]
+    }>()
+    api.interrupt.mockReturnValue(second.promise)
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(api.interrupt).toHaveBeenCalledTimes(2))
+    expect(api.interrupt.mock.calls[1]![0].params).toEqual(api.interrupt.mock.calls[0]![0].params)
+    expect(api.interrupt.mock.calls[1]![0].body).toEqual({ text: 'Cut in now' })
+    await act(async () => {
+      second.resolve({
+        input_id: firstId,
+        pending_inputs: [{ input_id: firstId, text: 'Cut in now' }],
+      })
+    })
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({ query: 'Cut in now' })
+    expect(api.queue).not.toHaveBeenCalled()
+  })
+
+  it('does not dispatch a competing turn while a cut-in is still settling', async () => {
+    const user = userEvent.setup()
+    const controllerRef = createRef<AgentPreviewChatController>()
+    renderChat({ controllerRef })
+    await send(user, 'Start the run')
+    await ready()
+
+    const receipt = createDeferred<{
+      input_id: string
+      pending_inputs: { input_id: string; text: string }[]
+    }>()
+    api.interrupt.mockReturnValue(receipt.promise)
+    await user.type(input(), 'Please also check the logs')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(api.interrupt).toHaveBeenCalledOnce())
+
+    // The old SSE ends before the receipt lands; even a different send must
+    // not fall back to a normal turn before the handoff settles.
+    await complete(0)
+    expect(await controllerRef.current?.send('Different text')).toBe(false)
+    expect(ssePost).toHaveBeenCalledOnce()
+    expect(api.interrupt).toHaveBeenCalledOnce()
+
+    const firstId = api.interrupt.mock.calls[0]![0].params.input_id as string
+    await act(async () => {
+      receipt.resolve({
+        input_id: firstId,
+        pending_inputs: [{ input_id: firstId, text: 'Please also check the logs' }],
+      })
+    })
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({ query: 'Please also check the logs' })
+  })
+})

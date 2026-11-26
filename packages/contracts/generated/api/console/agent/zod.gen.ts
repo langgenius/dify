@@ -398,6 +398,35 @@ export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and
 )
 
 /**
+ * AgentChatInputPayload
+ *
+ * Steering input for an admitted Agent App preview run.
+ */
+export const zAgentChatInputPayload = z.object({
+  input_id: z.uuid(),
+  text: z.string().min(1).max(8000),
+})
+
+/**
+ * AgentChatInputResponse
+ *
+ * Receipt for an accepted steering input; acceptance is not delivery.
+ */
+export const zAgentChatInputResponse = z.object({
+  input_id: z.uuid(),
+  status: z.literal('queued'),
+})
+
+/**
+ * AgentChatInterruptPayload
+ *
+ * Text to prioritize over the run's pending inputs.
+ */
+export const zAgentChatInterruptPayload = z.object({
+  text: z.string().min(1).max(8000),
+})
+
+/**
  * AgentConfigFileUploadPayload
  */
 export const zAgentConfigFileUploadPayload = z.object({
@@ -999,6 +1028,49 @@ export const zComposerSoulLockPayload = z.object({
  * ComposerVariant
  */
 export const zComposerVariant = z.enum(['agent_app', 'workflow'])
+
+/**
+ * RunInputRequest
+ *
+ * Request body for queueing steering input on a running run.
+ *
+ * The caller-provided id makes retries idempotent: the same id and text is a
+ * no-op, while the same id with different text conflicts.
+ */
+export const zRunInputRequest = z.object({
+  input_id: z.uuid(),
+  text: z.string().min(1).max(8000),
+})
+
+/**
+ * AgentChatInputHandoffResponse
+ *
+ * Settled steering handoff: pending inputs to replay on the next turn.
+ */
+export const zAgentChatInputHandoffResponse = z.object({
+  input_id: z.uuid(),
+  pending_inputs: z.array(zRunInputRequest),
+})
+
+/**
+ * RunQueueEntry
+ *
+ * One inbox entry: an id and kind only, never text, output, or secrets.
+ */
+export const zRunQueueEntry = z.object({
+  id: z.string(),
+  kind: z.literal('input_queued'),
+})
+
+/**
+ * AgentChatQueueResponse
+ *
+ * Backend-neutral snapshot of the scoped run's pending inbox entries.
+ */
+export const zAgentChatQueueResponse = z.object({
+  accepting_inputs: z.boolean(),
+  entries: z.array(zRunQueueEntry),
+})
 
 /**
  * AgentConfigSnapshotSummaryResponse
@@ -4195,6 +4267,43 @@ export const zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath = z
  */
 export const zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse =
   zSuggestedQuestionsResponse
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsBody = zAgentChatInputPayload
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Input queued
+ */
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsResponse = zAgentChatInputResponse
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptBody =
+  zAgentChatInterruptPayload
+
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptPath = z.object({
+  agent_id: z.uuid(),
+  input_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Handoff settled
+ */
+export const zPostAgentByAgentIdChatMessagesByTaskIdInputsByInputIdInterruptResponse =
+  zAgentChatInputHandoffResponse
+
+export const zGetAgentByAgentIdChatMessagesByTaskIdQueuePath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetAgentByAgentIdChatMessagesByTaskIdQueueResponse = zAgentChatQueueResponse
 
 export const zPostAgentByAgentIdChatMessagesByTaskIdStopPath = z.object({
   agent_id: z.uuid(),

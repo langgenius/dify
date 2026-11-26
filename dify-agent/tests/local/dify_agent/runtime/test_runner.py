@@ -3,12 +3,15 @@
 import asyncio
 from dataclasses import replace
 from types import SimpleNamespace
+from uuid import uuid4
 
 import httpx
 import pytest
+from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
 from pydantic_ai import Agent, Tool
 from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import (
+    EnqueuedMessagesEvent,
     UserPromptPart,
     ModelRequest,
     ModelResponse,
@@ -28,15 +31,19 @@ from dify_agent.protocol.schemas import (
     RunComposition,
     RunFailedEvent,
     RunFailedEventData,
+    RunInputRequest,
     RunLayerSpec,
+    PydanticAIStreamRunEvent,
     RunSucceededEvent,
     RunFailureType,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
+from dify_agent.runtime.run_inputs import STEERING_INPUT_METADATA_KEY
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.runtime_backend import RuntimeBackendProfile, RuntimeLayout
+from dify_agent.storage.redis_run_store import RedisRunStore, RunInputConflictError
 
 
 def request(*extra, snapshot=None, instruction="Current instruction", user="hello"):
@@ -679,3 +686,75 @@ async def test_quality_report_follows_final_run_event(monkeypatch, failed):
         else:
             await runner.run()
             module.publish_investigation.assert_awaited_once_with(services, status="completed", answer="answer")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("agent_mode", ["agent_app", "workflow_run"])
+async def test_steering_input_becomes_a_user_turn_only_for_agent_app(monkeypatch, agent_mode):
+    """Opted-in agent_app runs deliver queued input; other modes never open the inbox."""
+    steering_text = "Switch to plan B."
+    steering = RunInputRequest(input_id=uuid4(), text=steering_text)
+    calls = 0
+
+    async with AsyncFakeRedis() as redis_client, httpx.AsyncClient() as client:
+        store = RedisRunStore(redis_client, prefix="test", run_retention_seconds=60)
+        record = await store.create_run()
+        services = Services(client, client, run_input_store=store)
+        incoming = request()
+        incoming.metadata = {"allow_steering": True}
+        execution_context = next(layer for layer in incoming.composition.layers if layer.name == "execution_context")
+        execution_context.config["agent_mode"] = agent_mode
+
+        async def stream(messages, info):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                prompts = [
+                    p for m in messages if isinstance(m, ModelRequest) for p in m.parts if isinstance(p, UserPromptPart)
+                ]
+                assert all(p.content != steering_text for p in prompts)
+                if agent_mode == "agent_app":
+                    await store.enqueue_run_input(record.run_id, steering)
+                else:
+                    # The inbox was never opened, so the same enqueue conflicts.
+                    with pytest.raises(RunInputConflictError, match="not accepting steering input"):
+                        await store.enqueue_run_input(record.run_id, steering)
+                yield "first answer"
+                return
+            assert calls == 2
+            assert agent_mode == "agent_app"
+            steered = [
+                p
+                for m in messages
+                if isinstance(m, ModelRequest)
+                for p in m.parts
+                if isinstance(p, UserPromptPart) and p.content == steering_text
+            ]
+            assert len(steered) == 1
+            yield "second answer"
+
+        runner, sink = run_runner(incoming, services, monkeypatch, stream, run_id=record.run_id)
+        await runner.run()
+        terminal = sink.events[record.run_id][-1]
+        assert isinstance(terminal, RunSucceededEvent)
+        assert terminal.data.output == ("second answer" if agent_mode == "agent_app" else "first answer")
+        assert calls == (2 if agent_mode == "agent_app" else 1)
+
+        enqueued = [
+            event.data
+            for event in sink.events[record.run_id]
+            if isinstance(event, PydanticAIStreamRunEvent) and isinstance(event.data, EnqueuedMessagesEvent)
+        ]
+        tagged = [
+            m
+            for ev in enqueued
+            for m in ev.messages
+            if isinstance(m, ModelRequest) and (m.metadata or {}).get(STEERING_INPUT_METADATA_KEY)
+        ]
+        if agent_mode == "agent_app":
+            assert len(tagged) == 1
+            assert tagged[0].metadata[STEERING_INPUT_METADATA_KEY] == str(steering.input_id)
+            assert isinstance(tagged[0].parts[0], UserPromptPart)
+            assert tagged[0].parts[0].content == steering_text
+        else:
+            assert tagged == []

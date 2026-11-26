@@ -114,6 +114,26 @@ export function chatMessagesSender(appSourceType: AppSourceType, appId: string):
     webAppClient.chatMessages.post({ body: body as PostChatMessagesData['body'] }, options)
 }
 
+/**
+ * Prioritizes a steering input on a steering-admitted web Agent run: the
+ * backend freezes the run's queued inputs around the text and replies once
+ * the session snapshot settled.
+ */
+export const interruptWebAgentChatInput = async (taskId: string, inputId: string, text: string) => {
+  return webAppClient.chatMessages.byTaskId.inputs.byInputId.interrupt.post(
+    { params: { task_id: taskId, input_id: inputId }, body: { text } },
+    { context: { silent: true } },
+  )
+}
+
+/** Queues one frozen steering input on a live web Agent run under its original id. */
+export const enqueueWebAgentChatInput = async (taskId: string, inputId: string, text: string) => {
+  return webAppClient.chatMessages.byTaskId.inputs.post(
+    { params: { task_id: taskId }, body: { input_id: inputId, text } },
+    { context: { silent: true } },
+  )
+}
+
 function completionMessagesSender(appSourceType: AppSourceType, appId: string): StreamSender {
   if (appSourceType === AppSourceType.installedApp)
     return (body, options) =>

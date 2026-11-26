@@ -21,9 +21,15 @@ def run_cancel_intent_key(prefix: str, run_id: str) -> str:
     return f"{prefix}:runs:{run_id}:cancel-intent"
 
 
+def run_input_key(prefix: str, run_id: str) -> str:
+    """Return the Redis hash key holding one run's bounded steering inbox."""
+    return f"{prefix}:runs:{run_id}:inputs"
+
+
 __all__ = [
     "run_cancel_intent_key",
     "run_events_key",
     "run_idempotency_key",
+    "run_input_key",
     "run_record_key",
 ]

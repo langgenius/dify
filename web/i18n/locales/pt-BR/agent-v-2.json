@@ -163,6 +163,7 @@
   "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Esta execução do Agent foi interrompida após atingir o número máximo de solicitações ao modelo. Tente novamente ou divida a tarefa em etapas menores.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Esta execução do Agent foi interrompida ao atingir o limite de tempo. Tente novamente ou divida a tarefa em etapas menores.",
   "agentDetail.configure.preview.inputPlaceholder": "Enviar mensagem para {{name}}",
+  "agentDetail.configure.preview.queue.sendFailed": "Não foi possível enfileirar esta instrução. Tente novamente.",
   "agentDetail.configure.preview.restart": "Começar de novo",
   "agentDetail.configure.preview.sandboxNotice": "O agente é executado em uma sandbox Linux.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "No Dify Community Edition, cada um dos seus agents é executado em um ambiente sandbox Linux 7.0.0-10060-aws dentro do seu Docker. Suas edições no ambiente via Build Chats são persistentes.",

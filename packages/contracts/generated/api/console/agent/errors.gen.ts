@@ -464,16 +464,22 @@ export const get5Errors = {
 
 export const post7Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get6Errors = {
+export const post8Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const get6Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const post9Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const get7Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const get7Errors = {
+export const get8Errors = {
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
 }
 
-export const post8Errors = {
+export const post10Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -481,7 +487,7 @@ export const post8Errors = {
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
 }
 
-export const get8Errors = {
+export const get9Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
 }
@@ -494,23 +500,21 @@ export const put2Errors = {
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
 }
 
-export const post9Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
-
-export const get9Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const post11Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const get10Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const delete3Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
-
 export const get11Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post10Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const delete3Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const get12Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post11Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const post12Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const get13Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const post13Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const get14Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
@@ -520,41 +524,43 @@ export const get16Errors = { agent_not_found_error: { status: 404, data: zAgentN
 
 export const get17Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const delete4Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
-
 export const get18Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post12Errors = {
+export const delete4Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const get19Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const post14Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
 }
 
-export const post13Errors = {
+export const post15Errors = {
   agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
 }
 
-export const post14Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const post16Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post15Errors = {
+export const post17Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
 }
 
-export const get19Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
-
 export const get20Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const get21Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get22Errors = {
+export const get22Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+
+export const get23Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
 }
 
-export const post16Errors = {
+export const post18Errors = {
   agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -562,19 +568,12 @@ export const post16Errors = {
   plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
 }
 
-export const get23Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get24Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post17Errors = {
+export const post19Errors = {
   agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
-  inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
-  no_active_binding: { status: 404, data: zNoActiveBindingError },
-}
-
-export const get24Errors = {
-  agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
-  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
   no_active_binding: { status: 404, data: zNoActiveBindingError },
 }
@@ -587,13 +586,20 @@ export const get25Errors = {
 }
 
 export const get26Errors = {
+  agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
+  agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
+  no_active_binding: { status: 404, data: zNoActiveBindingError },
+}
+
+export const get27Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   no_active_binding: { status: 404, data: zNoActiveBindingError },
 }
 
-export const get27Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get28Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get28Errors = {
+export const get29Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -601,7 +607,7 @@ export const get28Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post18Errors = {
+export const post20Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   app_unavailable: { status: 400, data: zAppUnavailableError },
   completion_request_error: { status: 400, data: zCompletionRequestError },
@@ -611,7 +617,7 @@ export const post18Errors = {
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
 }
 
-export const post19Errors = {
+export const post21Errors = {
   invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
   trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
   tracing_config_conflict: { status: 409, data: zTracingConfigConflictError },
@@ -620,7 +626,7 @@ export const post19Errors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const get30Errors = {
+export const get31Errors = {
   tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
@@ -632,7 +638,7 @@ export const delete5Errors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const get31Errors = {
+export const get32Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
   tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
@@ -650,7 +656,7 @@ export const patchErrors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const post20Errors = {
+export const post22Errors = {
   app_not_found: { status: 404, data: zAppNotFoundError },
   invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
   trace_config_already_exists: { status: 409, data: zTraceConfigAlreadyExistsError },
@@ -660,7 +666,7 @@ export const post20Errors = {
   unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
 }
 
-export const post21Errors = {
+export const post23Errors = {
   tracing_already_accepted: { status: 409, data: zTracingAlreadyAcceptedError },
   tracing_duplicate_acknowledgement_required: {
     status: 409,
@@ -672,35 +678,35 @@ export const post21Errors = {
   tracing_source_not_found: { status: 404, data: zTracingSourceNotFoundError },
 }
 
-export const get32Errors = {
+export const get33Errors = {
   tracing_node_not_found: { status: 404, data: zTracingNodeNotFoundError },
   tracing_source_not_found: { status: 404, data: zTracingSourceNotFoundError },
 }
 
-export const post22Errors = {
+export const post24Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
 }
 
-export const get33Errors = {
+export const get34Errors = {
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
   agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
 }
 
-export const get34Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get35Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const delete6Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const get35Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get36Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
 export const put3Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
 }
 
-export const get36Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
+export const get37Errors = { agent_not_found_error: { status: 404, data: zAgentNotFoundError } }
 
-export const post23Errors = {
+export const post25Errors = {
   agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
   agent_not_found_error: { status: 404, data: zAgentNotFoundError },
 }

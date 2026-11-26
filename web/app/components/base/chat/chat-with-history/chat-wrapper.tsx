@@ -1,7 +1,8 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
 import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
-import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
+import type { ChatConfig, ChatItem, ChatItemInTree } from '../types'
+import type { AgentChatCutInSend, AgentChatCutInTransport } from '../use-agent-chat-cut-in'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
@@ -12,14 +13,17 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { useAgentChatCutIn } from '@/app/components/base/chat/use-agent-chat-cut-in'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   chatMessagesSender,
+  enqueueWebAgentChatInput,
   fetchChatList,
   fetchSuggestedQuestions,
+  interruptWebAgentChatInput,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -31,8 +35,28 @@ import { useChat } from '../chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 
+// Web App transport for the shared cut-in hook: failures resolve to a
+// retryable `null`/`false` so the caller keeps the draft or the replay item.
+const webAgentCutInTransport: AgentChatCutInTransport = {
+  interrupt: async (taskId, inputId, text) => {
+    try {
+      return await interruptWebAgentChatInput(taskId, inputId, text)
+    } catch {
+      return null
+    }
+  },
+  enqueue: async (taskId, inputId, text) => {
+    try {
+      await enqueueWebAgentChatInput(taskId, inputId, text)
+      return true
+    } catch {
+      return false
+    }
+  },
+}
+
 const ChatWrapper = () => {
-  const { t } = useTranslation(['share'])
+  const { t } = useTranslation(['share', 'agentV2'])
   const {
     appParams,
     appPrevChatTree,
@@ -59,6 +83,7 @@ const ChatWrapper = () => {
     initUserVariables,
     isNewAgent,
     renderAgentContent,
+    chatShouldReloadKey,
   } = useChatWithHistoryContext()
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
@@ -91,6 +116,7 @@ const ChatWrapper = () => {
     prepareHumanInputSubmission,
     isResponding: respondingState,
     suggestedQuestions,
+    settleAgentHandoff,
   } = useChat(
     appConfig,
     {
@@ -209,29 +235,41 @@ const ChatWrapper = () => {
     if (!currentConversationId) setHasSent(false)
   }
 
-  const doSend: OnSend = useCallback(
-    (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+  // Published roster Agent Web Apps admit steering: while the scoped run is
+  // live, a normal Send of plain text cuts in instead of queueing a second
+  // turn. `enabled` stays false for installed/trial surfaces so their sends
+  // pass through unchanged.
+  const webSteeringEnabled = isNewAgent === true && appSourceType === AppSourceType.webApp
+
+  const sendTurn: AgentChatCutInSend = useCallback(
+    async (message, files, isRegenerate = false, parentAnswer = null, onReady) => {
       if (!currentConversationId) setHasSent(true)
       const data: any = {
         query: message,
         files,
         inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
-        conversation_id: currentConversationId,
+        // Blank must not land in the body: `useChat` already carries the
+        // conversation id assigned by the live run's queue-ready frame, so a
+        // cut-in replacement turn before the completion callback stays in the
+        // same conversation instead of opening a new one.
+        ...(currentConversationId ? { conversation_id: currentConversationId } : {}),
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
+      const result = await handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
           : undefined,
         onGetSuggestedQuestions: (responseItemId) =>
           fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: isHistoryConversation ? undefined : handleNewConversationCompleted,
+        onAgentQueueReady: webSteeringEnabled ? (taskId) => onReady?.(taskId) : undefined,
         isPublicAPI: appSourceType === AppSourceType.webApp,
       })
       const appMode = isNewAgent ? 'agent-v2' : appData?.mode
       if (appSourceType === AppSourceType.webApp && appMode)
         trackWebAppEvent('webapp_run', { app_mode: appMode })
+      return result
     },
     [
       currentConversationId,
@@ -245,8 +283,31 @@ const ChatWrapper = () => {
       handleNewConversationCompleted,
       isNewAgent,
       appData?.mode,
+      webSteeringEnabled,
     ],
   )
+
+  // Scoped to this visitor + app + mount so a stale frame or a different
+  // surface can never steer this conversation; the scope survives the first
+  // conversation id assignment on purpose.
+  const cutInScopeKey = `${appId ?? ''}:${appData?.end_user_id ?? ''}:${chatShouldReloadKey}`
+  const settleWebHandoff = useCallback(
+    (taskId: string) => settleAgentHandoff(taskId),
+    [settleAgentHandoff],
+  )
+  const {
+    onReady: _onCutInReady,
+    canSteer: cutInCanSteer,
+    sendFailed: cutInSendFailed,
+    send: cutInSend,
+  } = useAgentChatCutIn({
+    enabled: webSteeringEnabled,
+    scopeKey: cutInScopeKey,
+    isResponding: respondingState,
+    transport: webAgentCutInTransport,
+    settle: settleWebHandoff,
+    send: sendTurn,
+  })
 
   const doRegenerate = useCallback(
     (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => {
@@ -254,14 +315,14 @@ const ChatWrapper = () => {
         ? chatItem
         : chatList.find((item) => item.id === chatItem.parentMessageId)!
       const parentAnswer = chatList.find((item) => item.id === question.parentMessageId)
-      doSend(
+      void cutInSend(
         editedQuestion ? editedQuestion.message : question.content,
         editedQuestion ? editedQuestion.files : question.message_files,
         true,
         isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
       )
     },
-    [chatList, doSend],
+    [chatList, cutInSend],
   )
 
   const doSwitchSibling = useCallback(
@@ -434,7 +495,8 @@ const ChatWrapper = () => {
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isBelowSm && 'px-4'}`}
         chatFooterClassName="pb-4"
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`}
-        onSend={doSend}
+        onSend={cutInSend}
+        allowSendWhileResponding={cutInCanSteer}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
@@ -455,6 +517,13 @@ const ChatWrapper = () => {
         theme={theme}
         switchSibling={doSwitchSibling}
         inputDisabled={inputDisabled}
+        footerNotice={
+          cutInSendFailed ? (
+            <p role="alert" className="mb-2 text-xs text-text-destructive">
+              {t(($) => $['agentDetail.configure.preview.queue.sendFailed'], { ns: 'agentV2' })}
+            </p>
+          ) : undefined
+        }
         sidebarCollapseState={sidebarCollapseState}
         renderAgentContent={renderAgentContent}
         questionIcon={

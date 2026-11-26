@@ -47,6 +47,10 @@ from dify_agent.protocol import (
     RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
+    RunInputRequest,
+    RunInputHandoffResponse,
+    RunInputResponse,
+    RunQueueResponse,
     RunStatusResponse,
 )
 
@@ -490,6 +494,83 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"get_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, RunStatusResponse)
+
+    async def enqueue_run_input(self, run_id: str, request: RunInputRequest) -> RunInputResponse:
+        """Queue one steering input for ``run_id``; 202 means inbox-accepted."""
+        try:
+            response = await self._get_async_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/inputs"),
+                content=request.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("enqueue_run_input timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"enqueue_run_input request failed: {exc}") from exc
+        return _parse_model_response(response, RunInputResponse)
+
+    def enqueue_run_input_sync(self, run_id: str, request: RunInputRequest) -> RunInputResponse:
+        """Synchronous variant of ``enqueue_run_input``."""
+        try:
+            response = self._get_sync_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/inputs"),
+                content=request.model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("enqueue_run_input_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"enqueue_run_input_sync request failed: {exc}") from exc
+        return _parse_model_response(response, RunInputResponse)
+
+    def interrupt_run_input_sync(self, run_id: str, request: RunInputRequest) -> RunInputHandoffResponse:
+        """Freeze a run's inbox and prioritize ``request`` for turn handoff.
+
+        Returns the still-pending inputs in FIFO order so the caller can
+        replay them on the next turn; the run itself is stopped separately.
+        """
+        try:
+            response = self._get_sync_http_client().post(
+                self._url(f"/runs/{quote(run_id, safe='')}/inputs/{request.input_id}/interrupt"),
+                json={"text": request.text},
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("interrupt_run_input_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"interrupt_run_input_sync request failed: {exc}") from exc
+        return _parse_model_response(response, RunInputHandoffResponse)
+
+    async def get_run_queue(self, run_id: str) -> RunQueueResponse:
+        """Return pending inbox ids and kinds for ``run_id``; never payload text."""
+        try:
+            response = await self._get_async_http_client().get(
+                self._url(f"/runs/{quote(run_id, safe='')}/queue"),
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("get_run_queue timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"get_run_queue request failed: {exc}") from exc
+        return _parse_model_response(response, RunQueueResponse)
+
+    def get_run_queue_sync(self, run_id: str) -> RunQueueResponse:
+        """Synchronous variant of ``get_run_queue``."""
+        try:
+            response = self._get_sync_http_client().get(
+                self._url(f"/runs/{quote(run_id, safe='')}/queue"),
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("get_run_queue_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"get_run_queue_sync request failed: {exc}") from exc
+        return _parse_model_response(response, RunQueueResponse)
 
     async def get_events(self, run_id: str, *, after: str = "0-0", limit: int = 100) -> RunEventsResponse:
         """Return one cursor-paginated page of events for ``run_id``."""

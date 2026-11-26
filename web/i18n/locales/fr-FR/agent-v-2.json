@@ -163,6 +163,7 @@
   "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Cette exécution de l’agent a été arrêtée après avoir atteint le nombre maximal de requêtes au modèle. Réessayez ou divisez la tâche en étapes plus petites.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Cette exécution de l’agent a été arrêtée, car elle a atteint la limite de temps. Réessayez ou divisez la tâche en étapes plus petites.",
   "agentDetail.configure.preview.inputPlaceholder": "Envoyer un message à {{name}}",
+  "agentDetail.configure.preview.queue.sendFailed": "Impossible de mettre cette instruction en file d'attente. Réessayez.",
   "agentDetail.configure.preview.restart": "Recommencer",
   "agentDetail.configure.preview.sandboxNotice": "L’agent s’exécute dans un bac à sable Linux.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "Dans Dify Community Edition, chacun de vos agents s’exécute dans un environnement bac à sable Linux 7.0.0-10060-aws au sein de votre Docker. Les modifications apportées à l’environnement via Build Chats sont persistantes.",

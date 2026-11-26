@@ -11,15 +11,18 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from decimal import Decimal
 from typing import Any, Literal
+from uuid import UUID
 
-from pydantic import JsonValue
+from dify_agent.runtime.run_inputs import STEERING_INPUT_METADATA_KEY
+from pydantic import JsonValue, ValidationError
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
     AgentBackendError,
+    AgentBackendHTTPError,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
@@ -39,16 +42,21 @@ from core.app.apps.agent_app.session_store import (
     AgentAppWorkspaceStore,
     StoredAgentAppSession,
 )
+from core.app.apps.agent_app.task_pipeline import AgentAppQueueManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import DifyRunContext
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.app.entities.queue_entities import (
+    AgentDeliveredInput,
+    QueueAgentInputDeliveredEvent,
     QueueAgentMessageEvent,
+    QueueAgentQueueReadyEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
     QueueRetrieverResourcesEvent,
 )
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File
@@ -293,6 +301,42 @@ class _AgentProcessRecorder:
             self._handle_tool_call_event(data)
         elif event_kind in {"function_tool_result", "output_tool_result"}:
             self._handle_tool_result_event(data)
+        elif event_kind == "enqueued_messages":
+            self._handle_enqueued_messages(data)
+
+    def _handle_enqueued_messages(self, data: dict[str, Any]) -> None:
+        # Only serialized user requests tagged with a steering input id belong on
+        # the transcript; machine observations and untagged turns are skipped.
+        messages = data.get("messages")
+        if not isinstance(messages, list):
+            return
+        for message in messages:
+            delivered = _delivered_steering_input(message)
+            if delivered is None:
+                continue
+            self._persist_delivered_input(delivered)
+
+    def _persist_delivered_input(self, delivered: AgentDeliveredInput) -> None:
+        # Persist on the parent turn under a short lock so concurrent turns and
+        # later metadata saves cannot drop or duplicate the entry, then stream a
+        # typed frame so the client can render it without waiting for history.
+        with session_factory.create_session() as session:
+            message = session.get(Message, self._message_id, with_for_update=True)
+            if message is None:
+                return
+            metadata = dict(message.message_metadata_dict or {})
+            existing = metadata.get("steering_inputs")
+            entries = [entry for entry in existing if isinstance(entry, dict)] if isinstance(existing, list) else []
+            if any(entry.get("input_id") == str(delivered.input_id) for entry in entries):
+                return
+            entries.append(delivered.model_dump(mode="json"))
+            metadata["steering_inputs"] = entries
+            message.message_metadata = json.dumps(metadata, ensure_ascii=False)
+            session.commit()
+        self._queue_manager.publish(
+            QueueAgentInputDeliveredEvent(input=delivered),
+            PublishFrom.APPLICATION_MANAGER,
+        )
 
     def _handle_part_delta(self, data: dict[str, Any]) -> None:
         delta = data.get("delta")
@@ -582,6 +626,33 @@ class _AgentProcessRecorder:
         return CreatorUserRole.END_USER
 
 
+def _delivered_steering_input(message: object) -> AgentDeliveredInput | None:
+    """Extract a persisted human steering input from a serialized enqueued request."""
+    if not isinstance(message, dict) or message.get("kind") != "request":
+        return None
+    metadata = message.get("metadata")
+    if not isinstance(metadata, dict):
+        return None
+    input_id = metadata.get(STEERING_INPUT_METADATA_KEY)
+    if not isinstance(input_id, str) or not input_id:
+        return None
+    parts = message.get("parts")
+    if (
+        not isinstance(parts, list)
+        or len(parts) != 1
+        or not isinstance(parts[0], dict)
+        or parts[0].get("part_kind") != "user-prompt"
+    ):
+        return None
+    content = parts[0].get("content")
+    if not isinstance(content, str):
+        return None
+    try:
+        return AgentDeliveredInput(input_id=UUID(input_id), text=content)
+    except (ValidationError, ValueError):
+        return None
+
+
 def _event_index(data: dict[str, Any]) -> int:
     index = data.get("index")
     return index if isinstance(index, int) else -1
@@ -636,12 +707,14 @@ class AgentAppRunner:
         event_adapter: AgentBackendRunEventAdapter,
         session_store: AgentAppWorkspaceStore,
         text_delta_debounce_seconds: float,
+        bind_steering_task_to_run: Callable[[DifyRunContext, str, str], bool] | None = None,
     ) -> None:
         self._request_builder = request_builder
         self._agent_backend_client = agent_backend_client
         self._event_adapter = event_adapter
         self._session_store = session_store
         self._text_delta_debounce_seconds = text_delta_debounce_seconds
+        self._bind_steering_task_to_run = bind_steering_task_to_run
 
     def run(
         self,
@@ -662,6 +735,7 @@ class AgentAppRunner:
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
+        allow_async_loop: bool = True,
     ) -> None:
         scope = self._build_session_scope(
             dify_context=dify_context,
@@ -691,7 +765,36 @@ class AgentAppRunner:
             stored=stored,
         )
 
+        # Steering opt-in is intentionally limited to admitted Console draft
+        # chats (preview and build chat; finalization excluded) and published
+        # roster Web App chats: the queue's public task id is the only handle
+        # a browser can use.
+        bind_steering_task_to_run = (
+            self._bind_steering_task_to_run
+            if (
+                allow_async_loop
+                and (
+                    (
+                        dify_context.invoke_from == InvokeFrom.DEBUGGER
+                        and agent_config_version_kind in {"draft", "build_draft"}
+                    )
+                    or (dify_context.invoke_from == InvokeFrom.WEB_APP and agent_config_version_kind == "snapshot")
+                )
+            )
+            else None
+        )
+        if bind_steering_task_to_run is not None:
+            runtime.request.metadata["allow_steering"] = True
+
         create_response = self._agent_backend_client.create_run(runtime.request)
+        if (
+            bind_steering_task_to_run is not None
+            and create_response.status == "running"
+            and bind_steering_task_to_run(dify_context, queue_manager.task_id, create_response.run_id)
+        ):
+            if isinstance(queue_manager, AgentAppQueueManager):
+                queue_manager.enable_handoff()
+            queue_manager.publish(QueueAgentQueueReadyEvent(), PublishFrom.APPLICATION_MANAGER)
         terminal, process_recorder = self._consume_stream(
             create_response.run_id,
             dify_context=dify_context,
@@ -718,12 +821,17 @@ class AgentAppRunner:
 
         if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            saved = True
             if terminal.session_snapshot is not None:
-                self._save_session(
+                saved = self._save_session(
                     scope=scope,
                     binding_id=runtime.binding_id,
                     snapshot=terminal.session_snapshot,
                 )
+            if saved and isinstance(queue_manager, AgentAppQueueManager):
+                # Steering handoff waits on this mark before opening the next
+                # turn; it stays unset when the snapshot save failed.
+                queue_manager.mark_handoff_ready()
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
@@ -761,13 +869,16 @@ class AgentAppRunner:
                 session_scope=scope,
                 binding_id=runtime.binding_id,
                 message_id=message_id,
+                queue_manager=queue_manager,
             )
             raise
-        self._save_session(
+        saved = self._save_session(
             scope=scope,
             binding_id=runtime.binding_id,
             snapshot=terminal.session_snapshot,
         )
+        if saved and isinstance(queue_manager, AgentAppQueueManager):
+            queue_manager.mark_handoff_ready()
         tracing_hooks = application_tracing_hooks()
         if tracing_hooks is not None:
             tracing_hooks.capture_agent_app_terminal(
@@ -987,6 +1098,7 @@ class AgentAppRunner:
                     session_scope=session_scope,
                     binding_id=binding_id,
                     message_id=message_id,
+                    queue_manager=queue_manager,
                 )
             raise
         if queue_manager.is_stopped():
@@ -997,6 +1109,7 @@ class AgentAppRunner:
                     session_scope=session_scope,
                     binding_id=binding_id,
                     message_id=message_id,
+                    queue_manager=queue_manager,
                 )
             else:
                 self._cancel_run(
@@ -1034,6 +1147,40 @@ class AgentAppRunner:
                         message_id=message_id,
                         queue_manager=queue_manager,
                     )
+        except AgentBackendHTTPError as error:
+            if error.status_code != 409:
+                logger.warning(
+                    "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                    run_id,
+                    exc_info=True,
+                )
+                return
+            # The run reached a terminal state before the cancel landed; the
+            # retained terminal frame still owns the snapshot + handoff barrier.
+            try:
+                for retained_event in self._agent_backend_client.stream_events(run_id, after=after):
+                    for internal_event in self._event_adapter.adapt(retained_event):
+                        if isinstance(
+                            internal_event,
+                            AgentBackendRunSucceededInternalEvent
+                            | AgentBackendRunFailedInternalEvent
+                            | AgentBackendRunCancelledInternalEvent,
+                        ):
+                            self._finish_stopped_terminal(
+                                internal_event,
+                                dify_context=dify_context,
+                                session_scope=session_scope,
+                                binding_id=binding_id,
+                                message_id=message_id,
+                                queue_manager=queue_manager,
+                            )
+                            return
+            except Exception:
+                logger.warning(
+                    "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                    run_id,
+                    exc_info=True,
+                )
         except Exception:
             logger.warning(
                 "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
@@ -1054,8 +1201,11 @@ class AgentAppRunner:
         queue_manager: AppQueueManager | None = None,
     ) -> None:
         """Keep the observed runtime result when the client has requested stop."""
+        saved = True
         if terminal.session_snapshot is not None:
-            self._save_session(scope=session_scope, binding_id=binding_id, snapshot=terminal.session_snapshot)
+            saved = self._save_session(scope=session_scope, binding_id=binding_id, snapshot=terminal.session_snapshot)
+        if saved and isinstance(queue_manager, AgentAppQueueManager):
+            queue_manager.mark_handoff_ready()
         self._persist_message_usage(message_id=message_id, usage=_llm_usage_from_agent_backend(terminal.usage))
         if queue_manager is not None and not queue_manager.is_stopped():
             # A stream error can cancel its runtime only for cleanup. Keep its

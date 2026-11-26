@@ -163,6 +163,7 @@
   "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດຫຼັງຈາກຮອດຈຳນວນຄຳຮ້ອງຂໍໂມເດວສູງສຸດ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "ການເຮັດວຽກຂອງ Agent ນີ້ຖືກຢຸດເພາະຮອດຂີດຈຳກັດເວລາ. ລອງໃໝ່ ຫຼື ແບ່ງໜ້າວຽກເປັນຂັ້ນຕອນນ້ອຍລົງ.",
   "agentDetail.configure.preview.inputPlaceholder": "ສົ່ງຂໍ້ຄວາມຫາ {{name}}",
+  "agentDetail.configure.preview.queue.sendFailed": "ບໍ່ສາມາດເພີ່ມຄຳສັ່ງນີ້ເຂົ້າຄິວໄດ້. ລອງໃໝ່ອີກຄັ້ງ.",
   "agentDetail.configure.preview.restart": "ເລີ່ມຕົວຢ່າງໃໝ່",
   "agentDetail.configure.preview.sandboxNotice": "ຕົວແທນເຮັດວຽກຢູ່ໃນ Linux sandbox.",
   "agentDetail.configure.preview.sandboxNoticeTooltip": "ສຳລັບ Dify Community Edition, ຕົວແທນຂອງທ່ານຈະເຮັດວຽກໃນ Linux 7.0.0-10060-aws sandbox ພາຍໃນ docker ຂອງທ່ານ. ການແກ້ໄຂສະພາບແວດລ້ອມຜ່ານ Build Chats ຈະຖືກບັນທຶກໄວ້ຖາວອນ.",

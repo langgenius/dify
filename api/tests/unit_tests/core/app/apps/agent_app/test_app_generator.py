@@ -310,6 +310,7 @@ class TestAppGeneratorCases:
             assert result == {"result": "ok"}
             thread_obj.start.assert_called_once()
             worker_call = thread_constructor.call_args
+            assert worker_call.kwargs["kwargs"]["allow_async_loop"] is False
             inspect.signature(worker_call.kwargs["target"]).bind(**worker_call.kwargs["kwargs"])
             generator._resolve_agent.assert_called_once_with(
                 app_model,
@@ -404,6 +405,84 @@ class TestAppGeneratorCases:
             assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
             assert [request["extras"] for request in scope_requests] == [{"auto_generate_conversation_name": True}]
 
+        @pytest.mark.parametrize(
+            ("has_hook", "scope", "invoke_from", "kind", "finalization", "admitted"),
+            [
+                (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "draft", False, True),
+                (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "build_draft", False, True),
+                (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "snapshot", False, False),
+                (True, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "draft", True, False),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "draft", False, False),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "build_draft", False, False),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "snapshot", False, True),
+                (True, AgentScope.ROSTER, InvokeFrom.WEB_APP, "snapshot", True, False),
+                (True, AgentScope.ROSTER, InvokeFrom.SERVICE_API, "snapshot", False, False),
+                (True, AgentScope.WORKFLOW_ONLY, InvokeFrom.WEB_APP, "snapshot", False, False),
+                (True, AgentScope.WORKFLOW_ONLY, InvokeFrom.DEBUGGER, "draft", False, False),
+                (False, AgentScope.ROSTER, InvokeFrom.DEBUGGER, "draft", False, False),
+            ],
+        )
+        def test_steering_admission_selects_queue_manager_and_pipeline(
+            self,
+            generator: AgentAppGenerator,
+            mocker: MockerFixture,
+            has_hook: bool,
+            scope: AgentScope,
+            invoke_from: InvokeFrom,
+            kind: str,
+            finalization: bool,
+            admitted: bool,
+        ) -> None:
+            """Only roster DEBUGGER draft/build or WEB_APP snapshot runs with the hook take the steering path."""
+            if has_hook:
+                generator._bind_steering_task_to_run = lambda _context, _task_id, _run_id: True
+            app_model = _app_generator_app()
+            agent = _agent()
+            agent.scope = scope
+            generator._resolve_agent = lambda *_a, **_kw: (agent, "snap1", kind, AgentSoulConfig())
+            generator._prepare_user_inputs = lambda *_a, **_kw: {}
+            records = (_conversation(), _message())
+            generator._init_generate_records = lambda *_a, **_kw: records
+            handled_calls: list[dict[str, Any]] = []
+
+            def handle_response(**kwargs: Any) -> str:
+                handled_calls.append(kwargs)
+                return "raw"
+
+            generator._handle_response = handle_response
+
+            mocker.patch(
+                f"{MODULE}.AgentAppConfigManager.get_app_config",
+                return_value=_agent_app_config(),
+            )
+            mocker.patch(
+                f"{MODULE}.ModelConfigConverter.convert",
+                return_value=make_model_config(provider="openai", model="gpt-4o-mini", mode="chat"),
+            )
+            mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=_make_entity("hello"))
+            pipeline_cls = mocker.patch(f"{MODULE}.AgentAppTaskPipeline")
+            pipeline_cls.return_value.process.return_value = "raw"
+            thread_constructor = mocker.patch(f"{MODULE}.threading.Thread")
+            mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+
+            args: dict[str, Any] = {"query": "hello", "inputs": {}}
+            if finalization:
+                args["agent_build_finalization"] = True
+            generator.generate(
+                app_model=app_model,
+                user=_app_generator_account(),
+                args=args,
+                invoke_from=invoke_from,
+                session=_session(),
+                streaming=True,
+            )
+
+            queue_manager = thread_constructor.call_args.kwargs["kwargs"]["queue_manager"]
+            assert isinstance(queue_manager, module.AgentAppQueueManager) is admitted
+            assert thread_constructor.call_args.kwargs["kwargs"]["allow_async_loop"] is admitted
+            assert pipeline_cls.called is admitted
+            assert bool(handled_calls) is not admitted
+
     class TestGenerateWorker:
         @pytest.fixture(autouse=True)
         def patch_context(self, mocker: MockerFixture):
@@ -461,6 +540,7 @@ class TestAppGeneratorCases:
             session_scope_config_version_id="s",
             files=(),
             file_upload_config=None,
+            allow_async_loop=True,
         ):
             generator._generate_worker(
                 flask_app=mocker.MagicMock(),
@@ -479,6 +559,7 @@ class TestAppGeneratorCases:
                 conversation_id="conv",
                 message_id="msg",
                 user_from=UserFrom.END_USER,
+                allow_async_loop=allow_async_loop,
             )
 
         def test_happy_path_runs_backend(self, generator: AgentAppGenerator, mocker: MockerFixture):
@@ -515,6 +596,17 @@ class TestAppGeneratorCases:
             assert calls[0]["inputs"] == {"name": "original"}
             runner.run.assert_called_once()
             assert runner.run.call_args.kwargs["inputs"] == expected
+
+        @pytest.mark.parametrize("allow_async_loop", [True, False])
+        def test_worker_forwards_allow_async_loop_to_runner(
+            self, generator, mocker: MockerFixture, allow_async_loop: bool
+        ):
+            runner, _ = self._wire(generator, mocker)
+            queue_manager = mocker.MagicMock()
+
+            self._call(generator, mocker, queue_manager, allow_async_loop=allow_async_loop)
+
+            assert runner.run.call_args.kwargs["allow_async_loop"] is allow_async_loop
 
         def test_worker_passes_session_scope_config_version_to_runner(self, generator, mocker: MockerFixture):
             runner, _ = self._wire(generator, mocker)
@@ -558,7 +650,7 @@ class TestAppGeneratorCases:
             )
             generator._run_input_guards.return_value = (True, "query", annotation_reply)
             events: list[str] = []
-            queue_manager = mocker.MagicMock()
+            queue_manager = _FakeQueueManager()
 
             def record_commit(_session: Session) -> None:
                 events.append("commit")
@@ -567,7 +659,7 @@ class TestAppGeneratorCases:
                 if isinstance(event, QueueAnnotationReplyEvent):
                     events.append("publish")
 
-            queue_manager.publish.side_effect = publish
+            queue_manager.publish = publish
 
             event.listen(type(_session()), "after_commit", record_commit)
             try:
@@ -589,15 +681,15 @@ class TestAppGeneratorCases:
                 raise AssertionError("stop intent must not invent a tracing terminal")
 
             monkeypatch.setattr(module, "application_tracing_hooks", application_tracing_hooks)
-            queue_manager = mocker.MagicMock()
+            queue_manager = _FakeQueueManager()
             self._call(generator, mocker, queue_manager)
-            queue_manager.publish_error.assert_not_called()
+            assert queue_manager.errors == []
 
         def test_unexpected_error_is_published(self, generator: AgentAppGenerator, mocker: MockerFixture):
             self._wire(generator, mocker, run_side_effect=ValueError("boom"))
-            queue_manager = mocker.MagicMock()
+            queue_manager = _FakeQueueManager()
             self._call(generator, mocker, queue_manager)
-            assert queue_manager.publish_error.called
+            assert queue_manager.errors
 
 
 """Unit tests for AgentAppGenerator._run_input_guards.
@@ -612,23 +704,31 @@ answer, or pass through a possibly moderation-sanitized query.
 class _FakeQueueManager:
     def __init__(self) -> None:
         self.events: list[Any] = []
+        self.errors: list[Any] = []
 
     def publish(self, event: Any, _from: Any) -> None:
         self.events.append(event)
+
+    def publish_error(self, event: Any, _from: Any) -> None:
+        self.errors.append(event)
+
+
+def _agent_app_config() -> AgentAppConfig:
+    return AgentAppConfig(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        app_mode=AppMode.AGENT,
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+        app_model_config_dict={},
+        model=ModelConfigEntity(provider="openai", model="gpt-4o-mini", mode="chat"),
+        prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+    )
 
 
 def _make_entity(query: str) -> AgentAppGenerateEntity:
     return AgentAppGenerateEntity(
         task_id="task-1",
-        app_config=AgentAppConfig(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            app_mode=AppMode.AGENT,
-            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
-            app_model_config_dict={},
-            model=ModelConfigEntity(provider="openai", model="gpt-4o-mini", mode="chat"),
-            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
-        ),
+        app_config=_agent_app_config(),
         model_conf=make_model_config(provider="openai", model="gpt-4o-mini", mode="chat"),
         inputs={},
         files=[],

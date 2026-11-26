@@ -9,13 +9,16 @@ import userEvent from '@testing-library/user-event'
 import { registerWebAppEventTracker } from '@/app/components/base/amplitude/web-app-event'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import {
+  enqueueWebAgentChatInput,
   fetchChatList,
   fetchSuggestedQuestions,
+  interruptWebAgentChatInput,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
 import { submitHumanInputForm as submitInstalledForm } from '@/service/workflow'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createChatConfigFixture, createChatFileFixture } from '@/test/fixtures/chat'
 import {
   createHumanInputFormFixture,
@@ -67,6 +70,8 @@ vi.mock('@/service/share', async (importOriginal) => {
     fetchSuggestedQuestions: vi.fn<typeof actual.fetchSuggestedQuestions>(),
     stopChatMessageResponding: vi.fn<typeof actual.stopChatMessageResponding>(),
     submitHumanInputForm: vi.fn<typeof actual.submitHumanInputForm>(),
+    interruptWebAgentChatInput: vi.fn<typeof actual.interruptWebAgentChatInput>(),
+    enqueueWebAgentChatInput: vi.fn<typeof actual.enqueueWebAgentChatInput>(),
     chatMessagesSender: streams.chatMessagesSender,
   }
 })
@@ -234,6 +239,10 @@ beforeEach(() => {
   vi.mocked(stopChatMessageResponding).mockReset().mockResolvedValue({ result: 'success' })
   vi.mocked(submitHumanInputForm).mockReset().mockResolvedValue({})
   vi.mocked(submitInstalledForm).mockReset().mockResolvedValue({})
+  vi.mocked(interruptWebAgentChatInput).mockReset()
+  vi.mocked(enqueueWebAgentChatInput)
+    .mockReset()
+    .mockResolvedValue(undefined as unknown as Awaited<ReturnType<typeof enqueueWebAgentChatInput>>)
   unregisterTracker = registerWebAppEventTracker(trackEvent)
 })
 afterEach(() => unregisterTracker())
@@ -765,4 +774,151 @@ it.each([
     appPrevChatTree: [question('q1', 'Question', 'a1', 'Answer')],
   })
   expect(screen.getByRole('img', { name: label })).toHaveTextContent(initial)
+})
+
+describe('Published Agent Web App cut-in', () => {
+  it('cuts into the live run and replays frozen inputs on the next turn', async () => {
+    const user = userEvent.setup()
+    renderChat({ isNewAgent: true, currentConversationId: '' })
+    await sendMessage(user, 'Start the run')
+
+    await act(async () => {
+      stream().onAgentQueueReady?.('task-1', { conversationId: 'conv-1', messageId: 'm-1' })
+    })
+    // The ordinary Stop control stays while the run is live.
+    expect(
+      screen.getByRole('button', { name: /appDebug.operation.stopResponding/ }),
+    ).toBeInTheDocument()
+
+    const receipt = createDeferred<{
+      input_id: string
+      pending_inputs: { input_id: string; text: string }[]
+    }>()
+    vi.mocked(interruptWebAgentChatInput).mockReturnValue(receipt.promise)
+    await user.type(chatInput(), 'Also check the logs')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(interruptWebAgentChatInput).toHaveBeenCalledOnce())
+    const [taskArg, inputArg, textArg] = vi.mocked(interruptWebAgentChatInput).mock.calls[0]!
+    expect(taskArg).toBe('task-1')
+    expect(inputArg).toMatch(/^[0-9a-f-]{36}$/)
+    expect(textArg).toBe('Also check the logs')
+    expect(enqueueWebAgentChatInput).not.toHaveBeenCalled()
+    // No competing turn while the receipt is still pending.
+    expect(ssePost).toHaveBeenCalledOnce()
+
+    const older = { input_id: 'aaaaaaaa-0000-4000-8000-000000000001', text: 'older one' }
+    await act(async () => {
+      receipt.resolve({
+        input_id: inputArg,
+        pending_inputs: [older, { input_id: inputArg, text: 'Also check the logs' }],
+      })
+    })
+
+    // One ordinary replacement turn in the conversation the frame assigned.
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({
+      query: 'Also check the logs',
+      conversation_id: 'conv-1',
+    })
+
+    // The frozen input replays under its original id once the new run binds.
+    await act(async () => {
+      vi.mocked(ssePost).mock.calls[1]![2].onAgentQueueReady?.('task-2', {
+        conversationId: 'conv-1',
+        messageId: 'm-2',
+      })
+    })
+    await waitFor(() => expect(enqueueWebAgentChatInput).toHaveBeenCalledOnce())
+    expect(enqueueWebAgentChatInput).toHaveBeenCalledWith('task-2', older.input_id, 'older one')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps the draft and retries the same cut-in when the request fails', async () => {
+    const user = userEvent.setup()
+    renderChat({ isNewAgent: true, currentConversationId: 'conv-1' })
+    await sendMessage(user, 'Start the run')
+    await act(async () => {
+      stream().onAgentQueueReady?.('task-1', { conversationId: 'conv-1', messageId: 'm-1' })
+    })
+
+    vi.mocked(interruptWebAgentChatInput).mockRejectedValueOnce(new Error('unavailable'))
+    await user.type(chatInput(), 'Please redirect')
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(chatInput()).toHaveValue('Please redirect')
+    expect(ssePost).toHaveBeenCalledOnce()
+
+    // The old run ends; retrying the same draft re-issues the identical
+    // freeze against the original task + input id.
+    await act(async () => {
+      await stream().onCompleted?.()
+    })
+    vi.mocked(interruptWebAgentChatInput).mockReturnValue(
+      Promise.resolve({
+        input_id: vi.mocked(interruptWebAgentChatInput).mock.calls[0]![1],
+        pending_inputs: [
+          {
+            input_id: vi.mocked(interruptWebAgentChatInput).mock.calls[0]![1],
+            text: 'Please redirect',
+          },
+        ],
+      }),
+    )
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(interruptWebAgentChatInput).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(interruptWebAgentChatInput).mock.calls[1]).toEqual(
+      vi.mocked(interruptWebAgentChatInput).mock.calls[0],
+    )
+    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    expect(ssePost.mock.calls[1]?.[1].body).toMatchObject({
+      query: 'Please redirect',
+      conversation_id: 'conv-1',
+    })
+  })
+
+  it.each([{ isInstalledApp: true }, { isNewAgent: false }])(
+    'does not admit cut-in sends on non-web or non-agent surfaces (%s)',
+    async (overrides) => {
+      const user = userEvent.setup()
+      renderChat({ currentConversationId: 'conv-1', ...overrides })
+      await sendMessage(user, 'Start the run')
+      await act(async () => {
+        stream().onAgentQueueReady?.('task-1', { conversationId: 'conv-1', messageId: 'm-1' })
+      })
+
+      // Sends stay inert while responding on surfaces without steering.
+      await user.type(chatInput(), 'Please redirect')
+      await user.keyboard('{Enter}')
+      expect(interruptWebAgentChatInput).not.toHaveBeenCalled()
+      expect(enqueueWebAgentChatInput).not.toHaveBeenCalled()
+      expect(ssePost).toHaveBeenCalledOnce()
+    },
+  )
+})
+
+it('admits steering on a regenerated run through the same cut-in path', async () => {
+  const user = userEvent.setup()
+  renderChat({
+    isNewAgent: true,
+    currentConversationId: 'conv-1',
+    appPrevChatTree: [question('q1', 'Question to regenerate', 'a1', 'Answer to regenerate')],
+  })
+  await user.click(screen.getAllByRole('button', { name: 'common.operation.regenerate' }).at(-1)!)
+  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+
+  // The regenerated run's queue-ready frame binds through the shared hook,
+  // so a follow-up text interrupts it rather than opening a second turn.
+  await act(async () => {
+    stream().onAgentQueueReady?.('task-regen', { conversationId: 'conv-1', messageId: 'm-2' })
+  })
+  await user.type(chatInput(), 'Please redirect')
+  await user.keyboard('{Enter}')
+
+  await waitFor(() => expect(interruptWebAgentChatInput).toHaveBeenCalledOnce())
+  const [taskArg, , textArg] = vi.mocked(interruptWebAgentChatInput).mock.calls[0]!
+  expect(taskArg).toBe('task-regen')
+  expect(textArg).toBe('Please redirect')
+  expect(ssePost).toHaveBeenCalledOnce()
 })

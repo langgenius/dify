@@ -832,6 +832,80 @@ Get suggested questions for an Agent App message
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /agent/{agent_id}/chat-messages/{task_id}/inputs
+Queue a steering input on an admitted Agent App preview run
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentChatInputPayload](#agentchatinputpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Input queued | **application/json**: [AgentChatInputResponse](#agentchatinputresponse)<br> |
+| 400 | Invalid input | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent, task, or opted-in preview run not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Run is not accepting this input | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /agent/{agent_id}/chat-messages/{task_id}/inputs/{input_id}/interrupt
+Prioritize a steering input, stop the run, and replay pending inputs on the next turn
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| input_id | path | Input ID | Yes | string (uuid) |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentChatInterruptPayload](#agentchatinterruptpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Handoff settled | **application/json**: [AgentChatInputHandoffResponse](#agentchatinputhandoffresponse)<br> |
+| 400 | Invalid input | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent, task, input, or opted-in preview run not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Input cannot be handed off | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /agent/{agent_id}/chat-messages/{task_id}/queue
+Get the pending input queue of an Agent App preview run
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| task_id | path | Task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AgentChatQueueResponse](#agentchatqueueresponse)<br> |
+| 404 | Agent, task, or opted-in preview run not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Agent backend unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
 
@@ -20494,6 +20568,50 @@ The retained Build Sandbox is no longer available.
 | ---- | ---- | ----------- | -------- |
 | AgentBuildSandboxNotFoundError |  | The retained Build Sandbox is no longer available. |  |
 
+#### AgentChatInputHandoffResponse
+
+Settled steering handoff: pending inputs to replay on the next turn.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| pending_inputs | [ [RunInputRequest](#runinputrequest) ] |  | Yes |
+
+#### AgentChatInputPayload
+
+Steering input for an admitted Agent App preview run.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| text | string |  | Yes |
+
+#### AgentChatInputResponse
+
+Receipt for an accepted steering input; acceptance is not delivery.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| status | string |  | Yes |
+
+#### AgentChatInterruptPayload
+
+Text to prioritize over the run's pending inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
+#### AgentChatQueueResponse
+
+Backend-neutral snapshot of the scoped run's pending inbox entries.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accepting_inputs | boolean |  | Yes |
+| entries | [ [RunQueueEntry](#runqueueentry) ] |  | Yes |
+
 #### AgentCliToolAuthorizationStatus
 
 Authorization state for Agent-scoped CLI tools.
@@ -35994,6 +36112,27 @@ The Roster Agent package exceeds the size limit.
 | ---- | ---- | ----------- | -------- |
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
+#### RunInputRequest
+
+Request body for queueing steering input on a running run.
+
+The caller-provided id makes retries idempotent: the same id and text is a
+no-op, while the same id with different text conflicts.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| input_id | string (uuid) |  | Yes |
+| text | string |  | Yes |
+
+#### RunQueueEntry
+
+One inbox entry: an id and kind only, never text, output, or secrets.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string |  | Yes |
 
 #### SSOProtocol
 

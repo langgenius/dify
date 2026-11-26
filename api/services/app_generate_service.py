@@ -24,6 +24,7 @@ from enums import DeploymentEdition, QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.agent.chat_steering import agent_preview_async_loop_enabled, bind_steering_task_to_run
 from services.errors.app import (
     QuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
@@ -240,7 +241,11 @@ class AppGenerateService:
             case AppMode.AGENT:
                 return rate_limit.generate(
                     AgentAppGenerator.convert_to_event_stream(
-                        AgentAppGenerator().generate(
+                        AgentAppGenerator(
+                            bind_steering_task_to_run=(
+                                bind_steering_task_to_run if agent_preview_async_loop_enabled() else None
+                            )
+                        ).generate(
                             app_model=app_model,
                             user=user,
                             args=args,

@@ -1,14 +1,15 @@
 import json
 import logging
 from collections.abc import Generator, Iterator, Mapping
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Annotated, Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
+from dify_agent.protocol import RunInputRequest, RunQueueEntry
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, InternalServerError, NotFound, ServiceUnavailable
 
 import services
 from controllers.common.fields import SimpleResultResponse
@@ -26,6 +27,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
@@ -46,16 +48,26 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id
+from extensions.ext_application_services import application_services
+from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
+from services.agent.chat_steering import (
+    AgentChatBackendUnavailableError,
+    AgentChatInputConflictError,
+    AgentChatTaskNotFoundError,
+)
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -143,8 +155,43 @@ context needed by later runs, such as:
 After config persistence completes, respond FINISHED."""
 
 
-register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+class AgentChatInputPayload(RunInputRequest):
+    """Steering input for an admitted Agent App preview run."""
+
+
+class AgentChatInterruptPayload(BaseModel):
+    """Text to prioritize over the run's pending inputs."""
+
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=8000)]
+
+
+class AgentChatQueueResponse(ResponseModel):
+    """Backend-neutral snapshot of the scoped run's pending inbox entries."""
+
+    accepting_inputs: bool
+    entries: list[RunQueueEntry]
+
+
+class AgentChatInputResponse(ResponseModel):
+    """Receipt for an accepted steering input; acceptance is not delivery."""
+
+    input_id: UUID
+    status: Literal["queued"]
+
+
+class AgentChatInputHandoffResponse(ResponseModel):
+    """Settled steering handoff: pending inputs to replay on the next turn."""
+
+    input_id: UUID
+    pending_inputs: list[RunInputRequest]
+
+
+register_schema_models(
+    console_ns, CompletionMessagePayload, ChatMessagePayload, AgentChatInputPayload, AgentChatInterruptPayload
+)
+register_response_schema_models(
+    console_ns, SimpleResultResponse, AgentChatQueueResponse, AgentChatInputResponse, AgentChatInputHandoffResponse
+)
 
 
 # define completion message api for user
@@ -497,6 +544,7 @@ def _create_build_chat_finalization_message(
         "inputs": {},
         "response_mode": "streaming",
         "draft_type": "debug_build",
+        "agent_build_finalization": True,
         "conversation_id": debug_conversation_id,
         "auto_generate_name": False,
     }
@@ -696,3 +744,110 @@ def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
         if isinstance(payload, dict) and payload.get("event") == "error":
             return payload
     return None
+
+
+_AGENT_CHAT_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+
+
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/queue")
+class AgentChatMessageQueueApi(Resource):
+    @error_responses(AgentNotFoundError)
+    @console_ns.doc("get_agent_chat_queue")
+    @console_ns.doc(description="Get the pending input queue of an Agent App preview run")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID"})
+    @console_ns.response(200, "Success", console_ns.models[AgentChatQueueResponse.__name__])
+    @console_ns.response(404, "Agent, task, or opted-in preview run not found")
+    @console_ns.response(503, "Agent backend unavailable")
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID, task_id: UUID) -> dict[str, object]:
+        try:
+            result = application_services().agent_apps.chat_steering.get_queue(request_context, agent_id, task_id)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentChatTaskNotFoundError:
+            raise NotFound("Agent chat task not found.") from None
+        except AgentChatBackendUnavailableError:
+            raise ServiceUnavailable("Agent chat queue is unavailable.") from None
+        return dump_response(AgentChatQueueResponse, result)
+
+
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/inputs")
+class AgentChatMessageInputApi(Resource):
+    @error_responses(AgentNotFoundError)
+    @console_ns.doc("enqueue_agent_chat_input")
+    @console_ns.doc(description="Queue a steering input on an admitted Agent App preview run")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID"})
+    @console_ns.expect(console_ns.models[AgentChatInputPayload.__name__])
+    @console_ns.response(202, "Input queued", console_ns.models[AgentChatInputResponse.__name__])
+    @console_ns.response(400, "Invalid input")
+    @console_ns.response(404, "Agent, task, or opted-in preview run not found")
+    @console_ns.response(409, "Run is not accepting this input")
+    @console_ns.response(503, "Agent backend unavailable")
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
+    @model_validate(AgentChatInputPayload)
+    def post(
+        self,
+        args: AgentChatInputPayload,
+        request_context: RequestContext,
+        agent_id: UUID,
+        task_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            result = application_services().agent_apps.chat_steering.enqueue_input(
+                request_context, agent_id, task_id, args
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentChatTaskNotFoundError:
+            raise NotFound("Agent chat task not found.") from None
+        except AgentChatInputConflictError:
+            raise Conflict("This Agent run is not accepting this input.") from None
+        except AgentChatBackendUnavailableError:
+            raise ServiceUnavailable("Agent chat queue is unavailable.") from None
+        return dump_response(AgentChatInputResponse, result), 202
+
+
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:task_id>/inputs/<uuid:input_id>/interrupt")
+class AgentChatMessageInputInterruptApi(Resource):
+    @error_responses(AgentNotFoundError)
+    @console_ns.doc("interrupt_agent_chat_input")
+    @console_ns.doc(description="Prioritize a steering input, stop the run, and replay pending inputs on the next turn")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID", "input_id": "Input ID"})
+    @console_ns.expect(console_ns.models[AgentChatInterruptPayload.__name__])
+    @console_ns.response(200, "Handoff settled", console_ns.models[AgentChatInputHandoffResponse.__name__])
+    @console_ns.response(400, "Invalid input")
+    @console_ns.response(404, "Agent, task, input, or opted-in preview run not found")
+    @console_ns.response(409, "Input cannot be handed off")
+    @console_ns.response(503, "Agent backend unavailable")
+    @console_account_admission(
+        allowed_roles=_AGENT_CHAT_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId())],
+    )
+    @model_validate(AgentChatInterruptPayload)
+    def post(
+        self,
+        args: AgentChatInterruptPayload,
+        request_context: RequestContext,
+        agent_id: UUID,
+        task_id: UUID,
+        input_id: UUID,
+    ) -> tuple[dict[str, object], int]:
+        try:
+            result = application_services().agent_apps.chat_steering.interrupt_input(
+                request_context, agent_id, task_id, RunInputRequest(input_id=input_id, text=args.text)
+            )
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentChatTaskNotFoundError:
+            raise NotFound("Agent chat task not found.") from None
+        except AgentChatInputConflictError:
+            raise Conflict("This Agent run is not accepting this input.") from None
+        except AgentChatBackendUnavailableError:
+            raise ServiceUnavailable("Agent chat turn could not be handed off.") from None
+        return dump_response(AgentChatInputHandoffResponse, result), 200

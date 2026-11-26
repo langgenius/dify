@@ -10,12 +10,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, override
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 import pytest
 from dify_agent.protocol import (
     AgentRunUsage,
     CancelRunRequest,
     CancelRunResponse,
+    CreateRunResponse,
     PydanticAIStreamRunEvent,
     RunCancelledEvent,
     RunCancelledEventData,
@@ -42,6 +44,7 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendError,
+    AgentBackendHTTPError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
@@ -50,6 +53,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.apps.agent_app import app_runner as app_runner_module
+from core.app.apps.agent_app import task_pipeline as task_pipeline_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
@@ -61,12 +65,15 @@ from core.app.apps.agent_app.session_store import (
     AgentAppWorkspaceStore,
     StoredAgentAppSession,
 )
+from core.app.apps.agent_app.task_pipeline import AgentAppQueueManager
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    QueueAgentInputDeliveredEvent,
     QueueAgentMessageEvent,
+    QueueAgentQueueReadyEvent,
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
@@ -76,6 +83,7 @@ from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentToolLayers
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
+from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import (
     AgentKnowledgeSpaceConfig,
     AgentSoulConfig,
@@ -180,6 +188,44 @@ class _CancelAndWaitFailingClient(_RecordingFakeAgentBackendRunClient):
         del request
         self.cancel_after.append(after)
         raise RuntimeError(f"failed to finish cancelling {run_id}")
+
+
+class _CancelAndWaitConflictClient(_RecordingFakeAgentBackendRunClient):
+    """Cancel loses the race to an already-terminal run; the retained stream
+    still replays the terminal frame for the snapshot/handoff barrier."""
+
+    @override
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        del request
+        self.cancel_after.append(after)
+        raise AgentBackendHTTPError("run already finished", status_code=409, detail={"code": "conflict"})
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunCancelledEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunCancelledEventData(
+                reason="terminal before cancel",
+                session_snapshot=SessionSnapshot(layers={}),
+            ),
+        )
 
 
 class _UsageCancellationClient(_RecordingFakeAgentBackendRunClient):
@@ -669,11 +715,19 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
+def _run(
+    runner: AgentAppRunner,
+    qm: AppQueueManager,
+    *,
+    dify_context: DifyRunContext | None = None,
+    agent_config_version_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
+    allow_async_loop: bool = True,
+) -> None:
     runner.run(
-        dify_context=_dify_ctx(),
+        dify_context=dify_context or _dify_ctx(),
         agent_id="agent-1",
         agent_config_snapshot_id="snap-1",
+        agent_config_version_kind=agent_config_version_kind.value,
         agent_soul=_soul(),
         home_snapshot_id="home-1",
         conversation_id="conv-1",
@@ -681,6 +735,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,
+        allow_async_loop=allow_async_loop,
     )
 
 
@@ -1069,6 +1124,44 @@ def test_trusted_knowledge_receipts_reach_chat_sources_once(sqlite_session: Sess
     assert citation.id == receipt["id"]
     assert sources[0].retriever_resources[0].content == "evidence"
     assert _thought_rows(sqlite_session)[0].tool == "shell_run"
+
+
+def test_enqueued_messages_persists_and_republishes_steering_input(sqlite_session: Session) -> None:
+    sqlite_session.add(_message_record())
+    # The recorder persists through its own session, so the row must be committed.
+    sqlite_session.commit()
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,
+    )
+
+    input_id = str(uuid4())
+    data = {
+        "event_kind": "enqueued_messages",
+        "messages": [
+            {
+                "kind": "request",
+                "metadata": {"dify_steering_input_id": input_id},
+                "parts": [{"part_kind": "user-prompt", "content": "switch to plan B"}],
+            },
+            # Untagged machine observations never reach the transcript.
+            {"kind": "request", "parts": [{"part_kind": "user-prompt", "content": "job observation"}]},
+        ],
+    }
+    recorder.handle_stream_event(AgentBackendStreamInternalEvent(run_id="run-1", data=data))
+    # A repeated delivery of the same input id is a no-op, not a duplicate row.
+    recorder.handle_stream_event(AgentBackendStreamInternalEvent(run_id="run-1", data=data))
+
+    sqlite_session.expire_all()
+    message = sqlite_session.get(Message, "msg-1")
+    assert message is not None
+    assert message.message_metadata_dict["steering_inputs"] == [{"input_id": input_id, "text": "switch to plan B"}]
+    delivered = [e for e in qm.events if isinstance(e, QueueAgentInputDeliveredEvent)]
+    assert len(delivered) == 1
+    assert str(delivered[0].input.input_id) == input_id
+    assert delivered[0].input.text == "switch to plan B"
 
 
 def test_answer_suffix_trim_keeps_non_terminal_prefix(sqlite_session: Session) -> None:
@@ -1630,6 +1723,98 @@ def test_cancel_and_wait_failure_preserves_stopped_app_outcome() -> None:
     assert store.saved == []
 
 
+class _StoppedAgentAppQueueManager(AgentAppQueueManager):
+    """Admitted steering queue whose task was stopped before consume ends."""
+
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+        del event, pub_from
+
+    @override
+    def is_stopped(self) -> bool:
+        return True
+
+
+class _TerminalFirstFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    """Streams the terminal frame first, as when the stop lands with its snapshot."""
+
+    @override
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
+        del after, should_stop
+        yield RunCancelledEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            data=RunCancelledEventData(
+                reason="stopped",
+                session_snapshot=SessionSnapshot(layers={}),
+            ),
+        )
+
+
+def test_stopped_terminal_marks_handoff_only_after_snapshot_save(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marks: list[str] = []
+    monkeypatch.setattr(task_pipeline_module, "mark_agent_chat_handoff_ready", marks.append)
+    store = _FakeSessionStore()
+    qm = _StoppedAgentAppQueueManager(
+        task_id="task-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv-1",
+        app_mode=AppMode.AGENT,
+        message_id="msg-1",
+    )
+
+    # A non-steering run finishing under stop never arms the handoff barrier.
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(_TerminalFirstFakeAgentBackendRunClient(), store), qm)
+    assert marks == []
+
+    # Once the binding admitted steering, a stopped run that persisted its
+    # terminal snapshot must unblock the waiting handoff.
+    qm.enable_handoff()
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(_TerminalFirstFakeAgentBackendRunClient(), store), qm)
+
+    assert marks == ["task-1"]
+    assert len(store.saved) == 2
+
+
+def test_cancel_conflict_replays_retained_terminal_for_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    marks: list[str] = []
+    monkeypatch.setattr(task_pipeline_module, "mark_agent_chat_handoff_ready", marks.append)
+    store = _FakeSessionStore()
+    qm = _StoppedAgentAppQueueManager(
+        task_id="task-1",
+        user_id="user-1",
+        invoke_from=InvokeFrom.DEBUGGER,
+        conversation_id="conv-1",
+        app_mode=AppMode.AGENT,
+        message_id="msg-1",
+    )
+    qm.enable_handoff()
+    client = _CancelAndWaitConflictClient()
+
+    with pytest.raises(GenerateTaskStoppedError):
+        _run(_runner(client, store), qm)
+
+    # The cancel lost to a retained terminal; its snapshot still reached the
+    # store and armed the handoff barrier.
+    assert marks == ["task-1"]
+    assert len(store.saved) == 1
+    assert store.saved[0][2] == SessionSnapshot(layers={})
+
+
 def test_terminal_output_to_answer_handles_plain_string_and_dict() -> None:
     assert AgentAppRunner._terminal_output_to_answer(None) == ""
     assert AgentAppRunner._terminal_output_to_answer("plain text") == "plain text"
@@ -1667,3 +1852,169 @@ def test_run_forwards_inputs_to_runtime_context(monkeypatch: pytest.MonkeyPatch)
     assert len(contexts) == 1
     assert contexts[0].inputs == inputs
     assert contexts[0].user_query == "hello"
+
+
+def _debugger_ctx() -> DifyRunContext:
+    return DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+
+def _preview_runner(
+    client: FakeAgentBackendRunClient,
+    store: _FakeSessionStore,
+    calls: list[tuple[DifyRunContext, str, str]],
+    *,
+    register_result: bool = True,
+) -> AgentAppRunner:
+    def register(context: DifyRunContext, task_id: str, run_id: str) -> bool:
+        calls.append((context, task_id, run_id))
+        return register_result
+
+    return AgentAppRunner(
+        request_builder=AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),
+        ),
+        agent_backend_client=client,
+        event_adapter=AgentBackendRunEventAdapter(),
+        session_store=store,
+        text_delta_debounce_seconds=0,
+        bind_steering_task_to_run=register,
+    )
+
+
+def _queue_ready_events(qm: _FakeQueueManager) -> list[QueueAgentQueueReadyEvent]:
+    return [e for e in qm.events if isinstance(e, QueueAgentQueueReadyEvent)]
+
+
+@pytest.mark.parametrize("kind", [AgentConfigVersionKind.DRAFT, AgentConfigVersionKind.BUILD_DRAFT])
+def test_draft_preview_registers_and_publishes_queue_ready(
+    kind: AgentConfigVersionKind,
+) -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+
+    _run(runner, qm, dify_context=_debugger_ctx(), agent_config_version_kind=kind)
+
+    assert len(_queue_ready_events(qm)) == 1
+    ((context, task_id, run_id),) = calls
+    assert context.invoke_from == InvokeFrom.DEBUGGER
+    assert task_id == "task-1"
+    assert run_id == "fake-run-1"
+    request = client.request
+    assert request is not None
+    assert request.metadata["allow_steering"] is True
+
+
+def test_queue_ready_not_published_when_registration_fails() -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls, register_result=False)
+    qm = _FakeQueueManager()
+
+    _run(runner, qm, dify_context=_debugger_ctx(), agent_config_version_kind=AgentConfigVersionKind.DRAFT)
+
+    assert calls  # registration attempted, event withheld on failure
+    assert _queue_ready_events(qm) == []
+
+
+def test_web_app_snapshot_registers_and_publishes_queue_ready() -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+
+    _run(runner, qm, dify_context=_dify_ctx(), agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT)
+
+    assert len(_queue_ready_events(qm)) == 1
+    ((context, task_id, run_id),) = calls
+    assert context.invoke_from == InvokeFrom.WEB_APP
+    assert task_id == "task-1"
+    assert run_id == "fake-run-1"
+    request = client.request
+    assert request is not None
+    assert request.metadata["allow_steering"] is True
+
+
+@pytest.mark.parametrize(
+    ("invoke_from", "kind"),
+    [
+        (InvokeFrom.DEBUGGER, AgentConfigVersionKind.SNAPSHOT),
+        (InvokeFrom.SERVICE_API, AgentConfigVersionKind.SNAPSHOT),
+    ],
+)
+def test_queue_ready_not_published_for_non_admitted_runs(
+    invoke_from: InvokeFrom,
+    kind: AgentConfigVersionKind,
+) -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+    context = DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=invoke_from,
+    )
+
+    _run(runner, qm, dify_context=context, agent_config_version_kind=kind)
+
+    assert calls == []
+    assert _queue_ready_events(qm) == []
+    request = client.request
+    assert request is not None
+    assert "allow_steering" not in request.metadata
+
+
+def test_queue_ready_not_published_for_build_finalization() -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+
+    _run(
+        runner,
+        qm,
+        dify_context=_debugger_ctx(),
+        agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        allow_async_loop=False,
+    )
+
+    assert calls == []
+    assert _queue_ready_events(qm) == []
+    request = client.request
+    assert request is not None
+    assert "allow_steering" not in request.metadata
+
+
+def test_queue_ready_not_published_for_terminal_create(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _RecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    calls: list[tuple[DifyRunContext, str, str]] = []
+    runner = _preview_runner(client, store, calls)
+    qm = _FakeQueueManager()
+    monkeypatch.setattr(
+        client,
+        "create_run",
+        lambda request: CreateRunResponse(run_id="fake-run-1", status="succeeded"),
+    )
+
+    _run(runner, qm, dify_context=_debugger_ctx(), agent_config_version_kind=AgentConfigVersionKind.DRAFT)
+
+    assert calls == []
+    assert _queue_ready_events(qm) == []

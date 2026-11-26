@@ -13,7 +13,8 @@ never extend retention. Multi-key Lua coordination requires non-Cluster Redis.
 
 from collections.abc import AsyncIterator, Awaitable
 import hashlib
-from typing import cast, override
+from typing import Literal, cast, override
+from uuid import UUID
 
 from redis.asyncio import Redis
 
@@ -26,10 +27,14 @@ from dify_agent.protocol.schemas import (
     RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
+    RunInputRequest,
+    RunQueueEntry,
+    RunQueueResponse,
     RunStatus,
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.run_inputs import RunInboxInput
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunEventSink,
@@ -44,6 +49,7 @@ from dify_agent.storage.redis_keys import (
     run_cancel_intent_key,
     run_events_key,
     run_idempotency_key,
+    run_input_key,
     run_record_key,
 )
 
@@ -92,6 +98,117 @@ class IdempotencyConflictError(RuntimeError):
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+class RunInputConflictError(RuntimeError):
+    """Raised when a run's steering inbox rejects an enqueue operation."""
+
+
+_RUN_INPUT_SCRIPT = """
+-- KEYS: record, cancellation intent, inbox.
+-- ARGV: operation, TTL, input id, text, text digest.
+-- Return {code, inputs...}: -1 missing run, -2 closed/unavailable, -3 id
+-- conflict, -4 input limit, 1 applied.
+local raw = redis.call('GET', KEYS[1])
+if not raw then return {-1} end
+local op = ARGV[1]
+local running = cjson.decode(raw).status == 'running' and redis.call('EXISTS', KEYS[2]) == 0
+local function append(input, ref)
+    local seq = redis.call('HINCRBY', KEYS[3], 'count', 1)
+    redis.call('HSET', KEYS[3], 'pending:' .. seq, input, 'ref:' .. seq, ref)
+    redis.call('EXPIRE', KEYS[3], ARGV[2])
+end
+if op == 'freeze' then
+    local function pending_pairs()
+        local result = {1}
+        local count = tonumber(redis.call('HGET', KEYS[3], 'count') or '0')
+        for seq = 1, count do
+            local ref = redis.call('HGET', KEYS[3], 'ref:' .. seq)
+            local payload = redis.call('HGET', KEYS[3], 'pending:' .. seq)
+            if ref and payload then
+                result[#result + 1] = payload
+                result[#result + 1] = ref
+            end
+        end
+        return result
+    end
+    local state = redis.call('HGET', KEYS[3], 'state')
+    if state == 'handoff' then
+        -- Retried freeze of the same prioritized input returns the same refs
+        -- even after the run settled; a different id or changed text rejects.
+        if redis.call('HGET', KEYS[3], 'handoff_input_id') ~= ARGV[3]
+            or redis.call('HGET', KEYS[3], 'id:' .. ARGV[3]) ~= ARGV[5] then
+            return {-3}
+        end
+        return pending_pairs()
+    end
+    if not running or state ~= 'open' then return {-2} end
+    -- The cut-in input is appended atomically with the freeze so it can never
+    -- drain natively before the handoff settles.
+    local key = 'id:' .. ARGV[3]
+    if redis.call('HEXISTS', KEYS[3], key) == 1 then return {-3} end
+    local count = tonumber(redis.call('HGET', KEYS[3], 'user_count') or '0')
+    if count >= 64 then return {-4} end
+    redis.call('HINCRBY', KEYS[3], 'user_count', 1)
+    redis.call('HSET', KEYS[3], key, ARGV[5])
+    append(ARGV[4], 'input_queued:' .. ARGV[3])
+    redis.call('HSET', KEYS[3], 'state', 'handoff', 'handoff_input_id', ARGV[3])
+    return pending_pairs()
+end
+if not running then return {-2} end
+if op == 'open' then
+    if redis.call('EXISTS', KEYS[3]) == 0 then
+        redis.call('HSET', KEYS[3], 'state', 'open')
+        redis.call('EXPIRE', KEYS[3], ARGV[2])
+    end
+    return {1}
+end
+local state = redis.call('HGET', KEYS[3], 'state')
+if op == 'queue' then
+    local snapshot = {1, 0}
+    if state ~= 'open' then return snapshot end
+    snapshot[2] = 1
+    local cursor = tonumber(redis.call('HGET', KEYS[3], 'cursor') or '0')
+    local count = tonumber(redis.call('HGET', KEYS[3], 'count') or '0')
+    for seq = cursor + 1, count do
+        local ref = redis.call('HGET', KEYS[3], 'ref:' .. seq)
+        if ref then snapshot[#snapshot + 1] = ref end
+    end
+    return snapshot
+end
+if op == 'enqueue' then
+    local key = 'id:' .. ARGV[3]
+    local previous = redis.call('HGET', KEYS[3], key)
+    if previous then
+        if previous == ARGV[5] then return {1} end
+        return {-3}
+    end
+    if state ~= 'open' then return {-2} end
+    local count = tonumber(redis.call('HGET', KEYS[3], 'user_count') or '0')
+    if count >= 64 then return {-4} end
+    redis.call('HINCRBY', KEYS[3], 'user_count', 1)
+    redis.call('HSET', KEYS[3], key, ARGV[5])
+    append(ARGV[4], 'input_queued:' .. ARGV[3])
+    return {1}
+end
+if state ~= 'open' then return {1} end
+local cursor = tonumber(redis.call('HGET', KEYS[3], 'cursor') or '0')
+local count = tonumber(redis.call('HGET', KEYS[3], 'count') or '0')
+local result = {1}
+for seq = cursor + 1, count do
+    local key = 'pending:' .. seq
+    result[#result + 1] = redis.call('HGET', KEYS[3], key)
+    result[#result + 1] = redis.call('HGET', KEYS[3], 'ref:' .. seq)
+    redis.call('HDEL', KEYS[3], key, 'ref:' .. seq)
+end
+if cursor ~= count then
+    redis.call('HSET', KEYS[3], 'cursor', count)
+elseif op == 'finish' then
+    redis.call('HSET', KEYS[3], 'state', 'closed')
+end
+redis.call('EXPIRE', KEYS[3], ARGV[2])
+return result
+"""
 
 
 _FINALIZE_RUN_SCRIPT = (
@@ -342,6 +459,110 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
+    async def _run_input_operation(
+        self,
+        run_id: str,
+        operation: Literal["open", "enqueue", "take", "finish", "queue", "freeze"],
+        request: RunInputRequest | None = None,
+    ) -> list[object]:
+        call = cast(
+            Awaitable[object],
+            self.redis.eval(
+                _RUN_INPUT_SCRIPT,
+                3,
+                run_record_key(self.prefix, run_id),
+                run_cancel_intent_key(self.prefix, run_id),
+                run_input_key(self.prefix, run_id),
+                operation,
+                str(self.run_retention_seconds),
+                str(request.input_id) if request else "",
+                request.text if request else "",
+                hashlib.sha256(request.text.encode()).hexdigest() if request else "",
+            ),
+        )
+        return cast(list[object], await call)
+
+    async def open_run_inputs(self, run_id: str) -> None:
+        """Idempotently open the run inbox for human steering inputs."""
+        _ = await self._run_input_operation(run_id, "open")
+
+    async def enqueue_run_input(self, run_id: str, request: RunInputRequest) -> None:
+        """Atomically append steering input, rejecting conflicts and overflow.
+
+        A retry of the same input id with identical text is a no-op; the same
+        id with different text, a missing/non-running record, a closed or
+        unopened inbox, and the per-run input limit each raise
+        ``RunInputConflictError`` (or ``RunNotFoundError`` for missing runs).
+        """
+        result = await self._run_input_operation(run_id, "enqueue", request)
+        code = int(cast("int | bytes | str", result[0]))
+        if code == -1:
+            raise RunNotFoundError(run_id)
+        if code == -2:
+            raise RunInputConflictError("run is not accepting steering input")
+        if code == -3:
+            raise RunInputConflictError("input id has already been used with different text")
+        if code == -4:
+            raise RunInputConflictError("run steering input limit reached")
+
+    async def freeze_run_inputs(self, run_id: str, request: RunInputRequest) -> list[RunInputRequest]:
+        """Freeze the inbox for handoff while prioritizing the caller's input.
+
+        Atomically appends ``request`` as the last pending input and seals the
+        inbox in the same script, so the prioritized text can never drain
+        natively before the handoff settles; returns every pending input in
+        FIFO order. While frozen, enqueues and drains stop, so the remaining
+        inputs transfer to the next turn unchanged. Retrying with the same
+        input id and text returns the same inputs even after the run settled;
+        a different id or changed text is rejected, which keeps replays safe.
+        """
+        result = await self._run_input_operation(run_id, "freeze", request)
+        code = int(cast("int | bytes | str", result[0]))
+        if code == -1:
+            raise RunNotFoundError(run_id)
+        if code == -2:
+            raise RunInputConflictError("run is not accepting steering inputs")
+        if code == -3:
+            raise RunInputConflictError("input cannot freeze this inbox")
+        if code == -4:
+            raise RunInputConflictError("run steering input limit reached")
+        return [
+            RunInputRequest(
+                input_id=UUID(_decode_redis_text(ref).removeprefix("input_queued:")),
+                text=_decode_redis_text(payload),
+            )
+            for payload, ref in zip(result[1::2], result[2::2], strict=True)
+        ]
+
+    async def take_run_inputs(self, run_id: str, *, finish: bool = False) -> list[RunInboxInput]:
+        """Drain pending inputs, or seal an empty inbox when finishing.
+
+        Each drained input carries its ``input_id`` so delivery can be
+        correlated back to the enqueue acknowledgement.
+        """
+        result = await self._run_input_operation(run_id, "finish" if finish else "take")
+        return [
+            RunInboxInput(
+                text=_decode_redis_text(payload),
+                input_id=_decode_redis_text(ref).removeprefix("input_queued:"),
+            )
+            for payload, ref in zip(result[1::2], result[2::2], strict=True)
+        ]
+
+    async def get_run_queue(self, run_id: str) -> RunQueueResponse:
+        """Return a non-refreshing snapshot of pending inbox ids and kinds."""
+        result = await self._run_input_operation(run_id, "queue")
+        code = int(cast("int | bytes | str", result[0]))
+        if code == -1:
+            raise RunNotFoundError(run_id)
+        if code == -2:
+            return RunQueueResponse(accepting_inputs=False, entries=[])
+        entries = [
+            RunQueueEntry(kind="input_queued", id=_decode_redis_text(value).removeprefix("input_queued:"))
+            for value in result[2:]
+        ]
+        return RunQueueResponse(accepting_inputs=int(cast("int | bytes | str", result[1])) == 1, entries=entries)
+
     @override
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Append a non-terminal event while the durable run status is still ``running``.
@@ -572,5 +793,6 @@ __all__ = [
     "DEFAULT_RUN_RETENTION_SECONDS",
     "IdempotencyConflictError",
     "RedisRunStore",
+    "RunInputConflictError",
     "RunNotFoundError",
 ]

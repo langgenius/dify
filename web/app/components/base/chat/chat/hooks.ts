@@ -33,7 +33,7 @@ import {
 } from '@/features/app-access-error/state'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
-import { streamEvents } from '@/service/event-stream'
+import { parseAgentDeliveredInputs, streamEvents } from '@/service/event-stream'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -55,6 +55,7 @@ type HistoryConversationMessage = {
   retriever_resources?: ChatItem['citation']
   metadata?: {
     reasoning?: ChatItem['reasoningContent']
+    steering_inputs?: unknown
   }
   created_at?: number
   answer_tokens?: number
@@ -81,6 +82,7 @@ type SendCallback = {
   onUnhandledEvent?: StreamCallbacks['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
   onNotifyError?: StreamCallbacks['onNotifyError']
+  onAgentQueueReady?: StreamCallbacks['onAgentQueueReady']
   isPublicAPI?: boolean
 }
 
@@ -595,6 +597,21 @@ export const useChat = (
     stopLocalResponse()
     return true
   }, [stopChat, stopLocalResponse, options.isNewAgent, t])
+
+  // Settles the old run locally for the steering handoff: the server already
+  // confirmed the snapshot save, so the stale transport is aborted and its
+  // delayed callbacks invalidated instead of waiting for its onCompleted.
+  const settleAgentHandoff = useCallback(
+    (taskId: string): boolean => {
+      if (!options.isNewAgent) return false
+      if (!isRespondingRef.current) return true
+      if (taskIdRef.current !== taskId) return false
+      ++workflowRequestGenerationRef.current
+      stopLocalResponse()
+      return true
+    },
+    [options.isNewAgent, stopLocalResponse],
+  )
 
   const handleRestart = useCallback(
     (cb?: () => void) => {
@@ -1114,6 +1131,7 @@ export const useChat = (
         onUnhandledEvent,
         onSendSettled,
         onNotifyError,
+        onAgentQueueReady,
         isPublicAPI,
       }: SendCallback,
     ) => {
@@ -1223,6 +1241,40 @@ export const useChat = (
         isPublicAPI,
         onNotifyError,
         onUnhandledEvent,
+        // Lets the admitted preview start steering and stop before the first answer.
+        onAgentQueueReady: (taskId, identity) => {
+          if (!isCurrentRequest() || !options.isNewAgent) return
+          taskIdRef.current = taskId
+          // The queue-ready frame already carries the conversation/message
+          // identity, so an interrupt before the first token still keeps the
+          // conversation and parent linkage.
+          if (identity?.conversationId) conversationIdRef.current = identity.conversationId
+          if (identity?.messageId && !hasSetResponseId) {
+            questionItem.id = `question-${identity.messageId}`
+            responseItem.id = identity.messageId
+            responseItem.parentMessageId = questionItem.id
+            hasSetResponseId = true
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: data.parent_message_id,
+            })
+          }
+          onAgentQueueReady?.(taskId, identity)
+        },
+        onAgentInputDelivered: (input) => {
+          if (!isCurrentRequest() || !options.isNewAgent) return
+          const current = responseItem.agent_steering_inputs ?? []
+          if (current.some((entry) => entry.input_id === input.input_id)) return
+          responseItem.agent_steering_inputs = [...current, input]
+          updateCurrentQAOnTree({
+            parentId: data.parent_message_id,
+            responseItem,
+            placeholderQuestionId,
+            questionItem,
+          })
+        },
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1231,6 +1283,9 @@ export const useChat = (
           isFirstMessage: boolean,
           { event, conversationId: newConversationId, messageId, taskId }: any,
         ) => {
+          // Buffered frames from a settled handoff transport must not relink
+          // the conversation or task identity of the new run.
+          if (options.isNewAgent && !isCurrentRequest()) return
           const isNewAgentMessage =
             options.isNewAgent && (event === 'agent_message' || event === 'message')
           if (isNewAgentMessage) {
@@ -1263,6 +1318,7 @@ export const useChat = (
           })
         },
         onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+          if (options.isNewAgent && !isCurrentRequest()) return
           const { reasoning, node_id, is_final } = reasoningData
           const reasoningContent =
             responseItem.reasoningContent || (responseItem.reasoningContent = {})
@@ -1332,6 +1388,11 @@ export const useChat = (
                   (newResponseItem.status === 'error' || (!!hasError && !newResponseItem.status)),
                 agent_thoughts: historyAgentThoughts,
                 agent_response_parts: undefined,
+                agent_steering_inputs: options.isNewAgent
+                  ? parseAgentDeliveredInputs(newResponseItem.metadata).length
+                    ? parseAgentDeliveredInputs(newResponseItem.metadata)
+                    : responseItem.agent_steering_inputs
+                  : undefined,
                 citation: newResponseItem.retriever_resources,
                 reasoningContent: newResponseItem.metadata?.reasoning,
                 reasoningFinished: true,
@@ -1495,6 +1556,7 @@ export const useChat = (
           })
         },
         onMessageEnd: (messageEnd) => {
+          if (options.isNewAgent && !isCurrentRequest()) return
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
           if (messageEnd.metadata?.annotation_reply) {
@@ -1956,6 +2018,7 @@ export const useChat = (
     suggestedQuestions,
     handleRestart,
     handleStop,
+    settleAgentHandoff,
     handleAnnotationEdited,
     handleAnnotationAdded,
     handleAnnotationRemoved,

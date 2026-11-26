@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
+from core.app.entities.queue_entities import AgentDeliveredInput
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
@@ -74,6 +75,8 @@ class StreamEvent(StrEnum):
     MESSAGE_REPLACE = "message_replace"
     AGENT_THOUGHT = "agent_thought"
     AGENT_MESSAGE = "agent_message"
+    AGENT_QUEUE_READY = "agent_queue_ready"
+    AGENT_INPUT_DELIVERED = "agent_input_delivered"
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_PAUSED = "workflow_paused"
     WORKFLOW_FINISHED = "workflow_finished"
@@ -191,6 +194,19 @@ class AgentThoughtStreamResponse(StreamResponse):
     tool_labels: Mapping[str, object] = Field(default_factory=dict)
     tool_input: str | None = None
     message_files: list[str] | None = None
+
+
+class AgentQueueReadyStreamResponse(StreamResponse):
+    """Signals that an admitted preview run can accept steering inputs."""
+
+    event: StreamEvent = StreamEvent.AGENT_QUEUE_READY
+
+
+class AgentInputDeliveredStreamResponse(StreamResponse):
+    """A steering input persisted on the turn and delivered to the run."""
+
+    event: StreamEvent = StreamEvent.AGENT_INPUT_DELIVERED
+    input: AgentDeliveredInput
 
 
 class AgentMessageStreamResponse(StreamResponse):
