@@ -89,6 +89,38 @@ def test_core_tools_client_posts_inner_api_request(trace_id: str | None) -> None
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("request_headers", [{"X-User-Id": "user-1"}, None])
+def test_core_tools_client_forwards_request_headers(request_headers: dict[str, str] | None) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = cast(dict[str, object], json.loads(request.content.decode("utf-8")))
+        caller = cast(dict[str, object], payload["caller"])
+        if request_headers is None:
+            assert "request_headers" not in caller
+        else:
+            assert caller["request_headers"] == request_headers
+        return httpx.Response(
+            200,
+            json={
+                "messages": [{"type": "text", "message": {"text": "ok"}}],
+                "observation": "ok",
+                "metadata": {},
+            },
+        )
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = DifyCoreToolsClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
+            await client.invoke(
+                execution_context=_execution_context().model_copy(update={"request_headers": request_headers}),
+                tool_config=_tool_config(),
+                tool_parameters={"audio_url": "https://example.com/a.mp3"},
+            )
+
+    import asyncio
+
+    asyncio.run(scenario())
+
+
 def test_core_tools_client_marks_retryable_http_failures() -> None:
     async def scenario() -> None:
         async with httpx.AsyncClient(
