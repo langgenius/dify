@@ -48,21 +48,22 @@ export const useInputFieldsActions = ({
   )
   const [isUploadPopoverOpen, setIsUploadPopoverOpen] = useState(false)
   const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null)
-  const uploadMutation = useMutation({
-    ...consoleQuery.files.upload.post.mutationOptions(),
-    onSuccess: (uploadedFile, input) => {
-      const file = input.body.file
-      setUploadedFile(resourceType, resourceId, {
-        id: uploadedFile.id,
-        name: uploadedFile.name || (file instanceof File ? file.name : ''),
-      })
-    },
-    onError: () => {
-      setUploadedFileMeta(null)
-      setUploadedFile(resourceType, resourceId, null)
-      toast.error(t(($) => $['batch.uploadError']))
-    },
-  })
+  const uploadMutation = useMutation(
+    consoleQuery.files.upload.post.mutationOptions({
+      onSuccess: (uploadedFile, input) => {
+        const file = input.body.file
+        setUploadedFile(resourceType, resourceId, {
+          id: uploadedFile.id,
+          name: uploadedFile.name || (file instanceof File ? file.name : ''),
+        })
+      },
+      onError: () => {
+        setUploadedFileMeta(null)
+        setUploadedFile(resourceType, resourceId, null)
+        toast.error(t(($) => $['batch.uploadError']))
+      },
+    }),
+  )
 
   const isFileUploading = uploadMutation.isPending
   const isRunning = evaluationActions.isRunning
