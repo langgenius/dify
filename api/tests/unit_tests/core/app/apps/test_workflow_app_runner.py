@@ -23,7 +23,7 @@ from core.app.apps.common import workflow_response_converter
 from core.app.apps.execution_coordinator import AppExecutionState
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
-from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner
+from core.app.apps.workflow_app_runner import PreparedWorkflowRun, WorkflowBasedAppRunner, _WorkflowGraphConfig
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -52,6 +52,7 @@ from core.repositories.human_input_repository import HumanInputFormRepositoryImp
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.agent_log_events import NodeRunAgentLogEvent
+from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.nodes.human_input.boundary import human_input_container_selector
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
@@ -68,6 +69,7 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from core.workflow.workflow_entry import WorkflowEntry, iter_dify_graph_engine_events
 from extensions.storage.storage_type import StorageType
+from graphon.engine import Engine
 from graphon.engine.layer import Layer
 from graphon.engine.ready_queue import StartTask
 from graphon.engine_events import (
@@ -95,6 +97,7 @@ from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowType
 from graphon.file.helpers import verify_file_signature
 from graphon.graph import Graph
+from graphon.graph.validation import GraphValidationError
 from graphon.node_events import NodeRunResult
 from graphon.nodes.human_input.entities import HumanInputNodeData as GraphonHumanInputNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
@@ -108,6 +111,10 @@ from models.human_input import HumanInputForm
 from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from providers.a2a.workflow_node import ExternalAgentNodeDependencies
+from repositories.external_agents.observability_repository import ExternalObservabilityRepository
+from services.external_agents.io_contracts import JsonObject
+from services.external_agents.traceability import TraceLimits
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_run_index import WorkflowRunIndex
 from tests.helpers.unit.model_factories import make_workflow
@@ -117,6 +124,15 @@ from tests.unit_tests.core.app.apps.advanced_chat.test_generate_task_pipeline im
 )
 from tests.unit_tests.core.app.apps.common.test_workflow_response_converter import (
     _workflow_response_converter_human_input_build_converter as _build_converter,
+)
+from tests.unit_tests.repositories.external_agents import test_runtime_repository as external_runtime_fixtures
+from tests.unit_tests.repositories.external_agents.test_runtime_repository import (
+    RemoteAgent,
+    WorkflowDomain,
+    command,
+    present,
+    required_id,
+    service,
 )
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context
 
@@ -314,6 +330,38 @@ class TestWorkflowAppRunnerCoreCases:
                     invoke_from=InvokeFrom.DEBUGGER,
                     call_depth=0,
                 )
+
+        @pytest.mark.parametrize("source_handle", ["true", "false", "fail-branch", None, 0, False])
+        def test_init_graph_preserves_named_handles_and_rejects_invalid_handles(
+            self, source_handle: str | None | int | bool
+        ) -> None:
+            queue = WorkflowAppQueueManager(
+                task_id="edge-contract", user_id="account", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
+            )
+            runner = WorkflowBasedAppRunner(queue_manager=queue, app_id="app")
+            state = RuntimeState(workflow_id="workflow", variable_pool=VariablePool(), start_at=0)
+            graph_config: JsonObject = {
+                "nodes": [
+                    {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                    {"id": "end", "data": {"type": "end", "title": "End", "outputs": []}},
+                ],
+                "edges": [{"id": "edge", "source": "start", "target": "end", "sourceHandle": source_handle}],
+            }
+
+            def graph() -> Graph:
+                return runner._init_graph(
+                    graph_config=graph_config,
+                    graph_runtime_state=state,
+                    user_from=UserFrom.ACCOUNT,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                    call_depth=0,
+                )
+
+            if isinstance(source_handle, str):
+                assert graph().edges["edge"].source_handle == source_handle
+            else:
+                with pytest.raises(GraphValidationError, match="sourceHandle must be a string"):
+                    graph()
 
         def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
             runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
@@ -1741,3 +1789,104 @@ class TestWorkflowHumanInputCompletionCases:
             ("second-form", "message-1"),
         }
         assert len(contents) == 2
+
+
+domain = external_runtime_fixtures.domain
+workflow_domain = external_runtime_fixtures.workflow_domain
+
+
+@pytest.mark.parametrize("edge_fields", [{}, {"sourceHandle": "source"}, {"sourceHandle": ""}])
+def test_editor_default_edge_reaches_end_after_external_pause_and_resume(
+    workflow_domain: WorkflowDomain, edge_fields: dict[str, str]
+) -> None:
+    """An editor default edge remains the success path after the SQL-backed wait."""
+    db_domain, identity, workflow_id, job = workflow_domain
+    repo, sessions, scope, _, _ = db_domain
+    remote = RemoteAgent(direct=True)
+    runtime, clock, *_ = service(db_domain, remote)
+    dependencies = ExternalAgentNodeDependencies(
+        service=runtime,
+        store=repo,
+        bindings=repo,
+        usage=ExternalObservabilityRepository(sessions=sessions, limits=TraceLimits()),
+        now=clock.now,
+        enqueue=lambda: None,
+        enabled=True,
+        root_app_id=required_id(scope.app_id),
+    )
+    graph_config: JsonObject = {
+        "nodes": [
+            {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+            {
+                "id": "external",
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_node_kind": "external_a2a",
+                    "title": "External",
+                    "error_strategy": "fail-branch",
+                    **job.model_dump(exclude_unset=True),
+                },
+            },
+            {
+                "id": "end",
+                "data": {
+                    "type": "end",
+                    "title": "End",
+                    "outputs": [{"variable": "text", "value_selector": ["external", "text"]}],
+                },
+            },
+            {"id": "failure-end", "data": {"type": "end", "title": "Failure", "outputs": []}},
+        ],
+        "edges": [
+            {"id": "start-external", "source": "start", "target": "external", **edge_fields},
+            {"id": "external-end", "source": "external", "target": "end", **edge_fields},
+            {
+                "id": "external-failure",
+                "source": "external",
+                "target": "failure-end",
+                "sourceHandle": "fail-branch",
+            },
+        ],
+    }
+    original_graph = deepcopy(graph_config)
+
+    def graph(state: RuntimeState) -> Graph:
+        config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
+        factory = DifyNodeFactory(
+            init_params=build_test_graph_init_params(
+                graph_config=config,
+                tenant_id=scope.tenant_id,
+                app_id=required_id(scope.app_id),
+                user_id=scope.initiator_id,
+                invoke_from=InvokeFrom.SERVICE_API,
+                workflow_id=workflow_id,
+            ),
+            runtime_state=state,
+            external_agent_dependencies=dependencies,
+        )
+        return Graph.init(graph_config=config, node_factory=factory, root_node_id="start")
+
+    pool = VariablePool()
+    pool.add(("sys", "workflow_run_id"), identity.workflow_run_id)
+    state = RuntimeState(variable_pool=pool, start_at=0, workflow_id=workflow_id)
+    state.graph_execution.get_or_create_node_execution(
+        frame_id="root", node_id="external"
+    ).execution_id = identity.execution_id
+    initial = list(Engine(graph=graph(state), runtime_state=state, workers=1).run())
+    assert isinstance(initial[-1], GraphRunPausedEvent)
+    snapshot = state.dumps()
+    invocation = present(repo.for_execution(scope, identity))
+    command(db_domain, runtime, clock, "dispatch")
+    restored = RuntimeState.from_snapshot(snapshot)
+    results = list(Engine(graph=graph(restored), runtime_state=restored, workers=1).run())
+
+    assert isinstance(results[-1], GraphRunSucceededEvent)
+    succeeded = {event.node_id: event for event in results if isinstance(event, NodeRunSucceededEvent)}
+    assert set(succeeded) == {"external", "end"}
+    assert succeeded["external"].id == identity.execution_id
+    assert succeeded["end"].node_run_result.outputs == {"text": "result"}
+    assert restored.outputs == {"text": "result"}
+    assert len(remote.sent) == 1
+    assert present(repo.for_execution(scope, identity)).id == invocation.id
+    assert graph_config == original_graph

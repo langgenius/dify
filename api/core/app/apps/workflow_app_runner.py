@@ -4,7 +4,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, cast
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
@@ -145,12 +145,26 @@ class _WorkflowGraphNodeConfig(BaseModel):
 
 
 class _WorkflowGraphEdgeConfig(BaseModel):
-    """Top-level edge wrapper used for selecting a single-node subgraph."""
+    """Top-level edge wrapper translating editor default handles for Graphon."""
 
     source: str | None = None
     target: str | None = None
 
     model_config = ConfigDict(extra="allow", strict=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_default_source_handle(cls, value: object) -> object:
+        """Copy editor edges with an empty default handle to Graphon's ``source``.
+
+        Preconditions: value is an unvalidated persisted edge payload.
+        Postconditions: empty editor handles use the engine's success path;
+        named handles and the original payload remain unchanged. Other invalid
+        values retain the existing model/graph validation failures.
+        """
+        if isinstance(value, Mapping) and value.get("sourceHandle") == "":
+            return {**value, "sourceHandle": "source"}
+        return value
 
 
 class _WorkflowGraphConfig(BaseModel):
