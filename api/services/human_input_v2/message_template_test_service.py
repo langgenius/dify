@@ -6,6 +6,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from pydantic import JsonValue, ValidationError
+from python_http_client.exceptions import HTTPError
+from resend.exceptions import ResendError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,7 +23,6 @@ from graphon.runtime.runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.template_resolution import VARIABLE_PATTERN, convert_template
 from models.workflow import NodeNotFoundError, Workflow, WorkflowDataError
 from repositories.human_input_v2.delivery_repository import EmailTargetSnapshot, IMMessageType, IMUserTargetSnapshot
-from repositories.human_input_v2.email_channel.entities import ResendCandidate
 from repositories.human_input_v2.email_channel.ports import (
     EmailChannelRepository,
     EmailProviderOperationError,
@@ -32,11 +33,10 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
 from services.feature_service import FeatureService
-from services.human_input_v2.email_credential_codec import load_email_credentials
+from services.human_input_v2.email_client import EmailClient, build_email_client
 from services.human_input_v2.form_service import HumanInputDeliveryTestFormService, HumanInputTestFormError
 from services.human_input_v2.im_channel_runtime import read_current_im_channel, workspace_runtime_im_scope
 from services.human_input_v2.im_credential_codec import IMCredentialError
-from services.human_input_v2.resend_channel import ResendProviderGateway
 
 
 class MessageTemplateTestError(Exception):
@@ -55,7 +55,7 @@ class _RenderedTemplate:
 
 @dataclass(frozen=True, slots=True)
 class _EmailDestination:
-    candidate: ResendCandidate
+    client: EmailClient
     target: EmailTargetSnapshot
 
 
@@ -75,7 +75,6 @@ class MessageTemplateTestService:
         account_id: AccountId,
         account_email: str,
         email_repository_factory: Callable[[Session], EmailChannelRepository],
-        email_gateway: ResendProviderGateway,
         im_adapter_factory: Callable[[IMChannel], IMProviderAdapter],
         form_service: HumanInputDeliveryTestFormService,
     ) -> None:
@@ -84,7 +83,6 @@ class MessageTemplateTestService:
         self._account_id = account_id
         self._account_email = account_email
         self._email_repositories = email_repository_factory
-        self._email_gateway = email_gateway
         self._im_adapter_factory = im_adapter_factory
         self._forms = form_service
 
@@ -120,6 +118,7 @@ class MessageTemplateTestService:
         channel: DebugChannel,
         inputs: Mapping[str, JsonValue],
     ) -> None:
+        """Send the saved draft and its test-form link through the editor's selected channel."""
         node, pool = self._load_draft(app_id, node_id, inputs)
         preview = self._render(node.message_template, pool, EmailDeliveryConfig.URL_PLACEHOLDER)
         destination = self._resolve_destination(channel, preview)
@@ -133,8 +132,8 @@ class MessageTemplateTestService:
             )
             template = self._render(node.message_template, pool, request_url)
             match destination:
-                case _EmailDestination(candidate, _):
-                    self._send_email(candidate, template)
+                case _EmailDestination(client, _):
+                    self._send_email(client, template)
                 case _IMDestination(adapter, user_id, _):
                     result = adapter.messaging.send_text(user_id, template.body, subject=template.subject)
                     if isinstance(result, MessageSendingError):
@@ -195,21 +194,16 @@ class MessageTemplateTestService:
     def _resolve_destination(
         self, channel: DebugChannel, preview: _RenderedTemplate
     ) -> _EmailDestination | _IMDestination:
+        """Resolve the editor's selected channel or fail before creating a test form."""
         if channel is DebugChannel.EMAIL:
             if not EmailDeliveryConfig.render_markdown_body(preview.body).strip():
                 raise MessageTemplateTestError("The rendered email body must not be blank.")
-            with self._sessions() as session:
-                configuration = self._email_repositories(session).load(self._tenant_id)
-            if configuration is None:
-                raise MessageTemplateTestError("An Email channel must be configured in this workspace.")
+            client = build_email_client(tenant_id=self._tenant_id, session_factory=self._sessions)
+            if client is None:
+                raise MessageTemplateTestError("Email delivery must be configured to send a test message.")
             if not self._account_email:
                 raise MessageTemplateTestError("The current editor has no email address.")
-            candidate = ResendCandidate(
-                sender_email=configuration.sender_email,
-                sender_name=configuration.sender_name,
-                credentials=load_email_credentials(configuration.tenant_id, configuration.encrypted_credentials),
-            )
-            return _EmailDestination(candidate, EmailTargetSnapshot(email_address=self._account_email))
+            return _EmailDestination(client, EmailTargetSnapshot(email_address=self._account_email))
 
         im_channel, binding_id, user_id = self._load_im_destination(channel)
         try:
@@ -228,16 +222,12 @@ class MessageTemplateTestService:
             ),
         )
 
-    def _send_email(self, candidate: ResendCandidate, template: _RenderedTemplate) -> None:
+    def _send_email(self, client: EmailClient, template: _RenderedTemplate) -> None:
+        """Send the rendered template only to the editor, keeping provider failures out of the response."""
         html = EmailDeliveryConfig.render_markdown_body(template.body)
         try:
-            self._email_gateway.send_message(
-                candidate,
-                to=self._account_email,
-                subject=template.subject,
-                html=html,
-            )
-        except (EmailProviderOperationError, EmailProviderValidationError):
+            client.send(to=self._account_email, subject=template.subject, html=html)
+        except (EmailProviderOperationError, EmailProviderValidationError, ResendError, HTTPError, OSError, ValueError):
             raise MessageTemplateSendError("The Email provider did not accept the test message.") from None
 
     def _load_im_destination(self, channel: DebugChannel) -> tuple[IMChannel, IMBindingId, ProviderUserId]:
