@@ -20,6 +20,7 @@ from services.agent.build_config_gateway import AgentBuildConfigGateway
 from services.agent.build_session_service import AgentBuildSessionService
 from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.config_service import AgentConfigService
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
@@ -30,7 +31,6 @@ from services.agent.observability_contracts import AgentObservability
 from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.agent.sandbox_service import AgentAppSandboxService
 from services.agent.version_service import AgentVersionService
-from services.agent_config_service import AgentConfigService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_service import (
     AgentApiAccessService,
