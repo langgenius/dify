@@ -1,10 +1,13 @@
 'use client'
 
+import type { GetWorkspacesCurrentPluginAutoUpgradeFetchResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { PluginDetail } from '../../../types'
+import { useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useMarketplace } from '@/features/marketplace/client'
-import { usePluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
 import { AUTO_UPDATE_MODE } from '../../../reference-setting-modal/auto-update-setting/types'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
@@ -39,7 +42,7 @@ type UseDetailHeaderStateReturn = {
   versionPicker: VersionPickerState
   hasNewVersion: boolean
   isAutoUpgradeEnabled: boolean
-  autoUpgradeSettings: ReturnType<typeof usePluginAutoUpgradeSettings>
+  autoUpgradeSettings: UseQueryResult<GetWorkspacesCurrentPluginAutoUpgradeFetchResponse>
   isFromGitHub: boolean
   isFromMarketplace: boolean
 }
@@ -47,7 +50,11 @@ type UseDetailHeaderStateReturn = {
 export const useDetailHeaderState = (detail: PluginDetail): UseDetailHeaderStateReturn => {
   const enable_marketplace = useMarketplace() !== null
   const category = detail.declaration?.category ?? PluginCategoryEnum.tool
-  const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
+  const autoUpgradeSettings = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
 
   const { source, version, latest_version, plugin_id } = detail
 

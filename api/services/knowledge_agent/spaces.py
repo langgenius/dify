@@ -47,7 +47,6 @@ class SQLKnowledgeAgentSpacePort:
             )
             roles = resolve_local_roles(session, control_spaces=candidates, account_id=account_id)
             rbac = self._rbac.permission_keys_by_control_space(
-                session=session,
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_ids=[space.id for space in candidates],

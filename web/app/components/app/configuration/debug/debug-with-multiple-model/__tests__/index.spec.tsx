@@ -31,16 +31,31 @@ import { APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import DebugWithMultipleModel from '../index'
 
 const api = vi.hoisted(() => ({
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   messages: vi.fn<typeof consoleClient.apps.byAppId.chatMessages.get>(),
   suggestions:
     vi.fn<typeof consoleClient.apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get>(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
-  upload: api.upload,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -48,6 +63,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
       'apps.byAppId.chatMessages.byMessageId.suggestedQuestions.get': (input) =>
         api.suggestions(input),
@@ -165,7 +181,7 @@ beforeEach(() => {
   onOpenFeatures.mockClear()
   onOpenLog.mockClear()
   api.stream.mockResolvedValue(undefined)
-  api.upload.mockResolvedValue({ id: 'uploaded-file-1' })
+  api.upload.mockResolvedValue({ id: 'uploaded-file-1', name: 'upload', size: 1 })
   api.messages.mockResolvedValue({ data: [], has_more: false, limit: 10 })
   api.suggestions.mockResolvedValue({ data: [] })
 })
@@ -298,7 +314,7 @@ it('uploads once and includes the attachment only for the model supporting visio
   const file = new File(['image'], 'diagram.png', { type: 'image/png' })
   fireEvent.drop(screen.getByRole('textbox'), { dataTransfer: { files: [file] } })
   await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1))
-  expect(api.upload.mock.lastCall![0].data.get('file')).toEqual(file)
+  expect(api.upload.mock.lastCall![0].body.file).toEqual(file)
   await send(user, 'Describe this diagram')
   expect(api.stream).toHaveBeenCalledTimes(2)
   expect(api.stream.mock.calls[0]?.[1].body).toHaveProperty('files', [

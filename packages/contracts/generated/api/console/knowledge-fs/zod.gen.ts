@@ -548,16 +548,6 @@ export const zKnowledgeFsSpaceTagsReplacePayload = z.object({
 })
 
 /**
- * KnowledgeFSTidyActionPayload
- */
-export const zKnowledgeFsTidyActionPayload = z.object({
-  action: z.enum(['adopt', 'disable_document', 'dismiss', 'review', 'undo']),
-  documentId: z.string().nullish(),
-  expectedRevision: z.int().gt(0),
-  replacement: z.string().min(1).max(20000).nullish(),
-})
-
-/**
  * KnowledgeFSTidyRetryResponse
  */
 export const zKnowledgeFsTidyRetryResponse = z.object({
@@ -2647,6 +2637,29 @@ export const zKnowledgeFsTidyDocumentCardResponse = z.object({
   publishedAt: z.string(),
   sizeBytes: z.int(),
   title: z.string(),
+})
+
+/**
+ * KnowledgeFSTidyFurtherAction
+ *
+ * Another finding settled in the same transaction as the one the request addresses.
+ */
+export const zKnowledgeFsTidyFurtherAction = z.object({
+  action: z.enum(['disable_document', 'dismiss', 'review']),
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+  findingId: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+/**
+ * KnowledgeFSTidyActionPayload
+ */
+export const zKnowledgeFsTidyActionPayload = z.object({
+  action: z.enum(['adopt', 'disable_document', 'dismiss', 'review', 'undo']),
+  also: z.array(zKnowledgeFsTidyFurtherAction).min(1).max(63).nullish(),
+  documentId: z.string().nullish(),
+  expectedRevision: z.int().gt(0),
+  replacement: z.string().min(1).max(20000).nullish(),
 })
 
 /**
@@ -5470,7 +5483,11 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath = z.object({
 })
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery = z.object({
-  cursor: z.string().optional(),
+  cursor: z
+    .string()
+    .length(36)
+    .regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+    .optional(),
   state: z.enum(['complete', 'failed', 'pending', 'scanning']).optional(),
 })
 

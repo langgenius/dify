@@ -31,7 +31,8 @@ import {
 } from '@/app/components/tools/utils/query-select'
 import { useMarketplace } from '@/features/marketplace/client'
 import { consoleQuery } from '@/service/console'
-import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { installedPluginsByIdsQueryOptions } from '@/service/plugin-list-queries'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useToolProviderCategory } from './hooks/use-tool-provider-category'
 import ToolProviderCreateAction from './tool-provider-create-action'
 import { ToolProviderToolbar } from './tool-provider-toolbar'
@@ -98,7 +99,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
       select: selectToolsWithProvider,
     }),
   )
-  const { refetch: refetchMcpTools } = allToolProvidersQuery
   const activeToolsQuery =
     activeTab === 'api'
       ? customToolsQuery
@@ -108,9 +108,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const collectionList = activeToolsQuery.data ?? EMPTY_COLLECTIONS
   const isCollectionListLoading = activeToolsQuery.isLoading
   const refetch = activeToolsQuery.refetch
-  const refreshMcpTools = useCallback(async () => {
-    await refetchMcpTools()
-  }, [refetchMcpTools])
   const activeTabCollectionList = useMemo(() => {
     return collectionList.filter((collection) => collection.type === activeTab)
   }, [activeTab, collectionList])
@@ -148,10 +145,12 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
   const currentProvider = useMemo<Collection | undefined>(() => {
     return filteredCollectionList.find((collection) => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
-  const { data: checkedInstalledData } = useCheckInstalled({
-    pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
-    enabled: !!currentProvider?.plugin_id,
-  })
+  const { data: checkedInstalledData } = useQuery(
+    installedPluginsByIdsQueryOptions({
+      pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
+      enabled: !!currentProvider?.plugin_id,
+    }),
+  )
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
     return checkedInstalledData?.plugins?.[0]
@@ -242,7 +241,6 @@ const ProviderList = ({ category, contentInset = 'default', layout }: ProviderLi
               contentInset={contentInset}
               createdProviderId={createdMCPProviderId}
               showCreateCard={shouldShowMCPCreateCard}
-              onRefresh={refreshMcpTools}
               onCreatedProviderHandled={handleCreatedMCPProviderHandled}
             />
           )}

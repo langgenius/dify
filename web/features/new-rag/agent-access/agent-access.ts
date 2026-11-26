@@ -1,44 +1,10 @@
 import { ORPCError } from '@orpc/client'
 
-/** The name agents register the server under; also used in the personal-token snippets. */
-export const AGENT_MCP_SERVER_NAME = 'knowledge'
-export const AGENT_TOKEN_ENV = 'KNOWLEDGE_MCP_TOKEN'
 /** Lifetimes offered for a personal token; `null` never expires, `custom` asks for a number of days. */
 export const PERSONAL_TOKEN_EXPIRY_OPTIONS = [30, 1, 7, null, 'custom'] as const
 export type PersonalTokenExpiry = (typeof PERSONAL_TOKEN_EXPIRY_OPTIONS)[number]
 export const DEFAULT_PERSONAL_TOKEN_EXPIRY_DAYS = 30
 export const MAX_PERSONAL_TOKEN_EXPIRY_DAYS = 365
-
-/** Commands that add the server; the agent then signs in through the browser (OAuth). */
-export function agentConnectCommands(mcpUrl: string) {
-  return {
-    claudeCode: `claude mcp add --transport http ${AGENT_MCP_SERVER_NAME} ${mcpUrl}`,
-    codex: [
-      `codex mcp add ${AGENT_MCP_SERVER_NAME} --url ${mcpUrl}`,
-      `codex mcp login ${AGENT_MCP_SERVER_NAME}`,
-    ],
-  }
-}
-
-/** For agents that cannot sign in through a browser: the token comes from an environment variable. */
-export function personalTokenSnippets(mcpUrl: string) {
-  return {
-    claudeCode: JSON.stringify(
-      {
-        mcpServers: {
-          [AGENT_MCP_SERVER_NAME]: {
-            type: 'http',
-            url: mcpUrl,
-            headers: { Authorization: `Bearer \${${AGENT_TOKEN_ENV}}` },
-          },
-        },
-      },
-      null,
-      2,
-    ),
-    codex: `[mcp_servers.${AGENT_MCP_SERVER_NAME}]\nurl = "${mcpUrl}"\nbearer_token_env_var = "${AGENT_TOKEN_ENV}"`,
-  }
-}
 
 export function agentAccessErrorCode(error: unknown): string | undefined {
   return error instanceof ORPCError && typeof error.code === 'string' ? error.code : undefined

@@ -368,6 +368,25 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /accounts/{account_id}/avatars/{file_id}
+**Serve an account's assigned raster avatar to an authenticated Console account**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
+| 304 | Avatar image has not changed |  |
+| 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
 
@@ -703,6 +722,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
+**Save the admitted account's Build draft and return its committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -720,11 +741,13 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
+**Apply the admitted account's Build draft to the shared draft and return its metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -738,11 +761,14 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
+**Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -825,6 +851,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
+**Return the Agent's effective shared configuration without creating a draft**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -840,6 +868,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
+**Save the shared draft and return the committed state with validation findings**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -862,6 +892,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
+**Return mention candidates from tenant-scoped configuration and workspace tools**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -877,6 +909,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
+**Check publish rules for the supplied configuration and report findings without writing**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1181,6 +1215,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
+**Copy an admitted roster Agent App and render its committed private detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1364,6 +1400,8 @@ Get Agent App message details by ID
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
+**Publish the current shared draft and return the committed version and draft metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1384,6 +1422,7 @@ Get Agent App message details by ID
 | 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -2861,6 +2900,12 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -6689,7 +6734,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | ZIP archive downloaded successfully |  |
+| 200 | ZIP archive downloaded successfully | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -8389,6 +8434,12 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -11510,7 +11561,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/findings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**List a page of findings (duplicate, similar, conflict), optionally by status and kind**
+
+Unknown query parameters and malformed cursors are answered 400.
 
 #### Parameters
 
@@ -11533,7 +11586,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo**
+
+A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.
 
 #### Parameters
 
@@ -11561,7 +11616,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/retry
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Retry the knowledge base's Tidy scans and report how many were resumed**
 
 #### Parameters
 
@@ -11581,7 +11636,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/scans
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**List a page of per-document scan records, optionally by state**
+
+Unknown query parameters and malformed cursors are answered 400.
 
 #### Parameters
 
@@ -11603,7 +11660,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/settings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision**
 
 #### Parameters
 
@@ -11623,7 +11680,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/tidy/settings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Turn Tidy or its conflict detection on or off; needs edit permission and the current revision**
 
 #### Parameters
 
@@ -11649,7 +11706,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Count findings by status and kind, and report scan progress and model calls so far**
 
 #### Parameters
 
@@ -14584,6 +14641,12 @@ Remove one or more tag bindings from a target.
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -17343,6 +17406,12 @@ performs no writes or provider I/O. Storage failures propagate normally.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"bundle"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18542,7 +18611,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft Skill zip archive |  |
+| 200 | Draft Skill zip archive | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
@@ -31902,6 +31971,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "adopt", "disable_document", "dismiss", "review", "undo" | *Enum:* `"adopt"`, `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| also | [ [KnowledgeFSTidyFurtherAction](#knowledgefstidyfurtheraction) ] |  | No |
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
 | replacement | string |  | No |
@@ -31968,6 +32038,8 @@ What the review page shows about a document a finding quotes.
 
 #### KnowledgeFSTidyFindingQuery
 
+Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
@@ -31990,6 +32062,17 @@ What the review page shows about a document a finding quotes.
 | stale | boolean |  | No |
 | status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
 
+#### KnowledgeFSTidyFurtherAction
+
+Another finding settled in the same transaction as the one the request addresses.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "disable_document", "dismiss", "review" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"` | Yes |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+| findingId | string |  | Yes |
+
 #### KnowledgeFSTidyRetryResponse
 
 | Name | Type | Description | Required |
@@ -32004,6 +32087,8 @@ What the review page shows about a document a finding quotes.
 | nextCursor | string |  | Yes |
 
 #### KnowledgeFSTidyScanQuery
+
+Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -39896,6 +39981,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| continue_agent_session | boolean, <br>**Default:** true | Reuse this node's Agent history and working resources across messages in the same Chatflow chat. | No |
 | declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
@@ -39903,6 +39989,7 @@ tenant's default model. The underlying generator never raises — an empty
 | output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
+| session_generation | string | Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes. | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata

@@ -5,6 +5,8 @@ from services.knowledge_fs.product_operations import KNOWLEDGE_FS_PRODUCT_OPERAT
 from services.knowledge_fs.tidy_dto import (
     KnowledgeFSTidyActionPayload,
     KnowledgeFSTidyFindingListResponse,
+    KnowledgeFSTidyFindingQuery,
+    KnowledgeFSTidyScanQuery,
     KnowledgeFSTidySettingsPayload,
 )
 
@@ -25,8 +27,9 @@ def test_conflict_detection_requires_cost_acknowledgment_but_text_only_and_disab
 def test_document_action_requires_an_explicit_side_and_revision() -> None:
     with pytest.raises(ValidationError, match="document to disable"):
         KnowledgeFSTidyActionPayload(action="disable_document", expectedRevision=1)
+    stale: dict[str, object] = {"action": "undo", "expectedRevision": 0}
     with pytest.raises(ValidationError):
-        KnowledgeFSTidyActionPayload.model_validate({"action": "undo", "expectedRevision": 0})
+        KnowledgeFSTidyActionPayload.model_validate(stale)
     assert KnowledgeFSTidyActionPayload(action="undo", expectedRevision=2).documentId is None
 
 
@@ -72,3 +75,55 @@ def test_finding_pages_carry_document_cards_and_tolerate_older_knowledge_fs() ->
     assert page.documents["doc-1"].model_dump() == card
     older = KnowledgeFSTidyFindingListResponse.model_validate({"items": [], "nextCursor": None})
     assert older.documents == {}
+
+
+def test_further_actions_settle_other_findings_but_never_undo_or_adopt() -> None:
+    further: dict[str, object] = {
+        "findingId": "e" * 64,
+        "expectedRevision": 1,
+        "action": "disable_document",
+        "documentId": "doc",
+    }
+    payload = KnowledgeFSTidyActionPayload.model_validate(
+        {"action": "review", "expectedRevision": 1, "also": [further]}
+    )
+    assert payload.model_dump(exclude_none=True)["also"] == [further]
+    for invalid in (
+        {**further, "documentId": None},
+        {**further, "action": "undo"},
+        {**further, "findingId": "not-a-finding"},
+    ):
+        with pytest.raises(ValidationError):
+            KnowledgeFSTidyActionPayload.model_validate({"action": "review", "expectedRevision": 1, "also": [invalid]})
+    for single in (
+        {"action": "undo"},
+        {"action": "adopt", "documentId": "doc", "replacement": "x"},
+    ):
+        with pytest.raises(ValidationError, match="one finding at a time"):
+            KnowledgeFSTidyActionPayload.model_validate({**single, "expectedRevision": 1, "also": [further]})
+    with pytest.raises(ValidationError):
+        KnowledgeFSTidyActionPayload.model_validate({"action": "review", "expectedRevision": 1, "also": []})
+
+
+def test_list_queries_refuse_unknown_keys_and_cursors_knowledge_fs_would_refuse() -> None:
+    """The scan cursor is the UUID KnowledgeFS accepts (`format: uuid`); the finding cursor a 64-hex id."""
+    scan_cursor = "0193a5b0-7c1e-7d3a-8f4e-2b6c9d1e0f3a"
+    assert KnowledgeFSTidyScanQuery.model_validate({"cursor": scan_cursor, "state": "failed"}).cursor == scan_cursor
+    assert KnowledgeFSTidyScanQuery.model_validate({"cursor": scan_cursor.upper()}).cursor == scan_cursor.upper()
+    assert KnowledgeFSTidyScanQuery.model_validate({}).model_dump(exclude_none=True) == {}
+    for cursor in ("", "abc", "e" * 64, scan_cursor + "0", scan_cursor.replace("-", ""), f" {scan_cursor}", "x" * 5000):
+        with pytest.raises(ValidationError):
+            KnowledgeFSTidyScanQuery.model_validate({"cursor": cursor})
+    assert KnowledgeFSTidyFindingQuery.model_validate({"cursor": "e" * 64, "status": "open"}).cursor == "e" * 64
+    for model, extra in (
+        (KnowledgeFSTidyScanQuery, {"limit": "50"}),
+        (KnowledgeFSTidyScanQuery, {"status": "open"}),
+        (KnowledgeFSTidyFindingQuery, {"limit": "50"}),
+        (KnowledgeFSTidyFindingQuery, {"state": "failed"}),
+    ):
+        with pytest.raises(ValidationError, match="Extra inputs"):
+            model.model_validate(extra)
+    scan_schema = KnowledgeFSTidyScanQuery.model_json_schema()
+    assert scan_schema["additionalProperties"] is False
+    assert KnowledgeFSTidyFindingQuery.model_json_schema()["additionalProperties"] is False
+    assert scan_schema["properties"]["cursor"]["anyOf"][0]["maxLength"] == 36

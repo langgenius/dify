@@ -33,13 +33,18 @@ _CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
 
 
 class KnowledgeAgentOAuthError(Exception):
-    """An RFC 6749 error response (`{error, error_description}`)."""
+    """An RFC 6749 error response (`{error, error_description}`).
 
-    def __init__(self, error: str, description: str, status: int = 400) -> None:
+    ``retry_after`` is the number of seconds a rate-limited caller should wait; the HTTP layer
+    sends it as the ``Retry-After`` header.
+    """
+
+    def __init__(self, error: str, description: str, status: int = 400, *, retry_after: int | None = None) -> None:
         super().__init__(description)
         self.error = error
         self.description = description
         self.status = status
+        self.retry_after = retry_after
 
 
 def parse_requested_scopes(raw: str | None) -> list[str]:

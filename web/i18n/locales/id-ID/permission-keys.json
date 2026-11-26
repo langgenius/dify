@@ -11,6 +11,7 @@
   "agent.acl.release_and_version": "Publikasikan dan kelola versi agen",
   "agent.acl.test_and_run": "Uji dan jalankan agen",
   "agent.create": "Buat agen",
+  "agent.tag.manage": "Kelola tag agen",
   "api_extension.manage": "Kelola konfigurasi ekstensi API",
   "app.access_config": "Konfigurasikan izin akses aplikasi",
   "app.acl.access_config": "Lihat dan kelola izin akses",

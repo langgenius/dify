@@ -60,7 +60,6 @@ export function createTestWorkflowStore(...args: Parameters<typeof createProvide
 // Re-exports are in a separate non-JSX file to avoid react-refresh warnings.
 // Import directly from the individual modules:
 //   reactflow-mock-state.ts  → rfState, resetReactFlowMockState, createReactFlowModuleMock
-//   service-mock-factory.ts  → createToolServiceMock, createTriggerServiceMock, ...
 //   fixtures.ts              → createNode, createEdge, createLinearGraph, ...
 
 // ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ type Props = Readonly<
     description: string
     extraInfo?: ReactNode
     loc?: string
+    onUpgrade?: () => void
   } & (
     | { show: boolean; onClose: () => void; dialogHandle?: never }
     | { dialogHandle: DialogHandle; show?: never; onClose?: never }
@@ -32,6 +33,7 @@ export function PlanUpgradeModal({
   description,
   extraInfo,
   loc = 'trigger-events-limit-modal',
+  onUpgrade,
   show,
   dialogHandle,
   onClose,
@@ -40,6 +42,7 @@ export function PlanUpgradeModal({
   const [, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
 
   const handleUpgrade = () => {
+    onUpgrade?.()
     if (dialogHandle) dialogHandle.close()
     else onClose()
     void setPricing('open')

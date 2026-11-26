@@ -19,7 +19,6 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -29,8 +28,8 @@ import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { AGENT_MCP_SERVER_NAME, agentConnectCommands } from './agent-access'
 import { AgentIcon } from './agent-icon'
+import { AGENTS } from './agents'
 import { grantName, useInvalidateAgentAccess } from './grants'
 import { knowledgeBaseSummary, useKnowledgeBaseOptions } from './knowledge-base-options'
 import {
@@ -78,12 +77,13 @@ export function McpConnectorPanel({
   const [editing, setEditing] = useState<KnowledgeAgentGrantResponse | null>(null)
   const [revoking, setRevoking] = useState<KnowledgeAgentGrantResponse | null>(null)
   const mine = useQuery({
-    ...consoleQuery.knowledgeFs.agentAccess.get.queryOptions({ context: { silent: true } }),
+    ...consoleQuery.knowledgeFs.agentAccess.get.queryOptions({ meta: { errorToast: false } }),
     enabled: open,
   })
   const knowledgeBases = useKnowledgeBaseOptions(open && mine.data?.available === true)
   const pickerProps = {
     blocked: new Set(mine.data?.blocked_knowledge_base_ids ?? []),
+    complete: knowledgeBases.query.isSuccess && !knowledgeBases.query.hasNextPage,
     hasMore: knowledgeBases.query.hasNextPage,
     loadingMore: knowledgeBases.query.isFetchingNextPage,
     onLoadMore: () => void knowledgeBases.query.fetchNextPage(),
@@ -231,7 +231,6 @@ function CommandGroup({ children, title }: { children: ReactNode; title: string 
 
 function ConnectSection({ mcpUrl }: { mcpUrl: string }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const commands = agentConnectCommands(mcpUrl)
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-0.5">
@@ -244,17 +243,14 @@ function ConnectSection({ mcpUrl }: { mcpUrl: string }) {
         <span className="system-xs-medium text-text-primary">{t(($) => $['agents.mcpUrl'])}</span>
         <CopyLine value={mcpUrl} />
       </div>
-      <CommandGroup title="Claude Code">
-        <CopyLine value={commands.claudeCode} />
-        <p className="system-xs-regular text-text-tertiary">
-          {t(($) => $['agents.claudeCodeHint'], { name: AGENT_MCP_SERVER_NAME })}
-        </p>
-      </CommandGroup>
-      <CommandGroup title="Codex">
-        {commands.codex.map((command) => (
-          <CopyLine key={command} value={command} />
-        ))}
-      </CommandGroup>
+      {AGENTS.map(({ id, name, connectCommands, connectHint }) => (
+        <CommandGroup key={id} title={name}>
+          {connectCommands(mcpUrl).map((command) => (
+            <CopyLine key={command} value={command} />
+          ))}
+          {connectHint && <p className="system-xs-regular text-text-tertiary">{connectHint(t)}</p>}
+        </CommandGroup>
+      ))}
     </section>
   )
 }
@@ -369,13 +365,13 @@ function WorkspaceSection({
   const invalidate = useInvalidateAgentAccess()
   const workspace = useQuery({
     ...consoleQuery.knowledgeFs.agentAccess.workspace.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
     enabled: isManager,
   })
   const toggle = useMutation(
     consoleQuery.knowledgeFs.agentAccess.workspace.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSettled: () => invalidate(),
     }),
   )
@@ -466,9 +462,6 @@ function MemberConnections({
               <th scope="col" className="w-22 shrink-0 text-start font-medium">
                 {t(($) => $['agents.columnClient'])}
               </th>
-              <th scope="col" className="w-24 shrink-0 ps-4 text-start font-medium">
-                {t(($) => $['agents.columnStatus'])}
-              </th>
               <th scope="col" className="w-28 shrink-0 text-end font-medium">
                 {t(($) => $['agents.columnLastUsed'])}
               </th>
@@ -495,10 +488,6 @@ function MemberConnections({
                     title={grantName(grant)}
                   >
                     {grant.kind === 'personal' ? t(($) => $['agents.kindToken']) : grantName(grant)}
-                  </td>
-                  <td className="flex w-24 shrink-0 items-center gap-1 system-xs-semibold text-util-colors-green-green-600">
-                    <StatusDot status="success" className="shrink-0" />
-                    {t(($) => $['agents.statusConnected'])}
                   </td>
                   <td className="w-28 shrink-0 truncate text-end system-xs-regular text-text-tertiary">
                     {lastUsed(grant.last_used_at)}

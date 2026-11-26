@@ -32,10 +32,16 @@ export const commentDraftPlacement = {
  * stays on the visible canvas, and stays there, still in use, once its marker is panned out of
  * view; it hides with the marker only while closing.
  */
-export function useCommentPopupBounds() {
-  const panelWidth = useStore((state) => state.rightPanelWidth ?? 0)
-  const direction = useDirection()
-  const canvas = useReactFlowStore((state) => state.domNode)
+export function getCommentPopupBounds({
+  canvas,
+  direction,
+  panelWidth = 0,
+}: {
+  canvas: HTMLElement | null
+  direction: 'ltr' | 'rtl'
+  /** Width of the node panel open at the canvas's end. */
+  panelWidth?: number
+}) {
   // Clear of what floats over the canvas: the header, the zoom and history bar, the tool bar
   // at the canvas's start and the panel at its end.
   const start = 56
@@ -52,4 +58,12 @@ export function useCommentPopupBounds() {
     className:
       'data-open:data-anchor-hidden:visible data-open:data-anchor-hidden:pointer-events-auto',
   } satisfies PopoverPositionerProps
+}
+
+/** `getCommentPopupBounds` for the workflow editor's canvas and node panel. */
+export function useCommentPopupBounds() {
+  const panelWidth = useStore((state) => state.rightPanelWidth ?? 0)
+  const direction = useDirection()
+  const canvas = useReactFlowStore((state) => state.domNode)
+  return getCommentPopupBounds({ canvas: canvas ?? null, direction, panelWidth })
 }

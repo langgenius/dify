@@ -11,18 +11,20 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from functools import cache
 from typing import Any, Literal, Protocol, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.mcp import types as mcp_types
-from services.knowledge_agent.access_service import KnowledgeAgentPrincipal
+from services.knowledge_agent.contracts import KnowledgeAgentPrincipal
+from services.knowledge_agent.oauth import MAX_GRANT_KNOWLEDGE_BASES
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
 from services.knowledge_fs.product_dto import KnowledgeFSCatQuery, KnowledgeFSGrepQuery, KnowledgeFSListQuery
 from services.knowledge_fs.retrieval_contracts import KnowledgeFSRetrievalTestPayload
-from services.knowledge_fs.tidy_dto import KnowledgeFSTidyFindingQuery
+from services.knowledge_fs.tidy_dto import KnowledgeFSTidyFindingQuery, TidyFindingKind, TidyFindingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ AUDIT_TOOL_CALL = "knowledge_agent.mcp_tool_call"
 MAX_ITEM_TEXT = 3_000
 MAX_RESULT_TEXT = 24_000
 MAX_READ_TEXT = 20_000
-_MAX_LIST_PAGES = 10
+_NAMES_PAGE = MAX_GRANT_KNOWLEDGE_BASES
 _SERVER_INFO = {"name": "dify-knowledge", "title": "Dify Agent Knowledge Base", "version": "1.0.0"}
 INSTRUCTIONS = (
     "Read-only access to the user's Dify Agent Knowledge Bases. Start with list_knowledge_bases; every "
@@ -46,15 +48,22 @@ class KnowledgeAgentToolError(Exception):
 
 
 class KnowledgeAgentSpaces(Protocol):
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]: ...
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]: ...
 
 
 class KnowledgeAgentSpaceNames(Protocol):
-    def list_spaces(self, *, tenant_id: str, account_id: str, page: int, limit: int) -> Any: ...
+    def list_spaces(
+        self, *, tenant_id: str, account_id: str, page: int, limit: int, control_space_ids: list[str] | None = None
+    ) -> Any: ...
 
 
 class _Scope(TypedDict):
-    """Who reads and where: every facade call runs as the member, in one knowledge base."""
+    """Who reads and where: every facade call runs as the member, in one knowledge base.
+
+    Built only by ``KnowledgeAgentMcpServer._authorise``, after the connection's grant is checked.
+    """
 
     tenant_id: str
     account_id: str
@@ -62,80 +71,177 @@ class _Scope(TypedDict):
 
 
 class _Args(BaseModel):
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    """Arguments of one tool. Only the documented camelCase names are accepted.
+
+    Fields are populated by alias only (no ``populate_by_name``) and unknown keys are refused, so
+    the advertised input schema, which is generated from these models, is the whole contract.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
 
-_BaseId = Field(alias="knowledgeBaseId", min_length=1, max_length=64)
-_Cursor = Field(default=None, min_length=1, max_length=2048)
-_FsPath = r"^/(?:sources|knowledge|evidence)(?:/\S*)?$"
+_KNOWLEDGE_BASE_ARGUMENT = "knowledgeBaseId"
+# The argument models repeat the constraints of the KnowledgeFS queries the tools build, so the
+# advertised schema refuses what the knowledge service would refuse. The paths are those of
+# ``KNOWLEDGE_FS_PATH_PATTERN`` without the /workspaces root, which agents do not read.
+_FsPath = r"^/(?:sources|knowledge|evidence)(?:/[^/\s]+)*$"
+_FsFilePath = r"^/(?:sources|knowledge|evidence)(?:/[^/\s]+)+$"
+_MAX_FS_PATH = 4_096
+# ``KnowledgeFSTidyFindingQuery.cursor``.
+_TidyCursor = r"^[a-f0-9]{64}$"
+_NOT_BLANK = r"\S"
+
+
+def _cursor() -> Any:
+    return Field(default=None, min_length=1, max_length=2048, description="nextCursor from the previous page.")
+
+
+def _downstream[ModelT: BaseModel](model: type[ModelT], values: dict[str, Any]) -> ModelT:
+    """Build the KnowledgeFS query a tool sends; what it refuses is the caller's mistake, not an outage."""
+    try:
+        return model.model_validate(values)
+    except ValidationError as exc:
+        raise KnowledgeAgentToolError(f"Invalid arguments: {_issues(exc)}") from exc
+
+
+def _issues(exc: ValidationError) -> str:
+    return "; ".join(
+        f"{'.'.join(str(part) for part in error['loc']) or 'input'}: {error['msg']}" for error in exc.errors()
+    )
 
 
 class _NoArgs(_Args):
     pass
 
 
-class _SearchArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    query: str = Field(min_length=1, max_length=4000)
-    mode: Literal["fast", "deep", "research"] | None = None
-    max_results: int | None = Field(default=None, alias="maxResults", ge=1, le=50)
+class _KnowledgeBaseArgs(_Args):
+    """Arguments of a tool that reads one knowledge base.
+
+    ``call_tool`` authorises ``knowledge_base_id`` for every model derived from this one before the
+    tool runs; a tool that takes a knowledge base must take it through this class.
+    """
+
+    knowledge_base_id: str = Field(
+        alias=_KNOWLEDGE_BASE_ARGUMENT,
+        min_length=1,
+        max_length=64,
+        description="Id of a knowledge base returned by list_knowledge_bases.",
+    )
 
 
-class _GrepArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    pattern: str = Field(min_length=1, max_length=1000)
-    path: str | None = Field(default=None, pattern=_FsPath)
-    limit: int | None = Field(default=None, ge=1, le=50)
-    cursor: str | None = _Cursor
+class _SearchArgs(_KnowledgeBaseArgs):
+    query: str = Field(
+        min_length=1, max_length=4000, pattern=_NOT_BLANK, description="What to look for, in natural language."
+    )
+    mode: Literal["fast", "deep", "research"] | None = Field(
+        default=None,
+        description="Omit for the knowledge base's default; deep/research use its reasoning model.",
+    )
+    max_results: int | None = Field(default=None, alias="maxResults", ge=1, le=50, description="Default 10.")
 
 
-class _BrowseArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    path: str | None = Field(default=None, pattern=_FsPath)
-    limit: int | None = Field(default=None, ge=1, le=100)
-    cursor: str | None = _Cursor
+class _GrepArgs(_KnowledgeBaseArgs):
+    pattern: str = Field(
+        min_length=1, max_length=1000, pattern=_NOT_BLANK, description="Text to find (not a regular expression)."
+    )
+    path: str | None = Field(
+        default=None,
+        max_length=_MAX_FS_PATH,
+        pattern=_FsPath,
+        description="Limit to a path from browse (default /knowledge).",
+    )
+    limit: int | None = Field(default=None, ge=1, le=50, description="Matches per page (default 20).")
+    cursor: str | None = _cursor()
 
 
-class _ReadPathArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    path: str = Field(pattern=r"^/(?:sources|knowledge|evidence)/\S+$")
-    cursor: str | None = _Cursor
+class _BrowseArgs(_KnowledgeBaseArgs):
+    path: str | None = Field(
+        default=None, max_length=_MAX_FS_PATH, pattern=_FsPath, description="Folder to list (default /knowledge)."
+    )
+    limit: int | None = Field(default=None, ge=1, le=100, description="Entries per page (default 50).")
+    cursor: str | None = _cursor()
 
 
-class _ListDocumentsArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    limit: int | None = Field(default=None, ge=1, le=100)
-    cursor: str | None = _Cursor
+class _ReadPathArgs(_KnowledgeBaseArgs):
+    path: str = Field(max_length=_MAX_FS_PATH, pattern=_FsFilePath, description="File path from browse.")
+    cursor: str | None = _cursor()
 
 
-class _DocumentArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    document_id: str = Field(alias="documentId", min_length=1, max_length=64)
+class _ListDocumentsArgs(_KnowledgeBaseArgs):
+    limit: int | None = Field(default=None, ge=1, le=100, description="Documents per page (default 50).")
+    cursor: str | None = _cursor()
+
+
+class _DocumentArgs(_KnowledgeBaseArgs):
+    document_id: str = Field(
+        alias="documentId",
+        min_length=1,
+        max_length=64,
+        description="Id of a document, from list_documents or a search result.",
+    )
 
 
 class _ReadDocumentArgs(_DocumentArgs):
-    revision: int | None = Field(default=None, ge=1)
-    cursor: str | None = _Cursor
+    revision: int | None = Field(default=None, ge=1, description="Revision to read (default: the current one).")
+    cursor: str | None = _cursor()
 
 
-class _ReadChunkArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    node_id: str = Field(alias="nodeId", min_length=1, max_length=64)
+class _ReadChunkArgs(_KnowledgeBaseArgs):
+    node_id: str = Field(
+        alias="nodeId",
+        min_length=1,
+        max_length=64,
+        description="nodeId of a passage, from search, grep or read_document.",
+    )
 
 
-class _TidyArgs(_Args):
-    knowledge_base_id: str = _BaseId
-    kind: Literal["duplicate", "similar", "conflict"] | None = None
-    status: Literal["open", "dismissed", "reviewed", "disabled", "outdated"] | None = None
-    cursor: str | None = _Cursor
+class _TidyArgs(_KnowledgeBaseArgs):
+    kind: TidyFindingKind | None = Field(default=None, description="Only findings of this kind.")
+    status: TidyFindingStatus | None = Field(default=None, description="Default open.")
+    cursor: str | None = Field(default=None, pattern=_TidyCursor, description="nextCursor from the previous page.")
 
 
-_KB = {"type": "string", "description": "Id of a knowledge base returned by list_knowledge_bases."}
-_CURSOR = {"type": "string", "description": "nextCursor from the previous page."}
+def _plain_schema(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:
+    """One schema node without pydantic's indirection: refs inlined, `X | None` as X, no titles."""
+    if "$ref" in node:
+        target = defs[node["$ref"].rsplit("/", 1)[-1]]
+        node = {**target, **{key: value for key, value in node.items() if key != "$ref"}}
+    variants = node.get("anyOf")
+    if isinstance(variants, list):
+        # An optional argument is left out, not sent as null: advertise the value's own schema.
+        present = [variant for variant in variants if variant != {"type": "null"}]
+        if len(present) == 1:
+            node = {**present[0], **{key: value for key, value in node.items() if key != "anyOf"}}
+    plain: dict[str, Any] = {}
+    for key, value in node.items():
+        if key == "title" or (key == "default" and value is None):
+            continue
+        if key == "properties":
+            plain[key] = {name: _plain_schema(child, defs) for name, child in value.items()}
+        elif key == "items" and isinstance(value, dict):
+            plain[key] = _plain_schema(value, defs)
+        elif key == "anyOf":
+            plain[key] = [_plain_schema(variant, defs) for variant in value]
+        else:
+            plain[key] = value
+    return plain
 
 
-def _schema(properties: dict[str, Any], required: list[str]) -> dict[str, Any]:
-    return {"type": "object", "properties": properties, "required": required, "additionalProperties": False}
+@cache
+def input_schema_for(model: type[_Args]) -> dict[str, Any]:
+    """The MCP `inputSchema` of a tool, derived from its arguments model (the single source of truth).
+
+    A self-contained object schema keyed by the camelCase argument names, with the fields'
+    constraints and descriptions and `additionalProperties: false`.
+    """
+    schema = model.model_json_schema(by_alias=True)
+    properties = _plain_schema(schema, schema.get("$defs", {})).get("properties", {})
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": list(schema.get("required", [])),
+        "additionalProperties": False,
+    }
 
 
 @dataclass(frozen=True)
@@ -144,7 +250,11 @@ class _Tool:
     title: str
     description: str
     args: type[_Args]
-    input_schema: dict[str, Any]
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        """The advertised schema; always the one generated from ``args``."""
+        return input_schema_for(self.args)
 
 
 TOOLS: tuple[_Tool, ...] = (
@@ -153,7 +263,6 @@ TOOLS: tuple[_Tool, ...] = (
         "List knowledge bases",
         "List the knowledge bases this connection can read: id, name, description and a link for the user.",
         _NoArgs,
-        _schema({}, []),
     ),
     _Tool(
         "search",
@@ -161,19 +270,6 @@ TOOLS: tuple[_Tool, ...] = (
         "Hybrid semantic + keyword search in one knowledge base. Returns the best passages with their "
         "document, section, page and score. Prefer several focused queries over one long one.",
         _SearchArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "query": {"type": "string", "description": "What to look for, in natural language."},
-                "mode": {
-                    "type": "string",
-                    "enum": ["fast", "deep", "research"],
-                    "description": "Omit for the knowledge base's default; deep/research use its reasoning model.",
-                },
-                "maxResults": {"type": "integer", "minimum": 1, "maximum": 50, "description": "Default 10."},
-            },
-            ["knowledgeBaseId", "query"],
-        ),
     ),
     _Tool(
         "grep",
@@ -181,16 +277,6 @@ TOOLS: tuple[_Tool, ...] = (
         "Exact text search (words, error codes, numbers, names) across the documents of a knowledge base. "
         "Returns matching snippets with the nodeId to open with read_chunk.",
         _GrepArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "pattern": {"type": "string", "description": "Text to find (not a regular expression)."},
-                "path": {"type": "string", "description": "Limit to a path from browse (default /knowledge)."},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 50},
-                "cursor": _CURSOR,
-            },
-            ["knowledgeBaseId", "pattern"],
-        ),
     ),
     _Tool(
         "browse",
@@ -198,53 +284,30 @@ TOOLS: tuple[_Tool, ...] = (
         "List a folder of the knowledge base's virtual file system: /knowledge holds the documents and the "
         "views by extracted entities, topics and communities when they are built; /sources lists sources.",
         _BrowseArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "path": {"type": "string", "description": "Folder to list (default /knowledge)."},
-                "limit": {"type": "integer", "minimum": 1, "maximum": 100},
-                "cursor": _CURSOR,
-            },
-            ["knowledgeBaseId"],
-        ),
     ),
     _Tool(
         "read_path",
         "Read file",
         "Read the text of a file found with browse.",
         _ReadPathArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "path": {"type": "string", "description": "File path from browse."},
-                "cursor": _CURSOR,
-            },
-            ["knowledgeBaseId", "path"],
-        ),
     ),
     _Tool(
         "list_documents",
         "List documents",
         "List the documents of a knowledge base with their status, whether they are enabled, and links.",
         _ListDocumentsArgs,
-        _schema(
-            {"knowledgeBaseId": _KB, "limit": {"type": "integer", "minimum": 1, "maximum": 100}, "cursor": _CURSOR},
-            ["knowledgeBaseId"],
-        ),
     ),
     _Tool(
         "get_document",
         "Get document",
         "Details of one document: status, revision, size, type, timestamps and user metadata.",
         _DocumentArgs,
-        _schema({"knowledgeBaseId": _KB, "documentId": {"type": "string"}}, ["knowledgeBaseId", "documentId"]),
     ),
     _Tool(
         "get_document_outline",
         "Document outline",
         "Table of contents of a document: section titles, levels, page ranges and section summaries.",
         _DocumentArgs,
-        _schema({"knowledgeBaseId": _KB, "documentId": {"type": "string"}}, ["knowledgeBaseId", "documentId"]),
     ),
     _Tool(
         "read_document",
@@ -252,22 +315,12 @@ TOOLS: tuple[_Tool, ...] = (
         "Read a document's text in order, a page of passages at a time (the current revision unless one "
         "is given). Use nextCursor to continue.",
         _ReadDocumentArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "documentId": {"type": "string"},
-                "revision": {"type": "integer", "minimum": 1},
-                "cursor": _CURSOR,
-            },
-            ["knowledgeBaseId", "documentId"],
-        ),
     ),
     _Tool(
         "read_chunk",
         "Read passage",
         "Open one passage by the nodeId returned from search, grep or read_document, with its location.",
         _ReadChunkArgs,
-        _schema({"knowledgeBaseId": _KB, "nodeId": {"type": "string"}}, ["knowledgeBaseId", "nodeId"]),
     ),
     _Tool(
         "list_tidy_findings",
@@ -275,19 +328,6 @@ TOOLS: tuple[_Tool, ...] = (
         "Tidy review results (when its managers turned Tidy on): duplicate documents, largely similar "
         "documents and possibly conflicting facts, each with the quoted passages on both sides.",
         _TidyArgs,
-        _schema(
-            {
-                "knowledgeBaseId": _KB,
-                "kind": {"type": "string", "enum": ["duplicate", "similar", "conflict"]},
-                "status": {
-                    "type": "string",
-                    "enum": ["open", "dismissed", "reviewed", "disabled", "outdated"],
-                    "description": "Default open.",
-                },
-                "cursor": _CURSOR,
-            },
-            ["knowledgeBaseId"],
-        ),
     ),
 )
 _TOOLS_BY_NAME = {tool.name: tool for tool in TOOLS}
@@ -372,20 +412,20 @@ class KnowledgeAgentMcpServer:
         return _error(request_id, mcp_types.METHOD_NOT_FOUND, f"Method not found: {method}")
 
     def call_tool(self, principal: KnowledgeAgentPrincipal, tool: _Tool, raw: Any) -> dict[str, Any]:
+        """Validate the arguments, authorise the knowledge base, run the tool and audit the outcome."""
         started = time.monotonic()
-        knowledge_base_id = raw.get("knowledgeBaseId") if isinstance(raw, dict) else None
         try:
             args = tool.args.model_validate(raw)
         except ValidationError as exc:
-            issues = "; ".join(
-                f"{'.'.join(str(part) for part in error['loc']) or 'input'}: {error['msg']}" for error in exc.errors()
-            )
-            self._audit(principal, tool.name, knowledge_base_id, started, "invalid_arguments")
+            issues = _issues(exc)
+            # For the audit trail only: what the caller named under the documented argument.
+            claimed = raw.get(_KNOWLEDGE_BASE_ARGUMENT) if isinstance(raw, dict) else None
+            self._audit(principal, tool.name, claimed, started, "invalid_arguments")
             return _tool_error(f"Invalid arguments: {issues}")
+        # From here on the knowledge base is the validated model's, never a lookup in the raw input.
+        knowledge_base_id = args.knowledge_base_id if isinstance(args, _KnowledgeBaseArgs) else None
         try:
-            if isinstance(knowledge_base_id, str):
-                self._require_knowledge_base(principal, knowledge_base_id)
-            result = getattr(self, f"_tool_{tool.name}")(principal, args)
+            result = self._run(principal, tool, args)
         except KnowledgeAgentToolError as exc:
             self._audit(principal, tool.name, knowledge_base_id, started, str(exc))
             return _tool_error(str(exc))
@@ -398,6 +438,14 @@ class KnowledgeAgentMcpServer:
             "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}],
             "structuredContent": result,
         }
+
+    def _run(self, principal: KnowledgeAgentPrincipal, tool: _Tool, args: _Args) -> dict[str, Any]:
+        handler = getattr(self, f"_tool_{tool.name}")
+        if isinstance(args, _KnowledgeBaseArgs):
+            # A tool that reads a knowledge base is handed an authorised scope instead of the
+            # principal: it has no other way to address the facade, so it cannot skip the check.
+            return handler(self._authorise(principal, args.knowledge_base_id), args)
+        return handler(principal, args)
 
     def _audit(
         self, principal: KnowledgeAgentPrincipal, tool: str, base: object, started: float, error: str | None
@@ -417,14 +465,16 @@ class KnowledgeAgentMcpServer:
         if self._on_tool_call:
             self._on_tool_call(event)
 
-    def _require_knowledge_base(self, principal: KnowledgeAgentPrincipal, knowledge_base_id: str) -> None:
-        if knowledge_base_id not in self._spaces.knowledge_bases_for(principal):
+    def _authorise(self, principal: KnowledgeAgentPrincipal, knowledge_base_id: str) -> _Scope:
+        """The scope for one knowledge base, if the connection may use it right now.
+
+        Only this base is looked up, not every base of the connection.
+        """
+        if knowledge_base_id not in self._spaces.knowledge_bases_for(principal, among=(knowledge_base_id,)):
             raise KnowledgeAgentToolError(
                 f"Knowledge base {knowledge_base_id} is not available to this connection. Call "
                 "list_knowledge_bases to see the ones you can use."
             )
-
-    def _base(self, principal: KnowledgeAgentPrincipal, knowledge_base_id: str) -> _Scope:
         return {
             "tenant_id": principal.tenant_id,
             "account_id": principal.account_id,
@@ -439,11 +489,17 @@ class KnowledgeAgentMcpServer:
     def _tool_list_knowledge_bases(self, principal: KnowledgeAgentPrincipal, _args: _NoArgs) -> dict[str, Any]:
         wanted = self._spaces.knowledge_bases_for(principal)
         found: list[dict[str, Any]] = []
-        for page in range(1, _MAX_LIST_PAGES + 1):
-            if len(found) >= len(wanted):
-                break
+        ids = sorted(wanted)
+        # Looked up by id, a full page of ids at a time (a connection holds at most
+        # MAX_GRANT_KNOWLEDGE_BASES, so normally once): however many knowledge bases the
+        # workspace has, none of the connection's own is missed.
+        for start in range(0, len(ids), _NAMES_PAGE):
             listing = self._names.list_spaces(
-                tenant_id=principal.tenant_id, account_id=principal.account_id, page=page, limit=100
+                tenant_id=principal.tenant_id,
+                account_id=principal.account_id,
+                page=1,
+                limit=_NAMES_PAGE,
+                control_space_ids=ids[start : start + _NAMES_PAGE],
             )
             for item in listing.data:
                 if item.control_space_id not in wanted:
@@ -457,8 +513,6 @@ class KnowledgeAgentMcpServer:
                         "url": f"{self._console}/datasets/new/{item.control_space_id}/documents",
                     }
                 )
-            if not listing.has_more:
-                break
         result: dict[str, Any] = {"knowledgeBases": found}
         missing = len(principal.control_space_ids) - len(found)
         if missing > 0:
@@ -468,10 +522,12 @@ class KnowledgeAgentMcpServer:
             )
         return result
 
-    def _tool_search(self, principal: KnowledgeAgentPrincipal, args: _SearchArgs) -> dict[str, Any]:
+    def _tool_search(self, scope: _Scope, args: _SearchArgs) -> dict[str, Any]:
         response = self._facade.retrieve_evidence(
-            **self._base(principal, args.knowledge_base_id),
-            payload=KnowledgeFSRetrievalTestPayload(query=args.query, mode=args.mode, include_text=True),
+            **scope,
+            payload=_downstream(
+                KnowledgeFSRetrievalTestPayload, {"query": args.query, "mode": args.mode, "include_text": True}
+            ),
         )
         budget = _Budget(MAX_RESULT_TEXT)
         items = response.items[: args.max_results or 10]
@@ -503,16 +559,17 @@ class KnowledgeAgentMcpServer:
             **({"truncated": True} if budget.truncated or len(response.items) > len(items) else {}),
         }
 
-    def _tool_grep(self, principal: KnowledgeAgentPrincipal, args: _GrepArgs) -> dict[str, Any]:
+    def _tool_grep(self, scope: _Scope, args: _GrepArgs) -> dict[str, Any]:
         response = self._facade.grep_knowledge_fs(
-            **self._base(principal, args.knowledge_base_id),
-            query=KnowledgeFSGrepQuery.model_validate(
+            **scope,
+            query=_downstream(
+                KnowledgeFSGrepQuery,
                 {
                     "path": args.path or "/knowledge",
                     "limit": args.limit or 20,
                     "cursor": args.cursor,
                     "query": args.pattern,
-                }
+                },
             ),
         )
         budget = _Budget(MAX_RESULT_TEXT)
@@ -528,11 +585,11 @@ class KnowledgeAgentMcpServer:
             **_page(response.next_cursor, budget.truncated or bool(response.truncated)),
         }
 
-    def _tool_browse(self, principal: KnowledgeAgentPrincipal, args: _BrowseArgs) -> dict[str, Any]:
+    def _tool_browse(self, scope: _Scope, args: _BrowseArgs) -> dict[str, Any]:
         path = args.path or "/knowledge"
         response = self._facade.list_knowledge_fs(
-            **self._base(principal, args.knowledge_base_id),
-            query=KnowledgeFSListQuery.model_validate({"path": path, "limit": args.limit or 50, "cursor": args.cursor}),
+            **scope,
+            query=_downstream(KnowledgeFSListQuery, {"path": path, "limit": args.limit or 50, "cursor": args.cursor}),
         )
         return {
             "path": path,
@@ -548,10 +605,10 @@ class KnowledgeAgentMcpServer:
             **_page(response.next_cursor, bool(response.truncated)),
         }
 
-    def _tool_read_path(self, principal: KnowledgeAgentPrincipal, args: _ReadPathArgs) -> dict[str, Any]:
+    def _tool_read_path(self, scope: _Scope, args: _ReadPathArgs) -> dict[str, Any]:
         response = self._facade.cat_knowledge_fs(
-            **self._base(principal, args.knowledge_base_id),
-            query=KnowledgeFSCatQuery.model_validate({"path": args.path, "cursor": args.cursor}),
+            **scope,
+            query=_downstream(KnowledgeFSCatQuery, {"path": args.path, "cursor": args.cursor}),
         )
         text = response.text or ""
         return {
@@ -561,10 +618,8 @@ class KnowledgeAgentMcpServer:
             **_page(response.next_cursor, len(text) > MAX_READ_TEXT or bool(response.truncated)),
         }
 
-    def _tool_list_documents(self, principal: KnowledgeAgentPrincipal, args: _ListDocumentsArgs) -> dict[str, Any]:
-        response = self._facade.list_logical_documents(
-            **self._base(principal, args.knowledge_base_id), cursor=args.cursor, limit=args.limit or 50
-        )
+    def _tool_list_documents(self, scope: _Scope, args: _ListDocumentsArgs) -> dict[str, Any]:
+        response = self._facade.list_logical_documents(**scope, cursor=args.cursor, limit=args.limit or 50)
         return {
             "documents": [self._document_summary(args.knowledge_base_id, document) for document in response.data],
             **_page(response.next_cursor, False),
@@ -586,29 +641,23 @@ class KnowledgeAgentMcpServer:
             "url": self._document_url(knowledge_base_id, document.id),
         }
 
-    def _tool_get_document(self, principal: KnowledgeAgentPrincipal, args: _DocumentArgs) -> dict[str, Any]:
-        document = self._facade.get_logical_document(
-            **self._base(principal, args.knowledge_base_id), document_id=args.document_id
-        )
+    def _tool_get_document(self, scope: _Scope, args: _DocumentArgs) -> dict[str, Any]:
+        document = self._facade.get_logical_document(**scope, document_id=args.document_id)
         return {
             **self._document_summary(args.knowledge_base_id, document),
             "createdAt": str(document.created_at),
             "metadata": document.user_metadata or {},
         }
 
-    def _active(self, principal: KnowledgeAgentPrincipal, args: _DocumentArgs) -> Any:
-        document = self._facade.get_logical_document(
-            **self._base(principal, args.knowledge_base_id), document_id=args.document_id
-        )
+    def _active(self, scope: _Scope, args: _DocumentArgs) -> Any:
+        document = self._facade.get_logical_document(**scope, document_id=args.document_id)
         if document.active is None:
             raise KnowledgeAgentToolError("This document has no readable revision yet (it may still be processing).")
         return document.active
 
-    def _tool_get_document_outline(self, principal: KnowledgeAgentPrincipal, args: _DocumentArgs) -> dict[str, Any]:
-        active = self._active(principal, args)
-        outline = self._facade.get_document_outline(
-            **self._base(principal, args.knowledge_base_id), document_id=active.document_asset_id
-        )
+    def _tool_get_document_outline(self, scope: _Scope, args: _DocumentArgs) -> dict[str, Any]:
+        active = self._active(scope, args)
+        outline = self._facade.get_document_outline(**scope, document_id=active.document_asset_id)
         budget = _Budget(MAX_RESULT_TEXT)
         sections: list[dict[str, Any]] = []
 
@@ -634,10 +683,10 @@ class KnowledgeAgentMcpServer:
             **({"truncated": True} if len(sections) >= 400 or budget.truncated else {}),
         }
 
-    def _tool_read_document(self, principal: KnowledgeAgentPrincipal, args: _ReadDocumentArgs) -> dict[str, Any]:
-        revision = args.revision or self._active(principal, args).revision
+    def _tool_read_document(self, scope: _Scope, args: _ReadDocumentArgs) -> dict[str, Any]:
+        revision = args.revision or self._active(scope, args).revision
         response = self._facade.list_document_chunks(
-            **self._base(principal, args.knowledge_base_id),
+            **scope,
             document_id=args.document_id,
             revision=revision,
             cursor=args.cursor,
@@ -657,8 +706,8 @@ class KnowledgeAgentMcpServer:
             **_page(response.next_cursor, budget.truncated),
         }
 
-    def _tool_read_chunk(self, principal: KnowledgeAgentPrincipal, args: _ReadChunkArgs) -> dict[str, Any]:
-        raw = self._facade.open_knowledge_fs_node(**self._base(principal, args.knowledge_base_id), node_id=args.node_id)
+    def _tool_read_chunk(self, scope: _Scope, args: _ReadChunkArgs) -> dict[str, Any]:
+        raw = self._facade.open_knowledge_fs_node(**scope, node_id=args.node_id)
         payload = raw if isinstance(raw, dict) else {}
         node = payload.get("node") if isinstance(payload.get("node"), dict) else {}
         citation = payload.get("citation") if isinstance(payload.get("citation"), dict) else {}
@@ -672,13 +721,12 @@ class KnowledgeAgentMcpServer:
             **({"truncated": True} if len(text) > MAX_READ_TEXT else {}),
         }
 
-    def _tool_list_tidy_findings(self, principal: KnowledgeAgentPrincipal, args: _TidyArgs) -> dict[str, Any]:
-        base = self._base(principal, args.knowledge_base_id)
-        summary = self._facade.get_tidy_summary(**base)
+    def _tool_list_tidy_findings(self, scope: _Scope, args: _TidyArgs) -> dict[str, Any]:
+        summary = self._facade.get_tidy_summary(**scope)
         page = self._facade.list_tidy_findings(
-            **base,
-            query=KnowledgeFSTidyFindingQuery.model_validate(
-                {"status": args.status or "open", "kind": args.kind, "cursor": args.cursor}
+            **scope,
+            query=_downstream(
+                KnowledgeFSTidyFindingQuery, {"status": args.status or "open", "kind": args.kind, "cursor": args.cursor}
             ),
         )
         budget = _Budget(MAX_RESULT_TEXT)

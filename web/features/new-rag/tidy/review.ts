@@ -3,15 +3,22 @@
  * planning the actions a choice implies, and the labels shown on document tiles.
  */
 import type {
+  KnowledgeFsTidyActionPayload,
   KnowledgeFsTidyDocumentCardResponse,
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 
 type TidyFinding = KnowledgeFsTidyFindingResponse
 type TidyDocumentCard = KnowledgeFsTidyDocumentCardResponse
-export type TidyAction = 'dismiss' | 'review' | 'disable_document' | 'undo'
+/** Actions that need no text; `adopt` carries a replacement and is requested on its own. */
+export type TidyAction = Exclude<KnowledgeFsTidyActionPayload['action'], 'adopt'>
 
-/** Identical documents linked by open duplicate findings (connected components). */
+/**
+ * Identical documents linked by duplicate findings: one connected component of the findings
+ * given to `groupDuplicates`. It is the whole set of copies only if those were every open
+ * duplicate finding; built from part of them it can lack copies, or be one of several groups
+ * that are really one.
+ */
 export type DuplicateGroup = {
   key: string
   documentIds: string[]
@@ -56,11 +63,35 @@ export type PlannedAction = {
   documentId?: string
 }
 
+/** One request settles the finding it addresses plus 63 others (the API's limit). */
+export const PLAN_REQUEST_SIZE = 64
+
+type JoinableAction = PlannedAction & { action: Exclude<TidyAction, 'undo'> }
+
+const isJoinable = (step: PlannedAction): step is JoinableAction => step.action !== 'undo'
+
+/**
+ * Splits a plan into requests the API applies all or nothing: the first step addresses the
+ * request, the rest ride along. An undo is only ever sent on its own.
+ */
+export function planRequests(plan: readonly PlannedAction[]) {
+  const requests: [PlannedAction, ...JoinableAction[]][] = []
+  for (const step of plan) {
+    const open = requests.at(-1)
+    if (open && isJoinable(step) && isJoinable(open[0]) && open.length < PLAN_REQUEST_SIZE)
+      open.push(step)
+    else requests.push([step])
+  }
+  return requests
+}
+
 /**
  * Keep `keepId`, disable every other document of the group. Each finding can disable one of its
  * two documents, so walk the findings outward from the kept document: every other document is
  * disabled through the finding that first reached it, and the remaining findings are marked
- * reviewed. Every finding of the group ends up handled.
+ * reviewed. Every finding in `group` ends up handled, and nothing outside it: a copy the group
+ * does not hold stays enabled. Offer this only for a group built from every open duplicate
+ * finding.
  */
 export function mergePlan(group: DuplicateGroup, keepId: string): PlannedAction[] {
   const plan: PlannedAction[] = []
@@ -91,7 +122,9 @@ export function mergePlan(group: DuplicateGroup, keepId: string): PlannedAction[
 
 /**
  * The open conflicts and overlap between one pair of documents. A reviewer first decides how the
- * two documents relate, so several findings about the same pair read as one card.
+ * two documents relate, so several findings about the same pair read as one card. It holds the
+ * pair's findings among those given to `groupPairs`, which are all of them only if every open
+ * finding of those kinds was given.
  */
 export type PairGroup = {
   key: string
@@ -125,8 +158,10 @@ export function evidenceOf(finding: TidyFinding, documentId: string) {
 }
 
 /**
- * Disable one document of the pair. With it out of retrieval, the pair's other findings have
- * nothing left to decide, so they are marked reviewed in the same run.
+ * Disable one document of the pair. With it out of retrieval, the other findings in `group` have
+ * nothing left to decide, so they are marked reviewed in the same run. A finding about the pair
+ * that the group does not hold stays open, so offer this only for a group built from every open
+ * finding of its kinds.
  */
 export function disablePlan(group: PairGroup, documentId: string): PlannedAction[] {
   const anchor = group.similar ?? group.findings[0]
@@ -215,6 +250,14 @@ export type RewriteRequest = {
   targetTitle: string
   passage: string
   replacement: string
+}
+
+/** The longest replacement the API accepts (`replacement` of the action payload). */
+export const REWRITE_MAX_LENGTH = 20_000
+
+/** Whether `text` may be sent as a replacement: the API refuses blank and over-long text. */
+export function isRewriteText(text: string) {
+  return text.trim().length > 0 && text.length <= REWRITE_MAX_LENGTH
 }
 
 /** Why the server would not edit a passage in place (`details.parameters.status` of a conflict). */

@@ -62,26 +62,26 @@ export function KnowledgeAgentAuthorizePage() {
   const request = useQuery({
     ...consoleQuery.knowledgeFs.agentAccess.authorize.get.queryOptions({
       input: { query: params },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
     enabled: isLoggedIn,
     retry: false,
   })
   const workspaces = useQuery({
-    ...consoleQuery.workspaces.get.queryOptions({ context: { silent: true } }),
+    ...consoleQuery.workspaces.get.queryOptions({ meta: { errorToast: false } }),
     enabled: isLoggedIn,
   })
   const knowledgeBases = useKnowledgeBaseOptions(request.isSuccess)
   const [selected, setSelected] = useState<string[]>([])
   const switchWorkspace = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => window.location.reload(),
     }),
   )
   const decide = useMutation(
     consoleQuery.knowledgeFs.agentAccess.authorize.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: ({ redirect_to }) => window.location.assign(redirect_to),
     }),
   )
@@ -135,6 +135,9 @@ export function KnowledgeAgentAuthorizePage() {
     .map((id) => knowledgeBases.options.find((option) => option.id === id)?.name ?? id)
     .join(', ')
   const decideCode = agentAccessErrorCode(decide.error)
+  // A decision that succeeded is final: the browser is on its way back to the agent, and the
+  // one-time request must not be answered again while this page is still on screen.
+  const decided = decide.isPending || decide.isSuccess
   const submit = (approve: boolean) =>
     decide.mutate({ body: { ...params, approve, knowledge_base_ids: approve ? selected : [] } })
 
@@ -217,7 +220,7 @@ export function KnowledgeAgentAuthorizePage() {
             ) : (
               <KnowledgeBasePicker
                 blocked={blocked}
-                disabled={decide.isPending}
+                disabled={decided}
                 hasMore={knowledgeBases.query.hasNextPage}
                 loadingMore={knowledgeBases.query.isFetchingNextPage}
                 onLoadMore={() => void knowledgeBases.query.fetchNextPage()}
@@ -245,8 +248,8 @@ export function KnowledgeAgentAuthorizePage() {
           variant="primary"
           size="large"
           className="w-full"
-          loading={decide.isPending && decide.variables?.body.approve === true}
-          disabled={!described.agent_access_enabled || selected.length === 0 || decide.isPending}
+          loading={decided && decide.variables?.body.approve === true}
+          disabled={!described.agent_access_enabled || selected.length === 0 || decided}
           onClick={() => submit(true)}
         >
           {t(($) => $['agents.allow'])}
@@ -254,8 +257,8 @@ export function KnowledgeAgentAuthorizePage() {
         <Button
           size="large"
           className="w-full"
-          loading={decide.isPending && decide.variables?.body.approve === false}
-          disabled={decide.isPending}
+          loading={decided && decide.variables?.body.approve === false}
+          disabled={decided}
           onClick={() => submit(false)}
         >
           {t(($) => $['agents.deny'])}

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from collections.abc import Iterable
 from types import SimpleNamespace
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from services.knowledge_agent.access_service import KnowledgeAgentPrincipal
 from services.knowledge_agent.mcp_server import TOOLS, KnowledgeAgentMcpServer
@@ -92,36 +93,62 @@ class StubFacade:
 class StubSpaces:
     def __init__(self, allowed: set[str]) -> None:
         self.allowed = allowed
+        self.asked: list[set[str] | None] = []
 
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]:
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]:
         assert principal.tenant_id == "tenant"
-        return self.allowed
+        self.asked.append(None if among is None else set(among))
+        return self.allowed if among is None else self.allowed & set(among)
 
 
 class StubNames:
-    def list_spaces(self, **kwargs: object) -> SimpleNamespace:
-        assert kwargs["tenant_id"] == "tenant"
+    """A workspace whose listing is far longer than any scan would cover; lookups by id always answer."""
+
+    def __init__(self) -> None:
+        self.lookups: list[dict[str, object]] = []
+
+    def list_spaces(
+        self, *, tenant_id: str, account_id: str, page: int, limit: int, control_space_ids: list[str] | None = None
+    ) -> SimpleNamespace:
+        assert (tenant_id, account_id) == ("tenant", "acct")
+        self.lookups.append({"page": page, "limit": limit, "control_space_ids": control_space_ids})
         summary = SimpleNamespace(name="Handbook", description="Policies")
+        if control_space_ids is None:
+            # The unfiltered listing: other bases only, page after page.
+            other = [SimpleNamespace(control_space_id=f"kb-other-{page}", technical_summary=summary)]
+            return SimpleNamespace(data=other, has_more=True)
+        known = {"kb-1", "kb-9"}
         return SimpleNamespace(
             data=[
-                SimpleNamespace(control_space_id="kb-1", technical_summary=summary),
-                SimpleNamespace(control_space_id="kb-9", technical_summary=summary),
+                SimpleNamespace(control_space_id=space_id, technical_summary=summary)
+                for space_id in control_space_ids
+                if space_id in known
             ],
             has_more=False,
         )
 
 
 def _server(allowed: set[str] | None = None) -> tuple[KnowledgeAgentMcpServer, StubFacade, list[dict[str, object]]]:
+    return _wired(allowed)[:3]
+
+
+def _wired(
+    allowed: set[str] | None = None,
+) -> tuple[KnowledgeAgentMcpServer, StubFacade, list[dict[str, object]], StubSpaces, StubNames]:
     facade = StubFacade()
     events: list[dict[str, object]] = []
+    spaces = StubSpaces(allowed if allowed is not None else {"kb-1"})
+    names = StubNames()
     server = KnowledgeAgentMcpServer(
         facade=facade,  # type: ignore[arg-type]
-        spaces=StubSpaces(allowed if allowed is not None else {"kb-1"}),
-        names=StubNames(),
+        spaces=spaces,
+        names=names,
         console_url="https://cloud.dify.test/",
         on_tool_call=events.append,
     )
-    return server, facade, events
+    return server, facade, events, spaces, names
 
 
 class ToolResult(TypedDict, total=False):
@@ -219,6 +246,45 @@ def test_list_knowledge_bases_names_only_the_bases_this_connection_can_use() -> 
         }
     ]
     assert "1 knowledge base" in str(result["structuredContent"]["note"])
+
+
+def test_list_knowledge_bases_looks_its_bases_up_by_id_so_a_large_workspace_hides_none() -> None:
+    """Regression: a scan of the first 1000 bases reported the rest as "no longer available"."""
+    server, _, _, _, names = _wired({"kb-1", "kb-2"})
+    result = _call(server, "list_knowledge_bases", {})["structuredContent"]
+    assert names.lookups == [{"page": 1, "limit": 100, "control_space_ids": ["kb-1", "kb-2"]}]
+    # kb-2 is granted and allowed but the listing no longer has it: that one is really gone.
+    assert [base["id"] for base in cast(list[dict[str, str]], result["knowledgeBases"])] == ["kb-1"]
+    assert "1 knowledge base" in str(result["note"])
+
+    both, _, _, _, names = _wired({"kb-1"})
+    listed = both.handle(
+        KnowledgeAgentPrincipal(
+            account_id="acct",
+            tenant_id="tenant",
+            grant_id="grant",
+            token_id="token",
+            kind="oauth",
+            client_name="Claude Code",
+            control_space_ids=("kb-1",),
+        ),
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_knowledge_bases"}},
+    )
+    assert listed is not None
+    content = listed["result"]["structuredContent"]
+    assert [base["id"] for base in content["knowledgeBases"]] == ["kb-1"]
+    assert "note" not in content
+    assert all(lookup["control_space_ids"] is not None for lookup in names.lookups)
+
+
+def test_a_tool_that_reads_one_base_asks_about_that_base_only_and_the_protocol_asks_nothing() -> None:
+    server, _, _, spaces, names = _wired({"kb-1", "kb-2"})
+    for method in ("initialize", "ping", "tools/list"):
+        assert server.handle(PRINCIPAL, {"jsonrpc": "2.0", "id": 1, "method": method}) is not None
+    assert spaces.asked == []
+    _call(server, "list_documents", {"knowledgeBaseId": "kb-1"})
+    assert spaces.asked == [{"kb-1"}]
+    assert names.lookups == []
 
 
 def test_document_listing_links_back_to_the_console() -> None:

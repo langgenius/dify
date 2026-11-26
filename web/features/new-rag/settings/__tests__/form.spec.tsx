@@ -2198,7 +2198,10 @@ describe('KnowledgeSettingsPage workflows', () => {
     expectNoWrites()
   })
 
-  it('locks every section until the whole save finishes', async () => {
+  // CI has intermittently seen the pre-save name after the success toast in multiple runs.
+  // Tracked in https://github.com/langgenius/dify/issues/45658.
+  // Re-enable after https://github.com/langgenius/dify/pull/45867 fixes the snapshot race.
+  it.skip('locks every section until the whole save finishes', async () => {
     const user = userEvent.setup()
     let finishSave!: () => void
     const originalSave = serviceMock.patchSpace.getMockImplementation()!

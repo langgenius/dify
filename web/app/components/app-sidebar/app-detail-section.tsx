@@ -8,7 +8,7 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
-import { selectEvaluationEntry } from '@/app/components/evaluation/entry'
+import { selectEvaluationEntryVisible } from '@/app/components/evaluation/entry'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -16,7 +16,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
-import AppInfoHeader from './app-info/app-info-header'
+import { AppInfoHeader } from './app-info/app-info-header'
 import { getAppModeLabel } from './app-info/app-mode-labels'
 import NavLink from './nav-link'
 
@@ -64,11 +64,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
-  const { data: evaluationEntry } = useQuery(
-    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntry }),
+  const { data: isEvaluationVisible = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntryVisible }),
   )
-  const isEvaluationVisible = evaluationEntry?.visible ?? false
-  const evaluationRequiresUpgrade = evaluationEntry?.requiresUpgrade ?? false
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled
@@ -106,10 +104,8 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
               href: `/app/${appId}/evaluation`,
               icon: 'i-ri-flask-line',
               selectedIcon: 'i-ri-flask-fill',
-              disabled: evaluationRequiresUpgrade || !appDetail.workflow,
-              disabledReason: evaluationRequiresUpgrade
-                ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
-                : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
+              disabled: !appDetail.workflow,
+              disabledReason: t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
             },
           ]
         : []),
@@ -182,7 +178,6 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     isRbacEnabled,
     systemFeatures,
     isEvaluationVisible,
-    evaluationRequiresUpgrade,
   ])
 
   const failedQuery = [detailQuery, featuresQuery, profileQuery].find(

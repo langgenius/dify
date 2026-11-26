@@ -1,5 +1,7 @@
+import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ReactElement } from 'react'
 import type { FileItem } from '@/models/datasets'
+import type { ConsoleClient } from '@/service/console'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, it, vi } from 'vite-plus/test'
@@ -9,15 +11,17 @@ import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import CSVUploader from '../csv-uploader'
 
-// Mock upload service
-const mockUpload = vi.fn()
-vi.mock('@/service/base', () => ({
-  upload: (...args: unknown[]) => mockUpload(...args),
-}))
-
-// Mock useFileUploadConfig
-
-// Mock useTheme
+const mockUpload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': mockUpload,
+    }),
+  }
+})
 
 const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
@@ -62,7 +66,7 @@ function setup(file?: FileItem) {
 }
 
 beforeEach(() =>
-  mockUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'records.csv' }),
+  mockUpload.mockReset().mockResolvedValue({ id: 'uploaded-id', name: 'records.csv', size: 15 }),
 )
 
 it('opens the file chooser from browse and permits selecting a file again after removal', async () => {
@@ -102,26 +106,19 @@ it.each(['wrong.txt', 'noextension', 'oversized.csv'])(
 
 it('reports computable upload progress and the returned file identity', async () => {
   const user = userEvent.setup()
-  const pending = createDeferred<{ id: string; name: string }>()
-  let progress!: (event: ProgressEvent) => void
-  mockUpload.mockImplementationOnce(({ onprogress }) => {
-    progress = onprogress
-    return pending.promise
-  })
+  const pending = createDeferred<FileResponse>()
+  mockUpload.mockReturnValueOnce(pending.promise)
   const { input, updateFile } = setup()
   const file = createFile('my.data.csv')
   await user.upload(input, file)
-  expect(mockUpload.mock.calls[0]![0].data.get('file')).toBe(file)
-  const count = updateFile.mock.calls.length
-  act(() =>
-    progress(new ProgressEvent('progress', { lengthComputable: false, loaded: 50, total: 100 })),
+  expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
+    { body: { file, source: 'datasets' } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
-  expect(updateFile).toHaveBeenCalledTimes(count)
-  act(() =>
-    progress(new ProgressEvent('progress', { lengthComputable: true, loaded: 53, total: 100 })),
-  )
+  const onUploadProgress = mockUpload.mock.calls[0]![1]!.context!.onUploadProgress!
+  act(() => onUploadProgress({ loaded: 53, total: 100 }))
   expect(updateFile).toHaveBeenLastCalledWith(expect.objectContaining({ file, progress: 53 }))
-  await act(async () => pending.resolve({ id: 'server-id', name: 'my.data.csv' }))
+  await act(async () => pending.resolve({ id: 'server-id', name: 'my.data.csv', size: 15 }))
   await waitFor(() =>
     expect(updateFile).toHaveBeenLastCalledWith(
       expect.objectContaining({

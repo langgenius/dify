@@ -163,6 +163,26 @@ describe('KnowledgeAgentAuthorizePage', () => {
     )
   })
 
+  it('takes one decision: nothing can be sent again while the browser returns to the agent', async () => {
+    api.decide.mockResolvedValue({
+      redirect_to: 'http://127.0.0.1:33418/callback?error=access_denied',
+    })
+    const user = userEvent.setup()
+    renderWithConsoleQuery(<KnowledgeAgentAuthorizePage />)
+
+    await user.click(await screen.findByRole('checkbox', { name: /Handbook/ }))
+    const deny = screen.getByRole('button', { name: 'knowledgeSpace.agents.deny' })
+    await user.click(deny)
+    await waitFor(() => expect(api.assign).toHaveBeenCalledTimes(1))
+
+    // The request was answered; this page only waits for the navigation.
+    expect(deny).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'knowledgeSpace.agents.allow' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.agents.allow' }))
+    await user.click(deny)
+    expect(api.decide).toHaveBeenCalledTimes(1)
+  })
+
   it('explains an invalid request instead of showing the consent form', async () => {
     api.describe.mockRejectedValue(
       createHttpError(new Response(null, { status: 422 }), {

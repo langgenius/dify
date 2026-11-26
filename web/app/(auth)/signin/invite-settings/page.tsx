@@ -133,9 +133,7 @@ export default function InviteSettingsPage() {
         : {
             token,
           }
-      const [error, res, isDefined] = await safe(
-        consoleClient.activate.post({ body }, { context: { silent: true } }),
-      )
+      const [error, res, isDefined] = await safe(consoleClient.activate.post({ body }))
       if (error) {
         setIsActivating(false)
         if (isDefined && error.code === 'workspace_member_limit_reached') {

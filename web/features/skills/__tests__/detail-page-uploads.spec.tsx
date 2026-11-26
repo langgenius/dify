@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 import { httpErrorFromResponse } from '@/service/http-error'
 import {
   confirmUploadReview,
@@ -40,7 +40,7 @@ describe('SkillDetailPage uploads', () => {
         upload,
         expect.objectContaining({
           onProgress: expect.any(Function),
-          xhr: expect.any(XMLHttpRequest),
+          signal: expect.any(AbortSignal),
         }),
       )
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -169,7 +169,7 @@ describe('SkillDetailPage uploads', () => {
         upload,
         expect.objectContaining({
           onProgress: expect.any(Function),
-          xhr: expect.any(XMLHttpRequest),
+          signal: expect.any(AbortSignal),
         }),
       )
       expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
@@ -204,7 +204,6 @@ describe('SkillDetailPage uploads', () => {
       ],
     })
     mocks.uploadSkillFile.mockImplementation(() => new Promise(() => undefined))
-    const abortSpy = vi.spyOn(XMLHttpRequest.prototype, 'abort').mockImplementation(() => undefined)
     renderSkillDetailPage()
 
     const folder = await waitFor(() => getFileTreeItem('references'))
@@ -219,9 +218,9 @@ describe('SkillDetailPage uploads', () => {
     })
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(abortSpy).toHaveBeenCalledOnce()
+    const signal = mocks.uploadSkillFile.mock.calls[0]![1]!.signal!
+    expect(signal.aborted).toBe(true)
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
-    abortSpy.mockRestore()
   })
 
   it('retries failed file uploads from the upload status panel', async () => {

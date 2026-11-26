@@ -1,6 +1,10 @@
 """Root-level OAuth discovery for the knowledge MCP endpoint (RFC 9728 and RFC 8414).
 
 MCP clients look these up at the API origin's root, so they cannot live under a blueprint prefix.
+
+The documents are publicly cacheable only when every URL in them comes from configuration. When
+one is derived from the request's ``Host`` header (no public URL configured), the answer is
+``no-store``: a shared cache must not serve one caller's ``Host`` to another.
 """
 
 from __future__ import annotations
@@ -10,14 +14,18 @@ import json
 from flask import Blueprint, Response, request
 
 from configs import dify_config
-from services.knowledge_agent import KnowledgeAgentAccessService, knowledge_agent_urls
+from services.knowledge_agent import (
+    KnowledgeAgentAccessService,
+    knowledge_agent_urls,
+    knowledge_agent_urls_configured,
+)
 
 bp = Blueprint("well_known", __name__)
 
 
 def _metadata(body: dict) -> Response:
     response = Response(json.dumps(body), status=200, mimetype="application/json")
-    response.headers["Cache-Control"] = "public, max-age=3600"
+    response.headers["Cache-Control"] = "public, max-age=3600" if knowledge_agent_urls_configured() else "no-store"
     # Browser-based MCP inspectors read discovery documents cross-origin; they carry no secrets.
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response

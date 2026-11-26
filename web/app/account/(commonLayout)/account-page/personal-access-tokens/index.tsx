@@ -56,7 +56,7 @@ export default function PersonalAccessTokens() {
   const page = Math.max(1, requestedPage)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       input: { query: { page, limit: 20 } },
       placeholderData: keepPreviousData,
     }),

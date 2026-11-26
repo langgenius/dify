@@ -52,18 +52,19 @@ import { Trans, useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { consoleQuery } from '@/service/console'
 import {
-  AGENT_TOKEN_ENV,
   DEFAULT_PERSONAL_TOKEN_EXPIRY_DAYS,
   MAX_PERSONAL_TOKEN_EXPIRY_DAYS,
   PERSONAL_TOKEN_EXPIRY_OPTIONS,
-  personalTokenSnippets,
 } from './agent-access'
 import { AgentIcon } from './agent-icon'
+import { AGENT_TOKEN_ENV, AGENTS } from './agents'
 import { grantName, useGrantError, useInvalidateAgentAccess } from './grants'
 import { KnowledgeBasePicker } from './knowledge-base-picker'
 
 export type PickerProps = {
   blocked: ReadonlySet<string>
+  /** Every page of the member's knowledge bases is loaded: an id not among them is gone. */
+  complete: boolean
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
@@ -72,6 +73,8 @@ export type PickerProps = {
 
 const LABEL_CLASS_NAME = 'system-xs-medium text-text-primary'
 const HINT_CLASS_NAME = 'system-xs-regular text-text-tertiary'
+const NOTICE_CLASS_NAME =
+  'rounded-lg bg-state-warning-hover px-3 py-2 body-xs-regular text-text-warning'
 
 /** A personal token shows its last characters; an authorized agent has none to show. */
 export function GrantIdentity({ grant }: { grant: KnowledgeAgentGrantResponse }) {
@@ -106,7 +109,11 @@ function KnowledgeBaseAccessField({
       <span className={LABEL_CLASS_NAME}>{t(($) => $['agents.knowledgeBaseAccess'])}</span>
       <span className={HINT_CLASS_NAME}>{t(($) => $['agents.knowledgeBaseAccessHint'])}</span>
       <KnowledgeBasePicker
-        {...knowledgeBases}
+        blocked={knowledgeBases.blocked}
+        hasMore={knowledgeBases.hasMore}
+        loadingMore={knowledgeBases.loadingMore}
+        onLoadMore={knowledgeBases.onLoadMore}
+        options={knowledgeBases.options}
         disabled={disabled}
         value={value}
         onChange={onChange}
@@ -168,14 +175,15 @@ function CreateTokenForm({
   const [customDays, setCustomDays] = useState<number | null>(DEFAULT_PERSONAL_TOKEN_EXPIRY_DAYS)
   const create = useMutation(
     consoleQuery.knowledgeFs.agentAccess.tokens.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async (result) => {
         onCreated(result)
         await invalidate()
       },
     }),
   )
-  // `null` never expires; `undefined` is a custom lifetime that is not a usable number yet.
+  // `null` is a token that never expires, and also a custom lifetime with no number entered
+  // yet; `canSubmit` tells the two apart so an empty custom field is never sent as "never".
   const days = choice === 'never' ? null : choice === 'custom' ? customDays : Number(choice)
   const validDays =
     days === null || (Number.isInteger(days) && days >= 1 && days <= MAX_PERSONAL_TOKEN_EXPIRY_DAYS)
@@ -362,7 +370,6 @@ export function TokenCreatedDialog({
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: tCommon } = useTranslation(['common'])
   const { copied, copy } = useClipboard({ timeout: 2000 })
-  const snippets = personalTokenSnippets(mcpUrl)
   return (
     <Dialog
       open={result !== null}
@@ -415,8 +422,14 @@ export function TokenCreatedDialog({
                 }}
               />
             </p>
-            <CodeBlock title="Claude Code" file=".mcp.json" code={snippets.claudeCode} />
-            <CodeBlock title="Codex" file="~/.codex/config.toml" code={snippets.codex} />
+            {AGENTS.map(({ id, name, tokenConfig }) => (
+              <CodeBlock
+                key={id}
+                title={name}
+                file={tokenConfig.file}
+                code={tokenConfig.build(mcpUrl)}
+              />
+            ))}
           </div>
         </DialogBody>
         <DialogFooter>
@@ -472,10 +485,21 @@ function EditGrantForm({
   const { t: tCommon } = useTranslation(['common'])
   const grantError = useGrantError()
   const invalidate = useInvalidateAgentAccess()
-  const [selected, setSelected] = useState<string[]>(() => grant.knowledge_base_ids)
+  const [chosen, setChosen] = useState<string[]>(() => grant.knowledge_base_ids)
+  // A connection can outlive what it was granted: a base may since have turned personal agents
+  // off, or left the member's reach. The server refuses a save that still names one, and the
+  // picker has no row (or only a disabled one) to untick it, so those ids are left out here.
+  const { blocked, complete, options } = knowledgeBases
+  const turnedOff = grant.knowledge_base_ids.filter((id) => blocked.has(id))
+  const unavailable = complete
+    ? grant.knowledge_base_ids.filter(
+        (id) => !blocked.has(id) && !options.some((option) => option.id === id),
+      )
+    : []
+  const selected = chosen.filter((id) => !blocked.has(id) && !unavailable.includes(id))
   const save = useMutation(
     consoleQuery.knowledgeFs.agentAccess.grants.byGrantId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async () => {
         onClose()
         await invalidate()
@@ -500,8 +524,22 @@ function EditGrantForm({
           disabled={save.isPending}
           knowledgeBases={knowledgeBases}
           value={selected}
-          onChange={setSelected}
+          onChange={setChosen}
         />
+        {turnedOff.length > 0 && (
+          <p role="status" className={NOTICE_CLASS_NAME}>
+            {t(($) => $['agents.errorBlocked'], {
+              names: turnedOff
+                .map((id) => options.find((option) => option.id === id)?.name ?? id)
+                .join(', '),
+            })}
+          </p>
+        )}
+        {unavailable.length > 0 && (
+          <p role="status" className={NOTICE_CLASS_NAME}>
+            {t(($) => $['agents.errorKnowledgeBases'], { names: unavailable.join(', ') })}
+          </p>
+        )}
         {save.isError && (
           <p role="alert" className="body-xs-regular text-text-destructive">
             {grantError(save.error, knowledgeBases.options)}
@@ -543,7 +581,7 @@ export function RevokeGrantDialog({
   const invalidate = useInvalidateAgentAccess()
   const revoke = useMutation(
     consoleQuery.knowledgeFs.agentAccess.grants.byGrantId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async () => {
         onClose()
         await invalidate()

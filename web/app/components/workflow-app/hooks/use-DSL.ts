@@ -28,6 +28,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   )
 
   const { mutateAsync: exportWorkflow, isPending: isExporting } = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ include, workflowId }: { include: boolean; workflowId?: string }) => {
       if (!appDetail) return false
 
@@ -77,8 +78,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          context: { silent: true },
-          staleTime: 0,
+          meta: { errorToast: false },
         }),
       )
       const list = items.filter((env) => env.value_type === 'secret')

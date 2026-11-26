@@ -106,7 +106,7 @@ export function NewKnowledgeList() {
   )
   const deletion = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const [showTagManagementDialog, setShowTagManagementDialog] = useState(false)

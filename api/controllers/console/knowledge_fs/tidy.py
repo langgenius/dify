@@ -56,7 +56,7 @@ class KnowledgeFSTidySettingsApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision."""
         actor_id, tenant_id = _actor()
         result = _console_services().facade.get_tidy_settings(
             tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id
@@ -71,7 +71,7 @@ class KnowledgeFSTidySettingsApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def patch(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """Turn Tidy or its conflict detection on or off; needs edit permission and the current revision."""
         actor_id, tenant_id = _actor()
         payload = KnowledgeFSTidySettingsPayload.model_validate(console_ns.payload or {})
         result = _console_services().facade.update_tidy_settings(
@@ -89,7 +89,7 @@ class KnowledgeFSTidySummaryApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """Count findings by status and kind, and report scan progress and model calls so far."""
         actor_id, tenant_id = _actor()
         result = _console_services().facade.get_tidy_summary(
             tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id
@@ -107,7 +107,10 @@ class KnowledgeFSTidyFindingsApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """List a page of findings (duplicate, similar, conflict), optionally by status and kind.
+
+        Unknown query parameters and malformed cursors are answered 400.
+        """
         actor_id, tenant_id = _actor()
         query = KnowledgeFSTidyFindingQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.list_tidy_findings(
@@ -126,7 +129,10 @@ class KnowledgeFSTidyScansApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def get(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """List a page of per-document scan records, optionally by state.
+
+        Unknown query parameters and malformed cursors are answered 400.
+        """
         actor_id, tenant_id = _actor()
         query = KnowledgeFSTidyScanQuery.model_validate(request.args.to_dict())
         result = _console_services().facade.list_tidy_scans(
@@ -146,7 +152,10 @@ class KnowledgeFSTidyActionApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def post(self, control_space_id: str, finding_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo.
+
+        A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.
+        """
         actor_id, tenant_id = _actor()
         payload = KnowledgeFSTidyActionPayload.model_validate(console_ns.payload or {})
         result = _console_services().facade.act_on_tidy_finding(
@@ -168,7 +177,7 @@ class KnowledgeFSTidyRetryApi(Resource):
     @account_initialization_required
     @_knowledge_fs_errors
     def post(self, control_space_id: str):
-        """Validate admitted input, forward scoped operation, and preserve upstream errors."""
+        """Retry the knowledge base's Tidy scans and report how many were resumed."""
         actor_id, tenant_id = _actor()
         result = _console_services().facade.retry_tidy_scans(
             tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id

@@ -1,8 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { useId } from 'react'
+import DocLearnMoreLink from './doc-learn-more-link'
 
 type SectionHeaderProps = {
   title: string
@@ -18,6 +21,8 @@ type InlineSectionHeaderProps = {
   /** Lets a control be labelled by the section title. */
   titleId?: string
   tooltip?: ReactNode
+  /** Appends a "Learn more" link to the tooltip. */
+  docPath?: DocPathWithoutLang
   action?: ReactNode
   className?: string
 }
@@ -50,30 +55,32 @@ export const InlineSectionHeader = ({
   title,
   titleId,
   tooltip,
+  docPath,
   action,
   className,
 }: InlineSectionHeaderProps) => {
+  const generatedTitleId = useId()
+  const resolvedTitleId = titleId ?? generatedTitleId
+
   return (
     <div className={cn('flex flex-wrap items-center justify-between gap-3', className)}>
       <div className="flex min-h-6 items-center gap-1">
-        <div id={titleId} className="system-md-semibold text-text-primary">
+        <div id={resolvedTitleId} className="system-md-semibold text-text-primary">
           {title}
         </div>
         {Boolean(tooltip) && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  className="flex h-4 w-4 items-center justify-center text-text-quaternary transition-colors hover:text-text-tertiary"
-                  aria-label={title}
-                >
-                  <span aria-hidden="true" className="i-ri-question-line h-3.5 w-3.5" />
-                </button>
-              }
-            />
-            <TooltipContent>{tooltip}</TooltipContent>
-          </Tooltip>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={resolvedTitleId} />
+            <InfotipContent aria-labelledby={resolvedTitleId} className="max-w-72">
+              {tooltip}
+              {docPath && (
+                <>
+                  {' '}
+                  <DocLearnMoreLink path={docPath} />
+                </>
+              )}
+            </InfotipContent>
+          </Infotip>
         )}
       </div>
       {action}
