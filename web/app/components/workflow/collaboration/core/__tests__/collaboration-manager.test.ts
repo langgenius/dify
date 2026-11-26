@@ -115,8 +115,8 @@ it('preserves completion prompt objects when edited and synchronized to another 
   expect(source.manager.getNodes()[0]).toHaveProperty('data.prompt_template', prompt)
   const edited = { ...prompt, text: '修改后的测试指令' }
   source.manager.setNodes([base], [createLLMNode(edited)])
-  const follower = await createSession({ role: 'follower' })
-  follower.receive('graph_update', source.snapshot())
+  const follower = await createSession({ role: 'follower', preserveEmits: true })
+  follower.receive('graph_update', source.snapshot(follower))
   expect(follower.manager.getNodes()[0]).toHaveProperty('data.prompt_template', edited)
 })
 

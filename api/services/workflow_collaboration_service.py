@@ -6,8 +6,9 @@ import socket
 import time
 import uuid
 from collections.abc import Mapping
-from typing import Any, override
+from typing import Annotated, Any, NotRequired, TypedDict, override
 
+from pydantic import StrictBytes, StringConstraints, TypeAdapter, ValidationError
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,6 +28,18 @@ SERVER_HEARTBEAT_INTERVAL_SECONDS = 30
 SYNC_REQUEST_TIMEOUT_SECONDS = 15
 _PROCESS_SERVER_ID: str | None = None
 _PROCESS_SERVER_ID_PID: int | None = None
+
+
+type _GraphUpdateId = Annotated[str, StringConstraints(strict=True, pattern=r"\S")]
+
+
+class _TaggedGraphUpdate(TypedDict):
+    data: StrictBytes
+    historyId: _GraphUpdateId
+    requestId: NotRequired[_GraphUpdateId]
+
+
+_TAGGED_GRAPH_UPDATE = TypeAdapter(_TaggedGraphUpdate)
 
 
 class WorkflowCollaborationNotEntitledError(Exception):
@@ -346,9 +359,24 @@ class WorkflowCollaborationService:
         return {"msg": "event_broadcasted"}, 200
 
     def relay_graph_event(self, sid: str, data: object) -> tuple[dict[str, str], int]:
+        """Broadcast a joined socket's update, sending tagged metadata as a second Socket.IO argument.
+
+        Legacy payloads pass through unchanged. A malformed tagged payload returns 400 without broadcasting.
+        """
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return {"msg": "unauthorized"}, 401
+
+        if isinstance(data, Mapping) and any(key in data for key in ("data", "historyId", "requestId")):
+            try:
+                update = _TAGGED_GRAPH_UPDATE.validate_python(data)
+            except ValidationError:
+                return {"msg": "invalid graph_event"}, 400
+
+            metadata = {"historyId": update["historyId"]}
+            if "requestId" in update:
+                metadata["requestId"] = update["requestId"]
+            data = (update["data"], metadata)
 
         workflow_id = mapping["workflow_id"]
         self.refresh_session_state(workflow_id, sid)

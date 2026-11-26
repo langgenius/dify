@@ -2,6 +2,7 @@
 
 import type { LoroDoc } from 'loro-crdt'
 import type { Socket } from 'socket.io-client'
+import type { GraphUpdateMetadata } from '../types/collaboration'
 import { decodeImportBlobMeta } from 'loro-crdt'
 import { emitWithAuthGuard } from './websocket-manager'
 
@@ -9,6 +10,8 @@ type CRDTProviderCallbacks = {
   onUnauthorized?: () => void
   onSnapshotImported?: () => void
   shouldImportSnapshot?: () => boolean
+  shouldImport?: (data: Uint8Array, isSnapshot: boolean, metadata?: GraphUpdateMetadata) => boolean
+  sendUpdate?: (data: Uint8Array) => void
   /** An update was stored but waits for operations this replica has not received. */
   onMissingDependencies?: () => void
   /** Loro rejected an incoming update, so this replica may no longer match its peers. */
@@ -40,12 +43,16 @@ export class CRDTProvider {
   private handleLocalUpdate = (update: Uint8Array): void => {
     if (!this.socket.connected) return
 
+    if (this.callbacks.sendUpdate) {
+      this.callbacks.sendUpdate(update)
+      return
+    }
     emitWithAuthGuard(this.socket, 'graph_event', update, {
       onUnauthorized: this.callbacks.onUnauthorized,
     })
   }
 
-  private handleGraphUpdate = (updateData: Uint8Array): void => {
+  private handleGraphUpdate = (updateData: Uint8Array, metadata?: GraphUpdateMetadata): void => {
     const data = new Uint8Array(updateData)
     let isSnapshot = false
     try {
@@ -59,6 +66,7 @@ export class CRDTProvider {
 
     let status: ReturnType<LoroDoc['import']>
     try {
+      if (this.callbacks.shouldImport?.(data, isSnapshot, metadata) === false) return
       status = this.doc.import(data)
     } catch (error) {
       this.callbacks.onImportFailed?.(error)

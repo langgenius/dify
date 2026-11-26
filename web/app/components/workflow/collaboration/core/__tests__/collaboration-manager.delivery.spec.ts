@@ -15,8 +15,8 @@ it.each(['leader', 'follower'] as const)(
     vi.useFakeTimers()
     const node = createNode('n-1', 'Original')
     const leader = await createSession({ nodes: [node] })
-    const follower = await createSession({ role: 'follower', nodes: [node] })
-    follower.receive('graph_update', leader.snapshot())
+    const follower = await createSession({ role: 'follower', nodes: [node], preserveEmits: true })
+    follower.receive('graph_update', leader.snapshot(follower))
     const sender = senderRole === 'leader' ? leader : follower
     const receiver = senderRole === 'leader' ? follower : leader
 

@@ -1445,19 +1445,58 @@ class TestWorkflowCollaborationService:
         assert repository.get_current_leader("wf-1") == "sid-new"
         broadcast_leader_change.assert_called_once_with("wf-1", "sid-new")
 
-    def test_relay_graph_event_emits_update(self, real_service: ServiceFixture) -> None:
+    @pytest.mark.parametrize("payload", [b"graph-update", {"nodes": []}])
+    def test_relay_graph_event_emits_update(self, real_service: ServiceFixture, payload: object) -> None:
         # Arrange
         collaboration_service, repository, socketio = real_service
         seed_session(repository, "sid-1")
         repository.set_leader("wf-1", "sid-1")
 
         # Act
-        result = collaboration_service.relay_graph_event("sid-1", {"nodes": []})
+        result = collaboration_service.relay_graph_event("sid-1", payload)
 
         # Assert
         assert result == ({"msg": "graph_update_broadcasted"}, 200)
         assert repository.server_heartbeat_exists("server-1")
-        socketio.emit.assert_called_once_with("graph_update", {"nodes": []}, room="wf-1", skip_sid="sid-1")
+        socketio.emit.assert_called_once_with("graph_update", payload, room="wf-1", skip_sid="sid-1")
+
+    @pytest.mark.parametrize(
+        "metadata", [{"historyId": "history-1"}, {"historyId": "history-1", "requestId": "request-1"}]
+    )
+    def test_relay_tagged_graph_event_keeps_bytes_as_first_argument(
+        self, real_service: ServiceFixture, metadata: dict[str, str]
+    ) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+        repository.set_leader("wf-1", "sid-1")
+        update = b"graph-update"
+
+        result = collaboration_service.relay_graph_event("sid-1", {"data": update, **metadata})
+
+        assert result == ({"msg": "graph_update_broadcasted"}, 200)
+        socketio.emit.assert_called_once_with("graph_update", (update, metadata), room="wf-1", skip_sid="sid-1")
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"data": b"graph-update"},
+            {"data": b"graph-update", "historyId": 1},
+            {"data": b"graph-update", "historyId": " "},
+            {"data": "graph-update", "historyId": "history-1"},
+            {"data": b"graph-update", "historyId": "history-1", "requestId": ""},
+            {"data": b"graph-update", "historyId": "history-1", "requestId": None},
+        ],
+    )
+    def test_relay_malformed_tagged_graph_event_does_not_broadcast(
+        self, real_service: ServiceFixture, payload: dict[str, object]
+    ) -> None:
+        collaboration_service, repository, socketio = real_service
+        seed_session(repository, "sid-1")
+
+        result = collaboration_service.relay_graph_event("sid-1", payload)
+
+        assert result == ({"msg": "invalid graph_event"}, 400)
+        socketio.emit.assert_not_called()
 
     def test_prune_inactive_sessions_handles_empty_and_removes_stale(self, real_service: ServiceFixture) -> None:
         collaboration_service, repository, _socketio = real_service

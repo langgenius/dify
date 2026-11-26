@@ -1,5 +1,7 @@
 export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
 
+export type GraphUpdateMetadata = { historyId: string; requestId?: string }
+
 export type OnlineUser = {
   user_id: string
   username: string
