@@ -262,7 +262,7 @@ describe('recipient selection through generated queries', () => {
     const user = userEvent.setup()
     contactApi.options.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 403 }), {
-        code: 'forbidden',
+        code: 'bad_request',
         message: 'Server says why',
       }),
     )

@@ -4,15 +4,17 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import { fileUpload } from '@/app/components/base/file-uploader/utils'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
 import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 
 export const useUpload = () => {
   const { t } = useTranslation(['common', 'dataset', 'datasetHitTesting'])
+  const describeRequestError = useRequestErrorDescriber()
   const fileStore = useFileStore()
 
   const [dragging, setDragging] = useState(false)
@@ -152,10 +154,9 @@ export const useUpload = () => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error) => {
-            const errorMessage = getFileUploadErrorMessage(
+            const errorMessage = describeRequestError(
               error,
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-              t,
             )
             toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -163,7 +164,7 @@ export const useUpload = () => {
         })
       }
     },
-    [fileStore, t, handleUpdateFile],
+    [fileStore, t, handleUpdateFile, describeRequestError],
   )
 
   const handleLocalFileUpload = useCallback(
@@ -201,10 +202,9 @@ export const useUpload = () => {
               })
             },
             onErrorCallback: (error) => {
-              const errorMessage = getFileUploadErrorMessage(
+              const errorMessage = describeRequestError(
                 error,
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
-                t,
               )
               toast.error(errorMessage)
               handleUpdateFile({ ...uploadingFile, progress: -1 })
@@ -222,7 +222,7 @@ export const useUpload = () => {
       )
       reader.readAsDataURL(file)
     },
-    [t, handleAddFile, handleUpdateFile],
+    [t, handleAddFile, handleUpdateFile, describeRequestError],
   )
 
   const handleFileUpload = useCallback(
