@@ -265,6 +265,7 @@ describe('useChat – handleSubmitHumanInputForm', () => {
         'nested-token',
         { action: 'approve', inputs: {}, form_version: version },
         version,
+        { silent: true },
       )
     },
   )
@@ -288,6 +289,7 @@ describe('useChat – handleSubmitHumanInputForm', () => {
         action: 'approve',
       },
       undefined,
+      { silent: true },
     )
   })
 })

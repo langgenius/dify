@@ -77,6 +77,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const { items } = await queryClient.query(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
+          meta: { errorToast: false },
           context: { silent: true },
         }),
       )

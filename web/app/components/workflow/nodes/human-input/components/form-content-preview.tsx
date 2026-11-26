@@ -197,6 +197,7 @@ const ServerPreviewTrigger = ({
     },
   ]
   const preview = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ inputs }: { inputs: Record<string, unknown>; session: number }) => {
       if (resource.kind !== 'app') throw new Error('Missing application')
       await syncHumanInputDraft(doSyncWorkflowDraft)

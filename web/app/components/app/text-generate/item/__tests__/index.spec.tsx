@@ -142,10 +142,13 @@ describe('GenerationItem', () => {
 
     await user.click(screen.getByRole('button', { name: /(?:^|\.)operation\.log(?=$|:)/ }))
 
-    expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
-      appId: 'app-1',
-      messageId: 'msg-1',
-    })
+    expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith(
+      {
+        appId: 'app-1',
+        messageId: 'msg-1',
+      },
+      { silent: true },
+    )
     expect(mockOnOpenLog).toHaveBeenCalledWith(
       expect.objectContaining({
         log: [
@@ -212,10 +215,13 @@ describe('GenerationItem', () => {
         }),
       ),
     )
-    expect(mockFetchTextGenerationMessage).toHaveBeenCalledExactlyOnceWith({
-      appId: 'app-1',
-      messageId: 'child-message',
-    })
+    expect(mockFetchTextGenerationMessage).toHaveBeenCalledExactlyOnceWith(
+      {
+        appId: 'app-1',
+        messageId: 'child-message',
+      },
+      { silent: true },
+    )
   })
 
   it.each(['1', '2', undefined] as const)(
@@ -256,6 +262,7 @@ describe('GenerationItem', () => {
         'token-1',
         { action: 'submit', inputs: { name: 'Dify' } },
         version,
+        { silent: true },
       )
     },
   )
@@ -290,12 +297,14 @@ describe('GenerationItem', () => {
       'token-1',
       { action: 'submit', inputs: { name: 'First' } },
       '1',
+      { silent: true },
     )
     expect(mockSubmitHumanInputFormWorkflow).toHaveBeenNthCalledWith(
       2,
       'token-1',
       { action: 'submit', inputs: { name: 'Second' } },
       '2',
+      { silent: true },
     )
   })
 

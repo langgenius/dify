@@ -99,14 +99,17 @@ it('persists a feature toggle through the workflow API and closes the panel', as
   await user.click(toggle)
   expect(toggle).toBeChecked()
   await waitFor(() =>
-    expect(mockUpdateFeatures).toHaveBeenCalledWith({
-      appId: 'app-1',
-      features: expect.objectContaining({
-        opening_statement: '',
-        suggested_questions: [],
-        suggested_questions_after_answer: { enabled: true },
-      }),
-    }),
+    expect(mockUpdateFeatures).toHaveBeenCalledWith(
+      {
+        appId: 'app-1',
+        features: expect.objectContaining({
+          opening_statement: '',
+          suggested_questions: [],
+          suggested_questions_after_answer: { enabled: true },
+        }),
+      },
+      { silent: true },
+    ),
   )
   await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
   expect(store.getState().showFeaturesPanel).toBe(false)

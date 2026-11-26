@@ -118,6 +118,7 @@ const MessageTemplateSession = ({
   }, [canTest, testContext])
   const testMutation = useMutation({
     mutationKey,
+    meta: { errorToast: false },
     retry: false,
     mutationFn: async ({
       inputs,

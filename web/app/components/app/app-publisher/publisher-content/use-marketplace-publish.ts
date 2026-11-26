@@ -9,6 +9,7 @@ export function useMarketplacePublish(appId?: string) {
   // Hook-level handlers keep running if the editor unmounts before the request settles.
   const { isPending: isPublishing, mutate } = useMutation(
     consoleQuery.apps.byAppId.publishToCreatorsPlatform.post.mutationOptions({
+      meta: { errorToast: false },
       context: { silent: true },
       onSuccess: (response) => {
         if (response.redirect_url) window.open(response.redirect_url, '_blank')

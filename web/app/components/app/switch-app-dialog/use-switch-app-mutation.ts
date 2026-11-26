@@ -23,10 +23,16 @@ export function useSwitchAppMutation() {
     select: (data) => data.rbac_enabled,
   })
   const conversion = useMutation(
-    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.convertToWorkflow.post.mutationOptions({
+      meta: { errorToast: false },
+      context: { silent: true },
+    }),
   )
   const deletion = useMutation(
-    consoleQuery.apps.byAppId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.delete.mutationOptions({
+      meta: { errorToast: false },
+      context: { silent: true },
+    }),
   )
 
   return {

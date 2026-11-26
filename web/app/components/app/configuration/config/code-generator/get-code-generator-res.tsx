@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { toastRequestError } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { generateRule } from '@/service/debug'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
@@ -150,15 +151,18 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     if (isLoading) return
     setLoadingTrue()
     try {
-      const { error, ...res } = await generateRule({
-        flow_id: flowId,
-        node_id: nodeId,
-        current: currentCode,
-        instruction,
-        model_config: model,
-        ideal_output: ideaOutput,
-        language: languageMap[codeLanguages] || 'javascript',
-      })
+      const { error, ...res } = await generateRule(
+        {
+          flow_id: flowId,
+          node_id: nodeId,
+          current: currentCode,
+          instruction,
+          model_config: model,
+          ideal_output: ideaOutput,
+          language: languageMap[codeLanguages] || 'javascript',
+        },
+        { silent: true },
+      )
       if ('code' in res && typeof res.code === 'string')
         // not current or current is the same as the template would return a code field
         res.modified = res.code
@@ -168,6 +172,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
       } else {
         addVersion(res)
       }
+    } catch (error) {
+      toastRequestError(error)
     } finally {
       setLoadingFalse()
     }
