@@ -685,7 +685,8 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_console_cors_allow_origins.split(",")
+        """Trim origin entries while retaining blanks, since Socket.IO gives an empty list special semantics."""
+        return [origin.strip() for origin in self.inner_console_cors_allow_origins.split(",")]
 
     WEBSOCKET_MAX_HTTP_BUFFER_SIZE: PositiveInt = Field(
         description=(
@@ -705,7 +706,8 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return self.inner_web_api_cors_allow_origins.split(",")
+        """Split validated comma-separated origins without retaining surrounding whitespace."""
+        return [origin.strip() for origin in self.inner_web_api_cors_allow_origins.split(",")]
 
     OPENAPI_ENABLED: bool = Field(
         description=(
@@ -728,7 +730,8 @@ class HttpConfig(BaseSettings):
 
     @computed_field
     def OPENAPI_CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return [o for o in self.inner_openapi_cors_allow_origins.split(",") if o]
+        """Return normalized nonblank origins; an empty list keeps the API same-origin only."""
+        return [origin.strip() for origin in self.inner_openapi_cors_allow_origins.split(",") if origin.strip()]
 
     inner_openapi_known_client_ids: str = Field(
         description=(

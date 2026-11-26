@@ -2,11 +2,57 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
+from engineio import Server, WSGIApp
+from flask import Flask
+from flask_cors import CORS
 from pydantic import ValidationError
+from werkzeug.test import Client
+from werkzeug.wrappers import Response
 
 import configs.feature as feature_config
-from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, LoggingConfig
+from configs.feature import AuthConfig, DataSetConfig, FileUploadConfig, HttpConfig, LoggingConfig
 from tests.helpers.unit.configs._isolated_settings import InitSettingsOnly
+
+
+@pytest.mark.parametrize(
+    "setting",
+    ["CONSOLE_CORS_ALLOW_ORIGINS", "WEB_API_CORS_ALLOW_ORIGINS", "OPENAPI_CORS_ALLOW_ORIGINS"],
+)
+def test_cors_origins_with_surrounding_whitespace_allow_preflight(setting: str) -> None:
+    """Configured comma-separated origins work with Flask-CORS while other origins remain denied."""
+    config = HttpConfig.model_validate({setting: " https://first.example ,\t https://second.example \n, "})
+    app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": getattr(config, setting)}}, supports_credentials=True)
+
+    @app.get("/resource")
+    def resource() -> str:
+        """Serve a resource whose automatic OPTIONS response uses the configured CORS policy."""
+        return "ok"
+
+    client = app.test_client()
+    for origin in ("https://first.example", "https://second.example"):
+        response = client.options("/resource", headers={"Origin": origin, "Access-Control-Request-Method": "GET"})
+        assert response.status_code == 200
+        assert response.headers.get("Access-Control-Allow-Origin") == origin
+        assert response.headers.get("Access-Control-Allow-Credentials") == "true"
+
+    rejected = client.options(
+        "/resource", headers={"Origin": "https://unlisted.example", "Access-Control-Request-Method": "GET"}
+    )
+    assert "Access-Control-Allow-Origin" not in rejected.headers
+
+
+@pytest.mark.parametrize("configured", ["", " , \t, ", " \t "])
+def test_empty_console_origins_keep_socketio_origin_checks(configured: str) -> None:
+    """Blank console configuration must not become Socket.IO's CORS-disabled empty list."""
+    config = HttpConfig.model_validate({"CONSOLE_CORS_ALLOW_ORIGINS": configured})
+    server = Server(async_mode="threading", cors_allowed_origins=config.CONSOLE_CORS_ALLOW_ORIGINS)
+    client = Client(WSGIApp(server), Response)
+    try:
+        response = client.get("/engine.io/?EIO=4&transport=polling", headers={"Origin": "https://unlisted.example"})
+        assert response.status_code == 400
+    finally:
+        server.shutdown()
 
 
 class _IsolatedAuthConfig(InitSettingsOnly, AuthConfig):
