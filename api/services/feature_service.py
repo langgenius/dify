@@ -215,12 +215,14 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return cls._fulfill_trial_models_from_env()
+        """List providers offering this workspace's credit pool; propagate subscription lookup failures.
 
-        quota_types = ("PAID", "TRIAL") if cls._is_paid_cloud_workspace(tenant_id) else ("TRIAL",)
-        return cls._fulfill_trial_models_from_env(quota_types)
+        Outside Cloud this remains the deployment's provider list, not an entitlement to hosted credits.
+        """
+        credit_pool_type = cls.get_credit_pool_type(tenant_id)
+        if credit_pool_type is None:
+            return cls._fulfill_trial_models_from_env()
+        return cls._fulfill_trial_models_from_env((credit_pool_type.name,))
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel) -> None:
