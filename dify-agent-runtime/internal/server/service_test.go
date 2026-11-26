@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 )
@@ -60,6 +61,41 @@ func TestMaterializeStdioStatusMarksMissingSessionWithIncompleteArtifactsLost(t 
 	}
 	if view.Status != StatusLost {
 		t.Errorf("status = %q, want %q", view.Status, StatusLost)
+	}
+}
+
+func TestCompletedJobRetention(t *testing.T) {
+	tmux := newTestTmuxController(t)
+	if err := tmux.StartServer(); err != nil {
+		t.Fatal(err)
+	}
+	for _, age := range []time.Duration{24*time.Hour - time.Minute, 24*time.Hour + time.Minute} {
+		t.Run(age.String(), func(t *testing.T) {
+			service, row := setupModeTestService(t, jobmode.Stdio, StatusRunning)
+			service.tmux = tmux
+			if err := os.WriteFile(service.outputLogPath(row), []byte("result"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := service.db.RecordRunnerExit(row.JobID, 7, FormatTimestamp(time.Now().Add(-age))); err != nil {
+				t.Fatal(err)
+			}
+			if err := service.GCOnce(); err != nil {
+				t.Fatal(err)
+			}
+			result, err := service.WaitJob(row.JobID, &WaitJobRequest{})
+			if age < 24*time.Hour {
+				if err != nil || !result.Done || result.ExitCode == nil || *result.ExitCode != 7 || result.Output != "result" {
+					t.Fatalf("delayed wait: result=%+v, err=%v", result, err)
+				}
+			} else {
+				if !isNotFound(err) {
+					t.Fatalf("expired job: got %v, want job_not_found", err)
+				}
+				if _, err := os.Stat(filepath.Join(service.config.JobsDir(), row.JobID)); !os.IsNotExist(err) {
+					t.Fatalf("expired job directory: got %v, want not found", err)
+				}
+			}
+		})
 	}
 }
 
