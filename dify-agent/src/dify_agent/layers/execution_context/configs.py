@@ -83,6 +83,11 @@ class DifyExecutionContextLayerConfig(BaseModel):
     invoke_from: DifyExecutionContextInvokeFrom
     trace_id: str | None = None
     tracing: ApplicationTracingContext | None = None
+    # Filtered inbound request headers captured at the API boundary so MCP
+    # `{{request.headers.*}}` placeholders still resolve when tools are
+    # dispatched through the inner API (Agent V2). Credential material
+    # (authorization, cookies, inner-API keys) is stripped at capture time.
+    request_headers: dict[str, str] | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
