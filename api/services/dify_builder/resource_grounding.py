@@ -127,13 +127,14 @@ def validate_changed_resources(
         "model": {_ref_identity("model", ref): ref for ref in catalogue.models if ref.binding},
         "tool": {_ref_identity("tool", ref): ref for ref in catalogue.tools if ref.binding},
     }
-    # Build's public ResourceOption namespace is historically "plugin" for
-    # Tool resources. Normalize only that known kind; keep the exact source ID.
-    selected = (
-        {"tool:" + rid.removeprefix("plugin:") if rid.startswith("plugin:") else rid for rid in confirmed_ids}
-        if confirmed_ids is not None
-        else None
-    )
+    # Build emits bare catalogue model IDs and uses "plugin" for Tool IDs.
+    # Only normalize bare IDs that exactly match a model in this workspace.
+    selected = None
+    if confirmed_ids is not None:
+        selected = {
+            "tool:" + rid.removeprefix("plugin:") if rid.startswith("plugin:") else rid for rid in confirmed_ids
+        }
+        selected.update(f"model:{ref.id}" for ref in catalogue.models if ref.id in selected)
     nodes = {str(node.get("id")): node for node in changed_resource_nodes(before, after)}
     if expected_node_resources:
         targets = {str(node.get("id")): node for node in after.get("nodes", [])}
