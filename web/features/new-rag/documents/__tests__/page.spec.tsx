@@ -1279,12 +1279,9 @@ describe('DocumentsPage', () => {
     await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'knowledgeDocuments.downloadDocuments' }))
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'report' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
@@ -1323,12 +1320,9 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentMutation).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', document_id: 'failed-report' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'failed-report' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
   })
 
@@ -1416,7 +1410,7 @@ describe('DocumentsPage', () => {
     expect(createMetadataField).toHaveBeenCalledOnce()
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'category', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(listLogicalDocuments).not.toHaveBeenCalled()
     expect(renameDocumentMutation).not.toHaveBeenCalled()
@@ -1545,7 +1539,7 @@ describe('DocumentsPage', () => {
     expect(nameInput).not.toHaveAttribute('aria-invalid')
     expect(createMetadataField).toHaveBeenCalledWith(
       { body: { name: 'priority_1', type: 'string' }, params: { control_space_id: 'space-1' } },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -1582,7 +1576,7 @@ describe('DocumentsPage', () => {
         body: { expectedRowVersion: 0, name: 'topic' },
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -1637,7 +1631,7 @@ describe('DocumentsPage', () => {
         params: { control_space_id: 'space-1', field_id: 'metadata-field-1' },
         query: { expectedRowVersion: 0 },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
@@ -2073,7 +2067,7 @@ describe('DocumentsPage', () => {
         body: { enabled: false, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     await waitFor(() =>
       expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true),
@@ -2095,7 +2089,7 @@ describe('DocumentsPage', () => {
         body: { enabled: true, expectedRowVersion: 1 },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2121,7 +2115,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(
       { queryKey: consoleQuery.features.get.key() },
@@ -4597,7 +4591,7 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4643,7 +4637,7 @@ describe('DocumentsPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -4720,13 +4714,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['one', 'two'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['one', 'two'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'space-1-documents.zip',
@@ -4762,13 +4753,10 @@ describe('DocumentsPage', () => {
       within(actions).getByRole('button', { name: 'knowledgeDocuments.downloadDocuments' }),
     )
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['download-only'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['download-only'] },
+      params: { control_space_id: 'space-1' },
+    })
   })
 
   it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
@@ -4811,13 +4799,10 @@ describe('DocumentsPage', () => {
     expect(download).toBeEnabled()
     await user.click(download)
 
-    expect(downloadDocumentsMutation).toHaveBeenCalledWith(
-      {
-        body: { document_ids: ['failed'] },
-        params: { control_space_id: 'space-1' },
-      },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['failed'] },
+      params: { control_space_id: 'space-1' },
+    })
     expect(downloadBlobMock).toHaveBeenCalledWith({
       data: archive,
       fileName: 'failed-documents.zip',
@@ -4915,7 +4900,7 @@ describe('DocumentsPage', () => {
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
     expect(removeDocumentMutation).not.toHaveBeenCalled()
     expect(queryClient.invalidateQueries).not.toHaveBeenCalledWith(

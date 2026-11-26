@@ -45,12 +45,12 @@ export default function SkillsPage() {
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
   const createMutation = useMutation(
     consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const skillsQuery = useInfiniteQuery({

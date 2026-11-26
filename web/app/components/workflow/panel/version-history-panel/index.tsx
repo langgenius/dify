@@ -314,7 +314,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
     ],
   )
 
-  const deleteWorkflow = useDeleteWorkflow(resource, { silent: true })
+  const deleteWorkflow = useDeleteWorkflow(resource)
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -341,7 +341,7 @@ export const VersionHistoryPanel = ({ latestVersionId }: VersionHistoryPanelProp
     [deleteWorkflow, t, deleteAllInspectVars, invalidAllLastRun, workflowStore, showBackupDraft],
   )
 
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
 
   const handleUpdateWorkflow = useCallback(
     async (params: { id?: string; title: string; releaseNotes: string }) => {

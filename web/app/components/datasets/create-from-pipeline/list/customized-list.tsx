@@ -41,7 +41,7 @@ const CustomizedList = ({
   const deleteFilter = { mutationKey, exact: true }
   const deletion = useMutation({
     ...deleteTemplate.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       networkMode: 'always',
       onSuccess: () => {
         deleteDialog.close()

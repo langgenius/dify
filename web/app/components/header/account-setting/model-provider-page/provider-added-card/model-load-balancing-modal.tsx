@@ -183,7 +183,7 @@ const ModelLoadBalancingModal = ({
   )
   const { mutateAsync: updateModelLoadBalancingConfig } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const initialCustomModelCredential = useMemo(() => {

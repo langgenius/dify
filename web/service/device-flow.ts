@@ -41,8 +41,6 @@ const deviceFlowClient: JsonifiedClient<ContractRouterClient<typeof deviceFlowCo
         request<Response>(input.url, init, {
           fetchCompat: true,
           request: input,
-          // The device page owns every failure message; never toast the raw server code.
-          silent: true,
         }),
     }),
   )

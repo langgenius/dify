@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { AppSourceType } from '@/service/share'
 import {
   createHumanInputFormFixture,
@@ -18,6 +19,7 @@ const mockUpdateFeedback = vi.fn()
 const mockOnOpenLog = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
+const mockToastError = vi.fn()
 vi.mock('@/config', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_HITL_IM: true,
@@ -48,6 +50,7 @@ vi.mock('@/service/debug', () => ({
 vi.mock('@/app/notifications', () => ({
   toast: {
     warning: (...args: unknown[]) => mockToastWarning(...args),
+    error: (...args: unknown[]) => mockToastError(...args),
     success: vi.fn(),
   },
 }))
@@ -367,6 +370,39 @@ describe('GenerationItem', () => {
     )
 
     expect(screen.queryByText('follow up answer')).not.toBeInTheDocument()
+  })
+
+  it('reports a failed more-like-this request and lets the user retry', async () => {
+    const user = userEvent.setup()
+    mockFetchMoreLikeThis.mockReset()
+    mockToastWarning.mockReset()
+    mockFetchMoreLikeThis.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Generation unavailable' }),
+    )
+    mockFetchMoreLikeThis.mockResolvedValueOnce({ answer: 'retried answer', id: 'msg-2' })
+    renderItem(
+      <GenerationItem
+        appSourceType={AppSourceType.webApp}
+        content="hello world"
+        isError={false}
+        isInWebApp
+        messageId="msg-1"
+        moreLikeThis
+        onRetry={vi.fn()}
+        siteInfo={null}
+      />,
+    )
+    const moreLikeThis = screen.getByRole('button', {
+      name: /(?:^|\.)feature\.moreLikeThis\.title(?=$|:)/,
+    })
+
+    await user.click(moreLikeThis)
+    await waitFor(() => expect(mockToastError).toHaveBeenCalledWith('Generation unavailable'))
+
+    await user.click(moreLikeThis)
+    expect(await screen.findByText('retried answer')).toBeInTheDocument()
+    expect(mockFetchMoreLikeThis).toHaveBeenCalledTimes(2)
+    expect(mockToastWarning).not.toHaveBeenCalled()
   })
 
   it('should warn instead of requesting more-like-this without a message id', async () => {

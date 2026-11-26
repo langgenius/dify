@@ -8,6 +8,7 @@ import type {
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { TriggerNodeType } from '@/app/components/workflow/types'
 import type { StreamCallbacks, StreamRequest } from '@/service/event-stream'
+import { noop } from 'es-toolkit/function'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -355,11 +356,10 @@ const toTriggerStreamCallbacks = ({
   onReasoning: _onReasoning,
   onUnhandledEvent: _onUnhandledEvent,
   isPublicAPI: _isPublicAPI,
-  silent: _silent,
   ...callbacks
 }: StreamCallbacks): StreamCallbacks => ({
   ...callbacks,
-  silent: true,
+  onNotifyError: noop,
   onError: (_message, _code, moreInfo) => {
     if (moreInfo) callbacks.onData?.('', false, moreInfo)
   },
@@ -395,7 +395,7 @@ export const runTriggerDebug = async ({
       // event stream.
       const response = await request({
         signal: controller.signal,
-        context: { silent: true, stream: true },
+        context: { stream: true },
       })
 
       if (controller.signal.aborted) return

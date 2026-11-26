@@ -8,7 +8,7 @@ export const syncResults = ['added', 'not_matched', 'failed', 'removed', 'skippe
 export async function loadContactImSyncReport(queryClient: QueryClient, runId: string) {
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns.latest
   const { run } = await queryClient.query(
-    api.get.queryOptions({ context: { silent: true }, staleTime: 0 }),
+    api.get.queryOptions({ meta: { errorToast: false }, staleTime: 0 }),
   )
   if (run.id !== runId || run.status === 'queued' || run.status === 'running')
     throw new ContactImRepositoryError(ContactImRepositoryErrorCode.SyncRunNotFound)
@@ -21,7 +21,7 @@ export async function loadContactImSyncReport(queryClient: QueryClient, runId: s
       const response = await queryClient.query(
         api.results.get.queryOptions({
           input: { query: { result, page, limit: 100 } },
-          context: { silent: true },
+          meta: { errorToast: false },
         }),
       )
       if (response.page !== page)
@@ -42,7 +42,7 @@ export async function loadContactImSyncReport(queryClient: QueryClient, runId: s
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.PageLoadFailed)
   }
   const { run: current } = await queryClient.query(
-    api.get.queryOptions({ context: { silent: true }, staleTime: 0 }),
+    api.get.queryOptions({ meta: { errorToast: false }, staleTime: 0 }),
   )
   if (
     current.id !== run.id ||

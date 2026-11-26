@@ -1,12 +1,62 @@
+import logging
+from dataclasses import dataclass
+from functools import cached_property
+
 from configs import dify_config
 from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.billing_service import BillingService
+from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
+from services.errors.billing import BillingUpstreamUnavailableError
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ProviderCatalogBilling:
+    """Lazy Billing reads for one workspace catalog. An outage disables only billing-backed routes.
+
+    Cache even an unavailable result for this assembly, not across requests. Invalid responses
+    propagate. This is a read model, not authorization to skip a credit reservation.
+    """
+
+    tenant_id: str
+
+    @cached_property
+    def subscription(self) -> billing.GetSubscriptionInfoReply | None:
+        """Return the Cloud subscription if available; other editions never call Billing."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+        try:
+            return BillingService.get_info(self.tenant_id, exclude_vector_space=True)
+        except BillingUpstreamUnavailableError as exc:
+            logger.warning("Billing subscription unavailable for workspace %s: %s", self.tenant_id, exc)
+            return None
+
+    @cached_property
+    def pool_type(self) -> ProviderQuotaType | None:
+        info = self.subscription
+        if info is None:
+            return None
+        return FeatureService.get_credit_pool_type(self.tenant_id, plan=CloudPlan(info.subscription.plan))
+
+    @property
+    def load_balancing_enabled(self) -> bool | None:
+        """None means unverified, not a negative entitlement that can be persisted in Redis."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return dify_config.MODEL_LB_ENABLED
+        return self.subscription.model_load_balancing_enabled if self.subscription is not None else None
+
+    @cached_property
+    def balance(self) -> CreditPoolBalance | None:
+        if self.pool_type is None:
+            return None
+        return CreditPoolService.get_pool_if_available(tenant_id=self.tenant_id, pool_type=self.pool_type)
 
 
 class FeatureService:
@@ -215,12 +265,14 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
+        """List eligible credit providers, or none when the Cloud subscription is unavailable.
+
+        Outside Cloud this remains the deployment's provider list, not an entitlement to hosted credits.
+        """
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return cls._fulfill_trial_models_from_env()
-
-        quota_types = ("PAID", "TRIAL") if cls._is_paid_cloud_workspace(tenant_id) else ("TRIAL",)
-        return cls._fulfill_trial_models_from_env(quota_types)
+        pool_type = ProviderCatalogBilling(tenant_id).pool_type
+        return cls._fulfill_trial_models_from_env((pool_type.name,)) if pool_type is not None else []
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel) -> None:

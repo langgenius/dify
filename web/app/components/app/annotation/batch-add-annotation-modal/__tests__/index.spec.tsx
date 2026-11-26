@@ -103,10 +103,10 @@ describe('BatchModal', () => {
         message: 'appAnnotation.batchModal.runError: CSV contains duplicate questions',
       }),
     )
-    expect(annotationBatchImportMock).toHaveBeenCalledWith(
-      { params: { app_id: 'app-id' }, body: { file: lastUploadedFile } },
-      { context: { silent: true } },
-    )
+    expect(annotationBatchImportMock).toHaveBeenCalledWith({
+      params: { app_id: 'app-id' },
+      body: { file: lastUploadedFile },
+    })
     expect(props.onCancel).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeEnabled()
   })

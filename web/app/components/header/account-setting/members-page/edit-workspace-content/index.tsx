@@ -31,7 +31,7 @@ export const EditWorkspaceContent = ({ inputRef }: IEditWorkspaceContentProps) =
   // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
   const { isPending: isSubmitting, mutate: updateWorkspaceInfo } = useMutation(
     consoleQuery.workspaces.info.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => {
         location.assign(`${location.origin}`)
       },

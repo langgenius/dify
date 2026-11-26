@@ -69,25 +69,39 @@ const Operations = ({
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+    documents.status.byAction.batch.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
-    documents.byDocumentId.download.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.download.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: syncNotionDocument } = useMutation(
-    documents.byDocumentId.notion.sync.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.notion.sync.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: syncWebsiteDocument } = useMutation(
-    documents.byDocumentId.websiteSync.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.websiteSync.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
+    documents.generateSummary.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: pauseDocument } = useMutation(
-    documents.byDocumentId.processing.pause.patch.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.processing.pause.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: resumeDocument } = useMutation(
-    documents.byDocumentId.processing.resume.patch.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.processing.resume.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived

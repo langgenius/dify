@@ -114,7 +114,7 @@ export function IpPolicyForm({
     consoleQuery.workspaces.current.networkAccessGroups.currentIp.get.queryOptions({
       enabled: mode !== 'view' && currentIp === undefined,
       retry: false,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const resolvedCurrentIp =

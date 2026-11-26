@@ -16,6 +16,6 @@ export function getContactRecipientQueryOptions(
     input,
     queryKey: [...operation.queryKey({ input }), { workspaceId }],
     retry: false,
-    context: { silent: true },
+    meta: { errorToast: false },
   })
 }

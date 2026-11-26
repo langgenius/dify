@@ -6,7 +6,9 @@ import {
 } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -191,6 +193,17 @@ it('shows builtin actions when their request completes without offering unnecess
   ).not.toBeInTheDocument()
 })
 
+it('reports a failed action list request and stops loading', async () => {
+  const toastError = vi.spyOn(toast, 'error')
+  api.builtinTools.mockRejectedValue(
+    createHttpError(new Response(null, { status: 500 }), { message: 'Tool list unavailable' }),
+  )
+  renderDetail(builtin)
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('Tool list unavailable'))
+  expect(screen.queryByRole('button', { name: 'Search' })).not.toBeInTheDocument()
+  toastError.mockRestore()
+})
+
 it('lets a read-only user inspect custom tools without fetching editable credentials', async () => {
   renderDetail(custom, [])
   expect(await screen.findByRole('button', { name: 'Search' })).toBeInTheDocument()
@@ -304,17 +317,14 @@ it('updates a workflow tool only after confirmation and reloads the saved config
   api.workflowDetail.mockResolvedValue({ ...workflowDetail, label: 'Renamed Workflow' })
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() =>
-    expect(api.workflowUpdate).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({
-          workflow_tool_id: 'workflow-id',
-          name: 'search_workflow',
-          label: 'Renamed Workflow',
-          parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
-        }),
-      },
-      { context: undefined },
-    ),
+    expect(api.workflowUpdate).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        workflow_tool_id: 'workflow-id',
+        name: 'search_workflow',
+        label: 'Renamed Workflow',
+        parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
+      }),
+    }),
   )
   await waitFor(() =>
     expect(
@@ -400,4 +410,19 @@ it('opens an action with read-only parameter details and returns to its provider
     expect(screen.queryByRole('dialog', { name: 'Search' })).not.toBeInTheDocument(),
   )
   expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
+})
+
+it('keeps the custom tool editor closed when its provider fails to load', async () => {
+  api.customDetail.mockRejectedValueOnce(
+    createHttpError({ status: 503, statusText: '', headers: new Headers() }, { message: 'Down' }),
+  )
+  const toastError = vi.spyOn(toast, 'error')
+  renderDetail(custom)
+
+  await waitFor(() => expect(toastError).toHaveBeenCalledWith('Down'))
+  // An editor opened without the loaded provider would save an empty collection over it.
+  expect(
+    screen.queryByRole('button', { name: 'tools.createTool.editAction' }),
+  ).not.toBeInTheDocument()
+  toastError.mockRestore()
 })

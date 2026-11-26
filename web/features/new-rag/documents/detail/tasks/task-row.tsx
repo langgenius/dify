@@ -74,7 +74,7 @@ export function DocumentTaskRow({
   )
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const pending = Boolean(cancelTask.isPending || retryTask.isPending)

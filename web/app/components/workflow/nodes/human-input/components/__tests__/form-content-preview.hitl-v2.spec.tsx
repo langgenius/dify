@@ -107,13 +107,10 @@ it('waits for the saved workflow before displaying the real server markdown', as
     await screen.findByText('Resolved server preview', {}, { timeout: 5000 }),
   ).toBeInTheDocument()
   expect(screen.queryByText(props.content)).not.toBeInTheDocument()
-  expect(preview).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { app_id: 'app-1', node_id: 'node-1' },
-      body: { inputs: {} },
-    },
-    { context: { silent: true } },
-  )
+  expect(preview).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1', node_id: 'node-1' },
+    body: { inputs: {} },
+  })
   expect(status).toBeEmptyDOMElement()
 })
 
@@ -176,13 +173,10 @@ it.each([
     await submitPreview(user)
 
     expect(await screen.findByText('Server-resolved contract')).toBeInTheDocument()
-    expect(endpoint).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { app_id: 'app-1', node_id: 'node-1' },
-        body: { inputs: { [`#${selector}#`]: 'Reviewed contract' } },
-      },
-      { context: { silent: true } },
-    )
+    expect(endpoint).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', node_id: 'node-1' },
+      body: { inputs: { [`#${selector}#`]: 'Reviewed contract' } },
+    })
   },
 )
 
@@ -213,10 +207,10 @@ it.each([
     await userEvent.setup().click(screen.getByRole('button', { name: previewLabel }))
     expect(await screen.findByText('Cached server preview')).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: previewLabel })).not.toBeInTheDocument()
-    expect(preview).toHaveBeenCalledExactlyOnceWith(
-      { params: { app_id: 'app-1', node_id: 'node-1' }, body: { inputs: {} } },
-      { context: { silent: true } },
-    )
+    expect(preview).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: 'app-1', node_id: 'node-1' },
+      body: { inputs: {} },
+    })
   },
 )
 
@@ -286,19 +280,16 @@ it('submits number, boolean and JSON dependency values using their declared type
   await submitPreview(user)
 
   expect(await screen.findByText('Typed server preview')).toBeInTheDocument()
-  expect(preview).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { app_id: 'app-1', node_id: 'node-1' },
-      body: {
-        inputs: {
-          '#source.amount#': 0,
-          '#source.approved#': false,
-          '#source.settings#': { term: 30 },
-        },
+  expect(preview).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1', node_id: 'node-1' },
+    body: {
+      inputs: {
+        '#source.amount#': 0,
+        '#source.approved#': false,
+        '#source.settings#': { term: 30 },
       },
     },
-    { context: { silent: true } },
-  )
+  })
 })
 
 it('collects variable defaults and select options without treating output fields as dependencies', async () => {
@@ -329,18 +320,15 @@ it('collects variable defaults and select options without treating output fields
   await submitPreview(user)
 
   expect(await screen.findByText('Server field defaults')).toBeInTheDocument()
-  expect(preview).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { app_id: 'app-1', node_id: 'node-1' },
-      body: {
-        inputs: {
-          '#source.draft#': 'Default feedback',
-          '#source.options#': ['approve', 'revise'],
-        },
+  expect(preview).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1', node_id: 'node-1' },
+    body: {
+      inputs: {
+        '#source.draft#': 'Default feedback',
+        '#source.options#': ['approve', 'revise'],
       },
     },
-    { context: { silent: true } },
-  )
+  })
 })
 
 it('shows an inline required-field error before requesting a preview and accepts the corrected value', async () => {
@@ -365,13 +353,10 @@ it('shows an inline required-field error before requesting a preview and accepts
   await submitPreview(user)
   expect(await screen.findByText('Validated server preview')).toBeInTheDocument()
   expect(sync).toHaveBeenCalledTimes(1)
-  expect(preview).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { app_id: 'app-1', node_id: 'node-1' },
-      body: { inputs: { '#source.draft#': 'Validated contract' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(preview).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: 'app-1', node_id: 'node-1' },
+    body: { inputs: { '#source.draft#': 'Validated contract' } },
+  })
 })
 
 it('ignores a closed preview request failure after reopening with different dependencies', async () => {

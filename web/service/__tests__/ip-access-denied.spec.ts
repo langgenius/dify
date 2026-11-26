@@ -15,6 +15,7 @@ import { markAppDeletionFailed, markAppDeletionStarted } from '../app-deletion'
 // oxlint-disable-next-line no-restricted-imports -- This integration spec exercises public WebApp transport error handling.
 import { request } from '../base'
 import { consoleClient } from '../console'
+import { isErrorHandled } from '../handled-error'
 import * as webAppAuth from '../webapp-auth'
 
 const refreshAccessTokenOrReLogin = vi.hoisted(() => vi.fn())
@@ -208,7 +209,9 @@ describe('WebApp IP access denial transport', () => {
       expect(isAppAccessError(error)).toBe(false)
       expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
       expect((error as ORPCError<string, unknown>).data).toEqual(data)
-      expect(toast.error).toHaveBeenCalledWith(data.message)
+      // The transport leaves ordinary errors for the query cache to report.
+      expect(isErrorHandled(error)).toBe(false)
+      expect(toast.error).not.toHaveBeenCalled()
       expect(refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
     },
   )
@@ -237,6 +240,8 @@ describe('application not-found transport', () => {
       { isPublicAPI: true },
     ).catch((error) => error)
     expect(isAppAccessError(error)).toBe(true)
+    // The app-access dialog owns this failure, so the query cache must not report it.
+    expect(isErrorHandled(error)).toBe(true)
     expect((error as ORPCError<string, unknown>).data).toEqual(body)
     expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({
       reason: 'app_not_found',

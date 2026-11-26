@@ -54,7 +54,7 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true } }
+const noErrorToast = { meta: { errorToast: false as const } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -73,9 +73,9 @@ function useMetadataFieldMutation() {
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const metadata = consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata
-  const createField = useMutation(metadata.post.mutationOptions(silentRequest))
-  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(silentRequest))
-  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(silentRequest))
+  const createField = useMutation(metadata.post.mutationOptions(noErrorToast))
+  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(noErrorToast))
+  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(noErrorToast))
   const isPending = createField.isPending || renameField.isPending || deleteField.isPending
   const fieldMutations = {
     create: createField.mutateAsync,

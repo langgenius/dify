@@ -158,7 +158,9 @@ const FeaturesTrigger = () => {
     mutateAsync: publishWorkflow,
     reset: resetPublishError,
   } = useMutation(
-    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const triggerNodeLimitExceeded = isTriggerNodeLimitError(publishError)
   const { mutateAsync: publishEvaluationWorkflow } = useMutation(

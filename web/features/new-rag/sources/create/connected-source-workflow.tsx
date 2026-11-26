@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { formatFileSize } from '@/utils/format'
 import { createRequestId } from '../../request-id'
 import {
@@ -666,7 +667,7 @@ function ResourceConfiguration({
   const sessionRef = useRef<PreviewSourceSession>({ active: false, committed: false })
   const sourceNameInitializedRef = useRef(Boolean(draft.sourceName.trim()))
   const [previewSource, setPreviewSource] = useState<Source>()
-  const [previewError, setPreviewError] = useState(false)
+  const [previewError, setPreviewError] = useState<{ message?: string } | false>(false)
   const [selected, setSelected] = useState<Map<string, SelectableResource>>(() => new Map())
   const selectedRef = useRef<Map<string, SelectableResource>>(new Map())
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
@@ -682,7 +683,7 @@ function ResourceConfiguration({
   const [selectingAll, setSelectingAll] = useState(false)
   const [selectionLimitError, setSelectionLimitError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState(false)
+  const [submitError, setSubmitError] = useState<{ message?: string } | false>(false)
   const driveBranchesRef = useRef<Map<string, DriveBranch>>(new Map())
   const driveLoadPromisesRef = useRef<Map<string, Promise<FileResource[]>>>(new Map())
   const driveTransport = usesDriveTransport(draft)
@@ -748,8 +749,8 @@ function ResourceConfiguration({
         }
         session.source = source
         setPreviewSource(source)
-      } catch {
-        if (session.active) setPreviewError(true)
+      } catch (error) {
+        if (session.active) setPreviewError({ message: getRequestErrorMessage(error) })
       }
     }
     void createPreviewSource()
@@ -1560,6 +1561,7 @@ function ResourceConfiguration({
       if (session.active) setPreviewSource(committedSource)
       await completeSubmission()
     } catch {
+      let reconcileErrorMessage: string | undefined
       try {
         if (session.source) {
           const reconciledSource = sourceFromApi(
@@ -1582,10 +1584,11 @@ function ResourceConfiguration({
           if (!session.active) return
           setPreviewSource(reconciledSource)
         }
-      } catch {
+      } catch (error) {
         // Keep the last known source so the visible retry path remains available.
+        reconcileErrorMessage = getRequestErrorMessage(error)
       }
-      if (session.active) setSubmitError(true)
+      if (session.active) setSubmitError({ message: reconcileErrorMessage })
     }
   }
 
@@ -1621,7 +1624,9 @@ function ResourceConfiguration({
         </div>
       ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {previewError.message ?? t(($) => $.providerLoadFailed)}
+          </p>
           <Button type="button" className="mt-3" onClick={() => globalThis.location.reload()}>
             {t(($) => $.retryProviderLoad)}
           </Button>
@@ -1704,7 +1709,7 @@ function ResourceConfiguration({
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
+          {submitError.message ?? t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
@@ -1883,8 +1888,9 @@ function ConnectedSourceWorkflowSession({
   )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       retry: false,
       select: sourceProviderListFromApi,
     }),
@@ -1897,7 +1903,8 @@ function ConnectedSourceWorkflowSession({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {

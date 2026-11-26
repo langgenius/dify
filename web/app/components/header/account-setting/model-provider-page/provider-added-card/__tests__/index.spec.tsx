@@ -153,6 +153,15 @@ it.each([false, true])(
   },
 )
 
+it('keeps the model list closed for a role that can only configure auto updates', async () => {
+  const { user } = setup({}, { workspacePermissionKeys: ['plugin.plugin_preferences'] })
+  expect(
+    screen.queryByRole('button', { name: /modelProvider.modelProvider.showModels/ }),
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Expand OpenAI' }))
+  expect(api.models).not.toHaveBeenCalled()
+})
+
 it('opens the real model list, refreshes it after a model change, and restores focus after collapsing', async () => {
   const { user } = setup()
   await user.click(showModels())
