@@ -37,7 +37,8 @@ export function workspacePolicies(consoleQuery: ConsoleQuery): ConsolePolicies['
           revoke: {
             post: {
               mutationOptions: {
-                meta: { alsoInvalidate: ['features'] },
+                // Invitees are listed as members too, and invitations use seats.
+                meta: { alsoInvalidate: ['features', 'workspaces.current.members'] },
                 // A failed revoke may mean the invitation was already accepted or revoked, so
                 // members and seats refresh after one too. Waits for the pending invitations.
                 onSettled: (_data, error, { params }, _result, { client }) => {

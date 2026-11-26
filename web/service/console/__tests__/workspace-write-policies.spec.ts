@@ -117,7 +117,10 @@ describe('member invitation policies', () => {
         input: { params: { workspace_id: 'workspace-1' } },
       }),
     ])
-    expect(revoke.mutationOptions().meta?.alsoInvalidate).toEqual(['features'])
+    expect(revoke.mutationOptions().meta?.alsoInvalidate).toEqual([
+      'features',
+      'workspaces.current.members',
+    ])
   })
 
   it('refreshes members and seats too after a failed revoke', async () => {
