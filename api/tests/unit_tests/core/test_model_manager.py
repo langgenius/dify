@@ -284,6 +284,40 @@ def _make_hosted_credit_model(quota_type: ProviderQuotaType) -> tuple[HostedCred
     return instance, llm
 
 
+def test_exhausted_hosted_pool_keeps_only_zero_credit_models_on_system(config_overrides: Callable[..., None]) -> None:
+    """Free models keep hosted credentials; paid, unoffered, and explicitly custom routes do not."""
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4:0,custom-only:0")
+    hosted, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
+    bundle = hosted.provider_model_bundle
+    configuration = bundle.configuration
+    quota = configuration.system_configuration.quota_configurations[0]
+    quota.quota_used = quota.quota_limit
+    quota.is_valid = False
+    quota.restrict_models = [RestrictModel(model=name, model_type=ModelType.LLM) for name in ("gpt-4", "gpt-4o")]
+    schema = configuration.provider.models[0]
+    configuration.provider.models.extend(
+        schema.model_copy(update={"model": name}) for name in ("gpt-4o", "custom-only")
+    )
+    assert [m.model for m in configuration.get_provider_models(only_active=True)] == ["gpt-4"]
+
+    configuration.using_provider_type = ProviderType.CUSTOM
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "custom"})
+    manager = ModelManager(RecordingProviderManager(bundle), enable_credentials_cache=True)
+    for name in ("gpt-4", "gpt-4o", "custom-only"):
+        instance = manager.get_model_instance(configuration.tenant_id, hosted.provider, ModelType.LLM, name)
+        assert instance.invoke_llm([], stream=False).message.content == "ok"
+    custom = manager.get_model_instance(
+        configuration.tenant_id, hosted.provider, ModelType.LLM, "gpt-4", require_custom_credentials=True
+    )
+    assert custom.credentials == {"api_key": "custom"}
+    assert llm.credential_calls == [{"api_key": "hosted"}, {"api_key": "custom"}, {"api_key": "custom"}]
+    assert configuration.using_provider_type == ProviderType.CUSTOM
+
+    configuration.preferred_provider_type = ProviderType.CUSTOM
+    preferred = manager.get_model_instance(configuration.tenant_id, hosted.provider, ModelType.LLM, "gpt-4")
+    assert preferred.credentials == custom.credentials
+
+
 def test_hosted_credit_denial_uses_custom_only_for_this_invocation(config_overrides: Callable[..., None]) -> None:
     instance, llm = _make_hosted_credit_model(ProviderQuotaType.TRIAL)
     configuration = instance.provider_model_bundle.configuration

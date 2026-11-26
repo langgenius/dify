@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -570,6 +570,29 @@ class TestEntitiesProviderConfigurationCases:
         assert [model.model for model in all_models] == ["b-model", "a-model"]
         assert [model.status for model in all_models] == [ModelStatus.ACTIVE, ModelStatus.DISABLED]
         assert [model.model for model in active_models] == ["b-model"]
+
+    @staticmethod
+    @pytest.mark.parametrize("restricted", [False, True])
+    def test_zero_credit_catalog_keeps_model_restrictions_with_an_exhausted_pool(
+        config_overrides: Callable[..., None], restricted: bool
+    ) -> None:
+        """Even without a usable custom key, list free hosted models but never grant disabled or unoffered ones."""
+        config_overrides(HOSTED_MODEL_CREDIT_CONFIG="free:0,disabled:0,other:0")
+        configuration = _build_provider_configuration()
+        configuration.preferred_provider_type = configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.provider.models = [_build_ai_model(name) for name in ("free", "paid", "disabled", "other")]
+        configuration.model_settings = [ModelSettings(model="disabled", model_type=ModelType.LLM, enabled=False)]
+        quota = configuration.system_configuration.quota_configurations[0]
+        quota.quota_unit = QuotaUnit.CREDITS
+        quota.quota_used = quota.quota_limit
+        quota.is_valid = False
+        if restricted:
+            quota.restrict_models = [
+                RestrictModel(model=name, model_type=ModelType.LLM) for name in ("free", "disabled")
+            ]
+
+        active = {model.model for model in configuration.get_provider_models(only_active=True)}
+        assert active == ({"free"} if restricted else {"free", "other"})
 
     @staticmethod
     def test_get_provider_models_system_filters_requested_model() -> None:

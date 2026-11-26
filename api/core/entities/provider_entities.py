@@ -5,6 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from configs import dify_config
 from core.entities.parameter_entities import (
     AppSelectorScope,
     CommonParameterType,
@@ -69,6 +70,16 @@ class QuotaConfiguration(BaseModel):
     quota_used: int
     is_valid: bool
     restrict_models: list[RestrictModel] = []
+
+    def hosted_credit_cost(self, model: str) -> int | None:
+        """Return the fixed price in a metered hosted credit pool, or None for other accounting modes."""
+        if (
+            self.quota_limit != -1
+            and self.quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}
+            and self.quota_unit == QuotaUnit.CREDITS
+        ):
+            return dify_config.get_model_credits(model)
+        return None
 
 
 class CredentialConfiguration(BaseModel):

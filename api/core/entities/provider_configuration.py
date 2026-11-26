@@ -13,12 +13,16 @@ from sqlalchemy import String, func, literal, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BindParameter
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from core.entities import PluginCredentialType
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (
     CustomConfiguration,
     ModelSettings,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    QuotaUnit,
     SystemConfiguration,
     SystemConfigurationStatus,
 )
@@ -79,6 +83,36 @@ def _model_type_db_literals(model_type: ModelType) -> tuple[BindParameter[str], 
     for compatibility lookups of rows that predate the canonical enum values.
     """
     return tuple(literal(value, type_=String) for value in _model_type_db_values(model_type))
+
+
+def _exhausted_hosted_credit_fallback(configuration: ProviderConfiguration) -> QuotaConfiguration | None:
+    """Return the exhausted credit pool when Custom is a fallback, not a workspace choice."""
+    if not dify_config.HOSTED_MODEL_CREDIT_CONFIG or configuration.using_provider_type != ProviderType.CUSTOM:
+        return None
+    custom = configuration.custom_configuration
+    if configuration.preferred_provider_type == ProviderType.CUSTOM and (custom.provider or custom.models):
+        return None
+    system = configuration.system_configuration
+    if not system.enabled or system.current_quota_type not in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
+        return None
+    return next(
+        (
+            q
+            for q in system.quota_configurations
+            if q.quota_type == system.current_quota_type and not q.is_valid and q.quota_unit == QuotaUnit.CREDITS
+        ),
+        None,
+    )
+
+
+def configuration_for_model(configuration: ProviderConfiguration, model: str) -> ProviderConfiguration:
+    """Keep an offered zero-credit model on System without changing the provider-wide fallback."""
+    quota = _exhausted_hosted_credit_fallback(configuration)
+    if quota is not None and quota.hosted_credit_cost(model) == 0:
+        offered = quota.restrict_models or configuration._get_provider_schema().models
+        if any(entry.model == model for entry in offered):
+            return configuration.model_copy(update={"using_provider_type": ProviderType.SYSTEM})
+    return configuration
 
 
 class ProviderConfiguration(BaseModel):
@@ -1702,7 +1736,9 @@ class ProviderConfiguration(BaseModel):
         self, model_type: ModelType | None = None, only_active: bool = False, model: str | None = None
     ) -> list[ModelWithProviderEntity]:
         """
-        Get provider models.
+        Get provider models. A catalog listing includes zero-credit hosted models even
+        when the rest of the provider has fallen back to Custom. Named lookups use
+        the supplied route and honor the same enablement and allowlist rules.
         :param model_type: model type
         :param only_active: only active models
         :param model: model name
@@ -1726,7 +1762,7 @@ class ProviderConfiguration(BaseModel):
                 model_types=model_types,
                 provider_schema=provider_schema,
                 model_setting_map=model_setting_map,
-                model=model,
+                model_names={model} if model else None,
             )
         else:
             provider_models = self._get_custom_provider_models(
@@ -1735,6 +1771,17 @@ class ProviderConfiguration(BaseModel):
                 model_setting_map=model_setting_map,
                 model=model,
             )
+            if model is None and (quota := _exhausted_hosted_credit_fallback(self)) is not None:
+                hosted_names = {
+                    entry.model
+                    for entry in quota.restrict_models or provider_schema.models
+                    if quota.hosted_credit_cost(entry.model) == 0
+                }
+                if hosted_names:
+                    provider_models = [entry for entry in provider_models if entry.model not in hosted_names]
+                    provider_models.extend(
+                        self._get_system_provider_models(model_types, provider_schema, model_setting_map, hosted_names)
+                    )
 
         if only_active:
             provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
@@ -1768,14 +1815,15 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
-        model: str | None = None,
+        model_names: set[str] | None,
     ) -> list[ModelWithProviderEntity]:
         """
-        Get system provider models.
+        Get system provider models, preserving model permissions independently of credit availability.
 
         :param model_types: model types
         :param provider_schema: provider schema
         :param model_setting_map: model setting map
+        :param model_names: names to include, or None for all models
         :return:
         """
         provider_models = []
@@ -1783,7 +1831,7 @@ class ProviderConfiguration(BaseModel):
             for m in provider_schema.models:
                 if m.model_type != model_type:
                     continue
-                if model and m.model != model:
+                if model_names is not None and m.model not in model_names:
                     continue
 
                 status = ModelStatus.ACTIVE
@@ -1823,7 +1871,7 @@ class ProviderConfiguration(BaseModel):
                 if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
                     # only customizable model
                     for restrict_model in restrict_models:
-                        if model and restrict_model.model != model:
+                        if model_names is not None and restrict_model.model not in model_names:
                             continue
 
                         copy_credentials = (
@@ -1878,7 +1926,10 @@ class ProviderConfiguration(BaseModel):
             for provider_model in provider_models:
                 if provider_model.model not in restrict_model_names:
                     provider_model.status = ModelStatus.NO_PERMISSION
-                elif not quota_configuration.is_valid:
+                elif (
+                    not quota_configuration.is_valid
+                    and quota_configuration.hosted_credit_cost(provider_model.model) != 0
+                ):
                     provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
@@ -2118,3 +2169,11 @@ class ProviderModelBundle(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(arbitrary_types_allowed=True, protected_namespaces=())
+
+
+def bind_model_route(bundle: ProviderModelBundle, model: str) -> ProviderModelBundle:
+    """Bind the named model's credential route without mutating a shared bundle or its runtime."""
+    route = configuration_for_model(bundle.configuration, model)
+    if route is bundle.configuration:
+        return bundle
+    return bundle.model_copy(update={"configuration": route})

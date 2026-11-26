@@ -4,6 +4,7 @@ from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -96,7 +97,8 @@ def _provider_manager(configuration: ProviderConfiguration | None) -> ProviderMa
     return manager
 
 
-def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhausted() -> None:
+@pytest.mark.parametrize("check_quota", [ensure_llm_quota_available_for_model, reserve_llm_quota_for_model])
+def test_metered_llm_raises_when_system_model_is_exhausted(check_quota: Callable[..., object]) -> None:
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
@@ -120,11 +122,7 @@ def test_ensure_llm_quota_available_for_model_raises_when_system_model_is_exhaus
         patch("core.app.llm.quota.create_plugin_provider_manager", return_value=provider_manager),
         pytest.raises(QuotaExceededError, match="Model provider openai quota exceeded."),
     ):
-        ensure_llm_quota_available_for_model(
-            tenant_id="tenant-id",
-            provider="openai",
-            model="gpt-4o",
-        )
+        check_quota(tenant_id="tenant-id", provider="openai", model="gpt-4o")
 
     provider_model = provider_configuration.get_provider_model(model_type=ModelType.LLM, model="gpt-4o")
     assert provider_model is not None
@@ -233,10 +231,11 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
 
 
 @pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID])
+@pytest.mark.parametrize("remaining", [0, 1])
 def test_reserve_model_quota_skips_zero_credit_charge(
-    config_overrides: Callable[..., None], quota_type: ProviderQuotaType
+    config_overrides: Callable[..., None], mocker: MockerFixture, quota_type: ProviderQuotaType, remaining: int
 ) -> None:
-    """An available hosted model priced at zero needs no billing or terminal usage to settle."""
+    """An offered zero-credit model needs neither a positive balance nor terminal usage."""
     config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4o:0")
     configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
@@ -248,14 +247,17 @@ def test_reserve_model_quota_skips_zero_credit_charge(
                     quota_type=quota_type,
                     quota_unit=QuotaUnit.CREDITS,
                     quota_limit=100,
-                    quota_used=1,
-                    is_valid=True,
+                    quota_used=100 - remaining,
+                    is_valid=remaining > 0,
                     restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
                 )
             ],
         ),
     )
 
+    status_lookup = mocker.spy(ProviderConfiguration, "get_provider_model")
+    with patch("core.app.llm.quota.create_plugin_provider_manager", return_value=_provider_manager(configuration)):
+        ensure_llm_quota_available_for_model(tenant_id="tenant-id", provider="openai", model="gpt-4o")
     reservation = reserve_model_quota_for_configuration(
         configuration,
         model_type=ModelType.LLM,
@@ -265,6 +267,7 @@ def test_reserve_model_quota_skips_zero_credit_charge(
         created_by=None,
     )
 
+    status_lookup.assert_not_called()
     assert reservation.credit_pool_reservation is None
     assert not reservation.requires_settlement
     assert reservation.commit_before_delivery
@@ -468,10 +471,12 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
     ("enabled", "offered_bucket"),
     [(True, ProviderQuotaType.PAID), (True, ProviderQuotaType.FREE), (False, ProviderQuotaType.TRIAL)],
 )
+@pytest.mark.parametrize("price", [0, 1])
 def test_reserve_llm_quota_requires_an_enabled_selected_bucket(
-    enabled: bool, offered_bucket: ProviderQuotaType
+    config_overrides: Callable[..., None], enabled: bool, offered_bucket: ProviderQuotaType, price: int
 ) -> None:
-    """A System route without an enabled trial bucket must fail before reserving any credits."""
+    """No model price grants access to a missing or disabled trial bucket."""
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG=f"gpt-4o:{price}")
     provider_configuration = _provider_configuration(
         using_provider_type=ProviderType.SYSTEM,
         system_configuration=SystemConfiguration(
