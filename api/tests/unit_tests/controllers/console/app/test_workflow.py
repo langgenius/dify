@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
+from werkzeug.exceptions import HTTPException, NotFound, ServiceUnavailable, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
@@ -48,6 +48,7 @@ from models.workflow import Workflow, WorkflowLoroDraft, WorkflowType
 from services import workflow_variable_reference_validator as variable_reference_validator
 from services.app.access import AppAccessFilter
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
+from services.errors.billing import BillingUpstreamUnavailableError
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_app
@@ -449,6 +450,26 @@ class TestWorkflowCases:
         assert response["result"] == "success"
         assert sync_draft_workflow.call_args.kwargs["environment_variables"] == []
         assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
+
+    @staticmethod
+    def test_sync_draft_workflow_returns_503_if_entitlement_is_unavailable(
+        app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        check_entitlement = Mock(side_effect=BillingUpstreamUnavailableError("billing unavailable"))
+        monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", check_entitlement)
+        save = Mock()
+        monkeypatch.setattr(workflow_module, "WorkflowService", save)
+        api = workflow_module.DraftWorkflowApi()
+        with (
+            app.test_request_context(
+                "/apps/app/workflows/draft",
+                method="POST",
+                json={"graph": {}, "features": {}},
+            ),
+            pytest.raises(ServiceUnavailable),
+        ):
+            inspect.unwrap(api.post)(api, _account(), app_model=_workflow_app())
+        save.assert_not_called()
 
     @staticmethod
     @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
@@ -855,32 +876,16 @@ class TestWorkflowCases:
         assert response["has_more"] is False
 
     @staticmethod
-    @pytest.mark.parametrize("collaboration_enabled", [False, True])
-    @pytest.mark.parametrize("stored_epoch", [None, "d71ec3fa-dd4e-4ab0-aa31-14b53d1ffea9"])
     def test_draft_workflow_get_serializes_response_model(
-        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, collaboration_enabled: bool, stored_epoch: str | None
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ) -> None:
         workflow = _make_workflow(version=Workflow.VERSION_DRAFT)
         sqlite_session.add_all([_account(), workflow])
-        if stored_epoch:
-            sqlite_session.flush()
-            sqlite_session.add(
-                WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=stored_epoch)
-            )
         sqlite_session.commit()
-        monkeypatch.setattr(
-            workflow_module.FeatureService, "can_use_workflow_collaboration", lambda _tenant_id: collaboration_enabled
-        )
-
+        monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", lambda _tenant_id: False)
         api = workflow_module.DraftWorkflowApi()
-        handler = inspect.unwrap(api.get)
+        response = inspect.unwrap(api.get)(api, sqlite_session, app_model=_workflow_app())
 
-        response = handler(api, sqlite_session, app_model=_workflow_app())
-
-        if collaboration_enabled:
-            assert response["loro_draft_epoch"] == (stored_epoch or workflow.id)
-        else:
-            assert "loro_draft_epoch" not in response
         assert response["id"] == "workflow-1"
         assert response["graph"] == {"nodes": [], "edges": []}
         assert response["features"] == {"file_upload": {"enabled": False}}
@@ -925,6 +930,42 @@ class TestWorkflowCases:
                 "allowed_file_upload_methods": ["local_file"],
             }
         ]
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("entitled", "stored_epoch"),
+        [
+            (True, None),
+            (True, "d71ec3fa-dd4e-4ab0-aa31-14b53d1ffea9"),
+            (False, "d71ec3fa-dd4e-4ab0-aa31-14b53d1ffea9"),
+            (None, "d71ec3fa-dd4e-4ab0-aa31-14b53d1ffea9"),
+        ],
+        ids=["unseeded", "stored", "disabled", "billing-unavailable"],
+    )
+    def test_draft_workflow_get_collaboration_epoch(
+        monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, entitled: bool | None, stored_epoch: str | None
+    ) -> None:
+        workflow = _make_workflow(version=Workflow.VERSION_DRAFT)
+        sqlite_session.add(workflow)
+        if stored_epoch:
+            sqlite_session.flush()
+            sqlite_session.add(
+                WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=stored_epoch)
+            )
+        sqlite_session.commit()
+        workflow_id = workflow.id
+
+        def check_entitlement(_tenant_id: str) -> bool:
+            assert not sqlite_session.in_transaction()
+            if entitled is None:
+                raise BillingUpstreamUnavailableError("billing unavailable")
+            return entitled
+
+        monkeypatch.setattr(workflow_module.FeatureService, "can_use_workflow_collaboration", check_entitlement)
+        api = workflow_module.DraftWorkflowApi()
+        response = inspect.unwrap(api.get)(api, sqlite_session, app_model=_workflow_app())
+        assert response["id"] == workflow_id
+        assert response.get("loro_draft_epoch") == ((stored_epoch or workflow_id) if entitled else None)
 
     @staticmethod
     def test_published_workflow_get_uses_session_aware_response_source(

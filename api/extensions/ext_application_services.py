@@ -50,12 +50,14 @@ from extensions.application_services.resource_access_token import build_resource
 from extensions.application_services.tracing import TracingServices, build_tracing_services
 from extensions.application_services.trial_app import TrialAppServices, build_trial_app_services
 from extensions.application_services.trigger import TriggerServices, build_trigger_services
+from extensions.application_services.workflow_collaboration import build_workflow_collaboration
 from extensions.application_services.workspace import (
     WorkspaceServices,
     build_workspace_membership_services,
     build_workspace_services,
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_socketio import sio
 from extensions.ext_storage import storage
 from extensions.tracing import bind_tracing
 from libs.datetime_utils import naive_utc_now
@@ -106,6 +108,7 @@ from repositories.upload_file_delivery_repository import UploadFileDeliveryQuery
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import (
@@ -257,6 +260,7 @@ from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_collaboration_service import WorkflowCollaborationService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
@@ -316,6 +320,7 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    workflow_collaboration: WorkflowCollaborationService
     moderation: ModerationService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
@@ -665,6 +670,7 @@ def build_application_services(
     )
 
     return ApplicationServices(
+        workflow_collaboration=build_workflow_collaboration(database_client, WorkflowCollaborationRepository(), sio),
         moderation=build_moderation_service(database_client=database_client),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,

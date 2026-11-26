@@ -5,20 +5,14 @@ import os
 import socket
 import time
 import uuid
-from collections.abc import Mapping
-from typing import Any, override
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import Any, Protocol, override
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
-from configs import dify_config
-from core.rbac import RBACPermission, RBACResourceScope
-from models.account import Account, TenantAccountJoin, TenantAccountRole
-from models.model import App, AppMode
+from models.account import Account
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
 from services.account_avatar_service import AccountAvatarService
-from services.enterprise.rbac_service import RBACService
-from services.feature_service import FeatureService
+from services.workflow_loro_document import LoroDraftSyncResult
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +27,30 @@ class WorkflowCollaborationForbiddenError(Exception):
 
 class WorkflowCollaborationNotEntitledError(Exception):
     """The workspace cannot use workflow collaboration."""
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowDraftEditor:
+    """An admitted editor and the owner scope derived from the joined socket."""
+
+    app_id: str
+    tenant_id: str
+    account_id: str
+
+
+class SyncWorkflowDraft(Protocol):
+    def __call__(
+        self,
+        editor: WorkflowDraftEditor,
+        /,
+        *,
+        epoch: str,
+        version: bytes | None,
+        update: bytes | None,
+        allow_empty: bool,
+    ) -> LoroDraftSyncResult:
+        """Confirm an admitted editor's update from a fresh draft transaction."""
+        ...
 
 
 def _get_process_server_id() -> str:
@@ -54,12 +72,20 @@ class WorkflowCollaborationService:
     _socketio: Any
 
     def __init__(
-        self, repository: WorkflowCollaborationRepository, socketio: Any, server_id: str | None = None
+        self,
+        repository: WorkflowCollaborationRepository,
+        socketio: Any,
+        *,
+        check_edit_access: Callable[[WorkflowDraftEditor], None],
+        sync_draft: SyncWorkflowDraft,
+        server_id: str | None = None,
     ) -> None:
         self._repository = repository
         self._socketio = socketio
         self._server_id_override = server_id
         self._heartbeat_started = False
+        self._check_edit_access = check_edit_access
+        self._sync_draft = sync_draft
 
     @override
     def __repr__(self) -> str:
@@ -101,44 +127,21 @@ class WorkflowCollaborationService:
             },
         )
 
-    def _check_workflow_edit_access(self, workflow_id: str, tenant_id: str, user_id: str, *, session: Session) -> App:
-        row = session.execute(
-            select(App, TenantAccountJoin.role)
-            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
-            .where(
-                App.id == workflow_id,
-                App.tenant_id == tenant_id,
-                App.status == "normal",
-                App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
-                TenantAccountJoin.account_id == user_id,
-            )
-        ).one_or_none()
-        if row is None:
-            raise WorkflowCollaborationForbiddenError
-        app, role = row
-        if dify_config.RBAC_ENABLED:
-            allowed = app.maintainer == user_id or RBACService.CheckAccess.check(
-                tenant_id,
-                user_id,
-                scene=RBACPermission.APP_EDIT,
-                resource_type=RBACResourceScope.APP,
-                resource_id=app.id,
-            )
-        else:
-            allowed = TenantAccountRole.is_editing_role(role)
-        if not allowed:
-            raise WorkflowCollaborationForbiddenError
-        if not FeatureService.can_use_workflow_collaboration(tenant_id):
-            raise WorkflowCollaborationNotEntitledError
-        return app
+    def _socket_identity(self, sid: str) -> Mapping[str, Any]:
+        """Read the server-owned identity, allowing a disconnected socket to be absent."""
+        try:
+            return self._socketio.get_session(sid)
+        except KeyError:
+            return {}
 
-    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str, *, session: Session) -> str | None:
-        socket_session = self._socketio.get_session(sid)
+    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str) -> str | None:
+        """Check a live identity before joining its authorized workflow room."""
+        socket_session = self._socket_identity(sid)
         user_id = socket_session.get("user_id")
         tenant_id = socket_session.get("tenant_id")
         if not user_id or not tenant_id:
             return None
-        self._check_workflow_edit_access(workflow_id, tenant_id, user_id, session=session)
+        self._check_edit_access(WorkflowDraftEditor(workflow_id, tenant_id, user_id))
         previous = self._repository.get_sid_mapping(sid)
         if previous and previous["workflow_id"] != workflow_id:
             self._socketio.leave_room(sid, previous["workflow_id"])
@@ -157,17 +160,32 @@ class WorkflowCollaborationService:
         self.broadcast_online_users(workflow_id)
         return str(user_id)
 
-    def authorize_loro_draft_sync(self, sid: str, *, session: Session) -> tuple[App, str] | None:
+    def authorize_loro_draft_sync(self, sid: str) -> WorkflowDraftEditor | None:
+        """Resolve and reauthorize the room's editor before decoding draft data."""
         mapping = self._repository.get_sid_mapping(sid)
         if not mapping:
             return None
-        identity = self._socketio.get_session(sid)
+        identity = self._socket_identity(sid)
         user_id, tenant_id = identity.get("user_id"), identity.get("tenant_id")
         if not tenant_id or not user_id or user_id != mapping["user_id"]:
             return None
-        app = self._check_workflow_edit_access(mapping["workflow_id"], tenant_id, user_id, session=session)
-        self.refresh_session_state(app.id, sid)
-        return app, user_id
+        editor = WorkflowDraftEditor(mapping["workflow_id"], tenant_id, user_id)
+        self._check_edit_access(editor)
+        return editor
+
+    def sync_loro_draft(
+        self,
+        sid: str,
+        editor: WorkflowDraftEditor,
+        *,
+        epoch: str,
+        version: bytes | None,
+        update: bytes | None,
+        allow_empty: bool,
+    ) -> LoroDraftSyncResult:
+        """Refresh presence before opening the transaction for an admitted draft RPC."""
+        self.refresh_session_state(editor.app_id, sid)
+        return self._sync_draft(editor, epoch=epoch, version=version, update=update, allow_empty=allow_empty)
 
     def disconnect_session(self, sid: str) -> None:
         mapping = self._repository.get_sid_mapping(sid)

@@ -97,6 +97,7 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
+from services.errors.billing import BillingUpstreamError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.feature_service import FeatureService
@@ -634,25 +635,27 @@ class DraftWorkflowApi(Resource):
         """
         Get draft workflow
         """
-        draft = WorkflowService.get_draft_workflow_with_loro_epoch(app_model=app_model, session=session)
-        if draft is None:
-            raise DraftWorkflowNotExist()
-        workflow, epoch = draft
-
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-        # Return workflow with response-only Agent node job projection so the
-        # front-end can treat draft graph node data as the editing source.
-        response = DraftWorkflowResponse.model_validate(
-            WorkflowResponseSource(workflow, session=session), from_attributes=True
-        )
-        response.graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=session,
-            draft_workflow=workflow,
-        )
-        response.loro_draft_epoch = (
-            (epoch or workflow.id) if FeatureService.can_use_workflow_collaboration(app_model.tenant_id) else None
-        )
+        with session:
+            tenant_id = app_model.tenant_id
+            draft = WorkflowService.get_draft_workflow_with_loro_epoch(app_model=app_model, session=session)
+            if draft is None:
+                raise DraftWorkflowNotExist()
+            workflow, epoch = draft
+            epoch = epoch or workflow.id
+            response = DraftWorkflowResponse.model_validate(
+                WorkflowResponseSource(workflow, session=session), from_attributes=True
+            )
+            response.graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+                session=session,
+                draft_workflow=workflow,
+            )
+        try:
+            if FeatureService.can_use_workflow_collaboration(tenant_id):
+                response.loro_draft_epoch = epoch
+        except BillingUpstreamError:
+            logger.warning("Workflow collaboration entitlement unavailable for tenant %s", tenant_id, exc_info=True)
         return response.model_dump(mode="json")
 
     @error_responses(DraftWorkflowNotSync)
@@ -694,7 +697,10 @@ class DraftWorkflowApi(Resource):
 
         # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
         # Require explicit confirmation for both regular saves and text/plain unload beacons.
-        initialize_only = FeatureService.can_use_workflow_collaboration(app_model.tenant_id)
+        try:
+            initialize_only = FeatureService.can_use_workflow_collaboration(app_model.tenant_id)
+        except BillingUpstreamError as exc:
+            raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
         if (
             not initialize_only
             and args_model.graph.get("nodes") == []

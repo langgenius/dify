@@ -1033,7 +1033,7 @@ def test_create_or_update_app_forwards_imported_agent_purge_ids(
         account_id="account-1",
     )
     state = sqlite_session.get_one(WorkflowLoroDraft, workflow.id)
-    assert state.snapshot is not None
+    assert state.snapshot is None
     assert state.epoch != workflow.id
 
 

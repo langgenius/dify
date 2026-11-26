@@ -2,7 +2,9 @@
 
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+import pytest
+from loro import ExportMode, LoroDoc, VersionVector
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 
 from models.agent import (
@@ -15,9 +17,11 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowLoroDraft
 from services.agent.composer_service import AgentComposerService
 from services.entities.agent_entities import ComposerSavePayload
+from services.workflow_loro_document import LoroDraftEpochChangedError, LoroDraftSyncResult, project_loro_graph
+from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
@@ -106,3 +110,53 @@ def test_legacy_composer_save_preserves_existing_chat_session_identity(sqlite_se
     assert state.session_generation == ""
     assert binding.node_job_config.session_generation == ""
     assert workflow.graph_dict["nodes"][0]["data"]["agent_session_generation"] == ""
+
+
+def test_composer_and_loro_keep_the_same_agent_job(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    workflow, binding = _create_composer_target(sqlite_session)
+    app = make_app(mode=AppMode.ADVANCED_CHAT)
+    service = WorkflowService(sqlite_session_factory)
+
+    def sync(epoch: str, version: bytes | None = None, update: bytes | None = None) -> LoroDraftSyncResult:
+        return service.sync_loro_draft(
+            app_model=app,
+            account_id="account-1",
+            epoch=epoch,
+            version=version,
+            update=update,
+            allow_empty=False,
+            session=sqlite_session,
+        )
+
+    initial = sync(workflow.id)
+    job = _save_job(sqlite_session, {"workflow_prompt": "A new task"})
+    state = sqlite_session.get_one(WorkflowLoroDraft, workflow.id)
+    assert state.epoch != initial.epoch
+    assert state.snapshot is None
+    with pytest.raises(LoroDraftEpochChangedError):
+        sync(initial.epoch, initial.version)
+    sqlite_session.rollback()
+
+    checkpoint = sync(state.epoch)
+    assert checkpoint.update is not None
+    client = LoroDoc()
+    client.import_(checkpoint.update)
+    data = client.get_map("nodes").ensure_mergeable_map("node-1").ensure_mergeable_map("data")
+    assert data.get_deep_value()["agent_task"] == job.workflow_prompt
+    data.insert("continue_agent_session", False)
+    updated = sync(
+        state.epoch, checkpoint.version, client.export(ExportMode.Updates(VersionVector.decode(checkpoint.version)))
+    )
+    assert updated.update is not None
+    client.import_(updated.update)
+    assert project_loro_graph(client) == workflow.graph_dict
+    assert binding.node_job_config.continue_agent_session is False
+    assert project_loro_graph(client)["nodes"][0]["data"]["agent_session_generation"] == (
+        binding.node_job_config.session_generation
+    )
+    saved = LoroDoc()
+    assert state.snapshot is not None
+    saved.import_(state.snapshot)
+    assert project_loro_graph(saved) == workflow.graph_dict

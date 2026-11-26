@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from loro import EncodedBlobMode, ExportMode, LoroDoc, LoroMap, LoroMovableList, VersionVector
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from loro import LoroValue
 
 _ORDER = {"nodes": "node_order", "edges": "edge_order"}
@@ -92,6 +95,7 @@ def _entity(value: LoroValue, *, seed: bool = False) -> dict[str, LoroValue]:
 
 
 def load_loro_draft(snapshot: bytes | None, graph: Mapping[str, LoroValue]) -> LoroDoc:
+    """Restore a stored snapshot or seed a JSON graph with unique entity IDs."""
     doc = LoroDoc()
     if snapshot is not None:
         doc.import_(snapshot)
@@ -103,13 +107,18 @@ def load_loro_draft(snapshot: bytes | None, graph: Mapping[str, LoroValue]) -> L
         items = graph.get(kind, [])
         if not isinstance(items, list):
             raise LoroDraftUpdateError(f"Expected an array of {kind}.")
+        entities_to_seed = [_entity(item, seed=True) for item in items]
+        reserved = {key for item in entities_to_seed if isinstance(key := item.get("id"), str) and key}
         entities = doc.get_map(kind)
         order = metadata.ensure_mergeable_movable_list(order_key)
-        for value in items:
-            item = _entity(value, seed=True)
+        for index, item in enumerate(entities_to_seed):
             key = item.get("id")
             if not isinstance(key, str) or not key or key in entities:
-                raise LoroDraftUpdateError(f"Expected unique string IDs for {kind}.")
+                key = f"legacy-{kind}-{index}"
+                while key in reserved:
+                    key += "-"
+                reserved.add(key)
+                item["id"] = key
             _write_map(entities.ensure_mergeable_map(key), item)
             order.push(key)
     doc.commit()
@@ -129,7 +138,7 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
         order = graph.pop(order_key, None)
         if not isinstance(order, list) or not all(isinstance(key, str) for key in order):
             raise LoroDraftUpdateError("Invalid entity order.")
-        ordered_ids = dict.fromkeys(key for key in order if isinstance(key, str))
+        ordered_ids = dict.fromkeys(order)
         ordered_ids.update(dict.fromkeys(sorted(entities)))
         projected: list[LoroValue] = []
         for key in ordered_ids:
@@ -149,6 +158,30 @@ def project_loro_graph(doc: LoroDoc) -> dict[str, LoroValue]:
     return graph
 
 
+def apply_loro_agent_session_policy(
+    doc: LoroDoc, projected: Mapping[str, LoroValue], saved: Mapping[str, LoroValue]
+) -> None:
+    """Merge binding-owned session fields back into the document before confirming the graph."""
+    before_nodes, after_nodes = projected["nodes"], saved["nodes"]
+    assert isinstance(before_nodes, list)
+    assert isinstance(after_nodes, list)
+    nodes = doc.get_map("nodes")
+    for before_node, after_node in zip(before_nodes, after_nodes, strict=True):
+        node = _object(after_node)
+        before_data, after_data = _object(before_node).get("data"), node.get("data")
+        if isinstance(before_data, dict) and isinstance(after_data, dict):
+            for key in ("continue_agent_session", "agent_session_generation"):
+                if before_data.get(key) != after_data.get(key) or (key in before_data) != (key in after_data):
+                    node_id = node["id"]
+                    assert isinstance(node_id, str)
+                    data = nodes.ensure_mergeable_map(node_id).ensure_mergeable_map("data")
+                    if key in after_data:
+                        data.insert(key, after_data[key])
+                    else:
+                        data.delete(key)
+    doc.commit()
+
+
 def export_loro_snapshot(doc: LoroDoc) -> bytes:
     if doc.len_ops < MAX_HISTORY_OPS:
         snapshot = doc.export(ExportMode.Snapshot())
@@ -157,27 +190,35 @@ def export_loro_snapshot(doc: LoroDoc) -> bytes:
     return doc.export(ExportMode.ShallowSnapshot(doc.oplog_frontiers))
 
 
-def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
+@contextmanager
+def _loro_input_error(message: str) -> Generator[None]:
+    """Translate native decoding failures while leaving cancellation and interrupts alone."""
     try:
-        if LoroDoc.decode_import_blob_meta(update, True).mode != EncodedBlobMode.Updates:
-            raise LoroDraftUpdateError("Expected a Loro delta.")
-        if doc.import_(update).pending is not None:
-            raise LoroDraftUpdateError("Missing causal dependencies.")
+        yield
     except BaseException as error:
         if type(error) is not BaseException and not isinstance(error, (ValueError, RuntimeError, TypeError)):
             raise
-        raise LoroDraftUpdateError(str(error)) from error
+        raise LoroDraftUpdateError(message) from error
+
+
+def merge_loro_update(doc: LoroDoc, update: bytes) -> None:
+    """Import a complete delta into a temporary document or reject the input."""
+    with _loro_input_error("Invalid Loro delta."):
+        mode = LoroDoc.decode_import_blob_meta(update, True).mode
+    if mode != EncodedBlobMode.Updates:
+        raise LoroDraftUpdateError("Expected a Loro delta.")
+    with _loro_input_error("Invalid Loro delta."):
+        pending = doc.import_(update).pending
+    if pending is not None:
+        raise LoroDraftUpdateError("Missing causal dependencies.")
 
 
 def check_loro_version(doc: LoroDoc, version: bytes | None) -> VersionVector | None:
+    """Decode the client's base and verify it belongs to the retained history."""
     if version is None:
         return None
-    try:
+    with _loro_input_error("Invalid version vector."):
         known = VersionVector.decode(version)
-    except BaseException as error:
-        if type(error) is not BaseException and not isinstance(error, (ValueError, RuntimeError, TypeError)):
-            raise
-        raise LoroDraftUpdateError("Invalid version vector.") from error
     if doc.is_shallow() and not known.includes_vv(doc.shallow_since_vv):
         raise LoroDraftHistoryCompactedError
     if not doc.state_vv.includes_vv(known):
@@ -185,8 +226,8 @@ def check_loro_version(doc: LoroDoc, version: bytes | None) -> VersionVector | N
     return known
 
 
-def export_loro_delta(doc: LoroDoc, version: bytes | None) -> bytes | None:
-    known = check_loro_version(doc, version)
+def export_loro_delta(doc: LoroDoc, known: VersionVector | None) -> bytes | None:
+    """Export changes since a checked base, or a full checkpoint for a new client."""
     if known is None:
         return doc.export(ExportMode.Snapshot())
     if known.includes_vv(doc.state_vv):

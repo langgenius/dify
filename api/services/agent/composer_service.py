@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
+from events.app_event import app_draft_loro_epoch_was_replaced
+from libs.datetime_utils import naive_utc_now
 from models import Account, App
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -64,10 +66,7 @@ from services.agent.knowledge_datasets import (
 from services.agent.knowledge_spaces import sync_agent_app_knowledge_bindings, validate_agent_knowledge_spaces
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
-from services.agent.session_policy import (
-    apply_workflow_agent_session_policy_to_node_data,
-    merge_workflow_agent_session_policy,
-)
+from services.agent.session_policy import merge_workflow_agent_session_policy
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -283,7 +282,6 @@ class AgentComposerService:
                     else None
                 ),
             )
-            cls._sync_workflow_session_policy_to_graph(workflow=workflow, binding=binding)
             session.flush()
             agent = cls._get_agent_if_present(session=session, tenant_id=tenant_id, agent_id=binding.agent_id)
             version_id = (
@@ -306,7 +304,7 @@ class AgentComposerService:
                 include_draft_files=True,
             )
             state["validation"] = cls.collect_validation_findings(payload=payload)
-            session.commit()
+            cls._commit_workflow_binding_change(session=session, workflow=workflow, account_id=account_id)
             WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=tenant_id,
                 agent_ids=retirement_candidates,
@@ -327,11 +325,12 @@ class AgentComposerService:
         source_snapshot_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        """Copy a callable roster Agent snapshot into a workflow-owned inline Agent."""
-
-        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id)
+        """Copy an admitted roster binding, committing it with the locked draft graph and epoch."""
+        workflow = cls._get_draft_workflow(session=session, tenant_id=tenant_id, app_id=app_id, for_update=True)
         binding = cls._require_binding(
-            cls._get_workflow_binding(session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+            cls._get_workflow_binding(
+                session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id, for_update=True
+            )
         )
 
         if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and idempotency_key:
@@ -406,7 +405,7 @@ class AgentComposerService:
             agent_id=inline_agent.id,
             version_id=inline_agent.active_config_snapshot_id,
         )
-        return cls._serialize_workflow_state(
+        state = cls._serialize_workflow_state(
             session=session,
             binding=binding,
             agent=inline_agent,
@@ -414,6 +413,8 @@ class AgentComposerService:
             account_id=account_id,
             include_draft_files=True,
         )
+        cls._commit_workflow_binding_change(session=session, workflow=workflow, account_id=account_id)
+        return state
 
     @classmethod
     def load_agent_app_composer(cls, *, session: Session, tenant_id: str, app_id: str) -> dict[str, Any]:
@@ -1677,20 +1678,26 @@ class AgentComposerService:
         return workflow
 
     @staticmethod
-    def _sync_workflow_session_policy_to_graph(*, workflow: Workflow, binding: WorkflowAgentNodeBinding) -> None:
-        """Write a saved node's session policy into the same locked draft graph.
+    def _commit_workflow_binding_change(*, session: Session, workflow: Workflow, account_id: str) -> None:
+        """Commit a flushed binding and its projection under the draft row lock.
 
-        Preconditions: workflow and binding share the admitted owner and the
-        owning draft is locked. Postconditions: matching node session fields
-        equal the trusted job; other graph data and session resources remain
-        unchanged. Missing graph nodes do not create new nodes.
+        A changed projection invalidates the old epoch in the same transaction.
+        Only a successful commit may notify collaborators.
         """
-        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
-        graph = workflow.graph_dict
-        for node in graph.get("nodes", []):
-            if isinstance(node, dict) and node.get("id") == binding.node_id and isinstance(node.get("data"), dict):
-                apply_workflow_agent_session_policy_to_node_data(node_data=node["data"], node_job=node_job)
-        workflow.graph = json.dumps(graph)
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+        from services.workflow_service import WorkflowService
+
+        graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(session=session, draft_workflow=workflow)
+        app_id = workflow.app_id
+        epoch = None
+        if graph != workflow.graph_dict:
+            workflow.graph = json.dumps(graph)
+            workflow.updated_at = naive_utc_now()
+            workflow.updated_by = account_id
+            epoch = WorkflowService.align_loro_draft_after_graph_write(workflow, replace=True, session=session)
+        session.commit()
+        if epoch is not None:
+            app_draft_loro_epoch_was_replaced.send(app_id, epoch=epoch)
 
     @classmethod
     def _get_workflow_binding(

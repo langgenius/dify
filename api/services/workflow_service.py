@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, cast
 
+from loro import ExportMode
 from sqlalchemy import Select, and_, exists, inspect, or_, select
-from sqlalchemy.orm import Session, sessionmaker, undefer
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from constants.trigger import is_trigger_node_type
@@ -108,6 +109,12 @@ from models.workflow import (
     resolve_workflow_kind,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from repositories.workflow_loro_draft_repository import (
+    lock_draft_checkpoint,
+    read_draft_checkpoint,
+    read_draft_epoch,
+    rotate_draft_epoch,
+)
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app.access import AppRunAccessFilter
 from services.enterprise.enterprise_service import EnterpriseService
@@ -127,6 +134,8 @@ from services.workflow_loro_document import (
     LoroDraftEmptyGraphError,
     LoroDraftEpochChangedError,
     LoroDraftSyncResult,
+    LoroDraftUpdateError,
+    apply_loro_agent_session_policy,
     check_loro_version,
     export_loro_delta,
     export_loro_snapshot,
@@ -283,18 +292,16 @@ class WorkflowService:
         return session.execute(stmt).scalar_one()
 
     @staticmethod
-    def _draft_workflow_query(app_model: App, *, include_loro: bool = False) -> Select[tuple[Workflow]]:
-        stmt = select(Workflow).where(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == Workflow.VERSION_DRAFT,
-        )
-        if include_loro:
-            stmt = stmt.outerjoin(
-                WorkflowLoroDraft,
-                and_(WorkflowLoroDraft.workflow_id == Workflow.id, WorkflowLoroDraft.tenant_id == Workflow.tenant_id),
+    def _draft_workflow_query(app_model: App) -> Select[tuple[Workflow]]:
+        return (
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
             )
-        return stmt.limit(1)
+            .limit(1)
+        )
 
     @staticmethod
     def get_draft_workflow(app_model: App, *, session: Session) -> Workflow | None:
@@ -310,12 +317,7 @@ class WorkflowService:
     @staticmethod
     def get_draft_workflow_with_loro_epoch(app_model: App, *, session: Session) -> tuple[Workflow, str | None] | None:
         """Read the graph and its collaboration epoch together without fetching the binary snapshot."""
-        stmt = (
-            WorkflowService._draft_workflow_query(app_model, include_loro=True)
-            .add_columns(WorkflowLoroDraft.epoch)
-            .execution_options(populate_existing=True)
-        )
-        return session.execute(stmt).tuples().first()
+        return read_draft_epoch(WorkflowService._draft_workflow_query(app_model), session)
 
     def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Lock and refresh the admitted App's draft for the caller's transaction.
@@ -559,10 +561,14 @@ class WorkflowService:
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
-        # fetch draft workflow by app_model
         if graph_writer == "initialize":
-            session.execute(select(App.id).where(App.id == app_model.id).with_for_update())
+            if session.scalar(self._draft_workflow_query(app_model).with_only_columns(Workflow.id)) is not None:
+                raise WorkflowHashNotEqualError()
+            session.execute(
+                select(App.id).where(App.id == app_model.id, App.tenant_id == app_model.tenant_id).with_for_update()
+            )
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
+        existing_draft = workflow is not None
 
         if workflow and (graph_writer == "initialize" or workflow.unique_hash != unique_hash):
             raise WorkflowHashNotEqualError()
@@ -631,8 +637,10 @@ class WorkflowService:
             )
 
         if commit:
-            replacement_epoch = self.align_loro_draft_after_graph_write(
-                workflow, replace=graph_writer == "server", session=session
+            replacement_epoch = (
+                self.align_loro_draft_after_graph_write(workflow, replace=graph_writer == "server", session=session)
+                if existing_draft
+                else None
             )
             session.commit()
             if replacement_epoch is not None:
@@ -648,56 +656,21 @@ class WorkflowService:
         return workflow
 
     @staticmethod
-    def _locked_loro_draft(workflow: Workflow, *, session: Session, load_snapshot: bool = False) -> WorkflowLoroDraft:
-        """After locking the workflow, read the current history or return an unsaved seed."""
-        stmt = (
-            select(WorkflowLoroDraft)
-            .where(WorkflowLoroDraft.workflow_id == workflow.id, WorkflowLoroDraft.tenant_id == workflow.tenant_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
-        )
-        if load_snapshot:
-            stmt = stmt.options(undefer(WorkflowLoroDraft.snapshot))
-        state = session.scalar(stmt)
-        if state is None:
-            return WorkflowLoroDraft(workflow_id=workflow.id, tenant_id=workflow.tenant_id, epoch=workflow.id)
-        return state
-
-    @staticmethod
     def align_loro_draft_after_graph_write(workflow: Workflow, *, replace: bool, session: Session) -> str | None:
         """Prepare a fresh collaborative history for a replacement while the draft is locked.
 
         A replacement and its epoch must commit together so edits based on the old graph
         cannot merge into the new graph. Return the new epoch for notification after commit.
-        An HTTP write retires existing Loro history without starting a collaborative session.
+        The first pull seeds from the committed replacement. An HTTP write only
+        rotates history that already exists, even if collaboration is disabled.
         """
-        snapshot = None
-        if replace and FeatureService.can_use_workflow_collaboration(workflow.tenant_id):
-            from services.agent.workflow_publish_service import WorkflowAgentPublishService
-
-            projected = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-                session=session, draft_workflow=workflow
-            )
-            doc = load_loro_draft(None, projected)
-            snapshot = export_loro_snapshot(doc)
-
-        state = WorkflowService._locked_loro_draft(workflow, session=session)
-        state.epoch = str(uuid.uuid4())
-        state.snapshot = snapshot
-        session.add(state)
-        return state.epoch if snapshot is not None else None
+        return rotate_draft_epoch(workflow, session, create=replace and dify_config.ENABLE_COLLABORATION_MODE)
 
     def _load_loro_draft_for_sync(
         self, app_model: App, *, session: Session, read_only: bool
     ) -> tuple[Workflow, WorkflowLoroDraft]:
         if read_only:
-            stmt = (
-                self._draft_workflow_query(app_model, include_loro=True)
-                .add_columns(WorkflowLoroDraft)
-                .options(undefer(WorkflowLoroDraft.snapshot))
-                .execution_options(populate_existing=True)
-            )
-            row = session.execute(stmt).first()
+            row = read_draft_checkpoint(self._draft_workflow_query(app_model), session)
             if row is None:
                 raise WorkflowNotFoundError("Draft workflow not found.")
             workflow, state = row
@@ -707,7 +680,7 @@ class WorkflowService:
         workflow = self.get_draft_workflow_for_update(app_model, session=session)
         if workflow is None:
             raise WorkflowNotFoundError("Draft workflow not found.")
-        return workflow, self._locked_loro_draft(workflow, session=session, load_snapshot=True)
+        return workflow, lock_draft_checkpoint(workflow, session)
 
     def sync_loro_draft(
         self,
@@ -730,25 +703,22 @@ class WorkflowService:
         if epoch != current_epoch:
             raise LoroDraftEpochChangedError("Draft epoch changed.")
 
-        graph = workflow.graph_dict
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         snapshot = state.snapshot
         seed = (
             WorkflowAgentPublishService.project_draft_bindings_to_graph(session=session, draft_workflow=workflow)
             if snapshot is None
-            else graph
+            else {}
         )
         doc = load_loro_draft(snapshot, seed)
-        check_loro_version(doc, version)
+        known = check_loro_version(doc, version)
         before = doc.state_vv
         if update is not None:
             merge_loro_update(doc, update)
         changed = not before.includes_vv(doc.state_vv)
         needs_commit = changed or snapshot is None
-        if needs_commit:
-            state.snapshot = export_loro_snapshot(doc)
-            session.add(state)
+        graph = workflow.graph_dict
         graph_changed = False
         retirement_candidates: set[str] = set()
         if changed:
@@ -758,28 +728,41 @@ class WorkflowService:
                     raise LoroDraftEmptyGraphError("Clearing the draft requires confirmation.")
             graph_changed = graph != projected
             if graph_changed:
-                self.validate_graph_structure(projected)
-                workflow.graph = json.dumps(projected, allow_nan=False)
+                try:
+                    self.validate_graph_structure(projected)
+                    workflow.graph = json.dumps(projected, allow_nan=False)
+                except (TypeError, ValueError) as error:
+                    raise LoroDraftUpdateError("Invalid workflow graph.") from error
                 workflow.updated_at = naive_utc_now()
                 workflow.updated_by = account_id
 
                 session.flush()
-                retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-                    session=session, draft_workflow=workflow, account_id=account_id
-                )
-                WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-                    session=session, draft_workflow=workflow
-                )
+                try:
+                    retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                        session=session, draft_workflow=workflow, account_id=account_id
+                    )
+                    WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+                        session=session, draft_workflow=workflow
+                    )
+                except json.JSONDecodeError:
+                    raise
+                except ValueError as error:
+                    raise LoroDraftUpdateError(str(error)) from error
+                graph = workflow.graph_dict
+                apply_loro_agent_session_policy(doc, projected, graph)
 
-        delta = export_loro_delta(doc, version)
-        committed_update = export_loro_delta(doc, before.encode()) if changed else None
+        if needs_commit:
+            state.snapshot = export_loro_snapshot(doc)
+            session.add(state)
+        delta = export_loro_delta(doc, known)
+        committed_update = doc.export(ExportMode.Updates(before)) if changed else None
         if committed_update is not None and len(committed_update) > 64 * 1024:
             committed_update = None
         result = LoroDraftSyncResult(
             epoch=current_epoch,
             version=doc.state_vv.encode(),
             update=delta,
-            hash=workflow.unique_hash,
+            hash=Workflow.hash_graph(graph),
             updated_at=to_utc_timestamp(workflow.updated_at or workflow.created_at),
             changed=changed,
             from_version=before.encode() if committed_update is not None else None,

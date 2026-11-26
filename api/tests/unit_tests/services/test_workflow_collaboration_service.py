@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import CloudPlan, DeploymentEdition
+from extensions.application_services.workflow_collaboration import build_workflow_collaboration
 from extensions.ext_redis import RedisClientWrapper
 from graphon.file import helpers as file_helpers
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -39,19 +40,22 @@ def collaboration_redis(
 
 
 @pytest.fixture
-def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
+def real_service(collaboration_redis: RedisClientWrapper, sqlite_engine: Engine, monkeypatch) -> ServiceFixture:
     assert collaboration_redis._require_client() is not None
     repository = WorkflowCollaborationRepository()
     socketio = Mock()
-    return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
+    service = build_workflow_collaboration(sessionmaker(sqlite_engine, expire_on_commit=False), repository, socketio)
+    monkeypatch.setattr(service, "_server_id_override", "server-1")
+    return service, repository, socketio
 
 
 @pytest.fixture
 def db_session(sqlite_engine: Engine) -> Iterator[Session]:
     """Provide a real session for tenant-scoped workflow app access checks."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, TenantAccountJoin.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[Account.__table__, App.__table__, TenantAccountJoin.__table__])
     with Session(sqlite_engine, expire_on_commit=False) as session:
+        session.add(make_account(account_id="u-1"))
         session.add(TenantAccountJoin(tenant_id="t-1", account_id="u-1", role=TenantAccountRole.EDITOR))
         session.commit()
         yield session
@@ -72,15 +76,11 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 class TestWorkflowCollaborationService:
     @pytest.mark.parametrize(
-        ("edition", "plan", "enabled", "allowed"),
+        ("edition", "plan", "allowed"),
         [
-            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, True, False),
-            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True, True),
-            (DeploymentEdition.CLOUD, CloudPlan.TEAM, True, True),
-            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True, True),
-            (DeploymentEdition.ENTERPRISE, CloudPlan.SANDBOX, True, True),
-            (DeploymentEdition.CLOUD, CloudPlan.TEAM, False, False),
-            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, False, False),
+            (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, False),
+            (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, True),
+            (DeploymentEdition.COMMUNITY, CloudPlan.SANDBOX, True),
         ],
     )
     def test_join_respects_workspace_entitlement(
@@ -89,7 +89,6 @@ class TestWorkflowCollaborationService:
         db_session: Session,
         edition: DeploymentEdition,
         plan: CloudPlan,
-        enabled: bool,
         allowed: bool,
     ) -> None:
         service, repository, socketio = real_service
@@ -98,19 +97,17 @@ class TestWorkflowCollaborationService:
         db_session.commit()
 
         with (
-            config_overrides_context(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=enabled, RBAC_ENABLED=False),
-            patch(
-                "services.workflow_collaboration_service.FeatureService.get_workspace_plan", return_value=plan
-            ) as get_plan,
+            config_overrides_context(DEPLOYMENT_EDITION=edition, ENABLE_COLLABORATION_MODE=True, RBAC_ENABLED=False),
+            patch("services.feature_service.FeatureService.get_workspace_plan", return_value=plan) as get_plan,
         ):
             if allowed:
-                result = service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                result = service.authorize_and_join_workflow_room("wf-1", "sid-1")
                 assert result is not None
             else:
                 with pytest.raises(WorkflowCollaborationNotEntitledError):
-                    service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                    service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
-        if edition == DeploymentEdition.CLOUD and enabled:
+        if edition == DeploymentEdition.CLOUD:
             get_plan.assert_called_once_with("t-1")
         else:
             get_plan.assert_not_called()
@@ -121,35 +118,19 @@ class TestWorkflowCollaborationService:
         if not allowed:
             socketio.emit.assert_not_called()
 
-    def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
-        # Arrange
-        collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {}
-
-        # Act
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
-
-        # Assert
-        assert result is None
-
-    def test_authorize_and_join_workflow_room_returns_none_when_missing_tenant(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
+    @pytest.mark.parametrize("identity", [{"tenant_id": "t-1"}, {"user_id": "u-1"}])
+    def test_join_requires_user_and_tenant(self, real_service: ServiceFixture, identity: dict[str, str]) -> None:
         collaboration_service, repository, socketio = real_service
-        socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
+        socketio.get_session.return_value = identity
 
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         assert result is None
         assert repository.list_sessions("wf-1") == []
         socketio.enter_room.assert_not_called()
         socketio.emit.assert_not_called()
 
-    def test_authorize_and_join_workflow_room_returns_none_when_workflow_is_not_accessible(
-        self, real_service: ServiceFixture, db_session: Session
-    ) -> None:
+    def test_join_rejects_inaccessible_workflow(self, real_service: ServiceFixture, db_session: Session) -> None:
         collaboration_service, repository, socketio = real_service
         socketio.get_session.return_value = {
             "user_id": "u-1",
@@ -162,14 +143,12 @@ class TestWorkflowCollaborationService:
 
         with (
             config_overrides_context(RBAC_ENABLED=True, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD),
-            patch(
-                "services.workflow_collaboration_service.RBACService.CheckAccess.check", return_value=False
-            ) as check_access,
-            patch("services.workflow_collaboration_service.FeatureService.get_workspace_plan") as get_plan,
+            patch("services.enterprise.rbac_service.RBACService.CheckAccess.check", return_value=False) as check_access,
+            patch("services.feature_service.FeatureService.get_workspace_plan") as get_plan,
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             with pytest.raises(WorkflowCollaborationForbiddenError):
-                collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+                collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         get_plan.assert_not_called()
         check_access.assert_called_once_with(

@@ -1,6 +1,7 @@
 """Exercise collaboration lifecycle and durable draft synchronization through registered Socket.IO handlers."""
 
 from collections.abc import Callable, Iterator
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -19,15 +20,16 @@ from werkzeug.test import EnvironBuilder
 from controllers.console.socketio import workflow
 from enums import CloudPlan, DeploymentEdition
 from enums.account import TenantAccountRole
+from extensions.application_services.workflow_collaboration import build_workflow_collaboration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
-from models.account import TenantAccountJoin
+from models.account import Account, AccountStatus, TenantAccountJoin
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowLoroDraft
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.billing import BillingUpstreamUnavailableError
 from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
-from services.workflow_service import WorkflowService
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
 from tests.helpers.unit.services.workflow_collaboration_fixtures import RedisState
 
@@ -35,9 +37,19 @@ type LoroClient = tuple[socketio.Server, App, Workflow, str]
 
 
 @pytest.fixture
+def collaboration_repository(
+    monkeypatch: pytest.MonkeyPatch, redis_transport: tuple[RedisClientWrapper, MagicMock]
+) -> WorkflowCollaborationRepository:
+    repository = WorkflowCollaborationRepository()
+    monkeypatch.setattr(repository, "_redis", redis_transport[0])
+    return repository
+
+
+@pytest.fixture
 def collaboration_server(
     monkeypatch: pytest.MonkeyPatch,
-    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    collaboration_repository: WorkflowCollaborationRepository,
+    sqlite_session_factory: sessionmaker[Session],
     config_overrides: Callable[..., None],
 ) -> Iterator[tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader]]:
     """Initialize app-owned metrics for registered handlers while replacing only transports and metric export."""
@@ -50,7 +62,8 @@ def collaboration_server(
     monkeypatch.setattr(server, "environ", {})
     monkeypatch.setattr(server, "app", app, raising=False)
     monkeypatch.setattr(server.eio, "sockets", {})
-    monkeypatch.setattr(workflow.repository, "_redis", redis_transport[0])
+    collaboration = build_workflow_collaboration(sqlite_session_factory, collaboration_repository, server)
+    monkeypatch.setattr(workflow, "application_services", lambda: SimpleNamespace(workflow_collaboration=collaboration))
 
     reader = InMemoryMetricReader()
     provider = MeterProvider(metric_readers=[reader])
@@ -133,8 +146,9 @@ def test_user_connect_returns_ack_when_billing_is_unavailable(
     def billing_unavailable(*_args: object, **_kwargs: object) -> None:
         raise BillingUpstreamUnavailableError("billing unavailable")
 
-    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
-    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", billing_unavailable)
+    monkeypatch.setattr(
+        workflow.application_services().workflow_collaboration, "authorize_and_join_workflow_room", billing_unavailable
+    )
 
     server._handle_event_internal(server, sid, eio_sid, ["user_connect", {"workflow_id": "wf-1"}], "/", 42)
 
@@ -150,15 +164,20 @@ def test_user_connect_distinguishes_plan_rejection_from_missing_access(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     server, _, _ = collaboration_server
-    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
 
     def not_entitled(*_args: object, **_kwargs: object) -> None:
         raise WorkflowCollaborationNotEntitledError
 
-    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", not_entitled)
+    monkeypatch.setattr(
+        workflow.application_services().workflow_collaboration, "authorize_and_join_workflow_room", not_entitled
+    )
     assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "not_entitled"}, 403)
 
-    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", lambda *_args, **_kw: None)
+    monkeypatch.setattr(
+        workflow.application_services().workflow_collaboration,
+        "authorize_and_join_workflow_room",
+        lambda *_args, **_kw: None,
+    )
     assert server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "unauthorized"}, 401)
 
 
@@ -171,8 +190,9 @@ def test_user_connect_does_not_hide_unrelated_errors(
     def unexpected_error(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("unexpected error")
 
-    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
-    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", unexpected_error)
+    monkeypatch.setattr(
+        workflow.application_services().workflow_collaboration, "authorize_and_join_workflow_room", unexpected_error
+    )
 
     with pytest.raises(RuntimeError, match="unexpected error"):
         server.handlers["/"]["user_connect"]("sid-1", {"workflow_id": "wf-1"})
@@ -193,7 +213,7 @@ def test_disconnect_with_reason_records_one_success(
     server._handle_disconnect(eio_sid, "/", server.reason.PING_TIMEOUT)
 
     redis_transport[1].assert_called_once_with(
-        "GET", workflow.repository.sid_key(sid), keys=[workflow.repository.sid_key(sid)]
+        "GET", WorkflowCollaborationRepository.sid_key(sid), keys=[WorkflowCollaborationRepository.sid_key(sid)]
     )
     assert not server.manager.is_connected(sid, "/")
     _assert_single_event(_read_metrics(reader), "disconnect", "success")
@@ -221,7 +241,7 @@ def test_disconnect_type_error_is_not_retried(
         if len(calls) == 1:
             raise failure
 
-    monkeypatch.setattr(workflow.collaboration_service, "disconnect_session", cleanup)
+    monkeypatch.setattr(workflow.application_services().workflow_collaboration, "disconnect_session", cleanup)
 
     with pytest.raises(TypeError) as caught:
         server._handle_disconnect(eio_sid, "/", server.reason.CLIENT_DISCONNECT)
@@ -236,9 +256,8 @@ def test_disconnect_type_error_is_not_retried(
 def loro_client(
     collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
     sqlite_session: Session,
-    sqlite_session_factory: sessionmaker[Session],
+    collaboration_repository: WorkflowCollaborationRepository,
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-    monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
 ) -> LoroClient:
     """Provide a joined editor backed by real ORM objects, sessions and Redis repository logic."""
@@ -262,12 +281,10 @@ def loro_client(
     sid = server.manager.connect(eio_sid, "/")
     assert isinstance(sid, str)
     server.save_session(sid, {"tenant_id": tenant.id, "user_id": account.id})
-    workflow.repository.set_session_info(
+    collaboration_repository.set_session_info(
         app.id,
         {"sid": sid, "user_id": account.id, "username": account.name, "avatar": None, "connected_at": 1},
     )
-    monkeypatch.setattr(workflow.session_factory, "create_session", sqlite_session_factory)
-    monkeypatch.setattr(workflow, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
     return server, app, draft, sid
 
 
@@ -283,54 +300,42 @@ def _seed_loro_client(client: LoroClient) -> tuple[LoroDoc, bytes]:
     return doc, body["version"]
 
 
-def test_loro_confirmation_matches_durable_history_and_duplicate_revision(
-    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    """An ACK exposes only committed state; a dropped ACK can be retried without another revision."""
+def test_loro_broadcasts_only_newly_committed_changes(loro_client: LoroClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Peers receive one change notification even if the writer retries its ACK."""
     server, app, draft, sid = loro_client
     doc, baseline = _seed_loro_client(loro_client)
+    emit = MagicMock()
+    monkeypatch.setattr(server, "emit", emit)
     doc.get_map("nodes").ensure_mergeable_map("llm").ensure_mergeable_map("data").insert("title", "Renamed")
-    payload = {
-        "epoch": draft.id,
-        "version": baseline,
-        "update": doc.export(ExportMode.Updates(VersionVector.decode(baseline))),
-    }
-    first, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
+    delta = doc.export(ExportMode.Updates(VersionVector.decode(baseline)))
+    payload = {"epoch": draft.id, "version": baseline, "update": delta}
+
+    result, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
     assert status == 200
-    with sqlite_session_factory() as session:
-        durable = session.get(Workflow, draft.id)
-        assert durable is not None
-        assert durable.app_id == app.id
-        assert durable.graph_dict["nodes"][0]["data"]["title"] == "Renamed"
-        assert first["hash"] == durable.unique_hash
-        assert session.get_one(WorkflowLoroDraft, draft.id).snapshot is not None
-    duplicate, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
-    assert status == 200
-    confirmed_version = VersionVector.decode(first.pop("version"))
-    repeated_version = VersionVector.decode(duplicate.pop("version"))
-    assert confirmed_version.distance_between(repeated_version) == 0
-    assert duplicate == first
+    assert server.handlers["/"]["loro_draft_sync"](sid, payload)[1] == 200
+    emit.assert_called_once_with(
+        "loro_draft_changed",
+        {
+            "epoch": draft.id,
+            "fromVersion": baseline,
+            "update": result["update"],
+            "version": result["version"],
+            "hash": result["hash"],
+            "updatedAt": result["updatedAt"],
+        },
+        room=app.id,
+        skip_sid=sid,
+    )
 
 
-@pytest.mark.parametrize("kind", ["corrupt-update", "corrupt-version", "snapshot", "string-bytes", "incomplete-batch"])
+@pytest.mark.parametrize("update", [b"invalid", "invalid"])
 def test_loro_rejects_invalid_binary_without_changing_the_draft(
-    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session], kind: str
+    loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session], update: bytes | str
 ) -> None:
-    """Invalid or non-delta binary input returns 400 and leaves the last committed history intact."""
+    """Malformed transport input and invalid deltas both return 400."""
     server, _, draft, sid = loro_client
-    doc, baseline = _seed_loro_client(loro_client)
-    payload: dict[str, object] = {"epoch": draft.id, "version": baseline}
-    if kind == "corrupt-update":
-        payload["update"] = b"invalid"
-    elif kind == "corrupt-version":
-        payload["version"] = b"invalid"
-    elif kind == "snapshot":
-        payload["update"] = doc.export(ExportMode.Snapshot())
-    elif kind == "incomplete-batch":
-        doc.get_map("nodes").ensure_mergeable_map("llm").insert("id", "wrong-id")
-        payload["update"] = doc.export(ExportMode.Updates(VersionVector.decode(baseline)))
-    else:
-        payload["update"] = "invalid"
+    _, baseline = _seed_loro_client(loro_client)
+    payload = {"epoch": draft.id, "version": baseline, "update": update}
     assert server.handlers["/"]["loro_draft_sync"](sid, payload) == ({"msg": "invalid_loro_update"}, 400)
     with sqlite_session_factory() as session:
         durable = session.get(Workflow, draft.id)
@@ -343,7 +348,7 @@ def test_loro_rejects_invalid_binary_without_changing_the_draft(
         assert recovered.state_vv.distance_between(VersionVector.decode(baseline)) == 0
 
 
-@pytest.mark.parametrize("reason", ["unjoined", "identity-changed", "disabled", "viewer", "wrong-tenant"])
+@pytest.mark.parametrize("reason", ["unjoined", "identity-changed", "disabled", "viewer", "wrong-tenant", "banned"])
 def test_loro_rechecks_editor_access_before_loading_history(
     loro_client: LoroClient,
     sqlite_session: Session,
@@ -360,6 +365,10 @@ def test_loro_rechecks_editor_access_before_loading_history(
         config_overrides(ENABLE_COLLABORATION_MODE=False)
     elif reason == "wrong-tenant":
         server.save_session(sid, {"tenant_id": "another-tenant", "user_id": draft.created_by})
+    elif reason == "banned":
+        account = sqlite_session.get_one(Account, draft.created_by)
+        account.status = AccountStatus.BANNED
+        sqlite_session.commit()
     else:
         membership = sqlite_session.scalar(
             select(TenantAccountJoin).where(TenantAccountJoin.account_id == draft.created_by)
@@ -370,10 +379,10 @@ def test_loro_rechecks_editor_access_before_loading_history(
     expected = ({"msg": "unauthorized"}, 401)
     if reason == "disabled":
         expected = ({"msg": "not_entitled"}, 403)
-    if reason in ("viewer", "wrong-tenant"):
+    if reason in ("viewer", "wrong-tenant", "banned"):
         expected = ({"msg": "forbidden"}, 403)
         assert server.handlers["/"]["user_connect"](sid, {"workflow_id": app.id}) == expected
-    assert server.handlers["/"]["loro_draft_sync"](sid, {"epoch": draft.id}) == expected
+    assert server.handlers["/"]["loro_draft_sync"](sid, {}) == expected
     assert sqlite_session.get(WorkflowLoroDraft, draft.id) is None
 
 

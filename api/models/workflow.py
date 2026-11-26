@@ -580,9 +580,12 @@ class Workflow(TypeBase):
 
         :return: hash
         """
-        entity = {"graph": self.graph_dict}
+        return self.hash_graph(self.graph_dict)
 
-        return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
+    @staticmethod
+    def hash_graph(graph: Mapping[str, Any]) -> str:
+        """Hash an already decoded graph with the same contract as `unique_hash`."""
+        return helper.generate_text_hash(json.dumps({"graph": graph}, sort_keys=True))
 
     @deprecated(
         "This method is not accurate for determining if a workflow is published as a tool."

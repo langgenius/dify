@@ -3,33 +3,27 @@ from collections.abc import Callable
 from typing import cast
 
 from flask import Request as FlaskRequest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from configs import dify_config
-from core.db.session_factory import session_factory
 from events.app_event import app_draft_loro_epoch_was_replaced
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
 from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from services.errors.app import WorkflowNotFoundError
 from services.errors.billing import BillingUpstreamError
 from services.workflow_collaboration_service import (
     WorkflowCollaborationForbiddenError,
     WorkflowCollaborationNotEntitledError,
-    WorkflowCollaborationService,
 )
 from services.workflow_loro_document import (
     LoroDraftEmptyGraphError,
     LoroDraftEpochChangedError,
     LoroDraftHistoryCompactedError,
+    LoroDraftUpdateError,
 )
-from services.workflow_service import WorkflowService
-
-repository = WorkflowCollaborationRepository()
-collaboration_service = WorkflowCollaborationService(repository, sio)
 
 
 class LoroDraftSyncPayload(BaseModel):
@@ -85,7 +79,7 @@ def socket_connect(sid, environ, auth=None):
                 logging.warning("Socket connect rejected: no edit permission (user_id=%s, sid=%s)", user_id, sid)
                 return False
 
-            collaboration_service.save_socket_identity(sid, user)
+            application_services().workflow_collaboration.save_socket_identity(sid, user)
             return True
 
     except Exception:
@@ -104,8 +98,8 @@ def handle_user_connect(sid, data):
         return {"msg": "workflow_id is required"}, 400
 
     try:
-        with sio.app.app_context(), session_factory.create_session() as session:
-            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+        with sio.app.app_context():
+            result = application_services().workflow_collaboration.authorize_and_join_workflow_room(workflow_id, sid)
     except BillingUpstreamError:
         logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
         return {"msg": "collaboration_unavailable"}, 503
@@ -123,13 +117,15 @@ def handle_user_connect(sid, data):
 def handle_get_online_user_avatars(sid: str, _data: object = None) -> dict[str, str]:
     """Return avatar URLs to the requesting socket using its server-side room membership."""
     with sio.app.app_context():
-        return collaboration_service.get_online_user_avatars(sid, avatar_service=application_services().accounts.avatar)
+        services = application_services()
+        return services.workflow_collaboration.get_online_user_avatars(sid, avatar_service=services.accounts.avatar)
 
 
 @observe_workflow_event("disconnect", sio)
 def _handle_disconnect(sid):
     """Remove the session from online users and observe the result."""
-    collaboration_service.disconnect_session(sid)
+    with sio.app.app_context():
+        application_services().workflow_collaboration.disconnect_session(sid)
 
 
 @_sio_on("disconnect")
@@ -145,7 +141,8 @@ def handle_disconnect(sid):
 @observe_workflow_event("collaboration_event", sio)
 def handle_collaboration_event(sid, data):
     """Broadcast presence and workflow metadata updates."""
-    return collaboration_service.relay_collaboration_event(sid, data)
+    with sio.app.app_context():
+        return application_services().workflow_collaboration.relay_collaboration_event(sid, data)
 
 
 @_sio_on("loro_draft_sync")
@@ -153,21 +150,19 @@ def handle_collaboration_event(sid, data):
 def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], int]:
     """Confirm only versions that were applied and committed; notify peers to pull their delta."""
     try:
-        payload = LoroDraftSyncPayload.model_validate(data)
-        with sio.app.app_context(), session_factory.create_session() as session:
-            admitted = collaboration_service.authorize_loro_draft_sync(sid, session=session)
-            if admitted is None:
+        with sio.app.app_context():
+            collaboration = application_services().workflow_collaboration
+            editor = collaboration.authorize_loro_draft_sync(sid)
+            if editor is None:
                 return {"msg": "unauthorized"}, 401
-            app, account_id = admitted
-            app_id = app.id
-            result = WorkflowService().sync_loro_draft(
-                app_model=app,
-                account_id=account_id,
+            payload = LoroDraftSyncPayload.model_validate(data)
+            result = collaboration.sync_loro_draft(
+                sid,
+                editor,
                 epoch=payload.epoch,
                 version=payload.version,
                 update=payload.update,
                 allow_empty=payload.allow_empty,
-                session=session,
             )
     except LoroDraftHistoryCompactedError:
         return {"msg": "history_compacted"}, 409
@@ -177,7 +172,7 @@ def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], i
         return {"msg": "draft_workflow_not_exist"}, 404
     except LoroDraftEmptyGraphError:
         return {"msg": "empty_graph_confirmation_required"}, 409
-    except ValueError:
+    except (ValidationError, LoroDraftUpdateError):
         return {"msg": "invalid_loro_update"}, 400
     except WorkflowCollaborationForbiddenError:
         return {"msg": "forbidden"}, 403
@@ -197,9 +192,9 @@ def handle_loro_draft_sync(sid: str, data: object) -> tuple[dict[str, object], i
                     hash=result.hash,
                     updatedAt=result.updated_at,
                 )
-            sio.emit("loro_draft_changed", notification, room=app_id, skip_sid=sid)
+            sio.emit("loro_draft_changed", notification, room=editor.app_id, skip_sid=sid)
         except Exception:
-            logging.exception("Failed to notify collaborators about committed Loro draft %s", app_id)
+            logging.exception("Failed to notify collaborators about committed Loro draft %s", editor.app_id)
     return {
         "epoch": result.epoch,
         "version": result.version,
