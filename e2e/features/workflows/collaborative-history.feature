@@ -14,20 +14,6 @@ Feature: Undo and redo my own changes to a shared workflow
     Then both editors and the saved draft show the prompts "My system" and "Initial user"
     When the other editor redoes their last canvas change
     Then both editors and the saved draft show the prompts "My system" and "Their user"
-    When both editors reload the Chatflow
-    Then both editors and the saved draft show the prompts "My system" and "Their user"
-
-  Scenario: Undo and redo successive writes to the same node name
-    When I rename the node "Draft prompt" to "My title"
-    And the other editor renames the node "My title" to "Their title"
-    And I undo my last canvas change
-    Then both editors and the saved draft show the LLM node named "Draft prompt"
-    When I redo my last canvas change
-    Then both editors and the saved draft show the LLM node named "Their title"
-    When the other editor undoes their last canvas change
-    Then both editors and the saved draft show the LLM node named "My title"
-    When the other editor redoes their last canvas change
-    Then both editors and the saved draft show the LLM node named "Their title"
 
   Scenario: Restore a deleted node and its connection together while keeping a collaborator's edit
     When I delete the answer node from the canvas

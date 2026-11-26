@@ -135,7 +135,7 @@ Before({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async function (this: DifyWorld, 
   console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 
-// Cucumber runs After hooks in reverse registration order: diagnostics, cleanup, then close.
+// Cucumber captures diagnostics before resource cleanup and closes the request context last.
 After(
   { name: 'Close browser session', timeout: closeSessionHookTimeoutMs },
   async function (this: DifyWorld, { result }) {
@@ -154,6 +154,9 @@ After(
   { name: 'Clean up scenario resources', timeout: cleanupHookTimeoutMs },
   async function (this: DifyWorld, { result }) {
     const cleanupTasks: CleanupTask[] = [
+      ...(this.workflowDraft
+        ? [{ label: 'Close workflow editor sessions', run: () => this.closeBrowserContexts() }]
+        : []),
       ...this.createdAgentConfigSkills.toReversed().map((skill) => ({
         label: `Delete Agent config skill ${skill.name}`,
         run: async () => {
@@ -273,11 +276,7 @@ After(
 After(
   { tags: '@workflow-collaboration or @workflow-http-draft', name: 'Check workflow editor errors' },
   function (this: DifyWorld) {
-    const draft = this.workflowDraft
-    if (!draft) return
-    const errors = [...draft.network.pageErrors, ...(draft.collaborator?.network.pageErrors ?? [])]
-    if (errors.length)
-      throw new AggregateError(errors, errors.map((error) => error.message).join('\n'))
+    if (this.workflowDraft && this.pageErrors.length) throw new Error(this.pageErrors.join('\n'))
   },
 )
 

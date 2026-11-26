@@ -51,6 +51,22 @@ export function canvasNodeByTitle(page: Page, title: string) {
   return page.getByRole('button').filter({ has: page.getByText(title, { exact: true }) })
 }
 
+export function llmPromptPanel(page: Page) {
+  return page.getByRole('region', { name: 'Draft prompt Node configuration panel', exact: true })
+}
+
+export async function openLlmPromptPanel(page: Page) {
+  const node = canvasNodeByTitle(page, 'Draft prompt')
+  await expect(node).toBeVisible({ timeout: 30_000 })
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Syncing data, just a few seconds.' }),
+  ).toBeHidden({ timeout: 30_000 })
+  const panel = llmPromptPanel(page)
+  if (!(await panel.isVisible())) await node.click()
+  await expect(panel).toBeVisible()
+  return panel
+}
+
 export async function preparePromptDraft(
   world: DifyWorld,
   collaboration: boolean,
@@ -67,7 +83,7 @@ export async function preparePromptDraft(
   world.createdAppIds.push(app.id)
   world.lastCreatedAppName = app.name
   const network = await observeWorkflowDraftNetwork(world.getPage())
-  world.workflowDraft = { appId: app.id, collaboration, network }
+  world.workflowDraft = { appId: app.id, network }
   await client.apps.byAppId.workflows.draft.post({
     params: { app_id: app.id },
     body: {
@@ -133,6 +149,7 @@ export async function preparePromptDraft(
 }
 
 export async function openCollaboratorSession(world: DifyWorld) {
+  const draft = workflowDraft(world)
   const client = world.getConsoleClient()
   const email = `e2e-workflow-${randomUUID()}@example.com`
   const invitation = await client.workspaces.current.members.inviteEmail.post({
@@ -146,7 +163,12 @@ export async function openCollaboratorSession(world: DifyWorld) {
   const browser = world.getPage().context().browser()
   if (!browser) throw new Error('The workflow collaborator needs an independent browser context.')
   const context = await browser.newContext({ baseURL, locale: defaultLocale })
-  world.registerCleanup(() => context.close())
+  draft.collaboratorContext = context
+  world.observeBrowserErrors(context, 'workflow collaborator')
+  const page = await context.newPage()
+  const network = await observeWorkflowDraftNetwork(page)
+  const editor = { page, network }
+  draft.collaborator = editor
   const collaborator = createConsoleClient({
     requestContext: context.request,
     requireCsrfToken: false,
@@ -176,7 +198,5 @@ export async function openCollaboratorSession(world: DifyWorld) {
     await client.workspaces.current.members.byMemberId.delete({ params: { member_id: profile.id } })
   })
 
-  const page = await context.newPage()
-  const network = await observeWorkflowDraftNetwork(page)
-  return { page, network, accountId: profile.id }
+  return editor
 }

@@ -51,10 +51,9 @@ export type WorkflowPreviewFixture = {
 }
 export type WorkflowDraftFixture = {
   appId: string
-  collaboration: boolean
   network: WorkflowDraftNetwork
-  savedRevision?: { hash: string; updatedAt: number; scope: string; confirmedSyncs: number }
-  collaborator?: { page: Page; network: WorkflowDraftNetwork; accountId: string }
+  collaboratorContext?: BrowserContext
+  collaborator?: { page: Page; network: WorkflowDraftNetwork }
   replacement?: {
     oldEpoch: string
     dsl: string
@@ -169,16 +168,21 @@ export class DifyWorld extends World {
       storageState: authStatePath,
     })
     this.consoleClient = createConsoleClient({ requestContext: this.consoleRequestContext })
-    this.context.on('console', (message) => {
-      if (message.type() === 'error') this.consoleErrors.push(message.text())
-    })
-    this.context.on('weberror', (webError) => {
-      this.pageErrors.push(webError.error().message)
-    })
+    this.observeBrowserErrors(this.context)
     this.context.on('download', (dl) => {
       this.capturedDownloads.push(dl)
     })
     this.page = await this.context.newPage()
+  }
+
+  observeBrowserErrors(context: BrowserContext, actor?: string) {
+    const prefix = actor ? `${actor}: ` : ''
+    context.on('console', (message) => {
+      if (message.type() === 'error') this.consoleErrors.push(prefix + message.text())
+    })
+    context.on('weberror', (webError) => {
+      this.pageErrors.push(prefix + webError.error().message)
+    })
   }
 
   async startAuthenticatedSession(browser: Browser) {
@@ -220,12 +224,18 @@ export class DifyWorld extends World {
     )
   }
 
+  async closeBrowserContexts() {
+    const draft = this.workflowDraft
+    await Promise.all([this.context?.close(), draft?.collaboratorContext?.close()])
+    this.context = undefined
+    if (draft) draft.collaboratorContext = undefined
+  }
+
   async closeSession() {
     try {
-      await this.context?.close()
+      await this.closeBrowserContexts()
     } finally {
       await this.consoleRequestContext?.dispose()
-      this.context = undefined
       this.consoleRequestContext = undefined
       this.consoleClient = undefined
       this.page = undefined

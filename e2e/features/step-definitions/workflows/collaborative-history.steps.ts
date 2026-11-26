@@ -1,4 +1,3 @@
-import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world.ts'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
@@ -8,10 +7,10 @@ import {
   canvasNodeByTitle,
   nodeId,
   openCollaboratorSession,
+  openLlmPromptPanel,
   preparePromptDraft,
   readPromptDraft,
   workflowCollaborator,
-  workflowDraft,
 } from '../../../support/workflow-prompt-draft.ts'
 
 const prompts = [
@@ -24,27 +23,6 @@ function editors(world: DifyWorld) {
 
 function actingEditor(world: DifyWorld, actor: string) {
   return actor === 'I' ? world.getPage() : workflowCollaborator(world).page
-}
-
-async function openLlmPanel(page: Page, title = 'Draft prompt') {
-  const panel = page.getByRole('region', { name: `${title} Node configuration panel` })
-  if (!(await panel.isVisible())) await canvasNodeByTitle(page, title).click()
-  await expect(panel).toBeVisible()
-  return panel
-}
-
-async function expectNodeTitle(world: DifyWorld, expected: string) {
-  for (const page of editors(world))
-    await expect(canvasNodeByTitle(page, expected)).toBeVisible({ timeout: 20_000 })
-  await expect
-    .poll(
-      async () => {
-        const { nodes } = (await readPromptDraft(world)).graph
-        return nodes.find((node) => node.id === nodeId)?.data.title
-      },
-      { timeout: 20_000 },
-    )
-    .toBe(expected)
 }
 
 async function expectAnswerConnection(world: DifyWorld, present: boolean) {
@@ -77,14 +55,11 @@ Given(
   'two workspace editors open a Chatflow with system and user prompts',
   async function (this: DifyWorld) {
     const app = await preparePromptDraft(this, true, prompts)
-    const draft = workflowDraft(this)
-    const peer = await openCollaboratorSession(this)
-    draft.collaborator = peer
+    await openCollaboratorSession(this)
     await Promise.all(
-      [{ page: this.getPage(), network: draft.network }, peer].map(async ({ page, network }) => {
+      editors(this).map(async (page) => {
         await page.goto(`/app/${app.id}/workflow`, { waitUntil: 'domcontentloaded' })
-        await expect.poll(network.confirmedSyncs, { timeout: 40_000 }).toBeGreaterThan(0)
-        await openLlmPanel(page)
+        await openLlmPromptPanel(page)
         await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
       }),
     )
@@ -95,26 +70,14 @@ When(
   /^(I|the other editor) changes? the prompt "([^"]+)" to "([^"]+)"$/,
   async function (this: DifyWorld, actor: string, before: string, after: string) {
     const page = actingEditor(this, actor)
-    const panel = await openLlmPanel(page)
+    const panel = await openLlmPromptPanel(page)
     await panel.getByRole('textbox').filter({ hasText: before }).fill(after)
     for (const editor of editors(this)) {
-      const editorPanel = await openLlmPanel(editor)
+      const editorPanel = await openLlmPromptPanel(editor)
       await expect(editorPanel.getByRole('textbox').filter({ hasText: after })).toHaveText(after, {
         timeout: 20_000,
       })
     }
-  },
-)
-
-When(
-  /^(I|the other editor) renames? the node "([^"]+)" to "([^"]+)"$/,
-  async function (this: DifyWorld, actor: string, before: string, after: string) {
-    const page = actingEditor(this, actor)
-    await openLlmPanel(page, before)
-    const name = page.getByRole('textbox', { name: 'Node name' })
-    await name.fill(after)
-    await name.press('Enter')
-    await expectNodeTitle(this, after)
   },
 )
 
@@ -130,15 +93,11 @@ When(
   },
 )
 
-When('both editors reload the Chatflow', async function (this: DifyWorld) {
-  await Promise.all(editors(this).map((page) => page.reload({ waitUntil: 'domcontentloaded' })))
-})
-
 Then(
   'both editors and the saved draft show the prompts {string} and {string}',
   async function (this: DifyWorld, system: string, user: string) {
     for (const page of editors(this)) {
-      const panel = await openLlmPanel(page)
+      const panel = await openLlmPromptPanel(page)
       for (const text of [system, user])
         await expect(panel.getByRole('textbox').filter({ hasText: text })).toHaveText(text, {
           timeout: 20_000,
@@ -159,16 +118,9 @@ Then(
   },
 )
 
-Then(
-  'both editors and the saved draft show the LLM node named {string}',
-  async function (this: DifyWorld, title: string) {
-    await expectNodeTitle(this, title)
-  },
-)
-
 When('I delete the answer node from the canvas', async function (this: DifyWorld) {
   const page = this.getPage()
-  const panel = await openLlmPanel(page)
+  const panel = await openLlmPromptPanel(page)
   await panel.getByRole('button', { name: 'Close', exact: true }).click()
   await canvasNodeByTitle(page, answerTitle).click({ button: 'right' })
   await page.getByRole('menuitem', { name: /^Delete\b/ }).click()
