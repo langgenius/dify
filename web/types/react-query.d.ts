@@ -10,7 +10,13 @@ type ErrorToastMeta = {
 
 declare module '@tanstack/react-query' {
   interface Register {
-    queryMeta: ErrorToastMeta
+    queryMeta: ErrorToastMeta & {
+      /**
+       * `false`: the console invalidation fallback never refreshes this query, for a read whose
+       * owner keeps it current and remounts on new data, such as a streaming chat's history.
+       */
+      invalidateAfterWrites?: false
+    }
     mutationMeta: ErrorToastMeta & {
       /** The tag-creation policy leaves the agent tag catalog to the caller's own refresh. */
       deferAgentTagCatalogRefresh?: boolean

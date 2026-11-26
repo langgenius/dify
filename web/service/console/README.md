@@ -74,9 +74,11 @@ restarts them without showing earlier data.
 Every successful console mutation refreshes the active queries of its own domain in
 the background (`mutation-invalidation.ts`). The domain is the first path segment, or
 `workspaces.current.<resource>` and `enterprise.<service>`. The refresh is never
-awaited, starts after the mutation's callbacks, skips queries refreshed or written
-after the request succeeded, and waits while another mutation of the same domain is
-pending, so the last one refreshes for all.
+awaited, starts after the mutation's callbacks, skips queries whose data was requested
+or written after the request succeeded, and waits while another mutation of the same
+domain is pending, so the last one refreshes for all. A read that remounts its owner on
+new data and is kept current by it (a streaming chat's history) sets
+`meta: { invalidateAfterWrites: false }` in its `queryOptions` policy.
 
 - **Write a policy** only for the primary source a flow must wait for (an awaited
   refresh) or for writing the response into the cache.

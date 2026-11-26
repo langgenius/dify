@@ -162,6 +162,57 @@ describe('mutation invalidation fallback', () => {
     expect(queryFn).toHaveBeenCalledTimes(2)
   })
 
+  it('refreshes a pre-write read that returned its old data while the callbacks ran', async () => {
+    const client = createClient()
+    const staleRead = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(staleRead.promise).mockResolvedValue('fresh')
+    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+
+    await mutate(client, {
+      mutationKey: renameApp(),
+      // The read lands after the write succeeded, while a policy is still waiting.
+      onSuccess: async () => {
+        tick()
+        staleRead.resolve('stale')
+        await settle()
+        tick()
+      },
+    })
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('fresh'))
+    expect(queryFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('never refreshes a query that sets meta.invalidateAfterWrites: false', async () => {
+    const client = createClient()
+    const queryFn = vi.fn(async () => queryFn.mock.calls.length)
+    const observer = new QueryObserver(client, {
+      queryKey: appsListKey(),
+      queryFn,
+      meta: { invalidateAfterWrites: false },
+    })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+    tick()
+
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+
+    expect(queryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the agent preview chat history out of agent refreshes', () => {
+    const options = consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+      input: { params: { agent_id: 'agent-1' }, query: { conversation_id: 'conversation-1' } },
+    })
+    // Defaults reach the options at runtime; their static type does not list `meta`.
+    expect(
+      (options as { meta?: { invalidateAfterWrites?: false } }).meta?.invalidateAfterWrites,
+    ).toBe(false)
+  })
+
   it('refreshes the domains a policy declares in alsoInvalidate', async () => {
     const client = createClient()
     const features = await mountQuery(client, featuresKey())

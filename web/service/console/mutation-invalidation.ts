@@ -59,32 +59,61 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
 type Deferred = { targets: Set<string>; succeededAt: number }
 
 /**
+ * Where a query's current data comes from, in the order events happened: the start of the
+ * read that returned it, or the write that set it. Response arrival time cannot tell a read
+ * that started before a write from one that started after it.
+ */
+type QueryOrigin = { fetchStartedAt: number; dataFrom: number }
+
+/**
  * Refreshes, after every successful console mutation, the queries of its domain plus the
  * domains its policy declares in `meta.alsoInvalidate`, so a write no policy covers still
  * leaves no stale data. Policies keep the refreshes a flow must wait for and the response
  * writes; this one is never awaited.
  *
- * - It starts once the mutation's own callbacks have settled, and skips queries that were
- *   refreshed or written after the request succeeded, so a policy's primary refresh is not
- *   fetched twice. A query still fetching is refreshed anyway: its read may predate the write
- *   and would otherwise land over it.
+ * - It starts once the mutation's own callbacks have settled, and skips queries whose data was
+ *   requested or written after the request succeeded, so a policy's primary refresh is not
+ *   fetched twice. A read that started before the write is refreshed, whether it is still
+ *   running or already returned its old data.
+ * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
  *   sibling's optimistic value (TkDodo's `isMutating({ mutationKey }) === 1` guard).
  */
 export function createMutationInvalidation() {
+  // A sequence, not a clock: events within one millisecond keep their order.
+  let sequence = 0
   const succeededAt = new WeakMap<AnyMutation, number>()
+  const origins = new WeakMap<Query, QueryOrigin>()
   const deferred = new Map<string, Deferred>()
+
+  // Data whose read started, or whose write happened, after the request succeeded reflects it.
+  const needsRefresh = (time: number) => (query: Query) => {
+    if (query.meta?.invalidateAfterWrites === false) return false
+    const origin = origins.get(query)
+    if (!origin || origin.dataFrom < time) return true
+    return query.state.fetchStatus === 'fetching' && origin.fetchStartedAt < time
+  }
 
   return {
     /** For `MutationCache.onSuccess`: the request succeeded, before any callback runs. */
     onMutationSuccess(mutation: AnyMutation) {
-      succeededAt.set(mutation, Date.now())
+      succeededAt.set(mutation, ++sequence)
     },
 
     /** Starts refreshing on the mutation cache's settle events; returns the unsubscribe. */
     attach(client: QueryClient, mutationCache: MutationCache = client.getMutationCache()) {
-      return mutationCache.subscribe((event) => {
+      const unsubscribeQueries = client.getQueryCache().subscribe((event) => {
+        if (event.type !== 'updated') return
+        const { action, query } = event
+        const origin = origins.get(query) ?? { fetchStartedAt: 0, dataFrom: 0 }
+        if (action.type === 'fetch') origin.fetchStartedAt = ++sequence
+        else if (action.type === 'success')
+          origin.dataFrom = action.manual ? ++sequence : origin.fetchStartedAt
+        else return
+        origins.set(query, origin)
+      })
+      const unsubscribeMutations = mutationCache.subscribe((event) => {
         if (event.type !== 'updated') return
         if (event.action.type !== 'success' && event.action.type !== 'error') return
         const { mutation } = event
@@ -107,18 +136,17 @@ export function createMutationInvalidation() {
 
         const entry = deferred.get(domain)
         deferred.delete(domain)
-        if (entry) void refreshAfter(client, [...entry.targets], entry.succeededAt)
+        if (entry)
+          void invalidateQueryKeys(
+            client,
+            [...entry.targets].map(consolePathKey),
+            needsRefresh(entry.succeededAt),
+          )
       })
+      return () => {
+        unsubscribeQueries()
+        unsubscribeMutations()
+      }
     },
   }
-}
-
-// Data read or written after the request succeeded already reflects it, unless a read that
-// may have started before the write is still in flight. Timestamps have millisecond
-// resolution, so data from the same millisecond as the success is refreshed too.
-const needsRefresh = (time: number) => (query: Query) =>
-  query.state.dataUpdatedAt <= time || query.state.fetchStatus === 'fetching'
-
-function refreshAfter(client: QueryClient, targets: string[], time: number) {
-  return invalidateQueryKeys(client, targets.map(consolePathKey), needsRefresh(time))
 }

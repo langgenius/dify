@@ -47,6 +47,9 @@ export const invalidationPolicies: ConsolePolicies = {
   tagBindings: { post: tagBinding, remove: { post: tagBinding } },
   agent: {
     byAgentId: {
+      // The preview chat keeps its history current while it streams and remounts on new data,
+      // so an unrelated agent write must not refetch it mid-response.
+      chatMessages: { get: { queryOptions: { meta: { invalidateAfterWrites: false } } } },
       // Autosaves: their policies write the saved state.
       composer: { put: skip },
       buildDraft: {
