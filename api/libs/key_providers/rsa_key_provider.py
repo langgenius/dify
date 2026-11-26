@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import override
 
 from Crypto.PublicKey import RSA
@@ -15,20 +16,16 @@ class RSAKeyProvider(BaseKeyProvider):
     crypto logic is intentionally left untouched.
     """
 
+    def __init__(self, *, public_key_reader: Callable[[str], str]) -> None:
+        self._public_key_reader = public_key_reader
+
     @override
     def generate_key_pair(self, tenant_id: str) -> str:
         return rsa.generate_key_pair(tenant_id)
 
     @override
     def encrypt(self, tenant_id: str, text: str) -> bytes:
-        from models.account import Tenant
-        from models.engine import db
-
-        if not (tenant := db.session.get(Tenant, tenant_id)):
-            raise ValueError(f"Tenant with id {tenant_id} not found")
-        if tenant.encrypt_public_key is None:
-            raise ValueError(f"Tenant with id {tenant_id} has no encrypt_public_key")
-        return rsa.encrypt(text, tenant.encrypt_public_key)
+        return rsa.encrypt(text, self._public_key_reader(tenant_id))
 
     @override
     def get_decrypt_decoding(self, tenant_id: str) -> tuple[RSA.RsaKey, object]:

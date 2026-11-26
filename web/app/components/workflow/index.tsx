@@ -94,6 +94,7 @@ import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import Control from './operator/control'
 import { WorkflowLocalStorageBridge } from './persistence/local-storage-bridge'
+import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import { WorkflowCanvas } from './shortcuts/workflow-canvas'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
@@ -159,6 +160,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     useWorkflowControlScale(workflowContainerRef)
     const workflowStore = useWorkflowStore()
     const reactflow = useReactFlow()
+    const handleViewportInteraction = useWorkflowViewport()
     const store = useStoreApi()
     const collaborativeWorkflow = useCollaborativeWorkflow()
     const [isMouseOverCanvas, setIsMouseOverCanvas] = useState(false)
@@ -590,6 +592,9 @@ export const Workflow: FC<WorkflowProps> = memo(
             onPaneContextMenu={handlePaneContextMenu}
             onSelectionContextMenu={handleSelectionContextMenu}
             connectionLineComponent={CustomConnectionLine}
+            onMoveStart={(event) => {
+              if (event) handleViewportInteraction()
+            }}
             defaultViewport={viewport}
             fitView={!viewport}
             multiSelectionKeyCode={null}

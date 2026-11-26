@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
@@ -26,6 +28,14 @@ class RBACServices:
     members: MemberService
     resources: ResourceAccessService
     queries: ResourceQueryService
+
+
+def build_rbac_resource_queries(*, database_client: sessionmaker[Session]) -> ResourceQueryService:
+    """Bind resource metadata reads to the native caller's short read sessions."""
+    return ResourceQueryService(
+        apps=ConsoleAppRepository(session_factory=database_client),
+        datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
+    )
 
 
 def build_rbac_services(

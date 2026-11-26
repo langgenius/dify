@@ -1,3 +1,5 @@
+"""Unit coverage for datasource node event streaming."""
+
 import time
 from collections.abc import Generator
 from types import SimpleNamespace
@@ -78,9 +80,6 @@ def test_datasource_node_delegates_to_manager_stream(mocker: MockerFixture) -> N
     evts = list(node._run())
     assert isinstance(evts[0], StreamChunkEvent)
     assert isinstance(evts[-1], StreamCompletedEvent)
-
-
-"""Unit coverage for datasource node event streaming."""
 
 
 @pytest.mark.parametrize("use_factory", [False, True])

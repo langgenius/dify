@@ -1,3 +1,5 @@
+"""Tests for Celery SSL configuration."""
+
 import ssl
 import threading
 from collections.abc import Iterator
@@ -27,8 +29,7 @@ from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorker
 from tasks.application_trace_task import export_application_trace
 from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
-
-"""Tests for Celery SSL configuration."""
+from tests.unit_tests.celery_fixtures import preserve_celery_apps
 
 
 @pytest.mark.parametrize(
@@ -181,6 +182,8 @@ def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Ce
         task.pop_request()
 
 
+
+
 class TestCelerySslCases:
     @staticmethod
     @pytest.fixture(autouse=True)
@@ -197,24 +200,20 @@ class TestCelerySslCases:
             mock_config = MagicMock()
             mock_config.CELERY_USE_SENTINEL = False
             mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_broker_transport_options
 
                 result = get_celery_broker_transport_options()
-
             assert result["global_keyprefix"] == "enterprise-a:"
 
         def test_get_celery_broker_transport_options_omits_global_keyprefix_when_prefix_empty(self):
             mock_config = MagicMock()
             mock_config.CELERY_USE_SENTINEL = False
             mock_config.REDIS_KEY_PREFIX = "   "
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_broker_transport_options
 
                 result = get_celery_broker_transport_options()
-
             assert "global_keyprefix" not in result
 
         def test_get_celery_broker_transport_options_keeps_sentinel_and_adds_global_keyprefix(self):
@@ -224,12 +223,10 @@ class TestCelerySslCases:
             mock_config.CELERY_SENTINEL_SOCKET_TIMEOUT = 0.1
             mock_config.CELERY_SENTINEL_PASSWORD = "secret"
             mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_broker_transport_options
 
                 result = get_celery_broker_transport_options()
-
             assert result["master_name"] == "mymaster"
             assert result["sentinel_kwargs"]["password"] == "secret"
             assert result["global_keyprefix"] == "enterprise-a:"
@@ -239,7 +236,6 @@ class TestCelerySslCases:
             from configs import DifyConfig
 
             dify_config = DifyConfig(CELERY_BROKER_URL="redis://localhost:6379/0")
-
             with patch("extensions.ext_celery.dify_config", dify_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
@@ -250,7 +246,6 @@ class TestCelerySslCases:
             """Test SSL options when broker is not Redis."""
             mock_config = MagicMock()
             mock_config.CELERY_BROKER_URL = "amqp://localhost:5672"
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
@@ -265,7 +260,6 @@ class TestCelerySslCases:
             mock_config.REDIS_SSL_CA_CERTS = None
             mock_config.REDIS_SSL_CERTFILE = None
             mock_config.REDIS_SSL_KEYFILE = None
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
@@ -284,7 +278,6 @@ class TestCelerySslCases:
             mock_config.REDIS_SSL_CA_CERTS = "/path/to/ca.crt"
             mock_config.REDIS_SSL_CERTFILE = "/path/to/client.crt"
             mock_config.REDIS_SSL_KEYFILE = "/path/to/client.key"
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
@@ -303,7 +296,6 @@ class TestCelerySslCases:
             mock_config.REDIS_SSL_CA_CERTS = "/path/to/ca.crt"
             mock_config.REDIS_SSL_CERTFILE = None
             mock_config.REDIS_SSL_KEYFILE = None
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
@@ -320,13 +312,12 @@ class TestCelerySslCases:
             mock_config.REDIS_SSL_CA_CERTS = None
             mock_config.REDIS_SSL_CERTFILE = None
             mock_config.REDIS_SSL_KEYFILE = None
-
             with patch("extensions.ext_celery.dify_config", mock_config):
                 from extensions.ext_celery import get_celery_ssl_options
 
                 result = get_celery_ssl_options()
                 assert result is not None
-                assert result["ssl_cert_reqs"] == ssl.CERT_NONE  # Should default to CERT_NONE
+                assert result["ssl_cert_reqs"] == ssl.CERT_NONE
 
         def test_celery_init_applies_ssl_to_broker_and_backend(self):
             """Test that SSL options are applied to both broker and backend when using Redis."""
@@ -343,11 +334,12 @@ class TestCelerySslCases:
             mock_config.LOG_FORMAT = "%(message)s"
             mock_config.LOG_TZ = "UTC"
             mock_config.LOG_FILE = None
-
-            # Mock all the scheduler configs
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
+            mock_config.ENABLE_DIFY_BUILDER_RECONCILER = False
+            mock_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK = True
+            mock_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL = 60
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -365,7 +357,6 @@ class TestCelerySslCases:
             mock_config.TRIGGER_PROVIDER_REFRESH_INTERVAL = 15
             mock_config.ENABLE_API_TOKEN_LAST_USED_UPDATE_TASK = False
             mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
-
             with (
                 patch("extensions.ext_celery.dify_config", mock_config),
                 patch(
@@ -378,13 +369,9 @@ class TestCelerySslCases:
 
                 app = DifyApp(__name__)
                 celery_app = init_app(app)
-
-                # Check that SSL options were applied
                 assert "broker_use_ssl" in celery_app.conf
                 assert celery_app.conf["broker_use_ssl"] is not None
                 assert celery_app.conf["broker_use_ssl"]["ssl_cert_reqs"] == ssl.CERT_NONE
-
-                # Check that SSL is also applied to Redis backend
                 assert "redis_backend_use_ssl" in celery_app.conf
                 assert celery_app.conf["redis_backend_use_ssl"] is not None
 
@@ -401,11 +388,13 @@ class TestCelerySslCases:
             mock_config.LOG_TZ = "UTC"
             mock_config.LOG_FILE = None
             mock_config.CELERY_TASK_ANNOTATIONS = {}
-
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
+            mock_config.ENABLE_DIFY_BUILDER_RECONCILER = False
+            mock_config.ENABLE_WORKFLOW_DRAFT_COORDINATION_TASK = True
+            mock_config.WORKFLOW_DRAFT_COORDINATION_INTERVAL = 60
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
             mock_config.ENABLE_CLEAN_UNUSED_DATASETS_TASK = False
@@ -427,7 +416,6 @@ class TestCelerySslCases:
             mock_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL = 30
             mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_config.ENTERPRISE_TELEMETRY_ENABLED = False
-
             with (
                 patch("extensions.ext_celery.dify_config", mock_config),
                 patch(
@@ -440,11 +428,11 @@ class TestCelerySslCases:
 
                 app = DifyApp(__name__)
                 celery_app = init_app(app)
-
             assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
             assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
             assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]
             assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
+            assert "tasks.dify_builder_advance_task" in celery_app.conf["imports"]
             assert "tasks.workflow_run_archive_deletion_tasks" in celery_app.conf["imports"]
             import_module("tasks.workflow_run_archive_deletion_tasks")
             task_name = "tasks.workflow_run_archive_deletion_tasks.delete_workflow_run_archive_task"
@@ -454,9 +442,14 @@ class TestCelerySslCases:
             assert archive_deletion.reject_on_worker_lost is True
             assert archive_deletion.autoretry_for == (Exception,)
             assert archive_deletion.retry_kwargs["max_retries"] == 5
-            assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
-                "tasks.delete_conversation_task.sweep_deleted_conversations"
+            assert (
+                celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"]
+                == "tasks.delete_conversation_task.sweep_deleted_conversations"
             )
+            draft_sweeper = celery_app.conf["beat_schedule"]["workflow_draft_coordination_sweeper"]
+            assert draft_sweeper["task"] == "tasks.workflow_draft_coordination_task.sweep_workflow_draft_coordination"
+            assert draft_sweeper["schedule"].total_seconds() == 60
+            assert draft_sweeper["options"] == {"queue": "schedule_executor"}
             assert celery_app.conf["beat_schedule"]["evaluation-run-reconciler"]["task"] == (
                 "tasks.evaluation_task.reconcile_stale_evaluation_runs"
             )
@@ -632,3 +625,6 @@ class TestKnowledgeFsCeleryCases:
             config.KNOWLEDGE_FS_BACKGROUND_TASK_TIMEOUT_SECONDS = 7200
             with pytest.raises(ValueError, match="VISIBILITY_TIMEOUT"):
                 get_celery_broker_transport_options()
+
+
+pytestmark = pytest.mark.usefixtures(preserve_celery_apps.__name__)

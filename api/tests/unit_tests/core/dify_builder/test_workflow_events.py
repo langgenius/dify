@@ -1,0 +1,166 @@
+"""Full run events and the separate repair/retest command boundary."""
+
+from collections.abc import Callable
+from datetime import datetime
+
+import pytest
+import pytest_mock
+
+from core.dify_builder.models import (
+    Action,
+    Actor,
+    DifyBuilderContext,
+    EntryMode,
+    MutationIntent,
+    Run,
+    Session,
+    TestInput,
+    Turn,
+)
+from core.dify_builder.state import PcState
+from services.dify_builder.application.handlers_build import build_registry, handle_test_and_repair
+from services.dify_builder.application.handlers_edit import edit_registry, handle_test_affected_paths
+from services.dify_builder.application.handlers_fix import handle_verify
+from services.dify_builder.application.runner import Env, Handler, Runner
+from tests.unit_tests.core.dify_builder.fakes import (
+    FakeDifyPort,
+    FakeEditDifyPort,
+    InMemoryRepository,
+    StubAgent,
+    saved_test_context,
+)
+from tests.unit_tests.installed_spies import installed_mock
+
+
+@pytest.mark.parametrize(
+    ("handler", "state", "mode"),
+    [
+        (handle_test_and_repair, PcState.BUILD_TEST_AND_REPAIR, EntryMode.BUILD),
+        (handle_test_affected_paths, PcState.EDIT_TEST_AFFECTED_PATHS, EntryMode.EDIT),
+        (handle_verify, PcState.FIX_VERIFY, EntryMode.FIX),
+    ],
+)
+def test_all_test_flows_forward_native_events(
+    mocker: pytest_mock.MockerFixture, handler: Handler, state: PcState, mode: EntryMode
+) -> None:
+    port = FakeDifyPort()
+    port.workflow_events = [
+        {"event": "workflow_started", "workflow_run_id": "run-1", "data": {"inputs": {"query": "hello"}}},
+        {"event": "text_chunk", "workflow_run_id": "run-1", "data": {"text": "42"}},
+        {"event": "workflow_finished", "workflow_run_id": "run-1", "data": {"status": "succeeded"}},
+    ]
+    received = []
+    env = Env(
+        dify=port,
+        agent=StubAgent(),
+        repo=InMemoryRepository(),
+        now=lambda: datetime.min,
+        emit_workflow=received.append,
+    )
+    session = Session(id="real-session", app_id="app", tenant_id="tenant", entry_mode=mode, current_state=state)
+    context = saved_test_context(env.repo, session.id)
+    mocker.spy(port, "run_draft")
+
+    handler(
+        env,
+        Turn(actor=Actor(account_id="account", tenant_id="tenant")),
+        session,
+        context,
+    )
+
+    assert received == port.workflow_events
+    _installed_spy_1 = installed_mock(port.run_draft)
+    assert _installed_spy_1.call_args.kwargs["session_id"] == "real-session"
+    _installed_spy_2 = installed_mock(port.run_draft)
+    test_input_id = _installed_spy_2.call_args.kwargs["test_input_id"]
+    assert test_input_id == context.test_input_ref
+    assert env.repo.get_test_input(test_input_id).session_id == "real-session"
+
+
+@pytest.mark.parametrize(
+    ("registry", "mode", "repair_state", "ready_state", "test_action", "review_state"),
+    [
+        (
+            build_registry,
+            EntryMode.BUILD,
+            PcState.BUILD_AWAIT_REPAIR,
+            PcState.BUILD_EXECUTION,
+            "run_test",
+            PcState.BUILD_REVIEW,
+        ),
+        (
+            edit_registry,
+            EntryMode.EDIT,
+            PcState.EDIT_AWAIT_REPAIR,
+            PcState.EDIT_APPLY_CHANGES,
+            "run_affected_tests",
+            PcState.EDIT_REVIEW,
+        ),
+    ],
+)
+def test_structural_repair_is_committed_before_a_separate_retest(
+    mocker: pytest_mock.MockerFixture,
+    registry: Callable[[], dict[PcState, Handler]],
+    mode: EntryMode,
+    repair_state: PcState,
+    ready_state: PcState,
+    test_action: str,
+    review_state: PcState,
+) -> None:
+    port = FakeEditDifyPort()
+    mocker.spy(port, "run_draft")
+    repo = InMemoryRepository()
+    env = Env(dify=port, agent=StubAgent(), repo=repo, now=lambda: datetime.min)
+    session = Session(app_id="app", tenant_id="tenant", entry_mode=mode, current_state=repair_state)
+    actor = Actor(account_id="account", tenant_id="tenant")
+    repo.create_session(
+        session,
+        DifyBuilderContext(
+            test_input_ref="input-1",
+            staged_repair=[
+                MutationIntent(op="create_node", args={"node_id": "new-code", "node_type": "code", "config": {}})
+            ],
+        ),
+        [],
+    )
+    repo.save_test_input(TestInput(id="input-1", session_id=session.id, source="mock", inputs={}))
+    runner = Runner(env, registry())
+
+    applied = runner.advance(
+        session.id, Turn(actor=actor, action=Action(kind="approve_repair", base_version=session.version))
+    )
+
+    assert applied.current_state == ready_state
+    assert "new-code" in {node["id"] for node in port.graph["nodes"]}
+    _installed_spy_3 = installed_mock(port.run_draft)
+    _installed_spy_3.assert_not_called()
+
+    tested = runner.advance(
+        session.id, Turn(actor=actor, action=Action(kind=test_action, base_version=applied.version))
+    )
+
+    assert tested.current_state == review_state
+    _installed_spy_4 = installed_mock(port.run_draft)
+    _installed_spy_4.assert_called_once()
+
+
+def test_edit_unknown_result_does_not_stage_a_failure_or_repair(
+    mocker: pytest_mock.MockerFixture,
+) -> None:
+    port = FakeEditDifyPort()
+    mocker.patch.object(port, "run_draft", return_value=Run(status="running", dify_run_id="run-1"))
+    env = Env(dify=port, agent=StubAgent(), repo=InMemoryRepository(), now=lambda: datetime.min)
+    session = Session(
+        app_id="app", tenant_id="tenant", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_TEST_AFFECTED_PATHS
+    )
+
+    result = handle_test_affected_paths(
+        env, Turn(actor=Actor(account_id="account", tenant_id="tenant")), session, DifyBuilderContext()
+    )
+
+    assert result.next == PcState.EDIT_AWAIT_REPAIR
+    assert result.run is not None
+    assert result.run.status == "running"
+    assert result.context is not None
+    assert not result.context.staged_repair
+    assert not any(item.kind in {"error", "change_set"} for item in result.items)

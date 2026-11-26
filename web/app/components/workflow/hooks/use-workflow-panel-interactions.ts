@@ -28,11 +28,14 @@ export const useWorkflowInteractions = () => {
 }
 
 export const useWorkflowMoveMode = () => {
+  const workflowStore = useWorkflowStore()
   const setControlMode = useStore((s) => s.setControlMode)
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
   const isRestoring = useStore((s) => s.isRestoring)
-  const { getNodesReadOnly } = useNodesReadOnly()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const canvasReadOnly = useStore((state) => state.canvasReadOnly)
+  const moveModeReadOnly = nodesReadOnly && !canvasReadOnly
   const { handleSelectionCancel } = useSelectionInteractions()
   const isCommentModeAvailable = useAtomValue(editorCollaborationEnabledAtom)
   const isCommentModeOperationBlocked = !!(
@@ -44,17 +47,17 @@ export const useWorkflowMoveMode = () => {
   const canUseCommentMode = !!(!isCommentModeOperationBlocked && isCommentModeAvailable)
 
   const handleModePointer = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly() && !workflowStore.getState().canvasReadOnly) return
 
     setControlMode(ControlMode.Pointer)
-  }, [getNodesReadOnly, setControlMode])
+  }, [getNodesReadOnly, setControlMode, workflowStore])
 
   const handleModeHand = useCallback(() => {
-    if (getNodesReadOnly()) return
+    if (getNodesReadOnly() && !workflowStore.getState().canvasReadOnly) return
 
     setControlMode(ControlMode.Hand)
     handleSelectionCancel()
-  }, [getNodesReadOnly, handleSelectionCancel, setControlMode])
+  }, [getNodesReadOnly, handleSelectionCancel, setControlMode, workflowStore])
 
   const handleModeComment = useCallback(() => {
     if (!canUseCommentMode) return
@@ -69,5 +72,6 @@ export const useWorkflowMoveMode = () => {
     handleModeComment,
     isCommentModeAvailable,
     canUseCommentMode,
+    moveModeReadOnly,
   }
 }

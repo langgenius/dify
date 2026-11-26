@@ -12,13 +12,13 @@ import {
   updateEdgeHoverState,
   updateEdgeSelectionState,
 } from './use-edges-interactions.helpers'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useScheduleDraftSave } from './use-schedule-draft-save'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { saveStateToHistory } = useWorkflowHistory()
   const workflowStore = useWorkflowStore()

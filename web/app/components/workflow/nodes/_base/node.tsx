@@ -67,6 +67,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const { nodePanelPresence } = useCollaboration(appId, canEdit)
   const controlMode = useStore((s) => s.controlMode)
+  const renderNodeDecoration = useHooksStore((s) => s.renderNodeDecoration)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,
   )
@@ -149,6 +150,7 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
+      {renderNodeDecoration?.(id)}
       {pluginInstallLocked && (
         <button
           type="button"

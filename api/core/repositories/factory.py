@@ -7,7 +7,7 @@ allowing users to configure different repository backends through string paths.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Literal, NoReturn, Protocol
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from libs.module_loading import import_string
-from models import Account, EndUser
+from models import Account, EndUser, WorkflowNodeExecutionModel, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
@@ -26,6 +26,44 @@ class OrderConfig:
 
     order_by: list[str]
     order_direction: Literal["asc", "desc"] | None = None
+
+
+class WorkflowRunObservation(Protocol):
+    """Injected diagnostic projection owned by the workflow application service."""
+
+    def fail(self) -> NoReturn: ...
+
+    def to_domain_run(self, repository: object, row: WorkflowRun) -> WorkflowExecution: ...
+
+    def to_db_run(self, repository: object, execution: WorkflowExecution) -> WorkflowRun: ...
+
+    def get_run(self, repository: object, run_id: str) -> WorkflowExecution: ...
+
+    def save_run(self, repository: object, execution: WorkflowExecution) -> None: ...
+
+
+class WorkflowNodeObservation(Protocol):
+    """Injected node projection; never dispatch, admission or replay authority."""
+
+    def fail(self) -> NoReturn: ...
+
+    def to_domain_node(self, repository: object, row: WorkflowNodeExecutionModel) -> WorkflowNodeExecution: ...
+
+    def to_db_node(self, repository: object, execution: WorkflowNodeExecution) -> WorkflowNodeExecutionModel: ...
+
+    def save_node(self, repository: object, execution: WorkflowNodeExecution, *, data: bool = False) -> None: ...
+
+    def persist_node(self, repository: object, row: WorkflowNodeExecutionModel, *, data: bool = False) -> None: ...
+
+    def get_nodes(
+        self,
+        repository: object,
+        run_id: str,
+        order: OrderConfig | None,
+        triggered_from: WorkflowNodeExecutionTriggeredFrom,
+        *,
+        include_paused: bool = False,
+    ) -> Sequence[WorkflowNodeExecutionModel]: ...
 
 
 class WorkflowExecutionRepository(Protocol):

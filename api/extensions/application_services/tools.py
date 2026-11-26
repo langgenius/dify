@@ -20,7 +20,11 @@ def resolve_tool_credentials(
 ) -> tuple[Mapping[str, object], CredentialType]:
     if isinstance(controller, PluginToolProviderController):
         provider = ToolProviderID(provider_id)
-        providers = (str(provider), provider.provider_name)
+        providers = (
+            (str(provider), provider.provider_name)
+            if str(ToolProviderID(provider.provider_name)) == str(provider)
+            else (str(provider),)
+        )
     else:
         providers = (provider_id,)
     runtime = ProviderToolCredentialRuntime(

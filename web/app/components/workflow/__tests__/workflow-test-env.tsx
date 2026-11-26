@@ -46,6 +46,7 @@ import type { StoreInstances, WorkflowProviderOptions } from './workflow-test-pr
 import * as React from 'react'
 import ReactFlow, { ReactFlowProvider, useStoreApi } from 'reactflow'
 import { render, renderHook } from '@/test/console/render'
+import WorkflowNodesDataSync from '../nodes-data-sync'
 import { WorkflowRunningStatus } from '../types'
 import {
   createTestWorkflowStore as createProviderWorkflowStore,
@@ -198,6 +199,7 @@ function createWorkflowFlowWrapper(
           ReactFlowProvider,
           null,
           React.createElement(ReactFlow, { fitView: true, ...reactFlowProps, nodes, edges }),
+          React.createElement(WorkflowNodesDataSync),
           children,
         ),
       ),

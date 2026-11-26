@@ -38,6 +38,10 @@ from services.human_input_v2.resend_channel import ResendProviderGateway
 _TEST_CHANNELS_URL = "/console/api/workspaces/current/human-input/v2/test-channels"
 
 
+def _unexpected_public_key_read(tenant_id: str) -> Never:
+    pytest.fail(f"channel discovery must not encrypt credentials for tenant {tenant_id}")
+
+
 @pytest.fixture(scope="module")
 def template_console_app() -> Flask:
     application = Flask(__name__)
@@ -83,7 +87,10 @@ def channel_client(
         channel_controller,
         "build_workspace_im_channel_service",
         lambda tenant_id, account_id: WorkspaceIMChannelService(
-            sqlite_session_factory, tenant_id, account_id, RSAKeyProvider()
+            sqlite_session_factory,
+            tenant_id,
+            account_id,
+            RSAKeyProvider(public_key_reader=_unexpected_public_key_read),
         ),
     )
     monkeypatch.setattr(

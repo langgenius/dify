@@ -1,3 +1,12 @@
+"""SQLite-backed tests for the workflow node execution repository.
+
+Unit tests for workflow node execution conflict handling.
+
+Unit tests for WorkflowNodeExecution truncation functionality.
+
+Tests the truncation and offloading logic for large inputs and outputs
+in the SQLAlchemyWorkflowNodeExecutionRepository."""
+
 from __future__ import annotations
 
 import json
@@ -37,16 +46,12 @@ from graphon.entities.workflow_node_execution import (
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecution as _workflow_node_execution_truncation_WorkflowNodeExecution,
 )
-from graphon.entities.workflow_node_execution import (
-    WorkflowNodeExecutionStatus as _ConflictExecutionStatus,
-)
+from graphon.entities.workflow_node_execution import WorkflowNodeExecutionStatus as _ConflictExecutionStatus
 from graphon.entities.workflow_node_execution import (
     WorkflowNodeExecutionStatus as _workflow_node_execution_truncation_WorkflowNodeExecutionStatus,
 )
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey
-from graphon.enums import (
-    WorkflowNodeExecutionStatus as _RepositoryExecutionStatus,
-)
+from graphon.enums import WorkflowNodeExecutionStatus as _RepositoryExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models import Account, EndUser, Tenant
 from models import WorkflowNodeExecutionModel as _workflow_node_execution_conflict_handling_WorkflowNodeExecutionModel
@@ -58,17 +63,13 @@ from models import (
 )
 from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.model import UploadFile
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 from models.workflow import (
     WorkflowNodeExecutionModel as _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel,
 )
 from models.workflow import WorkflowNodeExecutionModel as _workflow_node_execution_truncation_WorkflowNodeExecutionModel
-from models.workflow import WorkflowNodeExecutionOffload
-from models.workflow import (
-    WorkflowNodeExecutionTriggeredFrom as _RepositoryTriggeredFrom,
-)
+from models.workflow import WorkflowNodeExecutionTriggeredFrom as _RepositoryTriggeredFrom
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
-
-"""SQLite-backed tests for the workflow node execution repository."""
 
 
 def _sqlalchemy_workflow_node_execution_repository_account(
@@ -1077,9 +1078,6 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         assert "Failed to save workflow node execution" in caplog.text
 
 
-"""Unit tests for workflow node execution conflict handling."""
-
-
 @dataclass(frozen=True)
 class ConflictDatabase:
     engine: Engine
@@ -1282,14 +1280,6 @@ class TestWorkflowNodeExecutionConflictHandlingCases:
                 )
                 is None
             )
-
-
-"""
-Unit tests for WorkflowNodeExecution truncation functionality.
-
-Tests the truncation and offloading logic for large inputs and outputs
-in the SQLAlchemyWorkflowNodeExecutionRepository.
-"""
 
 
 @dataclass
@@ -1497,3 +1487,132 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False
             assert model.process_data_truncated is False
+
+
+@pytest.mark.parametrize("write", ["terminal", "data", "offload", "single_write"])
+def test_agent_create_receipt_survives_stale_terminal_and_offload_write(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], write: str
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    attempt = {"attempt": 0, "key": "stable-key", "digest": "a" * 64, "child_run_id": "child"}
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(
+        process_data={"workflow_agent_binding_id": "binding", "agent_create_attempts": [attempt]}
+    )
+    repo.save(execution)
+    # A stale terminal event carries no receipt, or predates its acknowledged child.
+    execution.process_data = {"result": "finished"}
+    if write == "terminal":
+        repo.save(execution)
+    elif write == "single_write":
+        # A finished node with small payloads takes the one-transaction path.
+        repo.save_with_execution_data(execution)
+    else:
+        truncated = _InputsOutputsTruncationResult(
+            file=_upload_file(),
+            truncated_value={"result": "truncated"},
+            offload=_offload(ExecutionOffLoadType.PROCESS_DATA),
+        )
+        monkeypatch.setattr(repo, "_truncate_and_upload", lambda *_: truncated if write == "offload" else None)
+        repo._save_execution_data(execution)
+    with sqlite_session_factory() as session:
+        row = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert row is not None
+        stored = row.process_data_dict
+        assert stored is not None
+        assert stored["agent_create_attempts"] == [attempt]
+        assert stored["workflow_agent_binding_id"] == "binding"
+    if write == "offload":
+        truncated_process_data = execution.get_truncated_process_data()
+        assert truncated_process_data is not None
+        assert truncated_process_data["agent_create_attempts"] == [attempt]
+
+
+def test_agent_ack_is_not_cleared_by_stale_terminal_receipt(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    attempt = {"attempt": 0, "key": "stable-key", "digest": "a" * 64, "child_run_id": "child"}
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(
+        process_data={"agent_create_attempts": [attempt]}
+    )
+    repo.save(execution)
+    execution.process_data = {"agent_create_attempts": [{**attempt, "child_run_id": None}]}
+    repo.save(execution)
+    with sqlite_session_factory() as session:
+        row = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert row is not None
+        process_data = row.process_data_dict
+        assert process_data is not None
+        assert process_data["agent_create_attempts"] == [attempt]
+
+
+def test_offload_preserves_ack_committed_during_upload(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    attempt = {"attempt": 0, "key": "stable-key", "digest": "a" * 64, "child_run_id": None}
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(
+        process_data={"agent_create_attempts": [attempt]}
+    )
+    repo.save(execution)
+    execution.process_data = {"large": "payload"}
+
+    def upload(*_: object) -> _InputsOutputsTruncationResult:
+        with sqlite_session_factory() as session, session.begin():
+            row = session.get(WorkflowNodeExecutionModel, execution.id)
+            assert row is not None
+            row.process_data = json.dumps({"agent_create_attempts": [{**attempt, "child_run_id": "child"}]})
+        return _InputsOutputsTruncationResult(
+            file=_upload_file(),
+            truncated_value={"large": "...", "agent_create_attempts": "..."},
+            offload=_offload(ExecutionOffLoadType.PROCESS_DATA),
+        )
+
+    monkeypatch.setattr(repo, "_truncate_and_upload", upload)
+    repo._save_execution_data(execution)
+    with sqlite_session_factory() as session:
+        row = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert row is not None
+        process_data = row.process_data_dict
+        assert process_data is not None
+        assert process_data["agent_create_attempts"] == [{**attempt, "child_run_id": "child"}]
+    truncated_process_data = execution.get_truncated_process_data()
+    assert truncated_process_data is not None
+    assert truncated_process_data["agent_create_attempts"] == [{**attempt, "child_run_id": "child"}]
+
+
+@pytest.mark.parametrize("change", [{"key": "changed"}, {"digest": "b" * 64}, {"child_run_id": "other"}])
+def test_agent_receipt_identity_cannot_change_on_terminal_write(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], change: dict[str, str]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    attempt = {"attempt": 0, "key": "stable-key", "digest": "a" * 64, "child_run_id": "child"}
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(
+        process_data={"agent_create_attempts": [attempt]}
+    )
+    repo.save(execution)
+    execution.process_data = {"agent_create_attempts": [{**attempt, **change}]}
+    with pytest.raises(ValueError, match="Agent create identity does not match"):
+        repo.save(execution)
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        [{"attempt": 0, "key": "key", "digest": "bad"}],
+        [{"attempt": 0, "key": "key", "digest": "a" * 64}] * 12,
+        [{"attempt": 0, "key": "key", "digest": "a" * 64}] * 2,
+    ],
+)
+def test_invalid_agent_receipts_refuse_terminal_overwrite(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session], invalid: list[dict[str, object]]
+) -> None:
+    repo = _repository(monkeypatch, sqlite_session_factory)
+    execution = _sqlalchemy_workflow_node_execution_repository_execution(process_data={"ordinary": True})
+    repo.save(execution)
+    with sqlite_session_factory() as session, session.begin():
+        row = session.get(WorkflowNodeExecutionModel, execution.id)
+        assert row is not None
+        row.process_data = json.dumps({"agent_create_attempts": invalid})
+    with pytest.raises(ValueError, match="Agent create"):
+        repo.save(execution)

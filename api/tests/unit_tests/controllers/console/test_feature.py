@@ -54,6 +54,8 @@ class TestFeatureApi:
 
         features = FeatureModel(
             apps=LimitationModel(size=3, limit=10),
+            dify_builder_enabled=True,
+            skill_learning_policy="automatic",
             vector_space=LimitationModel(size=1, limit=2),
             next_credit_reset_date=1775001600,
         )
@@ -69,12 +71,14 @@ class TestFeatureApi:
 
         assert result == features.model_dump(mode="json")
         assert result["apps"] == {"size": 3, "limit": 10}
+        assert result["dify_builder_enabled"] is True
         retired_fields = {
             "vector_space",
             "next_credit_reset_date",
             "docs_processing",
             "knowledge_rate_limit",
             "dataset_operator_enabled",
+            "skill_learning_policy",
         }
         schema = FeatureModel.model_json_schema(mode="serialization")
         assert retired_fields.isdisjoint(result)

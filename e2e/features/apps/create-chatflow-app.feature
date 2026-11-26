@@ -3,8 +3,5 @@ Feature: Create Chatflow app
   Scenario: Create a new Chatflow app and redirect to the workflow editor
     Given I am signed in as the default E2E admin
     When I open the apps console
-    And I start creating a blank app
-    And I select the "Chatflow" app type
-    And I enter a unique E2E app name
-    And I confirm app creation
+    And I create the "Chatflow" app from Studio
     Then I should land on the workflow editor

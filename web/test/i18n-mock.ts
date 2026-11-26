@@ -183,6 +183,7 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
   const i18n = {
     language: 'en-US',
     changeLanguage: vi.fn(),
+    hasResourceBundle: () => true,
   }
   return {
     useTranslation: <Ns extends TranslationNamespace = 'app'>(defaultNs?: Ns) => {
@@ -193,6 +194,7 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
       return {
         t: tCache.get(cacheKey)! as ReturnType<typeof createTFunction<Ns>>,
         i18n,
+        ready: true,
       }
     },
   }

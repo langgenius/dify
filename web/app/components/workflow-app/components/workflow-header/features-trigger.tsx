@@ -19,6 +19,10 @@ import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import {
+  useWorkflowAppSelector as useStore,
+  useWorkflowAppStore as useWorkflowStore,
+} from '@/app/components/workflow-app/store/workflow'
+import {
   editorResourceAtom,
   isChatflowAtom,
   workflowAppIdentityAtom,
@@ -29,9 +33,8 @@ import {
   useChecklist,
   useChecklistBeforePublish,
 } from '@/app/components/workflow/hooks/use-checklist'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '@/app/components/workflow/hooks/use-schedule-draft-save'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
@@ -110,7 +113,7 @@ const FeaturesTrigger = () => {
   )
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
   const startNodeIds = useMemo(
     () => nodes.filter((node) => node.data.type === BlockEnum.Start).map((node) => node.id),
     [nodes],

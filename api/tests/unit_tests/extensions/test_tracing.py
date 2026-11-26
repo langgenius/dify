@@ -35,6 +35,7 @@ class _Scopes(ExecutionTraceScopes):
         self.fails = fails
         self.policies: list[str | None] = []
         self.correlations: list[TraceCorrelation] = []
+        self.external_tracing_restrictions: list[bool] = []
 
     def _scope(
         self, *, tenant_id: str, app_id: str | None, user_id: str | None, correlation: TraceCorrelation
@@ -55,8 +56,10 @@ class _Scopes(ExecutionTraceScopes):
         app_tracing: str | None,
         user_id: str | None,
         correlation: TraceCorrelation,
+        external_tracing_disabled: bool = False,
     ) -> TraceScope | None:
         self.policies.append(app_tracing)
+        self.external_tracing_restrictions.append(external_tracing_disabled)
         return self._scope(tenant_id=tenant_id, app_id=app_id, user_id=user_id, correlation=correlation)
 
     @override
@@ -161,6 +164,22 @@ def test_scopes_fail_open() -> None:
         assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="app-1", user_id=None, extras={}) is None
     with Flask(__name__).app_context():
         assert create_trace_scope_for_app(tenant_id="tenant-1", app_id="app-1", user_id=None, extras={}) is None
+
+
+def test_execution_scope_passes_the_admitted_external_tracing_restriction() -> None:
+    scopes = _Scopes(fails=False)
+    with _app(scopes, None).app_context():
+        scope = create_trace_scope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_tracing='{"enabled": true}',
+            user_id="u",
+            extras={},
+            external_tracing_disabled=True,
+        )
+
+    assert scope is not None
+    assert scopes.external_tracing_restrictions == [True]
 
 
 def test_agent_hooks_are_the_ones_the_composition_root_bound() -> None:

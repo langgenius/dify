@@ -7,6 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
+from configs import dify_config
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -173,13 +174,28 @@ class StarredAppListQuery(AppListBaseQuery):
     pass
 
 
-class CreateAppPayload(BaseModel):
-    name: str = Field(..., min_length=1, description="App name")
+class _CreateAppMetadataPayload(BaseModel):
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
+
+
+class CreateNamedAppPayload(_CreateAppMetadataPayload):
+    """Require an explicit name for Console creation without App Builder."""
+
+    name: str = Field(..., min_length=1, description="App name")
+
+
+class CreateAppPayload(_CreateAppMetadataPayload):
+    # Optional since App Builder: an app created from the homepage prompt sends
+    # ``prompt`` and no ``name``. A supplied name still wins -- that is
+    # create-from-blank, where the user names the app and Builder inherits it.
+    name: str | None = Field(default=None, min_length=1, description="App name; derived from prompt when omitted")
+    prompt: str | None = Field(
+        default=None, description="Goal prompt the app was created from; used to derive the name"
+    )
 
 
 class UpdateAppPayload(BaseModel):
@@ -348,7 +364,7 @@ class AppListApi(AppResource):
         ), HTTPStatus.OK
 
     @console_ns.doc("create_app")
-    @console_ns.doc(description="Create a new application")
+    @console_ns.doc(description="Create a new application. A name is required when App Builder is disabled.")
     @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
@@ -359,7 +375,9 @@ class AppListApi(AppResource):
         rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, Workspace())],
     )
     def post(self, context: RequestContext):
-        payload = validate_request(CreateAppPayload)
+        """Validate the admitted caller's request before creating the app under the active Builder setting."""
+        payload_model = CreateAppPayload if dify_config.DIFY_BUILDER_ENABLED else CreateNamedAppPayload
+        payload = validate_request(payload_model)
         params = CreateAppParams.model_validate(payload.model_dump())
         response = app_detail_response(application_services().apps.console.create(context, params))
         return dump_response(AppDetailWithSite, response), HTTPStatus.CREATED

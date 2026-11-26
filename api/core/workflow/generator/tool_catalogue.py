@@ -2,7 +2,7 @@
 Tool catalogue for the workflow generator.
 
 Returns a compact, LLM-readable inventory of the tools currently installed for
-a tenant (both hardcoded built-in providers and plugin providers). The planner
+a tenant (hardcoded built-in, plugin, native API and cached MCP providers). The planner
 uses this to recommend ``tool`` nodes by exact ``provider/tool`` identifier;
 the builder consumes the same list so it can emit a syntactically correct
 ``tool`` node ``data`` block (provider_id, provider_type, tool_name,
@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import unicodedata
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from operator import itemgetter
@@ -32,6 +33,8 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolDescription
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
+from repositories.api_tool_catalogue import list_api_tool_metadata
+from repositories.mcp_tool_catalogue import list_mcp_tool_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +79,23 @@ class ToolCatalogueEntry(TypedDict):
     tool_name: str
     tool_label: str
     description: str  # one-line LLM-friendly description
+    # Builtin/plugin: provider_controller.need_credentials. API: conservative
+    # unknown-auth flag; authorization_metadata must take precedence. MCP
+    # configuration uses mcp_cached_auth, never builtin credential ownership.
+    needs_credentials: bool
+    authorization_metadata: NotRequired[str]
+    # Provider declaration metadata, searched with a low weight so a tool whose
+    # own label is generic ("Post") still matches its provider's capability.
+    provider_label: NotRequired[str]
+    provider_description: NotRequired[str]
+    provider_tags: NotRequired[list[str]]
     parameters: NotRequired[list[dict[str, Any]]]
+    input_schema: NotRequired[dict[str, Any]]
     output_schema: NotRequired[dict[str, Any]]
+    # Cached native MCP configuration only; never evidence of runtime access.
+    mcp_cached_auth: NotRequired[bool]
+    # Direct public HTTP response declarations, distinct from native outputs.
+    response_contracts: NotRequired[dict[str, object]]
 
 
 class ToolCapabilityQuery(TypedDict):
@@ -105,18 +123,33 @@ class LegacyToolFallbackSelection:
         return max(0, len(self.entries) - self.limit)
 
 
-def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
+def build_tool_catalogue(
+    tenant_id: str, *, on_source_error: Callable[[str], None] | None = None
+) -> list[ToolCatalogueEntry]:
     """
     Enumerate installed tools for the given tenant.
 
     Failures inside a single provider (mis-declared tool, plugin runtime
     error) are logged and skipped — one bad provider must not break the
-    whole generator. Returns the complete installed inventory; prompt-specific
-    truncation belongs to ``format_tool_catalogue``.
+    whole generator. A failed plugin inventory fetch is logged and leaves the
+    hardcoded built-in tools in place. Native API and cached MCP public metadata
+    are read independently without constructing credential-bearing controllers.
+    Returns the complete installed
+    inventory; prompt-specific truncation belongs to ``format_tool_catalogue``.
     """
     entries: list[ToolCatalogueEntry] = []
 
-    for provider in ToolManager.list_builtin_providers(tenant_id):
+    providers: list[BuiltinToolProviderController | PluginToolProviderController] = list(
+        ToolManager.list_hardcoded_providers()
+    )
+    try:
+        providers.extend(ToolManager.list_plugin_providers(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("plugin_inventory")
+        logger.exception("Workflow generator: failed to list plugin tool providers; keeping built-in tools only")
+
+    for provider in providers:
         provider_name = provider.entity.identity.name
         plugin_id = ""
         # The tool-provider domain distinguishes hardcoded providers from
@@ -135,8 +168,12 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
             continue
 
         try:
+            needs_credentials = provider.need_credentials
             tools = list(provider.get_tools())
+            provider_label, provider_description, provider_tags = _provider_capability(provider)
         except Exception:
+            if on_source_error is not None:
+                on_source_error("tool_provider")
             logger.exception(
                 "Workflow generator: failed to list tools for provider %s",
                 provider_name,
@@ -157,16 +194,36 @@ def build_tool_catalogue(tenant_id: str) -> list[ToolCatalogueEntry]:
                         tool_name=tool_name,
                         tool_label=tool_label,
                         description=description,
+                        needs_credentials=needs_credentials,
+                        provider_label=provider_label,
+                        provider_description=provider_description,
+                        provider_tags=provider_tags,
                         parameters=[parameter.model_dump(mode="json") for parameter in tool.entity.parameters],
                         output_schema=dict(tool.entity.output_schema),
                     )
                 )
             except Exception:
+                if on_source_error is not None:
+                    on_source_error("tool_schema")
                 logger.exception(
                     "Workflow generator: failed to describe a tool in provider %s",
                     provider_name,
                 )
                 continue
+
+    try:
+        entries.extend(list_api_tool_metadata(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("api_tool_inventory")
+        logger.exception("Workflow generator: failed to list public API tool metadata; keeping other tools")
+
+    try:
+        entries.extend(list_mcp_tool_metadata(tenant_id))
+    except Exception:
+        if on_source_error is not None:
+            on_source_error("mcp_tool_inventory")
+        logger.exception("Workflow generator: failed to list public cached MCP metadata; keeping other tools")
 
     entries.sort(key=itemgetter("provider_name", "tool_name"))
     return entries
@@ -202,31 +259,95 @@ def format_tool_catalogue(entries: list[ToolCatalogueEntry], *, max_tools: int |
         desc = e["description"].replace("\n", " ").strip()
         if len(desc) > 120:
             desc = desc[:117] + "..."
-        line = f"- {e['provider_name']}/{e['tool_name']}"
+        line = f"- {tool_entry_identifier(e)}"
         if e["tool_label"] and e["tool_label"] != e["tool_name"]:
             line += f" ({e['tool_label']})"
         # provider names for plugin tools commonly contain slashes themselves
         # (for example ``langgenius/google/google``). Explicit JSON-quoted
         # fields remove the ambiguous "split on the last slash" guess while
         # retaining the readable provider/tool display id.
-        line += (
+        identity_fields = (
             f" [provider_id={json.dumps(e['provider_name'], ensure_ascii=False)}; "
-            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}]"
+            f"tool_name={json.dumps(e['tool_name'], ensure_ascii=False)}"
         )
+        if e["provider_type"] in {"api", "mcp"}:
+            identity_fields += f"; provider_type={json.dumps(e['provider_type'])}"
+        line += identity_fields + "]"
         if desc:
             line += f" — {desc}"
         lines.append(line)
     return "\n".join(lines)
 
 
-def find_tool_entry(entries: list[ToolCatalogueEntry], provider_name: str, tool_name: str) -> ToolCatalogueEntry | None:
-    """Return one exact installed-tool entry, or ``None`` when unavailable."""
-    provider_name = provider_name.strip()
-    tool_name = tool_name.strip()
-    for entry in entries:
-        if entry["provider_name"] == provider_name and entry["tool_name"] == tool_name:
+def tool_entry_identifier(entry: ToolCatalogueEntry) -> str:
+    """Return the selection ID, retaining legacy IDs outside the MCP namespace."""
+    prefix = "mcp:" if entry.get("provider_type") == "mcp" else ""
+    return f"{prefix}{entry['provider_name']}/{entry['tool_name']}"
+
+
+def _tool_entry_key(entry: ToolCatalogueEntry) -> tuple[str, str, str]:
+    """Provider type is part of native identity even when display pairs collide."""
+    return entry["provider_name"], entry["tool_name"], entry["provider_type"]
+
+
+def find_tool_entry(
+    entries: list[ToolCatalogueEntry], provider_name: str, tool_name: str, *, provider_type: str | None = None
+) -> ToolCatalogueEntry | None:
+    """Resolve an exact native identity; legacy untyped pairs must be unambiguous.
+
+    Explicit provider types never fall back to another type. Unknown or ambiguous
+    identities return None without choosing a provider by catalogue order.
+    """
+    matches = [
+        entry
+        for entry in entries
+        if entry["provider_name"] == provider_name.strip()
+        and entry["tool_name"] == tool_name.strip()
+        and (provider_type is None or entry["provider_type"] == provider_type)
+    ]
+    return matches[0] if matches and len({_tool_entry_key(entry) for entry in matches}) == 1 else None
+
+
+def resolve_tool_entry(
+    entries: list[ToolCatalogueEntry], selector: object, *, purpose: str
+) -> ToolCatalogueEntry | None:
+    """Honor an explicit native selector; allow only an unambiguous prose fallback.
+
+    Missing legacy selectors may use exact text identifiers. An explicit type
+    or an installed ambiguous pair is authoritative even when no match exists:
+    prose must never substitute another provider type for either case. Supplied
+    types must be nonblank strings; null is malformed, not an omitted type.
+    Identity strings are normalized before both lookup and ambiguity checks.
+    """
+    if isinstance(selector, dict):
+        provider = str(selector.get("provider_id") or selector.get("provider_name") or "").strip()
+        name = str(selector.get("tool_name") or "").strip()
+        has_type = "provider_type" in selector
+        raw_type = selector.get("provider_type")
+        if has_type and (not isinstance(raw_type, str) or not raw_type.strip()):
+            return None
+        provider_type = raw_type.strip() if isinstance(raw_type, str) else None
+        entry = find_tool_entry(entries, provider, name, provider_type=provider_type)
+        if entry is not None or has_type:
             return entry
-    return None
+        if any(e["provider_name"] == provider and e["tool_name"] == name for e in entries):
+            return None
+    return find_tool_entry_in_text(entries, purpose)
+
+
+def find_tool_entry_in_text(entries: list[ToolCatalogueEntry], text: str) -> ToolCatalogueEntry | None:
+    """Resolve one mentioned native identity, refusing ambiguous legacy display IDs."""
+    matches = [entry for entry in entries if _text_mentions_entry(text, entry)]
+    return matches[0] if matches and len({_tool_entry_key(entry) for entry in matches}) == 1 else None
+
+
+def _text_mentions_entry(text: str, entry: ToolCatalogueEntry, *, ignore_case: bool = False) -> bool:
+    """Accept namespaced MCP IDs and legacy mentions without guessing a provider type."""
+    provider = ("mcp:" if entry["provider_type"] == "mcp" else "") + entry["provider_name"]
+    return text_mentions_tool_identifier(text, provider, entry["tool_name"], ignore_case=ignore_case) or (
+        entry["provider_type"] == "mcp"
+        and text_mentions_tool_identifier(text, entry["provider_name"], entry["tool_name"], ignore_case=ignore_case)
+    )
 
 
 def text_mentions_tool_identifier(
@@ -264,10 +385,10 @@ def select_tool_candidates(
     """
     pinned_keys = _find_explicit_tool_keys(entries, explicit_text)
     pinned_keys.update(_find_current_graph_tool_keys(entries, current_graph))
-    entries_by_key = {(entry["provider_name"], entry["tool_name"]): entry for entry in entries}
-    pinned = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) in pinned_keys]
+    entries_by_key = {_tool_entry_key(entry): entry for entry in entries}
+    pinned = [entry for entry in entries if _tool_entry_key(entry) in pinned_keys]
 
-    candidate_scores: dict[tuple[str, str], float] = {}
+    candidate_scores: dict[tuple[str, str, str], float] = {}
     unmatched_queries: list[str] = []
     for query in queries[:5]:
         ranked = _rank_tools_for_query(entries, query)
@@ -278,12 +399,12 @@ def select_tool_candidates(
                 unmatched_queries.append(capability)
             continue
         for score, entry in confident[:MAX_ROUTED_TOOLS_PER_QUERY]:
-            key = (entry["provider_name"], entry["tool_name"])
+            key = _tool_entry_key(entry)
             candidate_scores[key] = max(score, candidate_scores.get(key, 0.0))
 
     ranked_keys = sorted(
         candidate_scores,
-        key=lambda key: (-candidate_scores[key], key[0], key[1]),
+        key=lambda key: (-candidate_scores[key], key[0], key[1], key[2]),
     )
     provider_counts: dict[str, int] = {}
     routed: list[ToolCatalogueEntry] = []
@@ -318,9 +439,9 @@ def select_legacy_fallback_selection(
         explicit_text=explicit_text,
         current_graph=current_graph,
     ).entries
-    pinned_keys = {(entry["provider_name"], entry["tool_name"]) for entry in pinned}
+    pinned_keys = {_tool_entry_key(entry) for entry in pinned}
     regular_limit = max(0, _MAX_PROMPT_TOOLS - len(pinned))
-    regular = [entry for entry in entries if (entry["provider_name"], entry["tool_name"]) not in pinned_keys]
+    regular = [entry for entry in entries if _tool_entry_key(entry) not in pinned_keys]
     return LegacyToolFallbackSelection(
         entries=[*pinned, *regular[:regular_limit]],
         omitted_entries=regular[regular_limit:],
@@ -346,29 +467,24 @@ def select_legacy_fallback_tools(
 def _find_explicit_tool_keys(
     entries: list[ToolCatalogueEntry],
     text: str,
-) -> set[tuple[str, str]]:
+) -> set[tuple[str, str, str]]:
     if not text.strip():
         return set()
-    keys: set[tuple[str, str]] = set()
+    keys: set[tuple[str, str, str]] = set()
     for entry in entries:
-        if text_mentions_tool_identifier(
-            text,
-            entry["provider_name"],
-            entry["tool_name"],
-            ignore_case=True,
-        ):
-            keys.add((entry["provider_name"], entry["tool_name"]))
+        if _text_mentions_entry(text, entry, ignore_case=True):
+            keys.add(_tool_entry_key(entry))
     return keys
 
 
 def _find_current_graph_tool_keys(
     entries: list[ToolCatalogueEntry],
     current_graph: dict[str, Any] | None,
-) -> set[tuple[str, str]]:
+) -> set[tuple[str, str, str]]:
     if not current_graph:
         return set()
-    installed = {(entry["provider_name"], entry["tool_name"]) for entry in entries}
-    keys: set[tuple[str, str]] = set()
+    installed = {_tool_entry_key(entry) for entry in entries}
+    keys: set[tuple[str, str, str]] = set()
     for node in current_graph.get("nodes") or []:
         if not isinstance(node, dict):
             continue
@@ -378,10 +494,78 @@ def _find_current_graph_tool_keys(
         key = (
             str(data.get("provider_id") or data.get("provider_name") or "").strip(),
             str(data.get("tool_name") or "").strip(),
+            str(data.get("provider_type") or "builtin"),
         )
         if key in installed:
             keys.add(key)
     return keys
+
+
+def tool_capability_text(entry: Mapping[str, Any]) -> str:
+    """The provider label, description and tags searched for one catalogue entry."""
+    return " ".join(
+        [
+            str(entry.get("provider_label") or ""),
+            str(entry.get("provider_description") or ""),
+            *(str(tag) for tag in entry.get("provider_tags") or []),
+        ]
+    ).strip()
+
+
+def score_tool_relevance(
+    query_text: str,
+    *,
+    provider_name: str,
+    tool_name: str,
+    label: str,
+    description: str,
+    capability: str = "",
+) -> tuple[float, bool]:
+    """Score one tool against free query text; return ``(score, is_confident)``.
+
+    The shared scorer behind capability routing, exposed so other owners
+    (the Builder's resource discovery) rank installed tools the same way.
+    Provider capability metadata carries the lowest weight and never earns a
+    phrase bonus: it describes the whole provider, not this tool.
+    """
+    query_normalized = _normalize_search_text(query_text)
+    query_tokens = _search_tokens(query_text)
+    identifier = f"{provider_name}/{tool_name}"
+    name_overlap = len(query_tokens & _search_tokens(f"{provider_name} {tool_name}"))
+    label_overlap = len(query_tokens & _search_tokens(label))
+    description_overlap = len(query_tokens & _search_tokens(description))
+    capability_overlap = len(query_tokens & _search_tokens(capability))
+
+    normalized_name = _normalize_search_text(tool_name)
+    normalized_label = _normalize_search_text(label)
+    phrase_bonus = 0.0
+    if query_normalized and query_normalized in _normalize_search_text(identifier):
+        phrase_bonus = 8.0
+    elif query_normalized and query_normalized in normalized_label:
+        phrase_bonus = 6.0
+    elif query_normalized and query_normalized in _normalize_search_text(description):
+        phrase_bonus = 2.0
+
+    fuzzy_ratio = max(
+        _fuzzy_ratio(query_normalized, normalized_name),
+        _fuzzy_ratio(query_normalized, normalized_label),
+    )
+    score = (
+        phrase_bonus
+        + name_overlap * 5.0
+        + label_overlap * 3.0
+        + description_overlap
+        + capability_overlap * 0.5
+        + fuzzy_ratio
+    )
+    is_confident = bool(
+        name_overlap
+        or label_overlap
+        or description_overlap
+        or capability_overlap
+        or fuzzy_ratio >= _MIN_NAME_FUZZY_RATIO
+    )
+    return score, is_confident
 
 
 def _rank_tools_for_query(
@@ -390,41 +574,16 @@ def _rank_tools_for_query(
     capability = str(query.get("capability") or "").strip()
     keywords = [str(keyword).strip() for keyword in (query.get("keywords") or []) if str(keyword).strip()]
     query_text = " ".join([capability, *keywords]).strip()
-    query_normalized = _normalize_search_text(query_text)
-    query_tokens = _search_tokens(query_text)
     ranked: list[tuple[float, ToolCatalogueEntry, bool]] = []
 
     for entry in entries:
-        identifier = f"{entry['provider_name']}/{entry['tool_name']}"
-        name_text = f"{entry['provider_name']} {entry['tool_name']}"
-        label_text = entry["tool_label"]
-        description_text = entry["description"]
-        name_tokens = _search_tokens(name_text)
-        label_tokens = _search_tokens(label_text)
-        description_tokens = _search_tokens(description_text)
-        name_overlap = len(query_tokens & name_tokens)
-        label_overlap = len(query_tokens & label_tokens)
-        description_overlap = len(query_tokens & description_tokens)
-
-        normalized_identifier = _normalize_search_text(identifier)
-        normalized_name = _normalize_search_text(entry["tool_name"])
-        normalized_label = _normalize_search_text(label_text)
-        normalized_description = _normalize_search_text(description_text)
-        phrase_bonus = 0.0
-        if query_normalized and query_normalized in normalized_identifier:
-            phrase_bonus = 8.0
-        elif query_normalized and query_normalized in normalized_label:
-            phrase_bonus = 6.0
-        elif query_normalized and query_normalized in normalized_description:
-            phrase_bonus = 2.0
-
-        fuzzy_ratio = max(
-            _fuzzy_ratio(query_normalized, normalized_name),
-            _fuzzy_ratio(query_normalized, normalized_label),
-        )
-        score = phrase_bonus + name_overlap * 5.0 + label_overlap * 3.0 + description_overlap + fuzzy_ratio
-        is_confident = bool(
-            name_overlap or label_overlap or description_overlap or fuzzy_ratio >= _MIN_NAME_FUZZY_RATIO
+        score, is_confident = score_tool_relevance(
+            query_text,
+            provider_name=entry["provider_name"],
+            tool_name=entry["tool_name"],
+            label=entry["tool_label"],
+            description=entry["description"],
+            capability=tool_capability_text(entry),
         )
         ranked.append((score, entry, is_confident))
 
@@ -511,6 +670,9 @@ def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
             suffix = " — " + "; ".join(suffixes) if suffixes else ""
             lines.append(f"- {name}: {type_}, form={form}, {requirement}{suffix}")
 
+    if "input_schema" in entry:
+        lines.extend(["", "Declared MCP input schema:", json.dumps(entry["input_schema"], ensure_ascii=False)])
+
     lines.extend(
         [
             "",
@@ -520,6 +682,17 @@ def format_tool_builder_context(entry: ToolCatalogueEntry) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _provider_capability(
+    provider: BuiltinToolProviderController | PluginToolProviderController,
+) -> tuple[str, str, list[str]]:
+    """Provider label, description and tags from its declaration identity."""
+    identity = provider.entity.identity
+    label = _i18n_text(identity.label)
+    description = _i18n_text(identity.description)
+    tags = [str(tag) for tag in (identity.tags or [])]
+    return label, description, tags
 
 
 def _i18n_text(label: I18nObject | None) -> str:

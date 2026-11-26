@@ -1,0 +1,758 @@
+{
+  "credentials_schema": [],
+  "identity": {
+    "author": "Mingwei_Zhang",
+    "description": {
+      "en_US": "Tools for processing JSON content using jsonpath_ng",
+      "ja_JP": "Tools for processing JSON content using jsonpath_ng",
+      "pt_BR": "Tools for processing JSON content using jsonpath_ng",
+      "zh_Hans": "利用 jsonpath_ng 处理 JSON 内容的工具"
+    },
+    "icon": "4b32596ee7e6be23265e38f20708b0bd7d6b7175c6be81d946f9d54c1decdb7e.svg",
+    "icon_dark": "e7c879d066753e98af74d827613e62b9eacfcfbf67f92f1352f86122c7228702.svg",
+    "label": {
+      "en_US": "JSON Process",
+      "ja_JP": "JSON Process",
+      "pt_BR": "JSON Process",
+      "zh_Hans": "JSON 处理"
+    },
+    "name": "langgenius/json_process/json_process",
+    "tags": [
+      "utilities"
+    ]
+  },
+  "oauth_schema": null,
+  "plugin_id": null,
+  "tools": [
+    {
+      "description": {
+        "human": {
+          "en_US": "A tool for extracting JSON objects",
+          "ja_JP": "A tool for extracting JSON objects",
+          "pt_BR": "A tool for extracting JSON objects",
+          "zh_Hans": "一个解析JSON对象的工具"
+        },
+        "llm": "A tool for extracting JSON objects"
+      },
+      "has_runtime_parameters": false,
+      "identity": {
+        "author": "Mingwei_Zhang",
+        "icon": null,
+        "label": {
+          "en_US": "JSON Parse",
+          "ja_JP": "JSON Parse",
+          "pt_BR": "JSON Parse",
+          "zh_Hans": "JSON 解析"
+        },
+        "name": "parse",
+        "provider": "langgenius/json_process/json_process"
+      },
+      "output_schema": {},
+      "parameters": [
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSON data",
+            "ja_JP": "JSON data",
+            "pt_BR": "JSON数据",
+            "zh_Hans": "JSON数据"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "JSON data",
+            "ja_JP": "JSON data",
+            "pt_BR": "JSON data",
+            "zh_Hans": "JSON数据"
+          },
+          "llm_description": "JSON data to be processed",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "content",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSON fields to be parsed",
+            "ja_JP": "JSON fields to be parsed",
+            "pt_BR": "JSON fields to be parsed",
+            "zh_Hans": "需要解析的 JSON 字段"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "JSON filter",
+            "ja_JP": "JSON filter",
+            "pt_BR": "JSON filter",
+            "zh_Hans": "JSON解析对象"
+          },
+          "llm_description": "JSON fields to be parsed",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "json_filter",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": true,
+          "form": "form",
+          "human_description": {
+            "en_US": "Ensure the JSON output is ASCII encoded",
+            "ja_JP": "Ensure the JSON output is ASCII encoded",
+            "pt_BR": "Ensure the JSON output is ASCII encoded",
+            "zh_Hans": "确保输出的 JSON 是 ASCII 编码"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Ensure ASCII",
+            "ja_JP": "Ensure ASCII",
+            "pt_BR": "Ensure ASCII",
+            "zh_Hans": "确保 ASCII"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "ensure_ascii",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "description": {
+        "human": {
+          "en_US": "A tool for deleting JSON content",
+          "ja_JP": "A tool for deleting JSON content",
+          "pt_BR": "A tool for deleting JSON content",
+          "zh_Hans": "一个删除 JSON 内容的工具"
+        },
+        "llm": "A tool for deleting JSON content"
+      },
+      "has_runtime_parameters": false,
+      "identity": {
+        "author": "Mingwei_Zhang",
+        "icon": null,
+        "label": {
+          "en_US": "JSON Delete",
+          "ja_JP": "JSON Delete",
+          "pt_BR": "JSON Delete",
+          "zh_Hans": "JSON 删除"
+        },
+        "name": "json_delete",
+        "provider": "langgenius/json_process/json_process"
+      },
+      "output_schema": {},
+      "parameters": [
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSON content to be processed",
+            "ja_JP": "JSON content to be processed",
+            "pt_BR": "JSON content to be processed",
+            "zh_Hans": "待处理的 JSON 内容"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "JSON content",
+            "ja_JP": "JSON content",
+            "pt_BR": "JSON content",
+            "zh_Hans": "JSON 内容"
+          },
+          "llm_description": "JSON content to be processed",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "content",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSONPath query to locate the element to delete",
+            "ja_JP": "JSONPath query to locate the element to delete",
+            "pt_BR": "JSONPath query to locate the element to delete",
+            "zh_Hans": "用于定位要删除元素的 JSONPath 查询"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Query",
+            "ja_JP": "Query",
+            "pt_BR": "Query",
+            "zh_Hans": "查询"
+          },
+          "llm_description": "JSONPath query to locate the element to delete",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "query",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": true,
+          "form": "form",
+          "human_description": {
+            "en_US": "Ensure the JSON output is ASCII encoded",
+            "ja_JP": "Ensure the JSON output is ASCII encoded",
+            "pt_BR": "Ensure the JSON output is ASCII encoded",
+            "zh_Hans": "确保输出的 JSON 是 ASCII 编码"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Ensure ASCII",
+            "ja_JP": "Ensure ASCII",
+            "pt_BR": "Ensure ASCII",
+            "zh_Hans": "确保 ASCII"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "ensure_ascii",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "description": {
+        "human": {
+          "en_US": "A tool for replacing JSON content",
+          "ja_JP": "A tool for replacing JSON content",
+          "pt_BR": "A tool for replacing JSON content",
+          "zh_Hans": "一个替换 JSON 内容的工具"
+        },
+        "llm": "A tool for replacing JSON content"
+      },
+      "has_runtime_parameters": false,
+      "identity": {
+        "author": "Mingwei_Zhang",
+        "icon": null,
+        "label": {
+          "en_US": "JSON Replace",
+          "ja_JP": "JSON Replace",
+          "pt_BR": "JSON Replace",
+          "zh_Hans": "JSON 替换"
+        },
+        "name": "json_replace",
+        "provider": "langgenius/json_process/json_process"
+      },
+      "output_schema": {},
+      "parameters": [
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSON content",
+            "ja_JP": "JSON content",
+            "pt_BR": "JSON content",
+            "zh_Hans": "JSON 内容"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "JSON content",
+            "ja_JP": "JSON content",
+            "pt_BR": "JSON content",
+            "zh_Hans": "JSON 内容"
+          },
+          "llm_description": "JSON content to be processed",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "content",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "Query",
+            "ja_JP": "Query",
+            "pt_BR": "Query",
+            "zh_Hans": "查询"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Query",
+            "ja_JP": "Query",
+            "pt_BR": "Query",
+            "zh_Hans": "查询"
+          },
+          "llm_description": "JSONPath query to locate the element to replace",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "query",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "String to be replaced",
+            "ja_JP": "String to be replaced",
+            "pt_BR": "String to be replaced",
+            "zh_Hans": "待替换字符串"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "String to be replaced",
+            "ja_JP": "String to be replaced",
+            "pt_BR": "String to be replaced",
+            "zh_Hans": "待替换字符串"
+          },
+          "llm_description": "String to be replaced",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "replace_pattern",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "New Value",
+            "ja_JP": "New Value",
+            "pt_BR": "New Value",
+            "zh_Hans": "新值"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Replace Value",
+            "ja_JP": "Replace Value",
+            "pt_BR": "Replace Value",
+            "zh_Hans": "替换值"
+          },
+          "llm_description": "New Value to replace",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "replace_value",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": false,
+          "form": "form",
+          "human_description": {
+            "en_US": "Whether to decode the value to a JSON object (Does not apply to replace key)",
+            "ja_JP": "Whether to decode the value to a JSON object (Does not apply to replace key)",
+            "pt_BR": "Whether to decode the value to a JSON object (Does not apply to replace key)",
+            "zh_Hans": "是否将值解码为 JSON 对象 (不适用于键替换)"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Decode Value",
+            "ja_JP": "Decode Value",
+            "pt_BR": "Decode Value",
+            "zh_Hans": "解码值"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "value_decode",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        },
+        {
+          "auto_generate": null,
+          "default": "pattern",
+          "form": "form",
+          "human_description": {
+            "en_US": "Replace Model",
+            "ja_JP": "Replace Model",
+            "pt_BR": "Replace Model",
+            "zh_Hans": "替换模式"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Replace Model",
+            "ja_JP": "Replace Model",
+            "pt_BR": "Replace Model",
+            "zh_Hans": "替换模式"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "replace_model",
+          "options": [
+            {
+              "icon": "",
+              "label": {
+                "en_US": "replace key",
+                "ja_JP": "replace key",
+                "pt_BR": "replace key",
+                "zh_Hans": "键替换"
+              },
+              "value": "key"
+            },
+            {
+              "icon": "",
+              "label": {
+                "en_US": "replace value",
+                "ja_JP": "replace value",
+                "pt_BR": "replace value",
+                "zh_Hans": "值替换"
+              },
+              "value": "value"
+            },
+            {
+              "icon": "",
+              "label": {
+                "en_US": "replace string",
+                "ja_JP": "replace string",
+                "pt_BR": "replace string",
+                "zh_Hans": "字符串替换"
+              },
+              "value": "pattern"
+            }
+          ],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "select"
+        },
+        {
+          "auto_generate": null,
+          "default": true,
+          "form": "form",
+          "human_description": {
+            "en_US": "Ensure the JSON output is ASCII encoded",
+            "ja_JP": "Ensure the JSON output is ASCII encoded",
+            "pt_BR": "Ensure the JSON output is ASCII encoded",
+            "zh_Hans": "确保输出的 JSON 是 ASCII 编码"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Ensure ASCII",
+            "ja_JP": "Ensure ASCII",
+            "pt_BR": "Ensure ASCII",
+            "zh_Hans": "确保 ASCII"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "ensure_ascii",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "description": {
+        "human": {
+          "en_US": "A tool for inserting JSON content",
+          "ja_JP": "A tool for inserting JSON content",
+          "pt_BR": "A tool for inserting JSON content",
+          "zh_Hans": "一个插入 JSON 内容的工具"
+        },
+        "llm": "A tool for inserting JSON content"
+      },
+      "has_runtime_parameters": false,
+      "identity": {
+        "author": "Mingwei_Zhang",
+        "icon": null,
+        "label": {
+          "en_US": "JSON Insert",
+          "ja_JP": "JSON Insert",
+          "pt_BR": "JSON Insert",
+          "zh_Hans": "JSON 插入"
+        },
+        "name": "json_insert",
+        "provider": "langgenius/json_process/json_process"
+      },
+      "output_schema": {},
+      "parameters": [
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "JSON content",
+            "ja_JP": "JSON content",
+            "pt_BR": "JSON content",
+            "zh_Hans": "JSON 内容"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "JSON content",
+            "ja_JP": "JSON content",
+            "pt_BR": "JSON content",
+            "zh_Hans": "JSON 内容"
+          },
+          "llm_description": "JSON content to be processed",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "content",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "Object to insert",
+            "ja_JP": "Object to insert",
+            "pt_BR": "Object to insert",
+            "zh_Hans": "待插入的对象"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Query",
+            "ja_JP": "Query",
+            "pt_BR": "Query",
+            "zh_Hans": "查询"
+          },
+          "llm_description": "JSONPath query to locate the element to insert",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "query",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": null,
+          "form": "llm",
+          "human_description": {
+            "en_US": "New Value",
+            "ja_JP": "New Value",
+            "pt_BR": "New Value",
+            "zh_Hans": "插入的新值"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "New Value",
+            "ja_JP": "New Value",
+            "pt_BR": "New Value",
+            "zh_Hans": "新值"
+          },
+          "llm_description": "New Value to insert",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "new_value",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "string"
+        },
+        {
+          "auto_generate": null,
+          "default": false,
+          "form": "form",
+          "human_description": {
+            "en_US": "Whether to decode the value to a JSON object",
+            "ja_JP": "Whether to decode the value to a JSON object",
+            "pt_BR": "Whether to decode the value to a JSON object",
+            "zh_Hans": "是否将值解码为 JSON 对象"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Decode Value",
+            "ja_JP": "Decode Value",
+            "pt_BR": "Decode Value",
+            "zh_Hans": "解码值"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "value_decode",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        },
+        {
+          "auto_generate": null,
+          "default": "False",
+          "form": "form",
+          "human_description": {
+            "en_US": "Whether to create a path when the path does not exist",
+            "ja_JP": "Whether to create a path when the path does not exist",
+            "pt_BR": "Whether to create a path when the path does not exist",
+            "zh_Hans": "查询路径不存在时是否创建路径"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Whether to create a path",
+            "ja_JP": "Whether to create a path",
+            "pt_BR": "Whether to create a path",
+            "zh_Hans": "是否创建路径"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "create_path",
+          "options": [
+            {
+              "icon": "",
+              "label": {
+                "en_US": "Yes",
+                "ja_JP": "Yes",
+                "pt_BR": "Yes",
+                "zh_Hans": "是"
+              },
+              "value": "True"
+            },
+            {
+              "icon": "",
+              "label": {
+                "en_US": "No",
+                "ja_JP": "No",
+                "pt_BR": "No",
+                "zh_Hans": "否"
+              },
+              "value": "False"
+            }
+          ],
+          "placeholder": null,
+          "precision": null,
+          "required": true,
+          "scope": null,
+          "template": null,
+          "type": "select"
+        },
+        {
+          "auto_generate": null,
+          "default": true,
+          "form": "form",
+          "human_description": {
+            "en_US": "Ensure the JSON output is ASCII encoded",
+            "ja_JP": "Ensure the JSON output is ASCII encoded",
+            "pt_BR": "Ensure the JSON output is ASCII encoded",
+            "zh_Hans": "确保输出的 JSON 是 ASCII 编码"
+          },
+          "input_schema": null,
+          "label": {
+            "en_US": "Ensure ASCII",
+            "ja_JP": "Ensure ASCII",
+            "pt_BR": "Ensure ASCII",
+            "zh_Hans": "确保 ASCII"
+          },
+          "llm_description": "",
+          "max": null,
+          "min": null,
+          "multiple": false,
+          "name": "ensure_ascii",
+          "options": [],
+          "placeholder": null,
+          "precision": null,
+          "required": false,
+          "scope": null,
+          "template": null,
+          "type": "boolean"
+        }
+      ]
+    }
+  ]
+}

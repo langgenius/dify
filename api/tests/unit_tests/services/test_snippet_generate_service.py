@@ -5,11 +5,11 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
-from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.snippet_start import SNIPPET_VIRTUAL_START_NODE_ID
+from fields.workflow_run_fields import LoopNodeRunPayload
 from graphon.file import FileUploadConfig
 from graphon.file.models import File
 from graphon.graph import Graph

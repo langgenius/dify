@@ -11,6 +11,7 @@ export type FeatureModel = {
   apps: LimitationModel
   billing: BillingModel
   can_replace_logo: boolean
+  dify_builder_enabled: boolean
   documents_upload_quota: LimitationModel
   education: EducationModel
   enable_file_scan: boolean

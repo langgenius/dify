@@ -24,9 +24,7 @@ jobs:
       matrix:
         include:
           - revision: base
-            sha: ${{ inputs.base-rev }}
           - revision: merge
-            sha: ${{ github.sha }}
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       NODE_OPTIONS: --max-old-space-size=6144
@@ -43,8 +41,21 @@ jobs:
       - name: Checkout measured revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ matrix.sha }}
+          ref: ${{ matrix.revision == 'merge' && github.sha || github.event.pull_request.base.sha || github.event.merge_group.base_sha || 'refs/heads/main' }}
+          fetch-depth: ${{ matrix.revision == 'base' && github.event_name == 'workflow_dispatch' && '0' || '1' }}
           persist-credentials: false
+
+      - name: Select verified base commit
+        if: matrix.revision == 'base' && github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          BASE_REV: ${{ inputs.base-rev }}
+        run: |
+          if [[ ! "$BASE_REV" =~ ^[0-9a-f]{40}$ ]] || ! git merge-base --is-ancestor "$BASE_REV" HEAD; then
+            echo 'The base revision must be a commit in main history.' >&2
+            exit 1
+          fi
+          git checkout --detach "$BASE_REV"
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
@@ -62,9 +73,7 @@ jobs:
           printf 'Full Vinext build: **%s seconds**.\n' "$((SECONDS - started))" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Collect sizes
-        env:
-          COMMIT_SHA: ${{ matrix.sha }}
-        run: node "$RUNNER_TEMP/bundle-analysis.ts" collect web "$COMMIT_SHA" "$RUNNER_TEMP/bundle-size/summary.json"
+        run: node "$RUNNER_TEMP/bundle-analysis.ts" collect web "$(git rev-parse HEAD)" "$RUNNER_TEMP/bundle-size/summary.json"
 
       - name: Upload size snapshot
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -122,7 +131,7 @@ jobs:
             bundle-results/web-bundle-summary-merge/summary.json \
             bundle-report.md
           printf '\n[Download base/merge snapshots and official Rolldown analysis reports](%s#artifacts).\n' "$RUN_URL" >> bundle-report.md
-          printf '\nComparison: event base SHA vs the tested merge commit at GITHUB_SHA (PR or merge queue).\n' >> bundle-report.md
+          printf '\nCompared the selected base commit with the commit tested at GITHUB_SHA.\n' >> bundle-report.md
           cat bundle-report.md >> "$GITHUB_STEP_SUMMARY"
 
       # Forks still receive the job summary and artifacts, without a privileged PR build.
