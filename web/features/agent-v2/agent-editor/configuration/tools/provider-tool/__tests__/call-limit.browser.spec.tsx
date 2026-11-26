@@ -1,7 +1,10 @@
 import { useAtomValue } from 'jotai'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { renderChatOwner } from '@/app/components/base/chat/chat/__tests__/chat-owner-preset'
-import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import {
+  agentSoulConfigToFormState,
+  formStateToAgentSoulConfig,
+} from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -115,4 +118,34 @@ it('displays saved limits without an editing control in read-only versions', asy
   await expect
     .element(page.getByRole('button', { name: /Call limit for Search repositories/ }))
     .not.toBeInTheDocument()
+})
+
+it('restores the saved limit after disabling and loading a new editor session', async () => {
+  const view = await renderChatOwner(
+    <AgentComposerProvider initialDraft={initialDraft}>
+      <ConfiguredTool />
+    </AgentComposerProvider>,
+  )
+  await page.getByRole('button', { name: /Call limit for Search repositories/ }).click()
+  await page.getByRole('switch', { name: 'Call limit per run' }).click()
+  await page.getByRole('textbox', { name: 'Maximum calls' }).fill('7')
+  await userEvent.keyboard('{Enter}')
+  await page.getByRole('switch', { name: 'Call limit per run' }).click()
+  const saved = page.getByRole('status', { name: 'Saved configuration' })
+  await expect.element(saved).toMatchTextContent('"last_max_calls_per_run":7')
+  const configuration = formStateToAgentSoulConfig({ formState: initialDraft })
+  configuration.tools = { dify_tools: JSON.parse(saved.element().textContent!) }
+  await view.unmount()
+  await renderChatOwner(
+    <AgentComposerProvider initialDraft={agentSoulConfigToFormState(configuration)}>
+      <ConfiguredTool />
+    </AgentComposerProvider>,
+  )
+  await page.getByRole('button', { name: /Call limit for search/ }).click()
+  const input = page.getByRole('textbox', { name: 'Maximum calls' })
+  await expect.element(input).toBeDisabled()
+  await expect.element(input).toHaveValue('7')
+  await page.getByRole('switch', { name: 'Call limit per run' }).click()
+  await expect.element(input).toHaveValue('7')
+  await expect.element(saved).toMatchTextContent('"max_calls_per_run":7')
 })

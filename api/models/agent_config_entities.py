@@ -683,6 +683,10 @@ class AgentSoulDifyToolConfig(BaseModel):
         default=None,
         description="Maximum dispatches of this operation per logical run; null or omitted means unlimited.",
     )
+    last_max_calls_per_run: Annotated[int, Field(strict=True, gt=0)] | None = Field(
+        default=None,
+        description="Last enabled limit retained by the editor; does not enforce a runtime quota.",
+    )
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at

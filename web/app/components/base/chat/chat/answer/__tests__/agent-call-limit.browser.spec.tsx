@@ -6,6 +6,10 @@ import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 vi.unmock('react-i18next')
 
+beforeEach(async () => {
+  await page.viewport(1000, 800)
+})
+
 it('renders persisted call identity, frozen rejection quota and cancellation without inventing a result', async () => {
   const activity: AgentToolActivity = {
     id: 'run:fourth',

@@ -89,6 +89,7 @@ export type AgentToolAction = {
   name: string
   toolName: string
   maxCallsPerRun?: number | null
+  lastMaxCallsPerRun?: number | null
   description: string
 }
 

@@ -302,6 +302,7 @@ def test_call_limit_survives_preparation_on_every_dify_tool_route(
                     "tool_name": "search",
                     "credential_type": "unauthorized",
                     "max_calls_per_run": limit,
+                    "last_max_calls_per_run": 7,
                 }
             ]
         }
@@ -318,6 +319,7 @@ def test_call_limit_survives_preparation_on_every_dify_tool_route(
     runtime.entity.identity.label.en_US = "Renamed after preparation"
     assert result.tool_labels["search"]["en_US"] == "Search"
     serialized_tool = layer.model_dump(mode="json")["tools"][0]
+    assert "last_max_calls_per_run" not in serialized_tool
     assert "tool_labels" not in serialized_tool
     if limit is None:
         assert "max_calls_per_run" not in serialized_tool
