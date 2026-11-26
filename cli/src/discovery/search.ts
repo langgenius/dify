@@ -58,6 +58,7 @@ const STOPWORDS: ReadonlySet<string> = new Set([
 ])
 
 const SCHEMA_KEYS_WITH_TEXT = ['description', 'title'] as const
+const SCHEMA_KEYS_WITH_BRANCHES = ['anyOf', 'oneOf', 'allOf'] as const
 const SCHEMA_DEPTH_LIMIT = 4
 
 const RUNG_EXACT = 1
@@ -109,6 +110,11 @@ function schemaText(schema: unknown, depth: number, out: string[]): void {
     }
   }
   schemaText(schema.items, depth + 1, out)
+  schemaText(schema.additionalProperties, depth + 1, out)
+  for (const key of SCHEMA_KEYS_WITH_BRANCHES) {
+    const branches = schema[key]
+    if (Array.isArray(branches)) for (const branch of branches) schemaText(branch, depth + 1, out)
+  }
 }
 
 export function searchDoc(id: string, source: Describable, deprecated: boolean): SearchDoc {
