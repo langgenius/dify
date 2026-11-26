@@ -26,7 +26,6 @@ vi.mock('./share', async (importOriginal) => {
     generationConversationName: vi.fn(),
     fetchAppInfo: vi.fn(),
     fetchAppMeta: vi.fn(),
-    fetchAppParams: vi.fn(),
     getAppAccessModeByAppCode: vi.fn(),
   }
 })

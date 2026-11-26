@@ -1,8 +1,5 @@
 import type { WebAppAddress } from './webapp-address'
-import {
-  webAppLoginStatus as getWebAppLoginStatus,
-  webAppLogout as logoutWebApp,
-} from './webapp-auth'
+import { webAppLogout as logoutWebApp } from './webapp-auth'
 import { webAppClient } from './webapp-client'
 
 export const webAppLogin = (body: { email: string; password: string; remember_me?: boolean }) =>
@@ -32,8 +29,5 @@ export const verifyWebAppResetPasswordCode = (body: {
   code: string
   token: string
 }) => webAppClient.forgotPassword.validity.post({ body })
-
-export const webAppLoginStatus = (shareCode: string, userId?: string) =>
-  getWebAppLoginStatus(shareCode, userId)
 
 export const webAppLogout = (address: WebAppAddress | null) => logoutWebApp(address)

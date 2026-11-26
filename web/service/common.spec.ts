@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME } from '@/config'
-import { webAppLoginStatus, webAppLogout } from './common'
-import { getWebAppPassport, setWebAppAccessToken, setWebAppPassport } from './webapp-auth'
+import { webAppLogout } from './common'
+import {
+  getWebAppPassport,
+  setWebAppAccessToken,
+  setWebAppPassport,
+  webAppLoginStatus,
+} from './webapp-auth'
 
 const webAppClientMock = vi.hoisted(() => ({
   login: { status: { get: vi.fn() } },

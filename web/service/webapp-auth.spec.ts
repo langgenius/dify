@@ -5,17 +5,18 @@ import { createDeferred } from '@/test/deferred'
 import {
   beginWebAppAuthorizationRecovery,
   captureWebAppAuthSession,
-  clearAnonymousWebAppPassports,
   clearWebAppPassport,
   completeWebAppAuthorizationRecovery,
   expireWebAppAccountSession,
   getAnonymousWebAppPassport,
+  getAnonymousWebAppPassports,
   getAuthenticatedWebAppPassport,
   getOrCreateWebAppSessionId,
   getWebAppAccessToken,
   getWebAppAuthSessionSnapshot,
   getWebAppLoginMode,
   getWebAppPassport,
+  removeAnonymousWebAppPassport,
   setWebAppAccessToken,
   setWebAppPassport,
   startWebAppAccountSession,
@@ -67,26 +68,22 @@ describe('Webapp credentials', () => {
     expect(getWebAppPassport(ordinary)).toBe('')
   })
 
-  it('clears anonymous Passports across every Webapp without clearing signed-in Passports or session IDs', () => {
-    const otherApp = { kind: 'default', code: 'another-app' } as const
-    const scopes = [ordinary, environment, otherApp]
-    for (const address of scopes) {
+  it('removes only the claimed anonymous Passport and leaves a replacement Passport intact', () => {
+    for (const address of [ordinary, environment]) {
       setWebAppPassport(address, `anonymous-${address.kind}-${address.code}`, 'anonymous')
       setWebAppPassport(address, `account-${address.kind}-${address.code}`, 'authenticated')
     }
-    localStorage.setItem('session_id-another-app', 'history-session')
-    localStorage.setItem('unrelated-preference', 'retained')
     const environmentSession = getOrCreateWebAppSessionId(environment)
+    const candidates = getAnonymousWebAppPassports()
+    setWebAppPassport(environment, 'new-anonymous-passport', 'anonymous')
 
-    clearAnonymousWebAppPassports()
+    for (const candidate of candidates) removeAnonymousWebAppPassport(candidate)
 
-    for (const address of scopes) {
-      expect(getAnonymousWebAppPassport(address)).toBe('')
-      expect(getWebAppPassport(address)).toBe(`account-${address.kind}-${address.code}`)
-    }
+    expect(getAnonymousWebAppPassport(ordinary)).toBe('')
+    expect(getAnonymousWebAppPassport(environment)).toBe('new-anonymous-passport')
+    expect(getAuthenticatedWebAppPassport(ordinary)).toBe('account-default-workflow-app')
+    expect(getAuthenticatedWebAppPassport(environment)).toBe('account-environment-workflow-app')
     expect(getOrCreateWebAppSessionId(environment)).toBe(environmentSession)
-    expect(localStorage.getItem('session_id-another-app')).toBe('history-session')
-    expect(localStorage.getItem('unrelated-preference')).toBe('retained')
   })
 
   it('keeps a stable anonymous session ID for each environment', () => {

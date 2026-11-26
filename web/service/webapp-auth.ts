@@ -159,11 +159,6 @@ export function getAuthenticatedWebAppPassport(address: WebAppAddress | null) {
   return readWebAppPassport(address, 'authenticated')
 }
 
-/** Call only after migrating or deleting anonymous history succeeds; Not now retains it. */
-export function clearAnonymousWebAppPassports() {
-  clearPassports(PASSPORT_LOCAL_STORAGE_NAME(''))
-}
-
 export function beginWebAppAuthorizationRecovery(address: WebAppAddress) {
   const key = getWebAppAuthorizationRecoveryKey(address)
   if (sessionStorage.getItem(key)) return false
