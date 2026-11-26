@@ -27,3 +27,15 @@ class EvaluationDatasetInvalidError(BaseServiceError):
 class EvaluationMaxConcurrentRunsError(BaseServiceError):
     def __init__(self, description: str | None = None):
         super().__init__(description or "Maximum number of concurrent evaluation runs reached.")
+
+
+class EvaluationRunControlError(Exception):
+    """Base class for control signals that must stop row-level error handling."""
+
+
+class EvaluationRunCancelledError(EvaluationRunControlError):
+    """Raised when cooperative cancellation stops an evaluation task."""
+
+
+class EvaluationRunOwnershipLostError(EvaluationRunControlError):
+    """Raised when a task invocation no longer owns the evaluation run lease."""
