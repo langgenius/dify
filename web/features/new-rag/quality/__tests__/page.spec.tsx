@@ -1265,7 +1265,10 @@ describe('QualityPage', () => {
     })
     serviceMock.deleteGolden.mockImplementation(
       async (input: { params: { question_id: string } }) => {
-        if (input.params.question_id === 'golden-2') throw new Error('temporary failure')
+        if (input.params.question_id === 'golden-2')
+          throw createHttpError(new Response(null, { status: 409 }), {
+            message: 'Server says why',
+          })
       },
     )
     const user = userEvent.setup()
@@ -1280,7 +1283,8 @@ describe('QualityPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Server says why'))
+    expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2)
     expect(
       screen.getByRole('checkbox', {
         hidden: true,

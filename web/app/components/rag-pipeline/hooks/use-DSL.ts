@@ -10,6 +10,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
@@ -52,8 +53,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       try {
         return await exportPipeline(include)
-      } catch {
-        toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+      } catch (error) {
+        toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
         return false
       }
     },
@@ -76,8 +77,8 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
           data: list,
         },
       } satisfies ExportSecretEnvironmentEvent)
-    } catch {
-      toast.error(t(($) => $.exportFailed, { ns: 'app' }))
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error) ?? t(($) => $.exportFailed, { ns: 'app' }))
     }
   }, [eventEmitter, handleExportDSL, t, pipelineId])
   return {

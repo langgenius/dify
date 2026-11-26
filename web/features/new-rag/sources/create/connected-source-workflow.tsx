@@ -2130,7 +2130,10 @@ function ConnectedSourceWorkflowSession({
         </div>
       ) : queryError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {getRequestErrorMessage(queryError === true ? connectionsQuery.error : queryError) ??
+              t(($) => $.providerLoadFailed)}
+          </p>
           <Button
             className="mt-3"
             onClick={() =>

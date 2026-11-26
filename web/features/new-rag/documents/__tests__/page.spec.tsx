@@ -9556,4 +9556,115 @@ describe('DocumentsPage', () => {
     expect(await screen.findByText('knowledgeErrors.taskFailure.internal')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' })).toBeInTheDocument()
   })
+
+  describe('server error messages', () => {
+    const serverError = () =>
+      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' })
+
+    it('shows the server message when the metadata fields fail to load', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
+      metadataFieldsQuery.error = serverError()
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.metadata' }))
+
+      expect(await screen.findByText('Server says why')).toBeInTheDocument()
+    })
+
+    it('shows the server message when a row re-index fails', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = { pages: [{ items: [document({ id: 'one', title: 'One.pdf' })] }] }
+      reindexMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(
+        await screen.findByRole('menuitem', { name: 'knowledgeDocuments.reindexDocument' }),
+      )
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+
+    it('shows the server message when a bulk re-index fails', async () => {
+      const user = userEvent.setup()
+      documentsQuery.data = {
+        pages: [
+          {
+            items: [
+              document({ id: 'one', title: 'One.pdf' }),
+              document({ id: 'two', title: 'Two.pdf' }),
+            ],
+          },
+        ],
+      }
+      reindexMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('checkbox', { name: 'One.pdf' }))
+      await user.click(screen.getByRole('checkbox', { name: 'Two.pdf' }))
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+
+    it('shows the server message when retrying a document row fails', async () => {
+      const user = userEvent.setup()
+      const failedTask = task({ documentId: 'one', id: 'failed-task', state: 'failed' })
+      documentsQuery.data = {
+        pages: [{ items: [document({ id: 'one', status: 'failed', latestTask: failedTask })] }],
+      }
+      tasksQuery.data = { pages: [{ items: [failedTask] }] }
+      retryMutation.mutateAsync.mockRejectedValueOnce(serverError())
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+      await user.click(await screen.findByRole('menuitem', { name: 'knowledgeSpace.retryTask' }))
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+
+    it('shows the server message when retrying a task in the panel fails', async () => {
+      const user = userEvent.setup()
+      retryMutation.mutateAsync.mockRejectedValueOnce(serverError())
+      documentsQuery.data = {
+        pages: [{ items: [document({ latestTask: task({ id: 'failed', state: 'failed' }) })] }],
+      }
+      tasksQuery.data = { pages: [{ items: [task({ id: 'failed', state: 'failed' })] }] }
+
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await user.click(
+        screen.getByRole('button', {
+          name: 'knowledgeDocuments.tasksWithAttention:{"count":1}',
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+    })
+
+    it('shows the server message when staging a file fails', async () => {
+      stageUploadMutation.mockRejectedValueOnce(serverError())
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      fireEvent.change(screen.getByLabelText('knowledgeCreate.uploadDocuments'), {
+        target: { files: [new File(['one'], 'one.md', { type: 'text/markdown' })] },
+      })
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+
+    it('shows the server message when adding staged files fails', async () => {
+      const user = userEvent.setup()
+      uploadMutation.mutateAsync.mockRejectedValueOnce(serverError())
+      await render(<DocumentsPage knowledgeSpaceId="space-1" />, { searchParams: '?upload=1' })
+      await user.upload(
+        screen.getByLabelText('knowledgeCreate.uploadDocuments'),
+        new File(['one'], 'one.md', { type: 'text/markdown' }),
+      )
+      await waitForDocumentFilesStaged()
+      await user.click(screen.getByRole('button', { name: 'knowledgeCreate.addAndProcess' }))
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+  })
 })

@@ -60,7 +60,8 @@ export function DocumentReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (result.errorMessage ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     },

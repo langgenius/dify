@@ -329,7 +329,7 @@ function DocumentMetadataCardContent() {
               allowedExistingName={retryableCreateName}
               creating={creating}
               disabled={saving}
-              error={Boolean(metadataFieldsQuery.error)}
+              error={metadataFieldsQuery.error}
               fields={fields}
               loading={metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching}
               onCreate={createField}

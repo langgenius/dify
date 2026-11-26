@@ -610,6 +610,34 @@ describe('AddSourcePage', () => {
     expect(await screen.findByText('knowledgeSpace.providerLoadFailed')).toBeInTheDocument()
     expect(server.listConnections).toHaveBeenCalledTimes(2)
   })
+  it.each([
+    ['web', undefined],
+    [
+      'connected',
+      {
+        provider: 'Google Docs',
+        sourceName: 'Shared product docs',
+        sourceType: 'onlineDocuments',
+        syncPolicy: 'daily',
+      },
+    ],
+  ] as const)(
+    'shows the server message when a %s connection page fails',
+    async (_, initialSourceDraft) => {
+      if (initialSourceDraft) enableConnectedSources()
+      server.connections.data = [{ items: [] }, { items: [] }]
+      server.connections.nextPageError = createHttpError(new Response(null, { status: 503 }), {
+        message: 'Server says why',
+      })
+
+      await renderPage(
+        <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+      )
+
+      expect(await screen.findByText('Server says why')).toBeInTheDocument()
+      expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
+    },
+  )
   it('finds the provider connection on a later loaded page', async () => {
     server.connections.data = [{ items: [] }, { items: [connection('active')] }]
 
@@ -1547,6 +1575,20 @@ describe('AddSourcePage', () => {
       'knowledgeSources.connectionRefreshFailed',
     )
     expect(screen.queryByText('knowledgeSpace.providerLoadFailed')).not.toBeInTheDocument()
+  })
+  it('shows the server message when provisioning reconciliation fails', async () => {
+    const user = userEvent.setup()
+    server.connections.data = [{ items: [connection('provisioning')] }]
+
+    await renderPage(<AddSourcePage knowledgeSpaceId="space-1" />)
+    server.connections.error = createHttpError(new Response(null, { status: 503 }), {
+      message: 'Server says why',
+    })
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeSources.refreshConnectionStatus' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
   })
   it('shows a retryable error when provisioning reconciliation finds no connection', async () => {
     const user = userEvent.setup()
