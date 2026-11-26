@@ -4,6 +4,7 @@ Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
 run API package boundary stays explicit.
 """
 
+from .run_recovery import LookupRunRequest, create_run_fingerprint
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -39,6 +40,12 @@ from .execution_binding import (
     CreateExecutionBindingRequest,
     CreateExecutionBindingResponse,
     DestroyExecutionBindingRequest,
+    InspectExecutionBindingRequest,
+    InspectExecutionBindingResponse,
+    KeepAliveExecutionBindingRequest,
+    KeepAliveExecutionBindingResponse,
+    ReadExecutionBindingJobRequest,
+    ReadExecutionBindingJobResponse,
 )
 from .binding_file import (
     BindingFileDownloadRequest,
@@ -53,6 +60,16 @@ from .home_snapshot import (
     CreateHomeSnapshotFromBindingRequest,
     DeleteHomeSnapshotRequest,
     HomeSnapshotResponse,
+)
+
+from .confirmed_recovery import (
+    recovery_successor_digest,
+    AgentRecoveryBinding,
+    AgentRecoveryReconstruction,
+    AgentRecoveryOperationSubstitution,
+    AgentRecoverySuccessor,
+    InstallConfirmedRecoverySuccessorRequest,
+    InstallConfirmedRecoverySuccessorReceipt,
 )
 
 __all__ = [
@@ -77,6 +94,12 @@ __all__ = [
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
     "DestroyExecutionBindingRequest",
+    "InspectExecutionBindingRequest",
+    "InspectExecutionBindingResponse",
+    "KeepAliveExecutionBindingRequest",
+    "KeepAliveExecutionBindingResponse",
+    "ReadExecutionBindingJobRequest",
+    "ReadExecutionBindingJobResponse",
     "EmptyRunEventData",
     "HomeSnapshotResponse",
     "PydanticAIStreamRunEvent",
@@ -98,4 +121,65 @@ __all__ = [
     "RunSucceededEvent",
     "RunSucceededEventData",
     "utc_now",
+]
+
+from .native_testing import (
+    AgentNativeTestRef,
+    AgentOperationKey,
+    AgentEffectIntent,
+    AgentDispatchPermit,
+    AgentApprovalWait,
+    AgentRecordedResult,
+    AgentPolicyStop,
+    AgentEffectDecision,
+    AgentEffectReceipt,
+    AgentCheckpointRef,
+    AgentWaitingReceipt,
+    AgentResumeReceipt,
+    AgentCancellationReceipt,
+    NativeTestCapabilities,
+    NativeTestProtocolUnsupported,
+    ContinueRunRequest,
+    ContinuationClaim,
+    require_native_test_capabilities,
+)
+from .schemas import RunWaitingEvent, RunWaitingEventData, RunResumedEvent, RunResumedEventData
+
+__all__ += [
+    "AgentNativeTestRef",
+    "AgentOperationKey",
+    "AgentEffectIntent",
+    "AgentDispatchPermit",
+    "AgentApprovalWait",
+    "AgentRecordedResult",
+    "AgentPolicyStop",
+    "AgentEffectDecision",
+    "AgentEffectReceipt",
+    "AgentCheckpointRef",
+    "AgentWaitingReceipt",
+    "AgentResumeReceipt",
+    "AgentCancellationReceipt",
+    "NativeTestCapabilities",
+    "NativeTestProtocolUnsupported",
+    "ContinueRunRequest",
+    "ContinuationClaim",
+    "require_native_test_capabilities",
+    "RunWaitingEvent",
+    "RunWaitingEventData",
+    "RunResumedEvent",
+    "RunResumedEventData",
+]
+
+
+__all__ += ["LookupRunRequest", "create_run_fingerprint"]
+
+
+__all__ += [
+    "recovery_successor_digest",
+    "AgentRecoveryBinding",
+    "AgentRecoveryReconstruction",
+    "AgentRecoveryOperationSubstitution",
+    "AgentRecoverySuccessor",
+    "InstallConfirmedRecoverySuccessorRequest",
+    "InstallConfirmedRecoverySuccessorReceipt",
 ]

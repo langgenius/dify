@@ -9,16 +9,18 @@ methods that the standard run server uses before mounting
 
 from __future__ import annotations
 
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import TypedDict
+
 import httpx
+from fastapi import FastAPI
 from redis.asyncio import Redis
 
+from dify_agent.agent_stub.server.admission import AgentStubAdmission
+from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_knowledge_sessions import RedisKnowledgeSessionStore
-from dify_agent.agent_stub.server.knowledge import AgentStubKnowledgeHandler
 
 
 class _KnowledgeResources(TypedDict, total=False):
@@ -60,6 +62,7 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
     app.include_router(
         create_agent_stub_router(
             token_codec=resolved_settings.create_agent_stub_token_codec(),
+            admission=AgentStubAdmission() if not resolved_settings.inner_api_key else None,
             file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
             config_request_handler=resolved_settings.create_agent_stub_config_request_handler(),
             knowledge_request_handler=handler,

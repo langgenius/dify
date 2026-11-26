@@ -13,21 +13,22 @@ import shlex
 from dataclasses import dataclass
 from typing import override
 
-
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import FunctionToolset
-from dify_agent.runtime.context import Deps
+
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
     DifyConfigLayerConfig,
     DifyConfigRuntimeState,
 )
-from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
+from dify_agent.layers.shell.layer import Capability as ShellCapability
+from dify_agent.layers.shell.layer import ShellSession
+from dify_agent.runtime.context import Deps
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -103,13 +104,18 @@ class Capability(AbstractCapability[Deps]):
 
     def _instructions(self, ctx: RunContext[Deps]) -> str:
         context = self._context(ctx.deps)
-        return f"{context.build_prompt_context()}\n\n{context.build_suffix_prompt()}"
+        suffix = context.build_suffix_prompt(skill_tool=ctx.deps.native_effects is None)
+        return f"{context.build_prompt_context()}\n\n{suffix}"
 
     @override
     def get_toolset(self) -> FunctionToolset[Deps]:
         toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
         async def hide_without_skills(ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+            # Builder native test runs stop on any tool without a native boundary, so
+            # they read skills through the fenced shell CLI instead of this tool.
+            if ctx.deps.native_effects is not None:
+                return None
             return tool_def if Config.model_validate(ctx.deps.layers[self.name]["config"]).skills else None
 
         @toolset.tool(name="read_config_skill_md", prepare=hide_without_skills)
@@ -182,13 +188,14 @@ class _ConfigContext:
 
         return "\n\n".join(section for section in sections if section)
 
-    def build_suffix_prompt(self) -> str:
+    def build_suffix_prompt(self, *, skill_tool: bool = True) -> str:
+        """Render the manifest and CLI help; ``skill_tool`` is False when read_config_skill_md is hidden."""
         sections = [
             f"{_CONFIG_CONTEXT_HEADING}\n"
             f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self._format_config_context_json())}"
         ]
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
-        if self.config.skills:
+        if self.config.skills and skill_tool:
             usage_lines.append(_READ_SKILL_TOOL_PROMPT)
         usage_lines += [self._format_config_cli_help(), self._format_agent_file_cli_help()]
         sections.append("\n".join(usage_lines))
@@ -257,6 +264,25 @@ class _ConfigContext:
         return skill_md
 
     async def _run_pull(self, *, script: str, target_kind: str) -> str:
+        if self.shell.deps.native_effects is not None:
+
+            async def invoke(_permit):
+                return await self._run_pull_unchecked(script=script, target_kind=target_kind)
+
+            result = await self.shell.deps.native_effects.stage(
+                boundary="config_pull",
+                call_id=target_kind,
+                target={"kind": target_kind, "shell": self.shell.name},
+                parameters={"script": script},
+                stage="configuration",
+                invoke=invoke,
+            )
+            if not isinstance(result, str):
+                raise DifyConfigLayerError("Invalid recorded configuration pull result")
+            return result
+        return await self._run_pull_unchecked(script=script, target_kind=target_kind)
+
+    async def _run_pull_unchecked(self, *, script: str, target_kind: str) -> str:
         result = await self.shell.run_remote_script(
             script,
             inject_agent_stub_env=True,
@@ -343,4 +369,4 @@ def _format_command_output(command: str, output: str) -> str:
     return f"Command:\n$ {command}\nOutput:\n{output}"
 
 
-__all__ = ["Config", "State", "Capability", "DifyConfigLayerError"]
+__all__ = ["Capability", "Config", "DifyConfigLayerError", "State"]

@@ -395,7 +395,7 @@ async def test_native_agent_reads_media_handles_and_recovers_from_provider_rejec
                     "state": {},
                 },
             },
-            services=Services(client, client, inner_api_url="http://dify-api"),
+            services=Services(client, client, inner_api_url="http://dify-api", inner_api_key="test-inner-key"),
             run_id="run",
         )
         result = await Agent(
