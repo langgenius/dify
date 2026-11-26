@@ -266,6 +266,7 @@ class AgentBindingService:
             if any(existing_node_data.get(key) != value for key, value in data.items() if key != "title"):
                 raise BuilderExecutionPolicyError("agent_binding_not_prepared")
             data = deepcopy(dict(existing_node_data))
+        data["continue_agent_session"] = node_job.continue_agent_session
         DifyAgentNodeData.model_validate(data)
         binding = WorkflowAgentNodeBinding(
             tenant_id=actor.tenant_id,
@@ -345,9 +346,16 @@ class AgentBindingService:
             require_selected_snapshot(
                 selected_snapshot_id=selection.snapshot_id, effective_snapshot_id=binding.current_snapshot_id
             )
-            # Preserve the complete validated native job (mode, contacts and
-            # metadata included) in its existing binding owner, in this same
-            # transaction. The graph's task/output projection is not a second
-            # persistence format for these fields.
-            binding.node_job_config = self._prepared[(workflow.id, node_id)][2].model_copy(deep=True)
+            # Add job fields that the graph does not carry to the saved policy.
+            prepared_job = self._prepared[(workflow.id, node_id)][2]
+            saved_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            binding.node_job_config = saved_job.model_copy(
+                update={
+                    "schema_version": prepared_job.schema_version,
+                    "mode": prepared_job.mode,
+                    "human_contacts": prepared_job.human_contacts,
+                    "metadata": prepared_job.metadata,
+                },
+                deep=True,
+            )
         return retirements

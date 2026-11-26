@@ -618,11 +618,29 @@ class WorkflowAgentPublishService:
         ignored. Invalid explicit modes raise ValidationError without mutation
         of the previous job.
         """
-        if existing_binding and existing_binding.node_job_config:
-            node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
-        else:
-            node_job = WorkflowNodeJobConfig()
-        previous_node_job = node_job.model_copy(deep=True) if existing_binding is not None else None
+        previous_node_job = (
+            WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+            if existing_binding is not None
+            else None
+        )
+        node_job = cls.parse_draft_node_job_config(node_data=node_data, previous=previous_node_job)
+        return merge_workflow_agent_session_policy(
+            previous=previous_node_job,
+            node_job=node_job,
+            requested_enabled=node_job.continue_agent_session,
+        )
+
+    @classmethod
+    def parse_draft_node_job_config(
+        cls, *, node_data: Mapping[str, Any], previous: WorkflowNodeJobConfig | None
+    ) -> WorkflowNodeJobConfig:
+        """Parse candidate graph inputs against the trusted previous job, if any.
+
+        Invalid inputs fail validation. The returned job leaves any previous
+        generation intact and defers session policy changes to draft persistence.
+        The input data and previous job are unchanged.
+        """
+        node_job = previous.model_copy(deep=True) if previous is not None else WorkflowNodeJobConfig()
 
         agent_task = node_data.get(cls._AGENT_TASK_KEY)
         if isinstance(agent_task, str):
@@ -644,18 +662,11 @@ class WorkflowAgentPublishService:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
         node_job.output_routes = WorkflowOutputRoutes.model_validate(node_data.get(cls._AGENT_OUTPUT_ROUTES_KEY, {}))
-        requested_enabled = (
-            WorkflowNodeJobConfig.model_validate(
+        if "continue_agent_session" in node_data:
+            node_job.continue_agent_session = WorkflowNodeJobConfig.model_validate(
                 {"continue_agent_session": node_data["continue_agent_session"]}
             ).continue_agent_session
-            if "continue_agent_session" in node_data
-            else None
-        )
-        return merge_workflow_agent_session_policy(
-            previous=previous_node_job,
-            node_job=node_job,
-            requested_enabled=requested_enabled,
-        )
+        return node_job
 
     @classmethod
     def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:

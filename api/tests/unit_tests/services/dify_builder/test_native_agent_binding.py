@@ -112,36 +112,41 @@ def _selection(case: AgentCase) -> AgentBindingSelection:
     )
 
 
-def test_preparing_agent_graph_preserves_the_draft_hash_until_save(
+def test_builder_agent_draft_keeps_the_same_revision_after_editor_save(
     agent_case: AgentCase,
     sqlite_session: sqlalchemy.orm.Session,
     sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from unittest.mock import Mock
+    from uuid import uuid4
+
     from sqlalchemy import select
 
     from models.account import Account
     from models.agent import WorkflowAgentNodeBinding
     from models.agent_config_entities import WorkflowNodeJobConfig
     from models.model import App
+    from services.agent import session_policy
+    from services.agent.workflow_publish_service import WorkflowAgentPublishService
     from services.dify_builder import dify_port
     from services.dify_builder.agent_binding import native_node_data
+    from services.dify_builder.revision import execution_revision
     from services.workflow_service import WorkflowService
 
+    allocate_generation = Mock(wraps=uuid4)
+    monkeypatch.setattr(session_policy, "uuid4", allocate_generation)
     actor, workflow = agent_case.actor, agent_case.workflow
     selection = _selection(agent_case)
     original_hash = workflow.unique_hash
     candidate = dict(workflow.graph_dict)
-    candidate["nodes"].append(
-        {
-            "id": "review",
-            "data": native_node_data(
-                agent_id=selection.agent_id,
-                snapshot_id=selection.snapshot_id,
-                node_job=WorkflowNodeJobConfig(declared_outputs=[{"name": "summary", "type": "string"}]),
-            ),
-        }
+    node_data = native_node_data(
+        agent_id=selection.agent_id,
+        snapshot_id=selection.snapshot_id,
+        node_job=WorkflowNodeJobConfig(declared_outputs=[{"name": "summary", "type": "string"}]),
     )
+    node_data["continue_agent_session"] = False
+    candidate["nodes"].append({"id": "review", "data": node_data})
     selections = {"review": selection}
     prepared, bindings = dify_port._prepare_native_agent_graph(
         session=sqlite_session,
@@ -153,16 +158,19 @@ def test_preparing_agent_graph_preserves_the_draft_hash_until_save(
     )
     assert bindings is not None
     assert workflow.unique_hash == original_hash
+    allocate_generation.assert_not_called()
 
     app = sqlite_session.get(App, workflow.app_id)
     account = sqlite_session.get(Account, actor.account_id)
     assert app is not None
     assert account is not None
-    monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
+    service = WorkflowService(sqlite_session_factory)
+    monkeypatch.setattr(dify_port, "WorkflowService", lambda: service)
     updated = dify_port._sync_graph_only(
         app, prepared, workflow, original_hash, account, sqlite_session, app.id, commit=False
     )
     bindings.sync_prepared_bindings(actor=actor, workflow=updated, selections=selections)
+    allocate_generation.assert_called_once_with()
     assert updated.graph_dict["nodes"][1]["data"]["agent_binding"]["agent_id"] == selection.agent_id
     binding = sqlite_session.scalar(
         select(WorkflowAgentNodeBinding).where(
@@ -173,6 +181,29 @@ def test_preparing_agent_graph_preserves_the_draft_hash_until_save(
     )
     assert binding is not None
     assert binding.current_snapshot_id == selection.snapshot_id
+    job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+    saved_node = updated.graph_dict["nodes"][1]["data"]
+    assert saved_node["continue_agent_session"] is job.continue_agent_session is False
+    assert saved_node["agent_session_generation"] == job.session_generation
+    assert job.session_generation
+
+    revision = execution_revision(updated)
+    editor_graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+        session=sqlite_session, draft_workflow=updated
+    )
+    editor_save = service.sync_draft_workflow(
+        app_model=app,
+        graph=editor_graph,
+        features=updated.features_dict,
+        unique_hash=updated.unique_hash,
+        account=account,
+        environment_variables=[],
+        conversation_variables=[],
+        session=sqlite_session,
+        graph_only=True,
+        commit=False,
+    )
+    assert execution_revision(editor_save) == revision
 
 
 def test_prepare_then_native_sync_share_one_rollback(
