@@ -2211,6 +2211,16 @@ function ConnectedSourceWorkflowSession({
               provider: providerDraft.provider,
             })}
           </p>
+          {/* A failed retry keeps this panel, so its failure is shown here. */}
+          {provisionError && (
+            <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
+              {provisionError.message ??
+                t(($) => $.connectionFailed, {
+                  ns: 'knowledgeSources',
+                  provider: providerDraft.provider,
+                })}
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
             <Button
               variant="primary"

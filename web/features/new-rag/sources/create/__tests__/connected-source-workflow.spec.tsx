@@ -1426,6 +1426,33 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.refreshConnection).not.toHaveBeenCalled()
   })
 
+  it('shows a failed retry of an errored connection in its panel, without a toast', async () => {
+    const user = userEvent.setup()
+    const message = 'The Notion credential has expired'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse({ error_code: 'PROVIDER_AUTH_FAILED', status: 'error' })],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message }),
+    )
+
+    await renderSetup(defaultDraft, { errorToasts: true })
+    expect(
+      await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(
+      screen.getByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
   it('uses the Google Drive datasource as the Google Docs transport and imports a selected doc', async () => {
     const user = userEvent.setup()
     const googleCredential: DatasourceCredentialResponse = {
