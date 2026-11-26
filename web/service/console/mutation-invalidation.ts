@@ -2,11 +2,9 @@ import type {
   MutationCache,
   MutationKey,
   MutationMeta,
-  Query,
   QueryClient,
   QueryKey,
 } from '@tanstack/react-query'
-import { CancelledError, partialMatchKey } from '@tanstack/react-query'
 
 // The part of a mutation the fallback reads, whatever its data and error types.
 type AnyMutation = {
@@ -65,114 +63,47 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
 
 // What a domain refreshes once its last pending mutation settles: the domains of the writes
 // that succeeded, and reads handed over because they landed while it was pending.
-type Deferred = { targets: Set<string>; succeededAt: number; queries: Set<Query> }
-
-const emptyDeferred = (): Deferred => ({ targets: new Set(), succeededAt: 0, queries: new Set() })
-
-/**
- * When the read behind a query's current data started, in the order events happened. Response
- * arrival time cannot tell a read that started before a write from one that started after it.
- * A cache write does not count: a policy may patch rows of a filtered or paginated list it
- * cannot reconcile (membership, totals), so written queries are still read again.
- */
-type QueryOrigin = { fetchStartedAt: number; dataFrom: number }
-
 /**
  * Refreshes, after every successful console mutation, the queries of its domain plus the
  * domains its policy declares in `meta.alsoInvalidate`, so a write no policy covers still
  * leaves no stale data. Policies keep the refreshes a flow must wait for and the response
  * writes; this one is never awaited.
  *
- * - It starts once the mutation's own callbacks have settled, and skips queries whose data was
- *   read by a request that started after the write succeeded, so a policy's awaited refresh is
- *   not fetched twice. A read that started before the write is refreshed, whether it is still
- *   running or already returned its old data, and so is a query the policy wrote into.
+ * - It starts once the mutation's own callbacks have settled. Every matching query is marked
+ *   stale and observed ones refetch; a read already running is joined, never cancelled
+ *   (`cancelRefetch: false`), so an awaited `query()` such as a download URL is not lost.
  * - A query that sets `meta.invalidateAfterWrites: false` is never refreshed by it.
- * - It never cancels a read it cannot restart. A pre-write read of an unobserved query, or a
- *   first load, may be an imperative `query()` someone awaits: it is left to finish and is
- *   marked stale when it lands. Observed queries with data restart as `invalidateQueries` does.
  * - While another mutation of the same domain is pending, it only records what to refresh;
  *   the last one to finish refreshes everything. A refetch therefore never lands on a
  *   sibling's optimistic value (TkDodo's `isMutating({ mutationKey }) === 1` guard).
+ *
+ * Known trade-offs: a query a policy already refreshed is fetched again, and a read that
+ * started before the write and is still running when it settles keeps its response.
  */
 export function createMutationInvalidation() {
-  // A sequence, not a clock: events within one millisecond keep their order.
-  let sequence = 0
-  const succeededAt = new WeakMap<AnyMutation, number>()
-  const origins = new WeakMap<Query, QueryOrigin>()
-  const deferred = new Map<string, Deferred>()
-
-  // Data whose read started, or whose write happened, after the request succeeded reflects it.
-  const needsRefresh = (time: number) => (query: Query) => {
-    if (query.meta?.invalidateAfterWrites === false) return false
-    const origin = origins.get(query)
-    // A read started after the success is already bringing current data; restarting it would
-    // also cancel an unobserved read (an imperative `query()`) without starting another.
-    if (query.state.fetchStatus === 'fetching') return !origin || origin.fetchStartedAt < time
-    return !origin || origin.dataFrom < time
-  }
-
-  let attached: QueryClient | undefined
-
-  /**
-   * Hands a read to a pending mutation that would refresh it, so it is refreshed when that
-   * mutation settles, whether it succeeds or fails. Returns false when none is pending.
-   */
-  const handOff = (query: Query) => {
-    const pending = attached
-      ?.getMutationCache()
-      .findAll({ status: 'pending' })
-      .map(participantOf)
-      .find((participant) =>
-        participant?.targets.some((target) =>
-          partialMatchKey(query.queryKey, consolePathKey(target)),
-        ),
-      )
-    if (!pending) return false
-    const entry = deferred.get(pending.domain) ?? emptyDeferred()
-    entry.queries.add(query)
-    deferred.set(pending.domain, entry)
-    return true
-  }
-
-  // Marks a read stale (refetching it if observed), unless a pending write takes it over.
-  const markStale = (query: Query) => {
-    if (!handOff(query)) void attached?.invalidateQueries({ queryKey: query.queryKey, exact: true })
-  }
+  const succeeded = new WeakSet<AnyMutation>()
+  const deferred = new Map<string, Set<string>>()
 
   return {
     /** For `MutationCache.onSuccess`: the request succeeded, before any callback runs. */
     onMutationSuccess(mutation: AnyMutation) {
-      succeededAt.set(mutation, ++sequence)
+      succeeded.add(mutation)
     },
 
     /** Starts refreshing on the mutation cache's settle events; returns the unsubscribe. */
     attach(client: QueryClient, mutationCache: MutationCache = client.getMutationCache()) {
-      attached = client
-      const unsubscribeQueries = client.getQueryCache().subscribe((event) => {
-        if (event.type !== 'updated') return
-        const { action, query } = event
-        const origin = origins.get(query) ?? { fetchStartedAt: 0, dataFrom: 0 }
-        if (action.type === 'fetch') origin.fetchStartedAt = ++sequence
-        else if (action.type === 'success')
-          // A write keeps the origin of the read it patched.
-          origin.dataFrom = action.manual ? origin.dataFrom : origin.fetchStartedAt
-        else return
-        origins.set(query, origin)
-      })
-      const unsubscribeMutations = mutationCache.subscribe((event) => {
+      return mutationCache.subscribe((event) => {
         if (event.type !== 'updated') return
         if (event.action.type !== 'success' && event.action.type !== 'error') return
         const { mutation } = event
         const participant = participantOf(mutation)
         if (!participant) return
 
+        // A callback that throws after the request succeeded still refreshes.
         const { domain, targets } = participant
-        const successTime = succeededAt.get(mutation)
-        if (successTime !== undefined) {
-          const entry = deferred.get(domain) ?? emptyDeferred()
-          for (const target of targets) entry.targets.add(target)
-          entry.succeededAt = Math.max(entry.succeededAt, successTime)
+        if (succeeded.has(mutation)) {
+          const entry = deferred.get(domain) ?? new Set()
+          for (const target of targets) entry.add(target)
           deferred.set(domain, entry)
         }
 
@@ -183,45 +114,16 @@ export function createMutationInvalidation() {
 
         const entry = deferred.get(domain)
         deferred.delete(domain)
-        if (!entry) return
-        refresh(client, [...entry.targets], needsRefresh(entry.succeededAt), markStale)
-        for (const query of entry.queries) markStale(query)
+        for (const target of entry ?? [])
+          void client.invalidateQueries(
+            {
+              queryKey: consolePathKey(target),
+              refetchType: 'active',
+              predicate: (query) => query.meta?.invalidateAfterWrites !== false,
+            },
+            { cancelRefetch: false },
+          )
       })
-      return () => {
-        unsubscribeQueries()
-        unsubscribeMutations()
-      }
     },
-  }
-}
-
-// A read `invalidateQueries` would not restart: a first load, or an unobserved query.
-const isUnrestartedFetch = (query: Query) =>
-  query.state.fetchStatus === 'fetching' && (query.state.data === undefined || !query.isActive())
-
-function refresh(
-  client: QueryClient,
-  targets: string[],
-  needsRefresh: (query: Query) => boolean,
-  markStale: (query: Query) => void,
-) {
-  const cache = client.getQueryCache()
-  for (const target of targets) {
-    const queryKey = consolePathKey(target)
-    for (const query of cache.findAll({ queryKey, predicate: isUnrestartedFetch })) {
-      if (!needsRefresh(query)) continue
-      // Its response predates the write: mark it stale once it lands. A read cancelled meanwhile
-      // belongs to whoever cancelled it (a newer write's `onMutate`), which refreshes it.
-      void query.promise?.then(
-        () => markStale(query),
-        (error: unknown) => {
-          if (!(error instanceof CancelledError)) markStale(query)
-        },
-      )
-    }
-    void client.invalidateQueries({
-      queryKey,
-      predicate: (query) => !isUnrestartedFetch(query) && needsRefresh(query),
-    })
   }
 }

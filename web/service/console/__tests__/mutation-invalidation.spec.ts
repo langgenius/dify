@@ -1,5 +1,11 @@
 import type { MutationKey, MutationMeta, QueryKey } from '@tanstack/react-query'
-import { MutationCache, MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
+import {
+  InfiniteQueryObserver,
+  MutationCache,
+  MutationObserver,
+  QueryClient,
+  QueryObserver,
+} from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
@@ -114,47 +120,6 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('second'))
   })
 
-  it('skips queries the policy already read again after the request succeeded', async () => {
-    const client = createClient()
-    const appsList = await mountQuery(client, appsListKey())
-    const appDetail = await mountQuery(client, appDetailKey())
-
-    await mutate(client, {
-      mutationKey: renameApp(),
-      // A policy's awaited refresh of its primary source.
-      onSuccess: () => client.invalidateQueries({ queryKey: appDetailKey() }),
-    })
-    await settle()
-
-    expect(appDetail).toHaveBeenCalledTimes(2)
-    expect(appsList).toHaveBeenCalledTimes(2)
-  })
-
-  // Replacing a running read records a new start (TanStack dispatches `fetch` again).
-  it('skips a background read the policy replaced with its awaited refresh', async () => {
-    const client = createClient()
-    const background = createDeferred<string>()
-    const queryFn = vi
-      .fn()
-      .mockResolvedValueOnce('first')
-      .mockReturnValueOnce(background.promise)
-      .mockResolvedValue('refreshed')
-    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
-    cleanups.push(observer.subscribe(() => undefined))
-    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('first'))
-    tick()
-    void observer.refetch()
-
-    await mutate(client, {
-      mutationKey: renameApp(),
-      onSuccess: () => client.invalidateQueries({ queryKey: appsListKey() }),
-    })
-    await settle()
-
-    expect(observer.getCurrentResult().data).toBe('refreshed')
-    expect(queryFn).toHaveBeenCalledTimes(3)
-  })
-
   it('reads a query the policy wrote into again, since a patched list may not match', async () => {
     const client = createClient()
     const appsList = await mountQuery(client, appsListKey())
@@ -172,41 +137,43 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(client.getQueryData(appsListKey())).toBe(2))
   })
 
-  it('lets an unobserved pre-write read finish, then marks it stale', async () => {
+  it('joins a read already running instead of cancelling it', async () => {
     const client = createClient()
-    const staleRead = createDeferred<string>()
-    const queryFn = vi.fn().mockReturnValueOnce(staleRead.promise).mockResolvedValue('fresh')
+    const running = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(running.promise).mockResolvedValue('fresh')
     // An imperative read someone awaits, such as a download URL: cancelling it would lose it.
     const pending = client.query({ queryKey: appDetailKey(), queryFn })
     tick()
 
-    await mutate(client, {
-      mutationKey: renameApp(),
-      onSuccess: () => {
-        tick()
-        client.setQueryData(appDetailKey(), 'from response')
-      },
-    })
+    await mutate(client, { mutationKey: renameApp() })
     await settle()
-    staleRead.resolve('stale')
+    running.resolve('running')
 
-    await expect(pending).resolves.toBe('stale')
-    // Its response predates the write, so the next reader fetches again.
-    await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
+    await expect(pending).resolves.toBe('running')
     expect(queryFn).toHaveBeenCalledTimes(1)
   })
 
-  it('refreshes data from the same millisecond as the success', async () => {
+  it('refetches every page of an observed infinite list, even after a page append', async () => {
     const client = createClient()
-    const queryFn = vi.fn(async () => queryFn.mock.calls.length)
-    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    const queryFn = vi.fn(async ({ pageParam }: { pageParam: number }) => `page ${pageParam}`)
+    const observer = new InfiniteQueryObserver(client, {
+      queryKey: appsListKey(),
+      queryFn: queryFn as never,
+      initialPageParam: 1,
+      getNextPageParam: (_last: unknown, pages: unknown[]) => pages.length + 1,
+    })
     cleanups.push(observer.subscribe(() => undefined))
     await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
 
-    await mutate(client, { mutationKey: renameApp() })
+    await mutate(client, {
+      mutationKey: renameApp(),
+      // The user loads another page while the write's callbacks run.
+      onSuccess: () => observer.fetchNextPage(),
+    })
     await settle()
 
-    expect(queryFn).toHaveBeenCalledTimes(2)
+    // Both retained pages are read again: two loads, then a refetch of both pages.
+    await vi.waitFor(() => expect(queryFn).toHaveBeenCalledTimes(4))
   })
 
   it('refreshes a pre-write read that returned its old data while the callbacks ran', async () => {
@@ -486,7 +453,7 @@ describe('mutation invalidation fallback', () => {
     },
   )
 
-  it('does not restart a deferred read that a newer write cancelled for its optimistic value', async () => {
+  it('does not refetch over the optimistic value of a newer write that cancelled the read', async () => {
     const client = createClient()
     const firstLoad = createDeferred<string>()
     const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('server')
@@ -518,30 +485,5 @@ describe('mutation invalidation fallback', () => {
     second.resolve('ok')
     await pending
     await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
-  })
-
-  it('refreshes a deferred read after the write it was handed to fails', async () => {
-    const client = createClient()
-    const firstLoad = createDeferred<string>()
-    const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('server')
-    const observer = new QueryObserver(client, { queryKey: appDetailKey(), queryFn })
-    cleanups.push(observer.subscribe(() => undefined))
-    tick()
-    // Write A succeeds while the first load runs.
-    await mutate(client, { mutationKey: renameApp() })
-    await settle()
-
-    // Write B is pending when the pre-A response lands, so it takes the refresh over.
-    const second = createDeferred<string>()
-    const pending = mutate(client, { mutationKey: renameApp(), mutationFn: () => second.promise })
-    firstLoad.resolve('before A')
-    await settle()
-    expect(queryFn).toHaveBeenCalledTimes(1)
-
-    // B fails: it refreshes nothing of its own, but the handed-over read is still read again.
-    second.reject(new Error('no'))
-    await expect(pending).rejects.toThrow('no')
-    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('server'))
-    expect(queryFn).toHaveBeenCalledTimes(2)
   })
 })
