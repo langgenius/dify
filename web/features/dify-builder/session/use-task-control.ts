@@ -122,12 +122,11 @@ export function useDifyBuilderTaskControl({
       streamingTurnBuffer.clear()
       setConversationLoading(false)
       store.set(difyBuilderLocalInteractionResponseAtom, null)
-      // Take the existing save barrier before busy state locks the canvas.
       const preparation =
         operation === 'resume' && !pending ? prepareCommand?.(true, controller.signal) : undefined
       setTaskControl({ operation, phase: preparation ? 'saving' : 'pending' })
       setIsBusy(true)
-      runEvents?.onCommandStarted?.()
+      runEvents?.onCommandStarted?.(Boolean(preparation))
       setLastError('')
 
       const readLatest = async () => {

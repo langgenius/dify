@@ -10,7 +10,7 @@ import type { CanvasEventData, ConversationItem, SessionView } from '../types'
 export type SessionRunEvents = {
   onAttachmentsAccepted?: (attachments: DifyBuilderAttachmentPayload[], text?: string) => void
   clearAttachmentDraft?: () => void
-  onCommandStarted?: () => void
+  onCommandStarted?: (awaitingDraftSave?: boolean) => void
   onSessionStateChanged?: (state: Pick<SessionView, 'phase' | 'run_status'>) => void
   onWorkflowEvent: (event: DifyBuilderWorkflowEventData) => void
   onStreamInterrupted: () => void
