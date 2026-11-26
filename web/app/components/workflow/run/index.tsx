@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { WorkflowRunOwner } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -206,6 +206,7 @@ function RunSession({
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
         </TabsTab>
+        <TabsIndicator />
       </TabsList>
       {/* panel detail */}
       <div
