@@ -192,6 +192,32 @@ describe('DifyBuilderPanel', () => {
     }
   })
 
+  it('waits for the opening command before showing a first-version interruption', () => {
+    const interruptedView: SessionView = {
+      ...sessionView,
+      interrupted: true,
+      phase: 'understand',
+      run_status: 'processing',
+      actions: [{ id: 'recovery_continue', label: 'Retry', kind: 'primary' }],
+      decision: {
+        title: 'How should Builder continue?',
+        default_option_id: 'recovery_continue',
+        options: [{ id: 'recovery_continue', label: 'Retry', is_default: true }],
+        submit: { id: 'confirm', label: 'Retry', kind: 'primary' },
+      },
+    }
+    const { store } = renderPanel(interruptedView, (store) =>
+      store.set(difyBuilderSessionBusyAtom, true),
+    )
+
+    expect(screen.queryByText('difyBuilder.interrupted')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+
+    act(() => store.set(difyBuilderSessionBusyAtom, false))
+    expect(screen.getByText('difyBuilder.interrupted')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+  })
+
   it('contains malformed conversation content while preserving controls and retries the same session', async () => {
     const user = userEvent.setup()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
