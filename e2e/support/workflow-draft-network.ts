@@ -22,25 +22,24 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     const connection = { client, server }
     connections.add(connection)
     client.onClose(async (code, reason) => {
-      connections.delete(connection)
-      await server.close({ code, reason })
+      if (!connections.delete(connection)) return
+      if (code === 1000 || (code !== undefined && code >= 3000 && code <= 4999))
+        await server.close({ code, reason })
+      else await server.close()
     })
     server.onClose(async (code, reason) => {
-      connections.delete(connection)
-      await client.close({ code, reason })
+      if (connections.delete(connection)) await client.close({ code, reason })
     })
   })
 
   return {
     disconnect: async () => {
-      offline = true
       const open = [...connections]
+      if (!open.length) throw new Error('No collaboration WebSocket is open to disconnect.')
+      offline = true
       connections.clear()
       await Promise.all(
-        open.flatMap(({ client, server }) => [
-          client.close({ code: 1011 }),
-          server.close({ code: 1011 }),
-        ]),
+        open.flatMap(({ client, server }) => [client.close({ code: 1011 }), server.close()]),
       )
     },
     resume: () => {

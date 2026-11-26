@@ -159,8 +159,13 @@ When('the other editor queues changes while disconnected', async function (this:
 When('I restore the published LLM prompt', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.getByRole('button', { name: 'Version History' }).click()
-  await page.getByRole('button', { name: publishedName, exact: true }).click()
-  await page.getByRole('button', { name: 'Restore', exact: true }).click()
+  const publishedVersion = page.getByRole('button', { name: publishedName, exact: true })
+  await expect(publishedVersion).toBeEnabled()
+  await publishedVersion.click()
+  const restore = page.getByRole('button', { name: 'Restore', exact: true })
+  await expect(restore).toBeEnabled()
+  await restore.click()
+  await expect(restore).toBeHidden()
 })
 
 When('I overwrite the draft with its original DSL', async function (this: DifyWorld) {
@@ -174,7 +179,10 @@ When('I overwrite the draft with its original DSL', async function (this: DifyWo
     mimeType: 'application/yaml',
     buffer: Buffer.from(replacement(this).dsl, 'utf8'),
   })
-  await dialog.getByRole('button', { name: 'Overwrite and Import' }).click()
+  const submit = dialog.getByRole('button', { name: 'Overwrite and Import' })
+  await expect(submit).toBeEnabled()
+  await submit.click()
+  await expect(dialog).toBeHidden({ timeout: 30_000 })
 })
 
 Then('the saved draft contains the replacement prompt', async function (this: DifyWorld) {

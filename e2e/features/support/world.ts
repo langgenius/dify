@@ -181,7 +181,8 @@ export class DifyWorld extends World {
       if (message.type() === 'error') this.consoleErrors.push(prefix + message.text())
     })
     context.on('weberror', (webError) => {
-      this.pageErrors.push(prefix + webError.error().message)
+      const error = webError.error()
+      this.pageErrors.push(prefix + (error.stack || error.message))
     })
   }
 
@@ -226,9 +227,20 @@ export class DifyWorld extends World {
 
   async closeBrowserContexts() {
     const draft = this.workflowDraft
-    await Promise.all([this.context?.close(), draft?.collaboratorContext?.close()])
-    this.context = undefined
-    if (draft) draft.collaboratorContext = undefined
+    try {
+      const results = await Promise.allSettled([
+        this.context?.close(),
+        draft?.collaboratorContext?.close(),
+      ])
+      const errors = results.flatMap((result) =>
+        result.status === 'rejected' ? [result.reason] : [],
+      )
+      if (errors.length) throw new AggregateError(errors, errors.map(String).join('\n'))
+    } finally {
+      this.context = undefined
+      this.page = undefined
+      if (draft) draft.collaboratorContext = undefined
+    }
   }
 
   async closeSession() {

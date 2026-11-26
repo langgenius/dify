@@ -58,9 +58,11 @@ export function llmPromptPanel(page: Page) {
 export async function openLlmPromptPanel(page: Page) {
   const node = canvasNodeByTitle(page, 'Draft prompt')
   await expect(node).toBeVisible({ timeout: 30_000 })
-  await expect(
-    page.getByRole('status').filter({ hasText: 'Syncing data, just a few seconds.' }),
-  ).toBeHidden({ timeout: 30_000 })
+  await expect(page.getByTestId('collaboration-graph-loading')).toHaveCount(0, { timeout: 30_000 })
+  await expect(page.getByRole('status', { name: 'Workflow save status' })).not.toContainText(
+    'Syncing data, just a few seconds.',
+    { timeout: 30_000 },
+  )
   const panel = llmPromptPanel(page)
   if (!(await panel.isVisible())) await node.click()
   await expect(panel).toBeVisible()
@@ -157,6 +159,16 @@ export async function openCollaboratorSession(world: DifyWorld) {
   })
   const invited = invitation.invitation_results[0]
   if (invited?.status !== 'success') throw new Error('Could not invite the workflow collaborator.')
+  let accountId: string | undefined
+  world.registerCleanup(async () => {
+    const memberId =
+      accountId ??
+      (await client.workspaces.current.members.get()).accounts.find(
+        (account) => account.email === email,
+      )?.id
+    if (memberId)
+      await client.workspaces.current.members.byMemberId.delete({ params: { member_id: memberId } })
+  })
   const token = new URL(invited.url, baseURL).searchParams.get('token')
   if (!token) throw new Error('The collaborator invitation did not include a token.')
 
@@ -190,13 +202,10 @@ export async function openCollaboratorSession(world: DifyWorld) {
     },
   })
   const profile = await collaborator.account.profile.get()
+  accountId = profile.id
   const { accounts } = await client.workspaces.current.members.get()
   expect(accounts).toContainEqual(
     expect.objectContaining({ id: profile.id, email, role: 'editor' }),
   )
-  world.registerCleanup(async () => {
-    await client.workspaces.current.members.byMemberId.delete({ params: { member_id: profile.id } })
-  })
-
   return editor
 }
