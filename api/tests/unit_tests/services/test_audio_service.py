@@ -16,8 +16,6 @@ from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from graphon.model_runtime.protocols.tts_runtime import TTSModelVoice
-from models import App as _audio_inputs_App
-from models import AppMode as _audio_inputs_AppMode
 from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
@@ -27,7 +25,7 @@ from models.model import AppModelConfig, Message
 from models.workflow import Workflow, WorkflowType
 from services import audio_provider_gateway
 from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import FILE_SIZE_LIMIT, AudioService, _create_tts_response
+from services.audio_service import FILE_SIZE_LIMIT, AudioService, create_tts_response
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -49,7 +47,7 @@ class TestAudioInputsCases:
     def test_asr_accepts_empty_and_exact_limit_but_rejects_oversized_upload(
         monkeypatch: pytest.MonkeyPatch, size: int
     ) -> None:
-        app = _audio_inputs_App(id="app", tenant_id="owner", mode=_audio_inputs_AppMode.CHAT)
+        app = AudioAppRef(app_id="app", tenant_id="owner", app_mode="chat")
         contents: list[bytes] = []
 
         def transcribe(*, app: AudioAppRef, content: bytes, end_user: str | None) -> str:
@@ -79,7 +77,7 @@ class TestAudioInputsCases:
             pytest.fail("Invalid audio reached the provider")
 
         monkeypatch.setattr(audio_provider_gateway, "speech_to_text", unexpected_provider)
-        app = _audio_inputs_App(id="app", tenant_id="owner", mode=_audio_inputs_AppMode.CHAT)
+        app = AudioAppRef(app_id="app", tenant_id="owner", app_mode="chat")
         stream = BytesIO(b"unread")
         audio = None if missing else AudioUpload(stream=stream, mime_type="application/octet-stream")
         error = NoAudioUploadedServiceError if missing else UnsupportedAudioTypeServiceError
@@ -96,7 +94,7 @@ class TestAudioInputsCases:
             raise error
 
         monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
-        app = _audio_inputs_App(id="app", tenant_id="owner", mode=_audio_inputs_AppMode.CHAT)
+        app = AudioAppRef(app_id="app", tenant_id="owner", app_mode="chat")
         audio = AudioUpload(stream=BytesIO(b"input"), mime_type="audio/mp3")
         with pytest.raises(RuntimeError) as caught:
             AudioService.invoke_speech_to_text(app, audio)
@@ -336,7 +334,7 @@ class TestAudioServiceCases:
         source = chunks()
         app = Flask(__name__)
         with app.test_request_context("/text-to-audio", method="POST"):
-            response = _create_tts_response(source, "audio/x-wav")
+            response = create_tts_response(source, "audio/x-wav")
 
         assert response.status_code == 200
         assert dict(response.headers) == {"Content-Type": "audio/wav"}
