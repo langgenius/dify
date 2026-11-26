@@ -118,6 +118,8 @@ class CredentialQueryRepository(CredentialQuery):
                 )
             )
             assert isinstance(result, CursorResult)
+            if result.rowcount not in (0, 1):
+                raise ValueError("Tool credential refresh affected-row count is uncertain.")
             return result.rowcount == 1
 
     def get_tool(self, *, workspace_id: str, provider: str, credential_id: str | None) -> ToolCredentialSnapshot | None:

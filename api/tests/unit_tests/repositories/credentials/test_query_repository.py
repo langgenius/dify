@@ -623,6 +623,25 @@ def test_refresh_commits_for_a_detached_snapshot(
     )
 
 
+def test_unknown_refresh_rowcount_rolls_back(
+    runtime_repository: CredentialQueryRepository, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    record = runtime_repository.get_tool_credential(
+        workspace_id="workspace", providers=("provider",), credential_id=None
+    )
+    assert record is not None
+    monkeypatch.setattr(sqlite_engine.dialect.execution_ctx_cls, "rowcount", -1)
+
+    with pytest.raises(ValueError, match="affected-row count is uncertain"):
+        runtime_repository.update_tool_credential_if_unchanged(
+            record=record, encrypted_credentials="new", expires_at=500
+        )
+    assert (
+        runtime_repository.get_tool_credential(workspace_id="workspace", providers=("provider",), credential_id=None)
+        == record
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

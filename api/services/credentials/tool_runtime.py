@@ -99,9 +99,13 @@ class ToolCredentialService:
             refreshed = self._runtime.refresh(record, decrypted)
             encrypted = self._runtime.encrypt(record, refreshed.credentials)
             lease.ensure_owned()
-            if not self._credentials.update_tool_credential_if_unchanged(
-                record=record, encrypted_credentials=encrypted, expires_at=refreshed.expires_at
-            ):
+            try:
+                updated = self._credentials.update_tool_credential_if_unchanged(
+                    record=record, encrypted_credentials=encrypted, expires_at=refreshed.expires_at
+                )
+            except Exception:
+                raise ToolCredentialRefreshError("Tool credential refresh could not be persisted.") from None
+            if not updated:
                 latest = self._load(workspace_id=workspace_id, credential_id=record.id)
                 self._runtime.check_policy(latest)
                 if credential_needs_refresh(latest.expires_at, now=time.time()):

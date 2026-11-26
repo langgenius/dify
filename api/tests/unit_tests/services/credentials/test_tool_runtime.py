@@ -31,6 +31,7 @@ class CredentialStore:
     record: ToolRuntimeCredential | None
     barrier: Barrier | None = None
     writes: int = 0
+    persistence_error: Exception | None = None
 
     def get_tool_credential(
         self, *, workspace_id: str, providers: tuple[str, ...], credential_id: str | None
@@ -47,6 +48,8 @@ class CredentialStore:
     def update_tool_credential_if_unchanged(
         self, *, record: ToolRuntimeCredential, encrypted_credentials: str, expires_at: int
     ) -> bool:
+        if self.persistence_error is not None:
+            raise self.persistence_error
         if self.record != record:
             return False
         self.writes += 1
@@ -137,6 +140,16 @@ def test_refresh_failure_does_not_write_or_return_expired_credentials(failure: s
     assert store.writes == 0
     assert runtime.invalidations == []
     assert runtime.refreshes == (1 if failure in {"lost-after", "provider"} else 0)
+
+
+def test_refresh_persistence_failure_returns_a_credential_error() -> None:
+    store = CredentialStore(_record(), persistence_error=RuntimeError("database write failed"))
+    runtime = CredentialRuntime()
+
+    with pytest.raises(ToolCredentialRefreshError, match="could not be persisted"):
+        _service(store, runtime, ThreadCredentialRefreshLock()).resolve(workspace_id="workspace", credential_id=None)
+    assert runtime.refreshes == 1
+    assert not runtime.invalidations
 
 
 @pytest.mark.parametrize("change", ["reauthorized", "expired", "deleted"])
