@@ -694,19 +694,24 @@ it('restores graph nodes and selection with real undo and redo, ignoring reentra
     .getNodes()
     .map((item) => ({ ...item, data: { ...item.data, title: 'Edited' } }))
   manager.setNodes(state.getNodes(), edited)
+  manager.markHistoryStep('NodeTitleChange', { nodeId: 'n-1' })
   state.setNodes(edited)
-  const undoStates = vi.fn()
-  manager.onUndoRedoStateChange(undoStates)
+  const historyStates = vi.fn()
+  manager.onHistoryChange(historyStates)
   expect(manager.undo()).toBe(true)
   // While the asynchronous undo is applying, an editor echo must not create a new CRDT edit.
   manager.setNodes(manager.getNodes(), [])
   await vi.runAllTimersAsync()
   expect(state.getNodes()[0]?.data).toMatchObject({ title: 'Original', selected: true })
-  expect(undoStates).toHaveBeenLastCalledWith({ canUndo: false, canRedo: true })
+  expect(historyStates).toHaveBeenLastCalledWith(
+    expect.objectContaining({ active: true, past: [], future: [expect.any(Object)] }),
+  )
   expect(manager.redo()).toBe(true)
   await vi.runAllTimersAsync()
   expect(state.getNodes()[0]?.data).toMatchObject({ title: 'Edited', selected: true })
-  expect(undoStates).toHaveBeenLastCalledWith({ canUndo: true, canRedo: false })
+  expect(historyStates).toHaveBeenLastCalledWith(
+    expect.objectContaining({ active: true, past: [expect.any(Object)], future: [] }),
+  )
   manager.setNodes(manager.getNodes(), [])
   expect(manager.getNodes()).toEqual([])
 })

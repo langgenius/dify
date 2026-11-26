@@ -4,6 +4,7 @@ import { debounce } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
+import { collaborationManager } from '../collaboration/core/collaboration-manager'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**
@@ -76,12 +77,29 @@ export const useWorkflowHistory = () => {
     }, 500),
   )
 
+  // Shared-document steps close when their action reports in, not after a debounce: every hook
+  // instance has its own debounce, while the document has one open step for all of them.
+  const markCollaborativeHistoryStep = useCallback(
+    (event: WorkflowHistoryEventT, meta?: WorkflowHistoryEventMeta) => {
+      if (!collaborationManager.isHistoryActive()) return
+      const nodeTitle =
+        meta?.nodeTitle ??
+        store
+          .getState()
+          .getNodes()
+          .find((node) => node.id === meta?.nodeId)?.data?.title
+      collaborationManager.markHistoryStep(event, meta && { ...meta, nodeTitle })
+    },
+    [store],
+  )
+
   const saveStateToHistory = useCallback(
     (event: WorkflowHistoryEventT, meta?: WorkflowHistoryEventMeta) => {
       switch (event) {
         case WorkflowHistoryEvent.NoteChange:
           // Hint: Note change does not trigger when note text changes,
           // because the note editors have their own history states.
+          markCollaborativeHistoryStep(event, meta)
           saveStateToHistoryRef.current(event, meta)
           break
         case WorkflowHistoryEvent.NodeTitleChange:
@@ -99,6 +117,7 @@ export const useWorkflowHistory = () => {
         case WorkflowHistoryEvent.LayoutOrganize:
         case WorkflowHistoryEvent.NoteDelete:
         case WorkflowHistoryEvent.HumanInputMigration:
+          markCollaborativeHistoryStep(event, meta)
           saveStateToHistoryRef.current(event, meta)
           break
         default:
@@ -108,7 +127,7 @@ export const useWorkflowHistory = () => {
           break
       }
     },
-    [saveStateToHistoryRef],
+    [markCollaborativeHistoryStep, saveStateToHistoryRef],
   )
 
   const getHistoryLabel = useCallback(

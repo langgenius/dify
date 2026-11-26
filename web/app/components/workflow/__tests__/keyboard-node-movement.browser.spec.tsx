@@ -17,6 +17,7 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     setNodes: vi.fn(),
     setEdges: vi.fn(),
     canApplyLocalGraphMutation: () => true,
+    isHistoryActive: () => false,
   },
 }))
 

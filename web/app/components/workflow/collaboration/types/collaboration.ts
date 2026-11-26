@@ -98,3 +98,24 @@ export type RestoreCompleteData = {
   success: boolean
   error?: string
 }
+
+export type CollaborativeHistoryStep = {
+  id: string
+  event?: string
+  meta?: {
+    nodeId?: string
+    nodeTitle?: string
+  }
+}
+
+export type CollaborativeHistoryState = {
+  /** Whether undo and redo go through the shared document instead of the local snapshots. */
+  active: boolean
+  /** Includes commits no labeled step lists, such as note text edits. */
+  canUndo: boolean
+  canRedo: boolean
+  /** Oldest first. */
+  past: CollaborativeHistoryStep[]
+  /** Next redo last. */
+  future: CollaborativeHistoryStep[]
+}

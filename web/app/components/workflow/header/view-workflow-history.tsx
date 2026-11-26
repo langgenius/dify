@@ -1,3 +1,8 @@
+import type {
+  CollaborativeHistoryState,
+  CollaborativeHistoryStep,
+} from '../collaboration/types/collaboration'
+import type { WorkflowHistoryEventT } from '../hooks/use-workflow-history'
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -6,6 +11,7 @@ import { Separator } from '@langgenius/dify-ui/separator'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { collaborationManager } from '../collaboration/core/collaboration-manager'
+import { useCollaborativeHistory } from '../collaboration/hooks/use-collaborative-history'
 import { useCollaborativeWorkflow } from '../hooks/use-collaborative-workflow'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowHistory } from '../hooks/use-workflow-history'
@@ -24,6 +30,43 @@ type ChangeHistoryList = {
   statesCount: number
 }
 
+/**
+ * Lists shared-document history steps in the snapshot list's shape: index 0 is the current state,
+ * negative indexes are undo steps and positive indexes are redo steps.
+ */
+const toCollaborativeChangeList = (
+  { past, future }: CollaborativeHistoryState,
+  getLabel: (event: WorkflowHistoryEventT) => string,
+): ChangeHistoryList => {
+  const toEntry = (
+    step: CollaborativeHistoryStep | undefined,
+    index: number,
+  ): ChangeHistoryEntry => ({
+    label: step?.event ? getLabel(step.event as WorkflowHistoryEventT) : '',
+    index,
+    state: { workflowHistoryEventMeta: step?.meta },
+  })
+  const statesCount = past.length + future.length
+  if (!statesCount) return { pastStates: [], futureStates: [], statesCount }
+
+  return {
+    futureStates: [
+      ...future.map((step, position) => toEntry(step, future.length - position)),
+      toEntry(past.at(-1), 0),
+    ],
+    pastStates: past.length
+      ? [
+          ...past
+            .slice(0, -1)
+            .reverse()
+            .map((step, position) => toEntry(step, -(position + 1))),
+          toEntry(undefined, -past.length),
+        ]
+      : [],
+    statesCount,
+  }
+}
+
 const ViewWorkflowHistory = () => {
   const { t } = useTranslation(['common', 'workflow', 'workflowHistory'])
   const [open, setOpen] = useState(false)
@@ -33,16 +76,30 @@ const ViewWorkflowHistory = () => {
   const collaborativeWorkflow = useCollaborativeWorkflow()
   const { store, getHistoryLabel } = useWorkflowHistory()
 
+  const collaborativeHistory = useCollaborativeHistory()
   const { pastStates, futureStates, undo, redo, clear } = store.temporal.getState()
   const [currentHistoryStateIndex, setCurrentHistoryStateIndex] = useState<number>(0)
 
   const handleClearHistory = useCallback(() => {
+    if (collaborativeHistory.active) {
+      collaborationManager.clearUndoStack()
+      return
+    }
     clear()
     setCurrentHistoryStateIndex(0)
-  }, [clear])
+  }, [clear, collaborativeHistory.active])
 
   const handleSetState = useCallback(
     ({ index }: ChangeHistoryEntry) => {
+      if (collaborativeHistory.active) {
+        const step =
+          index < 0 ? () => collaborationManager.undo() : () => collaborationManager.redo()
+        let changed = false
+        for (let count = Math.abs(index); count > 0; count -= 1) changed = step() || changed
+        if (changed) collaborationManager.emitHistoryAction('jump')
+        return
+      }
+
       const diff = currentHistoryStateIndex + index
       if (diff === 0) return
 
@@ -58,7 +115,14 @@ const ViewWorkflowHistory = () => {
       setNodes(nodes, shouldBroadcast, 'history:jump')
       if (collaborationManager.isConnected()) collaborationManager.emitHistoryAction('jump')
     },
-    [collaborativeWorkflow, currentHistoryStateIndex, redo, store, undo],
+    [
+      collaborativeHistory.active,
+      collaborativeWorkflow,
+      currentHistoryStateIndex,
+      redo,
+      store,
+      undo,
+    ],
   )
 
   const calculateStepLabel = useCallback(
@@ -72,6 +136,9 @@ const ViewWorkflowHistory = () => {
   )
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
+    if (collaborativeHistory.active)
+      return toCollaborativeChangeList(collaborativeHistory, getHistoryLabel)
+
     const filterList = (
       list: Array<Partial<WorkflowHistoryState> | undefined>,
       startIndex = 0,
@@ -120,7 +187,7 @@ const ViewWorkflowHistory = () => {
       ...historyData,
       statesCount: pastStates.length + futureStates.length,
     }
-  }, [futureStates, getHistoryLabel, pastStates, store])
+  }, [collaborativeHistory, futureStates, getHistoryLabel, pastStates, store])
 
   const composeHistoryItemLabel = useCallback(
     (nodeTitle: string | undefined, baseLabel: string) => {

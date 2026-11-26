@@ -6,6 +6,8 @@ import type { CommonNodeType, Edge, Node } from '../../types'
 import type {
   CollaborationState,
   CollaborationUpdate,
+  CollaborativeHistoryState,
+  CollaborativeHistoryStep,
   CursorPosition,
   GraphReloadRequest,
   JoinFailure,
@@ -134,10 +136,14 @@ type GraphSyncDiagnosticEvent = {
   }
 }
 
-// Origin prefix of system writes: seeding the draft baseline, reloading it, replacing it after a
-// server-side import, and starting a lineage.
+// Commits with this origin prefix are excluded from the local undo stack: seeding the draft
+// baseline, reloading it, and replacing it after a server-side import.
 const SYSTEM_COMMIT_ORIGIN_PREFIX = 'sys:'
+// Loro drops the oldest undo item past this limit. A history step is one item unless remote
+// imports split it; small edits retain about 280 bytes per item, measured on loro-crdt 1.19.1.
+const MAX_UNDO_ITEMS = 1000
 const MISSING_UPDATES_REQUEST_INTERVAL = 1000
+const HISTORY_STEP_CHAIN_INTERVAL = 500
 const GRAPH_LINEAGES_KEY = 'lineages'
 const GRAPH_IMPORT_LOG_LIMIT = 20
 const SET_NODES_ANOMALY_LOG_LIMIT = 100
@@ -213,10 +219,30 @@ export class CollaborationManager {
   private graphImportLogs: GraphImportLogEntry[] = []
   private setNodesAnomalyLogs: SetNodesAnomalyLogEntry[] = []
   private graphSyncDiagnostics: GraphSyncDiagnosticEvent[] = []
+  private historySteps = new Map<
+    string,
+    CollaborativeHistoryStep & { markedAt?: number; continuesPrevious?: boolean }
+  >()
+  private historyStepItems = new Map<string, number>()
+  private historyPast: string[] = []
+  private historyFuture: string[] = []
+  private openHistoryStepId: string | null = null
+  private historyStepInFlight: string | null = null
+  private historyState: CollaborativeHistoryState = {
+    active: false,
+    canUndo: false,
+    canRedo: false,
+    past: [],
+    future: [],
+  }
+  private historyGroupHasItem = false
+  private historyStepCloseTimer: ReturnType<typeof setTimeout> | null = null
   private lastMissingUpdatesRequestAt = 0
   private importFailureCount = 0
   private missingUpdatesRequestTimer: ReturnType<typeof setTimeout> | null = null
   private lastImportFailureBroadcastAt = 0
+  private historyApplyScheduled = false
+  private historyListeners = new Set<(state: CollaborativeHistoryState) => void>()
   private pendingImportLog: {
     timestamp: number
     sources: Set<'nodes' | 'edges'>
@@ -406,6 +432,7 @@ export class CollaborationManager {
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
     this.captureSetNodesAnomaly(oldNodes, newNodes, source)
+    this.beginHistoryGroup()
     this.syncNodes(oldNodes, newNodes)
     this.doc.commit()
   }
@@ -417,6 +444,7 @@ export class CollaborationManager {
     if (this.isUndoRedoInProgress) return
 
     this.seedCrdtGraphFromReactFlowIfNeeded()
+    this.beginHistoryGroup()
     this.syncEdges(oldEdges, newEdges)
     this.doc.commit()
   }
@@ -459,59 +487,14 @@ export class CollaborationManager {
     this.pendingGraphResyncBroadcast = false
     this.pendingImportLog = null
 
+    this.resetHistorySteps()
+    // Local undo only reverts this replica's commits, so remote edits survive an undo. Grouping
+    // follows history steps instead of time, see `onPush`.
     this.undoManager = new UndoManager(this.doc, {
-      maxUndoSteps: 100,
-      mergeInterval: 500,
-      excludeOriginPrefixes: [],
-      onPush: (_isUndo, _range, _event) => {
-        const selectedNode = this.reactFlowStore
-          ?.getState()
-          .getNodes()
-          .find((n: Node) => n.data?.selected)
-
-        setTimeout(() => {
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        }, 0)
-
-        return {
-          value: {
-            selectedNodeId: selectedNode?.id || null,
-            timestamp: Date.now(),
-          },
-          cursors: [],
-        }
-      },
-      onPop: (_isUndo, value, _counterRange) => {
-        if (
-          value?.value &&
-          typeof value.value === 'object' &&
-          'selectedNodeId' in value.value &&
-          this.reactFlowStore
-        ) {
-          const selectedNodeId = (value.value as { selectedNodeId?: string | null }).selectedNodeId
-          if (selectedNodeId) {
-            const state = this.reactFlowStore.getState()
-            const { setNodes } = state
-            const nodes = state.getNodes()
-            const newNodes = nodes.map((n: Node) => ({
-              ...n,
-              data: {
-                ...n.data,
-                selected: n.id === selectedNodeId,
-              },
-            }))
-            this.captureSetNodesAnomaly(
-              nodes,
-              newNodes,
-              'reactflow-native:undo-redo-selection-restore',
-            )
-            setNodes(newNodes)
-          }
-        }
-      },
+      maxUndoSteps: MAX_UNDO_ITEMS,
+      mergeInterval: 0,
+      excludeOriginPrefixes: [SYSTEM_COMMIT_ORIGIN_PREFIX],
+      onPush: () => ({ value: this.recordHistoryCommit(), cursors: [] }),
     })
 
     this.provider = new CRDTProvider(socket, this.doc, {
@@ -521,6 +504,7 @@ export class CollaborationManager {
       onMissingDependencies: this.handleMissingDependencies,
       onImportFailed: this.handleImportFailed,
     })
+    this.emitHistoryChange()
     this.setupSubscriptions()
   }
 
@@ -718,6 +702,7 @@ export class CollaborationManager {
     this.rejectPendingWorkflowSyncRequests(new Error('Collaboration connection closed.'))
     this.provider?.destroy()
     this.undoManager = null
+    this.resetHistorySteps()
     this.importFailureCount = 0
     if (this.missingUpdatesRequestTimer) clearTimeout(this.missingUpdatesRequestTimer)
     this.missingUpdatesRequestTimer = null
@@ -864,6 +849,7 @@ export class CollaborationManager {
 
     const appId = this.currentAppId
     this.localDraftFallbackActive = true
+    this.emitHistoryChange()
     this.clearInitialSyncRetry()
     this.pendingInitialSync = false
     webSocketClient.disconnect(appId)
@@ -871,6 +857,7 @@ export class CollaborationManager {
   }
 
   private emitGraphReadyState(): void {
+    this.emitHistoryChange()
     this.eventEmitter.emit('graphReadyChange', this.canApplyLocalGraphMutation())
   }
 
@@ -1176,12 +1163,6 @@ export class CollaborationManager {
     })
   }
 
-  onUndoRedoStateChange(
-    callback: (state: { canUndo: boolean; canRedo: boolean }) => void,
-  ): () => void {
-    return this.eventEmitter.on('undoRedoStateChange', callback)
-  }
-
   onHistoryAction(
     callback: (payload: { action: 'undo' | 'redo' | 'jump'; userId?: string }) => void,
   ): () => void {
@@ -1224,100 +1205,267 @@ export class CollaborationManager {
     return this.isLeader
   }
 
-  // Collaborative undo/redo methods
-  undo(): boolean {
-    if (!this.undoManager) return false
+  private resetHistorySteps(): void {
+    this.closeHistoryStep()
+    this.historySteps.clear()
+    this.historyStepItems.clear()
+    this.historyPast = []
+    this.historyFuture = []
+    this.historyStepInFlight = null
+    this.emitHistoryChange()
+  }
 
-    const canUndo = this.undoManager.canUndo()
-    if (canUndo) {
-      this.isUndoRedoInProgress = true
-      const result = this.undoManager.undo()
-
-      // After undo, manually update React state from CRDT without triggering collaboration
-      const reactFlowStore = this.reactFlowStore
-      if (result && reactFlowStore) {
-        requestAnimationFrame(() => {
-          // Get ReactFlow's native setters, not the collaborative ones
-          const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
-          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
-          const updatedEdges = this.getEdges()
-          // Call ReactFlow's native setters directly to avoid triggering collaboration
-          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:undo-apply')
-          state.setNodes(updatedNodes)
-          state.setEdges(updatedEdges)
-
-          this.isUndoRedoInProgress = false
-
-          // Emit event to update UI button states
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        })
-      } else {
-        this.isUndoRedoInProgress = false
-      }
-
-      return result
+  private openHistoryStep(): string {
+    if (!this.openHistoryStepId) {
+      this.openHistoryStepId = uuid4()
+      this.historySteps.set(this.openHistoryStepId, { id: this.openHistoryStepId })
     }
+    return this.openHistoryStepId
+  }
 
-    return false
+  /**
+   * Keeps the commits of one history step in one Loro undo item. Called before every local graph
+   * write: a remote import can end the group early, and the next write then opens a new one.
+   */
+  private beginHistoryGroup(): void {
+    const undoManager = this.undoManager
+    if (!undoManager || this.historyStepInFlight) return
+    try {
+      undoManager.groupStart()
+      this.historyGroupHasItem = false
+    } catch {
+      // The step's group is still active.
+    }
+  }
+
+  private closeHistoryStep(): void {
+    if (this.historyStepCloseTimer) clearTimeout(this.historyStepCloseTimer)
+    this.historyStepCloseTimer = null
+    this.undoManager?.groupEnd()
+    this.openHistoryStepId = null
+  }
+
+  /**
+   * Returns the history step that a commit belongs to. Loro calls `onPush` for every recorded
+   * commit, keeps the first value of a merged item, and may split one step into several items
+   * when a remote import arrives. Tagging items with a step id lets `undo()` revert exactly one
+   * user-visible step regardless of how Loro stored it.
+   */
+  private recordHistoryCommit(): string {
+    if (this.historyStepInFlight) return this.historyStepInFlight
+
+    const stepId = this.openHistoryStep()
+    if (this.historyPast.at(-1) !== stepId) this.historyPast.push(stepId)
+    if (!this.historyGroupHasItem) {
+      this.historyGroupHasItem = true
+      this.historyStepItems.set(stepId, (this.historyStepItems.get(stepId) ?? 0) + 1)
+    }
+    this.historyFuture = []
+    this.dropEvictedHistorySteps()
+    this.emitHistoryChange()
+    return stepId
+  }
+
+  // Hides steps whose oldest commits Loro has already dropped, so the list never offers a state
+  // that undo can no longer reach.
+  private dropEvictedHistorySteps(): void {
+    let items = this.historyPast.reduce(
+      (total, stepId) => total + (this.historyStepItems.get(stepId) ?? 0),
+      0,
+    )
+    // The newest step stays: it may still be receiving commits.
+    while (items > MAX_UNDO_ITEMS && this.historyPast.length > 1) {
+      // The label stays: Loro may still hold the step's newer items, which must undo as one step.
+      const stepId = this.historyPast.shift()!
+      items -= this.historyStepItems.get(stepId) ?? 0
+      this.historyStepItems.delete(stepId)
+    }
+  }
+
+  /**
+   * Labels the open history step with the user action that produced it. Handlers may report the
+   * action before or between their writes, so the step stays open until the current task ends.
+   */
+  markHistoryStep(event: string, meta?: CollaborativeHistoryStep['meta']): void {
+    if (!this.undoManager) return
+
+    const isNewStep = !this.openHistoryStepId
+    const stepId = this.openHistoryStep()
+    if (isNewStep) this.beginHistoryGroup()
+    // Gestures and typing report the same action many times in a row, like the snapshot history
+    // debounces them; such reports chain into one step that undoes at once.
+    const markedAt = Date.now()
+    const previousLabeled = this.historyPast
+      .filter((id) => id !== stepId)
+      .map((id) => this.historySteps.get(id))
+      .filter((step) => step?.event)
+      .at(-1)
+    const continuesPrevious =
+      previousLabeled?.event === event &&
+      previousLabeled.meta?.nodeId === meta?.nodeId &&
+      markedAt - (previousLabeled.markedAt ?? 0) < HISTORY_STEP_CHAIN_INTERVAL
+    this.historySteps.set(stepId, { id: stepId, event, meta, markedAt, continuesPrevious })
+    this.historyStepCloseTimer ??= setTimeout(() => this.closeHistoryStep(), 0)
+    this.emitHistoryChange()
+  }
+
+  isHistoryActive(): boolean {
+    return this.undoManager !== null && !this.localDraftFallbackActive
+  }
+
+  getHistoryState(): CollaborativeHistoryState {
+    return this.historyState
+  }
+
+  // Kept outside the event emitter: disconnecting clears its listeners, while history
+  // subscribers live as long as the editor and only see the state reset.
+  onHistoryChange(callback: (state: CollaborativeHistoryState) => void): () => void {
+    this.historyListeners.add(callback)
+    return () => {
+      this.historyListeners.delete(callback)
+    }
+  }
+
+  private emitHistoryChange(): void {
+    // Unlabeled steps and chained reports are part of an undo unit, not units of their own.
+    const toSteps = (stepIds: string[]) =>
+      stepIds.flatMap((stepId) => {
+        const step = this.historySteps.get(stepId)
+        if (!step?.event || step.continuesPrevious) return []
+        return [{ id: step.id, event: step.event, meta: step.meta }]
+      })
+    this.historyState = {
+      active: this.isHistoryActive(),
+      canUndo: this.canUndo() && this.canApplyLocalGraphMutation(),
+      canRedo: this.canRedo() && this.canApplyLocalGraphMutation(),
+      past: toSteps(this.historyPast),
+      future: toSteps(this.historyFuture),
+    }
+    this.historyListeners.forEach((listener) => listener(this.historyState))
+  }
+
+  undo(): boolean {
+    return this.applyHistoryStep('undo')
   }
 
   redo(): boolean {
-    if (!this.undoManager) return false
+    return this.applyHistoryStep('redo')
+  }
 
-    const canRedo = this.undoManager.canRedo()
-    if (canRedo) {
-      this.isUndoRedoInProgress = true
-      const result = this.undoManager.redo()
+  private applyHistoryStep(direction: 'undo' | 'redo'): boolean {
+    const undoManager = this.undoManager
+    // An undo the room cannot receive would be lost when the document is rebuilt.
+    if (!undoManager || !this.canApplyLocalGraphMutation()) return false
 
-      // After redo, manually update React state from CRDT without triggering collaboration
-      const reactFlowStore = this.reactFlowStore
-      if (result && reactFlowStore) {
-        requestAnimationFrame(() => {
-          // Get ReactFlow's native setters, not the collaborative ones
-          const state = reactFlowStore.getState()
-          const previousNodes = state.getNodes()
-          const updatedNodes = this.mergeLocalNodeState(this.getNodes())
-          const updatedEdges = this.getEdges()
-          // Call ReactFlow's native setters directly to avoid triggering collaboration
-          this.captureSetNodesAnomaly(previousNodes, updatedNodes, 'reactflow-native:redo-apply')
-          state.setNodes(updatedNodes)
-          state.setEdges(updatedEdges)
+    const isUndo = direction === 'undo'
+    const canApply = () => (isUndo ? undoManager.canUndo() : undoManager.canRedo())
+    const topStepId = () => (isUndo ? undoManager.topUndoValue() : undoManager.topRedoValue())
+    if (!canApply()) return false
 
-          this.isUndoRedoInProgress = false
+    this.closeHistoryStep()
+    this.isUndoRedoInProgress = true
 
-          // Emit event to update UI button states
-          this.eventEmitter.emit('undoRedoStateChange', {
-            canUndo: this.undoManager?.canUndo() || false,
-            canRedo: this.undoManager?.canRedo() || false,
-          })
-        })
-      } else {
-        this.isUndoRedoInProgress = false
+    // A step with its own label starts an undo unit. A chained report continues the unit before
+    // it, and commits no action reported have no unit of their own.
+    const startsUnit = (stepId: unknown) => {
+      const step = typeof stepId === 'string' ? this.historySteps.get(stepId) : undefined
+      return Boolean(step?.event) && !step?.continuesPrevious
+    }
+    const from = isUndo ? this.historyPast : this.historyFuture
+    const to = isUndo ? this.historyFuture : this.historyPast
+
+    // Applies one history step. Loro may hold it as several adjacent items with the same id.
+    const applyStep = () => {
+      const stepId = topStepId()
+      this.historyStepInFlight = typeof stepId === 'string' ? stepId : uuid4()
+      const hasMoreOfStep = () => typeof stepId === 'string' && canApply() && topStepId() === stepId
+      let stepChanged = false
+      try {
+        do {
+          stepChanged = (isUndo ? undoManager.undo() : undoManager.redo()) || stepChanged
+        } while (hasMoreOfStep())
+      } finally {
+        this.historyStepInFlight = null
       }
 
-      return result
+      if (typeof stepId === 'string') {
+        const index = from.lastIndexOf(stepId)
+        if (index !== -1) from.splice(index, 1)
+        to.push(stepId)
+      }
+      return { stepId, stepChanged }
     }
 
-    return false
+    // Like the snapshot history, which only records labeled states, an undo returns to the state
+    // before the latest labeled action: commits no action reported are labeled by the next action
+    // (they share its open step) or, after the latest action, undone together with it. Redo
+    // replays them in the same order.
+    let changed = false
+    if (isUndo) {
+      let applied: ReturnType<typeof applyStep>
+      do {
+        applied = applyStep()
+        changed = applied.stepChanged || changed
+      } while (!startsUnit(applied.stepId) && canApply())
+    } else {
+      changed = applyStep().stepChanged
+      while (canApply() && !startsUnit(topStepId())) changed = applyStep().stepChanged || changed
+    }
+
+    // Loro drops the oldest items past `maxUndoSteps`; keep the visible list within what it holds.
+    if (!undoManager.canUndo()) this.historyPast = []
+    if (!undoManager.canRedo()) this.historyFuture = []
+    this.emitHistoryChange()
+
+    const reactFlowStore = this.reactFlowStore
+    if (!changed || !reactFlowStore) {
+      if (!this.historyApplyScheduled) this.isUndoRedoInProgress = false
+      return changed
+    }
+    // Several steps in one frame, such as a history jump, share one canvas update.
+    if (this.historyApplyScheduled) return changed
+
+    this.historyApplyScheduled = true
+    const generation = this.crdtGeneration
+    requestAnimationFrame(() => {
+      this.historyApplyScheduled = false
+      if (generation !== this.crdtGeneration) {
+        this.isUndoRedoInProgress = false
+        return
+      }
+
+      // Apply the CRDT state with React Flow's own setters so the change is not written back.
+      const state = reactFlowStore.getState()
+      const previousNodes = state.getNodes()
+      const updatedNodes = this.mergeLocalNodeState(this.getNodes())
+      this.captureSetNodesAnomaly(
+        previousNodes,
+        updatedNodes,
+        `reactflow-native:${direction}-apply`,
+      )
+      const updatedEdges = this.getEdges()
+      state.setNodes(updatedNodes)
+      state.setEdges(updatedEdges)
+      // The canvas owner mirrors the graph in its own state and follows graph imports.
+      this.eventEmitter.emit('graphImport', { nodes: updatedNodes, edges: updatedEdges })
+      this.isUndoRedoInProgress = false
+    })
+
+    return changed
   }
 
   canUndo(): boolean {
-    if (!this.undoManager) return false
-    return this.undoManager.canUndo()
+    return this.undoManager?.canUndo() ?? false
   }
 
   canRedo(): boolean {
-    if (!this.undoManager) return false
-    return this.undoManager.canRedo()
+    return this.undoManager?.canRedo() ?? false
   }
 
   clearUndoStack(): void {
     if (!this.undoManager) return
     this.undoManager.clear()
+    this.resetHistorySteps()
   }
 
   private syncNodes(oldNodes: Node[], newNodes: Node[]): void {
