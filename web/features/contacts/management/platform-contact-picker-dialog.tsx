@@ -34,15 +34,17 @@ function PlatformContactPickerContent({
   const canImport = Boolean(
     context.workspaceId && context.imCentrallyManaged && context.permissions.canManageContacts,
   )
+  const keyword = search.trim()
+  const isSearching = canImport && keyword.length > 0
   const api = consoleQuery.workspaces.current.humanInput.v2
   const queryClient = useQueryClient()
   const candidates = useInfiniteQuery({
-    ...availablePlatformCandidatesOptions(queryClient, context.workspaceId, search),
-    enabled: canImport,
+    ...availablePlatformCandidatesOptions(queryClient, context.workspaceId, keyword),
+    enabled: isSearching,
   })
-  const contacts = candidates.data?.pages.flatMap((page) => page.data) ?? []
-  const pending = candidates.isPending
-  const error = candidates.error
+  const contacts = isSearching ? (candidates.data?.pages.flatMap((page) => page.data) ?? []) : []
+  const pending = isSearching && candidates.isPending
+  const error = isSearching ? candidates.error : null
   const add = useMutation(
     api.contacts.platform.post.mutationOptions({
       meta: { errorToast: false },
@@ -87,13 +89,10 @@ function PlatformContactPickerContent({
           onValueChange={setSearch}
         />
       </div>
-      <div className="flex h-7 shrink-0 items-center px-3 system-xs-regular text-text-tertiary">
-        {t(($) => $['platformPicker.allMembers'])}
-      </div>
       <p role="status" aria-atomic="true" className="sr-only">
         {selectedIds.length
           ? t(($) => $['platformPicker.selected'], { count: selectedIds.length })
-          : !pending && !error
+          : isSearching && !pending && !error
             ? t(($) => $['directory.resultCount'], { count: contacts.length })
             : ''}
       </p>
@@ -103,7 +102,7 @@ function PlatformContactPickerContent({
             {t(($) => $['platformPicker.addForbidden'])}
           </p>
         )}
-        {canImport && pending && (
+        {pending && (
           <div className="space-y-2 p-3">
             {[0, 1, 2].map((key) => (
               <div
@@ -131,13 +130,12 @@ function PlatformContactPickerContent({
             </Button>
           </div>
         )}
-        {canImport && !pending && !error && contacts.length === 0 && (
+        {isSearching && !pending && !error && contacts.length === 0 && (
           <p className="flex min-h-24 items-center justify-center p-3 text-center system-sm-regular text-text-tertiary">
             {t(($) => $['platformPicker.empty'])}
           </p>
         )}
-        {canImport &&
-          !pending &&
+        {!pending &&
           contacts.map((contact) => (
             <label
               key={contact.id}
@@ -158,7 +156,7 @@ function PlatformContactPickerContent({
               </span>
             </label>
           ))}
-        {canImport && candidates.hasNextPage && (
+        {isSearching && candidates.hasNextPage && (
           <div className="p-2">
             {candidates.isFetchNextPageError && (
               <p role="alert" className="mb-2 system-xs-regular text-text-destructive">

@@ -15,7 +15,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
 
 from controllers.common.human_input_v2_migration import LegacyHITLv1NodeData
 from core.human_input_v2.entities import (
@@ -76,7 +76,9 @@ class ContactOptionsQuery(PaginationParamsMixin, _NoExtraModel):
 class OrganizationCandidatesQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for searching organization member candidates."""
 
-    keyword: str | None = Field(default=None, description="Free-text search against candidate name or email.")
+    keyword: Annotated[str, AfterValidator(str.strip)] | None = Field(
+        default=None, description="Free-text search against candidate name or email."
+    )
 
 
 ExternalContactName = Annotated[

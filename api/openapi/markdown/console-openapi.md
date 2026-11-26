@@ -15991,6 +15991,10 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/organization-candidates
+**Return a candidate page for an authorized EE workspace request with valid pagination**
+
+Omitted and blank keywords return an empty page without searching the directory.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

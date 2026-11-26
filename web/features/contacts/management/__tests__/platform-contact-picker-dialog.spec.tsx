@@ -53,6 +53,18 @@ async function open(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Open picker' }))
   return screen.findByRole('dialog')
 }
+function searchInput() {
+  return screen.getByRole('searchbox', { name: 'contacts.platformPicker.search' })
+}
+async function search(user: ReturnType<typeof userEvent.setup>, keyword = 'Alice') {
+  await user.clear(searchInput())
+  await user.click(searchInput())
+  await user.paste(keyword)
+}
+async function openWithSearch(user: ReturnType<typeof userEvent.setup>, keyword?: string) {
+  await open(user)
+  await search(user, keyword)
+}
 beforeEach(() => {
   api.candidates.mockReset().mockResolvedValue({ data: [candidate], page: 1, limit: 100, total: 1 })
   api.existing.mockReset().mockResolvedValue({ data: [] })
@@ -67,6 +79,31 @@ it('opens with a visible close control and an always-available Cancel action', a
     expect(screen.getByRole('button', { name: 'contacts.action.close' })).toHaveFocus(),
   )
   expect(screen.getByRole('button', { name: 'contacts.action.cancel' })).toBeVisible()
+})
+
+it('shows candidates only after a nonblank search and hides them when the search is cleared', async () => {
+  const user = userEvent.setup()
+  setup()
+  await open(user)
+
+  expect(searchInput()).toHaveValue('')
+  expect(screen.queryByText('contacts.platformPicker.allMembers')).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(api.candidates).not.toHaveBeenCalled()
+
+  await search(user, '   ')
+  expect(api.candidates).not.toHaveBeenCalled()
+
+  await search(user)
+  expect(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ })).toBeVisible()
+  expect(api.candidates).toHaveBeenCalledExactlyOnceWith({
+    query: { keyword: 'Alice', page: 1, limit: 100 },
+  })
+
+  await user.clear(searchInput())
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+  expect(screen.queryByText('contacts.platformPicker.empty')).not.toBeInTheDocument()
+  expect(api.candidates).toHaveBeenCalledOnce()
 })
 
 it('automatically skips imported pages and stops when a selectable contact is found', async () => {
@@ -84,7 +121,7 @@ it('automatically skips imported pages and stops when a selectable contact is fo
       : [],
   }))
   setup()
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByText('Next available')).toBeInTheDocument()
   expect(api.candidates.mock.calls.map(([input]) => input.query.page)).toEqual([1, 2, 3])
   expect(api.existing).toHaveBeenCalledTimes(3)
@@ -107,7 +144,7 @@ it('finishes with an empty state after every remaining candidate was already imp
     })),
   }))
   setup()
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByText('contacts.platformPicker.empty')).toBeInTheDocument()
   expect(api.candidates.mock.calls.map(([input]) => input.query.page)).toEqual([1, 2])
   expect(screen.queryByRole('button', { name: 'contacts.action.loadMore' })).not.toBeInTheDocument()
@@ -134,7 +171,7 @@ it('retries a failed continuation without discarding the already cached imported
       : [],
   }))
   setup()
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.error')
   await user.click(screen.getByRole('button', { name: 'contacts.action.retry' }))
   expect(await screen.findByText('Recovered')).toBeVisible()
@@ -146,7 +183,7 @@ it('does not treat a failed existing-contact lookup as an empty imported page', 
   api.candidates.mockResolvedValue({ data: [candidate], page: 1, limit: 100, total: 101 })
   api.existing.mockRejectedValueOnce(new Error('Lookup unavailable'))
   setup()
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.error')
   expect(api.candidates).toHaveBeenCalledTimes(1)
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
@@ -161,7 +198,7 @@ it('stops instead of looping when a continuation repeats a previous server page'
     data: [{ id: candidate.id, name: candidate.name, created_at: alice.created_at }],
   })
   setup()
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.platformPicker.error')
   expect(api.candidates.mock.calls.map(([input]) => input.query.page)).toEqual([1, 2])
 })
@@ -175,7 +212,7 @@ it('does not advance an abandoned search when its delayed candidate page arrives
     total: number
   }>()
   api.candidates.mockImplementation(({ query }: { query: { keyword?: string } }) =>
-    query.keyword
+    query.keyword === 'new'
       ? Promise.resolve({
           data: [{ ...candidate, id: 'new', name: 'Current search' }],
           page: 1,
@@ -185,9 +222,9 @@ it('does not advance an abandoned search when its delayed candidate page arrives
       : oldPage.promise,
   )
   setup()
-  await open(user)
+  await openWithSearch(user, 'old')
   await waitFor(() => expect(api.candidates).toHaveBeenCalledTimes(1))
-  await user.type(screen.getByRole('searchbox', { name: 'contacts.platformPicker.search' }), 'new')
+  await search(user, 'new')
   expect(await screen.findByText('Current search')).toBeVisible()
   await act(async () => oldPage.resolve({ data: [candidate], page: 1, limit: 100, total: 101 }))
   expect(
@@ -212,7 +249,7 @@ it('isolates a new workspace from an old in-flight candidate page', async () => 
     total: 1,
   })
   const switchWorkspace = setup()
-  await open(user)
+  await openWithSearch(user)
   await waitFor(() => expect(api.candidates).toHaveBeenCalledTimes(1))
   switchWorkspace('workspace-2')
   expect(await screen.findByText('Current workspace')).toBeVisible()
@@ -227,7 +264,7 @@ it('isolates a new workspace from an old in-flight candidate page', async () => 
 it('adds selected IDs through the real generated mutation shape', async () => {
   const user = userEvent.setup()
   setup()
-  await open(user)
+  await openWithSearch(user)
   await user.click(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ }))
   await user.click(screen.getByRole('button', { name: 'contacts.platformPicker.add' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -238,7 +275,7 @@ it('refreshes candidates and retains the selection on conflict, clearing it only
   const user = userEvent.setup()
   api.add.mockRejectedValueOnce(Object.assign(new Error('Conflict'), { status: 409 }))
   setup()
-  await open(user)
+  await openWithSearch(user)
   await user.click(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ }))
   const candidateRequests = api.candidates.mock.calls.length
   await user.click(screen.getByRole('button', { name: 'contacts.platformPicker.add' }))
@@ -247,7 +284,7 @@ it('refreshes candidates and retains the selection on conflict, clearing it only
   await waitFor(() => expect(api.candidates.mock.calls.length).toBeGreaterThan(candidateRequests))
   await user.click(screen.getByRole('button', { name: 'contacts.action.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  await open(user)
+  await openWithSearch(user)
   expect(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ })).not.toBeChecked()
 })
 
@@ -256,7 +293,7 @@ it('blocks closing during a pending import and does not add duplicates', async (
   const request = createDeferred<{ data: [] }>()
   api.add.mockReturnValueOnce(request.promise)
   setup()
-  await open(user)
+  await openWithSearch(user)
   await user.click(await screen.findByRole('checkbox', { name: /selectContact.*Alice/ }))
   const add = screen.getByRole('button', { name: 'contacts.platformPicker.add' })
   await user.click(add)

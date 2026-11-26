@@ -6,11 +6,12 @@ import pytest
 from flask import Flask, g
 from flask.testing import FlaskClient
 from flask_login import LoginManager
-from sqlalchemy import select
+from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from controllers.console import bp as console_bp
+from controllers.console import wraps
 from controllers.console.human_input_v2 import contact as controller
 from enums import DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountRole
@@ -102,6 +103,33 @@ def test_management_rejects_non_administrators_before_business_work(
     response = client.open(f"{_BASE_URL}{path}", method=method, json={})
 
     assert response.status_code == 403, response.get_json()
+
+
+@pytest.mark.parametrize("keyword", [None, "", " \t\u3000", "\x1c"])
+def test_organization_candidates_return_an_empty_page_without_a_keyword(
+    client: FlaskClient, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch, keyword: str | None
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
+    directory_queries: list[str] = []
+
+    def capture_statement(_connection: object, _cursor: object, statement: str, *_args: object) -> None:
+        if "human_input_contact_identities" in statement:
+            directory_queries.append(statement)
+
+    query = {"page": "2", "limit": "15"}
+    if keyword is not None:
+        query["keyword"] = keyword
+
+    event.listen(sqlite_engine, "before_cursor_execute", capture_statement)
+    try:
+        response = client.get(f"{_BASE_URL}/organization-candidates", query_string=query)
+    finally:
+        event.remove(sqlite_engine, "before_cursor_execute", capture_statement)
+
+    assert response.status_code == 200, response.get_json()
+    assert response.get_json() == {"data": [], "page": 2, "limit": 15, "total": 0}
+    assert directory_queries == []
 
 
 @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN])

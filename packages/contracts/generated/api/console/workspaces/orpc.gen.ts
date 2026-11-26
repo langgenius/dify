@@ -1925,12 +1925,19 @@ export const nodeDataMigration = {
   post: post23,
 }
 
+/**
+ * Return a candidate page for an authorized EE workspace request with valid pagination
+ *
+ * Omitted and blank keywords return an empty page without searching the directory.
+ */
 export const get26 = oc
   .route({
+    description: 'Omitted and blank keywords return an empty page without searching the directory.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2OrganizationCandidates',
     path: '/workspaces/current/human-input/v2/organization-candidates',
+    summary: 'Return a candidate page for an authorized EE workspace request with valid pagination',
     tags: ['console'],
   })
   .input(

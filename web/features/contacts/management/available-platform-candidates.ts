@@ -8,7 +8,7 @@ export function availablePlatformCandidatesOptions(
   keyword: string,
 ) {
   const api = consoleQuery.workspaces.current.humanInput.v2
-  const query = { keyword: keyword.trim() || undefined, page: 1, limit: 100 }
+  const query = { keyword, page: 1, limit: 100 }
   return infiniteQueryOptions({
     queryKey: [
       ...api.organizationCandidates.get.queryKey({ input: { query } }),

@@ -515,12 +515,22 @@ class WorkspaceOrganizationCandidatesApi(Resource):
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str):
+        """Return a candidate page for an authorized EE workspace request with valid pagination.
+
+        Omitted and blank keywords return an empty page without searching the directory.
+        """
         query = OrganizationCandidatesQuery.model_validate(request.args.to_dict(flat=True))
+        if not query.keyword:
+            return dump_response(
+                ListOrganizationCandidatesResponse,
+                {"data": [], "page": query.page, "limit": query.limit, "total": 0},
+            )
+
         service = build_enterprise_contact_management_service(session)
         candidates = service.list_organization_candidates(
             page=query.page,
             limit=query.limit,
-            keyword=query.keyword or "",
+            keyword=query.keyword,
         )
         return dump_response(
             ListOrganizationCandidatesResponse,
@@ -536,7 +546,7 @@ class WorkspaceOrganizationCandidatesApi(Resource):
                 ],
                 "page": query.page,
                 "limit": query.limit,
-                "total": service.count_organization_candidates(query.keyword or ""),
+                "total": service.count_organization_candidates(query.keyword),
             },
         )
 
