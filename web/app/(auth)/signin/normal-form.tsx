@@ -39,7 +39,7 @@ function NormalForm() {
   const accountSession = useQuery(
     consoleQuery.login.get.queryOptions({
       input: accountInput ? { query: accountInput } : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,

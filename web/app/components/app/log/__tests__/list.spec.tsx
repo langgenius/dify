@@ -14,6 +14,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createHttpError } from '@/service/http-error'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -45,7 +46,11 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ appId: 'app-1' }),
   usePathname: () => '/app/app-1/logs',
 }))
-vi.mock('@/service/log', () => ({ fetchRunDetail: api.run, fetchTracingList: api.tracing }))
+vi.mock('@/service/log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/log')>()),
+  fetchRunDetail: api.run,
+  fetchTracingList: api.tracing,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses, withConsoleClientResponses } =
@@ -54,7 +59,10 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
       'features.get': () => createFeaturesFixture(),
+      'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
+      'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
       'apps.byAppId.annotations.byAnnotationId.post': (input) => api.editAnnotation(input),
       'apps.byAppId.annotations.byAnnotationId.delete': (input) => api.removeAnnotation(input),
       'apps.byAppId.traceRuns.bySourceKind.bySourceId.get': (input) => api.externalTrace(input),
@@ -65,9 +73,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.chatMessages.get': (input) => api.messages(input),
-      'apps.byAppId.feedbacks.post': (input) => api.feedback(input),
-      'apps.byAppId.annotations.post': (input) => api.addAnnotation(input),
-      'apps.byAppId.agent.logs.get': (input) => api.agentLog(input),
     }),
   }
 })
@@ -514,6 +519,36 @@ it('loads older messages at the top using the oldest answer as the pagination cu
   expect(api.messages).toHaveBeenCalledTimes(2)
 })
 
+it('reports a failed request for older messages', async () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  api.messages
+    .mockResolvedValueOnce({
+      data: [
+        createChatMessage('message-1', { parent_message_id: 'older-message' }),
+        createChatMessage('message-2', { parent_message_id: 'message-1' }),
+        createChatMessage('message-3', { parent_message_id: 'message-2' }),
+        createChatMessage('message-4', { parent_message_id: 'message-3' }),
+      ],
+      has_more: true,
+      limit: 10,
+    })
+    .mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'History unavailable' }),
+    )
+  renderConversationList({ searchParams: '?conversation_id=conversation-1' })
+  const history = await screen.findByRole('log')
+  await within(history).findByText('Assistant reply message-4')
+  Object.defineProperties(history, {
+    clientHeight: { configurable: true, value: 100 },
+    scrollHeight: { configurable: true, value: 500 },
+    scrollTop: { configurable: true, value: -400 },
+  })
+  fireEvent.scroll(history)
+  expect(await screen.findByText('History unavailable')).toBeInTheDocument()
+  expect(api.messages).toHaveBeenCalledTimes(2)
+  consoleError.mockRestore()
+})
+
 it('opens and closes the workflow run selected from an answer', async () => {
   api.messages.mockResolvedValue({
     data: [createChatMessage('message-1', { workflow_run_id: 'run-1' })],
@@ -535,7 +570,7 @@ it('opens and closes the workflow run selected from an answer', async () => {
     'true',
   )
   await waitFor(() =>
-    expect(api.run).toHaveBeenCalledWith('/apps/app-1/workflow-runs/run-1', { silent: true }),
+    expect(api.run).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1'),
   )
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
@@ -544,12 +579,7 @@ it('opens and closes the workflow run selected from an answer', async () => {
   expect(api.externalTrace).toHaveBeenCalledWith({
     params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'run-1' },
   })
-  expect(api.tracing).toHaveBeenCalledWith(
-    {
-      url: '/apps/app-1/workflow-runs/run-1/node-executions',
-    },
-    { silent: true },
-  )
+  expect(api.tracing).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
   await user.click(within(runDialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(runDialog).not.toBeInTheDocument())
 })

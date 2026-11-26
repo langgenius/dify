@@ -338,10 +338,9 @@ it('claims all eligible anonymous data, retains the account Passport, and return
   await user.click(await screen.findByRole('radio', { name: 'login.history.add' }))
   await user.click(screen.getByRole('button', { name: 'login.history.addAndContinue' }))
 
-  expect(webAppClient.migration.claim.post).toHaveBeenCalledWith(
-    { body: { passports: ['anonymous-current'] } },
-    { context: { silent: true } },
-  )
+  expect(webAppClient.migration.claim.post).toHaveBeenCalledWith({
+    body: { passports: ['anonymous-current'] },
+  })
   expect(localStorage.getItem(PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
   expect(localStorage.getItem(AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME('current-app'))).toBeNull()
   expect(replace).toHaveBeenCalledWith(
@@ -463,7 +462,7 @@ it('requests Console account switching only after WebApp logout succeeds, preser
   await user.click(await screen.findByRole('button', { name: 'login.history.useDifferentAccount' }))
   expect(await screen.findByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
   expect(webAppClient.parameters.get).toHaveBeenCalledWith(undefined, {
-    context: { address: { kind: 'default', code: 'current-app' }, silent: true },
+    context: { address: { kind: 'default', code: 'current-app' } },
   })
   expect(webAppLogout).toHaveBeenCalledWith({ kind: 'default', code: 'current-app' })
   expect(beginWebAppAccountLogin).not.toHaveBeenCalled()

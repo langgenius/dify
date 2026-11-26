@@ -1,24 +1,12 @@
+import type { WebAppAddress } from './webapp-address'
+import {
+  webAppLoginStatus as getWebAppLoginStatus,
+  webAppLogout as logoutWebApp,
+} from './webapp-auth'
 import { webAppClient } from './webapp-client'
 
-type LoginSuccess = {
-  result: 'success'
-  data?: { access_token?: string }
-}
-type LoginFail = {
-  result: 'fail'
-  data: string
-  code: string
-  message: string
-}
-type LoginResponse = LoginSuccess | LoginFail
-
-export const webAppLogin = (body: {
-  email: string
-  password: string
-  remember_me?: boolean
-}): Promise<LoginResponse> => {
-  return webAppClient.login.post({ body }) as Promise<LoginResponse>
-}
+export const webAppLogin = (body: { email: string; password: string; remember_me?: boolean }) =>
+  webAppClient.login.post({ body })
 
 export const changeWebAppPasswordWithToken = (body: {
   token: string
@@ -26,14 +14,8 @@ export const changeWebAppPasswordWithToken = (body: {
   password_confirm: string
 }) => webAppClient.forgotPassword.resets.post({ body })
 
-export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
-  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options }) as Promise<{
-    id: string
-    name: string
-    size: number
-    mime_type: string
-    url: string
-  }>
+export const uploadPublicRemoteFileInfo = (url: string) => {
+  return webAppClient.remoteFiles.upload.post({ body: { url } })
 }
 
 export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
@@ -50,3 +32,8 @@ export const verifyWebAppResetPasswordCode = (body: {
   code: string
   token: string
 }) => webAppClient.forgotPassword.validity.post({ body })
+
+export const webAppLoginStatus = (shareCode: string, userId?: string) =>
+  getWebAppLoginStatus(shareCode, userId)
+
+export const webAppLogout = (address: WebAppAddress | null) => logoutWebApp(address)

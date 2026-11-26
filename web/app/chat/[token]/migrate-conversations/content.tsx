@@ -51,7 +51,8 @@ export default function MigrateConversationsContent() {
   const profile = useQuery(
     webAppQuery.account.profile.get.queryOptions({
       queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
-      context: { authSession, silent: true },
+      context: { authSession },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -82,7 +83,7 @@ export default function MigrateConversationsContent() {
     mutationFn: async () => {
       const address = { kind: 'default', code: token } as const
       const parameters = await webAppClient.parameters.get(undefined, {
-        context: { address, silent: true },
+        context: { address },
       })
       if (!parameters.account_login_enabled)
         throw new Error(t(($) => $['api.actionFailed'], { ns: 'common' }))

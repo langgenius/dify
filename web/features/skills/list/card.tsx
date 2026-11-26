@@ -53,10 +53,9 @@ function DeleteSkillDialog({
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const queryClient = useQueryClient()
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const referencesQuery = useQuery({
@@ -94,7 +93,6 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
         onError: (error) => {
@@ -216,10 +214,11 @@ export function SkillCard({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const exportMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
@@ -246,7 +245,6 @@ export function SkillCard({
       },
       {
         onSuccess: (copiedSkill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: (error) => {

@@ -4,7 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { canCreateAndModifySnippets } from '../utils/permission'
 
 export const useCreateSnippet = () => {
@@ -12,6 +12,9 @@ export const useCreateSnippet = () => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const createSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.post.mutationOptions(),
+  )
+  const { mutateAsync: saveInitialDraft } = useMutation(
+    consoleQuery.snippets.bySnippetId.workflows.draft.post.mutationOptions(),
   )
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
@@ -47,7 +50,7 @@ export const useCreateSnippet = () => {
       const snippet = await createSnippetMutation.mutateAsync({
         body: createPayload,
       })
-      await consoleClient.snippets.bySnippetId.workflows.draft.post({
+      await saveInitialDraft({
         params: { snippet_id: snippet.id },
         body: {
           graph: createPayload.graph,

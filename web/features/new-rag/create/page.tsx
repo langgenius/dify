@@ -44,6 +44,7 @@ import { deploymentEditionAtom, rbacEnabledAtom } from '@/features/system-featur
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelSetupDialog } from '../components/knowledge-model-setup-dialog'
 import { ModelCostNotice } from '../components/model-cost-notice'
@@ -344,8 +345,10 @@ function CreateKnowledgeSession() {
         const hadUnsettledUploads = validUploads.some(
           ({ id }) => !isKnowledgeFsUploadSettled(uploadProgressRef.current, id),
         )
+        let claimingUploads = false
         try {
           await waitForKnowledgeSpaceReady(created.control_space_id)
+          claimingUploads = true
           const result = await uploadKnowledgeFsDocuments(
             created.control_space_id,
             validUploads.map(({ file, id, stagedUploadId }) => ({
@@ -373,9 +376,12 @@ function CreateKnowledgeSession() {
           }
         } catch (error) {
           const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+          // A failed upload claim keeps this page's copy; the readiness wait reports the
+          // server's message.
           const reason = messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentUploadFailed)
+            : ((claimingUploads ? undefined : getRequestErrorMessage(error)) ??
+              t(($) => $.documentUploadFailed))
           const completed = validUploads.filter(
             ({ id }) => uploadProgressRef.current.get(id)?.phase === 'completed',
           ).length

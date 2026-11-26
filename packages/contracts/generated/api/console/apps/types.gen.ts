@@ -6146,7 +6146,9 @@ export type PostAppsByAppIdAnnotationsResponse =
   PostAppsByAppIdAnnotationsResponses[keyof PostAppsByAppIdAnnotationsResponses]
 
 export type PostAppsByAppIdAnnotationsBatchImportData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }

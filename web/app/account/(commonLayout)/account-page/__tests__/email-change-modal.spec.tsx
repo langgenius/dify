@@ -10,16 +10,22 @@ const mockLogout = vi.fn()
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  const responses = {
+    'account.changeEmail.checkEmailUnique.post': vi.fn(),
+    'account.changeEmail.reset.post': vi.fn(),
+    'account.changeEmail.post': vi.fn(),
+    'account.changeEmail.validity.post': vi.fn(),
+  }
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, responses)
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'account.changeEmail.checkEmailUnique.post': vi.fn(),
-      'account.changeEmail.reset.post': vi.fn(),
-      'account.changeEmail.post': vi.fn(),
-      'account.changeEmail.validity.post': vi.fn(),
-    }),
+    consoleClient,
+    consoleQuery: createConsoleQuery(consoleClient),
   }
 })
+
+const requestOptions = expect.anything()
 
 vi.mock('@/service/common-queries', () => ({
   logoutMutationOptions: () => ({ mutationFn: () => mockLogout() }),
@@ -61,7 +67,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      { context: { silent: true } },
+      requestOptions,
     )
 
     const email = await screen.findByRole('textbox', {
@@ -82,7 +88,7 @@ describe('EmailChangeModal', () => {
           token: 'verified-token',
         },
       },
-      { context: { silent: true } },
+      requestOptions,
     )
 
     const newCode = await screen.findByRole('textbox', {
@@ -98,7 +104,7 @@ describe('EmailChangeModal', () => {
             token: 'verified-token',
           },
         },
-        { context: { silent: true } },
+        requestOptions,
       ),
     )
     expect(mockLogout).toHaveBeenCalledOnce()
@@ -199,7 +205,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      { context: { silent: true } },
+      requestOptions,
     )
   })
 })

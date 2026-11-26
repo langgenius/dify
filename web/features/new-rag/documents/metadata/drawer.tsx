@@ -40,7 +40,7 @@ import { useAtomValueRawSync, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import { documentMetadataAtom, documentsKnowledgeSpaceIdAtom } from '../state/inputs'
@@ -54,7 +54,7 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true } }
+const noErrorToast = { meta: { errorToast: false as const } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -72,14 +72,21 @@ function useMetadataFieldMutation() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
-  const { isPending, mutateAsync } = useMutation({
-    mutationFn: (mutation: () => Promise<unknown>) => mutation(),
-  })
+  const metadata = consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata
+  const createField = useMutation(metadata.post.mutationOptions(noErrorToast))
+  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(noErrorToast))
+  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(noErrorToast))
+  const isPending = createField.isPending || renameField.isPending || deleteField.isPending
+  const fieldMutations = {
+    create: createField.mutateAsync,
+    rename: renameField.mutateAsync,
+    remove: deleteField.mutateAsync,
+  }
   const mutate = useCallback(
     async (mutation: () => Promise<unknown>) => {
       if (!canWrite || isPending) return false
       try {
-        await mutateAsync(mutation)
+        await mutation()
         await Promise.all([
           queryClient.invalidateQueries({
             queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
@@ -100,10 +107,10 @@ function useMetadataFieldMutation() {
         return false
       }
     },
-    [canWrite, denyWrite, isPending, mutateAsync, queryClient, t],
+    [canWrite, denyWrite, isPending, queryClient, t],
   )
 
-  return { canWrite, knowledgeSpaceId, mutate, pending: isPending }
+  return { canWrite, fieldMutations, knowledgeSpaceId, mutate, pending: isPending }
 }
 
 function CreateMetadataPopover() {
@@ -114,17 +121,14 @@ function CreateMetadataPopover() {
   const catalogUnavailable = Boolean(
     metadataFieldsQuery.isPending || metadataFieldsQuery.isFetching || metadataFieldsQuery.error,
   )
-  const { canWrite, knowledgeSpaceId, mutate, pending } = useMetadataFieldMutation()
+  const { canWrite, fieldMutations, knowledgeSpaceId, mutate, pending } = useMetadataFieldMutation()
   // DocumentMetadataCreateForm validates the name against the same fields before submitting.
   const createMetadata = (name: string, type: DocumentMetadataType) =>
     mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
-        {
-          body: { name, type },
-          params: { control_space_id: knowledgeSpaceId },
-        },
-        silentRequest,
-      ),
+      fieldMutations.create({
+        body: { name, type },
+        params: { control_space_id: knowledgeSpaceId },
+      }),
     )
 
   return (
@@ -172,7 +176,13 @@ function MetadataItem({
   const [name, setName] = useState(field.name)
   const [nameSubmitted, setNameSubmitted] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const { canWrite: canEdit, knowledgeSpaceId, mutate, pending: busy } = useMetadataFieldMutation()
+  const {
+    canWrite: canEdit,
+    fieldMutations,
+    knowledgeSpaceId,
+    mutate,
+    pending: busy,
+  } = useMetadataFieldMutation()
   const nameErrorKind = documentMetadataNameError(name.trim(), fields, field.name)
   const nameError =
     nameSubmitted && nameErrorKind
@@ -181,24 +191,18 @@ function MetadataItem({
   const renameMetadata = async (nextName: string) => {
     if (nextName === field.name) return true
     return mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.patch(
-        {
-          body: { expectedRowVersion: field.rowVersion, name: nextName },
-          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-        },
-        silentRequest,
-      ),
+      fieldMutations.rename({
+        body: { expectedRowVersion: field.rowVersion, name: nextName },
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+      }),
     )
   }
   const deleteMetadata = () =>
     mutate(() =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.byFieldId.delete(
-        {
-          params: { control_space_id: knowledgeSpaceId, field_id: field.id },
-          query: { expectedRowVersion: field.rowVersion },
-        },
-        silentRequest,
-      ),
+      fieldMutations.remove({
+        params: { control_space_id: knowledgeSpaceId, field_id: field.id },
+        query: { expectedRowVersion: field.rowVersion },
+      }),
     )
 
   return (

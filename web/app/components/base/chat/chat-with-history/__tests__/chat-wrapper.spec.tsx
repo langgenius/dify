@@ -4,6 +4,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
+import type { RecordedStreamCall } from '@/test/stream-recorder'
 import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -33,8 +34,8 @@ import {
 } from './connection-fixture'
 
 const { sseGet, ssePost } = vi.hoisted(() => ({
-  sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
-  ssePost: vi.fn<typeof import('@/service/base').ssePost>(),
+  sseGet: vi.fn<RecordedStreamCall>(),
+  ssePost: vi.fn<RecordedStreamCall>(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -48,10 +49,24 @@ vi.mock('@/service/base', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/base')>()
   return {
     ...actual,
-    sseGet,
-    ssePost,
   }
 })
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: sseGet })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
 
 vi.mock('@/service/share', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/share')>()
@@ -61,6 +76,7 @@ vi.mock('@/service/share', async (importOriginal) => {
     fetchSuggestedQuestions: vi.fn<typeof actual.fetchSuggestedQuestions>(),
     stopChatMessageResponding: vi.fn<typeof actual.stopChatMessageResponding>(),
     submitHumanInputForm: vi.fn<typeof actual.submitHumanInputForm>(),
+    chatMessagesSender: streams.chatMessagesSender,
   }
 })
 

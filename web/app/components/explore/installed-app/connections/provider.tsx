@@ -57,7 +57,7 @@ function useConnectionData({
     api.configuration.get.queryOptions({
       input: enabled ? configurationInput : skipToken,
       queryKey: configurationKey,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -75,7 +75,7 @@ function useConnectionData({
         const next = page.has_more ? page.next_cursor : null
         return next && next !== cursor && !cursors.includes(next) ? next : undefined
       },
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -99,7 +99,7 @@ function useConnectionData({
     : null
   const save = useMutation(
     api.configuration.put.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (result, variables) => {
         const input = {
           params: variables.params,
@@ -136,7 +136,7 @@ function useConnectionData({
         list.isSuccess &&
         !list.hasNextPage &&
         !saving,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,

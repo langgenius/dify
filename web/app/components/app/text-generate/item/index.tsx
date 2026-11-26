@@ -15,6 +15,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { Markdown } from '@/app/components/base/markdown'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import { toast } from '@/app/notifications'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useParams } from '@/next/navigation'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
@@ -109,11 +110,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
     if (!childMessageId) return
-    await updateFeedback(
-      { messageId: childMessageId, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
-    )
+    try {
+      await updateFeedback(
+        { messageId: childMessageId, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      )
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     setChildFeedback(childFeedback)
   }
 
@@ -146,13 +152,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
+    try {
+      const res: any = await fetchMoreLikeThis(messageId, appSourceType, installedAppId)
+      setCompletionRes(res.answer)
+      setChildFeedback({
+        rating: null,
+      })
+      setChildMessageId(res.id)
+    } catch (error) {
+      toastRequestError(error)
+    } finally {
+      stopQuerying()
+    }
   }
 
   useEffect(() => {
@@ -173,10 +184,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleOpenLog = async () => {
     if (!onOpenLog) return
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
+    let data: Awaited<ReturnType<typeof fetchTextGenerationMessage>>
+    try {
+      data = await fetchTextGenerationMessage({
+        appId: params.appId as string,
+        messageId: messageId!,
+      })
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     const promptLog = buildPromptLogItem(data)
     onOpenLog({
       id: promptLog.id,
@@ -201,11 +218,21 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       if (!connectionsReady) return
       const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
-        await submitHumanInputFormService(formToken, submission, formVersion)
+        try {
+          await submitHumanInputFormService(formToken, submission, formVersion)
+        } catch (error) {
+          toastRequestError(error)
+          throw error
+        }
       } else {
-        if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
-          await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-        await submitHumanInputForm(formToken, submission, formVersion)
+        try {
+          if (appSourceType === AppSourceType.webApp && prepareHumanInputSubmission)
+            await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+          await submitHumanInputForm(formToken, submission, formVersion)
+        } catch (error) {
+          toastRequestError(error)
+          throw error
+        }
       }
     },
     [appSourceType, connectionsReady, prepareHumanInputSubmission],

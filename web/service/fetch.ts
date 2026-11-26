@@ -15,15 +15,15 @@ import {
 } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { getHttpErrorBodyMessage, httpErrorFromResponse, isHttpErrorStatus } from './http-error'
-import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
+import { markErrorHandled } from './handled-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { captureWebAppAuthSession, getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
-export const ContentType = {
+const ContentType = {
   json: 'application/json',
   stream: 'text/event-stream',
   audio: 'audio/mpeg',
@@ -33,7 +33,7 @@ export const ContentType = {
   upload: 'multipart/form-data', // for upload
 }
 
-export type FetchOptionType = Omit<RequestInit, 'body'> & {
+type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, string | number | boolean | undefined>
   body?: BodyInit | Record<string, unknown> | null
 }
@@ -47,34 +47,31 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
   }
 }
 
+/** Error feedback belongs to the query cache; this hook keeps only the transport's own outcomes. */
 const afterResponseErrorCode = (
-  otherOptions: IOtherOptions,
   requestGuard: RequestGuard | undefined,
   assertAuthSessionCurrent: () => void,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
-    if (isHttpErrorStatus(response.status)) {
-      const error = await httpErrorFromResponse(response)
-      assertAuthSessionCurrent()
-      const errorData = error.data
-      const handled = requestGuard?.handleError(response.status, errorData, error)
-      if (handled || requestGuard?.isActive() === false) throw error
-      const shouldNotifyError =
-        response.status >= 400 &&
-        response.status !== 401 &&
-        errorData &&
-        !otherOptions.silent &&
-        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
-
-      const errorMessage = getHttpErrorBodyMessage(errorData)
-      if (shouldNotifyError && errorMessage) notifyRequestError(request, errorMessage)
-
-      if (response.status === 403 && errorData?.code === 'already_setup')
-        globalThis.location.href = `${globalThis.location.origin}/signin`
+    if (!isHttpErrorStatus(response.status)) return
+    const error = await httpErrorFromResponse(response)
+    assertAuthSessionCurrent()
+    const errorData = error.data
+    if (
+      requestGuard?.handleError(response.status, errorData, error) ||
+      requestGuard?.isActive() === false
+    ) {
+      markErrorHandled(error)
       throw error
-    } else {
-      clearRequestErrorToasts(request)
     }
+    // A late 404 for an app being deleted is expected, so nothing reports it.
+    if (shouldSuppressAppDeletionErrorToast(request.url, response.status)) markErrorHandled(error)
+
+    if (response.status === 403 && errorData?.code === 'already_setup') {
+      markErrorHandled(error)
+      globalThis.location.href = `${globalThis.location.origin}/signin`
+    }
+    throw error
   }
 }
 
@@ -98,16 +95,6 @@ const baseClient = ky.create({
   hooks: baseHooks,
   throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
-})
-
-export const getBaseOptions = (): RequestInit => ({
-  method: 'GET',
-  mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
-  redirect: 'follow',
 })
 
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
@@ -143,6 +130,8 @@ async function base<T>(
     getAbortController,
     fetchCompat = false,
     request,
+    onUploadProgress,
+    timeout,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -186,7 +175,7 @@ async function base<T>(
       afterResponse: [
         assertAuthSessionCurrent,
         ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, requestGuard, assertAuthSessionCurrent),
+        afterResponseErrorCode(requestGuard, assertAuthSessionCurrent),
       ],
     },
   })
@@ -198,15 +187,21 @@ async function base<T>(
     retry: {
       methods: [],
     },
+    // Event streams and uploads with progress (as the legacy XHR) have no client-side timeout.
+    ...(timeout === false || onUploadProgress ? { timeout: false as const } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+    async fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
         resource.headers.forEach((value, key) => {
           mergedHeaders.append(key, value)
         })
         options.headers = mergedHeaders
+      }
+      if (onUploadProgress) {
+        const { createXhrFetch } = await import('./xhr-fetch')
+        return createXhrFetch(onUploadProgress)(resource, options)
       }
       return globalThis.fetch(resource, options)
     },

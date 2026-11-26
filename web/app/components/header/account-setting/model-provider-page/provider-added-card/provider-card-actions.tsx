@@ -37,7 +37,12 @@ import {
   checkGitHubPluginUpdate,
 } from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
+import { toastRequestError } from '@/app/query-error-toast'
+import {
+  invalidateMarketplacePluginLists,
+  useMarketplace,
+  useMarketplacePluginVersions,
+} from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
@@ -153,8 +158,7 @@ function ProviderCardActions(props: Props) {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
-      queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
+      invalidateMarketplacePluginLists(queryClient),
     ])
     await onUpdate?.()
   }
@@ -164,6 +168,7 @@ function ProviderCardActions(props: Props) {
     const response = await queryClient.query(
       consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
         input: { body: { plugin_ids: [pluginID] } },
+        meta: { errorToast: false },
       }),
     )
     return response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined
@@ -176,7 +181,9 @@ function ProviderCardActions(props: Props) {
         setInfo(loaded)
         setInfoOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
   const handleUpdate = async () => {
     if (!canUpdatePlugin) return
@@ -198,7 +205,9 @@ function ProviderCardActions(props: Props) {
         })
         setUpdateOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({

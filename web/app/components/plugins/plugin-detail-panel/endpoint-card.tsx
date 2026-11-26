@@ -50,27 +50,27 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
   }
   const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onError: showSaveError,
     }),
   )
   const { mutate: disableEndpoint, isPending: isDisabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.disable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: hideDisableConfirm,
       onError: showSaveError,
     }),
   )
   const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => deleteActionsRef.current?.close(),
       onError: showSaveError,
     }),
   )
   const { mutate: updateEndpoint, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: hideEndpointModalConfirm,
       onError: showSaveError,
     }),

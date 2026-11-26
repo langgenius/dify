@@ -19,7 +19,7 @@ export default function CreateWorkspace() {
   })
   const createWorkspace = useMutation(
     consoleQuery.workspaces.activate.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => {
         window.location.assign(`${basePath}/`)
       },

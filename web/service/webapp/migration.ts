@@ -33,7 +33,7 @@ export async function loadWebAppMigrationCandidates(signal?: AbortSignal) {
     const batch = credentials.slice(offset, offset + BATCH_SIZE)
     const response = await webAppClient.migration.claimablePassports.post(
       { body: { passports: batch.map(({ passport }) => passport) } },
-      { signal, context: { silent: true } },
+      { signal },
     )
     for (const item of response.data) {
       const credential = batch[item.index]
@@ -60,10 +60,9 @@ export async function claimWebAppMigration(candidates: MigrationCandidate[]) {
   for (let offset = 0; offset < pending.length; offset += BATCH_SIZE) {
     assertCurrentSession()
     const batch = pending.slice(offset, offset + BATCH_SIZE)
-    const response = await webAppClient.migration.claim.post(
-      { body: { passports: batch.map(({ credential }) => credential.passport) } },
-      { context: { silent: true } },
-    )
+    const response = await webAppClient.migration.claim.post({
+      body: { passports: batch.map(({ credential }) => credential.passport) },
+    })
     assertCurrentSession()
     for (const result of response.data) {
       const candidate = batch[result.index]

@@ -24,7 +24,7 @@ import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 
-const ssePost = vi.hoisted(() => vi.fn<typeof import('@/service/base').ssePost>())
+const ssePost = vi.hoisted(() => vi.fn<import('@/test/stream-recorder').RecordedStreamCall>())
 
 const api = vi.hoisted(() => ({
   loadBuildDraft: vi.fn(),
@@ -42,9 +42,25 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useParams: () => ({ appId: 'app-1' }),
   usePathname: () => '/app/app-1/workflow',
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -408,10 +424,9 @@ describe('Inline Agent configure workspace', () => {
     expect(api.deleteBuildDraft).not.toHaveBeenCalled()
     await confirm(user)
     await waitFor(() => expect(api.deleteBuildDraft).toHaveBeenCalledOnce())
-    expect(api.stopMessage).toHaveBeenCalledWith(
-      { params: { agent_id: 'agent-1', task_id: 'task-0' } },
-      { context: { silent: true } },
-    )
+    expect(api.stopMessage).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', task_id: 'task-0' },
+    })
     expect(api.stopMessage.mock.invocationCallOrder[0]).toBeLessThan(
       api.deleteBuildDraft.mock.invocationCallOrder[0]!,
     )

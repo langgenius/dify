@@ -1,7 +1,7 @@
 import type { HandleRunOptions } from './use-workflow-run-utils'
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -28,9 +28,10 @@ import {
   toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
 import { usePathname } from '@/next/navigation'
-import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
+import { useCollaborativeWorkflow } from '../../workflow/hooks/use-collaborative-workflow'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -46,7 +47,7 @@ import {
   isDebuggableTriggerType,
   mapPublishedWorkflowFeatures,
   normalizePublishedWorkflowNodes,
-  resolveWorkflowRunUrl,
+  resolveWorkflowRunRequest,
   runTriggerDebug,
   validateWorkflowRunRequest,
 } from './use-workflow-run-utils'
@@ -119,6 +120,7 @@ type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowD
 
 const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
@@ -206,19 +208,19 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const handleRun = useCallback(
     async (
       params: WorkflowRunParams | null | undefined,
-      callback?: IOtherOptions,
+      callback?: StreamCallbacks,
       options?: HandleRunOptions,
     ) => {
       const runMode = options?.mode ?? TriggerType.UserInput
       const resolvedParams: WorkflowRunParams = params ?? {}
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
           node.data._runningStatus = undefined
         })
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       await doSyncWorkflowDraft()
 
       const {
@@ -249,10 +251,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       const isInWorkflowDebug = appDetail.mode === 'workflow'
 
-      const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
+      const request = resolveWorkflowRunRequest(appDetail, runMode, isInWorkflowDebug, requestBody)
 
-      if (!url) return
+      if (!request) return
 
       const validationMessage = validateWorkflowRunRequest(runMode, options)
       if (validationMessage) {
@@ -414,8 +416,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (isDebuggableTriggerType(runMode)) {
         await runTriggerDebug({
           debugType: runMode,
-          url,
-          requestBody,
+          request,
           baseSseOptions,
           controllerTarget: window as unknown as Record<string, unknown>,
           setAbortController: (controller) => {
@@ -449,15 +450,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         },
       })
 
-      ssePost(
-        url,
-        {
-          body: requestBody,
-        },
-        finalCallbacks,
-      )
+      streamEvents(request, finalCallbacks)
     },
     [
+      collaborativeWorkflow,
       store,
       doSyncWorkflowDraft,
       workflowStore,

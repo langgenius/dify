@@ -7,9 +7,12 @@ import {
 } from '@/features/app-access-error/state'
 import { createDeferred } from '@/test/deferred'
 // oxlint-disable-next-line no-restricted-imports -- Exercise identity retirement through the real public JSON and SSE transports.
-import { request, sseGet, ssePost } from '../base'
+import { request } from '../base'
+import { streamEvents } from '../event-stream'
 import * as requestGuard from '../request-guard'
 import { getWebAppPassport, setWebAppAccessToken, setWebAppPassport } from '../webapp-auth'
+import { webAppClient } from '../webapp-client'
+import { workflowRunEventsRequest } from '../workflow-events'
 
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
@@ -103,11 +106,21 @@ it('preserves a real IP denial for the unchanged account', async () => {
 })
 
 describe.each([
-  // oxlint-disable-next-line typescript/no-deprecated -- Exercise the special POST transport's async error boundary.
-  { method: 'POST', send: ssePost },
-  // oxlint-disable-next-line typescript/no-deprecated -- Exercise the separate GET transport's async error boundary.
-  { method: 'GET', send: sseGet },
-])('public SSE $method', ({ send }) => {
+  {
+    method: 'POST',
+    run: (callbacks: Parameters<typeof streamEvents>[1]) =>
+      streamEvents(
+        (options) =>
+          webAppClient.chatMessages.post({ body: { inputs: {}, query: 'hello' } }, options),
+        callbacks,
+      ),
+  },
+  {
+    method: 'GET',
+    run: (callbacks: Parameters<typeof streamEvents>[1]) =>
+      streamEvents(workflowRunEventsRequest('workflow-run-1', { isPublicAPI: true }), callbacks),
+  },
+])('public SSE $method', ({ run }) => {
   it.each([
     { status: 403, body: denied, guard: true },
     { status: 401, body: { code: 'unauthorized', message: 'Old account expired' }, guard: false },
@@ -123,8 +136,9 @@ describe.each([
       const onError = vi.fn()
       const onCompleted = vi.fn()
       const onNotifyError = vi.fn()
-      await send('/chat-messages', {}, { isPublicAPI: true, onError, onCompleted, onNotifyError })
+      run({ isPublicAPI: true, onError, onCompleted, onNotifyError })
       await pending.reading
+      await waitFor(() => expect(readBody).toHaveBeenCalled())
       setWebAppAccessToken('account-b', 'end_user')
       setWebAppPassport(address, 'account-b-passport')
       pending.complete(body)
@@ -144,7 +158,7 @@ describe.each([
     const onError = vi.fn()
     const onNotifyError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(denied, { status: 403 }))
-    await send('/chat-messages', {}, { isPublicAPI: true, onError, onNotifyError })
+    run({ isPublicAPI: true, onError, onNotifyError })
     await waitFor(() => expect(onError).toHaveBeenCalledWith(denied.message, denied.code))
     expect(appAccessStore.get(appAccessErrorAtom)).toMatchObject({ reason: 'ip_access_denied' })
     expect(onNotifyError).not.toHaveBeenCalled()
@@ -156,7 +170,7 @@ describe.each([
     const onError = vi.fn()
     const onNotifyError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json(body, { status: 500 }))
-    await send('/chat-messages', {}, { isPublicAPI: true, onError, onNotifyError })
+    run({ isPublicAPI: true, onError, onNotifyError })
     await waitFor(() => expect(onNotifyError).toHaveBeenCalledWith(body.message, body.code))
     expect(onError).toHaveBeenCalledWith(body.message, body.code)
     expect(appAccessStore.get(appAccessErrorAtom)).toBeNull()
@@ -171,17 +185,14 @@ describe.each([
     const controller = createDeferred<AbortController>()
     const onError = vi.fn()
     const onNotifyError = vi.fn()
-    await send(
-      '/chat-messages',
-      {},
-      {
-        isPublicAPI: true,
-        onError,
-        onNotifyError,
-        getAbortController: controller.resolve,
-      },
-    )
+    run({
+      isPublicAPI: true,
+      onError,
+      onNotifyError,
+      getAbortController: controller.resolve,
+    })
     await pending.reading
+    await waitFor(() => expect(readBody).toHaveBeenCalled())
     ;(await controller.promise).abort()
     pending.complete(body)
     await waitFor(() => expect(readBody).toHaveResolvedWith(body))

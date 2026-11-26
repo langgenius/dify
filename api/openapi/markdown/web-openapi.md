@@ -156,6 +156,12 @@ Rejected origins, invalid proofs, and replays do not set any cookies.
 
 Convert audio file to text using speech-to-text service.
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -722,6 +728,12 @@ Raises:
     UnsupportedFileTypeError: File type not supported
     BlockedFileExtensionError: File extension is blocked
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -1003,6 +1015,12 @@ POST /api/form/human_input/<form_token>/upload-token
 
 ### [POST] /human-input-forms/files
 **Upload one local file or remote URL file for a HITL human input form**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **multipart/form-data**: { **"file"**: binary, **"url"**: string }<br> |
 
 #### Responses
 
@@ -1576,12 +1594,6 @@ Retrieve paginated list of saved messages for a completion application.
 
 ### [POST] /saved-messages
 Save a specific message for later reference.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| message_id | query | Message UUID to save | Yes | string |
 
 #### Request Body
 

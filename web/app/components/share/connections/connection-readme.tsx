@@ -49,7 +49,8 @@ function ConnectionReadmeContent({
     webAppQuery.connections.readme.get.queryOptions({
       input,
       queryKey: [...webAppQuery.connections.readme.get.queryKey({ input }), address, authSession],
-      context: { address: address ?? undefined, authSession, silent: true },
+      context: { address: address ?? undefined, authSession },
+      meta: { errorToast: false },
       retry: false,
       refetchOnWindowFocus: false,
     }),

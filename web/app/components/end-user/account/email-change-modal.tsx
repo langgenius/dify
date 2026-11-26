@@ -14,9 +14,12 @@ type Props = {
 
 export default function EmailChangeModal({ email: initialEmail, authSession, onClose }: Props) {
   const [email] = useState(initialEmail)
-  const context = { authSession, silent: true }
+  const context = { authSession }
   const updateEmail = useMutation(
-    webAppQuery.account.changeEmail.reset.post.mutationOptions({ context }),
+    webAppQuery.account.changeEmail.reset.post.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const actions: ChangeEmailActions = {
     sendCode: (body) => webAppClient.account.changeEmail.post({ body }, { context }),

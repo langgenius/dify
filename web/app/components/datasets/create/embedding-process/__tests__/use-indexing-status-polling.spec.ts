@@ -1,13 +1,24 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useIndexingStatusPolling } from '../use-indexing-status-polling'
 
 const mockFetchIndexingStatusBatch = vi.fn()
 
-vi.mock('@/service/datasets', () => ({
-  fetchIndexingStatusBatch: (...args: unknown[]) => mockFetchIndexingStatusBatch(...args),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.batch.byBatch.indexingStatus.get': (input) =>
+        mockFetchIndexingStatusBatch(input),
+    }),
+  }
+})
+
+const renderHook = <T>(hook: () => T) => renderHookWithConsoleQuery(hook)
 
 const status = (
   indexing_status: DocumentStatusResponse['indexing_status'],
@@ -52,8 +63,7 @@ describe('useIndexingStatusPolling', () => {
     })
 
     expect(mockFetchIndexingStatusBatch).toHaveBeenCalledWith({
-      datasetId: 'ds-1',
-      batchId: 'batch-1',
+      params: { dataset_id: 'ds-1', batch: 'batch-1' },
     })
     expect(result.current.statusList).toHaveLength(1)
     expect(result.current.isEmbedding).toBe(true)
@@ -104,7 +114,8 @@ describe('useIndexingStatusPolling', () => {
       await vi.advanceTimersByTimeAsync(2500)
     })
 
-    expect(result.current.isEmbeddingCompleted).toBe(true)
+    expect(mockFetchIndexingStatusBatch).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => expect(result.current.isEmbeddingCompleted).toBe(true))
   })
 
   it('should detect embedding statuses', async () => {

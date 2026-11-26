@@ -73,7 +73,7 @@ const successfulProducer = {
 
 test('starts consuming the current artifact without waiting for producer cache saves', async () => {
   const { options, calls } = fixture({ artifacts: (elapsed) => (elapsed ? [artifact] : []) })
-  assert.equal(await waitForBuild(options), '42')
+  assert.deepEqual(await waitForBuild(options), { id: '42', name: 'core-e2e-web-build-2' })
   assert.equal(options.now(), 10000)
   assert.deepEqual(
     calls.map((call) => call.endpoint),
@@ -91,7 +91,7 @@ test('full reruns ignore the old artifact until the rebuilding producer publishe
   const { options } = fixture({
     artifacts: (elapsed) => (elapsed ? [oldArtifact, artifact] : [oldArtifact]),
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
   assert.equal(options.now(), 10000)
 })
 
@@ -109,7 +109,7 @@ test('consumer-only reruns reuse the actual successful upload despite a relabele
     artifacts: [oldArtifact, artifact],
     jobs: [{ ...successfulProducer, run_attempt: 4 }],
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.deepEqual(await waitForBuild(options), { id: '42', name: 'core-e2e-web-build-2' })
   assert.equal(options.now(), 0)
 })
 
@@ -137,7 +137,7 @@ test('ignores unrelated and expired artifacts and stops at the deadline', async 
 
 test('completed rebuilt producers select their upload instead of the old artifact', async () => {
   const { options } = fixture({ artifacts: [oldArtifact, artifact], jobs: [successfulProducer] })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
 })
 
 test('allows artifact visibility to catch up after a successful producer finishes', async () => {
@@ -145,7 +145,7 @@ test('allows artifact visibility to catch up after a successful producer finishe
     artifacts: (elapsed) => (elapsed ? [oldArtifact, artifact] : [oldArtifact]),
     jobs: [successfulProducer],
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
   assert.equal(options.now(), 10000)
 })
 
@@ -185,5 +185,5 @@ test('finds the upload when GitHub skews the upload step timestamps off the arti
       },
     ],
   })
-  assert.equal(await waitForBuild(options), '42')
+  assert.equal((await waitForBuild(options)).id, '42')
 })

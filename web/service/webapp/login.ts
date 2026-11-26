@@ -132,7 +132,7 @@ export function completeWebAppAccountLogin(
           headers: { 'X-App-Code': target.address.code },
           body: { login_code: loginCode, code_verifier: transaction.verifier },
         },
-        { context: { address: target.address, silent: true } },
+        { context: { address: target.address } },
       )
       if (
         !isSameSession() ||

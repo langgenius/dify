@@ -66,7 +66,7 @@ function ConnectionSession({
     (entry.account === 'authenticated' ||
       (entry.account === 'anonymous' && parameters?.allow_anonymous_end_user_auth))
   const enabled = Boolean(isActive && accountReady)
-  const context = { address, authSession, silent: true }
+  const context = { address, authSession }
   const queryClient = useQueryClient()
   const configurationInput = { query: { conversation_id: conversationId } }
   const listInput = (cursor: string | undefined) => ({ query: { limit: 100, cursor } })
@@ -95,6 +95,7 @@ function ConnectionSession({
       },
       queryKey: listKey,
       context,
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,
@@ -105,6 +106,7 @@ function ConnectionSession({
       input: enabled ? configurationInput : skipToken,
       queryKey: configurationKey,
       context,
+      meta: { errorToast: false },
       staleTime: 0,
       gcTime: 0,
       retry: false,
@@ -133,6 +135,7 @@ function ConnectionSession({
         input: enabled ? { params: { connection_id: connectionId } } : skipToken,
         queryKey: connectionDetailQueryKey(address, authSession, connectionId),
         context,
+        meta: { errorToast: false },
         staleTime: Infinity,
         refetchOnWindowFocus: 'always',
         gcTime: 0,

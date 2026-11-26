@@ -23,7 +23,6 @@ vi.mock('@/service/base', () => ({
     url.endsWith('/account/profile') && options.request.method === 'GET'
       ? mocks.get(url, init, options)
       : mocks.request(url, init, options),
-  sseGeneratorPost: vi.fn(),
 }))
 
 const createAccountResponse = (name = 'Alice'): GetAccountProfileResponse => ({

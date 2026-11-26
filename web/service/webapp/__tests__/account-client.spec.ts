@@ -318,7 +318,7 @@ describe('generated account Web App client', () => {
       .mockResolvedValueOnce(Response.json({ message: 'Account login required.' }, { status: 401 }))
       .mockResolvedValueOnce(Response.json(systemFeatures))
 
-    const result = webAppClient.account.profile.get(undefined, { context: { silent: true } })
+    const result = webAppClient.account.profile.get()
     await expect(result).rejects.toMatchObject({ name: 'AbortError' })
 
     expect(replace).toHaveBeenCalledOnce()

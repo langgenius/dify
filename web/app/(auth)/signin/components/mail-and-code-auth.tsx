@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -10,7 +10,7 @@ import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/si
 import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { isEndUserSignIn } from '../utils/end-user-login'
 import Turnstile from './turnstile'
 
@@ -25,7 +25,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
-  const [loading, setLoading] = useState(false)
+  const { isPending: loading, mutateAsync: sendLoginCode } = useMutation(
+    consoleQuery.emailCodeLogin.post.mutationOptions(),
+  )
   const [turnstileToken, setTurnstileToken] = useState('')
   const [turnstileGeneration, setTurnstileGeneration] = useState(0)
   const locale = useLocale()
@@ -38,9 +40,8 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     if (loading) return
     let shouldResetTurnstile = false
     try {
-      setLoading(true)
       shouldResetTurnstile = isTurnstileRequired
-      const ret = await consoleClient.emailCodeLogin.post({
+      const ret = await sendLoginCode({
         body: {
           email,
           language: locale,
@@ -59,7 +60,6 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     } catch (error) {
       console.error(error)
     } finally {
-      setLoading(false)
       if (shouldResetTurnstile) {
         setTurnstileToken('')
         setTurnstileGeneration((value) => value + 1)

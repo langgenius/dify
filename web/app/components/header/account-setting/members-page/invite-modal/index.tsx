@@ -18,7 +18,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { isDefinedError } from '@orpc/client'
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -244,7 +244,6 @@ function InviteForm({
 export function InviteModal({ onSend }: InviteModalProps) {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
-  const queryClient = useQueryClient()
   const actionsRef = useRef<DialogActions>(null)
   const formRef = useRef<HTMLFormElement>(null)
   const { data: isEmailSetup } = useSuspenseQuery({
@@ -255,17 +254,8 @@ export function InviteModal({ onSend }: InviteModalProps) {
     !isEmailSetup && results.some(({ status }) => status === 'success')
   const { mutate, reset, isPending, error, data } = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.current.members.get.key(),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
-            input: { params: { workspace_id: response.tenant_id } },
-          }),
-        })
         const results = response.invitation_results
         onSend(results.map(({ email }) => email.toLowerCase()))
         if (results.every(({ status }) => status === 'success') && !showsInvitationLinks(results))

@@ -122,7 +122,7 @@ it('offers Chatbot history migration by default and transfers the selected anony
   expect(mocks.call).toHaveBeenCalledWith(
     ['migration', 'claim', 'post'],
     { body: { passports: ['anonymous-chatbot'] } },
-    expect.objectContaining({ context: { silent: true } }),
+    expect.objectContaining({ context: {} }),
   )
   expect(window.localStorage.getItem(passportKey)).toBeNull()
 })

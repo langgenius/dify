@@ -2,8 +2,9 @@ import type { ProviderConfig } from '@dify/contracts/api/web/types.gen'
 import type { ApiKeyFormProps } from '../api-key-form'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { ORPCError } from '@orpc/client'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { ApiKeyForm } from '../api-key-form'
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -23,7 +24,7 @@ const secret: ProviderConfig = {
 
 function renderForm(props: Partial<ApiKeyFormProps> = {}) {
   const onSave = vi.fn()
-  render(
+  renderWithConsoleQuery(
     <Dialog open>
       <DialogContent>
         <ApiKeyForm mode="add" schemas={[secret]} onSave={onSave} onClose={vi.fn()} {...props} />

@@ -52,17 +52,17 @@ const SnippetCard = ({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const updateSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const exportSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteSnippetMutation = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)

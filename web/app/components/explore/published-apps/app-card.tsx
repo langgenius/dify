@@ -19,7 +19,7 @@ export default function PublishedAppCard({ app, dialog }: Props) {
   const { t } = useTranslation(['app'])
   const pin = useMutation(
     consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const togglePin = () => {

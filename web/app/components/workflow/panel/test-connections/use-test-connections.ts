@@ -47,7 +47,7 @@ export function useTestConnections() {
   }>()
   const preflight = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.testCredentials.preflight.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const testNodes = getTestCredentialNodes(nodes)

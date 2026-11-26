@@ -21,7 +21,8 @@ export default function AccountMenu({ showProfileError = true }: { showProfileEr
   const profile = useQuery(
     webAppQuery.account.profile.get.queryOptions({
       queryKey: [...webAppQuery.account.profile.get.queryKey(), authSession],
-      context: { authSession, silent: true },
+      context: { authSession },
+      meta: { errorToast: false },
       retry: false,
       gcTime: 0,
     }),

@@ -22,7 +22,10 @@ export default function EditAccountNameDialog({
   const { t } = useTranslation(['common', 'accountSettings'])
   const actionsRef = useRef<DialogActions>(null)
   const updateProfile = useMutation(
-    webAppQuery.account.profile.patch.mutationOptions({ context: { authSession, silent: true } }),
+    webAppQuery.account.profile.patch.mutationOptions({
+      context: { authSession },
+      meta: { errorToast: false },
+    }),
   )
   const save = async (name: string) => {
     try {

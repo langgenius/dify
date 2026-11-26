@@ -29,7 +29,6 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         isWebAppAccountAPI: true,
         fetchCompat: true,
         request: input,
-        silent: options.context.silent,
       })
     }
     if (
@@ -50,7 +49,6 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
         isWebAppAccountAPI: true,
         fetchCompat: true,
         request: input,
-        silent: options.context.silent,
       }).catch(async (error: unknown) => {
         assertCurrentAccount()
         const { pathname, search, hash } = window.location
@@ -129,7 +127,6 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
       isPublicAPI: true,
       fetchCompat: true,
       request: scopedRequest,
-      silent: options.context.silent,
     })
     assertCurrentApp()
     return response

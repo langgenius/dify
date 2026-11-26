@@ -11,7 +11,6 @@ export type WebAppClientContext = TanstackQueryOperationContext & {
   /** Pin queries to their App and include this address in their query key. */
   address?: WebAppAddress
   authSession?: number
-  silent?: boolean
 }
 
 export type WebAppClient = JsonifiedClient<

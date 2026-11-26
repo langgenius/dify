@@ -7,7 +7,7 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -239,6 +239,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
                 {savedMessages.length > 0 && <Badge className="ms-1">{savedMessages.length}</Badge>}
               </TabsTab>
             )}
+            <TabsIndicator />
           </TabsList>
         )}
       </div>

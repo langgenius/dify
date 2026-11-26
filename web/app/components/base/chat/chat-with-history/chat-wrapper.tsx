@@ -20,12 +20,13 @@ import { useOptionalWebAppConnections } from '@/app/components/share/connections
 import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
+import { toastRequestError } from '@/app/query-error-toast'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
+  chatMessagesSender,
   fetchChatList,
   fetchSuggestedQuestions,
-  getUrl,
   stopChatMessageResponding,
   submitHumanInputForm,
 } from '@/service/share'
@@ -248,7 +249,7 @@ const ChatWrapper = () => {
         }),
       }
 
-      const accepted = handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      const accepted = handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
           : undefined,
@@ -326,8 +327,13 @@ const ChatWrapper = () => {
       await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
       if (!connectionsReadyRef.current) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-      else await submitHumanInputForm(formToken, submission, formVersion)
+      try {
+        if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
+        else await submitHumanInputForm(formToken, submission, formVersion)
+      } catch (error) {
+        toastRequestError(error)
+        throw error
+      }
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

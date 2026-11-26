@@ -73,22 +73,39 @@ export default function useConnectionActions({
 }: Props) {
   const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
-  const context = { address, authSession, silent: true }
-  const create = useMutation(webAppQuery.connections.post.mutationOptions({ context }))
+  const context = { address, authSession }
+  const create = useMutation(
+    webAppQuery.connections.post.mutationOptions({ meta: { errorToast: false }, context }),
+  )
   const saveConfiguration = useMutation(
-    webAppQuery.connections.configuration.put.mutationOptions({ context }),
+    webAppQuery.connections.configuration.put.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const update = useMutation(
-    webAppQuery.connections.byConnectionId.patch.mutationOptions({ context }),
+    webAppQuery.connections.byConnectionId.patch.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const remove = useMutation(
-    webAppQuery.connections.byConnectionId.delete.mutationOptions({ context }),
+    webAppQuery.connections.byConnectionId.delete.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const startOAuth = useMutation(
-    webAppQuery.connections.oauth.authorizationUrl.post.mutationOptions({ context }),
+    webAppQuery.connections.oauth.authorizationUrl.post.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const reauthorize = useMutation(
-    webAppQuery.connections.byConnectionId.reauthorize.post.mutationOptions({ context }),
+    webAppQuery.connections.byConnectionId.reauthorize.post.mutationOptions({
+      meta: { errorToast: false },
+      context,
+    }),
   )
   const [isMutating, setIsMutating] = useState(false)
   const operationRef = useRef<AbortController | null>(null)
