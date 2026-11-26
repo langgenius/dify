@@ -14,6 +14,7 @@ from dev import generate_knowledge_fs_contract as contract_validator
 from dev.generate_knowledge_fs_contract import ContractDeclaration, validate_declarations
 from dev.knowledge_fs_product_contract import (
     CapabilityOperationRuntimeContract,
+    ProductOperationManifest,
     ProductOperationRuntimeContract,
     parse_capability_operation_policy,
     parse_product_operation_gap_manifest,
@@ -224,9 +225,7 @@ def test_contract_update_requires_explicit_source_and_check_rejects_source(monke
 
 def test_product_operation_manifest_must_cover_ready_and_gap_runtime_registry() -> None:
     manifest = fixture_product_manifest()
-    operations = manifest["operations"]
-    assert isinstance(operations, list)
-    manifest["operations"] = operations[:-1]
+    manifest["operations"].pop()
 
     with pytest.raises(ValueError, match="completeness drifted.*createUploadSession"):
         validate_fixture_product_contracts(manifest=manifest)
@@ -234,11 +233,7 @@ def test_product_operation_manifest_must_cover_ready_and_gap_runtime_registry() 
 
 def test_product_operation_manifest_must_match_capability_and_openapi_fields() -> None:
     manifest = fixture_product_manifest()
-    operations = manifest["operations"]
-    assert isinstance(operations, list)
-    first_operation = operations[0]
-    assert isinstance(first_operation, dict)
-    first_operation["method"] = "POST"
+    manifest["operations"][0]["method"] = "POST"
 
     with pytest.raises(ValueError, match="getSpace field method drifted"):
         validate_fixture_product_contracts(manifest=manifest)
@@ -402,7 +397,7 @@ def fixture_capability_operations() -> tuple[CapabilityOperationRuntimeContract,
     )
 
 
-def fixture_product_manifest() -> dict[str, object]:
+def fixture_product_manifest() -> ProductOperationManifest:
     return {
         "schemaVersion": 2,
         "operations": [
@@ -507,14 +502,16 @@ def fixture_capability_policy_document() -> dict[str, object]:
 def validate_fixture_product_contracts(
     *,
     gap_manifest: dict[str, object] | None = None,
-    manifest: dict[str, object] | None = None,
+    manifest: ProductOperationManifest | None = None,
 ) -> None:
     validate_product_operation_contracts(
         capability_operations=fixture_capability_operations(),
         capability_policy=parse_capability_operation_policy(fixture_capability_policy_document()),
         document=complete_contract_document(),
         gap_manifest=parse_product_operation_gap_manifest(gap_manifest or fixture_product_gap_manifest()),
-        manifest=parse_product_operation_manifest(manifest or fixture_product_manifest()),
+        manifest=parse_product_operation_manifest(
+            dict(manifest if manifest is not None else fixture_product_manifest())
+        ),
         product_operations=fixture_product_operations(),
     )
 
