@@ -4,7 +4,6 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
 from typing import Any, cast
-from uuid import UUID
 
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select
@@ -50,7 +49,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.app.task_pipeline.message_file_utils import prepare_file_dict
+from core.app.task_pipeline.message_file_utils import extract_tool_file_uuid, prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.model_manager import ModelInstance
@@ -69,20 +68,6 @@ from models.model import AppMode, Conversation, Message, MessageAgentThought, Me
 from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
-
-
-def _extract_tool_file_uuid(message_file: MessageFile) -> str | None:
-    candidate = message_file.upload_file_id
-    if not candidate and message_file.url:
-        file_part = message_file.url.split("/")[-1].split("?")[0]
-        candidate = file_part.rsplit(".", 1)[0] if "." in file_part else file_part
-    if not candidate:
-        return None
-    try:
-        return str(UUID(candidate))
-    except ValueError:
-        return None
-
 
 type EasyUIAppGenerateEntity = ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
 
@@ -607,7 +592,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         tool_file_id
                         for mf in message_files
                         if mf.transfer_method == FileTransferMethod.TOOL_FILE
-                        and (tool_file_id := _extract_tool_file_uuid(mf)) is not None
+                        and (tool_file_id := extract_tool_file_uuid(mf)) is not None
                     )
                 )
                 tool_files_map: dict[str, ToolFile] = {}

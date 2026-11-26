@@ -164,7 +164,10 @@ const isFallbackStreamingFilename = (name: string | undefined) =>
 const isGenericMimeType = (mimeType: string | undefined) =>
   !mimeType || mimeType === 'application/octet-stream'
 
-/** Preserve richer live metadata while backfilling fallback placeholders from `message_end.files`. */
+/**
+ * Preserve richer live filename/MIME/size while adopting freshly signed non-empty `url`
+ * and backfilling missing placeholder fields (`uploadedId`, fallback filename/MIME/size) from `message_end.files`.
+ */
 function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): FileEntity {
   const nextName =
     isFallbackStreamingFilename(existing.name) && !isFallbackStreamingFilename(incoming.name)
@@ -175,7 +178,11 @@ function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): F
       ? incoming.type
       : existing.type
   const nextSize = existing.size > 0 ? existing.size : incoming.size
-  const nextUrl = existing.url || incoming.url
+  const nextUrl = incoming.url || existing.url
+  const nextUploadedId =
+    (!existing.uploadedId || existing.uploadedId === existing.id) && incoming.uploadedId
+      ? incoming.uploadedId
+      : existing.uploadedId
   const nextSupportFileType =
     isGenericMimeType(existing.type) &&
     !isGenericMimeType(incoming.type) &&
@@ -188,6 +195,7 @@ function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): F
     nextType === existing.type &&
     nextSize === existing.size &&
     nextUrl === existing.url &&
+    nextUploadedId === existing.uploadedId &&
     nextSupportFileType === existing.supportFileType
   )
     return existing
@@ -198,14 +206,31 @@ function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): F
     type: nextType,
     size: nextSize,
     url: nextUrl,
+    uploadedId: nextUploadedId,
     supportFileType: nextSupportFileType,
   }
 }
 
+function backfillFileList(
+  files: FileEntity[] | undefined,
+  incomingById: Map<string, FileEntity>,
+): FileEntity[] | null {
+  if (!files?.length) return null
+  let changed = false
+  const updated = files.map((existing) => {
+    const incoming = incomingById.get(existing.id)
+    if (!incoming) return existing
+    const merged = backfillLiveFileMetadata(existing, incoming)
+    if (merged !== existing) changed = true
+    return merged
+  })
+  return changed ? updated : null
+}
+
 /**
  * Merge `message_end.files` without duplicating attachments already shown via live `message_file` events.
- * Live attachments stay in `message_files` / `agent_thoughts[i].message_files` (with optional in-place
- * metadata backfill), while only unseen file IDs are appended to `responseItem.allFiles`.
+ * Live attachments stay in `message_files` / `agent_thoughts[i].message_files` (with in-place URL refresh
+ * and metadata backfill), while only unseen file IDs are appended to `responseItem.allFiles`.
  */
 function mergeMessageEndFiles(
   responseItem: ChatItemInTree,
@@ -227,29 +252,12 @@ function mergeMessageEndFiles(
   }
 
   if (incomingById.size > 0) {
-    if (responseItem.message_files?.length) {
-      let changed = false
-      const updatedMessageFiles = responseItem.message_files.map((existing) => {
-        const incoming = incomingById.get(existing.id)
-        if (!incoming) return existing
-        const merged = backfillLiveFileMetadata(existing, incoming)
-        if (merged !== existing) changed = true
-        return merged
-      })
-      if (changed) responseItem.message_files = updatedMessageFiles
-    }
+    const updatedMessageFiles = backfillFileList(responseItem.message_files, incomingById)
+    if (updatedMessageFiles) responseItem.message_files = updatedMessageFiles
 
     for (const thought of responseItem.agent_thoughts ?? []) {
-      if (!thought.message_files?.length) continue
-      let changed = false
-      const updatedThoughtFiles = thought.message_files.map((existing) => {
-        const incoming = incomingById.get(existing.id)
-        if (!incoming) return existing
-        const merged = backfillLiveFileMetadata(existing, incoming)
-        if (merged !== existing) changed = true
-        return merged
-      })
-      if (changed) {
+      const updatedThoughtFiles = backfillFileList(thought.message_files, incomingById)
+      if (updatedThoughtFiles) {
         thought.message_files = updatedThoughtFiles
         syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
       }

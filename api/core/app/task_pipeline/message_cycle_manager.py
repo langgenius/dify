@@ -1,8 +1,6 @@
 import hashlib
 import logging
-import os
 from threading import Thread, Timer
-from uuid import UUID
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -30,6 +28,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
     WorkflowTaskState,
 )
+from core.app.task_pipeline.message_file_utils import normalize_basename, parse_uuid
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
@@ -42,22 +41,6 @@ from models.tools import ToolFile
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
-
-
-def _parse_uuid(value: str | None) -> str | None:
-    if not value:
-        return None
-    try:
-        return str(UUID(value))
-    except ValueError:
-        return None
-
-
-def _normalize_basename(name: str | None) -> str | None:
-    basename = os.path.basename((name or "").replace("\\", "/")).strip()
-    if basename in {"", ".", ".."}:
-        return None
-    return basename
 
 
 class MessageCycleManager:
@@ -259,7 +242,7 @@ class MessageCycleManager:
         tenant_id = raw_tenant_id
 
         if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
-            candidate_id = _parse_uuid(message_file.upload_file_id or tool_file_id)
+            candidate_id = parse_uuid(message_file.upload_file_id or tool_file_id)
             if candidate_id is None:
                 return None, None, None, message_file.upload_file_id
             tool_file = session.scalar(
@@ -270,12 +253,12 @@ class MessageCycleManager:
             )
             if tool_file is None:
                 return None, None, None, message_file.upload_file_id
-            filename = _normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
+            filename = normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
             size = tool_file.size if isinstance(tool_file.size, int) and tool_file.size >= 0 else None
             return filename, tool_file.mimetype or None, size, tool_file.id
 
         if message_file.upload_file_id:
-            candidate_id = _parse_uuid(message_file.upload_file_id)
+            candidate_id = parse_uuid(message_file.upload_file_id)
             if candidate_id is None:
                 return None, None, None, message_file.upload_file_id
             upload_file = session.scalar(
@@ -286,7 +269,7 @@ class MessageCycleManager:
             )
             if upload_file is None:
                 return None, None, None, message_file.upload_file_id
-            filename = _normalize_basename(upload_file.name)
+            filename = normalize_basename(upload_file.name)
             size = upload_file.size if isinstance(upload_file.size, int) and upload_file.size >= 0 else None
             return filename, upload_file.mime_type or None, size, upload_file.id
 

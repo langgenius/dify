@@ -194,20 +194,19 @@ class DifyPluginToolInvokeMessage(BaseModel):
             return handler(value)
 
         raw_message = value.get("message")
-        if raw_type == cls.MessageType.BLOB and isinstance(raw_message, Mapping) and "blob" in raw_message:
+        if (
+            raw_type in {cls.MessageType.BLOB, cls.MessageType.BLOB_CHUNK}
+            and isinstance(raw_message, Mapping)
+            and "blob" in raw_message
+        ):
             try:
                 decoded = _decode_blob_bytes(raw_message["blob"])
             except ValueError as exc:
-                item = handler({**value, "message": None})
-                item._chunk_error = str(exc)
-                return item
-            return handler({**value, "message": {**raw_message, "blob": decoded}})
-
-        if raw_type == cls.MessageType.BLOB_CHUNK and isinstance(raw_message, Mapping) and "blob" in raw_message:
-            try:
-                decoded = _decode_blob_bytes(raw_message["blob"])
-            except ValueError as exc:
-                placeholder = cls.BlobChunkMessage.model_validate({**raw_message, "blob": b""})
+                placeholder = (
+                    cls.BlobChunkMessage.model_validate({**raw_message, "blob": b""})
+                    if raw_type == cls.MessageType.BLOB_CHUNK
+                    else None
+                )
                 item = handler({**value, "message": placeholder})
                 item._chunk_error = str(exc)
                 return item

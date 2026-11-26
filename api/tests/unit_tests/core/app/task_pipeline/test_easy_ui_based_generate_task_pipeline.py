@@ -2613,7 +2613,16 @@ class TestEasyUiMessageEndFilesCases:
                 mimetype="application/pdf",
                 size=-5,
             )
-            self._persist(sqlite_session, report_tool, fallback_tool)
+            uppercase_tool = ToolFile(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                conversation_id=None,
+                file_key="generated/uppercase",
+                name="uppercase-report.pdf",
+                mimetype="application/pdf",
+                size=1234,
+            )
+            self._persist(sqlite_session, report_tool, fallback_tool, uppercase_tool)
 
             report_message_file = MessageFile(
                 message_id=pipeline._message_id,
@@ -2633,7 +2642,16 @@ class TestEasyUiMessageEndFilesCases:
                 url=f"/files/tools/{fallback_tool.id}.pdf",
                 upload_file_id=None,
             )
-            self._persist(sqlite_session, report_message_file, fallback_message_file)
+            uppercase_message_file = MessageFile(
+                message_id=pipeline._message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                url=f"/files/tools/{uppercase_tool.id.upper()}.pdf",
+                upload_file_id=None,
+            )
+            self._persist(sqlite_session, report_message_file, fallback_message_file, uppercase_message_file)
 
             with patch(
                 "core.app.task_pipeline.message_file_utils.sign_tool_file",
@@ -2658,6 +2676,13 @@ class TestEasyUiMessageEndFilesCases:
             assert fallback_dict["size"] == 0
             assert fallback_dict["extension"] == ".pdf"
             assert fallback_dict["upload_file_id"] == fallback_tool.id
+
+            uppercase_dict = by_related_id[uppercase_message_file.id]
+            assert uppercase_dict["filename"] == "uppercase-report.pdf"
+            assert uppercase_dict["mime_type"] == "application/pdf"
+            assert uppercase_dict["size"] == 1234
+            assert uppercase_dict["extension"] == ".pdf"
+            assert uppercase_dict["upload_file_id"] == uppercase_tool.id
 
         def test_message_end_with_tool_file_isolates_cross_tenant_metadata(
             self,

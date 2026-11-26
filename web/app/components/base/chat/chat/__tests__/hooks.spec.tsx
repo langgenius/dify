@@ -3180,6 +3180,16 @@ describe('useChat', () => {
           type: 'document',
           url: '/files/tools/tool-legacy.pdf?sign=live',
         })
+        callbacks.onFile({
+          id: 'f-msg-keep-url',
+          type: 'document',
+          url: '/files/tools/tool-keep.pdf?sign=live',
+          filename: 'keep.pdf',
+          mime_type: 'application/pdf',
+          size: 768,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-keep',
+        })
         callbacks.onThought({
           id: 'thought-1',
           message_id: 'm-pdf',
@@ -3227,6 +3237,17 @@ describe('useChat', () => {
               upload_file_id: 'tool-legacy',
             },
             {
+              related_id: 'f-msg-keep-url',
+              filename: 'keep.pdf',
+              mime_type: 'application/pdf',
+              size: 768,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '',
+              upload_file_id: 'tool-keep',
+            },
+            {
               related_id: 'f-end-only',
               filename: 'extra.pdf',
               mime_type: 'application/pdf',
@@ -3249,6 +3270,7 @@ describe('useChat', () => {
       expect(thoughtFile?.name).toBe('report.pdf')
       expect(thoughtFile?.type).toBe('application/pdf')
       expect(thoughtFile?.size).toBe(4096)
+      expect(thoughtFile?.url).toBe('/files/tools/tool-1.pdf?sign=end')
       expect(getFilePreviewKind(thoughtFile!)).toBe('pdf')
 
       const messageFile = lastResponse.message_files?.[0]
@@ -3256,7 +3278,14 @@ describe('useChat', () => {
       expect(messageFile?.name).toBe('summary.pdf')
       expect(messageFile?.type).toBe('application/pdf')
       expect(messageFile?.size).toBe(1024)
+      expect(messageFile?.url).toBe('/files/tools/tool-legacy.pdf?sign=end')
+      expect(messageFile?.uploadedId).toBe('tool-legacy')
       expect(getFilePreviewKind(messageFile!)).toBe('pdf')
+
+      const keptUrlFile = lastResponse.message_files?.[1]
+      expect(keptUrlFile?.id).toBe('f-msg-keep-url')
+      expect(keptUrlFile?.url).toBe('/files/tools/tool-keep.pdf?sign=live')
+      expect(getFilePreviewKind(keptUrlFile!)).toBe('pdf')
     })
 
     it('should deduplicate message_end files on handleResume and sync thought backfills to agent_response_parts', async () => {
@@ -3374,11 +3403,14 @@ describe('useChat', () => {
       expect(thoughtFiles[0]!.name).toBe('resumed-report.pdf')
       expect(thoughtFiles[0]!.type).toBe('application/pdf')
       expect(thoughtFiles[0]!.size).toBe(2048)
+      expect(thoughtFiles[0]!.url).toBe('/files/tools/tool-r1.pdf?sign=end')
       expect(getFilePreviewKind(thoughtFiles[0]!)).toBe('pdf')
 
       expect(thoughtFiles[1]!.name).toBe('backfilled.pdf')
       expect(thoughtFiles[1]!.type).toBe('application/pdf')
       expect(thoughtFiles[1]!.size).toBe(1536)
+      expect(thoughtFiles[1]!.url).toBe('/files/tools/tool-r2.pdf?sign=end')
+      expect(thoughtFiles[1]!.uploadedId).toBe('tool-r2')
       expect(getFilePreviewKind(thoughtFiles[1]!)).toBe('pdf')
 
       const thoughtPart = responseItem.agent_response_parts?.find(
@@ -3393,6 +3425,10 @@ describe('useChat', () => {
         expect(thoughtPart.thought.message_files?.map((file) => file.type)).toEqual([
           'application/pdf',
           'application/pdf',
+        ])
+        expect(thoughtPart.thought.message_files?.map((file) => file.url)).toEqual([
+          '/files/tools/tool-r1.pdf?sign=end',
+          '/files/tools/tool-r2.pdf?sign=end',
         ])
       }
     })

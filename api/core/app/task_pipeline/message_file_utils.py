@@ -1,6 +1,7 @@
 import os
 from collections.abc import Mapping
 from typing import TypedDict
+from uuid import UUID
 
 from core.tools.signature import sign_tool_file
 from graphon.file import FileTransferMethod
@@ -11,11 +12,31 @@ from models.tools import ToolFile
 MAX_TOOL_FILE_EXTENSION_LENGTH = 10
 
 
-def _normalize_basename(name: str | None) -> str | None:
+def parse_uuid(value: str | None) -> str | None:
+    """Return the canonical lowercase UUID string when `value` parses as a UUID, else `None`."""
+    if not value:
+        return None
+    try:
+        return str(UUID(value))
+    except ValueError:
+        return None
+
+
+def normalize_basename(name: str | None) -> str | None:
+    """Reduce a filename to a safe basename, returning `None` for empty or dot segments."""
     basename = os.path.basename((name or "").replace("\\", "/")).strip()
     if basename in {"", ".", ".."}:
         return None
     return basename
+
+
+def extract_tool_file_uuid(message_file: MessageFile) -> str | None:
+    """Extract and canonicalize the backing `ToolFile` UUID from a `MessageFile` row."""
+    candidate = message_file.upload_file_id
+    if not candidate and message_file.url:
+        file_part = message_file.url.split("/")[-1].split("?")[0]
+        candidate = file_part.rsplit(".", 1)[0] if "." in file_part else file_part
+    return parse_uuid(candidate)
 
 
 class MessageFileInfoDict(TypedDict):
@@ -97,10 +118,10 @@ def prepare_file_dict(
                         url = sign_tool_file(tool_file_id=parsed_tool_file_id, extension=extension)
                         filename = file_part
             if tool_files_map:
-                lookup_id = message_file.upload_file_id or parsed_tool_file_id
+                lookup_id = parse_uuid(message_file.upload_file_id or parsed_tool_file_id)
                 tool_file = tool_files_map.get(lookup_id) if lookup_id else None
                 if tool_file is not None:
-                    normalized_name = _normalize_basename(tool_file.name)
+                    normalized_name = normalize_basename(tool_file.name)
                     if normalized_name:
                         filename = normalized_name
                     mime_type = tool_file.mimetype or "application/octet-stream"
