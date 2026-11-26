@@ -372,6 +372,8 @@ export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
 
+export type BinaryFileResponse = Blob | File
+
 export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
@@ -668,6 +670,8 @@ export type EvaluationRunResponse = {
   dataset_file_id?: string | null
   error?: string | null
   evaluation_config_id: string
+  evaluation_model?: string | null
+  evaluation_model_provider?: string | null
   failed_items: number
   id: string
   metrics_summary?: {
@@ -2391,9 +2395,7 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
   PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =

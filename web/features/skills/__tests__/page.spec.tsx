@@ -14,7 +14,7 @@ import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { captureDownloads } from '@/test/download'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
-import SkillsPage from '../page'
+import SkillsPage from '../list/page'
 
 type SkillResponse = ReturnType<typeof zSkillResponse.parse>
 
@@ -1272,12 +1272,9 @@ describe('SkillsPage', () => {
     await user.click(screen.getByRole('option', { name: 'sales' }))
     await user.keyboard('{Escape}')
     await waitFor(() =>
-      expect(mocks.bindTag).toHaveBeenCalledWith(
-        {
-          body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
-        },
-        { context: { silent: true } },
-      ),
+      expect(mocks.bindTag).toHaveBeenCalledWith({
+        body: { type: 'skill', target_id: 'skill-1', tag_ids: ['tag-sales'] },
+      }),
     )
     await user.click(await within(card).findByRole('combobox', { name: 'support, sales' }))
     expect(screen.getByRole('option', { name: 'sales' })).toHaveAttribute('aria-selected', 'true')

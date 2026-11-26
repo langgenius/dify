@@ -24,7 +24,7 @@ export function ContactImDirectorySyncSection({
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns
   const runQuery = useQuery(
     api.latest.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: (count, error) => getHttpErrorStatus(error) !== 404 && count < 2,
       refetchInterval: ({ state }) =>
         state.data?.run.status === 'queued' || state.data?.run.status === 'running'
@@ -32,7 +32,7 @@ export function ContactImDirectorySyncSection({
           : false,
     }),
   )
-  const startSync = useMutation(api.post.mutationOptions({ context: { silent: true } }))
+  const startSync = useMutation(api.post.mutationOptions({ meta: { errorToast: false } }))
   const queryClient = useQueryClient()
   const previousRunRef = useRef<{ id: string; active: boolean } | null>(null)
   const run = runQuery.data?.run

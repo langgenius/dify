@@ -43,11 +43,11 @@ const Field: FC<Props> = ({
           {label}{' '}
         </div>
         {isRequired && (
-          <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>
+          <span className="ms-0.5 text-xs font-semibold text-text-destructive">*</span>
         )}
         {tooltip && (
           <Infotip>
-            <InfotipTrigger aria-labelledby={labelId} className="ml-0.5" />
+            <InfotipTrigger aria-labelledby={labelId} className="ms-0.5" />
             <InfotipContent aria-labelledby={labelId} className="w-50">
               {tooltip}
             </InfotipContent>

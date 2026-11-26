@@ -3,8 +3,8 @@
 import asyncio
 import sys
 from dataclasses import dataclass
-from types import ModuleType, SimpleNamespace
-from typing import cast, override
+from types import ModuleType
+from typing import override
 
 import pytest
 
@@ -20,6 +20,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.exceptions import safe_evaluation_error_text
 from core.evaluation.frameworks.ragas.ragas_evaluator import (
+    _RAGAS_METRIC_RETRIES,
     RagasAgentComponents,
     RagasEvaluator,
     _import_ragas_metrics_module,
@@ -27,6 +28,16 @@ from core.evaluation.frameworks.ragas.ragas_evaluator import (
 )
 from core.plugin.impl.exc import PluginInvokeError
 from graphon.model_runtime.errors.invoke import InvokeConnectionError
+
+
+@dataclass(frozen=True)
+class _FakeScore:
+    value: float
+
+
+@dataclass(frozen=True)
+class _FakeStructuredResponse:
+    structured_output: dict[str, object]
 
 
 class _FakeRagasData:
@@ -44,10 +55,19 @@ class _FakeToolCallAccuracy:
     def __init__(self, *, name: str) -> None:
         self.name = name
 
-    def score(self, **kwargs: object) -> SimpleNamespace:
-        actual_calls = cast(list[_FakeRagasData], kwargs["user_input"])[1].tool_calls
-        expected_calls = cast(list[_FakeRagasData], kwargs["reference_tool_calls"])
-        return SimpleNamespace(
+    def score(self, **kwargs: object) -> _FakeScore:
+        """Require a message trace and tool calls; return whether actual calls match the reference."""
+        user_input = kwargs["user_input"]
+        reference_tool_calls = kwargs["reference_tool_calls"]
+        assert isinstance(user_input, list)
+        assert len(user_input) > 1
+        actual_message = user_input[1]
+        assert isinstance(actual_message, _FakeRagasData)
+        assert isinstance(reference_tool_calls, list)
+        expected_calls = [call for call in reference_tool_calls if isinstance(call, _FakeRagasData)]
+        assert len(expected_calls) == len(reference_tool_calls)
+        actual_calls = actual_message.tool_calls
+        return _FakeScore(
             value=float(
                 [(call.name, call.args) for call in actual_calls] == [(call.name, call.args) for call in expected_calls]
             )
@@ -149,14 +169,17 @@ def test_installed_ragas_faithfulness_uses_dify_structured_model(monkeypatch: py
     monkeypatch.setattr(model, "_get_model_instance", FakeModel)
     response_schemas: list[str] = []
 
-    def fake_structured_output(**kwargs: object) -> SimpleNamespace:
-        schema = cast(dict[str, object], kwargs["json_schema"])
-        title = cast(str, schema["title"])
+    def fake_structured_output(**kwargs: object) -> _FakeStructuredResponse:
+        """Require a titled schema; return the corresponding deterministic judge response."""
+        schema = kwargs["json_schema"]
+        assert isinstance(schema, dict)
+        title = schema["title"]
+        assert isinstance(title, str)
         response_schemas.append(title)
         if title == "StatementGeneratorOutput":
-            return SimpleNamespace(structured_output={"statements": ["Paris is in France."]})
+            return _FakeStructuredResponse(structured_output={"statements": ["Paris is in France."]})
         if title == "NLIStatementOutput":
-            return SimpleNamespace(
+            return _FakeStructuredResponse(
                 structured_output={
                     "statements": [{"statement": "Paris is in France.", "reason": "The context says so.", "verdict": 1}]
                 }
@@ -270,9 +293,13 @@ def test_installed_ragas_scores_remaining_collections_metrics(monkeypatch: pytes
         "ContextRelevanceOutput": {"rating": 2},
     }
 
-    def fake_structured_output(**kwargs: object) -> SimpleNamespace:
-        schema = cast(dict[str, object], kwargs["json_schema"])
-        return SimpleNamespace(structured_output=responses[cast(str, schema["title"])])
+    def fake_structured_output(**kwargs: object) -> _FakeStructuredResponse:
+        """Require a titled schema; return the matching deterministic metric response."""
+        schema = kwargs["json_schema"]
+        assert isinstance(schema, dict)
+        title = schema["title"]
+        assert isinstance(title, str)
+        return _FakeStructuredResponse(structured_output=responses[title])
 
     monkeypatch.setattr(
         "core.llm_generator.output_parser.structured_output.invoke_llm_with_structured_output",
@@ -385,11 +412,11 @@ def test_modern_ragas_retries_only_transient_provider_errors(monkeypatch: pytest
     attempts: list[str] = []
 
     class FakeMetric:
-        async def ascore(self, **_kwargs: object) -> SimpleNamespace:
+        async def ascore(self, **_kwargs: object) -> _FakeScore:
             attempts.append("score")
             if len(attempts) < 3:
                 raise InvokeConnectionError("transient")
-            return SimpleNamespace(value=0.75)
+            return _FakeScore(value=0.75)
 
     async def no_wait(_delay: float) -> None:
         return None
@@ -406,6 +433,16 @@ def test_modern_ragas_retries_only_transient_provider_errors(monkeypatch: pytest
     with pytest.raises(PluginInvokeError):
         asyncio.run(_score_ragas_metric(ClientFailureMetric(), {}))
     assert attempts.count("client failure") == 1
+
+    class AlwaysTransientMetric:
+        async def ascore(self, **_kwargs: object) -> None:
+            """Require no inputs; fail each attempt with a transient provider error."""
+            attempts.append("exhausted")
+            raise InvokeConnectionError("still unavailable")
+
+    with pytest.raises(InvokeConnectionError):
+        asyncio.run(_score_ragas_metric(AlwaysTransientMetric(), {}))
+    assert attempts.count("exhausted") == _RAGAS_METRIC_RETRIES
 
 
 def test_tool_call_accuracy_uses_reference_trace_without_llm_judge(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -502,9 +539,9 @@ def test_modern_ragas_passes_metric_fields_for_each_category(
     class FakeMetric:
         name = metric_name
 
-        async def ascore(self, **kwargs: object) -> SimpleNamespace:
+        async def ascore(self, **kwargs: object) -> _FakeScore:
             captured.append(kwargs)
-            return SimpleNamespace(value=0.75)
+            return _FakeScore(value=0.75)
 
     evaluator = RagasEvaluator(RagasConfig())
     monkeypatch.setattr(evaluator, "_build_ragas_metrics", lambda *_args: [FakeMetric()])
@@ -534,8 +571,8 @@ def test_modern_ragas_preserves_other_scores_when_one_metric_fails(monkeypatch: 
     class GoodMetric:
         name = "faithfulness"
 
-        async def ascore(self, **_kwargs: object) -> SimpleNamespace:
-            return SimpleNamespace(value=0.75)
+        async def ascore(self, **_kwargs: object) -> _FakeScore:
+            return _FakeScore(value=0.75)
 
     class FailingMetric:
         name = "answer_relevancy"
@@ -559,6 +596,61 @@ def test_modern_ragas_preserves_other_scores_when_one_metric_fails(monkeypatch: 
     assert "secret provider response" not in result.error
 
 
+def test_modern_ragas_reports_unsupported_metric_without_losing_score(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A supported metric still scores when another requested metric is unavailable."""
+    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+
+    class FakeMetric:
+        name = "answer_relevancy"
+
+        async def ascore(self, **_kwargs: object) -> _FakeScore:
+            """Require no inputs; return a deterministic score."""
+            return _FakeScore(value=0.75)
+
+    evaluator = RagasEvaluator(RagasConfig())
+    monkeypatch.setattr(evaluator, "_build_ragas_metrics", lambda *_args: [FakeMetric()])
+    result = evaluator._evaluate_with_ragas(
+        [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")],
+        ["answer_relevancy", "unsupported_metric"],
+        DifyModelWrapper("provider", "model", "tenant"),
+        object(),
+        EvaluationCategory.LLM,
+    )[0]
+
+    assert [(metric.name, metric.value) for metric in result.metrics] == [("answer_relevancy", 0.75)]
+    assert result.error is not None
+    assert result.error.startswith("EVAL_UNSUPPORTED_METRIC:")
+    assert "unsupported_metric" not in result.error
+
+
+@pytest.mark.parametrize("score", [float("nan"), float("inf")])
+def test_modern_ragas_rejects_non_finite_scores(monkeypatch: pytest.MonkeyPatch, score: float) -> None:
+    """Non-finite judge output fails the metric without exposing its raw value."""
+    from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
+
+    class FakeMetric:
+        name = "answer_relevancy"
+
+        async def ascore(self, **_kwargs: object) -> _FakeScore:
+            """Require no inputs; return the requested non-finite score."""
+            return _FakeScore(value=score)
+
+    evaluator = RagasEvaluator(RagasConfig())
+    monkeypatch.setattr(evaluator, "_build_ragas_metrics", lambda *_args: [FakeMetric()])
+    result = evaluator._evaluate_with_ragas(
+        [EvaluationItemInput(index=0, inputs={"prompt": "question"}, output="answer")],
+        ["answer_relevancy"],
+        DifyModelWrapper("provider", "model", "tenant"),
+        object(),
+        EvaluationCategory.LLM,
+    )[0]
+
+    assert result.metrics == []
+    assert result.error is not None
+    assert result.error.startswith("EVAL_METRIC_FAILED:")
+    assert "non-finite score" not in result.error
+
+
 def test_modern_ragas_scores_rows_with_bounded_concurrency_and_stable_order(monkeypatch: pytest.MonkeyPatch) -> None:
     from core.evaluation.frameworks.ragas.ragas_model_wrapper import DifyModelWrapper
 
@@ -568,14 +660,14 @@ def test_modern_ragas_scores_rows_with_bounded_concurrency_and_stable_order(monk
     class FakeMetric:
         name = "answer_relevancy"
 
-        async def ascore(self, *, user_input: str, response: str) -> SimpleNamespace:
+        async def ascore(self, *, user_input: str, response: str) -> _FakeScore:
             nonlocal active, peak_active
             assert response == "answer"
             active += 1
             peak_active = max(peak_active, active)
             try:
                 await asyncio.sleep(0.01)
-                return SimpleNamespace(value=float(user_input.removeprefix("question-")))
+                return _FakeScore(value=float(user_input.removeprefix("question-")))
             finally:
                 active -= 1
 
@@ -656,7 +748,7 @@ def test_ragas_agent_metric_rejects_non_finite_reference_score(monkeypatch: pyte
         "core.evaluation.frameworks.ragas.ragas_evaluator._load_ragas_agent_components",
         _fake_agent_components,
     )
-    monkeypatch.setattr(_FakeToolCallAccuracy, "score", lambda *_args, **_kwargs: SimpleNamespace(value=float("inf")))
+    monkeypatch.setattr(_FakeToolCallAccuracy, "score", lambda *_args, **_kwargs: _FakeScore(value=float("inf")))
 
     result = evaluator.evaluate_agent(
         [

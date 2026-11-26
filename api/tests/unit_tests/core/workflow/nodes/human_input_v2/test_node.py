@@ -6,7 +6,10 @@ from unittest.mock import MagicMock, create_autospec, patch
 import pytest
 from pydantic import SecretStr, TypeAdapter
 
+from core.app.apps.execution_coordinator import AppExecutionState
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueHumanInputFormFilledEvent,
     QueueHumanInputFormTimeoutEvent,
@@ -81,7 +84,7 @@ def form() -> Form:
             legacy_form_content="Answer: {{#$output.answer#}}; files: {{#$output.files#}}",
             parts=(
                 MarkdownFragment(text="Answer: "),
-                ParagraphInput(output_variable_name="answer", default_value="original"),
+                ParagraphInput(output_variable_name="answer", resolved_default_value="original"),
                 MarkdownFragment(text="; files: "),
                 FileListInput(
                     output_variable_name="files",
@@ -273,11 +276,15 @@ def test_reentry_consumes_the_new_persisted_outcome(form: Form) -> None:
 def test_actual_graph_queue_response_path_preserves_order_and_fields(form: Form, status: HumanInputFormStatus) -> None:
     form = submit(form) if status == HumanInputFormStatus.SUBMITTED else replace(form, status=status)
     node, _ = build_node(form)
-    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
+    queue = WorkflowAppQueueManager(
+        task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
+    )
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=form.app_id)
     entry = WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state)
     for event in list(engine_events(node))[1:]:
-        WorkflowBasedAppRunner.handle_event(runner, entry, event)
-    queue_events = [call.args[0] for call in runner._publish_event.call_args_list]
+        runner.handle_event(entry, event)
+    queue.stop_listen(execution_state=AppExecutionState.TERMINAL)
+    queue_events = [message.event for message in queue.listen()]
     assert isinstance(queue_events[1], QueueNodeSucceededEvent)
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
@@ -370,11 +377,15 @@ def test_file_segments_survive_node_graph_queue_and_response(form: Form) -> None
     assert isinstance(graph_events[2], NodeRunSucceededEvent)
     assert graph_events[1].rendered_content == "Answer: yes; files: [1 files]; attachment: [file]"
     assert isinstance(graph_events[2].node_run_result.outputs["attachment"], FileSegment)
-    runner = create_autospec(WorkflowBasedAppRunner, instance=True)
-    WorkflowBasedAppRunner.handle_event(
-        runner, WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state), graph_events[1]
+    queue = WorkflowAppQueueManager(
+        task_id="task-1", user_id="user-1", invoke_from=InvokeFrom.DEBUGGER, app_mode="workflow"
     )
-    queue_event = runner._publish_event.call_args.args[0]
+    runner = WorkflowBasedAppRunner(queue_manager=queue, app_id=form.app_id)
+    runner.handle_event(WorkflowEntry({}, Graph(root_node=node), 0, node.runtime_state), graph_events[1])
+    queue.stop_listen(execution_state=AppExecutionState.TERMINAL)
+    [queue_event] = [message.event for message in queue.listen()]
+    assert isinstance(queue_event, QueueHumanInputFormFilledEvent)
+    assert queue_event.submitted_data is not None
     assert isinstance(queue_event.submitted_data["attachment"], FileSegment)
     assert isinstance(queue_event.submitted_data["files"], ArrayFileSegment)
     converter = _build_converter()
@@ -407,9 +418,9 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
             update={
                 "parts": (
                     MarkdownFragment(text="Before "),
-                    ParagraphInput(output_variable_name="missing", default_value="unused"),
-                    ParagraphInput(output_variable_name="null", default_value=None),
-                    SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                    ParagraphInput(output_variable_name="missing", resolved_default_value="unused"),
+                    ParagraphInput(output_variable_name="null", resolved_default_value=None),
+                    SelectInput(output_variable_name="choice", options=("Yes", "No"), resolved_default_value=None),
                     MarkdownFragment(text=" after"),
                 )
             }
@@ -432,7 +443,7 @@ def test_filled_rendering_skips_missing_and_null_inputs_and_preserves_select_tex
 def test_waiting_projection_freezes_select_options_and_deduplicates_slots(form: Form) -> None:
     from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 
-    option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), default_value="old-b")
+    option = SelectInput(output_variable_name="choice", options=("old-a", "old-b"), resolved_default_value="old-b")
     form = replace(form, resolved_form=form.resolved_form.model_copy(update={"parts": (option, option)}))
     prepared = PreparedForm(form, SecretStr("secret-token"))
     data = WorkflowResponseConverter.human_input_v2_required_data(prepared, node_id="node-1")

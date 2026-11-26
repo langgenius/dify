@@ -1,4 +1,4 @@
-import SnippetAndEvaluationPlanGuard from '@/app/components/billing/snippet-and-evaluation-plan-guard'
+import EvaluationPlanGuard from '@/app/components/billing/evaluation-plan-guard'
 import { AgentDetailPage } from '@/features/agent-v2/agent-detail/page'
 
 type PageProps = {
@@ -9,8 +9,8 @@ export default async function Page({ params }: PageProps) {
   const { agentId } = await params
 
   return (
-    <SnippetAndEvaluationPlanGuard fallbackHref={`/agents/${agentId}/configure`}>
+    <EvaluationPlanGuard fallbackHref={`/agents/${agentId}/configure`} resourceType="agents">
       <AgentDetailPage agentId={agentId} section="evaluation" />
-    </SnippetAndEvaluationPlanGuard>
+    </EvaluationPlanGuard>
   )
 }

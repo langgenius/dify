@@ -15,11 +15,11 @@ export type UserProfileWithMeta = {
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
     queryKey: consoleQuery.account.profile.get.queryKey(),
+    meta: { errorToast: false },
     queryFn: async () => {
       let responseHeaders: Headers | undefined
       const profile = await consoleClient.account.profile.get(undefined, {
         context: {
-          silent: true,
           onResponseHeaders: (headers) => {
             responseHeaders = headers
           },

@@ -88,12 +88,7 @@ export const zSegmentBatchImportStatusResponse = z.object({
 /**
  * ExternalDatasetCreatePayload
  *
- * Validated fields required to create an external dataset binding.
- *
- * The console controller owns HTTP concerns, but the service also needs this
- * contract when creating the tenant-scoped dataset and external knowledge
- * binding. Keep it outside controllers so service imports do not depend on
- * Flask blueprint initialization.
+ * Apply the deployment's description limit at the HTTP boundary.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -233,6 +228,13 @@ export const zDocumentAlreadyFinishedError = zErrorResponse.and(
 export const zDocumentBatchDownloadZipPayload = z.object({
   document_ids: z.array(z.uuid()).min(1).max(100),
 })
+
+/**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * GenerateSummaryPayload
@@ -474,6 +476,8 @@ export const zEvaluationMetricsResponse = z.object({
 
 /**
  * EvaluationRunResponse
+ *
+ * Expose the model pinned in the run snapshot, independent of later config edits.
  */
 export const zEvaluationRunResponse = z.object({
   completed_at: z.int().nullish(),
@@ -483,6 +487,8 @@ export const zEvaluationRunResponse = z.object({
   dataset_file_id: z.string().nullish(),
   error: z.string().nullish(),
   evaluation_config_id: z.string(),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
   failed_items: z.int(),
   id: z.string(),
   metrics_summary: z.record(z.string(), z.unknown()).optional(),
@@ -2601,10 +2607,7 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 /**
  * ZIP archive downloaded successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = zBinaryFileResponse
 
 export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryBody = zGenerateSummaryPayload
 

@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.19.0"
+version = "1.20.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -45,7 +45,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.45.2,<2.0.0",
-    "pydantic-settings>=2.16.2,<3.0.0",
+    "pydantic-settings>=2.16.3,<3.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "sentry-sdk>=2.57.0,<3.0.0",
@@ -118,6 +118,7 @@ dify-trace-langsmith = { workspace = true }
 dify-trace-mlflow = { workspace = true }
 dify-trace-sdk = { workspace = true }
 dify-trace-opik = { workspace = true }
+dify-trace-otel = { workspace = true }
 dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
 
@@ -202,7 +203,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=1.5.0-dev1",
+    "pyrefly>=1.5.0",
     "xinference-client>=2.7.0",
     "types-bleach>=6.4.0.20260728",
     "types-croniter>=6.2.4.20261006",
@@ -333,6 +334,7 @@ trace-all = [
     "dify-trace-langsmith",
     "dify-trace-mlflow",
     "dify-trace-opik",
+    "dify-trace-otel",
     "dify-trace-tencent",
     "dify-trace-weave",
 ]
@@ -342,6 +344,7 @@ trace-langfuse = ["dify-trace-langfuse"]
 trace-langsmith = ["dify-trace-langsmith"]
 trace-mlflow = ["dify-trace-mlflow"]
 trace-opik = ["dify-trace-opik"]
+trace-otel = ["dify-trace-otel"]
 trace-tencent = ["dify-trace-tencent"]
 trace-weave = ["dify-trace-weave"]
 

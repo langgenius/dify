@@ -131,6 +131,7 @@ def test_dify_config() -> None:
 
     # default values
     assert config.DEPLOYMENT_EDITION is DeploymentEdition.COMMUNITY
+    assert config.ENABLE_EVALUATION is False
     assert config.API_COMPRESSION_ENABLED is False
     assert config.AGENT_SHELL_ENABLED is True
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0

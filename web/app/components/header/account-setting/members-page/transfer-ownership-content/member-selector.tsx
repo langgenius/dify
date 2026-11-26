@@ -16,7 +16,7 @@ type Props = Readonly<{
   exclude?: string[]
 }>
 
-const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
+export const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -132,5 +132,3 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
     </Popover>
   )
 }
-
-export default MemberSelector

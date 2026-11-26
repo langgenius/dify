@@ -5,6 +5,7 @@ import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/t
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
 import { useParams, usePathname } from '@/next/navigation'
+import { createHttpError } from '@/service/http-error'
 import { renderHookWithConsoleQuery } from '@/test/console/query-data'
 import {
   createHumanInputFormFixture,
@@ -19,9 +20,14 @@ const { sseGet, ssePost } = vi.hoisted(() => ({
   ssePost: vi.fn<SseTransportCall>(),
 }))
 
-vi.mock('@/service/base', () => ({
-  sseGet,
-  ssePost,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: ssePost, get: sseGet })
+})
+
+vi.mock('@/service/event-stream', () => ({ streamEvents: streams.streamEvents }))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
 }))
 
 const audio = vi.hoisted(() => ({
@@ -187,7 +193,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig))
 
       act(() => {
-        result.current.handleSend('url', { query: 'hello' }, {})
+        result.current.handleSend(streams.sender('url'), { query: 'hello' }, {})
       })
 
       act(() => {
@@ -258,7 +264,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'preview message' },
           {
             onGetConversationMessages,
@@ -299,7 +305,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'preview message' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'preview message' }, {})
       })
 
       expect(ssePost).toHaveBeenCalledWith(
@@ -329,7 +335,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'new preview message' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'new preview message' }, {})
       })
 
       expect(ssePost).toHaveBeenCalledWith(
@@ -350,8 +356,8 @@ describe('useChat', () => {
       let sendResult2: boolean | void = true
 
       await act(async () => {
-        sendResult1 = await result.current.handleSend('url', { query: 'test1' }, {})
-        sendResult2 = await result.current.handleSend('url', { query: 'test2' }, {})
+        sendResult1 = await result.current.handleSend(streams.sender('url'), { query: 'test1' }, {})
+        sendResult2 = await result.current.handleSend(streams.sender('url'), { query: 'test2' }, {})
       })
 
       expect(sendResult1).toBe(true)
@@ -370,7 +376,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'hello' }, { onNotifyError })
+        result.current.handleSend(streams.sender('test-url'), { query: 'hello' }, { onNotifyError })
       })
 
       expect(ssePost).toHaveBeenCalledWith(
@@ -414,7 +420,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           {
             query: 'hello',
             inputs: {
@@ -459,7 +465,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'hello' },
           {
             onSendSettled,
@@ -487,7 +493,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'agent test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'agent test' }, {})
       })
 
       act(() => {
@@ -560,7 +566,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'run tools' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'run tools' }, {})
       })
 
       const toolLog = (status: string, output = '') => ({
@@ -620,14 +626,14 @@ describe('useChat', () => {
       vi.useFakeTimers()
       try {
         act(() => {
-          result.current.handleSend('test-url', { query: 'first request' }, {})
+          result.current.handleSend(streams.sender('test-url'), { query: 'first request' }, {})
         })
         await act(async () => {
           await callbacksList[0]!.onCompleted(true)
         })
         vi.setSystemTime(Date.now() + 1000)
         act(() => {
-          result.current.handleSend('test-url', { query: 'second request' }, {})
+          result.current.handleSend(streams.sender('test-url'), { query: 'second request' }, {})
         })
       } finally {
         vi.useRealTimers()
@@ -682,7 +688,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'parallel tools' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'parallel tools' }, {})
       })
 
       act(() => {
@@ -727,7 +733,11 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'parallel tools after pause' }, {})
+        result.current.handleSend(
+          streams.sender('test-url'),
+          { query: 'parallel tools after pause' },
+          {},
+        )
       })
       act(() => {
         initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-p', task_id: 't-p' })
@@ -759,7 +769,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'human input test' }, {})
       })
 
       act(() => {
@@ -836,7 +846,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'human input test' }, {})
       })
       act(() => {
         initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
@@ -867,7 +877,7 @@ describe('useChat', () => {
 
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
-        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'human input test' }, {})
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         postCallbacks.onHumanInputRequired({
           workflow_run_id: 'wr-1',
@@ -929,7 +939,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat(config as ChatConfig))
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'human input test' },
           {
             onConversationComplete,
@@ -978,7 +988,7 @@ describe('useChat', () => {
 
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
-        result.current.handleSend('test-url', { query: 'human input test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'human input test' }, {})
         postCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
         postCallbacks.onNodeStarted({ data: { node_id: 'human-1', id: 'human-1' } })
         postCallbacks.onHumanInputRequired({
@@ -1010,7 +1020,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'file test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'file test' }, {})
       })
 
       act(() => {
@@ -1050,7 +1060,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'chat-messages',
+          streams.sender('chat-messages'),
           { query: 'test' },
           {
             onGetConversationMessages,
@@ -1075,6 +1085,39 @@ describe('useChat', () => {
       expect(onConversationComplete).not.toHaveBeenCalled()
       expect(onSendSettled).toHaveBeenCalledExactlyOnceWith(undefined)
       expect(toast.error).not.toHaveBeenCalled()
+    })
+
+    it('reports a failed history refresh request with its server message', async () => {
+      const onGetConversationMessages = vi
+        .fn()
+        .mockRejectedValue(
+          createHttpError(
+            { status: 429, statusText: '', headers: new Headers() },
+            { message: 'Too many requests' },
+          ),
+        )
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat({ suggested_questions_after_answer: { enabled: true } } as ChatConfig),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          streams.sender('chat-messages'),
+          { query: 'test' },
+          { onGetConversationMessages, onGetSuggestedQuestions: vi.fn() },
+        )
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onData('Streamed answer', true, {
+          messageId: 'answer-1',
+          conversationId: 'conversation-1',
+        })
+        await callbacks.onCompleted()
+      })
+
+      expect(result.current.chatList.at(-1)?.content).toBe('Streamed answer')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Too many requests')
     })
 
     it.each(['denied', 'navigation', 'new request', 'stop', 'unmount'] as const)(
@@ -1102,7 +1145,7 @@ describe('useChat', () => {
 
         act(() => {
           result.current.handleSend(
-            'chat-messages',
+            streams.sender('chat-messages'),
             { query: 'test' },
             {
               isPublicAPI: true,
@@ -1128,7 +1171,7 @@ describe('useChat', () => {
           if (transition === 'navigation') window.history.replaceState({}, '', '/agent/another-app')
           if (transition === 'new request')
             result.current.handleSend(
-              'chat-messages',
+              streams.sender('chat-messages'),
               { query: 'next question' },
               { isPublicAPI: true },
             )
@@ -1163,7 +1206,7 @@ describe('useChat', () => {
         const { result, unmount } = renderHookWithConsoleQuery(() => useChat())
         act(() => {
           result.current.handleSend(
-            'chat-messages',
+            streams.sender('chat-messages'),
             { query: 'test' },
             {
               isPublicAPI: true,
@@ -1215,7 +1258,7 @@ describe('useChat', () => {
         )
         act(() => {
           result.current.handleSend(
-            'chat-messages',
+            streams.sender('chat-messages'),
             { query: 'test' },
             {
               isPublicAPI: true,
@@ -1300,7 +1343,7 @@ describe('useChat', () => {
 
         act(() => {
           result.current.handleSend(
-            'test-url',
+            streams.sender('test-url'),
             { query: 'fetch test' },
             {
               onGetConversationMessages,
@@ -1341,7 +1384,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'error test' },
           {
             onConversationComplete,
@@ -1366,7 +1409,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'trace test' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'trace test' }, {})
       })
 
       act(() => {
@@ -1445,7 +1488,7 @@ describe('useChat', () => {
       // Simulate resume which triggers another handleSend essentially (if we test via callbacks directly)
       act(() => {
         // Just directly injecting callbacks using mocked sseGet/ssePost isn't needed here, we can just do handleSend and watch the new message
-        result.current.handleSend('test-url', { query: 'early-trace' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'early-trace' }, {})
       })
 
       act(() => {
@@ -1471,7 +1514,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'failed workflow' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'failed workflow' }, {})
       })
 
       act(() => {
@@ -1513,7 +1556,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'child question', parent_message_id: 'a-root' },
           {},
         )
@@ -1562,7 +1605,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'file payload', files: [localFile as FileEntity, remoteFile as FileEntity] },
           {},
         )
@@ -1595,7 +1638,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'first request' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'first request' }, {})
       })
       act(() => {
         callbacksList[0]!.getAbortController(previousWorkflowAbort)
@@ -1605,7 +1648,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'second request' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'second request' }, {})
       })
 
       expect(previousWorkflowAbort.abort).toHaveBeenCalledTimes(1)
@@ -1625,7 +1668,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'history mismatch' },
           { onGetConversationMessages },
         )
@@ -1660,7 +1703,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'suggestion failure' },
           { onGetSuggestedQuestions },
         )
@@ -1689,7 +1732,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'loop node guards', loop_id: 'loop-parent' },
           {},
         )
@@ -2517,7 +2560,8 @@ describe('useChat', () => {
         ]
         const { result } = renderHookWithConsoleQuery(() => useChat(undefined, undefined, tree))
         act(() => {
-          if (mode === 'send') result.current.handleSend('url', { query: 'speech' }, {})
+          if (mode === 'send')
+            result.current.handleSend(streams.sender('url'), { query: 'speech' }, {})
           else result.current.handleResume('m-tts', 'wr-tts', { isPublicAPI: true })
         })
         const callbacks = (mode === 'send' ? vi.mocked(ssePost) : vi.mocked(sseGet)).mock
@@ -2558,7 +2602,7 @@ describe('useChat', () => {
           useChat(undefined, undefined, undefined, stopChat),
         )
         act(() => {
-          result.current.handleSend('chat-messages', { query: 'test' }, {})
+          result.current.handleSend(streams.sender('chat-messages'), { query: 'test' }, {})
         })
         const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
         const controller = createAbortControllerMock()
@@ -2588,7 +2632,11 @@ describe('useChat', () => {
         )
 
         act(() => {
-          result.current.handleSend('chat-messages', { query: 'test' }, { isPublicAPI: true })
+          result.current.handleSend(
+            streams.sender('chat-messages'),
+            { query: 'test' },
+            { isPublicAPI: true },
+          )
         })
         const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
         const controller = createAbortControllerMock()
@@ -2619,7 +2667,7 @@ describe('useChat', () => {
 
       await act(async () =>
         result.current.handleSend(
-          'url',
+          streams.sender('url'),
           { query: 'Earlier question' },
           {
             onGetSuggestedQuestions: vi.fn().mockResolvedValue({ data: ['Follow up'] }),
@@ -2694,7 +2742,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'url',
+          streams.sender('url'),
           { query: 'stop with aborts' },
           { onGetConversationMessages, onGetSuggestedQuestions },
         )
@@ -2766,7 +2814,7 @@ describe('useChat', () => {
       rerender()
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'first after reset' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'first after reset' }, {})
       })
 
       expect(ssePost).toHaveBeenCalledWith(
@@ -2907,7 +2955,7 @@ describe('useChat', () => {
 
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
-        result.current.handleSend('url', { query: 'file types' }, {})
+        result.current.handleSend(streams.sender('url'), { query: 'file types' }, {})
       })
 
       act(() => {
@@ -2943,7 +2991,7 @@ describe('useChat', () => {
 
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
-        result.current.handleSend('url', { query: 'citations' }, {})
+        result.current.handleSend(streams.sender('url'), { query: 'citations' }, {})
       })
 
       act(() => {
@@ -3023,7 +3071,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'fetch test latency zero' },
           {
             onGetConversationMessages,
@@ -3064,7 +3112,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'fetch test missing log' },
           {
             onGetConversationMessages,
@@ -3147,7 +3195,7 @@ describe('useChat', () => {
 
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'new agent history' },
           {
             onGetConversationMessages,
@@ -3230,7 +3278,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
         result.current.handleSend(
-          'test-url',
+          streams.sender('test-url'),
           { query: 'fetch test match thought' },
           {
             onGetConversationMessages,
@@ -3255,7 +3303,7 @@ describe('useChat', () => {
 
       const { result } = renderHookWithConsoleQuery(() => useChat())
       act(() => {
-        result.current.handleSend('url', { query: 'agent onThought' }, {})
+        result.current.handleSend(streams.sender('url'), { query: 'agent onThought' }, {})
       })
 
       act(() => {
@@ -3286,7 +3334,7 @@ describe('useChat', () => {
         }),
       )
       act(() => {
-        result.current.handleSend('url', { query: 'agent onThought' }, {})
+        result.current.handleSend(streams.sender('url'), { query: 'agent onThought' }, {})
       })
 
       act(() => {
@@ -3386,7 +3434,7 @@ describe('useChat', () => {
     const { result } = renderHookWithConsoleQuery(() => useChat())
 
     act(() => {
-      result.current.handleSend('url', { query: 'test base file' }, {})
+      result.current.handleSend(streams.sender('url'), { query: 'test base file' }, {})
     })
 
     const prevChatTree = [
@@ -3440,7 +3488,7 @@ describe('useChat', () => {
 
     const { result } = renderHookWithConsoleQuery(() => useChat())
     act(() => {
-      result.current.handleSend('url', { query: 'test parallel_id' }, {})
+      result.current.handleSend(streams.sender('url'), { query: 'test parallel_id' }, {})
     })
 
     act(() => {
@@ -3485,7 +3533,7 @@ describe('useChat', () => {
     const { result } = renderHookWithConsoleQuery(() => useChat())
 
     act(() => {
-      result.current.handleSend('url', { query: 'test exact file' }, {})
+      result.current.handleSend(streams.sender('url'), { query: 'test exact file' }, {})
     })
 
     act(() => {
@@ -3646,7 +3694,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'hi' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'hi' }, {})
       })
       act(() => {
         callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
@@ -3681,7 +3729,7 @@ describe('useChat', () => {
       const { result } = renderHookWithConsoleQuery(() => useChat())
 
       act(() => {
-        result.current.handleSend('test-url', { query: 'hi' }, {})
+        result.current.handleSend(streams.sender('test-url'), { query: 'hi' }, {})
       })
       act(() => {
         callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })

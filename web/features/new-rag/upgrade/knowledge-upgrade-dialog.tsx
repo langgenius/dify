@@ -59,18 +59,20 @@ export function KnowledgeUpgradeDialog({
     datasetId: dataset?.id,
     recommendations: canUpgrade ? discoveryQuery.data?.models : undefined,
   })
-  const startMutation = useMutation({
-    ...consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions(),
-    onSuccess: (job) => {
-      idempotencyKeyRef.current = undefined
-      if (dataset) onStarted(dataset, job)
-    },
-    onError: (error, { body }) => {
-      if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable') return
-      if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
-      void models.refresh()
-    },
-  })
+  const startMutation = useMutation(
+    consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.post.mutationOptions({
+      onSuccess: (job) => {
+        idempotencyKeyRef.current = undefined
+        if (dataset) onStarted(dataset, job)
+      },
+      onError: (error, { body }) => {
+        if (!isDefinedError(error) || error.code !== 'knowledge_fs_upgrade_models_unavailable')
+          return
+        if (body.models) models.reject(body.models, error.data.details?.issues ?? [])
+        void models.refresh()
+      },
+    }),
+  )
   const modelsRejected =
     isDefinedError(startMutation.error) &&
     startMutation.error.code === 'knowledge_fs_upgrade_models_unavailable'
@@ -164,7 +166,7 @@ export function KnowledgeUpgradeDialog({
               </li>
             </ul>
             <a
-              href={docLink('/cloud/use-dify/knowledge-base/upgrade-from-classic')}
+              href={docLink('/use-dify/knowledge-base/upgrade-from-classic')}
               target="_blank"
               rel="noreferrer"
               className="mt-3 inline-block text-text-accent underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid"

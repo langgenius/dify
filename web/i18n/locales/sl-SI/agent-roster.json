@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "Počisti filtre",
   "roster.createAgent": "Ustvari agenta",
   "roster.createDialog.description": "Ustvarite ponovno uporabnega Agent v tem workspace.",
   "roster.createDialog.title": "Ustvari agenta",
@@ -24,6 +25,7 @@
   "roster.editInfo": "Uredi informacije",
   "roster.empty": "Še ni agentov",
   "roster.emptySearch": "Ni ujemajočih se agentov",
+  "roster.emptySearchDescription": "Poskusite z drugim iskanjem ali počistite trenutne filtre.",
   "roster.filters.all": "Vsi",
   "roster.filters.createdByMe": "Ustvaril sem",
   "roster.filters.drafts": "Osnutki",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "Vgrajenega agenta ni bilo mogoče ustvariti. Osvežite in poskusite znova.",
   "roster.nodeSelector.dialogLabel": "Izberite agenta",
   "roster.nodeSelector.manageInAgentConsole": "Upravljaj v Agents",
-  "roster.nodeSelector.searchPlaceholder": "Išči…",
+  "roster.nodeSelector.searchPlaceholder": "Išči agente…",
   "roster.nodeSelector.startFromScratch": "Začni iz nič",
   "roster.references.label": "Poteki dela, ki uporabljajo {{name}}",
   "roster.references.trigger": "Poteki dela, ki uporabljajo {{name}}",

@@ -2,7 +2,7 @@
 
 import type { AccessControlAssignment } from './chip-status'
 import type { AccessControlAppIcon } from './index'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
@@ -97,13 +97,13 @@ export function AccessControlDowngradePanel({
             </Button>
             <span
               aria-hidden
-              className="pointer-events-none absolute top-1.75 right-2 inline-flex h-[18px] items-center gap-px overflow-hidden rounded-[5px] border-[0.5px] border-components-premium-badge-blue-stroke-stop-0 px-1 py-[3px] shadow-xs"
+              className="pointer-events-none absolute inset-e-2 top-1.75 inline-flex h-[18px] items-center gap-px overflow-hidden rounded-[5px] border-[0.5px] border-components-premium-badge-blue-stroke-stop-0 px-1 py-[3px] shadow-xs"
               style={{
                 backgroundImage:
                   'linear-gradient(101.6deg, var(--color-components-premium-badge-blue-stroke-stop-0) 0%, var(--color-components-premium-badge-blue-text-stop-0) 105.58%), linear-gradient(90deg, #a0bdff, #a0bdff)',
               }}
             >
-              <span className="i-custom-public-common-sparkles-soft-accent flex size-3 items-center py-px pl-px" />
+              <span className="i-custom-public-common-sparkles-soft-accent flex size-3 items-center py-px ps-px" />
               <span className="px-0.5 system-2xs-medium text-text-accent-light-mode-only">
                 {pro}
               </span>

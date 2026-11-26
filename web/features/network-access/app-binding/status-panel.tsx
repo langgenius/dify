@@ -2,8 +2,8 @@
 
 import type { AccessControlDraft, AccessControlPolicy } from './draft'
 import type { AccessControlAppIcon } from './index'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import type { AccessControlAnalyticsContext } from '@/features/network-access/analytics'
+import type { AccessPoint } from '@/models/app-access-point'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -206,7 +206,7 @@ export function AccessControlStatusPanel({
                   {label}
                 </span>
                 {excluded && (
-                  <span className="min-w-0 flex-1 text-right system-xs-regular text-text-quaternary">
+                  <span className="min-w-0 flex-1 text-end system-xs-regular text-text-quaternary">
                     {t(($) => $['studio.accessControl.notEnabled'], { ns: 'deployments' })}
                   </span>
                 )}

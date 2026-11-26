@@ -108,7 +108,7 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
           {t(($) => $['accessRule.agentDescription'], { ns: 'permission' })}
         </p>
       </header>
-      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
+      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:ps-12.5 sm:pe-20">
         {error ? (
           <div role="alert" className="flex items-center justify-center gap-3 py-8">
             <span>{t(($) => $['api.actionFailed'], { ns: 'common' })}</span>

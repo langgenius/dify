@@ -27,7 +27,7 @@ const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false 
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        className="absolute inset-e-3 top-4 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClose}
       >
         <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
@@ -42,7 +42,7 @@ const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false 
               render={
                 <button
                   type="button"
-                  className="mr-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
+                  className="me-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
                   aria-label={t(($) => $['runDetail.testWithParams'], { ns: 'appLog' })}
                   onClick={handleReplay}
                 >
@@ -57,11 +57,7 @@ const DetailPanel: FC<ILogDetail> = ({ appId, runID, onClose, canReplay = false 
         )}
       </div>
       <WorkflowContextProvider>
-        <Run
-          appId={appId}
-          runDetailUrl={runID ? `/apps/${appId}/workflow-runs/${runID}` : ''}
-          tracingListUrl={runID ? `/apps/${appId}/workflow-runs/${runID}/node-executions` : ''}
-        />
+        <Run appId={appId} runOwner={{ kind: 'app', appId }} runId={runID} />
       </WorkflowContextProvider>
     </div>
   )

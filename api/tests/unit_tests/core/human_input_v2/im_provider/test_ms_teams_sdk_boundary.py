@@ -299,7 +299,7 @@ def _card_intent(
 ) -> ResolvedForm:
     if input_type == "select":
         input_block: FormPart = SelectInput(
-            output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"
+            output_variable_name="decision", options=("Approve", "Reject"), resolved_default_value="Approve"
         )
     elif input_type == "file":
         input_block = FileInput(
@@ -317,7 +317,7 @@ def _card_intent(
             number_limits=1,
         )
     else:
-        input_block = ParagraphInput(output_variable_name="decision", default_value="Sanitized initial value")
+        input_block = ParagraphInput(output_variable_name="decision", resolved_default_value="Sanitized initial value")
     return ResolvedForm(
         title="Sanitized title",
         parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="Sanitized trailing content")),
@@ -705,7 +705,7 @@ def test_graph_boundary_never_publishes_partial_directory(
         _card_intent(markdown_text="x" * 30_000),
         ResolvedForm(
             title="Sanitized title",
-            parts=(SelectInput(output_variable_name="decision", options=("One", "One"), default_value="One"),),
+            parts=(SelectInput(output_variable_name="decision", options=("One", "One"), resolved_default_value="One"),),
             actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
             legacy_form_content="This value must not be rendered",
         ),

@@ -12,7 +12,6 @@ export const usePipelineConfig = () => {
   const { data: nodesDefaultConfigs } = useQuery(
     consoleQuery.rag.pipelines.byPipelineId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
       input: pipelineId ? { params: { pipeline_id: pipelineId } } : skipToken,
-      staleTime: 0,
     }),
   )
   useEffect(() => {

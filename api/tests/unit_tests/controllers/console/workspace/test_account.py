@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from typing_extensions import TypedDict
 from werkzeug.exceptions import NotFound, UnprocessableEntity
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -65,6 +66,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, Tenant, TenantAccountJoin
 from models import AccountStatus as _workspace_account_AccountStatus
 from models.account import AccountStatus as _accounts_AccountStatus
@@ -862,6 +864,36 @@ class TestAccountsCases:
             assert result["id"] == user.id
             get_profile.assert_called_once_with(request_context)
 
+        def test_get_profile_admits_an_account_without_a_workspace(
+            self, app: Flask, account_services: AccountServices
+        ) -> None:
+            user = make_account()
+            contexts: list[RequestContext] = []
+
+            def get_profile(context: RequestContext) -> Account:
+                contexts.append(context)
+                return user
+
+            with (
+                app.test_request_context("/account/profile"),
+                patch("controllers.console.wraps._is_setup_completed", return_value=True),
+                config_overrides_context(LOGIN_DISABLED=True),
+                patch(
+                    "controllers.console.flask_admission.current_account_with_tenant_optional",
+                    return_value=(user, None),
+                ),
+                patch(
+                    "controllers.console.flask_admission.current_account_with_tenant",
+                    side_effect=ActiveWorkspaceRequiredError(),
+                ),
+                patch.object(account_services.profile, "get", get_profile),
+            ):
+                result = AccountProfileApi().get()
+
+            assert isinstance(result, dict)
+            assert result["id"] == user.id
+            assert [context.active_workspace_id for context in contexts] == [""]
+
     class TestAccountProfilePatchApi:
         def test_json_schema_matches_runtime_patch_rules(self) -> None:
             schema = AccountProfilePatchPayload.model_json_schema()
@@ -935,6 +967,29 @@ class TestAccountsCases:
 
             assert result["id"] == user.id
             update_profile.assert_called_once_with(request_context, AccountProfileChanges())
+
+        def test_invalid_avatar_is_an_invalid_argument(self, app: Flask, account_services: AccountServices) -> None:
+            api = AccountProfileApi()
+            method = inspect.unwrap(api.patch)
+            request_context = RequestContext(
+                request_id="request-1",
+                trace_id="trace-1",
+                account_id="account-1",
+                active_workspace_id="workspace-1",
+            )
+            payload = {"avatar": "550e8400-e29b-41d4-a716-446655440000"}
+            args = AccountProfilePatchPayload.model_validate(payload)
+
+            with (
+                app.test_request_context("/account/profile", method="PATCH", json=payload),
+                patch.object(
+                    account_services.profile,
+                    "update",
+                    side_effect=AvatarFileNotFoundError,
+                ),
+                pytest.raises(InvalidArgumentError, match="Avatar file is invalid"),
+            ):
+                method(api, args, request_context)
 
         @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
         def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]) -> None:

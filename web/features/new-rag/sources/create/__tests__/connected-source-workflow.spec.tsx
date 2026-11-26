@@ -57,31 +57,34 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const source = `${space}.sources.bySourceId`
+  // Mutations run through generated mutation options, which also forward the operation context.
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
+    [`${space}.sourceConnections.post`]: (input: never) => clientMock.createConnection(input),
+    [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
+    [`${source}.asyncImport.post`]: (input: never) => clientMock.createWorkflowImport(input),
+    [`${source}.delete`]: clientMock.deleteSource,
+    [`${source}.files.get`]: clientMock.getFiles,
+    [`${source}.get`]: clientMock.getSource,
+    [`${source}.import.post`]: clientMock.importPages,
+    [`${source}.importFiles.post`]: clientMock.importFiles,
+    [`${source}.pages.get`]: clientMock.getPages,
+    [`${source}.patch`]: (input: never) => clientMock.patchSource(input),
+    [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
+    [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
+    [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
+    [`${space}.sources.get`]: clientMock.listSources,
+    [`${space}.sources.post`]: clientMock.createSource,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
-      [`${space}.sourceConnections.post`]: clientMock.createConnection,
-      [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
-      [`${source}.asyncImport.post`]: clientMock.createWorkflowImport,
-      [`${source}.delete`]: clientMock.deleteSource,
-      [`${source}.files.get`]: clientMock.getFiles,
-      [`${source}.get`]: clientMock.getSource,
-      [`${source}.import.post`]: clientMock.importPages,
-      [`${source}.importFiles.post`]: clientMock.importFiles,
-      [`${source}.pages.get`]: clientMock.getPages,
-      [`${source}.patch`]: clientMock.patchSource,
-      [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
-      [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
-      [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
-      [`${space}.sources.get`]: clientMock.listSources,
-      [`${space}.sources.post`]: clientMock.createSource,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'auth.plugin.datasource.list.get': () => clientMock.listDatasourceAuth(),
       'rag.pipelines.datasourcePlugins.get': () => clientMock.listDatasourcePlugins(),
       [`${space}.sourceConnections.get`]: clientMock.listConnections,

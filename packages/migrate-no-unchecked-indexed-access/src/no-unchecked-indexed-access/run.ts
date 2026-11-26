@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
@@ -8,6 +9,12 @@ import { promisify } from 'node:util'
 import { runMigration, SUPPORTED_DIAGNOSTIC_CODES } from './migrate'
 
 const execFileAsync = promisify(execFile)
+// Use this package's tsrs so target projects do not need their own checker binary.
+const TSRS_BIN = path.join(
+  path.dirname(createRequire(import.meta.url).resolve('tsrs/package.json')),
+  'bin',
+  'tsrs',
+)
 const DIAGNOSTIC_PATTERN = /^(.+?\.(?:ts|tsx))\((\d+),(\d+)\): error TS(\d+): (.+)$/
 const DEFAULT_BATCH_SIZE = 100
 const DEFAULT_BATCH_ITERATIONS = 5
@@ -110,16 +117,16 @@ async function runTypeCheck(
 
   await fs.mkdir(TYPECHECK_CACHE_DIR, { recursive: true })
 
-  const tsgoArgs = ['exec', 'tsgo', '--noEmit', '--pretty', 'false']
+  const tsrsArgs = [TSRS_BIN, '--noEmit', '--pretty', 'false']
   if (incremental) {
-    tsgoArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
+    tsrsArgs.push('--incremental', '--tsBuildInfoFile', buildInfoPath)
   } else {
-    tsgoArgs.push('--incremental', 'false')
+    tsrsArgs.push('--incremental', 'false')
   }
-  tsgoArgs.push('--project', projectPath)
+  tsrsArgs.push('--project', projectPath)
 
   try {
-    const { stdout, stderr } = await execFileAsync('pnpm', tsgoArgs, {
+    const { stdout, stderr } = await execFileAsync(process.execPath, tsrsArgs, {
       cwd: projectDirectory,
       env: {
         ...process.env,

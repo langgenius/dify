@@ -1,6 +1,10 @@
 from services.errors.base import BaseServiceError
 
 
+class EvaluationDisabledError(Exception):
+    """The deployment has turned off Evaluation."""
+
+
 class EvaluationPlanRequiredError(Exception):
     """A Cloud workspace cannot use Evaluation without a paid subscription."""
 

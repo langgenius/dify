@@ -19,10 +19,12 @@ import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
 import WebsiteCrawl from '../index'
 
-const { ssePost, parameters } = vi.hoisted(() => ({ ssePost: vi.fn(), parameters: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
+const runNode = vi.hoisted(() => vi.fn())
+const parameters = vi.hoisted(() => vi.fn())
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents,
 }))
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -148,7 +150,15 @@ function callbacks(): {
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
 } {
-  return ssePost.mock.lastCall![2]
+  return streamEvents.mock.lastCall![1] as ReturnType<typeof callbacks>
+}
+/** Sends the last stream request and returns the stubbed run route and its input. */
+function lastRun() {
+  void streamEvents.mock.lastCall![0]({
+    signal: new AbortController().signal,
+    context: { stream: true },
+  })
+  return runNode.mock.lastCall!.slice(0, 2)
 }
 const runButton = () => screen.getByRole('button', { name: 'datasetCreation.stepOne.website.run' })
 function complete() {
@@ -173,20 +183,19 @@ it.each([true, false])(
     await user.type(input, 'https://example.com/docs')
     await waitFor(() => expect(runButton()).toBeEnabled())
     await user.click(runButton())
-    await waitFor(() =>
-      expect(ssePost).toHaveBeenCalledExactlyOnceWith(
-        `/rag/pipelines/pipeline-123/workflows/${draft ? 'draft' : 'published'}/datasource/nodes/node-1/run`,
-        {
-          body: {
-            inputs: { url: 'https://example.com/docs' },
-            credential_id: 'credential-1',
-            datasource_type: DatasourceType.websiteCrawl,
-            response_mode: 'streaming',
-          },
+    await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
+    expect(lastRun()).toEqual([
+      draft ? 'draft' : 'published',
+      {
+        params: { pipeline_id: 'pipeline-123', node_id: 'node-1' },
+        body: {
+          inputs: { url: 'https://example.com/docs' },
+          credential_id: 'credential-1',
+          datasource_type: DatasourceType.websiteCrawl,
+          response_mode: 'streaming',
         },
-        expect.any(Object),
-      ),
-    )
+      },
+    ])
     act(() =>
       callbacks().onDataSourceNodeProcessing({
         event: 'datasource_processing',
@@ -198,7 +207,7 @@ it.each([true, false])(
     await user.click(
       screen.getByRole('button', { name: 'datasetCreation.stepOne.website.running' }),
     )
-    expect(ssePost).toHaveBeenCalledOnce()
+    expect(streamEvents).toHaveBeenCalledOnce()
     complete()
     expect(store.getState().step).toBe(CrawlStep.finished)
     expect(store.getState().websitePages).toEqual(pages)
@@ -217,7 +226,7 @@ it.each([{ credential: '' }, { loading: true }])(
     setup(options)
     expect(runButton()).toBeDisabled()
     await user.click(runButton())
-    expect(ssePost).not.toHaveBeenCalled()
+    expect(streamEvents).not.toHaveBeenCalled()
   },
 )
 
@@ -226,7 +235,7 @@ it('keeps only one page selected in single-upload mode', async () => {
   const { store } = setup({ single: true })
   await waitFor(() => expect(runButton()).toBeEnabled())
   await user.click(runButton())
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   complete()
   expect(store.getState().websitePages).toEqual([pages[0]])
   await user.click(screen.getByRole('radio', { name: /Second page/ }))
@@ -239,7 +248,7 @@ it('deselects a page and previews it without changing the remaining selection', 
   const { store } = setup()
   await waitFor(() => expect(runButton()).toBeEnabled())
   await user.click(runButton())
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   complete()
   await user.click(screen.getByRole('checkbox', { name: /Second page/ }))
   await user.click(
@@ -257,14 +266,14 @@ it.each(['Crawler unavailable', ''])(
     const { store } = setup()
     await waitFor(() => expect(runButton()).toBeEnabled())
     await user.click(runButton())
-    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+    await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
     act(() => callbacks().onDataSourceNodeError({ event: 'datasource_error', error: message }))
     const error = message || 'datasetCreation.stepOne.website.unknownError'
     expect(screen.getByText(error)).toBeInTheDocument()
     expect(store.getState().websitePages).toEqual([])
     await waitFor(() => expect(runButton()).toBeEnabled())
     await user.click(runButton())
-    await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(streamEvents).toHaveBeenCalledTimes(2))
     complete()
     expect(screen.queryByText(error)).not.toBeInTheDocument()
     expect(store.getState().websitePages).toEqual(pages)
@@ -276,7 +285,7 @@ it('uses the changed credential on the next run and opens configuration', async 
   const { onCredentialChange } = setup()
   await waitFor(() => expect(runButton()).toBeEnabled())
   await user.click(runButton())
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   act(() =>
     callbacks().onDataSourceNodeError({
       event: 'datasource_error',
@@ -288,8 +297,8 @@ it('uses the changed credential on the next run and opens configuration', async 
   expect(onCredentialChange).toHaveBeenCalledExactlyOnceWith('credential-2')
   await waitFor(() => expect(runButton()).toBeEnabled())
   await user.click(runButton())
-  await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
-  expect(ssePost.mock.lastCall![1].body.credential_id).toBe('credential-2')
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledTimes(2))
+  expect(lastRun()[1]).toMatchObject({ body: { credential_id: 'credential-2' } })
   expect(screen.queryByText('Old credential failed')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /^datasetPipeline\.configurationTip/ }))
   await waitFor(() =>
@@ -299,9 +308,20 @@ it('uses the changed credential on the next run and opens configuration', async 
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('draft', input, options),
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('published', input, options),
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'rag.pipelines.byPipelineId.workflows.published.preProcessing.parameters.get': parameters,
       'rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get': parameters,

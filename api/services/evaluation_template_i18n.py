@@ -1,9 +1,10 @@
 """Localized copy bundled with API-generated evaluation XLSX templates."""
 
-import json
 from functools import cache
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import TypedDict
+
+from pydantic import TypeAdapter
 
 from constants.languages import get_valid_language
 
@@ -20,9 +21,14 @@ class EvaluationTemplateCopy(TypedDict):
 
 @cache
 def _translations() -> dict[str, EvaluationTemplateCopy]:
-    """Load the committed locale bundle once without depending on Web files at runtime."""
+    """Load the committed locale bundle once without depending on Web files at runtime.
+
+    Preconditions: the bundled JSON file exists and contains language-to-copy mappings.
+    Postconditions: return validated copy for each language without changing the bundle;
+    invalid JSON or field types raise a validation error.
+    """
     path = Path(__file__).with_name("evaluation_template_translations.json")
-    return cast("dict[str, EvaluationTemplateCopy]", json.loads(path.read_text(encoding="utf-8")))
+    return TypeAdapter(dict[str, EvaluationTemplateCopy]).validate_json(path.read_bytes())
 
 
 def get_evaluation_template_copy(language: str | None) -> EvaluationTemplateCopy:

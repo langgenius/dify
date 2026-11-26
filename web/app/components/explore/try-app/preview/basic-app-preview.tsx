@@ -30,7 +30,7 @@ import {
 import ConfigContext from '@/context/debug-configuration'
 import { PromptMode } from '@/models/debug'
 import { consoleQuery } from '@/service/console'
-import { useGetTryAppDataSets } from '@/service/use-try-app'
+import { tryAppDatasetsQueryOptions } from '@/service/try-app-queries'
 import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -360,9 +360,8 @@ const BasicAppPreview: FC<Props> = ({ appId, appDetail }) => {
 
     return []
   })()
-  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(
-    appId,
-    datasetIds,
+  const { data: dataSetData, isLoading: isLoadingDatasets } = useQuery(
+    tryAppDatasetsQueryOptions(appId, datasetIds),
   )
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingDatasets || isLoadingToolProviders

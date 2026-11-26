@@ -11,7 +11,7 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -57,7 +57,6 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
     setDescription(value)
   }, [])
 
-  const queryClient = useQueryClient()
   const { mutateAsync: updatePipeline } = useMutation(
     consoleQuery.rag.pipeline.customized.templates.byTemplateId.patch.mutationOptions(),
   )
@@ -81,16 +80,11 @@ const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
       { params: { template_id: pipeline.id }, body },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.rag.pipeline.templates.get.queryKey({
-              input: { query: { type: 'customized' } },
-            }),
-          })
           onClose()
         },
       },
     )
-  }, [name, appIcon, description, pipeline.id, updatePipeline, queryClient, onClose, t])
+  }, [name, appIcon, description, pipeline.id, updatePipeline, onClose, t])
 
   return (
     <form

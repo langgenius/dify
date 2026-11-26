@@ -11,12 +11,14 @@ import { isWorkflowAppMode } from '@/app/components/apps/app-type'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
+import { CollaborationUpgradeModal } from '@/app/components/workflow/collaboration/upgrade-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { EditorResourceScope } from '@/app/components/workflow/editor-resource/provider'
 import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { initialEdges, initialNodes } from '@/app/components/workflow/utils'
+import { toastRequestError } from '@/app/query-error-toast'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -25,7 +27,6 @@ import { consoleQuery } from '@/service/console'
 import { fetchRunDetail } from '@/service/log'
 import { getAppACLCapabilities } from '@/utils/permission'
 import WorkflowAppMain from './components/workflow-main'
-import { useGetRunAndTraceUrl } from './hooks/use-get-run-and-trace-url'
 import { useWorkflowInit } from './hooks/use-workflow-init'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import { buildInitialFeatures, buildTriggerStatusMap, coerceReplayUserInputs } from './utils'
@@ -90,37 +91,36 @@ const WorkflowAppWithAdditionalContext = () => {
   }, [data])
 
   const searchParams = useSearchParams()
-  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const replayRunId = searchParams.get('replayRunId')
 
   useEffect(() => {
     if (!replayRunId || !appACLCapabilities.canTestAndRun) return
-    const { runUrl } = getWorkflowRunAndTraceUrl(replayRunId)
-    if (!runUrl) return
-    fetchRunDetail(runUrl).then((res) => {
-      const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
-        workflowStore.getState()
-      const rawInputs = res.inputs
-      let parsedInputs: unknown = rawInputs
+    fetchRunDetail({ kind: 'app', appId }, replayRunId)
+      .then((res) => {
+        const { setInputs, setShowInputsPanel, setShowDebugAndPreviewPanel } =
+          workflowStore.getState()
+        const rawInputs = res.inputs
+        let parsedInputs: unknown = rawInputs
 
-      if (typeof rawInputs === 'string') {
-        try {
-          parsedInputs = JSON.parse(rawInputs) as unknown
-        } catch (error) {
-          console.error('Failed to parse workflow run inputs', error)
-          return
+        if (typeof rawInputs === 'string') {
+          try {
+            parsedInputs = JSON.parse(rawInputs) as unknown
+          } catch (error) {
+            console.error('Failed to parse workflow run inputs', error)
+            return
+          }
         }
-      }
 
-      const userInputs = coerceReplayUserInputs(parsedInputs)
+        const userInputs = coerceReplayUserInputs(parsedInputs)
 
-      if (!userInputs || !Object.keys(userInputs).length) return
+        if (!userInputs || !Object.keys(userInputs).length) return
 
-      setInputs(userInputs)
-      setShowInputsPanel(true)
-      setShowDebugAndPreviewPanel(true)
-    })
-  }, [appACLCapabilities.canTestAndRun, replayRunId, workflowStore, getWorkflowRunAndTraceUrl])
+        setInputs(userInputs)
+        setShowInputsPanel(true)
+        setShowDebugAndPreviewPanel(true)
+      })
+      .catch((error) => toastRequestError(error))
+  }, [appACLCapabilities.canTestAndRun, appId, replayRunId, workflowStore])
 
   if (!data || isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
     return (
@@ -139,6 +139,7 @@ const WorkflowAppWithAdditionalContext = () => {
     <WorkflowWithDefaultContext edges={edgesData} nodes={nodesData}>
       <FeaturesProvider features={initialFeatures}>
         <WorkflowAppMain nodes={nodesData} edges={edgesData} viewport={data.graph.viewport} />
+        <CollaborationUpgradeModal />
       </FeaturesProvider>
     </WorkflowWithDefaultContext>
   )

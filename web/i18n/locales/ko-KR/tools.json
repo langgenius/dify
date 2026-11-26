@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "모든 워크플로를 도구로",
   "auth.authorized": "인증됨",
   "auth.setup": "사용을 위한 인증 설정",
-  "auth.setupModalTitle": "인증 설정",
-  "auth.setupModalTitleDescription": "자격 증명을 구성한 후에 워크스페이스의 모든 멤버가 이 도구를 사용하여 애플리케이션을 조작할 수 있습니다.",
   "auth.unauthorized": "권한 없음",
   "author": "저자",
   "builtInPromptTitle": "프롬프트",
