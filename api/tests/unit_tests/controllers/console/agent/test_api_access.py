@@ -1237,6 +1237,126 @@ def test_workflow_config_requires_owned_node_binding_and_agent(
         assert session.scalar(select(AgentConfigDraft.id)) is None
 
 
+@pytest.mark.parametrize(
+    ("workflow_version", "binding_version"),
+    [
+        ("2026-01-01 00:00:00", "2026-01-01 00:00:00"),
+        ("2026-01-01 00:00:00", Workflow.VERSION_DRAFT),
+        (Workflow.VERSION_DRAFT, "2026-01-01 00:00:00"),
+    ],
+    ids=["published-only", "published-workflow", "published-binding"],
+)
+def test_workflow_config_rejects_non_draft_node_binding(
+    harness: Harness, workflow_version: str, binding_version: str
+) -> None:
+    """Require a draft workflow and binding before reading config or preparing an asset write."""
+    agent_id, _ = harness.create_agent()
+    app_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        workflow = make_workflow(
+            app_id=app_id, tenant_id=harness.tenant_id, created_by=harness.account_id, version=workflow_version
+        )
+        soul = AgentSoulConfig(config_note="Existing config")
+        snapshot = AgentConfigSnapshot(tenant_id=harness.tenant_id, agent_id=agent_id, version=1, config_snapshot=soul)
+        session.get_one(Agent, agent_id).active_config_snapshot_id = snapshot.id
+        upload_file = make_upload_file(tenant_id=harness.tenant_id, created_by=harness.account_id)
+        snapshot_id, upload_file_id = snapshot.id, upload_file.id
+        session.add_all(
+            [
+                make_app(app_id=app_id, tenant_id=harness.tenant_id, mode=AppMode.WORKFLOW),
+                workflow,
+                snapshot,
+                upload_file,
+                WorkflowAgentNodeBinding(
+                    tenant_id=harness.tenant_id,
+                    app_id=app_id,
+                    workflow_id=workflow.id,
+                    workflow_version=binding_version,
+                    node_id="node-1",
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    agent_id=agent_id,
+                    current_snapshot_id=snapshot_id,
+                    node_job_config=WorkflowNodeJobConfig(),
+                ),
+            ]
+        )
+
+    path = f"/console/api/apps/{app_id}/agent/config"
+    manifest = harness.client.get(f"{path}/manifest?node_id=node-1", headers=harness.headers)
+    uploaded = harness.client.post(
+        f"{path}/files/batch?node_id=node-1", headers=harness.headers, json={"upload_file_ids": [upload_file_id]}
+    )
+    for response in (manifest, uploaded):
+        assert response.status_code == HTTPStatus.BAD_REQUEST, response.get_json()
+        assert response.get_json()["code"] == "agent_not_bound"
+    with harness.sessions() as session:
+        assert session.scalars(select(AgentConfigDraft)).all() == []
+        stored_snapshot = session.get_one(AgentConfigSnapshot, snapshot_id)
+        assert AgentSoulConfig.model_validate(stored_snapshot.config_snapshot_dict) == soul
+
+
+def test_workflow_config_selects_only_draft_agent_when_published_binding_exists(harness: Harness) -> None:
+    """Read the draft binding's Agent and limit asset writes to that Agent's shared draft."""
+    app_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        app = make_app(app_id=app_id, tenant_id=harness.tenant_id, mode=AppMode.WORKFLOW)
+        published_workflow = make_workflow(
+            app_id=app_id, tenant_id=harness.tenant_id, created_by=harness.account_id, version="2026-01-01 00:00:00"
+        )
+        draft_workflow = make_workflow(app_id=app_id, tenant_id=harness.tenant_id, created_by=harness.account_id)
+        app.workflow_id = published_workflow.id
+        upload_file = make_upload_file(tenant_id=harness.tenant_id, created_by=harness.account_id)
+        session.add_all([app, published_workflow, draft_workflow, upload_file])
+        upload_file_id = upload_file.id
+        targets: dict[str, tuple[str, str]] = {}
+        for workflow, name in ((published_workflow, "Published Agent"), (draft_workflow, "Draft Agent")):
+            agent = Agent(tenant_id=harness.tenant_id, name=name, scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
+            snapshot = AgentConfigSnapshot(
+                tenant_id=harness.tenant_id,
+                agent_id=agent.id,
+                version=1,
+                config_snapshot=AgentSoulConfig(config_note=name),
+            )
+            agent.active_config_snapshot_id = snapshot.id
+            session.add_all(
+                [
+                    agent,
+                    snapshot,
+                    WorkflowAgentNodeBinding(
+                        tenant_id=harness.tenant_id,
+                        app_id=app_id,
+                        workflow_id=workflow.id,
+                        workflow_version=workflow.version,
+                        node_id="node-1",
+                        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                        agent_id=agent.id,
+                        current_snapshot_id=snapshot.id,
+                        node_job_config=WorkflowNodeJobConfig(),
+                    ),
+                ]
+            )
+            targets[workflow.version] = (agent.id, snapshot.id)
+        draft_agent_id, draft_snapshot_id = targets[Workflow.VERSION_DRAFT]
+
+    path = f"/console/api/apps/{app_id}/agent/config"
+    manifest = harness.client.get(f"{path}/manifest?node_id=node-1", headers=harness.headers)
+    assert manifest.status_code == HTTPStatus.OK, manifest.get_json()
+    assert manifest.get_json()["agent_id"] == draft_agent_id
+    assert manifest.get_json()["config_version"]["id"] == draft_snapshot_id
+
+    uploaded = harness.client.post(
+        f"{path}/files/batch?node_id=node-1", headers=harness.headers, json={"upload_file_ids": [upload_file_id]}
+    )
+    assert uploaded.status_code == HTTPStatus.CREATED, uploaded.get_json()
+    with harness.sessions() as session:
+        draft = session.scalars(select(AgentConfigDraft)).one()
+        assert uploaded.get_json()["config_version"]["id"] == draft.id
+        assert draft.agent_id == draft_agent_id
+        assert draft.base_snapshot_id == draft_snapshot_id
+        soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        assert [file.file_id for file in soul.config_files] == [upload_file_id]
+
+
 @pytest.mark.parametrize("failure", ["missing-build", "other-editor-build", "missing-snapshot", "other-agent-snapshot"])
 def test_agent_config_rejects_missing_or_unowned_config_version(harness: Harness, failure: str) -> None:
     """Failed reads and uploads never fall back to, or prepare, a shared draft."""
@@ -1531,6 +1651,84 @@ def test_workflow_inspector_reads_snapshot_and_prepares_draft_only_for_asset_wri
     assert uploaded.status_code == HTTPStatus.CREATED, uploaded.get_json()
     assert uploaded.get_json()["config_version"]["kind"] == "draft"
     assert uploaded.get_json()["files"][0]["file_id"] == upload_id
+
+
+@pytest.mark.parametrize("stale", [False, True], ids=["current-shared-draft", "stale-inline-draft"])
+def test_workflow_inspector_selects_effective_config_without_committing(harness: Harness, stale: bool) -> None:
+    """GET reads the current shared draft or active snapshot and leaves the stored draft intact."""
+    app_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        workflow = make_workflow(app_id=app_id, tenant_id=harness.tenant_id, created_by=harness.account_id)
+        agent = Agent(
+            tenant_id=harness.tenant_id,
+            name="Inline Agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+        )
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id,
+            agent_id=agent.id,
+            version=2,
+            config_snapshot=AgentSoulConfig(config_note="Active snapshot"),
+        )
+        previous_snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent.id, version=1, config_snapshot=AgentSoulConfig()
+        )
+        agent.active_config_snapshot_id = snapshot.id
+        draft = AgentConfigDraft(
+            tenant_id=harness.tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            base_snapshot_id=previous_snapshot.id if stale else snapshot.id,
+            config_snapshot=AgentSoulConfig(config_note="Shared draft"),
+        )
+        session.add_all(
+            [
+                make_app(app_id=app_id, tenant_id=harness.tenant_id, mode=AppMode.WORKFLOW),
+                workflow,
+                agent,
+                previous_snapshot,
+                snapshot,
+                draft,
+                WorkflowAgentNodeBinding(
+                    tenant_id=harness.tenant_id,
+                    app_id=app_id,
+                    workflow_id=workflow.id,
+                    workflow_version=Workflow.VERSION_DRAFT,
+                    node_id="node-1",
+                    binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+                    agent_id=agent.id,
+                    current_snapshot_id=snapshot.id,
+                    node_job_config=WorkflowNodeJobConfig(),
+                ),
+            ]
+        )
+        session.flush()
+        agent_id, draft_id, snapshot_id = agent.id, draft.id, snapshot.id
+        draft_before = (draft.base_snapshot_id, draft.config_snapshot_dict, draft.updated_at)
+
+    commits: list[Session] = []
+    observe_commit = commits.append
+    event.listen(harness.sessions, "after_commit", observe_commit)
+    try:
+        manifest = harness.client.get(
+            f"/console/api/apps/{app_id}/agent/config/manifest?node_id=node-1", headers=harness.headers
+        )
+    finally:
+        event.remove(harness.sessions, "after_commit", observe_commit)
+
+    assert manifest.status_code == HTTPStatus.OK, manifest.get_json()
+    body = manifest.get_json()
+    assert body["agent_id"] == agent_id
+    assert body["config_version"]["id"] == (snapshot_id if stale else draft_id)
+    assert body["config_version"]["kind"] == ("snapshot" if stale else "draft")
+    assert body["note"] == ("Active snapshot" if stale else "Shared draft")
+    assert not commits
+    with harness.sessions() as session:
+        stored_draft = session.scalars(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)).one()
+        assert stored_draft.id == draft_id
+        draft_after = (stored_draft.base_snapshot_id, stored_draft.config_snapshot_dict, stored_draft.updated_at)
+        assert draft_after == draft_before
 
 
 @pytest.mark.parametrize(
