@@ -119,41 +119,43 @@ const clientMock = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.sources.bySourceId.delete`]: async () => ({ status: 'accepted' }),
+    [`${space}.sources.bySourceId.pages.get`]: async () => ({
+      next_cursor: null,
+      workspaces: [],
+    }),
+    [`${space}.sources.bySourceId.files.get`]: async () => ({ buckets: [] }),
+    [`${space}.sources.post`]: async (input: {
+      body: { connectionId: string; name: string; uri: string; metadata: Record<string, unknown> }
+    }) => ({
+      connection_id: input.body.connectionId,
+      created_at: '2026-07-20T10:00:00Z',
+      credential_configured: true,
+      id: `preview-${input.body.connectionId}`,
+      knowledge_space_id: 'space-1',
+      metadata: input.body.metadata,
+      name: input.body.name,
+      permission_scope: [],
+      status: 'disabled',
+      type: 'connector',
+      updated_at: '2026-07-20T10:00:00Z',
+      uri: input.body.uri,
+      version: 1,
+    }),
+    [`${space}.sourceConnections.byConnectionId.refresh.post`]: async (input: never) =>
+      connectionApiResponse(await clientMock.refreshConnection(input)),
+    [`${space}.sourceConnections.post`]: async (input: never) =>
+      connectionApiResponse(await clientMock.createConnection(input)),
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.sources.bySourceId.delete`]: async () => ({ status: 'accepted' }),
-      [`${space}.sources.bySourceId.pages.get`]: async () => ({
-        next_cursor: null,
-        workspaces: [],
-      }),
-      [`${space}.sources.bySourceId.files.get`]: async () => ({ buckets: [] }),
-      [`${space}.sources.post`]: async (input: {
-        body: { connectionId: string; name: string; uri: string; metadata: Record<string, unknown> }
-      }) => ({
-        connection_id: input.body.connectionId,
-        created_at: '2026-07-20T10:00:00Z',
-        credential_configured: true,
-        id: `preview-${input.body.connectionId}`,
-        knowledge_space_id: 'space-1',
-        metadata: input.body.metadata,
-        name: input.body.name,
-        permission_scope: [],
-        status: 'disabled',
-        type: 'connector',
-        updated_at: '2026-07-20T10:00:00Z',
-        uri: input.body.uri,
-        version: 1,
-      }),
-      [`${space}.sourceConnections.byConnectionId.refresh.post`]: async (input: never) =>
-        connectionApiResponse(await clientMock.refreshConnection(input)),
-      [`${space}.sourceConnections.post`]: async (input: never) =>
-        connectionApiResponse(await clientMock.createConnection(input)),
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'auth.plugin.datasource.list.get': async () => respond(server.datasourceAuth, (data) => data),
       'auth.plugin.datasource.defaultList.get': async (input: never) => {
         await server.listDatasourceAuth(input)

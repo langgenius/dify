@@ -19,10 +19,16 @@ const { mockDynamicOptions } = vi.hoisted(() => ({ mockDynamicOptions: vi.fn() }
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    // Tool options load through the client, trigger options through the query contract.
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
+        mockDynamicOptions(input),
+    }),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.parameters.dynamicOptions.get': (input) =>
         mockDynamicOptions(input),
     }),

@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { useFileScanEnabled } from '@/features/file-scan/provider-types'
 
 export type IntegrationHeader = {
   description: string
@@ -18,7 +19,8 @@ export const getPluginCategoryBySection = (section: IntegrationSection) => {
 }
 
 export function useIntegrationNav(section: IntegrationSection) {
-  const { t } = useTranslation(['common', 'plugin', 'workflow', 'navigation'])
+  const { t } = useTranslation(['common', 'plugin', 'workflow', 'navigation', 'fileScan'])
+  const fileScanEnabled = useFileScanEnabled()
   const providerItem = useMemo<IntegrationSidebarNavItemData>(
     () => ({
       section: 'provider',
@@ -46,6 +48,19 @@ export function useIntegrationNav(section: IntegrationSection) {
       iconClassName: 'h-[13px] w-3.5',
     }),
     [t],
+  )
+  // Malware scanners only exist in workspaces that have the feature turned on.
+  const fileScanItem = useMemo<IntegrationSidebarNavItemData | null>(
+    () =>
+      fileScanEnabled
+        ? {
+            section: 'file-scan',
+            label: t(($) => $['settings.title'], { ns: 'fileScan' }),
+            icon: 'i-ri-shield-check-line',
+            iconClassName: 'size-4',
+          }
+        : null,
+    [fileScanEnabled, t],
   )
   const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => {
     const items: IntegrationSidebarNavItemData[] = [
@@ -116,6 +131,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     ...toolItems,
     ...secondaryItems,
     customEndpointItem,
+    ...(fileScanItem ? [fileScanItem] : []),
   ].find((item) => item.section === section)
   const integrationHeader = useMemo<IntegrationHeader | null>(() => {
     switch (section) {
@@ -143,6 +159,11 @@ export function useIntegrationNav(section: IntegrationSection) {
         return {
           title: t(($) => $['settings.customEndpoint'], { ns: 'navigation' }),
           description: t(($) => $['apiBasedExtensionPage.description'], { ns: 'common' }),
+        }
+      case 'file-scan':
+        return {
+          title: t(($) => $['settings.title'], { ns: 'fileScan' }),
+          description: t(($) => $['settings.description'], { ns: 'fileScan' }),
         }
       case 'data-source':
         return {
@@ -173,6 +194,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     activeItem,
     customEndpointItem,
     dataSourceItem,
+    fileScanItem,
     integrationHeader,
     providerItem,
     secondaryItems,

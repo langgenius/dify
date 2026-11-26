@@ -226,7 +226,8 @@ func TestJobRoutesRejectMalformedIDsBeforeCallingService(t *testing.T) {
 					t.Fatalf("expected 400, got %d: %s", w.Code, w.Body)
 				}
 				var result ErrorResponse
-				if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+				// A recovered panic can append another error after the 400 response.
+				if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 					t.Fatal(err)
 				}
 				if result.Error.Code != "invalid_job_id" || result.Error.Message != "job id must be 16 lowercase hexadecimal characters" {
@@ -264,7 +265,7 @@ func TestJobRoutesReturnNotFoundForValidUnknownIDs(t *testing.T) {
 				t.Fatalf("expected 404, got %d: %s", w.Code, w.Body)
 			}
 			var result ErrorResponse
-			if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
 			if result.Error.Code != "job_not_found" {

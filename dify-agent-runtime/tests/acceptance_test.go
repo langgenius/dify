@@ -463,8 +463,20 @@ func TestDeleteJob(t *testing.T) {
 			if err != nil {
 				t.Fatalf("delete request failed: %v", err)
 			}
-			defer resp.Body.Close()
-			assertStatus(t, resp, 200)
+			assertStatus(t, resp, http.StatusOK)
+			var deleteResult struct {
+				JobID   string `json:"job_id"`
+				Deleted bool   `json:"deleted"`
+			}
+			if err := json.Unmarshal(readBody(t, resp), &deleteResult); err != nil {
+				t.Fatalf("decode delete response: %v", err)
+			}
+			if deleteResult.JobID != jobID {
+				t.Errorf("expected job_id %q, got %q", jobID, deleteResult.JobID)
+			}
+			if !deleteResult.Deleted {
+				t.Error("expected deleted=true")
+			}
 
 			// Should be gone now
 			getResp := doGet(t, tgt, fmt.Sprintf("/v1/jobs/%s", jobID), true)

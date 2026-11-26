@@ -346,9 +346,20 @@ class DifyNodeFactory(NodeFactory):
         use_workflow_tool_containers: bool = True,
         workflow_tools: dict[str, "WorkflowTool"] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
+        root_runtime_state: "RuntimeState | None" = None,
+        root_graph_config: Mapping[str, Any] | None = None,
     ) -> None:
+        """Compose nodes for one frame while retaining graph-wide lineage.
+
+        Pre: init params and runtime state belong to the same workflow run.
+        None denotes the root frame. Post: child factories retain the root's
+        public container ledger so Agent parallel scopes can be reconstructed
+        after scheduling and pause/resume without sharing branch resources.
+        """
         self.init_params = init_params
         self.runtime_state = runtime_state
+        self._root_runtime_state = root_runtime_state if root_runtime_state is not None else runtime_state
+        self._root_graph_config = root_graph_config if root_graph_config is not None else init_params.graph_config
         self._dify_context = self._resolve_dify_context(init_params.run_context)
         self._use_workflow_tool_containers = use_workflow_tool_containers
         self._execution_driver = execution_driver
@@ -421,10 +432,15 @@ class DifyNodeFactory(NodeFactory):
         self._agent_strategy_resolver = PluginAgentStrategyResolver()
         self._agent_strategy_presentation_provider = PluginAgentStrategyPresentationProvider()
         self._agent_runtime_support = AgentRuntimeSupport()
-        self._agent_message_transformer = AgentMessageTransformer()
+        self._agent_message_transformer = AgentMessageTransformer(session_factory.create_session)
 
     @override
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
+        """Rebind one child frame, preserving the owning run's lineage ledger.
+
+        Pre: the supplied child belongs to this factory's run. Post: only frame
+        runtime services are rebound; the root container ledger is retained.
+        """
         return DifyNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
@@ -432,6 +448,8 @@ class DifyNodeFactory(NodeFactory):
             use_workflow_tool_containers=self._use_workflow_tool_containers,
             workflow_tools=self.workflow_tools,
             execution_driver=self._execution_driver,
+            root_runtime_state=self._root_runtime_state,
+            root_graph_config=self._root_graph_config,
         )
 
     @override
@@ -666,6 +684,8 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 
             return {
+                "root_runtime_state": self._root_runtime_state,
+                "root_graph_config": self._root_graph_config,
                 "binding_resolver": WorkflowAgentBindingResolver(),
                 "runtime_request_builder": WorkflowAgentRuntimeRequestBuilder(
                     request_builder=AgentBackendRunRequestBuilder(),

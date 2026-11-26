@@ -3,8 +3,9 @@ import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/a
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { ReasoningChunkResponse } from '@/types/workflow'
+import { useQueryClient } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -19,20 +20,27 @@ import {
 import { getProcessedInputs, processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
 import {
+  isWorkflowAgentToolLog,
+  upsertWorkflowToolActivity,
+} from '@/app/components/base/chat/workflow-agent-tool-activity'
+import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
 import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { toast } from '@/app/notifications'
-import { sseGet } from '@/service/base'
-import { useInvalidateAllLastRun } from '@/service/use-workflow'
+import { toastRequestError } from '@/app/query-error-toast'
+import { streamEvents } from '@/service/event-stream'
 import { submitHumanInputForm } from '@/service/workflow'
+import { workflowRunEventsRequest } from '@/service/workflow-events'
+import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { DEFAULT_ITER_TIMES, DEFAULT_LOOP_TIMES } from '../../constants'
 import { useHooksStore } from '../../hooks-store'
 import { useSetWorkflowVarsWithValue } from '../../hooks/use-set-workflow-vars-with-value'
 import { useWorkflowRun } from '../../hooks/use-workflow-run'
+import { agentLogItemFromStream } from '../../hooks/use-workflow-run-event/use-workflow-agent-log'
 import { useWorkflowStore } from '../../store'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 
@@ -50,6 +58,7 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  retireDebugWorkspaces?: () => void,
 ) => {
   const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
@@ -62,10 +71,15 @@ export const useChat = (
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const resource = useAtomValue(editorResourceAtom)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const invalidAllLastRun = useInvalidateAllLastRun(resource)
+  const queryClient = useQueryClient()
+  const invalidAllLastRun = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: lastRunQueryKey(resource) }),
+    [queryClient, resource],
+  )
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
+  const retireDebugWorkspacesRef = useRef(retireDebugWorkspaces)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -145,6 +159,19 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    retireDebugWorkspacesRef.current = retireDebugWorkspaces
+  }, [retireDebugWorkspaces])
+
+  // Closing the panel unmounts this hook and ends the editor's debugging. A page
+  // refresh loses the Conversation id, so the server retires the editor's whole
+  // debug set on this app rather than only the id this mount knows about.
+  useEffect(() => {
+    return () => {
+      retireDebugWorkspacesRef.current?.()
+    }
+  }, [])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -197,6 +224,7 @@ export const useChat = (
 
   const handleRestart = useCallback(() => {
     handleStop()
+    retireDebugWorkspacesRef.current?.()
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)
@@ -592,45 +620,49 @@ export const useChat = (
           }
         },
         onAgentLog: ({ data }) => {
-          const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(
-            (item) => item.node_id === data.node_id,
-          )
-          if (currentNodeIndex > -1) {
-            const current = responseItem.workflowProcess!.tracing![currentNodeIndex]!
+          upsertWorkflowToolActivity(responseItem, data)
+          if (!isWorkflowAgentToolLog(data)) {
+            const item = agentLogItemFromStream(data)
+            const currentNodeIndex = responseItem.workflowProcess!.tracing!.findIndex(
+              (tracing) => tracing.node_id === item.node_id,
+            )
+            if (currentNodeIndex > -1) {
+              const current = responseItem.workflowProcess!.tracing![currentNodeIndex]!
 
-            if (current!.execution_metadata) {
-              if (current!.execution_metadata.agent_log) {
-                const currentLogIndex = current!.execution_metadata.agent_log.findIndex(
-                  (log) => log.message_id === data.message_id,
-                )
-                if (currentLogIndex > -1) {
-                  current!.execution_metadata.agent_log[currentLogIndex] = {
-                    ...current!.execution_metadata.agent_log[currentLogIndex],
-                    ...data,
+              if (current!.execution_metadata) {
+                if (current!.execution_metadata.agent_log) {
+                  const currentLogIndex = current!.execution_metadata.agent_log.findIndex(
+                    (log) => log.message_id === item.message_id,
+                  )
+                  if (currentLogIndex > -1) {
+                    current!.execution_metadata.agent_log[currentLogIndex] = {
+                      ...current!.execution_metadata.agent_log[currentLogIndex],
+                      ...item,
+                    }
+                  } else {
+                    current!.execution_metadata.agent_log.push(item)
                   }
                 } else {
-                  current!.execution_metadata.agent_log.push(data)
+                  current!.execution_metadata.agent_log = [item]
                 }
               } else {
-                current!.execution_metadata.agent_log = [data]
+                current!.execution_metadata = {
+                  agent_log: [item],
+                } as any
               }
-            } else {
-              current!.execution_metadata = {
-                agent_log: [data],
-              } as any
-            }
 
-            responseItem.workflowProcess!.tracing[currentNodeIndex] = {
-              ...current,
+              responseItem.workflowProcess!.tracing[currentNodeIndex] = {
+                ...current,
+              }
             }
-
-            updateCurrentQAOnTree({
-              placeholderQuestionId,
-              questionItem,
-              responseItem,
-              parentId: params.parent_message_id,
-            })
           }
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
         },
         onHumanInputRequired: ({ data }) => {
           updatePendingHumanInputForm(responseItem, data)
@@ -700,7 +732,12 @@ export const useChat = (
     const form = threadMessages
       .flatMap((item) => item.humanInputFormDataList ?? [])
       .find((item) => item.form_token === formToken)
-    await submitHumanInputForm(formToken, formData, form?.form_version)
+    try {
+      await submitHumanInputForm(formToken, formData, form?.form_version)
+    } catch (error) {
+      toastRequestError(error)
+      throw error
+    }
   }
 
   const getHumanInputNodeData = (nodeID: string) => {
@@ -713,9 +750,7 @@ export const useChat = (
   const handleResume = useCallback(
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
-
-      const otherOptions: IOtherOptions = {
+      const otherOptions: StreamCallbacks = {
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -954,11 +989,16 @@ export const useChat = (
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })
         },
+        onAgentLog: ({ data }) => {
+          updateChatTreeNode(messageId, (responseItem) => {
+            upsertWorkflowToolActivity(responseItem, data)
+          })
+        },
       }
 
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
-      sseGet(url, {}, otherOptions)
+      streamEvents(workflowRunEventsRequest(workflowRunId), otherOptions)
     },
     [
       updateChatTreeNode,

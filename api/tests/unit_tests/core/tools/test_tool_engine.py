@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from decimal import Decimal
+from typing import Any, override
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -35,6 +36,8 @@ from core.tools.errors import (
     ToolParameterValidationError,
 )
 from core.tools.tool_engine import ToolEngine
+from models.enums import ConversationFromSource
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, Message, MessageFile
 
 
@@ -74,18 +77,18 @@ def _message() -> Message:
         query="query",
         message="",
         message_tokens=0,
-        message_unit_price=0,
-        message_price_unit=0,
+        message_unit_price=Decimal(0),
+        message_price_unit=Decimal(0),
         answer="",
         answer_tokens=0,
-        answer_unit_price=0,
-        answer_price_unit=0,
+        answer_unit_price=Decimal(0),
+        answer_price_unit=Decimal(0),
         parent_message_id=None,
         provider_response_latency=0,
-        total_price=0,
+        total_price=Decimal(0),
         currency="USD",
-        invoke_from="debugger",
-        from_source="console",
+        invoke_from=ModelInvokeFrom.DEBUGGER,
+        from_source=ConversationFromSource.CONSOLE,
         from_end_user_id=None,
         from_account_id=str(uuid4()),
         app_mode=AppMode.CHAT,
@@ -106,25 +109,27 @@ class _DummyTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
-        session: Any,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage]:
+        del session
         if self.raise_error:
             raise self.raise_error
-        if isinstance(self.result, list | Generator):
+        if isinstance(self.result, (list, Generator)):
             yield from self.result
         else:
             yield self.result
 
 
 def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
-    parameters = []
+    parameters: list[ToolParameter] = []
     if with_llm_parameter:
         parameters = [
             ToolParameter.get_simple_instance(
@@ -142,7 +147,7 @@ def _build_tool(with_llm_parameter: bool = False) -> _DummyTool:
     return _DummyTool(entity=entity, runtime=runtime)
 
 
-def test_convert_tool_response_to_str_and_extract_binary_messages():
+def test_convert_tool_response_to_str_and_extract_binary_messages() -> None:
     tool = _build_tool()
     messages = [
         tool.create_text_message("hello"),
@@ -186,6 +191,80 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         )
 
 
+@pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
+def test_extract_binary_messages_treat_an_empty_mimetype_as_missing(mime_type: str | None) -> None:
+    """Empty MIME metadata must preserve URLs and use the inferred or default type."""
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.png"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BINARY_LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/d.unknown-ext"),
+            meta={"mime_type": mime_type, "filename": "d"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/e.unknown-ext"),
+            meta={"mime_type": mime_type},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    # the image paths keep guessing from the url, the others fall back to octet-stream
+    assert [b.mimetype for b in binaries] == [
+        "image/png",
+        "image/png",
+        "application/octet-stream",
+        "application/octet-stream",
+        "application/octet-stream",
+    ]
+    assert [b.url for b in binaries] == [
+        "https://example.com/a.png",
+        "https://example.com/b.png",
+        "https://example.com/c.unknown-ext",
+        "https://example.com/d.unknown-ext",
+        "https://example.com/e.unknown-ext",
+    ]
+
+
+def test_extract_binary_messages_keep_an_explicit_mimetype() -> None:
+    messages = [
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.IMAGE,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/a.png"),
+            meta={"mime_type": "image/gif"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/b.docx"),
+            meta={"mime_type": "text/plain"},
+        ),
+        ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.LINK,
+            message=ToolInvokeMessage.TextMessage(text="https://example.com/c.txt"),
+            meta={"mime_type": "application/pdf"},
+        ),
+    ]
+
+    binaries = list(ToolEngine._extract_tool_response_binary_and_text(messages))
+
+    assert [b.mimetype for b in binaries] == ["image/gif", "text/plain", "application/pdf"]
+
+
 @pytest.mark.parametrize("json_first", [True, False])
 @pytest.mark.parametrize(
     ("text", "json_object"),
@@ -207,7 +286,7 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
 )
 def test_convert_tool_response_deduplicates_equivalent_json(
     text: str, json_object: dict[str, Any] | list[Any], json_first: bool
-):
+) -> None:
     tool = _build_tool()
     messages = [
         ToolInvokeMessage(
@@ -240,7 +319,7 @@ def test_convert_tool_response_deduplicates_equivalent_json(
         pytest.param('{"a":"a b"}', {"a": "ab"}, '{"a": "ab"}', id="string-whitespace"),
     ],
 )
-def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str):
+def test_convert_tool_response_preserves_distinct_json(text: str, json_object: dict[str, Any], json_text: str) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message(json_object), tool.create_text_message(text)]
 
@@ -248,14 +327,14 @@ def test_convert_tool_response_preserves_distinct_json(text: str, json_object: d
 
 
 @pytest.mark.parametrize("suppress_output", [True, False])
-def test_convert_tool_response_preserves_json_only_output(suppress_output: bool):
+def test_convert_tool_response_preserves_json_only_output(suppress_output: bool) -> None:
     tool = _build_tool()
     messages = [tool.create_json_message({"b": 2, "a": "中文"}, suppress_output=suppress_output)]
 
     assert ToolEngine.tool_response_to_str(messages) == ("" if suppress_output else '{"b": 2, "a": "中文"}')
 
 
-def test_convert_tool_response_deduplicates_only_matching_json():
+def test_convert_tool_response_deduplicates_only_matching_json() -> None:
     tool = _build_tool()
     text = '{"b":2,"a":1}'
     messages = [
@@ -271,7 +350,7 @@ def test_convert_tool_response_deduplicates_only_matching_json():
 
 
 @pytest.mark.parametrize("sqlite_session", [(MessageFile,)], indirect=True)
-def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session):
+def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite_session: Session) -> None:
     binaries = [
         ToolInvokeMessageBinary(mimetype="image/png", url="https://example.com/abc.png"),
         ToolInvokeMessageBinary(mimetype="audio/wav", url="https://example.com/def.wav"),
@@ -292,13 +371,14 @@ def test_create_message_files_and_invoke_generator(sqlite_engine: Engine, sqlite
 
     tool = _build_tool()
     invoked = list(ToolEngine._invoke(sqlite_session, tool, {"a": 1}, user_id="u"))
+    assert isinstance(invoked[0], ToolInvokeMessage)
     assert invoked[0].type == ToolInvokeMessage.MessageType.TEXT
     assert isinstance(invoked[-1], ToolInvokeMeta)
     assert invoked[-1].error is None
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
+def test_generic_invoke_success_and_error_paths(sqlite_session: Session) -> None:
     tool = _build_tool()
     callback = DifyWorkflowCallbackHandler()
     response = list(
@@ -314,6 +394,7 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
             message_id="m1",
         )
     )
+    assert isinstance(response[0].message, ToolInvokeMessage.TextMessage)
     assert response[0].message.text == "ok"
 
     tool.raise_error = RuntimeError("boom")
@@ -332,7 +413,7 @@ def test_generic_invoke_success_and_error_paths(sqlite_session: Session):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_success(sqlite_session: Session):
+def test_agent_invoke_success(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -410,7 +491,7 @@ def test_agent_invoke_emits_tool_invoked_from_meta(
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_param_validation_error(sqlite_session: Session):
+def test_agent_invoke_param_validation_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -434,7 +515,7 @@ def test_agent_invoke_param_validation_error(sqlite_session: Session):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_engine_meta_error(sqlite_session: Session):
+def test_agent_invoke_engine_meta_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -458,7 +539,7 @@ def test_agent_invoke_engine_meta_error(sqlite_session: Session):
     assert error_meta.error == "meta failure"
 
 
-def test_convert_tool_response_excludes_variable_messages():
+def test_convert_tool_response_excludes_variable_messages() -> None:
     """Regression test for issue #34723.
 
     WorkflowTool._invoke yields VARIABLE, TEXT, and suppressed-JSON messages.
@@ -481,7 +562,7 @@ def test_convert_tool_response_excludes_variable_messages():
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
+def test_agent_invoke_tool_invoke_error(sqlite_session: Session) -> None:
     tool = _build_tool(with_llm_parameter=True)
     callback = DifyAgentCallbackHandler()
     message = _message()
@@ -501,3 +582,72 @@ def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
 
     assert "tool invoke error" in error_text
     assert files == []
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session) -> None:
+    # No single LLM parameter, so the JSON-parse branch runs instead of the
+    # pass-through that wraps the raw string.
+    tool = _build_tool()
+    callback = DifyAgentCallbackHandler()
+    message = _message()
+    meta = ToolInvokeMeta.empty()
+
+    with patch.object(ToolEngine, "_invoke", return_value=iter([tool.create_text_message("ok"), meta])) as invoke:
+        with patch(
+            "core.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **kwargs: messages,
+        ):
+            with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
+                with patch.object(ToolEngine, "_create_message_files", return_value=[]):
+                    result_text, message_files, result_meta = ToolEngine.agent_invoke(
+                        session=sqlite_session,
+                        tool=tool,
+                        tool_parameters='{"a": 1, "b": 2}',
+                        user_id="u1",
+                        tenant_id="tenant-1",
+                        message=message,
+                        invoke_from=InvokeFrom.DEBUGGER,
+                        agent_tool_callback=callback,
+                        trace_scope=None,
+                    )
+
+    assert invoke.call_args.args[2] == {"a": 1, "b": 2}
+    assert result_text == "ok"
+    assert result_meta.error is None
+
+
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+@pytest.mark.parametrize(
+    ("bad_parameters", "interpolated_value"),
+    [
+        pytest.param("[1, 2]", "[1, 2]", id="array"),
+        pytest.param('"quoted"', "quoted", id="json-string"),
+        pytest.param("null", "None", id="null"),
+        pytest.param("true", "True", id="boolean"),
+        pytest.param('["a"]', "['a']", id="string-array"),
+        pytest.param("not json", "not json", id="invalid-json"),
+        pytest.param("", "", id="empty-string"),
+    ],
+)
+def test_agent_invoke_rejects_non_dict_parameter_string(
+    sqlite_session: Session, bad_parameters: str, interpolated_value: str
+) -> None:
+    tool = _build_tool()
+    callback = DifyAgentCallbackHandler()
+    message = _message()
+
+    with pytest.raises(ValueError, match="should be a dict") as exc_info:
+        ToolEngine.agent_invoke(
+            session=sqlite_session,
+            tool=tool,
+            tool_parameters=bad_parameters,
+            user_id="u1",
+            tenant_id="tenant-1",
+            message=message,
+            invoke_from=InvokeFrom.DEBUGGER,
+            agent_tool_callback=callback,
+            trace_scope=None,
+        )
+
+    assert str(exc_info.value) == f"tool_parameters should be a dict, but got a string: {interpolated_value}"

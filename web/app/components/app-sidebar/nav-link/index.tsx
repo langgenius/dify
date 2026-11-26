@@ -1,5 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
@@ -13,6 +14,8 @@ export type NavLinkProps = {
   }
   mode?: string
   disabled?: boolean
+  /** Why the item is disabled; shown on hover and focus. */
+  disabledReason?: string
   pathname?: string
   active?: boolean
   onClick?: () => void
@@ -24,6 +27,7 @@ const NavLink = ({
   iconMap,
   mode = 'expand',
   disabled = false,
+  disabledReason,
   pathname,
   active,
   onClick,
@@ -50,7 +54,7 @@ const NavLink = ({
       : 'border-transparent system-sm-medium text-components-menu-item-text hover:bg-components-menu-item-bg-hover hover:text-components-menu-item-text-hover',
     isCollapsed
       ? 'flex size-8 items-center justify-center p-1.5'
-      : 'flex h-8 items-center rounded-lg pr-1 pl-3',
+      : 'flex h-8 items-center rounded-lg ps-3 pe-1',
     'rounded-lg',
     'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
   )
@@ -62,18 +66,19 @@ const NavLink = ({
   )
 
   if (disabled) {
-    return (
+    const disabledItem = (
       <button
         key={name}
         type="button"
-        disabled
+        // aria-disabled keeps the item focusable and hoverable, so its reason can be shown.
+        disabled={!disabledReason}
         className={cn(
           borderClassName,
           'cursor-not-allowed rounded-lg system-sm-medium text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
           'border-transparent',
           isCollapsed
             ? 'flex size-8 items-center justify-center p-1.5'
-            : 'flex h-8 items-center pr-1 pl-3',
+            : 'flex h-8 items-center ps-3 pe-1',
         )}
         title={mode === 'collapse' ? name : ''}
         aria-disabled
@@ -82,12 +87,21 @@ const NavLink = ({
         <span
           className={cn(
             'overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out',
-            mode === 'expand' ? 'ml-2 max-w-none opacity-100' : 'ml-0 max-w-0 opacity-0',
+            mode === 'expand' ? 'ms-2 max-w-none opacity-100' : 'ms-0 max-w-0 opacity-0',
           )}
         >
           {name}
         </span>
       </button>
+    )
+
+    if (!disabledReason) return disabledItem
+
+    return (
+      <Tooltip>
+        <TooltipTrigger render={disabledItem} />
+        <TooltipContent side="right">{disabledReason}</TooltipContent>
+      </Tooltip>
     )
   }
 
@@ -104,7 +118,7 @@ const NavLink = ({
         <span
           className={cn(
             'overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out',
-            mode === 'expand' ? 'ml-2 max-w-none opacity-100' : 'ml-0 max-w-0 opacity-0',
+            mode === 'expand' ? 'ms-2 max-w-none opacity-100' : 'ms-0 max-w-0 opacity-0',
           )}
         >
           {name}
@@ -119,7 +133,7 @@ const NavLink = ({
       <span
         className={cn(
           'overflow-hidden whitespace-nowrap transition-[margin-left,max-width,opacity] duration-200 ease-in-out',
-          mode === 'expand' ? 'ml-2 max-w-none opacity-100' : 'ml-0 max-w-0 opacity-0',
+          mode === 'expand' ? 'ms-2 max-w-none opacity-100' : 'ms-0 max-w-0 opacity-0',
         )}
       >
         {name}

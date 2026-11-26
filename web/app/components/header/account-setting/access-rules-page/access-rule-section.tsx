@@ -1,5 +1,7 @@
 'use client'
 
+import type { AccessPolicy } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { RefObject } from 'react'
 import type { AccessRule } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,6 +28,8 @@ type AccessRuleSectionProps = {
   onCreate?: () => void
   onViewRule?: (rule: AccessRule) => void
   onEditRule?: (rule: AccessRule) => void
+  onDeleteRule: (policy: AccessPolicy) => void
+  headingTriggerRef: RefObject<HTMLButtonElement | null>
   onRetry?: () => void
   className?: string
 }
@@ -43,6 +47,8 @@ const AccessRuleSection = ({
   onCreate,
   onViewRule,
   onEditRule,
+  onDeleteRule,
+  headingTriggerRef,
   onRetry,
   className,
 }: AccessRuleSectionProps) => {
@@ -100,7 +106,10 @@ const AccessRuleSection = ({
       }
     >
       <div className="flex items-center gap-4 p-4">
-        <CollapsibleTrigger className="flex min-h-0 min-w-0 flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary">
+        <CollapsibleTrigger
+          ref={headingTriggerRef}
+          className="flex min-h-0 min-w-0 flex-1 touch-manipulation items-center justify-start gap-0 text-start system-sm-medium text-text-secondary select-none hover:text-text-primary data-panel-open:text-text-primary"
+        >
           <div className="flex min-w-0 items-center gap-4">
             <span className="truncate system-sm-semibold text-text-primary">{title}</span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
@@ -166,6 +175,7 @@ const AccessRuleSection = ({
                 className={cn(index > 0 && 'border-t border-divider-regular')}
                 onView={onViewRule}
                 onEdit={onEditRule}
+                onDelete={onDeleteRule}
               />
             ))}
             <div ref={anchorRef} className="h-1" />

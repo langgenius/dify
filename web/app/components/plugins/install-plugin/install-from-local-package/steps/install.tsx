@@ -3,14 +3,16 @@ import type { FC } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { uninstallPlugin } from '@/service/plugins'
-import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plugins'
+import { usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Card from '../../../card'
 import { TaskStatus } from '../../../types'
@@ -53,7 +55,9 @@ const Installed: FC<Props> = ({
   }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
+  const { mutateAsync: installPackageFromLocal } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.pkg.post.mutationOptions(),
+  )
 
   const { check, stop } = checkTaskStatus()
 
@@ -73,7 +77,9 @@ const Installed: FC<Props> = ({
         await uninstallPlugin(installedInfoPayload.installedId, { preserveCredentials: true })
       }
 
-      const response = await installPackageFromLocal(uniqueIdentifier)
+      const response = await installPackageFromLocal({
+        body: { plugin_unique_identifiers: [uniqueIdentifier] },
+      })
       const { all_installed, task_id } = response
       handleInstallTaskStart(response)
       const taskId = task_id
@@ -97,7 +103,7 @@ const Installed: FC<Props> = ({
         onFailed(e)
         return
       }
-      onFailed()
+      onFailed(getRequestErrorMessage(e))
     }
   }
 

@@ -60,20 +60,22 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.plugin.installedIds.get': async () => ({ plugin_ids: [] }),
       'auth.plugin.datasource.list.get': async () => ({ result: [] }),
       'apiBasedExtension.get': async () => [],
+      'fileScan.providers.get': async () => ({ data: [] }),
+      'fileScan.providerTypes.get': async () => ({ data: [] }),
       'workspaces.current.toolProviders.get': async () => [],
       'workspaces.current.tools.api.get': async () => [],
       'workspaces.current.tools.workflow.get': async () => [],
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.permission.fetch.get': api.permission,
-      'workspaces.current.plugin.permission.change.post': api.savePermission,
-      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
-      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
       'workspaces.current.plugin.debuggingKey.get': api.debug,
       'workspaces.current.plugin.marketplace.pkg.get': async () => ({
         manifest: { ...createPluginEntity().declaration, category: PluginCategoryEnum.trigger },
       }),
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
+      'workspaces.current.plugin.permission.fetch.get': api.permission,
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.plugin.permission.change.post': api.savePermission,
+      'workspaces.current.plugin.autoUpgrade.change.post': api.saveAutoUpgrade,
     }),
   }
 })
@@ -83,23 +85,16 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
   uploadFile: api.upload,
 }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      collectionPlugins: async () => ({ data: { plugins: [] } }),
-      collections: async () => ({ data: { collections: [] } }),
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    collectionPlugins: async () => ({ data: { plugins: [] } }),
+    collections: async () => ({ data: { collections: [] } }),
+    searchAdvanced: async ({ params }) => {
+      if (params.kind === 'plugins') return { data: { plugins: [], total: 0 } }
+      throw new Error(`Unexpected marketplace search: ${params.kind}`)
     },
-  }
+  })
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  postMarketplace: async (url: string) => {
-    if (url === '/plugins/search/advanced') return { data: { plugins: [], total: 0 } }
-    throw new Error(`Unexpected marketplace request: ${url}`)
-  },
-}))
 
 const permissions = [
   'plugin.install',
@@ -181,6 +176,7 @@ function renderPage({
   workspacePermissionKeys = permissions,
   rbacEnabled = true,
   restrictLocalPackages = false,
+  fileScanEnabled = false,
   ui,
 }: {
   props?: ComponentProps<typeof IntegrationsPage>
@@ -188,10 +184,12 @@ function renderPage({
   workspacePermissionKeys?: string[]
   rbacEnabled?: boolean
   restrictLocalPackages?: boolean
+  fileScanEnabled?: boolean
   ui?: ReactElement
 } = {}) {
   const { wrapper: QueryProvider, queryClient } = createConsoleQueryWrapper({
     workspacePermissionKeys,
+    features: { enable_file_scan: fileScanEnabled },
     systemFeatures: {
       rbac_enabled: rbacEnabled,
       enable_marketplace: true,
@@ -239,6 +237,35 @@ it('defaults to models and preserves a real model search across section navigati
   expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveValue('OpenAI')
   expect(screen.getByText('OpenAI')).toBeInTheDocument()
   expect(screen.queryByText('Anthropic')).not.toBeInTheDocument()
+})
+
+it('offers the malware scanners section after custom endpoints when the feature is on', async () => {
+  const user = userEvent.setup()
+  renderPage({ fileScanEnabled: true, ui: <SettingsIntegrations /> })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+  const items = within(navigation)
+    .getAllByRole('button')
+    .map((item) => item.textContent)
+  expect(items.indexOf('fileScan.settings.title')).toBe(
+    items.indexOf('navigation.settings.customEndpoint') + 1,
+  )
+
+  await user.click(within(navigation).getByRole('button', { name: 'fileScan.settings.title' }))
+
+  expect(screen.getByRole('heading', { name: 'fileScan.settings.title' })).toBeInTheDocument()
+  expect(screen.getByText('fileScan.settings.description')).toBeInTheDocument()
+  expect(await screen.findByText('fileScan.scanner.empty')).toBeInTheDocument()
+})
+
+it('hides the malware scanners section and falls back to models when the feature is off', () => {
+  renderPage({ props: { section: 'file-scan' } })
+  const navigation = screen.getByRole('navigation', { name: 'navigation.settings.integrations' })
+
+  expect(
+    within(navigation).queryByRole('button', { name: 'fileScan.settings.title' }),
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'navigation.settings.provider' })).toBeInTheDocument()
+  expect(screen.queryByText('fileScan.scanner.empty')).not.toBeInTheDocument()
 })
 
 it('closes compact navigation after changing the settings section', async () => {
@@ -516,7 +543,7 @@ it.each([true, false])(
         name: 'plugin.installModal.installPlugin',
       })
       expect(within(dialog).getByText('Trigger Package')).toBeInTheDocument()
-      expect(api.manifest).toHaveBeenCalledWith(encodeURIComponent(packageId))
+      expect(api.manifest).toHaveBeenCalledWith(packageId)
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     } else {

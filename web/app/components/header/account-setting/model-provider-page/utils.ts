@@ -238,7 +238,7 @@ export const modelParameterRulesQueryOptions = ({
 }) =>
   consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.queryOptions({
     input: provider && model && enabled ? { params: { provider }, query: { model } } : skipToken,
-    context: { silent: true },
+    meta: { errorToast: false },
     select: (response) => ({ data: response.data.map(normalizeModelParameterRule) }),
   })
 

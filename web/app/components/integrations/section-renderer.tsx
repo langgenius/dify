@@ -11,6 +11,7 @@ import {
   toolsContentFrameClassNames,
   toolsContentInsetClassNames,
 } from '@/app/components/tools/content-inset'
+import { FileScanProvidersPage } from '@/features/file-scan/scanner-page'
 import { IntegrationPageHeader } from './page-header'
 import PluginCategoryPage from './plugin-category-page'
 import { IntegrationSectionLayout } from './section-layout'
@@ -101,7 +102,6 @@ const IntegrationSectionRenderer = ({
       return (
         <>
           <ModelProviderPage
-            hideSystemModelSelectorProviderSettingsFooter
             layout={renderScrollableLayout}
             onOpenMarketplace={onSwitchToMarketplace}
             searchText={providerSearchText}
@@ -134,6 +134,8 @@ const IntegrationSectionRenderer = ({
       )
     case 'custom-endpoint':
       return <ApiBasedExtensionPage layout={renderScrollableLayout} />
+    case 'file-scan':
+      return <FileScanProvidersPage layout={renderScrollableLayout} />
     case 'trigger':
       return renderPluginCategoryPage(PluginCategoryEnum.trigger)
     case 'agent-strategy':

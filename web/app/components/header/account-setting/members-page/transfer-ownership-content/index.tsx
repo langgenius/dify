@@ -16,9 +16,9 @@ import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { consoleClient } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import MemberSelector from './member-selector'
+import { MemberSelector } from './member-selector'
 
 const STEP = {
   start: 'start',
@@ -27,7 +27,7 @@ const STEP = {
 }
 type Step = (typeof STEP)[keyof typeof STEP]
 
-const TransferOwnershipContent = () => {
+export const TransferOwnershipContent = () => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const verificationCodeInputId = React.useId()
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
@@ -40,7 +40,6 @@ const TransferOwnershipContent = () => {
   const [time, setTime] = useState<number>(0)
   const [stepToken, setStepToken] = useState<string>('')
   const [newOwner, setNewOwner] = useState<string>('')
-  const [isTransfer, setIsTransfer] = useState<boolean>(false)
   const timerIdRef = React.useRef<number | undefined>(undefined)
   const retimeCountdown = useCallback((timerId?: number) => {
     if (timerIdRef.current !== undefined) window.clearInterval(timerIdRef.current)
@@ -63,18 +62,29 @@ const TransferOwnershipContent = () => {
       }, 1000),
     )
   }
-  const { mutate: sendEmail, isPending: isSendingCode } = useMutation({
-    mutationFn: () =>
-      consoleClient.workspaces.current.members.sendOwnerTransferConfirmEmail.post({ body: {} }),
-  })
+  const { mutate: sendEmail, isPending: isSendingCode } = useMutation(
+    consoleQuery.workspaces.current.members.sendOwnerTransferConfirmEmail.post.mutationOptions(),
+  )
+  const { mutateAsync: checkOwnerTransfer } = useMutation(
+    consoleQuery.workspaces.current.members.ownerTransferCheck.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  // Outcome handlers live on the hook so they still run if the dialog unmounts mid-request.
+  const { isPending: isTransfer, mutate: transferOwnership } = useMutation(
+    consoleQuery.workspaces.current.members.byMemberId.ownerTransfer.post.mutationOptions({
+      meta: { errorToast: false },
+      onSuccess: () => {
+        globalThis.location.reload()
+      },
+      onError: (error) => {
+        toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
+      },
+    }),
+  )
   const verifyEmailAddress = async (code: string, token: string, callback?: () => void) => {
     try {
-      const res = await consoleClient.workspaces.current.members.ownerTransferCheck.post(
-        {
-          body: { code, token },
-        },
-        { context: { silent: true } },
-      )
+      const res = await checkOwnerTransfer({ body: { code, token } })
       if (res.is_valid) {
         setStepToken(res.token)
         callback?.()
@@ -86,34 +96,26 @@ const TransferOwnershipContent = () => {
     }
   }
   const sendCodeToOriginEmail = () => {
-    sendEmail(undefined, {
-      onSuccess: (res) => {
-        startCount()
-        if (res.data) setStepToken(res.data)
-        setStep(STEP.verify)
+    sendEmail(
+      { body: {} },
+      {
+        onSuccess: (res) => {
+          startCount()
+          if (res.data) setStepToken(res.data)
+          setStep(STEP.verify)
+        },
       },
-    })
+    )
   }
   const handleVerifyOriginEmail = async () => {
     await verifyEmailAddress(code, stepToken, () => setStep(STEP.transfer))
     setCode('')
   }
-  const handleTransfer = async () => {
-    setIsTransfer(true)
-    try {
-      await consoleClient.workspaces.current.members.byMemberId.ownerTransfer.post(
-        {
-          params: { member_id: newOwner },
-          body: { token: stepToken },
-        },
-        { context: { silent: true } },
-      )
-      globalThis.location.reload()
-    } catch (error) {
-      toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
-    } finally {
-      setIsTransfer(false)
-    }
+  const handleTransfer = () => {
+    transferOwnership({
+      params: { member_id: newOwner },
+      body: { token: stepToken },
+    })
   }
   return (
     <>
@@ -292,4 +294,3 @@ const TransferOwnershipContent = () => {
     </>
   )
 }
-export default TransferOwnershipContent

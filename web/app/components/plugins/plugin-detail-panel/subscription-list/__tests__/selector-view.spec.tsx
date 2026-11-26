@@ -9,11 +9,14 @@ import { SubscriptionSelectorView } from '../selector-view'
 const requests = vi.hoisted(() => ({ list: vi.fn(), remove: vi.fn() }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': requests.list,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post':
         requests.remove,
     }),
@@ -112,10 +115,7 @@ it('removes the deleted subscription from the live list and clears the selection
     expect(screen.queryByRole('button', { name: 'Subscription One' })).not.toBeInTheDocument(),
   )
   expect(screen.getByLabelText('Selected subscription')).toHaveTextContent('None')
-  expect(requests.remove).toHaveBeenCalledWith(
-    { params: { subscription_id: 'sub-1' } },
-    { context: { silent: true } },
-  )
+  expect(requests.remove).toHaveBeenCalledWith({ params: { subscription_id: 'sub-1' } })
 })
 it('keeps the selection and subscription after cancelling deletion', async () => {
   const user = userEvent.setup()

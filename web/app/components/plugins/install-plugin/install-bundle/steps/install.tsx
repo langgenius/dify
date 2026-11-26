@@ -68,7 +68,7 @@ const Install: FC<Props> = ({
     onCancel()
   }, [onCancel, stop])
 
-  const { handleRefetch } = usePluginTaskList()
+  const { invalidatePluginTasks } = usePluginTaskList()
   const getSelectedVersionInfo = useCallback(() => {
     return selectedPlugins.map((plugin) => {
       const pluginDetail = installedInfo?.[getPluginKey(plugin)]
@@ -105,7 +105,7 @@ const Install: FC<Props> = ({
         return
       }
       // if not all settled, keep checking the status of the plugins
-      handleRefetch()
+      void invalidatePluginTasks()
       const installStatus = await Promise.all(
         res.map(async (item, index) => {
           if (item.status !== TaskStatus.running) {

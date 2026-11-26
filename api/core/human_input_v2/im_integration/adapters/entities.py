@@ -37,17 +37,30 @@ class CredentialTestSuccess:
 
 @dataclass(frozen=True, slots=True)
 class CredentialTestFailure:
-    """Provider rejection or confirmed credential limitation, not an execution error."""
+    """Provider rejection with safe guidance and diagnostics supplied by the provider.
+
+    ``provider_request_id`` is absent when the provider did not supply one. Callers must
+    not synthesize an identifier or reinterpret the provider's error code.
+    """
 
     kind: CredentialTestFailureKind
     reason: str
     provider_error_code: str | None = None
     missing_permissions: tuple[str, ...] = ()
     http_status: int | None = None
+    provider_request_id: str | None = None
 
 
 class IMProviderError(Exception):
     """A provider operation failed with a message suitable for configuration callers."""
+
+
+class CredentialTestRejectedError(IMProviderError):
+    """Carry an adapter's safe rejection and provider diagnostics to the API boundary."""
+
+    def __init__(self, failure: CredentialTestFailure) -> None:
+        super().__init__(failure.reason)
+        self.failure = failure
 
 
 class CredentialTestTimeoutError(IMProviderError):

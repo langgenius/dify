@@ -1,5 +1,5 @@
 import type { AgentInlineBinding } from '../../block-selector/types'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -103,7 +103,6 @@ export function useCreateInlineAgentBinding() {
   const resource = useAtomValue(editorResourceAtom)
   const agentScope = useInlineAgentScope()
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const queryClient = useQueryClient()
   const { isPending: isAppComposerPending, mutateAsync: mutateAppComposerAsync } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
@@ -159,34 +158,6 @@ export function useCreateInlineAgentBinding() {
           options?.onError?.()
           return
         }
-
-        if (resource.kind === 'snippet') {
-          queryClient.setQueryData(
-            consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-              {
-                input: {
-                  params: {
-                    snippet_id: resource.snippetId,
-                    node_id: nodeId,
-                  },
-                },
-              },
-            ),
-            composerState,
-          )
-        } else {
-          queryClient.setQueryData(
-            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-              input: {
-                params: {
-                  app_id: resource.appId,
-                  node_id: nodeId,
-                },
-              },
-            }),
-            composerState,
-          )
-        }
         trackCreateApp({
           source: 'studio_blank',
           appMode: 'agent-v2',
@@ -201,15 +172,7 @@ export function useCreateInlineAgentBinding() {
         options?.onError?.()
       }
     },
-    [
-      agentScope,
-      resource,
-      defaultModel,
-      mutateAppComposerAsync,
-      mutateSnippetComposerAsync,
-      queryClient,
-      t,
-    ],
+    [agentScope, resource, defaultModel, mutateAppComposerAsync, mutateSnippetComposerAsync, t],
   )
 
   return {

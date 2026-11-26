@@ -22,22 +22,27 @@ describe('createFoldAnimInto', () => {
   it.each([false, true])(
     'closes immediately without an animation target (modal present: %s)',
     async (hasModal) => {
-      if (hasModal) mountModal()
       const onClose = vi.fn()
-      await createFoldAnimInto(onClose).foldIntoAnim()
+      const session = createFoldAnimInto(onClose)
+      if (hasModal) session.popupRef.current = mountModal()
+      await session.foldIntoAnim()
       expect(onClose).toHaveBeenCalledOnce()
     },
   )
 
   it.each(['task', 'navigation'])('closes after folding to the %s target', async (target) => {
-    mountModal()
+    const otherModal = mountModal()
     const trigger = document.createElement('button')
     if (target === 'task') trigger.id = 'plugin-task-trigger'
     else trigger.className = 'plugins-nav-button'
     vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue(new DOMRect(50, 50, 40, 40))
     document.body.appendChild(trigger)
     const onClose = vi.fn()
-    const pending = createFoldAnimInto(onClose).foldIntoAnim()
+    const session = createFoldAnimInto(onClose)
+    session.popupRef.current = mountModal()
+    const pending = session.foldIntoAnim()
+    expect(otherModal.style.transform).toBe('')
+    expect(session.popupRef.current.style.transform).toContain('translate(')
 
     await vi.advanceTimersByTimeAsync(749)
     expect(onClose).not.toHaveBeenCalled()
