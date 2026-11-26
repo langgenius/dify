@@ -373,16 +373,16 @@ def _execute_qdrant_collection(client: "QdrantClient", payload: VectorRequest, c
         if tidb:
             # TiDB-on-Qdrant accepts field conditions but rejects HasIdCondition.
             condition = models.FieldCondition(key=TIDB_POINT_ID_FIELD, match=models.MatchAny(any=payload.ids))
-        matches = client.search(
+        matches = client.query_points(
             collection_name=collection,
-            query_vector=payload.query_vector,
+            query=payload.query_vector,
             query_filter=models.Filter(must=[condition]),
             limit=payload.limit,
             # Its filtered SQL also requires payload selection, even though the
             # bridge never returns that payload to the caller.
             with_payload=tidb,
             with_vectors=False,
-        )
+        ).points
         if any(str(point.id) not in payload.ids for point in matches):
             raise VectorStoreUnavailableError("KnowledgeFS vector search returned an unauthorized point")
         return {"points": [], "matches": [{"id": str(point.id), "score": point.score} for point in matches]}
@@ -476,11 +476,14 @@ def _search_unindexed_tidb_points(client: "QdrantClient", payload: VectorRequest
                     raise VectorStoreUnavailableError("KnowledgeFS vector read returned an unauthorized point")
                 if not isinstance(vector, list) or len(vector) != payload.scope.dimension:
                     raise VectorStoreUnavailableError("KnowledgeFS vector has incompatible dimensions")
-                if any(not math.isfinite(value) or abs(value) > 1e10 for value in vector):
-                    raise VectorStoreUnavailableError("KnowledgeFS vector cannot be scored")
-                norm = math.hypot(*vector)
+                values: list[float] = []
+                for value in vector:
+                    if not isinstance(value, (int, float)) or not math.isfinite(value) or abs(value) > 1e10:
+                        raise VectorStoreUnavailableError("KnowledgeFS vector cannot be scored")
+                    values.append(float(value))
+                norm = math.hypot(*values)
                 if not norm or not math.isfinite(norm):
                     raise VectorStoreUnavailableError("KnowledgeFS vector cannot be scored")
-                score = math.fsum(a * b for a, b in zip(payload.query_vector, vector, strict=True)) / query_norm / norm
+                score = math.fsum(a * b for a, b in zip(payload.query_vector, values, strict=True)) / query_norm / norm
                 matches.append({"id": str(point.id), "score": max(-1.0, min(1.0, score))})
     return {"points": [], "matches": sorted(matches, key=lambda match: (-match["score"], match["id"]))[: payload.limit]}
