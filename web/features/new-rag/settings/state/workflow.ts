@@ -154,7 +154,6 @@ export const saveKnowledgeSettingsAtom = atom(
         const migration = await queryClient.query(
           spaceApi.settings.migrations.byMigrationId.get.queryOptions({
             input: { params: { ...params, migration_id: progress.id } },
-            staleTime: 0,
             retry: false,
             context: { silent: true },
           }),

@@ -157,7 +157,6 @@ function AgentFileItem({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const workflowDownloadQuery = useQuery({
@@ -174,7 +173,6 @@ function AgentFileItem({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const trialDownloadQuery = useQuery(
@@ -186,7 +184,6 @@ function AgentFileItem({
               query: { version_id: apiContext.versionId },
             }
           : skipToken,
-      staleTime: 0,
       refetchOnWindowFocus: false,
     }),
   )

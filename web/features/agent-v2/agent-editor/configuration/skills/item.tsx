@@ -48,7 +48,6 @@ export function AgentSkillItem({
             query: { version_id: apiContext.versionId },
           },
         }),
-        staleTime: 0,
       })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
@@ -69,7 +68,6 @@ export function AgentSkillItem({
             },
           },
         }),
-        staleTime: 0,
       })
       downloadUrl({ url: result.url, fileName: skill.name })
       return
@@ -88,7 +86,6 @@ export function AgentSkillItem({
           },
         },
       }),
-      staleTime: 0,
     })
     downloadUrl({ url: result.url, fileName: skill.name })
   }, [apiContext, queryClient, skill.isMissing, skill.name])

@@ -317,7 +317,6 @@ export function useAgentSkillDetail({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const workflowDownloadQuery = useQuery({
@@ -335,7 +334,6 @@ export function useAgentSkillDetail({
             }
           : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
   })
   const trialDownloadQuery = useQuery(
@@ -347,7 +345,6 @@ export function useAgentSkillDetail({
               query: { path: selectedPreviewPath, version_id: apiContext.versionId },
             }
           : skipToken,
-      staleTime: 0,
       refetchOnWindowFocus: false,
     }),
   )
@@ -408,7 +405,6 @@ export function useAgentSkillDetail({
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -433,7 +429,6 @@ export function useAgentSkillDetail({
                 },
               },
             ),
-            staleTime: 0,
           })
           const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
           downloadBlob({ data, fileName: file.name })
@@ -455,7 +450,6 @@ export function useAgentSkillDetail({
               },
             },
           }),
-          staleTime: 0,
         })
         const data = await queryClient.query(getSkillFileContentQueryOptions(result.url))
         downloadBlob({ data, fileName: file.name })

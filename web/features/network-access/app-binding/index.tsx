@@ -174,7 +174,6 @@ function AccessControlSession({
           ? { params: { group_id: selectedPolicyId } }
           : skipToken,
       context: { silent: true },
-      staleTime: 0,
       retry: false,
     }),
   )

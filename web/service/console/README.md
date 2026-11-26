@@ -11,14 +11,14 @@ transport for the Python Console API.
   [Instrumentation] and the [root layout]
   register this transport. Only the transport is shared globally;
   request identity is resolved per request.
-- Shared query/mutation defaults live in
-  [query-policies.ts].
+- Shared query/mutation defaults live in [policies/], one file per
+  API domain, and are registered in [query-policies.ts].
 - Routes/layouts own prefetching and hydration. Use the existing
   [QueryClient factory].
 
 ## Policy ownership
 
-Shared operation defaults belong in `query-policies.ts`. Call sites own inputs,
+Shared operation defaults belong in the domain file under `policies/`. Call sites own inputs,
 execution conditions, projections, and interaction feedback.
 
 Mutation policy callbacks (`onMutate`, `onSuccess`, `onError`, `onSettled`)
@@ -37,10 +37,20 @@ replaces the policy; `dify/no-mutation-policy-bypass` reports both. Callbacks
 passed to `mutate(variables, { onSuccess })` run after both and are skipped when
 the component has unmounted, so keep cache work out of them.
 
-List affected generated keys inline in the owning operation's policy. Whether
-invalidation runs after an error depends on the write contract: a rejected
-request does not imply the server rolled back. Record that decision per module.
-Do not add an invalidation helper to hide the cache dependencies.
+List affected generated keys in the owning operation's policy. When several
+operations of one resource refresh the same set, name that set once in a helper
+next to them (for example `invalidateEndpointQueries`); helpers used by more than
+one domain live in `policies/shared.ts`. Whether invalidation runs after an error
+depends on the write contract: a rejected request does not imply the server
+rolled back. Record that decision per module.
+
+## Freshness
+
+The QueryClient default `staleTime` is five minutes. When a procedure needs
+different freshness everywhere it is read (a credential form that must load the
+current secret, a one-shot export, a validity check), set `staleTime` / `gcTime` /
+`refetchOnMount` in its `queryOptions` policy instead of at each call site. Keep a
+call-site override only when that screen needs something the others do not.
 
 Use generated options and types directly. A feature-owned options factory is
 appropriate only when it owns a shared request policy or a composed query;
@@ -48,6 +58,7 @@ forwarding hooks and handwritten API DTOs create a second owner.
 [Instrumentation]: ../../instrumentation.ts
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
+[policies/]: ./policies
 [query-policies.ts]: ./query-policies.ts
 [root layout]: ../../app/layout.tsx
 [server configuration]: ../../config/server.ts
