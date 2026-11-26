@@ -21,6 +21,10 @@ class ToolRuntime(BaseModel):
     invoke_from: InvokeFrom | None = None
     tool_invoke_from: ToolInvokeFrom | None = None
     dify_run_context: DifyRunContext | None = Field(default=None, exclude=True, repr=False)
+    # Inbound request headers forwarded from the original caller across the
+    # Agent inner-API boundary; used to resolve MCP `{{request.headers.*}}`
+    # placeholders when no direct user request context exists.
+    request_header_context: dict[str, str] | None = Field(default=None, exclude=True, repr=False)
     credentials: dict[str, Any] = Field(default_factory=dict)
     credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
