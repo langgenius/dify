@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "애플리케이션을 실행하려면 기본 시스템 모델을 구성하세요",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "매개변수",
-  "modelProvider.parametersInvalidRemoved": "일부 매개변수가 유효하지 않아 제거되었습니다.",
+  "modelProvider.parametersInvalidRemoved": "선택한 모델에는 다음 매개변수가 유지되지 않았습니다: {{parameters}}",
   "modelProvider.providerManaged": "제공자 관리",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "{{date}}에 소진됨",

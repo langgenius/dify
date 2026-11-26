@@ -17,7 +17,10 @@ import { ModelSettingsTrigger } from '@/app/components/header/account-setting/mo
 import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import {
+  fetchAndMergeValidCompletionParams,
+  formatRemovedCompletionParams,
+} from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
@@ -169,10 +172,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         )
         nextCompletionParams = filtered
 
-        const keys = Object.keys(removedDetails || {})
-        if (keys.length) {
+        const removed = Object.entries(removedDetails)
+        if (removed.length) {
           toast.warning(
-            `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+            t(($) => $['modelProvider.parametersInvalidRemoved'], {
+              ns: 'modelProvider',
+              parameters: formatRemovedCompletionParams(removed),
+            }),
           )
         }
       } catch (error) {

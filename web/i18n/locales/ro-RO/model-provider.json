@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Configurați un model de sistem implicit pentru a rula aplicații",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "PARAMETRI",
-  "modelProvider.parametersInvalidRemoved": "Unele parametrii sunt invalizi și au fost eliminați.",
+  "modelProvider.parametersInvalidRemoved": "Modelul selectat nu a putut păstra acești parametri: {{parameters}}",
   "modelProvider.providerManaged": "Gestionat de furnizor",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Epuizat la {{date}}",

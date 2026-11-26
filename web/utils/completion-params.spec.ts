@@ -2,7 +2,7 @@ import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { mergeValidCompletionParams } from './completion-params'
+import { formatRemovedCompletionParams, mergeValidCompletionParams } from './completion-params'
 
 const createRule = (overrides: Partial<ModelParameterRule> = {}): ModelParameterRule => ({
   name: 'value',
@@ -10,6 +10,16 @@ const createRule = (overrides: Partial<ModelParameterRule> = {}): ModelParameter
   label: { en_US: 'Value', zh_Hans: '值' },
   required: false,
   ...overrides,
+})
+
+it('lists unsupported parameter names and explains other removal reasons', () => {
+  expect(
+    formatRemovedCompletionParams([
+      ['temperature', 'unsupported'],
+      ['top_p', 'unsupported'],
+      ['max_tokens', 'out of range (1-4096)'],
+    ]),
+  ).toBe('temperature, top_p, max_tokens (out of range (1-4096))')
 })
 
 describe('mergeValidCompletionParams', () => {

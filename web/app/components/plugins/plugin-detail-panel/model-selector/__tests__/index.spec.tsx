@@ -224,7 +224,7 @@ describe('Plugin model configuration', () => {
         <ModelParameterModal
           {...defaults}
           isAdvancedMode={isAdvancedMode}
-          value={{ completion_params: { temperature: 0.5, unsupported: 2, stop: ['END'] } }}
+          value={{ completion_params: { temperature: 0.5, top_p: 0.9, stop: ['END'] } }}
           setModel={setModel}
         />,
       )
@@ -243,11 +243,9 @@ describe('Plugin model configuration', () => {
         },
         { context: { silent: true } },
       )
-      expect(requests.warning).toHaveBeenCalledWith(
-        expect.stringContaining('unsupported (unsupported)'),
-      )
-      expect(requests.warning.mock.calls[0]![0].includes('stop (unsupported)')).toBe(
-        !isAdvancedMode,
+      const parameters = isAdvancedMode ? 'top_p' : 'top_p, stop'
+      expect(requests.warning).toHaveBeenCalledExactlyOnceWith(
+        `modelProvider.modelProvider.parametersInvalidRemoved:${JSON.stringify({ parameters })}`,
       )
     },
   )

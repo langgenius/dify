@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "Configureer een standaard systeemmodel om applicaties uit te voeren",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "PARAMETERS",
-  "modelProvider.parametersInvalidRemoved": "Some parameters are invalid and have been removed",
+  "modelProvider.parametersInvalidRemoved": "Het geselecteerde model kon deze parameters niet overnemen: {{parameters}}",
   "modelProvider.providerManaged": "Provider managed",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "Opgebruikt op {{date}}",

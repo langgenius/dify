@@ -59,7 +59,8 @@ vi.mock('@/service/tools', () => ({
   fetchCollectionList: (...args: unknown[]) => mockFetchCollectionList(...args),
 }))
 
-vi.mock('@/utils/completion-params', () => ({
+vi.mock('@/utils/completion-params', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/completion-params')>()),
   fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
     mockFetchAndMergeValidCompletionParams(...args),
 }))
@@ -1123,17 +1124,20 @@ describe('useConfiguration utils', () => {
     const migrateToDefaultPrompt = vi.fn()
     const setCompletionParams = vi.fn()
     const setModelConfig = vi.fn()
+    const translate = withSelectorKey((key: string, options?: { parameters?: string }) =>
+      options?.parameters ? `${key}: ${options.parameters}` : key,
+    ) as typeof t
 
     mockFetchAndMergeValidCompletionParams
       .mockResolvedValueOnce({
         params: { temperature: 0.3 },
-        removedDetails: { top_k: 'unsupported' },
+        removedDetails: { top_k: 'unsupported', max_tokens: 'out of range (1-512)' },
       })
       .mockRejectedValueOnce(new Error('boom'))
 
     const onModelChange = createModelChangeHandler({
       chatPromptLength: 0,
-      completionParamsState: { temperature: 0.7 },
+      completionParamsState: { temperature: 0.7, top_k: 10, max_tokens: 1024 },
       completionPromptConfig: {
         prompt: { text: '' },
         conversation_histories_role: {
@@ -1152,7 +1156,7 @@ describe('useConfiguration utils', () => {
       resolvedModelModeType: ModelModeType.chat,
       setCompletionParams,
       setModelConfig,
-      t,
+      t: translate,
       visionConfig: baseVisionConfig,
     })
 
@@ -1171,8 +1175,8 @@ describe('useConfiguration utils', () => {
 
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.completion)
     expect(migrateToDefaultPrompt).toHaveBeenCalledWith(true, ModelModeType.chat)
-    expect(mockToastWarning).toHaveBeenCalledWith(
-      'modelProvider.parametersInvalidRemoved: top_k (unsupported)',
+    expect(mockToastWarning).toHaveBeenCalledExactlyOnceWith(
+      'modelProvider.parametersInvalidRemoved: top_k, max_tokens (out of range (1-512))',
     )
     expect(mockToastError).toHaveBeenCalledExactlyOnceWith('boom')
     expect(setCompletionParams).toHaveBeenCalledWith({})

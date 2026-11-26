@@ -45,9 +45,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       provider: '',
       name: '',
       mode: 'chat' as const,
-      completion_params: {
-        temperature: 0.7,
-      },
+      completion_params: {},
     },
     prompt_template: [
       {

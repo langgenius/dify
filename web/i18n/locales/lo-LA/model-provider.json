@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "ຕັ້ງຄ່າໂມເດວລະບົບເລີ່ມຕົ້ນເພື່ອລັນແອັບພລິເຄຊັນ",
   "modelProvider.pageDesc": "ເຊື່ອມຕໍ່ກັບຜູ້ໃຫ້ບໍລິການໂມເດວຊັ້ນນຳຂອງໂລກເພື່ອຂັບເຄື່ອນທຸກແອັບທີ່ທ່ານສ້າງ.",
   "modelProvider.parameters": "ພານາມິເຕີ",
-  "modelProvider.parametersInvalidRemoved": "ບາງພານາມິເຕີບໍ່ຖືກຕ້ອງ ແລະ ຖືກລຶບອອກແລ້ວ",
+  "modelProvider.parametersInvalidRemoved": "ຕົວແບບທີ່ເລືອກບໍ່ສາມາດເກັບພາຣາມິເຕີເຫຼົ່ານີ້ໄວ້: {{parameters}}",
   "modelProvider.providerManaged": "ຈັດການໂດຍຜູ້ໃຫ້ບໍລິການ",
   "modelProvider.quotaLabel": "AI CREDITS",
   "modelProvider.ranOutDate": "ໝົດເມື່ອ {{date}}",

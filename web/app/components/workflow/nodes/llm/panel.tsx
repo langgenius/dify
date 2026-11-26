@@ -21,9 +21,14 @@ import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/component
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import {
+  fetchAndMergeValidCompletionParams,
+  fetchModelParameterRulesForModel,
+  formatRemovedCompletionParams,
+} from '@/utils/completion-params'
 import { getErrorMessage } from '@/utils/error-message'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
@@ -33,22 +38,46 @@ import PanelMemorySection from './components/panel-memory-section'
 import PanelOutputSection from './components/panel-output-section'
 import ReasoningFormatConfig from './components/reasoning-format-config'
 import useConfig from './use-config'
-import { getLLMEnvironmentModel, getLLMModelIssue, LLMModelIssueCode } from './utils'
+import {
+  getLLMEnvironmentModel,
+  getLLMModelIssue,
+  getModelSelectionKey,
+  LLMModelIssueCode,
+} from './utils'
 
 const i18nPrefix = 'nodes.llm'
 
-const getModelSelectionKey = (
-  source: 'direct' | 'env',
-  provider: string,
-  modelName: string,
-  completionParams: LLMNodeType['model']['completion_params'],
-  environmentVariableName = '',
-) =>
-  `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
+const getRemovedParametersForWarning = async (
+  previousModel: LLMNodeType['model'],
+  removedDetails: Record<string, string>,
+) => {
+  const removed = Object.entries(removedDetails)
+  if (
+    !previousModel.provider ||
+    !previousModel.name ||
+    !removed.some(([, reason]) => reason === 'unsupported')
+  )
+    return removed
+
+  const previousRules = await fetchModelParameterRulesForModel(
+    previousModel.provider,
+    previousModel.name,
+    { silent: true },
+  ).catch(() => [])
+  // An empty response can also mean the previous model's rules are unavailable.
+  if (!previousRules.length) return removed
+
+  return removed.filter(
+    ([name, reason]) =>
+      reason !== 'unsupported' ||
+      previousRules.some((rule) => rule.name === name || rule.use_template === name),
+  )
+}
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   const { t } = useTranslation(['common', 'workflow', 'modelProvider', 'workflowModels'])
   const resourceKind = useAtomValue(editorResourceKindAtom)
+  const workflowStore = useWorkflowStore()
   const {
     readOnly,
     inputs,
@@ -120,39 +149,56 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   }, [modelSelectionKey])
 
   const handleModelChange = useCallback(
-    (model: { provider: string; modelId: string; mode?: string }) => {
+    async (
+      nextModel: { provider: string; modelId: string; mode?: string },
+      environmentVariableName?: string,
+    ) => {
       const baselineSelectionKey = modelSelectionKeyRef.current
       const requestGeneration = ++modelSelectionRequestGenerationRef.current
-      ;(async () => {
-        try {
-          const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
-            model.provider,
-            model.modelId,
-            inputs.model.completion_params,
-            true,
+      const environmentSelector = environmentVariableName ? ['env', environmentVariableName] : null
+      const targetEnvironmentModel = environmentSelector
+        ? getLLMEnvironmentModel(environmentSelector, environmentVariables)
+        : undefined
+      const isCurrentRequest = () =>
+        modelSelectionRequestGenerationRef.current === requestGeneration &&
+        modelSelectionKeyRef.current === baselineSelectionKey &&
+        (!environmentSelector ||
+          getLLMEnvironmentModel(
+            environmentSelector,
+            workflowStore.getState().environmentVariables,
+          ) === targetEnvironmentModel)
+      try {
+        const { params, removedDetails } = await fetchAndMergeValidCompletionParams(
+          nextModel.provider,
+          nextModel.modelId,
+          inputs.model.completion_params,
+          true,
+        )
+        if (!isCurrentRequest()) return
+        const removed = await getRemovedParametersForWarning(inputs.model, removedDetails)
+        if (!isCurrentRequest()) return
+        if (environmentSelector) handleModelSelectorChange(environmentSelector, params)
+        else handleModelChanged(nextModel, params)
+        if (removed.length)
+          toast.warning(
+            t(($) => $['modelProvider.parametersInvalidRemoved'], {
+              ns: 'modelProvider',
+              parameters: formatRemovedCompletionParams(removed),
+            }),
           )
-          if (
-            modelSelectionRequestGenerationRef.current !== requestGeneration ||
-            modelSelectionKeyRef.current !== baselineSelectionKey
-          )
-            return
-          const keys = Object.keys(removedDetails)
-          if (keys.length)
-            toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
-            )
-          handleModelChanged(model, filtered)
-        } catch (error) {
-          if (
-            modelSelectionRequestGenerationRef.current !== requestGeneration ||
-            modelSelectionKeyRef.current !== baselineSelectionKey
-          )
-            return
+      } catch (error) {
+        if (isCurrentRequest())
           toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
-        }
-      })()
+      }
     },
-    [handleModelChanged, inputs.model.completion_params, t],
+    [
+      environmentVariables,
+      handleModelChanged,
+      handleModelSelectorChange,
+      inputs.model,
+      t,
+      workflowStore,
+    ],
   )
 
   const llmEnvironmentVariables = environmentVariables.filter(
@@ -161,49 +207,19 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
 
   const handleEnvironmentModelChange = useCallback(
     (environmentVariableName: string) => {
-      const baselineSelectionKey = modelSelectionKeyRef.current
-      const requestGeneration = ++modelSelectionRequestGenerationRef.current
       const modelSelector = ['env', environmentVariableName]
       const selectedModel = getLLMEnvironmentModel(modelSelector, environmentVariables)
-      if (!selectedModel) {
-        handleModelSelectorChange(modelSelector)
+      if (!selectedModel || selectedModel.completion_params !== undefined) {
+        modelSelectionRequestGenerationRef.current++
+        handleModelSelectorChange(modelSelector, selectedModel?.completion_params)
         return
       }
-      if (selectedModel.completion_params !== undefined) {
-        handleModelSelectorChange(modelSelector, selectedModel.completion_params)
-        return
-      }
-
-      ;(async () => {
-        try {
-          const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
-            selectedModel.provider,
-            selectedModel.name,
-            inputs.model.completion_params,
-            true,
-          )
-          if (
-            modelSelectionRequestGenerationRef.current !== requestGeneration ||
-            modelSelectionKeyRef.current !== baselineSelectionKey
-          )
-            return
-          const keys = Object.keys(removedDetails)
-          if (keys.length)
-            toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
-            )
-          handleModelSelectorChange(modelSelector, filtered)
-        } catch (error) {
-          if (
-            modelSelectionRequestGenerationRef.current !== requestGeneration ||
-            modelSelectionKeyRef.current !== baselineSelectionKey
-          )
-            return
-          toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
-        }
-      })()
+      void handleModelChange(
+        { provider: selectedModel.provider, modelId: selectedModel.name },
+        environmentVariableName,
+      )
     },
-    [environmentVariables, handleModelSelectorChange, inputs.model, t],
+    [environmentVariables, handleModelChange, handleModelSelectorChange],
   )
 
   return (

@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "एप्लिकेशन चलाने के लिए एक डिफ़ॉल्ट सिस्टम मॉडल कॉन्फ़िगर करें",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "पैरामीटर",
-  "modelProvider.parametersInvalidRemoved": "कुछ पैरामीटर अमान्य हैं और हटा दिए गए हैं",
+  "modelProvider.parametersInvalidRemoved": "चुना गया मॉडल इन पैरामीटर को बनाए नहीं रख सका: {{parameters}}",
   "modelProvider.providerManaged": "प्रदाता प्रबंधित",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "{{date}} को समाप्त",

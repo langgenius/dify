@@ -71,6 +71,7 @@ describe('useWorkflowTemplate', () => {
       type: 'llm',
       title: 'workflow.blocks.llm',
     })
+    expect(result.current.nodes[1]!.data).toHaveProperty('model.completion_params', {})
     expect(result.current.nodes[2]!.data).toMatchObject({
       type: 'answer',
       title: 'workflow.blocks.answer',

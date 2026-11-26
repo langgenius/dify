@@ -84,7 +84,7 @@
   "modelProvider.noneConfigured": "กำหนดค่าโมเดลระบบเริ่มต้นเพื่อเรียกใช้แอปพลิเคชัน",
   "modelProvider.pageDesc": "Choose a language model to power your apps. You need at least one configured before building in Studio.",
   "modelProvider.parameters": "พารามิเตอร์",
-  "modelProvider.parametersInvalidRemoved": "บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก",
+  "modelProvider.parametersInvalidRemoved": "โมเดลที่เลือกไม่สามารถคงพารามิเตอร์เหล่านี้ไว้ได้: {{parameters}}",
   "modelProvider.providerManaged": "จัดการผู้ให้บริการ",
   "modelProvider.quotaLabel": "QUOTA",
   "modelProvider.ranOutDate": "หมดเมื่อ {{date}}",
