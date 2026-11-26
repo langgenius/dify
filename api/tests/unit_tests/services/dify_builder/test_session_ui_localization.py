@@ -13,7 +13,6 @@ from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilde
 from core.dify_builder.state import PcState
 from runtime_contracts.builder.copy_ids import BuilderCopyId
 from runtime_contracts.builder.presentation import copy_text
-from services.dify_builder.serde import context_from_dict, context_to_dict
 from services.dify_builder.service import DifyBuilderService
 from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
 from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
@@ -51,13 +50,6 @@ def test_cold_view_uses_references_without_resolving_models(monkeypatch: pytest.
     assert view.decision.options[0].id == "approve_plan"
     assert view.decision.submit is not None
     assert view.decision.submit.id == "confirm"
-
-
-def test_context_no_longer_persists_a_translation_cache() -> None:
-    legacy = {"reply_language": "ja", "ui_copy_language": "ja", "ui_copy": {"Goal": "old translation"}}
-    restored = context_from_dict(legacy)
-    assert restored.reply_language == "ja"
-    assert not {"ui_copy", "ui_copy_language"} & context_to_dict(restored).keys()
 
 
 @pytest.mark.parametrize("text", ["Yes", "Goal {{name}} <tag> " + "字" * 20000])

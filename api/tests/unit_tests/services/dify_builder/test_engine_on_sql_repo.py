@@ -1,25 +1,8 @@
-"""P3a acceptance: the real P1 engine runs end to end on the SQL ``Repository``.
+"""Run Fix and checklist workflows through the engine and the SQLite-backed repository."""
 
-Wires the same engine pieces the P1 full-flow acceptance
-(``tests/unit_tests/core/dify_builder/test_fix_flow.py``) exercises --
-``Runner`` + ``fix_registry()`` + ``PlaceholderAgent`` + ``FakeDifyPort`` --
-but swaps the in-memory fake ``Repository`` for ``SqlDifyBuilderRepository``
-backed by a SQLite in-memory database. Proves the CAS advance loop, the
-checkpoint/run persistence side effects, and the second (checklist) entry
-path all round-trip through a real ``UPDATE ... WHERE version=`` + a real
-``UNIQUE(session_id, seq)`` constraint, not just the Python-level checks the
-in-memory fake enforces.
-
-Test-only: no engine or repository changes belong in this file.
-"""
-
-from collections.abc import Iterator
 from datetime import datetime
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
@@ -35,7 +18,6 @@ from core.dify_builder.models import (
     Turn,
 )
 from core.dify_builder.state import PcState, canvas_read_only
-from models.base import Base
 from services.dify_builder.application.handlers_fix import fix_registry
 from services.dify_builder.application.placeholder_agent import FIXED_CODE, PlaceholderAgent
 from services.dify_builder.application.ports import Repository
@@ -47,22 +29,6 @@ from tests.unit_tests.services.dify_builder.presentation_helpers import english_
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
-
-
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return SqlDifyBuilderRepository(factory)
 
 
 def _actor() -> Actor:

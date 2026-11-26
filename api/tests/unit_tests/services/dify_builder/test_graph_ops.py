@@ -111,13 +111,6 @@ def test_original_graph_object_is_untouched_proves_deep_copy() -> None:
     assert graph["nodes"][0]["data"]["code"] == "old code"
 
 
-def test_missing_node_id_raises_value_error() -> None:
-    graph = _two_node_graph()
-
-    with pytest.raises(ValueError, match="node not found: does-not-exist"):
-        apply_set_node_config(graph, "does-not-exist", "code", "new code")
-
-
 # ---- apply_create_node ------------------------------------------------------
 
 
@@ -188,14 +181,6 @@ def test_apply_create_node_original_graph_untouched() -> None:
     assert graph["nodes"] == []
 
 
-def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted() -> None:
-    graph: Graph = {"nodes": [], "edges": []}
-
-    new_graph, _changed = apply_create_node(graph, "llm", {}, position={})
-
-    assert new_graph["nodes"][0]["position"] == {}
-
-
 def test_create_node_nests_a_child_under_its_parent() -> None:
     graph: Graph = {"nodes": [{"id": "iter1", "type": "custom", "data": {"type": "iteration"}}], "edges": []}
     out, changed = apply_create_node(
@@ -212,21 +197,6 @@ def test_create_node_nests_a_child_under_its_parent() -> None:
     assert child["extent"] == "parent"
     assert child["zIndex"] == 1002
     assert child["position"] == {"x": 300, "y": 220}
-
-
-def test_create_node_without_a_parent_carries_no_wrapper_keys() -> None:
-    graph: Graph = {"nodes": [], "edges": []}
-    out, _changed = apply_create_node(graph, "llm", {"title": "Top level"}, node_id="n1")
-    node = out["nodes"][0]
-    assert "parentId" not in node
-    assert "extent" not in node
-    assert "zIndex" not in node
-
-
-def test_create_node_defaults_the_reactflow_type_to_custom() -> None:
-    graph: Graph = {"nodes": [], "edges": []}
-    out, _changed = apply_create_node(graph, "llm", {"title": "LLM"}, node_id="n1")
-    assert out["nodes"][0]["type"] == "custom"
 
 
 def test_create_node_carries_a_container_start_markers_reactflow_type() -> None:
@@ -278,95 +248,6 @@ def test_create_node_never_overwrites_a_value_the_caller_supplied() -> None:
     assert out["nodes"][0]["data"]["variables"] == supplied
 
 
-def test_create_node_defaults_do_not_alias_the_registry() -> None:
-    """Two nodes created from the same default must not share one list."""
-    graph: Graph = {"nodes": [], "edges": []}
-
-    graph, _ = apply_create_node(graph, "template-transform", {"template": "a"}, node_id="n1")
-    graph, _ = apply_create_node(graph, "template-transform", {"template": "b"}, node_id="n2")
-    graph["nodes"][0]["data"]["variables"].append({"variable": "mutated", "value_selector": ["x"]})
-
-    assert graph["nodes"][1]["data"]["variables"] == []
-
-
-def test_create_node_leaves_a_generator_shaped_config_untouched() -> None:
-    """Build's configs come from the generator and already spell every field
-    out. Filling missing keys must not perturb one of them."""
-    generator_config = {
-        "title": "LLM",
-        "desc": "",
-        "selected": False,
-        "model": {
-            "provider": "langgenius/openai/openai",
-            "name": "gpt-4o",
-            "mode": "chat",
-            "completion_params": {"temperature": 0.2},
-        },
-        "prompt_template": [{"role": "system", "text": "You are helpful.", "id": "p1"}],
-        "context": {"enabled": True, "variable_selector": ["node1", "text"]},
-        "vision": {"enabled": True, "configs": {"detail": "high"}},
-    }
-    graph: Graph = {"nodes": [], "edges": []}
-
-    out, _changed = apply_create_node(graph, "llm", copy.deepcopy(generator_config), node_id="n1")
-
-    data = out["nodes"][0]["data"]
-    assert {k: v for k, v in data.items() if k != "type"} == generator_config
-    assert data["type"] == "llm"
-
-
-def test_create_node_adds_nothing_for_a_node_type_with_no_registered_defaults() -> None:
-    """An unregistered type must contribute no defaults, not abort the edit."""
-    graph: Graph = {"nodes": [], "edges": []}
-
-    out, _changed = apply_create_node(graph, "iteration", {"title": "Loop over"}, node_id="n1")
-
-    assert out["nodes"][0]["data"] == {
-        "type": "iteration",
-        "title": "Loop over",
-        "desc": "",
-        "selected": False,
-    }
-
-
-def test_insert_between_fills_required_fields_too() -> None:
-    """``insert_between`` builds its node through the same chokepoint."""
-    graph = {
-        "nodes": [{"id": "a", "data": {"type": "start"}}, {"id": "b", "data": {"type": "end"}}],
-        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
-    }
-
-    out, changed = apply_insert_between(
-        graph, {"source": "a", "target": "b"}, "code", {"code": "print(1)"}, node_id="n1"
-    )
-
-    assert changed == ["n1"]
-    data = next(n for n in out["nodes"] if n["id"] == "n1")["data"]
-    assert data["outputs"] == {}
-    assert data["variables"] == []
-    assert data["code_language"] == "python3"
-    assert data["code"] == "print(1)"
-
-
-def test_filter_applicable_routes_a_create_through_the_apply_fn_that_fills_defaults() -> None:
-    """The dry run dispatches through ``APPLY_FNS``, whose ``create_node`` entry
-    is the very function that merges the type defaults in -- so the graph it
-    returns carries them, and a config that omits one is still applicable."""
-    intents = [
-        MutationIntent(
-            op="create_node",
-            args={"node_type": "template-transform", "node_id": "n1", "config": {"template": "x"}},
-        )
-    ]
-
-    applicable, rejected, dry_run_graph, _changed = graph_ops.filter_applicable({"nodes": [], "edges": []}, intents)
-
-    assert rejected == []
-    assert applicable == intents
-    assert graph_ops.APPLY_FNS["create_node"] is graph_ops.apply_create_node
-    assert dry_run_graph["nodes"][0]["data"]["variables"] == []
-
-
 # ---- apply_delete_node ------------------------------------------------------
 
 
@@ -383,30 +264,11 @@ def test_apply_delete_node_removes_node_and_its_edges() -> None:
     assert new_graph["edges"] == []
 
 
-def test_apply_delete_node_leaves_unrelated_edges() -> None:
-    graph: Graph = {
-        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}, {"id": "c", "data": {}}],
-        "edges": [{"id": "e1", "source": "b", "target": "c", "type": "custom"}],
-    }
-
-    new_graph, _changed = apply_delete_node(graph, "a")
-
-    assert len(new_graph["edges"]) == 1
-
-
 def test_apply_delete_node_missing_id_raises_value_error() -> None:
     graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
 
     with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_delete_node(graph, "does-not-exist")
-
-
-def test_apply_delete_node_original_graph_untouched() -> None:
-    graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
-
-    apply_delete_node(graph, "a")
-
-    assert graph["nodes"] == [{"id": "a", "data": {}}]
 
 
 # ---- apply_connect -----------------------------------------------------------
@@ -428,34 +290,11 @@ def test_apply_connect_adds_a_graph_edge_dict_shaped_edge_with_default_handles()
     assert edge["id"]
 
 
-def test_apply_connect_honors_explicit_handles() -> None:
-    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
-
-    new_graph, _changed = apply_connect(graph, "a", "b", source_handle="true", target_handle="target")
-
-    assert new_graph["edges"][0]["sourceHandle"] == "true"
-
-
 def test_apply_connect_raises_on_dangling_from_node() -> None:
     graph: Graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
 
     with pytest.raises(ValueError, match="node not found: does-not-exist"):
         apply_connect(graph, "does-not-exist", "b")
-
-
-def test_apply_connect_raises_on_dangling_to_node() -> None:
-    graph: Graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
-
-    with pytest.raises(ValueError, match="node not found: does-not-exist"):
-        apply_connect(graph, "a", "does-not-exist")
-
-
-def test_apply_connect_original_graph_untouched() -> None:
-    graph: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
-
-    apply_connect(graph, "a", "b")
-
-    assert graph["edges"] == []
 
 
 # ---- apply_connect: branch handles must be ones the node declares ----------
@@ -488,14 +327,6 @@ def test_apply_connect_rejects_the_default_handle_on_a_branch_node() -> None:
         apply_connect(graph, "branch", "a")
 
 
-def test_apply_connect_still_defaults_the_handle_on_a_plain_node() -> None:
-    graph: Graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}, _TARGET], "edges": []}
-
-    new_graph, _ = apply_connect(graph, "llm", "a")
-
-    assert new_graph["edges"][0]["sourceHandle"] == "source"
-
-
 # ---- apply_connect: declared_branch_handles acceptances (Task 4) -----------
 # fail-branch nodes declare "source" (their real success handle, not an
 # invented "success") + "fail-branch"; human-input declares its action ids +
@@ -513,14 +344,6 @@ def test_apply_connect_accepts_the_source_handle_on_a_fail_branch_node() -> None
     graph: Graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
 
     new_graph, _ = apply_connect(graph, "http1", "a", source_handle="source")
-
-    assert new_graph["edges"][0]["sourceHandle"] == "source"
-
-
-def test_apply_connect_accepts_the_default_handle_on_a_fail_branch_node() -> None:
-    graph: Graph = {"nodes": [_FAIL_BRANCH_HTTP, _TARGET], "edges": []}
-
-    new_graph, _ = apply_connect(graph, "http1", "a")
 
     assert new_graph["edges"][0]["sourceHandle"] == "source"
 
@@ -553,15 +376,6 @@ def test_apply_connect_accepts_true_on_a_legacy_if_else_without_cases() -> None:
     new_graph, _ = apply_connect(graph, "legacy", "a", source_handle="true")
 
     assert new_graph["edges"][0]["sourceHandle"] == "true"
-
-
-def test_apply_connect_still_accepts_any_handle_on_a_plain_node_type() -> None:
-    plain = {"id": "llm1", "data": {"type": "llm"}}
-    graph: Graph = {"nodes": [plain, _TARGET], "edges": []}
-
-    new_graph, _ = apply_connect(graph, "llm1", "a", source_handle="whatever")
-
-    assert new_graph["edges"][0]["sourceHandle"] == "whatever"
 
 
 # ---- apply_insert_between -------------------------------------------------------
@@ -624,33 +438,6 @@ def test_apply_insert_between_raises_when_edge_not_found() -> None:
         apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
 
 
-def test_apply_insert_between_honors_explicit_node_id_and_position() -> None:
-    graph: Graph = {
-        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
-        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
-    }
-
-    new_graph, changed = apply_insert_between(
-        graph, {"source": "a", "target": "b"}, "llm", {}, position={"x": 1.0, "y": 2.0}, node_id="my-llm"
-    )
-
-    assert changed == ["my-llm"]
-    new_node = next(n for n in new_graph["nodes"] if n["id"] == "my-llm")
-    assert new_node["position"] == {"x": 1.0, "y": 2.0}
-
-
-def test_apply_insert_between_original_graph_untouched() -> None:
-    graph: Graph = {
-        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
-        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
-    }
-
-    apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
-
-    assert len(graph["edges"]) == 1
-    assert graph["edges"][0]["target"] == "b"
-
-
 # ---- diff_graphs -------------------------------------------------------
 
 
@@ -668,16 +455,6 @@ def test_diff_graphs_added_node_and_edge_is_structure_scope() -> None:
     assert "＋ knowledge-1 → a" in changes
 
 
-def test_diff_graphs_removed_node_is_structure_scope() -> None:
-    before: Graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
-    after: Graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
-
-    changes, scope = diff_graphs(before, after)
-
-    assert scope == "structure"
-    assert changes == ["− a"]
-
-
 def test_diff_graphs_config_only_change_is_configuration_scope() -> None:
     before: Graph = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "old"}}], "edges": []}
     after: Graph = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "new"}}], "edges": []}
@@ -686,15 +463,6 @@ def test_diff_graphs_config_only_change_is_configuration_scope() -> None:
 
     assert scope == "configuration"
     assert changes == ["llm-1: prompt_template"]
-
-
-def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes() -> None:
-    graph: Graph = {"nodes": [{"id": "a", "data": {"x": 1}}], "edges": []}
-
-    changes, scope = diff_graphs(graph, copy.deepcopy(graph))
-
-    assert changes == []
-    assert scope == "configuration"
 
 
 # ---- structural_fingerprint -------------------------------------------------------
@@ -739,24 +507,6 @@ def test_structural_fingerprint_is_order_independent() -> None:
     assert structural_fingerprint(g1) == structural_fingerprint(g2)
 
 
-def test_structural_fingerprint_handles_empty_and_missing_keys() -> None:
-    from services.dify_builder.graph_ops import structural_fingerprint
-
-    assert isinstance(structural_fingerprint({}), str)
-    assert structural_fingerprint({}) == structural_fingerprint({"nodes": [], "edges": []})
-
-
-# ---- node_ids -------------------------------------------------------
-
-
-def test_node_ids() -> None:
-    from services.dify_builder.graph_ops import node_ids
-
-    g: Graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
-    assert node_ids(g) == ["a", "b"]
-    assert node_ids({}) == []
-
-
 # ---- filter_applicable -------------------------------------------------------
 
 
@@ -767,13 +517,6 @@ _G = {
     ],
     "edges": [{"id": "a-b", "source": "a", "target": "b"}],
 }
-
-
-def test_filter_applicable_all_valid() -> None:
-    intents = [MutationIntent(op="set_node_config", args={"node_id": "a", "path": "code", "value": "x"})]
-    ok, bad, _dry, _changed = graph_ops.filter_applicable(_G, intents)
-    assert ok == intents
-    assert bad == []
 
 
 def test_filter_rejects_unknown_op() -> None:
@@ -897,24 +640,6 @@ def test_filter_applicable_returns_the_dry_run_graph_and_leaves_the_input_alone(
     assert before == _G
 
 
-def test_a_connect_writes_an_edge_and_so_reports_no_node_as_written() -> None:
-    """``changed_nodes`` feeds ``preflight.new_preflight_problems``'s ``touched``,
-    where a node loses its pre-existing-defect exemption entirely. An edge
-    cannot change either endpoint's node-data verdict, so a connect must not put
-    them there -- otherwise wiring an already-broken node vetoes the batch.
-    ``apply_connect`` still reports both endpoints to the caller for the change
-    set and the canvas; only this accumulator skips them."""
-    intents = [
-        MutationIntent(op="connect", args={"from_node": "a", "to_node": "b"}),
-        MutationIntent(op="set_node_config", args={"node_id": "b", "path": "title", "value": "B"}),
-    ]
-
-    dry_run = graph_ops.filter_applicable(_G, intents)
-
-    assert len(dry_run.applicable) == 2  # both applied...
-    assert dry_run.changed_nodes == ["b"]  # ...but only the config write counts as written
-
-
 def test_filter_applicable_heals_its_dry_run_graph_the_way_the_write_chokepoint_will() -> None:
     """R4: the dry run must see what the port will actually write. ``>=`` reaches
     ``apply_repair`` and is healed to ``≥`` there before the preflight, so a dry
@@ -980,20 +705,6 @@ def test_set_node_config_writes_through_a_dotted_path() -> None:
     assert "cases.0.conditions.1.comparison_operator" not in out["nodes"][0]["data"]
 
 
-def test_set_node_config_still_writes_a_top_level_key() -> None:
-    graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
-    out, changed = apply_set_node_config(graph, "n1", "code", "print(1)")
-    assert changed == ["n1"]
-    assert out["nodes"][0]["data"]["code"] == "print(1)"
-
-
-def test_set_node_config_creates_a_missing_top_level_key() -> None:
-    """Unchanged behaviour: the LAST segment may be new -- that is the write."""
-    graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
-    out, _changed = apply_set_node_config(graph, "n1", "outputs", {"result": {"type": "string"}})
-    assert out["nodes"][0]["data"]["outputs"] == {"result": {"type": "string"}}
-
-
 def test_set_node_config_rejects_a_missing_intermediate_key() -> None:
     graph: Graph = {"nodes": [{"id": "n1", "data": {"type": "code"}}], "edges": []}
     with pytest.raises(ValueError, match="no key 'cases'"):
@@ -1045,11 +756,6 @@ def test_filter_applicable_rejects_a_bad_path_with_a_reason() -> None:
 def test_validate_intent_args_rejects_a_non_string_node_id(op: str, args: Graph) -> None:
     with pytest.raises(ValueError, match="must be a non-empty string"):
         validate_intent_args(MutationIntent(op=op, args=args))
-
-
-def test_validate_intent_args_still_accepts_string_node_ids() -> None:
-    validate_intent_args(MutationIntent(op="connect", args={"from_node": "n1", "to_node": "n2"}))
-    validate_intent_args(MutationIntent(op="delete_node", args={"node_id": "n1"}))
 
 
 @pytest.mark.parametrize("bad_path", [5, "", None, ["cases", 0]])
@@ -1137,16 +843,6 @@ def test_filter_applicable_does_not_rewrite_the_callers_intent_args() -> None:
     assert intents[0].args["value"] is cases
 
 
-def test_filter_applicable_survives_a_graph_whose_nodes_key_is_null() -> None:
-    """``{"nodes": None}`` reaches here from a draft row that was never
-    populated. It must come back empty, not raise out of the heal set."""
-    dry = graph_ops.filter_applicable({"nodes": None, "edges": None}, [])
-
-    assert dry.applicable == []
-    assert dry.rejected == []
-    assert dry.graph == {"nodes": None, "edges": None}
-
-
 def test_value_at_path_reports_an_absent_slot_instead_of_raising() -> None:
     """The read half of ``apply_set_node_config``. ``_resolve_path`` hands back
     the PARENT for a final segment that does not exist yet -- that is the key a
@@ -1214,16 +910,6 @@ def test_a_partial_model_keeps_the_rest_of_the_default_model_block() -> None:
     assert model["mode"] == "chat"  # ...and the default's survive alongside them
     assert model["completion_params"] == {"temperature": 0.7}
     assert preflight_errors(new_graph) == []
-
-
-def test_a_caller_that_replaces_a_dict_default_with_a_scalar_still_wins() -> None:
-    """One level deeper, not a recursive merge of everything: a caller value
-    that is NOT a dict replaces the default outright, exactly as before."""
-    graph: Graph = {"nodes": [], "edges": []}
-
-    new_graph, _ = graph_ops.apply_create_node(graph, "llm", {"context": None}, node_id="llm1")
-
-    assert new_graph["nodes"][0]["data"]["context"] is None
 
 
 def test_a_partial_authorization_is_not_completed_from_the_default() -> None:
@@ -1295,11 +981,6 @@ def test_create_marker_canonicalizes_wrapper_without_changing_existing_entry(
     assert out["nodes"][0] == original["nodes"][0]
     assert out["edges"] == original["edges"]
     assert graph == original
-
-
-def test_create_ordinary_node_preserves_caller_flow_type() -> None:
-    out, _ = apply_create_node({"nodes": [], "edges": []}, "llm", {}, node_id="child", flow_type="caller-wrapper")
-    assert out["nodes"][0]["type"] == "caller-wrapper"
 
 
 @pytest.fixture

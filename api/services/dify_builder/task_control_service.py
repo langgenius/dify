@@ -14,7 +14,6 @@ from core.dify_builder.state import PcState, is_terminal
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderRun
 from services.dify_builder.errors import EnqueueAcknowledgementError
 from services.dify_builder.task_controls import generation
-from services.dify_builder.test_actions import NativeTestCommandMethod
 
 
 def _intent(kind, base_version, base_app_revision):
@@ -240,15 +239,13 @@ def _settle_stop(repo, test_actions, session_id, actor, key, *, deliver=True):
     if request_id:
         settlement = "pending"
     if request_id and test_actions is not None:
-        from services.dify_builder.test_actions import TestCommand
-
         try:
             if deliver:
-                receipt = test_actions.execute(
+                receipt = test_actions.cancel(
                     actor=actor,
                     session_id=session_id,
                     test_input_id=context.test_input_ref,
-                    command=TestCommand(NativeTestCommandMethod.CANCEL, request_id, {}),
+                    request_id=request_id,
                     idempotency_key="task-stop:" + key,
                 )
             else:

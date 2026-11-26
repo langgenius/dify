@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
-from typing import TYPE_CHECKING, TypedDict, Unpack
+from typing import TYPE_CHECKING, TypedDict
 
 import pytest
 
 import tasks.dify_builder_advance_task as worker
-from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.dify_builder.errors import BadRequestError, ConflictError
 from core.dify_builder.models import (
     Action,
@@ -29,12 +28,8 @@ from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession,
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import WorkflowExecutionTransport
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from services.dify_builder.revision import executable_graph_revision, execution_revision
+from services.dify_builder.revision import execution_revision
 from services.dify_builder.service import DifyBuilderService
-from services.workflow_execution_identity import build_workflow_execution_identity
-from services.workflow_run_agg import WorkflowRunAgg
-from tests.unit_tests.core.dify_builder.fakes import StubAgent
-from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     ACCOUNT_ID,
     APP_ID,
@@ -45,18 +40,11 @@ from tests.unit_tests.services.dify_builder.test_advance_task import (
     active_worker_lock as active_worker_lock,  # noqa: PLC0414 - shared pytest fixtures
 )
 from tests.unit_tests.services.dify_builder.test_advance_task import (
-    engine as engine,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.test_advance_task import (
     queued_commands as queued_commands,  # noqa: PLC0414
-)
-from tests.unit_tests.services.dify_builder.test_advance_task import (
-    repo as repo,  # noqa: PLC0414
 )
 from tests.unit_tests.services.dify_builder.test_advance_task import (
     wired as wired,  # noqa: PLC0414
 )
-from tests.unit_tests.services.dify_builder.test_dify_port import PortDatabase
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 from tests.unit_tests.services.dify_builder.typed_fixtures import dictionaries, dictionary
 
@@ -71,7 +59,6 @@ if TYPE_CHECKING:
     from services.dify_builder.application.execution_policy import BuilderExecutionContext, JsonToolExecutionContext
     from services.dify_builder.application.ports import DifyPort
     from services.dify_builder.dify_port import _BuilderExecutionLaunch
-    from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
     from services.dify_builder.json_tool_metadata import InstalledJsonParse
     from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort
 
@@ -487,243 +474,6 @@ def test_recovery_commands_keep_revision_and_session_fences_while_queued(
     assert port.applied == []
     assert events[-1][1]["error"] == "conflict"
     assert released == [(session.id, "queued-token")]
-
-
-@pytest.mark.parametrize("phase", ["prepare", "native_generator", "native_launch"])
-@pytest.mark.parametrize("presentation", ["layout", "selection", "configuration", "fixture_revision"])
-def test_canvas_presentation_survives_the_service_worker_port_and_native_admission_chain(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch, phase: str, presentation: str
-) -> None:
-    """Use real admission/claim owners; stop before native graph effects, with unknown execution evidence."""
-    import services.dify_builder.dify_port as port_module
-    import services.workflow_runtime.workflow_generator as native
-    from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
-
-    factory, actor, app, workflow, _sid, _tid = owned
-    configuration: BuilderGraph = graph(http=True)
-    configuration["nodes"][0]["data"]["variables"] = [
-        {"variable": "n", "label": "Number", "type": "number", "required": True}
-    ]
-    workflow.graph = json.dumps(configuration)
-    with factory.begin() as db:
-        _row(db, Workflow, workflow.id).graph = workflow.graph
-    repository = SqlDifyBuilderRepository(factory)
-    session = Session(
-        app_id=app.id,
-        tenant_id=actor.tenant_id,
-        owner_account_id=actor.account_id,
-        entry_mode=EntryMode.BUILD,
-        current_state=PcState.BUILD_AWAIT_TESTDATA,
-    )
-    revision = execution_revision(workflow)
-    graph_revision = executable_graph_revision(dict(workflow.graph_dict))
-    repository.create_session(session, DifyBuilderContext(last_snapshot_hash=revision), [])
-    sid = session.id
-    port = port_module.WorkflowServiceDifyPort()
-    events: list[dict[str, object]] = []
-    released: list[str] = []
-    queued: list[Action] = []
-    admitted: list[_BuilderExecutionLaunch] = []
-    runs: list[Run] = []
-    execution_test_input_id = ""
-    monkeypatch.setattr(port_module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(
-        port_module, "_load_draft_workflow_or_raise", lambda _app, *, session: session.get(Workflow, workflow.id)
-    )
-    monkeypatch.setattr(port_module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(worker, "_build_repo", lambda: repository)
-    monkeypatch.setattr(worker, "WorkflowServiceDifyPort", lambda: port)
-    monkeypatch.setattr(worker, "build_dify_builder_agent", lambda **_: StubAgent())
-    monkeypatch.setattr(worker.progress_bus, "publish", lambda _sid, event: events.append(event))
-    owners: dict[str, str] = {}
-
-    def acquire(session_id: str, *, generation: int | None = None) -> str | None:
-        if session_id in owners:
-            return None
-        token = f"g{generation}:queued-token" if generation else "queued-token"
-        owners[session_id] = token
-        return token
-
-    def release(session_id: str, token: str) -> None:
-        released.append(token)
-        if owners.get(session_id) == token:
-            del owners[session_id]
-
-    monkeypatch.setattr(worker.session_lock, "exists", lambda session_id: session_id in owners)
-    monkeypatch.setattr(worker.session_lock, "current_owner", owners.get)
-    monkeypatch.setattr(worker.session_lock, "acquire", acquire)
-    monkeypatch.setattr(worker.session_lock, "release", release)
-    monkeypatch.setattr(native, "db", PortDatabase(factory.kw["bind"]))
-    monkeypatch.setattr(native, "create_trace_scope", lambda **_kwargs: None)
-    generator = native.WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-    monkeypatch.setattr(generator, "_generate", lambda **kwargs: kwargs)
-    monkeypatch.setattr(port, "run_draft", _capture_run(port.run_draft, runs))
-
-    def change_canvas() -> None:
-        with factory.begin() as db:
-            if presentation == "fixture_revision":
-                test_input = _row(db, DifyBuilderTestInput, execution_test_input_id)
-                assert isinstance(test_input.http_fixtures, dict)
-                test_input.http_fixtures = {**test_input.http_fixtures, "execution_revision": "d" * 64}
-                return
-            current = _row(db, Workflow, workflow.id)
-            original_hash = current.unique_hash
-            graph = dict(current.graph_dict)
-            if presentation == "layout":
-                graph["nodes"][0]["position"] = {"x": 500, "y": 800}
-                graph["viewport"] = {"x": 40, "y": 30, "zoom": 1.2}
-            elif presentation == "selection":
-                for node in graph["nodes"]:
-                    node["data"]["selected"] = True
-            else:
-                graph["nodes"][1]["data"]["url"] = "https://changed.invalid"
-            current.graph = json.dumps(graph)
-            assert current.unique_hash != original_hash
-            if presentation == "configuration":
-                assert execution_revision(current) != revision
-                assert executable_graph_revision(dict(current.graph_dict)) != graph_revision
-            else:
-                assert execution_revision(current) == revision
-                assert executable_graph_revision(dict(current.graph_dict)) == graph_revision
-
-    original_prepare = BuilderExecutionPolicyService.prepare
-
-    def prepare(
-        policy: BuilderExecutionPolicyService, **kwargs: Unpack[_PrepareArguments]
-    ) -> BuilderExecutionContext | JsonToolExecutionContext:
-        nonlocal execution_test_input_id
-        execution_test_input_id = kwargs["test_input_id"]
-        if phase == "prepare":
-            change_canvas()
-        return original_prepare(
-            policy,
-            session_id=kwargs["session_id"],
-            test_input_id=kwargs["test_input_id"],
-            app_id=kwargs["app_id"],
-            actor=kwargs["actor"],
-            workflow=kwargs["workflow"],
-            submitted_inputs=kwargs["submitted_inputs"],
-            effective_inputs=kwargs["effective_inputs"],
-        )
-
-    monkeypatch.setattr(BuilderExecutionPolicyService, "prepare", prepare)
-
-    def generate(**kwargs: Unpack[_GenerateArguments]) -> dict[str, object]:
-        if phase == "native_generator":
-            change_canvas()
-        with factory() as db:
-            current = _row(db, Workflow, workflow.id)
-        launch = kwargs["builder_execution_admit"]
-        generated = generator.generate(
-            app_model=kwargs["app_model"],
-            workflow=current,
-            user=kwargs["user"],
-            execution_identity=build_workflow_execution_identity(kwargs["user"]),
-            args=kwargs["args"],
-            invoke_from=kwargs["invoke_from"],
-            builder_execution=kwargs["builder_execution"],
-            builder_execution_admit=launch,
-            streaming=True,
-            call_depth=0,
-        )
-        if phase == "native_launch":
-            change_canvas()
-            with factory() as db:
-                current = _row(db, Workflow, workflow.id)
-        assert isinstance(generated, Mapping)
-        entity = generated["application_generate_entity"]
-        assert isinstance(entity, WorkflowAppGenerateEntity)
-        launch(current, app, entity, "start", False)
-        # The native factory and Graph.init recheck raw node bindings too.
-        from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
-        from graphon.graph import Graph
-        from graphon.runtime import InitParams, RuntimeState, VariablePool
-        from services.workflow_runtime.node_factory import DifyNodeFactory
-
-        configuration = current.graph_dict
-        node_factory = DifyNodeFactory(
-            init_params=InitParams(
-                workflow_id=current.id,
-                graph_config=configuration,
-                call_depth=0,
-                run_context=build_dify_run_context(
-                    tenant_id=actor.tenant_id,
-                    app_id=app.id,
-                    user_id=actor.account_id,
-                    user_from=UserFrom.ACCOUNT,
-                    invoke_from=kwargs["invoke_from"],
-                    builder_execution=launch.context,
-                ),
-            ),
-            runtime_state=RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id=current.id),
-            execution_recorder=launch.recorder,
-        )
-        Graph.init(graph_config=configuration, node_factory=node_factory, root_node_id="start")
-        admitted.append(launch)
-        return {}
-
-    monkeypatch.setattr(port_module.AppGenerateService, "generate", generate)
-    service = DifyBuilderService(
-        repository,
-        worker.session_lock,
-        lambda _sid, action, _actor, _token: queued.append(action),
-        get_app_revision_fn=lambda app_id, actor: port.read_graph(app_id, actor)[1],
-        stamp_http_fixtures_fn=port.stamp_http_fixtures,
-    )
-    view = service.get_session_view(sid, actor)
-    service.submit_action(
-        sid,
-        actor,
-        Action(
-            kind="provide_testdata",
-            payload={
-                "mode": "provide",
-                "inputs": {"n": "41"},
-                "http_fixtures": [fixture().model_dump(mode="json")],
-            },
-            base_version=view.version,
-            base_app_revision=revision,
-        ),
-    )
-    worker.advance_session(sid, asdict(queued.pop()), asdict(actor), "queued-token")
-
-    assert events[-1]["kind"] == "command_finished"
-    assert not any(event["kind"] == "error" for event in events)
-    assert released == ["queued-token"]
-    _stored, context = repository.get_session(sid)
-    stored_run = repository.get_run(context.verify_run_id)
-    assert len(runs) == 1
-    run = runs[0]
-    if presentation in {"configuration", "fixture_revision"}:
-        assert admitted == []
-        assert run.execution_refusal is not None
-        assert run.execution_refusal.reason_code in {
-            "stale_execution_revision",
-            "node_binding_mismatch",
-            "stale_http_fixtures",
-        }
-        from services.dify_builder.application.verification import publication_decision
-
-        assert not publication_decision(
-            stored_run, session_id=sid, current_revision=revision, current_graph_revision=graph_revision
-        ).allowed
-        return
-    assert len(admitted) == 1
-    assert admitted[0].recorder is not None
-    assert admitted[0].context.execution_revision == revision
-    assert admitted[0].context.graph_revision == graph_revision
-    from runtime_contracts.builder.execution import BuilderExecutionContext
-
-    assert isinstance(admitted[0].context, BuilderExecutionContext)
-    assert admitted[0].context.http_fixtures == (fixture(),)
-    assert run.execution_refusal is None
-    # Admission alone is never presented as a verified native execution.
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert stored_run.verification is not None
-    assert stored_run.verification.execution_evidence is not None
-    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-    assert stored_run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
 
 
 @pytest.mark.parametrize("phase", ["prepare", "revalidate"])

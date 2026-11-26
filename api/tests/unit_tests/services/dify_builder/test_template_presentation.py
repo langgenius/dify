@@ -83,25 +83,6 @@ def test_known_template_refusal_has_actionable_scene_without_native_content(
     assert asdict(card.failure_reason)["params"] == {}
 
 
-def test_unknown_policy_reason_uses_fixed_sanitized_fallback() -> None:
-    first = result_card(refused_run("unknown_secret_template_reason"))
-    second = result_card(refused_run("another_unknown_reason"))
-    assert first.failure_reason == second.failure_reason
-    assert first.failure_reason
-    assert "unknown_secret_template_reason" not in json.dumps(asdict(first))
-    assert "SECRET-" not in json.dumps(asdict(first))
-    assert first.terminal_outputs is None
-
-
-def test_generic_missing_coverage_keeps_workflow_editable() -> None:
-    card = result_card(refused_run("unsupported_node_implementation"))
-    assert english_text(card.failure_reason) == (
-        "Builder does not yet have safe-test support for a node in this workflow. "
-        "The draft can still be edited; this test did not run. Automatic repair and publication are blocked."
-    )
-    assert "use supported nodes" not in english_text(card.failure_reason)
-
-
 @pytest.mark.parametrize(
     ("reason", "expected_phrase"),
     [

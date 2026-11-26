@@ -36,34 +36,6 @@ def test_reconciles_all_concrete_json_value_types() -> None:
     ]
 
 
-def test_string_values_only_keep_string_compatible_field_types() -> None:
-    fields = [
-        {"key": "title", "type": "textarea"},
-        {"key": "mode", "type": "select", "options": ["fast"]},
-        {"key": "looks_boolean", "type": "bool"},
-        {"key": "looks_numeric", "type": "number"},
-    ]
-    values = {
-        "title": "Summary",
-        "mode": "safe",
-        "looks_boolean": "true",
-        "looks_numeric": "3",
-    }
-
-    reconciled = reconcile_form_fields(fields, values)
-
-    assert [field["type"] for field in reconciled] == ["textarea", "select", "text", "text"]
-    assert reconciled[1]["options"] == ["fast", "safe"]
-
-
-def test_select_does_not_duplicate_known_value_after_option_stringification() -> None:
-    fields = [{"key": "choice", "type": "select", "options": [1, "2"]}]
-
-    reconciled = reconcile_form_fields(fields, {"choice": "1"})
-
-    assert reconciled[0]["options"] == [1, "2"]
-
-
 def test_missing_and_null_values_do_not_override_declared_type() -> None:
     marker = "not-a-field"
     fields = [

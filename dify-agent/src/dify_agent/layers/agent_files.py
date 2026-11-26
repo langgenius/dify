@@ -3,8 +3,6 @@
 Metadata requests never fetch a download URI. Sandbox paths are uploaded by
 the sandbox CLI; only plugin blobs already received from the daemon are sent
 as multipart bytes. Observations and model messages contain locators only.
-Control-plane requests borrow the Run-owned API client and choose the legacy
-inner-key or strict runtime route through ``agent_api_endpoint``.
 """
 
 from __future__ import annotations
@@ -18,14 +16,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from dify_agent.adapters.native_testing.transport import (
-    AgentRuntimeHTTPClient,
-    AgentRuntimeTransportError,
-    agent_api_endpoint,
-)
 from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
-from dify_agent.runtime.context import Deps
+from dify_agent.runtime.context import Services
 
 if TYPE_CHECKING:
     from dify_agent.layers.shell.layer import ShellSession
@@ -58,16 +51,12 @@ def file_mapping_from_link(url: str) -> AgentStubFileMapping:
     return AgentStubFileMapping(transfer_method="remote_url", url=url)
 
 
-async def _post_file_request(deps: Deps, route: str, payload: Mapping[str, object]) -> dict[str, object]:
-    client = deps.dify_api_http_client
-    url, headers = agent_api_endpoint(
-        client,
-        base_url=deps.services.inner_api_url,
-        legacy_path=f"agent/{route}",
-        runtime_path=route,
-        api_key=deps.services.inner_api_key,
+async def _post_file_request(services: Services, path: str, payload: Mapping[str, object]) -> dict[str, object]:
+    response = await services.dify_api_http_client.post(
+        services.inner_api_url.rstrip("/") + path,
+        headers={"X-Inner-Api-Key": services.inner_api_key},
+        json=dict(payload),
     )
-    response = await client.post(url, headers=headers, json=dict(payload))
     response.raise_for_status()
     data = response.json()
     if not isinstance(data, dict):
@@ -76,7 +65,7 @@ async def _post_file_request(deps: Deps, route: str, payload: Mapping[str, objec
 
 
 async def request_agent_file_download(
-    deps: Deps,
+    services: Services,
     execution_context: DifyExecutionContextLayerConfig,
     file_mapping: AgentStubFileMapping,
     *,
@@ -90,8 +79,8 @@ async def request_agent_file_download(
     if not execution_context.user_id or not execution_context.user_from:
         raise ValueError("file operations require execution context user_id and user_from")
     data = await _post_file_request(
-        deps,
-        "files/download-request",
+        services,
+        "/inner/api/agent/files/download-request",
         {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
@@ -105,7 +94,7 @@ async def request_agent_file_download(
 
 
 async def upload_agent_tool_file(
-    deps: Deps,
+    services: Services,
     execution_context: DifyExecutionContextLayerConfig,
     *,
     content: bytes,
@@ -118,19 +107,15 @@ async def upload_agent_tool_file(
     Reject missing identity and oversized content before upload allocation.
     Require the upload response's canonical reference and return only its
     tool_file locator. Transport/validation errors propagate without ever
-    rendering the blob as observation text. The strict runtime client cannot
-    send the signed multipart upload, so it refuses before allocating one.
+    rendering the blob as observation text.
     """
     if not execution_context.user_id:
         raise ValueError("plugin file upload requires execution context user_id")
     if len(content) > max_size:
         raise ValueError(f"file size {len(content)} bytes exceeds upload limit {max_size} bytes")
-    client = deps.dify_api_http_client
-    if isinstance(client, AgentRuntimeHTTPClient):
-        raise AgentRuntimeTransportError("native_file_operation_unavailable")
     data = await _post_file_request(
-        deps,
-        "files/upload-request",
+        services,
+        "/inner/api/agent/files/upload-request",
         {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
@@ -144,8 +129,8 @@ async def upload_agent_tool_file(
     uri = data.get("upload_uri")
     if not isinstance(uri, str) or not uri.startswith("/files/upload/for-plugin?"):
         raise ValueError("file control plane returned an invalid upload_uri")
-    response = await client.post(
-        deps.services.inner_api_url.rstrip("/") + uri,
+    response = await services.dify_api_http_client.post(
+        services.inner_api_url.rstrip("/") + uri,
         files={"file": (filename, content, mime_type)},
     )
     response.raise_for_status()

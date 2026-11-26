@@ -8,21 +8,10 @@ import pytest
 
 from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, TRIGGER_SCHEDULE_NODE_TYPE, TRIGGER_WEBHOOK_NODE_TYPE
 from core.dify_builder.models import Graph
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from services.dify_builder.agent import edit
-
-
-class Message:
-    def __init__(self, text: str) -> None:
-        self.text = text
-
-    def get_text_content(self) -> str:
-        return self.text
-
-
-class Reply:
-    def __init__(self, text: str) -> None:
-        self.message = Message(text)
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 class RecordingModel:
@@ -31,7 +20,7 @@ class RecordingModel:
         self.prompts: list[str] = []
         self.systems: list[str] = []
 
-    def invoke_llm(self, **kwargs: object) -> Reply:
+    def invoke_llm(self, **kwargs: object) -> LLMResult:
         messages = kwargs["prompt_messages"]
         assert isinstance(messages, list)
         assert all(isinstance(message, (SystemPromptMessage, UserPromptMessage)) for message in messages)
@@ -42,7 +31,7 @@ class RecordingModel:
         reply = next(self.replies)
         if isinstance(reply, Exception):
             raise reply
-        return Reply(reply)
+        return text_result(reply)
 
 
 VALID_PLAN = {

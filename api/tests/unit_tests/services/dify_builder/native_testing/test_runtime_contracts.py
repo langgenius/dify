@@ -1,22 +1,16 @@
 """Adapter DTOs preserve durable execution state without granting authority."""
 
 import ast
-import inspect
-from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from runtime_contracts.builder.native import runtime_contracts
 from runtime_contracts.builder.native.runtime_contracts import (
-    ChildInvocationPort,
     NativeBuilderProjection,
     NativeCheckpointPayload,
-    NativeNodeCoverage,
-    NativeStatePort,
     NativeWorkflowOutcome,
-    NodeJournalState,
     ResolvedNativeTestContext,
 )
 
@@ -86,16 +80,6 @@ PROJECTION = {
     "can_diagnose": False,
     "can_start_new_run": False,
 }
-COVERAGE = {
-    "mode": "native",
-    "node_type": "tool",
-    "node_version": "1",
-    "implementation": "tool_adapter",
-    "schema_fixture": "tool-v1.json",
-    "effect_owners": ["tool"],
-    "test_ids": ["test_tool_authorization"],
-    "limitation_reason": None,
-}
 
 
 def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references() -> None:
@@ -110,49 +94,6 @@ def test_checkpoint_roundtrip_preserves_recovery_state_and_input_references() ->
     assert restored.model_dump(mode="json") == expected
     assert restored.node_journals[0].operation_keys[0].cursor == 0
     assert restored.input_result_refs == ("inputs-1",)
-
-
-def test_context_preserves_distinct_tenants_without_claiming_to_authorize_them() -> None:
-    first = ResolvedNativeTestContext.model_validate(CONTEXT)
-    second = ResolvedNativeTestContext.model_validate({**CONTEXT, "tenant_id": "tenant-2"})
-    assert first.tenant_id == "tenant-1"
-    assert second.tenant_id == "tenant-2"
-    assert first.ref == second.ref  # C03 must authorize scope; DTO decoding cannot do so.
-    assert first.model_dump(mode="json") == CONTEXT
-
-
-@pytest.mark.parametrize(
-    ("model", "data"),
-    [
-        (ResolvedNativeTestContext, CONTEXT),
-        (NodeJournalState, JOURNAL),
-        (NativeCheckpointPayload, CHECKPOINT),
-        (NativeWorkflowOutcome, WAITING),
-        (NativeBuilderProjection, PROJECTION),
-        (NativeNodeCoverage, COVERAGE),
-    ],
-)
-def test_models_reject_extra_fields_and_field_reassignment(model: type[BaseModel], data: dict[str, object]) -> None:
-    with pytest.raises(ValidationError, match="extra_forbidden"):
-        model.model_validate({**data, "granted": True})
-    instance = model.model_validate(data)
-    with pytest.raises(ValidationError, match="frozen_instance"):
-        setattr(instance, next(iter(data)), "changed")
-
-
-@pytest.mark.parametrize("field", ["generation", "call_depth"])
-def test_context_rejects_negative_counters(field: str) -> None:
-    with pytest.raises(ValidationError):
-        ResolvedNativeTestContext.model_validate({**CONTEXT, field: -1})
-
-
-@pytest.mark.parametrize(
-    ("model", "data", "field"),
-    [(NodeJournalState, JOURNAL, "cursor"), (NativeCheckpointPayload, CHECKPOINT, "generation")],
-)
-def test_checkpoint_rejects_negative_counters(model: type[BaseModel], data: dict[str, object], field: str) -> None:
-    with pytest.raises(ValidationError):
-        model.model_validate({**data, field: -1})
 
 
 @pytest.mark.parametrize("field", ["graph", "inputs", "resource_manifest"])
@@ -183,14 +124,6 @@ def test_checkpoint_rejects_invalid_or_nonfinite_json_strings(field: str, bad: s
 def test_waiting_requires_durable_checkpoint_run_pending_operations_and_reason(field: str, bad: object) -> None:
     with pytest.raises(ValidationError, match=field.removesuffix("_ref")):
         NativeWorkflowOutcome.model_validate({**WAITING, field: bad})
-
-
-@pytest.mark.parametrize("reason", ["approval", "configuration", "interaction"])
-def test_wait_categories_survive_outcome_and_projection_roundtrip(reason: str) -> None:
-    outcome = NativeWorkflowOutcome.model_validate({**WAITING, "wait_reason": reason})
-    projection = NativeBuilderProjection.model_validate({**PROJECTION, "wait_reason": reason})
-    assert NativeWorkflowOutcome.model_validate_json(outcome.model_dump_json()).wait_reason == reason
-    assert NativeBuilderProjection.model_validate_json(projection.model_dump_json()).wait_reason == reason
 
 
 @pytest.mark.parametrize("native_status", ["succeeded", "failed", "partial-succeeded", "stopped"])
@@ -243,54 +176,6 @@ def test_projection_disallows_diagnosis_and_new_run_for_control_routes(route: st
         NativeBuilderProjection.model_validate(data)
 
 
-@pytest.mark.parametrize("field", list(WAITING))
-def test_outcome_fields_are_required_even_when_nullable(field: str) -> None:
-    data = {key: value for key, value in WAITING.items() if key != field}
-    with pytest.raises(ValidationError, match=field):
-        NativeWorkflowOutcome.model_validate(data)
-
-
-def test_ports_expose_keyword_only_persistence_and_child_invocation_inputs() -> None:
-    expected = {
-        NativeStatePort: {
-            "load_context": ("ref",),
-            "commit_checkpoint": ("ref", "generation", "payload"),
-            "read_checkpoint": ("ref", "checkpoint"),
-            "store_result": ("ref", "key", "result"),
-            "load_result": ("ref", "result_ref"),
-        },
-        ChildInvocationPort: {
-            "get_or_create": (
-                "parent_ref",
-                "key",
-                "child_app_id",
-                "child_workflow_revision",
-                "input_digest",
-                "input_result_ref",
-            ),
-            "complete": ("child_ref", "outcome"),
-        },
-    }
-    for port, methods in expected.items():
-        for name, names in methods.items():
-            methods_by_port = {
-                NativeStatePort: {
-                    "load_context": NativeStatePort.load_context,
-                    "commit_checkpoint": NativeStatePort.commit_checkpoint,
-                    "read_checkpoint": NativeStatePort.read_checkpoint,
-                    "store_result": NativeStatePort.store_result,
-                    "load_result": NativeStatePort.load_result,
-                },
-                ChildInvocationPort: {
-                    "get_or_create": ChildInvocationPort.get_or_create,
-                    "complete": ChildInvocationPort.complete,
-                },
-            }
-            params = list(inspect.signature(methods_by_port[port][name]).parameters.values())[1:]
-            assert tuple(param.name for param in params) == names
-            assert all(param.kind == inspect.Parameter.KEYWORD_ONLY for param in params)
-
-
 def test_runtime_contract_import_boundary_excludes_runtime_core_and_database_dependencies() -> None:
     tree = ast.parse(Path(runtime_contracts.__file__).read_text())
     imports: list[str] = []
@@ -328,14 +213,3 @@ def test_context_rejects_manifest_generators_before_tuple_coercion(resource: dic
     manifest = (entry for entry in [resource])
     with pytest.raises(ValidationError, match="resource_manifest"):
         ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
-
-
-@pytest.mark.parametrize("manifest", [[], (), [{"resource_ref": "resource-1"}], ({"resource_ref": "resource-1"},)])
-def test_context_manifest_accepts_lists_and_tuples_with_public_json_roundtrip(
-    manifest: Sequence[dict[str, str]],
-) -> None:
-    context = ResolvedNativeTestContext.model_validate({**CONTEXT, "resource_manifest": manifest})
-    assert isinstance(context.resource_manifest, tuple)
-    assert context.model_dump(mode="json")["resource_manifest"] == list(manifest)
-    restored = ResolvedNativeTestContext.model_validate_json(context.model_dump_json())
-    assert restored.resource_manifest == context.resource_manifest

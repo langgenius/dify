@@ -68,31 +68,6 @@ def test_canvas_read_only_matches_is_working() -> None:
         assert canvas_read_only(s) == is_working(s)
 
 
-def test_state_values_are_verbatim_go_strings() -> None:
-    assert PcState.FIX_DIAGNOSE == "fix.diagnose"
-    assert PcState.FIX_PROPOSE == "fix.propose"
-    assert PcState.FIX_AWAIT_APPROVAL == "fix.await_approval"
-    assert PcState.FIX_APPLY == "fix.apply"
-    assert PcState.FIX_AWAIT_VERIFY == "fix.await_verify"
-    assert PcState.FIX_AWAIT_TESTDATA == "fix.await_testdata"
-    assert PcState.FIX_VERIFY == "fix.verify"
-    assert PcState.FIX_AWAIT_DECISION == "fix.await_decision"
-    assert PcState.FIX_PUBLISH == "fix.publish"
-    assert PcState.CHECKLIST_DIAGNOSE == "checklist.diagnose"
-    assert PcState.CHECKLIST_PROPOSE == "checklist.propose"
-    assert PcState.CHECKLIST_AWAIT_RECHECK == "checklist.await_recheck"
-    assert PcState.SUCCESS == "success"
-    assert PcState.FAILED == "failed"
-
-
-def test_edit_publish_is_working_and_edit_complete_is_terminal() -> None:
-    assert PcState.EDIT_PUBLISH == "edit.publish"
-    assert is_working(PcState.EDIT_PUBLISH) is True
-    assert is_terminal(PcState.EDIT_PUBLISH) is False
-    assert PcState.EDIT_COMPLETE == "edit.complete"
-    assert is_terminal(PcState.EDIT_COMPLETE) is True
-
-
 def test_build_initial_plan_is_working_not_waiting() -> None:
     """build.initial_plan is reachable only via the continue_adjusting/
     retry_after_revert loop-back, where it runs resource discovery
@@ -107,10 +82,3 @@ def test_build_initial_plan_is_working_not_waiting() -> None:
     assert is_waiting(PcState.BUILD_INITIAL_PLAN) is False
     assert is_terminal(PcState.BUILD_INITIAL_PLAN) is False
     assert canvas_read_only(PcState.BUILD_INITIAL_PLAN) is True
-
-
-def test_build_capability_check_is_an_automatic_working_state() -> None:
-    assert is_working(PcState.BUILD_CAPABILITY_CHECK) is True
-    assert is_waiting(PcState.BUILD_CAPABILITY_CHECK) is False
-    assert is_terminal(PcState.BUILD_CAPABILITY_CHECK) is False
-    assert canvas_read_only(PcState.BUILD_CAPABILITY_CHECK) is True

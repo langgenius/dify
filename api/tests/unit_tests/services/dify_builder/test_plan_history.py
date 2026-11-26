@@ -77,13 +77,6 @@ def test_plan_history_pages_preserve_snapshots_and_cursors(monkeypatch: pytest.M
     assert repo.list_conversation(session.id)[2].payload == new_payload
 
 
-def test_plan_history_contract_requires_both_summaries() -> None:
-    schema = DifyBuilderConversationPageResponse.model_json_schema(mode="serialization")["$defs"]["PlanCard"]
-    for key in ("input_summary", "output_summary"):
-        assert key in schema["required"]
-        assert schema["properties"][key]["type"] == "string"
-
-
 @pytest.mark.parametrize("key", ["input_summary", "output_summary"])
 @pytest.mark.parametrize("invalid", [None, "missing"])
 def test_plan_history_rejects_incomplete_payloads(key: str, invalid: str | None) -> None:

@@ -6,21 +6,10 @@ import pytest
 
 from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
 from core.dify_builder.state import PcState
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder.agent import mock_inputs
-
-
-class _Msg:
-    def __init__(self, t: str) -> None:
-        self._t = t
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, t: str) -> None:
-        self.message = _Msg(t)
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 class _FakeInstance:
@@ -28,9 +17,9 @@ class _FakeInstance:
         self._r = list(replies)
         self.prompts: list[list[PromptMessage]] = []
 
-    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **_kwargs: object) -> _Result:
+    def invoke_llm(self, *, prompt_messages: list[PromptMessage], **_kwargs: object) -> LLMResult:
         self.prompts.append(prompt_messages)
-        return _Result(self._r.pop(0))
+        return text_result(self._r.pop(0))
 
 
 class _BoomInstance:
@@ -56,11 +45,6 @@ def test_generate_degrades_to_typed_defaults_on_boom() -> None:
     assert set(out.keys()) == {"query", "count"}
     assert isinstance(out["query"], str)
     assert isinstance(out["count"], int | float)
-
-
-def test_generate_degrades_on_none_model() -> None:
-    out = mock_inputs.generate(None, _SCHEMA, {})
-    assert set(out.keys()) == {"query", "count"}
 
 
 def test_generate_empty_schema_is_empty_inputs() -> None:

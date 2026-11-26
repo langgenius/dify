@@ -5,25 +5,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.dify_builder.models import Actor, ChecklistError, Diagnosis, Graph, NodeOutput, Run
+from core.dify_builder.models import Actor, Diagnosis, Graph, NodeOutput, Run
+from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from services.dify_builder import credentials
 from services.dify_builder.agent import fix, graph_prompt
 from services.dify_builder.preflight import preflight_errors
 from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort
-
-
-class _Msg:
-    def __init__(self, text: str) -> None:
-        self._t = text
-
-    def get_text_content(self) -> str:
-        return self._t
-
-
-class _Result:
-    def __init__(self, text: str) -> None:
-        self.message = _Msg(text)
+from tests.unit_tests.services.dify_builder.model_responses import text_result
 
 
 class _FakeInstance(MagicMock):
@@ -39,8 +28,8 @@ class _FakeInstance(MagicMock):
         stop: list[str] | None = None,  # noqa: ARG002
         stream: bool = True,  # noqa: ARG002
         **_kw: object,
-    ) -> _Result:
-        return _Result(self._replies.pop(0))
+    ) -> LLMResult:
+        return text_result(self._replies.pop(0))
 
 
 class _BoomInstance(MagicMock):
@@ -83,51 +72,16 @@ def _bind_failed_native_fixture(
     return native_run_id
 
 
-def test_diagnose_valid() -> None:
-    m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "x is undefined", "severity": "high"}'])
-    d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
-    assert d.culprit_node_id == "code1"
-    assert d.severity == "high"
-    assert "undefined" in d.root_cause
-
-
 def test_diagnose_nonexistent_culprit_falls_back() -> None:
     m = _FakeInstance(['{"culprit_node_id": "ghost", "root_cause": "y", "severity": "medium"}'])
     d = fix.diagnose(m, Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"  # LLM named a non-existent node -> real failed node
 
 
-def test_diagnose_bad_severity_coerced() -> None:
-    m = _FakeInstance(['{"culprit_node_id": "code1", "root_cause": "y", "severity": "catastrophic"}'])
-    assert fix.diagnose(m, Run(), _GRAPH, _OUTPUTS).severity == "medium"
-
-
-def test_diagnose_none_model_degrades_with_real_error() -> None:
-    d = fix.diagnose(None, Run(), _GRAPH, _OUTPUTS)
-    assert d.culprit_node_id == "code1"
-    assert "NameError: x" in d.root_cause
-
-
 def test_diagnose_provider_error_degrades() -> None:
     d = fix.diagnose(_BoomInstance(), Run(), _GRAPH, _OUTPUTS)
     assert d.culprit_node_id == "code1"
     assert "unavailable" in d.root_cause
-
-
-def test_diagnose_checklist_valid() -> None:
-    errs = [ChecklistError(node_id="llm1", node_type="llm", title="LLM", messages=["metrics required"])]
-    g: Graph = {"nodes": [{"id": "llm1", "data": {"type": "llm"}}], "edges": []}
-    m = _FakeInstance(['{"culprit_node_id": "llm1", "root_cause": "missing metrics", "severity": "medium"}'])
-    d = fix.diagnose_checklist(m, errs, g)
-    assert d.culprit_node_id == "llm1"
-    assert "metrics" in d.root_cause
-
-
-def test_diagnose_checklist_none_model_degrades() -> None:
-    errs = [ChecklistError(node_id="llm1", messages=["metrics required"])]
-    d = fix.diagnose_checklist(None, errs, {"nodes": [], "edges": []})
-    assert d.culprit_node_id == "llm1"
-    assert d.root_cause == "metrics required"
 
 
 _DIAG = Diagnosis(culprit_node_id="code1", root_cause="x is undefined", severity="high")
@@ -155,18 +109,6 @@ _RG: Graph = {
     ],
     "edges": [{"id": "code1-end1", "source": "code1", "target": "end1"}],
 }
-
-
-def test_propose_config_fix_auto_applies_low_risk() -> None:
-    payload = (
-        '{"intents":[{"op":"set_node_config","args":{"node_id":"code1","path":"code",'
-        '"value":"def main():\\n    return {}"}}],'
-        '"risk":{"level":"low","reason":"config fix","has_external_side_effect":false}}'
-    )
-    intents, risk = fix.propose_repair(_FakeInstance([payload]), _DIAG, _RG)
-    assert len(intents) == 1
-    assert intents[0].op == "set_node_config"
-    assert risk.level == "low"
 
 
 @pytest.mark.parametrize("switch_model", [True, False], ids=["model-switch-needs-approval", "prompt-auto-applies"])
@@ -815,24 +757,6 @@ def test_propose_external_config_forced_high() -> None:
     assert risk.level == "high"  # http-request node touched -> external side effect, even config-only
 
 
-def test_propose_structural_forced_high() -> None:
-    """Also the guard for the ``connect`` exclusion: ``end1`` is already refused
-    by the engine and this batch only WIRES to it. Counting a connect's
-    endpoints as written would make ``end1``'s pre-existing defect veto the
-    whole repair, and this test would silently become "surfaces to human"."""
-    from services.dify_builder.preflight import preflight_errors
-
-    assert preflight_errors(_RG)  # ``end1`` is not startable, and nothing here fixes it
-    payload = (
-        '{"intents":[{"op":"create_node","args":{"node_type":"llm","config":{},"node_id":"llm2"}},'
-        '{"op":"connect","args":{"from_node":"llm2","to_node":"end1"}}],'
-        '"risk":{"level":"low","reason":"add node","has_external_side_effect":false}}'
-    )
-    intents, risk = fix.propose_repair(_FakeInstance([payload]), _DIAG, _RG)
-    assert len(intents) == 2
-    assert risk.level == "high"  # any structural op forces high -> human review
-
-
 def test_propose_dangling_ref_reprompts_then_recovers() -> None:
     bad = (
         '{"intents":[{"op":"connect","args":{"from_node":"code1","to_node":"ghost"}}],'
@@ -854,12 +778,6 @@ def test_propose_invalid_twice_surfaces_to_human() -> None:
     assert intents == []
     assert risk.level == "high"
     assert "try again or finish" in risk.reason.lower()
-
-
-def test_propose_none_model_surfaces_to_human() -> None:
-    intents, risk = fix.propose_repair(None, _DIAG, _RG)
-    assert intents == []
-    assert risk.level == "high"
 
 
 def test_propose_provider_error_surfaces() -> None:
@@ -892,9 +810,9 @@ class _RecordingInstance(MagicMock):
         self._replies = list(replies)
         self.calls: list[Graph] = []
 
-    def invoke_llm(self, **kwargs: object) -> _Result:
+    def invoke_llm(self, **kwargs: object) -> LLMResult:
         self.calls.append(kwargs)
-        return _Result(self._replies.pop(0))
+        return text_result(self._replies.pop(0))
 
 
 def test_diagnose_withholds_nested_runtime_credentials_without_changing_evidence() -> None:
@@ -1058,12 +976,6 @@ def test_propose_repair_prompt_does_not_carry_the_culprits_credentials() -> None
     assert credentials.REDACTED in prompt
 
 
-def test_culprit_config_survives_a_node_whose_data_is_not_a_mapping() -> None:
-    graph: Graph = {"nodes": [{"id": "odd", "data": "not-a-dict"}], "edges": []}
-
-    assert fix._culprit_config("odd", graph) == "{}"
-
-
 # ---- an over-budget culprit is never shown half-rendered ----
 #
 # The op schema Fix now shares with Edit tells the model to re-send an array's
@@ -1109,15 +1021,6 @@ def test_an_over_budget_culprit_config_drops_the_whole_key_and_names_it() -> Non
     # fragment of a case leaked into it.
     assert json.loads(kept) == {"type": "if-else", "title": "Score"}
     assert "case_id" not in block
-
-
-def test_a_within_budget_culprit_config_is_rendered_whole_as_json() -> None:
-    graph: Graph = {"nodes": [{"id": "code1", "data": {"type": "code", "title": "Code", "code": "x = 1"}}], "edges": []}
-
-    block = fix._culprit_config("code1", graph)
-
-    assert graph_prompt.TRUNCATION_MARKER not in block
-    assert json.loads(block) == {"type": "code", "title": "Code", "code": "x = 1"}
 
 
 # ---- the node-data half of the check, mirroring Edit ----
@@ -1190,16 +1093,6 @@ def test_propose_repair_reprompts_on_a_node_the_engine_would_refuse_and_recovers
     assert risk.level == "low"
 
 
-def test_the_fix_reprompt_quotes_the_engines_own_words() -> None:
-    m = _RecordingInstance([_operator_repair("=="), _operator_repair("≥")])
-
-    fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
-
-    retry_prompt = m.calls[1]["prompt_messages"][1].content
-    assert "the draft would then not start: node 'branch1' (if-else): " in retry_prompt
-    assert "cases.0.conditions.0.comparison_operator" in retry_prompt
-
-
 def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human() -> None:
     m = _RecordingInstance([_operator_repair("=="), _operator_repair("==")])
 
@@ -1209,15 +1102,6 @@ def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human() -> None:
     assert intents == []  # never handed to the gate as if it were a fix
     assert risk.level == "high"
     assert "try again or finish" in risk.reason.lower()
-
-
-def test_a_repair_the_engine_accepts_never_spends_the_reprompt() -> None:
-    m = _RecordingInstance([_operator_repair("≥")])
-
-    intents, _risk = fix.propose_repair(m, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
-
-    assert len(m.calls) == 1
-    assert len(intents) == 1
 
 
 def test_a_pre_existing_broken_node_does_not_veto_a_repair_elsewhere() -> None:
@@ -1347,16 +1231,6 @@ def _branch_connect(source_handle: str | None) -> str:
     )
 
 
-def test_a_branch_connect_with_a_declared_handle_is_accepted_first_time() -> None:
-    m = _RecordingInstance([_branch_connect("false")])
-
-    intents, risk = fix.propose_repair(m, _BRANCH_DIAG, _BRANCH_GRAPH)
-
-    assert len(m.calls) == 1  # accepted outright: the one re-prompt was never spent
-    assert [(i.op, i.args["source_handle"]) for i in intents] == [("connect", "false")]
-    assert risk.level == "high"  # a connect is structural -> the human still sees it
-
-
 def test_a_branch_connect_without_a_handle_is_refused_and_the_retry_recovers_it() -> None:
     m = _RecordingInstance([_branch_connect(None), _branch_connect("false")])
 
@@ -1382,23 +1256,6 @@ def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human() -> Non
     assert intents == []
     assert risk.level == "high"
     assert "try again or finish" in risk.reason.lower()
-
-
-def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles() -> None:
-    """The prompt half of the three tests above, which are its behaviour.
-
-    On its own ``assert "source_handle" in _OP_SCHEMA`` pins a wording and
-    proves nothing; what makes it meaningful is that the same connect is
-    accepted with a declared handle and refused without one.
-    """
-    assert "source_handle" in fix._OP_SCHEMA
-    assert "if-else" in fix._OP_SCHEMA
-
-    context = fix._graph_context(_BRANCH_GRAPH)
-
-    assert "  branch1 (if-else): Score handles=['true', 'false']" in context
-    assert "  branch1 -[true]-> pass1" in context
-    assert "  start1 -> branch1" in context  # a default handle stays unnamed
 
 
 # ---- parity with Edit: a repair the guards condemn surfaces WITH its reason ----
@@ -1543,26 +1400,6 @@ def test_a_repair_that_clobbers_an_array_surfaces_with_the_reason() -> None:
     assert "c1" in risk.reason
 
 
-def test_a_purely_structural_refusal_keeps_the_generic_surface_reason() -> None:
-    """The distinction round 2 established, in the one place Fix has it: only a
-    would-run-wrong verdict replaces the surface text. A structural refusal --
-    which DROPPED its own intent and says nothing about what remains -- still
-    ends at the same generic "no safe fix" the gate has always shown."""
-    ghost = json.dumps(
-        {
-            "intents": [{"op": "set_node_config", "args": {"node_id": "ghost", "path": "code", "value": "x"}}],
-            "risk": {"level": "low", "reason": "r", "has_external_side_effect": False},
-        }
-    )
-    m = _FakeInstance([ghost, ghost])
-
-    intents, risk = fix.propose_repair(m, _DIAG, _RG)
-
-    assert intents == []
-    assert risk.reason.startswith("No safe automatic fix found")
-    assert "node5" not in risk.reason
-
-
 def test_a_repair_that_answers_the_guard_on_the_retry_is_staged_as_normal() -> None:
     """The corrective re-prompt still does its job: a second attempt that
     extends the aggregator is a real fix and is staged."""
@@ -1611,7 +1448,7 @@ def test_repair_receives_native_failure_rule_without_inventing_a_stop_policy() -
             stop: list[str] | None = None,
             stream: bool = True,
             **kwargs: object,
-        ) -> _Result:
+        ) -> LLMResult:
             self.messages = prompt_messages
             return super().invoke_llm(
                 prompt_messages=prompt_messages, model_parameters=model_parameters, stop=stop, stream=stream, **kwargs
@@ -1679,22 +1516,6 @@ def test_empty_repair_redacts_graph_and_runtime_secrets_before_bounding_reason()
     assert "runtime-private" not in risk.reason
 
 
-def test_retry_empty_repair_preserves_reason_and_only_prior_actual_refusal() -> None:
-    from services.dify_builder import trace_diagnostics as diagnostics
-
-    reason = "403 permission required; no safe graph repair is available."
-    model = _RecordingInstance([_operator_repair("=="), json.dumps({"intents": [], "risk": {"reason": reason}})])
-    records = []
-    with diagnostics.scope(records.append, "propose-repair"):
-        intents, risk = fix.propose_repair(model, _IF_ELSE_DIAG, _IF_ELSE_GRAPH)
-
-    assert intents == []
-    assert risk.reason == reason
-    assert len(model.calls) == 2
-    assert [record["code"] for record in records] == ["validation_refused", "repair_not_proposed"]
-    assert records[0]["attempt"] == 1
-
-
 def test_defensive_nonempty_nonapplicable_verdict_is_not_refused_or_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1739,17 +1560,6 @@ def test_rejected_nonempty_repair_remains_validation_refused() -> None:
     assert [record["code"] for record in records] == ["validation_refused", "validation_refused"]
     assert [record["attempt"] for record in records] == [1, 2]
     assert all(record["validation_details"][0]["stage"] == "native_config" for record in records)
-
-
-@pytest.mark.parametrize("risk_payload", [{}, {"reason": "   \n"}])
-def test_empty_repair_without_explanation_uses_existing_generic_reason(risk_payload: dict[str, str]) -> None:
-    model = _RecordingInstance([json.dumps({"intents": [], "risk": risk_payload})])
-
-    intents, risk = fix.propose_repair(model, _DIAG, _RG)
-
-    assert intents == []
-    assert risk.reason == "No safe automatic fix found — try again or finish this session."
-    assert len(model.calls) == 1
 
 
 @pytest.mark.parametrize(

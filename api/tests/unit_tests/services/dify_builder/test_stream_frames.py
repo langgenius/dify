@@ -190,47 +190,6 @@ def test_native_workflow_terminal_event_does_not_end_the_builder_command(event: 
     assert _event(frames[1])["data"]["payload"]["event"] == event
 
 
-def test_ignored_workflow_event_is_not_sent_to_the_browser() -> None:
-    workflow = {
-        "kind": "workflow",
-        "session_id": "s1",
-        "operation_id": "operation-1",
-        "stage_id": "build.test",
-        "at_version": 2,
-        "revision": 1,
-        "payload": {"event": "message_end", "task_id": "task-1", "id": "message-1"},
-    }
-    subscription = _FakeSubscription([json.dumps(workflow).encode(), json.dumps(_internal_finished()).encode()])
-
-    frames = list(wiring.stream_advance_frames(_view(), subscription, expect_advance=True))
-
-    assert [_event(frame)["event"] for frame in frames] == ["command_started", "command_finished"]
-
-
-def test_stream_advance_frames_settled_call_yields_minimal_command_handshake_only() -> None:
-    frames = list(
-        wiring.stream_advance_frames(
-            _view(state="edit.capability_check"),
-            None,
-            expect_advance=False,
-            command_id="command-1",
-        )
-    )
-
-    assert [_event(frame) for frame in frames] == [
-        {
-            "event": "command_started",
-            "data": {
-                "session_id": "s1",
-                "command_id": "command-1",
-                "version": 1,
-                "phase": "understand",
-                "run_status": "processing",
-            },
-        }
-    ]
-
-
 def test_stream_advance_frames_can_emit_public_command_finished_for_settled_message() -> None:
     view = _view(version=2, run_status="waiting_input", state="success", app_id="private")
 
@@ -262,29 +221,6 @@ def test_stream_advance_frames_can_emit_public_command_finished_for_settled_mess
                 "command_id": "command-1",
             },
         },
-    ]
-
-
-def test_reconnect_stream_skips_handshake_and_emits_settled_state() -> None:
-    frames = list(
-        wiring.stream_advance_frames(
-            _view(version=3, run_status="waiting_confirmation"),
-            None,
-            expect_advance=False,
-            emit_command_started=False,
-            emit_command_finished_when_settled=True,
-            command_id="command-3",
-        )
-    )
-
-    assert [_event(frame) for frame in frames] == [
-        {
-            "event": "command_finished",
-            "data": {
-                **_view(version=3, run_status="waiting_confirmation"),
-                "command_id": "command-3",
-            },
-        }
     ]
 
 

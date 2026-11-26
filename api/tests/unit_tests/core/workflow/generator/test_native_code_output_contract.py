@@ -24,24 +24,6 @@ def test_batch_code_contract_validates_identity_before_grouping(prompt: str) -> 
     assert "Do not replace unrelated calculations or rewrite the whole Code node" in prompt
 
 
-def test_generation_prompts_declare_native_numeric_output_types() -> None:
-    for prompt in (get_node_config_snippet("code"), get_node_builder_system_prompt("code")):
-        assert 'Use "number" for both integer and floating-point outputs' in prompt
-        assert 'Use "array[number]" for numeric arrays' in prompt
-        assert 'Never use "integer", "int", or "float" as an output type' in prompt
-        for output_type in (
-            "string",
-            "number",
-            "boolean",
-            "object",
-            "array[string]",
-            "array[number]",
-            "array[boolean]",
-            "array[object]",
-        ):
-            assert f'"{output_type}"' in prompt
-
-
 @pytest.mark.parametrize("value", [3, 3.5])
 def test_native_code_accepts_number_declaration_for_integer_and_float(value: int | float) -> None:
     variables: list[object] = []

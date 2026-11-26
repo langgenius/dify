@@ -1,20 +1,18 @@
 """Tests for ``SqlDifyBuilderRepository``'s session lifecycle + version-CAS.
 
 Verifies the P3a Task 4 slice (``create_session``/``get_session``/
-``compare_and_advance``) against an in-memory SQLite database: real
+``compare_and_advance``) against an isolated SQLite database: real
 ``Base.metadata.create_all`` DDL, a real ``UPDATE ... WHERE version=`` CAS,
 and a real ``UNIQUE(session_id, seq)`` constraint backing seq authority.
 The remaining ``Repository`` methods (checkpoints/runs/test-inputs/
 list_conversation) are Task 5 and are not exercised here.
 """
 
-from collections.abc import Iterator
 from dataclasses import replace
 from datetime import datetime
 from typing import Unpack
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import TypedDict
@@ -34,7 +32,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.state import PcState
-from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -43,18 +40,8 @@ ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
 @pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine)
+def repo(sqlite_engine: Engine) -> SqlDifyBuilderRepository:
+    factory = sessionmaker(bind=sqlite_engine)
     return SqlDifyBuilderRepository(factory)
 
 

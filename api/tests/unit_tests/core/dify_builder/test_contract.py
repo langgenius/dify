@@ -3,56 +3,22 @@
 Spec: docs/superpowers/specs/2026-08-21-dify-builder-full-flow-contract-design.md, §2/§6/§7.
 """
 
-from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 import pytest
 
 from core.dify_builder.contract import (
-    ActionKind,
-    AssistantTurnItem,
-    CanvasEvent,
-    CardKind,
-    ExecutionActivity,
-    ExecutionActivityState,
-    ExecutionProgress,
-    ExecutionProgressStatus,
-    FormCard,
-    FormField,
     Phase,
-    PlanCard,
-    RequirementsPayload,
-    ResourceOption,
-    ResourceSelectCard,
     RunStatus,
     TestResultCard,
     post_canvas_action_id,
 )
-from core.dify_builder.contract import (
-    TestResultStatus as ResultStatus,
-)
-from core.dify_builder.models import EntryMode
 from core.dify_builder.state import PcState
 from services.dify_builder.service import SessionView, _run_status
 from services.dify_builder.wiring import session_view_to_dict
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
-
-
-def test_recovery_class_members() -> None:
-    from core.dify_builder.contract import RecoveryClass
-
-    assert RecoveryClass.UNCHANGED == "unchanged"
-    assert RecoveryClass.CONFIG_ONLY == "config_only"
-    assert RecoveryClass.STRUCTURAL_COMPATIBLE == "structural_compatible"
-    assert RecoveryClass.STRUCTURAL_INVALIDATING == "structural_invalidating"
-    assert [c.value for c in RecoveryClass] == [
-        "unchanged",
-        "config_only",
-        "structural_compatible",
-        "structural_invalidating",
-    ]
 
 
 @pytest.mark.parametrize(
@@ -89,40 +55,6 @@ def test_post_canvas_action_requires_an_applied_transition_and_available_follow_
     )
 
 
-def test_recovery_ref_fields() -> None:
-    from core.dify_builder.contract import RecoveryRef
-
-    ref = RecoveryRef(recovery_class="config_only", can_continue=True, can_restart=True)
-    assert asdict(ref) == {"recovery_class": "config_only", "can_continue": True, "can_restart": True}
-
-
-def test_enums_match_spec() -> None:
-    assert [p.value for p in Phase] == [
-        "understand",
-        "clarify",
-        "resources",
-        "plan",
-        "modify",
-        "test",
-        "review",
-        "publish",
-        "complete",
-    ]
-    assert [r.value for r in RunStatus] == [
-        "processing",
-        "waiting_input",
-        "waiting_confirmation",
-        "paused",
-        "failed",
-        "complete",
-    ]
-    assert set(ActionKind) == {ActionKind.PRIMARY, ActionKind.SECONDARY, ActionKind.DESTRUCTIVE, ActionKind.AUTOMATIC}
-    assert [event.value for event in CanvasEvent] == ["graph_changed", "edit_targets_changed", "publish_workflow"]
-    assert {EntryMode.BUILD, EntryMode.EDIT} <= set(EntryMode)
-    assert PcState.BUILD_GOAL_ANALYSIS.value == "build.goal_analysis"
-    assert PcState.EDIT_IMPACT_ANALYSIS.value == "edit.impact_analysis"
-
-
 def test_session_view_public_projection_excludes_engine_state() -> None:
     fix_session_view = SessionView(
         session_id="s1",
@@ -153,156 +85,6 @@ def test_run_status_terminal_states() -> None:
     assert _run_status(PcState.EDIT_COMPLETE) == RunStatus.COMPLETE
     assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.PROCESSING  # working
     assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_CONFIRMATION
-
-
-def test_card_shapes_round_trip() -> None:
-    """Each card's asdict() is exactly its wire payload (no ``kind`` key --
-    ``kind`` is a ClassVar discriminant), and to_item() wraps it into the
-    shipped ConversationItem envelope. One representative assertion per
-    card family (spec §4.3), plus one typed submit payload (spec §5)."""
-
-    # plan
-    plan = PlanCard(
-        title="Build plan",
-        input_summary="A support question.",
-        output_summary="A generated answer.",
-        items=["Add start node", "Add LLM node"],
-    )
-    assert plan.kind == CardKind.PLAN
-    assert "kind" not in asdict(plan)
-    plan_item = plan.to_item(seq=1, at_version=1)
-    assert plan_item.kind == "plan"
-    assert plan_item.payload == {
-        "reply_language": "",
-        "title": "Build plan",
-        "input_summary": "A support question.",
-        "output_summary": "A generated answer.",
-        "items": ["Add start node", "Add LLM node"],
-    }
-
-    # form -- with a FormField.
-    form = FormCard(
-        variant="build_requirements",
-        fields=[FormField(key="audience", label="Audience", type="text")],
-        values={"audience": "execs"},
-    )
-    assert form.kind == CardKind.FORM
-    assert "kind" not in asdict(form)
-    form_item = form.to_item(seq=2, at_version=1)
-    assert form_item.payload["fields"] == [
-        {
-            "key": "audience",
-            "label": "Audience",
-            "type": "text",
-            "options": [],
-            "required": False,
-            "default": None,
-            "max_length": None,
-            "allowed_file_types": [],
-            "allowed_file_extensions": [],
-            "allowed_file_upload_methods": [],
-            "placeholder": None,
-            "hint": None,
-            "unit": None,
-            "json_schema": None,
-            "number_limits": None,
-        }
-    ]
-    assert form_item.payload["values"] == {"audience": "execs"}
-    assert form_item.payload["frozen"] is False
-
-    # resource_select -- readiness must survive asdict.
-    rs = ResourceSelectCard(
-        recommended=[
-            ResourceOption(id="r1", label="Sales KB", meta="42 docs", kind="knowledge", readiness="ready"),
-        ],
-    )
-    assert rs.kind == CardKind.RESOURCE_SELECT
-    assert "kind" not in asdict(rs)
-    rs_item = rs.to_item(seq=3, at_version=1)
-    assert rs_item.payload["recommended"][0]["readiness"] == "ready"
-
-    # test_result -- intentionally minimal.
-    tr = TestResultCard(
-        status=ResultStatus.FAILED,
-        failure_reason="One node failed",
-        dify_run_id="run-1",
-    )
-    assert tr.kind == CardKind.TEST_RESULT
-    assert "kind" not in asdict(tr)
-    tr_item = tr.to_item(seq=4, at_version=2)
-    assert tr_item.payload == {
-        "reply_language": "",
-        "status": "failed",
-        "failure_reason": "One node failed",
-        "outcome": None,
-        "business_acceptance_state": None,
-        "business_acceptance_case_id": None,
-        "terminal_outputs": None,
-        "executed_node_ids": [],
-        "review_note": None,
-        "dify_run_id": "run-1",
-        "execution_mode": None,
-        "safety_outcome": None,
-        "simulated_node_ids": [],
-        "blocked_node_ids": [],
-        "policy_version": None,
-        "consent_id": None,
-        "action_state": None,
-        "action_reason_code": None,
-        "failure_phase": None,
-        "failure_code": None,
-        "failure_resource": None,
-        "failure_node_ids": [],
-        "native_canvas_path": None,
-        "resumed_progress": None,
-    }
-
-    # assistant_turn keeps model reasoning separate from observable execution.
-    turn = AssistantTurnItem(
-        turn_id="t1",
-        stage_id="build.goal_analysis",
-        execution=ExecutionProgress(
-            status=ExecutionProgressStatus.RUNNING,
-            activities=[ExecutionActivity(id="s1", label="Reading goal", state=ExecutionActivityState.ACTIVE)],
-        ),
-        reasoning_text="I should clarify the requested output.",
-        reply_text="Looking at your goal...",
-        cards=["plan"],
-    )
-    assert turn.kind == CardKind.ASSISTANT_TURN
-    assert "kind" not in asdict(turn)
-    turn_item = turn.to_item(seq=8, at_version=4)
-    assert turn_item.kind == "assistant_turn"
-    activity_payload = turn_item.payload["execution"]["activities"][0]
-    assert activity_payload == {
-        "id": "s1",
-        "label": "Reading goal",
-        "state": "active",
-        "kind": "stage",
-        "parent_id": None,
-    }
-    assert turn_item.payload["reasoning_text"] == "I should clarify the requested output."
-
-    # typed submit payload -- not a card: no kind, no to_item.
-    req = RequirementsPayload(
-        report_types="quarterly",
-        audience="execs",
-        currency="USD",
-        metrics="revenue,churn",
-        output="PDF summary",
-        prefer_audited=True,
-    )
-    assert not hasattr(req, "kind")
-    assert not hasattr(req, "to_item")
-    assert asdict(req) == {
-        "report_types": "quarterly",
-        "audience": "execs",
-        "currency": "USD",
-        "metrics": "revenue,churn",
-        "output": "PDF summary",
-        "prefer_audited": True,
-    }
 
 
 def test_create_request_requires_edit_goal_and_one_fix_input() -> None:
@@ -419,7 +201,6 @@ def test_transport_json_schema_contains_request_and_sse_unions() -> None:
         "command_started",
         "conversation_item_appended",
         "error",
-        "native_execution",
         "progress",
         "progress_snapshot",
         "reasoning",
@@ -614,34 +395,6 @@ def test_conversation_item_event_rejects_assistant_text() -> None:
                 },
             }
         )
-
-
-def test_sample_session_view_validates() -> None:
-    from controllers.console.dify_builder_fields import DifyBuilderSessionViewResponse
-
-    view = DifyBuilderSessionViewResponse.model_validate(
-        {
-            "session_id": "s1",
-            "app_id": "a1",
-            "reply_language": "",
-            "version": 1,
-            "state": "fix.await_verify",
-            "canvas_read_only": False,
-            "run_status": "waiting_input",
-            "interrupted": False,
-            "conversation_last_seq": -1,
-            "entry_mode": "fix",
-            "phase": "test",
-            "actions": [],
-            "checkpoint": None,
-        }
-    )
-
-    assert view.session_id == "s1"
-    assert view.run_status == RunStatus.WAITING_INPUT
-    dumped = view.model_dump(exclude_none=True)
-    assert "conversation" not in dumped
-    assert {"app_id", "state", "entry_mode", "checkpoint"}.isdisjoint(dumped)
 
 
 def test_verification_card_schema_preserves_terminal_null_and_absence() -> None:

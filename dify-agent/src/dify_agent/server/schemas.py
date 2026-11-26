@@ -13,7 +13,6 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
-from dify_agent.protocol.native_testing import AgentRuntimeIdentity, ContinuationClaim
 
 
 def new_run_id() -> str:
@@ -24,13 +23,11 @@ def new_run_id() -> str:
 class RunRecord(BaseModel):
     """Internal representation persisted for status reads.
 
-    Status metadata, optional admission digests, selected private identity and
-    protected continuation references are persisted; legacy records without
-    digests remain valid. The digests let active writes refresh only their own
-    idempotency claim and are excluded from public status responses. Recovery
-    retains the immutable predecessor separately and never changes original
-    create idempotency. Raw keys and create-run requests can contain sensitive
-    data and remain in scheduler memory rather than Redis.
+    Status metadata and optional admission digests are persisted; legacy records
+    without digests remain valid. The digests let active writes refresh only
+    their own idempotency claim and are excluded from public status responses.
+    Raw keys and create-run requests can contain sensitive data and remain in
+    scheduler memory rather than Redis.
     """
 
     run_id: str
@@ -41,15 +38,6 @@ class RunRecord(BaseModel):
     error_type: _protocol_schemas.RunFailureType | None = None
     idempotency_key_digest: str | None = None
     idempotency_fingerprint: str | None = None
-    # Unknown on legacy records; absence is never evidence of ordinary origin.
-    runtime_identity: AgentRuntimeIdentity | None = None
-    native_checkpoint_json: str | None = None
-    native_wait_event_id: str | None = None
-    native_generation: int = 0
-    native_claim: ContinuationClaim | None = None
-    native_dispatch_started: bool = False
-    confirmed_recovery_selection_json: str | None = None
-    confirmed_recovery_receipt_json: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

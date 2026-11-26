@@ -8,22 +8,19 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import wraps
 from uuid import uuid4
 
-from dify_agent.adapters.native_testing.transport import AgentRuntimeTransportError
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConnectResponse,
     AgentStubConfigManifestResponse,
     AgentStubConfigPromptResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
-    AgentStubConnectResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
-from dify_agent.agent_stub.server.admission import AgentStubAdmission
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestError, AgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import (
@@ -32,6 +29,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import (
     AgentStubTokenError,
     AgentStubTokenExpiredError,
 )
+
 
 _AGENT_STUB_AUTHORIZATION_EXPIRED_DETAIL = {
     "code": "agent_stub_authorization_expired",
@@ -59,23 +57,6 @@ class AgentStubConfigurationError(AgentStubControlPlaneError):
     """Raised when required server-side Agent Stub dependencies are missing."""
 
 
-def _admitted(method):
-    @wraps(method)
-    async def call(self, *args, **kwargs):
-        if "_principal" in kwargs:
-            raise AgentStubAuthenticationError(403, "Agent Stub principal injection refused")
-        if self.admission is None:
-            return await method(self, *args, **kwargs)
-        principal = self._authenticate(kwargs.get("authorization"), expose_expiration=True)
-        try:
-            async with self.admission.scope(principal):
-                return await method(self, *args, _principal=principal, **kwargs)
-        except AgentRuntimeTransportError as exc:
-            raise AgentStubAuthenticationError(403, "Agent Stub runtime authorization unavailable") from exc
-
-    return call
-
-
 @dataclass(slots=True)
 class AgentStubControlPlaneService:
     """Shared business service for authenticated Agent Stub control-plane calls.
@@ -85,53 +66,42 @@ class AgentStubControlPlaneService:
     """
 
     token_codec: AgentStubTokenCodec | None
-    admission: AgentStubAdmission | None = None
     file_request_handler: AgentStubFileRequestHandler | None = None
     config_request_handler: AgentStubConfigRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
     def authenticate(self, *, authorization: str | None) -> AgentStubPrincipal:
         """Shared authentication boundary for additional typed read-only bridges."""
-        principal = self._authenticate(authorization, expose_expiration=True)
-        if principal.runtime is not None:
-            raise AgentStubAuthenticationError(403, "Agent Stub runtime authorization unavailable")
-        return principal
+        return self._authenticate(authorization, expose_expiration=True)
 
-    @_admitted
-    async def connect(
-        self, *, authorization: str | None, _principal: AgentStubPrincipal | None = None
-    ) -> AgentStubConnectResponse:
+    async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
         """Authenticate and handle one connect request."""
-        _ = _principal or self._authenticate(authorization, expose_expiration=True)
+        _ = self._authenticate(authorization, expose_expiration=True)
         return AgentStubConnectResponse(connection_id=self.connection_id_factory(), status="connected")
 
-    @_admitted
     async def create_file_upload_request(
         self,
         *,
         request: AgentStubFileUploadRequest,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
         expose_expiration: bool = False,
     ) -> AgentStubFileUploadResponse:
         """Authenticate and delegate one already-validated file-upload request."""
-        principal = _principal or self._authenticate(authorization, expose_expiration=expose_expiration)
+        principal = self._authenticate(authorization, expose_expiration=expose_expiration)
         handler = self._require_file_request_handler()
         try:
             return await handler.create_upload_request(principal=principal, request=request)
         except AgentStubFileRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def create_file_download_request(
         self,
         *,
         request: AgentStubFileDownloadRequest,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> AgentStubFileDownloadResponse:
         """Authenticate and delegate one already-validated file-download request."""
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         if request.config is not None:
             handler = self._require_config_request_handler()
             try:
@@ -145,96 +115,80 @@ class AgentStubControlPlaneService:
         except AgentStubFileRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def get_config_manifest(
         self,
         *,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> AgentStubConfigManifestResponse:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.manifest(principal=principal)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def inspect_config_skill(
         self,
         *,
         name: str,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> dict[str, object]:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.inspect_skill(principal=principal, name=name)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def push_config(
         self,
         *,
         request: AgentStubConfigPushRequest,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> AgentStubConfigPushResponse:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.push(principal=principal, request=request)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def update_config_env(
         self,
         *,
         env_text: str,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> dict[str, object]:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.update_env(principal=principal, env_text=env_text)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
     async def update_config_note(
         self,
         *,
         note: str,
         authorization: str | None,
-        _principal: AgentStubPrincipal | None = None,
     ) -> dict[str, object]:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.update_note(principal=principal, note=note)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
-    async def get_config_prompt(
-        self, *, authorization: str | None, _principal: AgentStubPrincipal | None = None
-    ) -> AgentStubConfigPromptResponse:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+    async def get_config_prompt(self, *, authorization: str | None) -> AgentStubConfigPromptResponse:
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.get_prompt(principal=principal)
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    @_admitted
-    async def update_config_prompt(
-        self, *, prompt: str, authorization: str | None, _principal: AgentStubPrincipal | None = None
-    ) -> AgentStubConfigPromptResponse:
-        principal = _principal or self._authenticate(authorization, expose_expiration=True)
+    async def update_config_prompt(self, *, prompt: str, authorization: str | None) -> AgentStubConfigPromptResponse:
+        principal = self._authenticate(authorization, expose_expiration=True)
         handler = self._require_config_request_handler()
         try:
             return await handler.update_prompt(principal=principal, prompt=prompt)
@@ -246,10 +200,7 @@ class AgentStubControlPlaneService:
         if token_codec is None:
             raise AgentStubConfigurationError(503, "Agent Stub is not configured")
         try:
-            principal = token_codec.decode_authorization_header(authorization)
-            if self.admission is None and principal.runtime is not None:
-                raise AgentStubTokenError("runtime claims require strict composition")
-            return principal
+            return token_codec.decode_authorization_header(authorization)
         except AgentStubTokenExpiredError as exc:
             detail = (
                 _AGENT_STUB_AUTHORIZATION_EXPIRED_DETAIL

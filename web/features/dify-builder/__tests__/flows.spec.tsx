@@ -659,47 +659,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
     },
   )
 
-  it('ignores a canceled restore response that arrives after the replacement restore', async () => {
-    const waiting = createSessionView({
-      actions: [
-        { id: 'run_test', kind: 'primary', label: 'Run test' },
-        { id: 'revert', kind: 'destructive', label: 'Revert' },
-      ],
-      phase: 'modify',
-      run_status: 'waiting_confirmation',
-      version: 4,
-    })
-    let finishCanceledRequest!: (view: SessionView) => void
-    mocks.get
-      .mockImplementationOnce(
-        () =>
-          new Promise<SessionView>((resolve) => {
-            finishCanceledRequest = resolve
-          }),
-      )
-      .mockResolvedValue(waiting)
-    const storageKey = 'dify-builder:v1:workspace-1:user-1:app-1:active-session-id'
-    window.sessionStorage.setItem(storageKey, waiting.session_id)
-    const first = renderFlow(1)
-    await waitFor(() => expect(mocks.get).toHaveBeenCalledOnce())
-    first.unmount()
-    renderFlow(1)
-
-    const runTest = await screen.findByRole('radio', { name: 'Run test' })
-    await waitFor(() => expect(runTest).toBeEnabled())
-
-    // The lock can settle without changing the durable session version.
-    await act(async () => {
-      finishCanceledRequest({ ...waiting, run_status: 'processing', canvas_read_only: true })
-    })
-
-    expect(runTest).toBeEnabled()
-    expect(screen.getByRole('radio', { name: 'Revert' })).toBeEnabled()
-    expect(screen.queryByText('workflow.common.running')).not.toBeInTheDocument()
-    expect(window.sessionStorage.getItem(storageKey)).toBe(waiting.session_id)
-    expect(mocks.stream).not.toHaveBeenCalled()
-  })
-
   it('reconnects a submitted form after refresh and enables the next step without resubmitting', async () => {
     const form: ConversationItem = {
       kind: 'form',
@@ -813,34 +772,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
     },
   )
-
-  it('releases the canvas lock when leaving a restored session during refresh', async () => {
-    const waiting = createSessionView({
-      canvas_read_only: true,
-      phase: 'modify',
-      run_status: 'waiting_confirmation',
-      version: 6,
-    })
-    mocks.get.mockResolvedValue(waiting)
-    let finishRefresh!: (result: WorkflowDraftRefreshResult) => void
-    mocks.refreshCanvas.mockReturnValueOnce(
-      new Promise((resolve) => {
-        finishRefresh = resolve
-      }),
-    )
-    window.sessionStorage.setItem(
-      'dify-builder:v1:workspace-1:user-1:app-1:active-session-id',
-      waiting.session_id,
-    )
-    const { unmount } = renderFlow(1)
-    await waitFor(() => expect(mocks.refreshCanvas).toHaveBeenCalledOnce())
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(true)
-
-    unmount()
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
-    await act(async () => finishRefresh('refreshed'))
-    expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
-  })
 
   it('resets a failed canvas refresh and allows a new Builder request', async () => {
     const waiting = createSessionView({
@@ -1131,105 +1062,6 @@ describe('Dify Builder Build, Edit, and Fix flows', () => {
       expect(mocks.setCanvasReadOnly).toHaveBeenLastCalledWith(false)
       expect(mocks.create).not.toHaveBeenCalled()
       expect(mocks.action).not.toHaveBeenCalled()
-    },
-  )
-
-  it.each([
-    {
-      entryMode: 'build',
-      edgeCount: 0,
-      appliedState: 'build.execution',
-    },
-    {
-      entryMode: 'edit',
-      edgeCount: 1,
-      appliedState: 'edit.apply_changes',
-    },
-    {
-      entryMode: 'fix',
-      edgeCount: 0,
-      appliedState: 'fix.await_verify',
-    },
-  ] as const)(
-    'streams $entryMode change summaries as text and restores the durable reply',
-    async ({ entryMode, edgeCount, appliedState }) => {
-      const waiting = createSessionView({
-        version: 2,
-        actions: [{ id: 'approve_plan', kind: 'primary', label: 'Approve changes' }],
-      })
-      const changeSummary: ConversationItem = {
-        seq: 0,
-        at_version: 3,
-        kind: 'assistant_turn',
-        payload: {
-          turn_id: 'apply-1',
-          stage_id: appliedState,
-          execution: { status: 'completed' },
-          reply_text: 'Updated the answer configuration and added an approval step.',
-        },
-      }
-      const applied = createSessionView({
-        version: 3,
-        conversation_last_seq: 0,
-        last_command_id: 'apply-command',
-      })
-      const actionStream = createControlledEventStream()
-      mocks.create.mockResolvedValue(
-        streamOf(commandStartedEvent(createSessionView()), stateEvent(waiting)),
-      )
-      mocks.action.mockResolvedValue(actionStream.iterable)
-      mocks.conversation.mockResolvedValue(conversationPage([changeSummary]))
-      const user = userEvent.setup()
-      const { unmount } = renderFlow(edgeCount)
-
-      if (entryMode === 'fix') {
-        await user.click(screen.getByRole('button', { name: 'Fix failed run' }))
-      } else {
-        await user.type(getComposer(), 'Prepare the workflow')
-        await user.click(getSendButton())
-      }
-      const approve = await screen.findByRole('radio', { name: 'Approve changes' })
-      await waitFor(() => expect(approve).toBeEnabled())
-      await user.click(getSubmitButton('Approve changes'))
-      await waitFor(() => expect(mocks.action).toHaveBeenCalledOnce())
-
-      await act(async () => {
-        actionStream.push({
-          event: 'command_started',
-          data: {
-            session_id: waiting.session_id,
-            command_id: 'apply-command',
-            version: waiting.version,
-            phase: waiting.phase,
-            run_status: 'processing',
-          },
-        })
-        for (const event of assistantMessageEvents(changeSummary, 'apply-1'))
-          actionStream.push(event)
-      })
-
-      expect(
-        await screen.findByText('Updated the answer configuration and added an approval step.'),
-      ).toBeInTheDocument()
-      expect(screen.queryByRole('article', { name: 'difyBuilder.changes' })).not.toBeInTheDocument()
-      expect(getComposer()).toBeDisabled()
-
-      await act(async () => {
-        actionStream.push(stateEvent(applied))
-        actionStream.close()
-      })
-      await waitFor(() => expect(getComposer()).toBeEnabled())
-
-      mocks.get.mockResolvedValue(applied)
-      mocks.conversation.mockResolvedValue(conversationPage([changeSummary]))
-      unmount()
-      renderFlow(edgeCount)
-
-      expect(
-        await screen.findByText('Updated the answer configuration and added an approval step.'),
-      ).toBeInTheDocument()
-      expect(mocks.get).toHaveBeenCalledOnce()
-      expect(mocks.action).toHaveBeenCalledOnce()
     },
   )
 

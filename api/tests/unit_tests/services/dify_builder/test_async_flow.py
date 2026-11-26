@@ -21,12 +21,8 @@ Test-only: no production code changes belong in this file.
 
 import dataclasses
 import json
-from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
 import tasks.dify_builder_advance_task as task_mod
 from core.dify_builder.errors import BadRequestError, BusyError
@@ -34,7 +30,6 @@ from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilde
 from core.dify_builder.state import PcState
 from extensions.application_services import dify_builder_cognition_policy as policy_wiring
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import Base
 from services.dify_builder import service as service_mod
 from services.dify_builder import session_lock
 from services.dify_builder.application.cognition_policy import (
@@ -77,22 +72,6 @@ class _FakeRedis:
 
 def _actor() -> Actor:
     return Actor(account_id=ACCOUNT_ID, tenant_id=TENANT_ID)
-
-
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return SqlDifyBuilderRepository(factory)
 
 
 def _wire(

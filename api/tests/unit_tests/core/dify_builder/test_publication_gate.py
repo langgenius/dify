@@ -26,12 +26,13 @@ from tests.unit_tests.core.dify_builder.fakes import (
     saved_test_context,
     successful_verification,
 )
-from tests.unit_tests.core.dify_builder.test_effect_confirmation_gate import FlowHandlers
 from tests.unit_tests.installed_spies import installed_mock
 from tests.unit_tests.services.dify_builder.presentation_helpers import english_text
 
 
-class PublicationFlowHandlers(FlowHandlers, Protocol):
+class PublicationFlowHandlers(Protocol):
+    def handle_await_testdata(self, env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult: ...
+
     def handle_publish(self, env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult: ...
 
 

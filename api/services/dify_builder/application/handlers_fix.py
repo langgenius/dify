@@ -85,13 +85,6 @@ from services.dify_builder.business_acceptance import (
     confirm_testdata_contract,
     record_run_acceptance,
 )
-from services.dify_builder.effect_disclosure import split_confirmations
-from services.dify_builder.effect_presentation import (
-    effect_confirmation_fields,
-    effect_confirmation_values,
-    effects_note,
-    with_effects_note,
-)
 from services.dify_builder.repair_presentation import applied_repair_summary
 from services.dify_builder.test_input_continuity import validate_supplied_values
 
@@ -135,12 +128,10 @@ __all__ = [
     "merge_known_keys",
     "mint_checkpoint",
     "model_config_error_text",
-    "needs_effect_confirmation",
     "needs_upload_inputs",
     "note_repair_error",
     "note_unknown_outcome",
     "perform_revert",
-    "record_effect_confirmation",
     "repair_is_repeating",
     "run_finished_without_output",
     "start_schema",
@@ -514,23 +505,6 @@ def append_assistant(
         cards=cards,
         turn_id=turn_id,
     )
-
-
-def wait_for_native_approval(
-    env: Env, s: Session, fc: DifyBuilderContext, progress: ProgressReporter, run: Run, next_state: PcState
-) -> StepResult:
-    """Settle the Builder command at a confirmed native wait and retain its unfinished Run.
-
-    The native receipt owns live status and controls. The committed conversation
-    keeps the steps observed so far, and the terminal projector completes them
-    when the original Run settles.
-    """
-    fc.verify_run_id = run.id
-    fc.diagnosis, fc.staged_repair, fc.unknown_outcome_count = None, [], 0
-    items = append_assistant(
-        env, s, fc, "", execution=progress.finish(status=ExecutionProgressStatus.STOPPED), turn_id=progress.operation_id
-    )
-    return StepResult(next=next_state, context=fc, items=items, run=run)
 
 
 def test_failure_reason(run: Run) -> BuilderText:
@@ -970,14 +944,6 @@ def testdata_form_fields(schema: StartSchema) -> list[FormField]:
     return fields
 
 
-def _test_effects(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]):
-    # HTTP/Tool direct-input approval semantics remain unchanged. Code's
-    # explanation additionally binds typed inputs plus trusted task/model facts.
-    if fc.code_risk_assessments:
-        return env.dify.disclose_effects(s.app_id, actor, inputs=inputs, code_risk_context=fc)
-    return env.dify.disclose_effects(s.app_id, actor, inputs=inputs)
-
-
 def testdata_form(
     env: Env,
     s: Session,
@@ -987,125 +953,15 @@ def testdata_form(
     values: dict[str, Any],
     reply: BuilderText,
 ) -> tuple[FormCard, BuilderText]:
-    """The test-data form plus its reply, carrying the Test Run effect
-    disclosure (PRD §9.1): one unticked checkbox per side effect, so Mock stays
-    the default, and the reply lists what else the run reaches."""
-    # Use prepared values to show direct Start-based targets. Typing inputs in
-    # this form is intentional; submission binds those values after checking
-    # that the configuration itself still matches the shown disclosure.
-    valid_values = True
-    try:
-        validate_supplied_values(schema, values, require_all=False)
-        if SYSTEM_QUERY in values:
-            validate_runtime_inputs(schema, values)
-    except (ValueError, TypeError):
-        valid_values = False
-    if valid_values:
-        fc.code_risk_assessments = env.dify.prepare_code_risks(
-            s.app_id,
-            actor,
-            session_id=s.id,
-            inputs=values,
-            context=fc,
-        )
-    disclosure = _test_effects(env, s, fc, actor, values)
-    fc.effect_confirmation_form = {
-        item.node_id: item.config_signature or item.signature for item in disclosure.confirmable
-    }
-    card = FormCard(
+    """Collect inputs for the ordinary Workflow debugger."""
+    return FormCard(
         variant="testdata",
         title=copy_text(BuilderCopyId.FORMS_TEST_DATA_TITLE),
         description=copy_text(BuilderCopyId.FORMS_TEST_DATA_DESCRIPTION),
-        fields=[*testdata_form_fields(schema), *effect_confirmation_fields(disclosure)],
-        values={**values, **effect_confirmation_values(disclosure, fc.effect_confirmation)},
+        fields=testdata_form_fields(schema),
+        values=values,
         frozen=False,
-    )
-    return card, with_effects_note(reply, effects_note(disclosure, reply_language=fc.reply_language))
-
-
-def record_effect_confirmation(
-    env: Env, s: Session, fc: DifyBuilderContext, actor: Actor, inputs: dict[str, Any]
-) -> tuple[dict[str, Any], BuilderCopyId | None]:
-    """Record only checkboxes for configuration actually shown by the server.
-
-    Callers validate supplied Start values before this potentially assessing step.
-    Return Start inputs and the reason fresh disclosure is required, if any.
-    HTTP/Tool direct Start edits bind approval after the static comparison.
-    A first input submission may refresh an already assessed low-risk Code
-    explanation when no effects were offered or approved. Only another assessed
-    low-risk result on the same execution revision advances directly. New risks
-    or draft drift return to the form;
-    selected or prior effect consent is never transferred to the new scope.
-    """
-    from services.dify_builder.code_risk_assessment import validated_assessments
-
-    plain, confirmed = split_confirmations(inputs)
-    current = _test_effects(env, s, fc, actor, plain)
-    prior = validated_assessments(fc.code_risk_assessments)
-    missing_semantic_assessment = any(
-        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
-        for item in current.items
-    )
-    refresh = (
-        missing_semantic_assessment
-        and not confirmed
-        and not fc.effect_confirmation
-        and not fc.effect_confirmation_form
-        and bool(prior)
-        and all(item["status"] == "assessed" and item["classification"] in {"pure", "read"} for item in prior.values())
-    )
-    if refresh:
-        _graph, revision = env.dify.read_graph(s.app_id, actor)
-        refresh = bool(fc.last_snapshot_hash) and revision == fc.last_snapshot_hash
-    refresh_drift = False
-    if refresh:
-        fc.code_risk_assessments = env.dify.prepare_code_risks(
-            s.app_id, actor, session_id=s.id, inputs=plain, context=fc
-        )
-        _graph, revision = env.dify.read_graph(s.app_id, actor)
-        refresh_drift = revision != fc.last_snapshot_hash
-        current = _test_effects(env, s, fc, actor, plain)
-    selected = {
-        item.node_id: item.config_signature or item.signature
-        for item in current.confirmable
-        if item.node_id in confirmed
-    }
-    accepted = [
-        node_id for node_id, signature in selected.items() if fc.effect_confirmation_form.get(node_id) == signature
-    ]
-    reason = None
-    if refresh_drift:
-        reason = BuilderCopyId.TEST_CONTEXT_CHANGED
-    elif len(accepted) != len(selected):
-        reason = BuilderCopyId.TEST_EFFECTS_CHANGED
-    elif any(
-        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
-        for item in current.items
-    ) or (
-        refresh
-        and (
-            current.confirmable
-            or any(
-                item.assessment_status
-                and (item.assessment_status != "assessed" or item.tier not in {"sandboxed", "read"})
-                for item in current.items
-            )
-        )
-    ):
-        reason = BuilderCopyId.TEST_POLICY_REVIEW
-    fc.effect_confirmation = current.confirmation(accepted)
-    fc.effect_confirmation_form = {}
-    return plain, reason
-
-
-def needs_effect_confirmation(env: Env, s: Session, fc: DifyBuilderContext, actor: Actor) -> bool:
-    """True while a side effect has no confirmation for its current target, so
-    Run test shows the form again instead of silently mocking it."""
-    disclosure = _test_effects(env, s, fc, actor, saved_test_inputs(env, fc))
-    return any(fc.effect_confirmation.get(item.node_id) != item.signature for item in disclosure.confirmable) or any(
-        (item.node_type == "code" or item.assessment_status == "unavailable") and not item.assessment_digest
-        for item in disclosure.items
-    )
+    ), reply
 
 
 def saved_test_inputs(env: Env, fc: DifyBuilderContext) -> dict[str, Any]:
@@ -1358,13 +1214,9 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text=copy_text(BuilderCopyId.LABELS_REQUESTED_A_REVERT)))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
-    # run_verify: if we have prepared inputs and every side effect is
-    # confirmed for its current target, go verify; else prepare test data.
+    # Reuse compatible saved inputs or request the values for this run.
     fc.verify_run_id = ""
-    fc.effect_confirmation = {}
-    fc.effect_confirmation_form = {}
-    fc.code_risk_assessments = {}
-    if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
+    if fc.test_input_ref == "":
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         card, reply = testdata_form(
             env,
@@ -1421,18 +1273,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_supplied_values(schema, inputs, require_all=False)
     except (ValueError, TypeError) as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.FIX_AWAIT_TESTDATA, str(exc), actor=turn.actor)
-    inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
-    if stale_effects:
-        return input_gate_result(
-            env,
-            s,
-            fc,
-            schema,
-            inputs,
-            PcState.FIX_AWAIT_TESTDATA,
-            copy_text(stale_effects),
-            actor=turn.actor,
-        )
 
     confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
@@ -1495,8 +1335,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
     try:
         validate_runtime_inputs(schema, inputs, ti)
-        confirmation = fc.effect_confirmation
-        fc.effect_confirmation = {}
         result = env.dify.run_draft(
             s.app_id,
             turn.actor,
@@ -1505,7 +1343,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
-            effect_confirmation=confirmation,
         )
     except Exception as exc:
         # Same degrade as Build/Edit: never crash the advance; the launch error
@@ -1518,18 +1355,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     # fc.verify_run_id directly; run_id_sink is still populated so the
     # runner's generic write-back stays consistent (a no-op, since the id
     # already matches).
-    if result.execution_refusal is not None and result.execution_refusal.reason_code == "code_risk_assessment_stale":
-        return input_gate_result(
-            env,
-            s,
-            fc,
-            schema,
-            dict(inputs),
-            PcState.FIX_AWAIT_TESTDATA,
-            copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
-            actor=turn.actor,
-        )
-
     run = Run(
         execution_refusal=result.execution_refusal if result else None,
         id=str(uuid.uuid4()),
@@ -1543,9 +1368,6 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
-
-    if result.awaiting_native_approval:
-        return wait_for_native_approval(env, s, fc, progress, run, PcState.FIX_AWAIT_DECISION)
 
     if result.status == "running":
         progress.finish(status=ExecutionProgressStatus.STOPPED)

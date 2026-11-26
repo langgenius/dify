@@ -63,17 +63,8 @@ from libs.helper import dump_response
 from libs.login import login_required
 from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from services.dify_builder import progress_bus, progress_snapshot
-from services.dify_builder.native_testing.context_binding import NativeContextUnavailable
-from services.dify_builder.native_testing.public_contracts import (
-    NativeTestCancelPayload,
-    NativeTestDecisionPayload,
-    NativeTestResumePayload,
-    NativeTestStartPayload,
-)
 from services.dify_builder.service import CommandSubmission, resolve_submitted_action
 from services.dify_builder.wiring import (
-    build_native_test_api_service,
-    build_native_test_input_binding_service,
     build_real_call_consent_service,
     build_service,
     dify_builder_error_response,
@@ -103,8 +94,6 @@ from .dify_builder_fields import (
     DifyBuilderFixControlResponse,
     DifyBuilderFixIntentPayload,
     DifyBuilderFixIntentResponse,
-    DifyBuilderNativeTestInputResponse,
-    DifyBuilderNativeTestResponse,
     DifyBuilderPrepareRealCallPayload,
     DifyBuilderRealCallConsentResponse,
     DifyBuilderRealCallForbiddenResponse,
@@ -127,23 +116,11 @@ class ConversationControlOperation(StrEnum):
     ABANDON = "abandon"
 
 
-class NativeCommand(StrEnum):
-    START = "start"
-    GET = "get"
-    DECIDE = "decide"
-    RESUME = "resume"
-    CANCEL = "cancel"
-
-
 logger = logging.getLogger(__name__)
 
 
 register_schema_models(
     console_ns,
-    NativeTestStartPayload,
-    NativeTestDecisionPayload,
-    NativeTestResumePayload,
-    NativeTestCancelPayload,
     DifyBuilderCreateSessionPayload,
     DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
@@ -161,8 +138,6 @@ register_response_schema_models(
     console_ns,
     DifyBuilderCommandSubmissionResponse,
     DifyBuilderCreatedSessionResponse,
-    DifyBuilderNativeTestInputResponse,
-    DifyBuilderNativeTestResponse,
     DifyBuilderConversationPageResponse,
     DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
@@ -1018,222 +993,3 @@ class DifyBuilderAgentPingApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user):
         return _ping(request.get_json(silent=True), _actor(current_user, current_tenant_id))
-
-
-def _native_command(
-    *,
-    actor: Actor,
-    session_id: str,
-    command: NativeCommand,
-    payload_model=None,
-    request_id=None,
-):
-    """Transport-only strict parsing; never include raw validation/owner errors."""
-    kwargs = {"actor": actor, "session_id": session_id}
-    if request_id is not None:
-        kwargs["request_id"] = request_id
-    if payload_model is not None:
-        try:
-            payload = payload_model.model_validate(request.get_json(silent=True))
-        except ValidationError:
-            raise BadRequest("Invalid native test request.") from None
-        kwargs.update(payload.model_dump(exclude={"schema_version"}))
-    try:
-        service = build_native_test_api_service(actor=actor)
-        commands: dict[str, Callable[..., object]] = {
-            "start": service.start,
-            "get": service.get,
-            "decide": service.decide,
-            "resume": service.resume,
-            "cancel": service.cancel,
-        }
-        receipt = commands[command](**kwargs)
-    except (BuilderExecutionPolicyError, NativeContextUnavailable) as error:
-        if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
-            raise NotFound("Native test not found.") from None
-        if error.reason_code == "execution_permission_denied":
-            raise Forbidden("Native test permission denied.") from None
-        if error.reason_code in {
-            "native_runtime_unavailable",
-            "native_profile_unavailable",
-            "native_binding_unavailable",
-            "native_disclosure_unavailable",
-        }:
-            raise ServiceUnavailable("Native test capability unavailable.") from None
-        raise Conflict("Native test state conflict.") from None
-    return dump_response(DifyBuilderNativeTestResponse, {"data": receipt})
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-test-input")
-class DifyBuilderNativeTestInputApi(Resource):
-    @console_ns.response(
-        200, "Current saved test input binding", console_ns.models[DifyBuilderNativeTestInputResponse.__name__]
-    )
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def get(self, current_tenant_id, current_user, session_id):
-        actor = _actor(current_user, current_tenant_id)
-        try:
-            binding = build_native_test_input_binding_service(actor=actor).get(session_id=session_id)
-        except BuilderExecutionPolicyError as error:
-            if error.reason_code in {"native_owner_mismatch", "execution_owner_mismatch"}:
-                raise NotFound("Native test input not found.") from None
-            if error.reason_code == "execution_permission_denied":
-                raise Forbidden("Native test permission denied.") from None
-            raise Conflict("Current native test input unavailable or stale.") from None
-        return dump_response(DifyBuilderNativeTestInputResponse, {"data": binding})
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests")
-class DifyBuilderNativeTestsApi(Resource):
-    @console_ns.expect(console_ns.models[NativeTestStartPayload.__name__])
-    @console_ns.response(
-        200, "Native test admission receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
-    )
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id):
-        return _native_command(
-            actor=_actor(current_user, current_tenant_id),
-            session_id=session_id,
-            command=NativeCommand.START,
-            payload_model=NativeTestStartPayload,
-        )
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>")
-class DifyBuilderNativeTestApi(Resource):
-    @console_ns.response(200, "Current native test receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__])
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def get(self, current_tenant_id, current_user, session_id, request_id):
-        return _native_command(
-            actor=_actor(current_user, current_tenant_id),
-            session_id=session_id,
-            request_id=request_id,
-            command=NativeCommand.GET,
-        )
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/decisions")
-class DifyBuilderNativeTestDecisionsApi(Resource):
-    @console_ns.expect(console_ns.models[NativeTestDecisionPayload.__name__])
-    @console_ns.response(200, "Saved native test decision", console_ns.models[DifyBuilderNativeTestResponse.__name__])
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id, request_id):
-        return _native_command(
-            actor=_actor(current_user, current_tenant_id),
-            session_id=session_id,
-            request_id=request_id,
-            command=NativeCommand.DECIDE,
-            payload_model=NativeTestDecisionPayload,
-        )
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/resume")
-class DifyBuilderNativeTestResumeApi(Resource):
-    @console_ns.expect(console_ns.models[NativeTestResumePayload.__name__])
-    @console_ns.response(
-        200, "Native test continuation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
-    )
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id, request_id):
-        return _native_command(
-            actor=_actor(current_user, current_tenant_id),
-            session_id=session_id,
-            request_id=request_id,
-            command=NativeCommand.RESUME,
-            payload_model=NativeTestResumePayload,
-        )
-
-
-@console_ns.route("/dify-builder/sessions/<string:session_id>/native-tests/<string:request_id>/cancel")
-class DifyBuilderNativeTestCancelApi(Resource):
-    @console_ns.expect(console_ns.models[NativeTestCancelPayload.__name__])
-    @console_ns.response(
-        200, "Native test cancellation receipt", console_ns.models[DifyBuilderNativeTestResponse.__name__]
-    )
-    @console_ns.doc(
-        deprecated=True,
-        description=(
-            "Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection."
-        ),
-    )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @with_current_tenant_id
-    @real_call_without_request_sql
-    @dify_builder_required
-    def post(self, current_tenant_id, current_user, session_id, request_id):
-        return _native_command(
-            actor=_actor(current_user, current_tenant_id),
-            session_id=session_id,
-            request_id=request_id,
-            command=NativeCommand.CANCEL,
-            payload_model=NativeTestCancelPayload,
-        )

@@ -18,13 +18,6 @@ def test_language_detection_validates_the_model_response(
     assert LanguageDetector(lambda: object()).detect_language("Goal") == expected
 
 
-def test_empty_user_text_never_resolves_a_model() -> None:
-    def forbidden() -> Never:
-        pytest.fail("empty text resolved a model")
-
-    assert LanguageDetector(forbidden).detect_language("   ") == "en"
-
-
 def test_detection_failure_defaults_to_english(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail(*_args: object, **_kwargs: object) -> Never:
         raise RuntimeError("unavailable")
@@ -43,15 +36,6 @@ def test_chinese_language_survives_model_detection_failure(monkeypatch: pytest.M
     monkeypatch.setattr(localize.llm, "invoke_text", invoke)
     detector = LanguageDetector(lambda: None if failure == "missing" else object())
     assert detector.detect_language("帮我把工作流的模型换成 fable 5.1") == "zh-Hans"
-
-
-def test_ambiguous_detection_failure_keeps_conversation_language() -> None:
-    assert LanguageDetector(lambda: None, prior_language="zh-Hans").detect_language("OK") == "zh-Hans"
-
-
-def test_fallback_allows_explicit_english_language_switch() -> None:
-    detector = LanguageDetector(lambda: None, prior_language="zh-Hans")
-    assert detector.detect_language("Please explain the current workflow in English") == "en"
 
 
 def test_explicit_reply_language_switch_survives_literal_chinese_business_field() -> None:

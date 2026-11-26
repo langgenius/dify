@@ -9,10 +9,6 @@ import {
   zGetDifyBuilderSessionsBySessionIdFixIntentsPath,
   zGetDifyBuilderSessionsBySessionIdFixIntentsQuery,
   zGetDifyBuilderSessionsBySessionIdFixIntentsResponse,
-  zGetDifyBuilderSessionsBySessionIdNativeTestInputPath,
-  zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse,
-  zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath,
-  zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse,
   zGetDifyBuilderSessionsBySessionIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath,
   zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse,
@@ -36,18 +32,6 @@ import {
   zPostDifyBuilderSessionsBySessionIdMessagesBody,
   zPostDifyBuilderSessionsBySessionIdMessagesPath,
   zPostDifyBuilderSessionsBySessionIdMessagesResponse,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsBody,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelBody,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelPath,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsBody,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsPath,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeBody,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumePath,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsPath,
-  zPostDifyBuilderSessionsBySessionIdNativeTestsResponse,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmBody,
   zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmPath,
@@ -221,169 +205,7 @@ export const messages = {
   post: post6,
 }
 
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
-export const get3 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDifyBuilderSessionsBySessionIdNativeTestInput',
-    path: '/dify-builder/sessions/{session_id}/native-test-input',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdNativeTestInputPath }))
-  .output(zGetDifyBuilderSessionsBySessionIdNativeTestInputResponse)
-
-export const nativeTestInput = {
-  get: get3,
-}
-
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
 export const post7 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancel',
-    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/cancel',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelBody,
-      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelPath,
-    }),
-  )
-  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdCancelResponse)
-
-export const cancel = {
-  post: post7,
-}
-
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
-export const post8 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisions',
-    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/decisions',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsBody,
-      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsPath,
-    }),
-  )
-  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdDecisionsResponse)
-
-export const decisions = {
-  post: post8,
-}
-
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
-export const post9 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResume',
-    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}/resume',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeBody,
-      params: zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumePath,
-    }),
-  )
-  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResumeResponse)
-
-export const resume = {
-  post: post9,
-}
-
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
-export const get4 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDifyBuilderSessionsBySessionIdNativeTestsByRequestId',
-    path: '/dify-builder/sessions/{session_id}/native-tests/{request_id}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdPath }))
-  .output(zGetDifyBuilderSessionsBySessionIdNativeTestsByRequestIdResponse)
-
-export const byRequestId = {
-  get: get4,
-  cancel,
-  decisions,
-  resume,
-}
-
-/**
- * Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.
- *
- * @deprecated
- */
-export const post10 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Compatibility endpoint. Builder clients should use the existing /actions and session/stream projection.',
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postDifyBuilderSessionsBySessionIdNativeTests',
-    path: '/dify-builder/sessions/{session_id}/native-tests',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostDifyBuilderSessionsBySessionIdNativeTestsBody,
-      params: zPostDifyBuilderSessionsBySessionIdNativeTestsPath,
-    }),
-  )
-  .output(zPostDifyBuilderSessionsBySessionIdNativeTestsResponse)
-
-export const nativeTests = {
-  post: post10,
-  byRequestId,
-}
-
-export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -400,10 +222,10 @@ export const post11 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse)
 
 export const confirm = {
-  post: post11,
+  post: post7,
 }
 
-export const post12 = oc
+export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -421,10 +243,10 @@ export const post12 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse)
 
 export const execute = {
-  post: post12,
+  post: post8,
 }
 
-export const get5 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -436,12 +258,12 @@ export const get5 = oc
   .output(zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse)
 
 export const byConsentId = {
-  get: get5,
+  get: get3,
   confirm,
   execute,
 }
 
-export const post13 = oc
+export const post9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -459,11 +281,11 @@ export const post13 = oc
   .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse)
 
 export const realCallConsents = {
-  post: post13,
+  post: post9,
   byConsentId,
 }
 
-export const post14 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -479,11 +301,11 @@ export const post14 = oc
   )
   .output(zPostDifyBuilderSessionsBySessionIdResumeResponse)
 
-export const resume2 = {
-  post: post14,
+export const resume = {
+  post: post10,
 }
 
-export const post15 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -500,10 +322,10 @@ export const post15 = oc
   .output(zPostDifyBuilderSessionsBySessionIdStopResponse)
 
 export const stop = {
-  post: post15,
+  post: post11,
 }
 
-export const get6 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -515,10 +337,10 @@ export const get6 = oc
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
-  get: get6,
+  get: get4,
 }
 
-export const get7 = oc
+export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -530,22 +352,20 @@ export const get7 = oc
   .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get: get7,
+  get: get5,
   abandon,
   actions,
   clear,
   conversation,
   fixIntents,
   messages,
-  nativeTestInput,
-  nativeTests,
   realCallConsents,
-  resume: resume2,
+  resume,
   stop,
   stream,
 }
 
-export const post16 = oc
+export const post12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -557,7 +377,7 @@ export const post16 = oc
   .output(zPostDifyBuilderSessionsResponse)
 
 export const sessions = {
-  post: post16,
+  post: post12,
   bySessionId,
 }
 

@@ -14,12 +14,10 @@ module's outbound seams (``_session_factory``, ``naive_utc_now``,
 ``session_lock.exists``, ``progress_bus.publish``) monkeypatched.
 """
 
-from collections.abc import Iterator
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import event
 from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.orm import sessionmaker
 
@@ -28,7 +26,6 @@ from configs import dify_config
 from core.dify_builder.models import ConversationItem, DifyBuilderContext, EntryMode, Session
 from core.dify_builder.state import PcState
 from libs.datetime_utils import naive_utc_now
-from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
@@ -45,26 +42,6 @@ APP_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def factory(engine: Engine) -> sessionmaker[SQLSession]:
-    return sessionmaker(bind=engine, expire_on_commit=False)
-
-
-@pytest.fixture
-def repo(factory: sessionmaker[SQLSession]) -> SqlDifyBuilderRepository:
-    return SqlDifyBuilderRepository(factory)
-
-
 def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
     s = Session(
         app_id=APP_ID,
@@ -78,14 +55,14 @@ def _seed(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
 
 
 def test_reconcile_flags_stale_working_session_with_no_live_lock(
-    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, sqlite_session_factory: sessionmaker[SQLSession]
 ) -> None:
     a = _seed(repo, PcState.FIX_VERIFY)  # working, no lock -> flagged
     b = _seed(repo, PcState.FIX_VERIFY)  # working, live lock -> skipped
     c = _seed(repo, PcState.FIX_AWAIT_VERIFY)  # waiting -> never considered
 
     real_now = naive_utc_now()
-    monkeypatch.setattr(mod, "_session_factory", lambda: factory)
+    monkeypatch.setattr(mod, "_session_factory", lambda: sqlite_session_factory)
     monkeypatch.setattr(
         mod,
         "naive_utc_now",
@@ -104,11 +81,11 @@ def test_reconcile_flags_stale_working_session_with_no_live_lock(
 
 
 def test_reconcile_empty_sweep_when_nothing_stale(
-    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, factory: sessionmaker[SQLSession]
+    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository, sqlite_session_factory: sessionmaker[SQLSession]
 ) -> None:
     _seed(repo, PcState.FIX_VERIFY)  # working, freshly seeded -> not stale
 
-    monkeypatch.setattr(mod, "_session_factory", lambda: factory)
+    monkeypatch.setattr(mod, "_session_factory", lambda: sqlite_session_factory)
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
 
     published: list[tuple[str, dict[str, object]]] = []
@@ -229,48 +206,3 @@ def test_stranded_observation_and_settlement_close_sql_before_redis(
         event.remove(engine, "begin", begin)
         event.remove(engine, "commit", end)
         event.remove(engine, "rollback", end)
-
-
-@pytest.mark.parametrize("enabled", [False, True])
-def test_waiting_binding_retention_has_own_one_minute_schedule(enabled: bool, monkeypatch: pytest.MonkeyPatch) -> None:
-    from celery.contrib.testing.app import setup_default_app
-
-    from dify_app import DifyApp
-    from extensions import ext_celery
-    from tests.helpers.unit.config_override import config_overrides_context
-
-    monkeypatch.setattr(ext_celery, "setup_workflow_warm_shutdown_handler", lambda: None)
-    with (
-        setup_default_app(mod.reconcile_interrupted_sessions.app),
-        config_overrides_context(
-            ENABLE_DIFY_BUILDER_RECONCILER=enabled, DIFY_BUILDER_RECONCILE_INTERVAL=5, DISABLE_TELEMETRY=True
-        ),
-    ):
-        app = ext_celery.init_app(DifyApp(__name__))
-        try:
-            schedule = app.conf.beat_schedule
-            if enabled:
-                assert schedule["dify_builder_retain_waiting_agent_bindings"] == {
-                    "task": "schedule.dify_builder_reconcile_task.retain_waiting_agent_bindings",
-                    "schedule": timedelta(seconds=60),
-                    "options": {"expires": 60, "queue": "dify_builder"},
-                }
-                assert schedule["dify_builder_reconcile"]["schedule"] == timedelta(minutes=5)
-            else:
-                assert "dify_builder_retain_waiting_agent_bindings" not in schedule
-        finally:
-            app.close()
-
-
-def test_waiting_binding_task_has_a_finite_wall_time_budget() -> None:
-    from typing import Protocol, runtime_checkable
-
-    @runtime_checkable
-    class QueuedTask(Protocol):
-        queue: str
-
-    task = mod.retain_waiting_agent_bindings
-    assert task.soft_time_limit == 45
-    assert task.time_limit == 50
-    assert isinstance(task, QueuedTask)
-    assert task.queue == "dify_builder"

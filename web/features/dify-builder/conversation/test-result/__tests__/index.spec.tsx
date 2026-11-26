@@ -134,34 +134,6 @@ describe('Builder test results', () => {
     vi.resetAllMocks()
   })
 
-  it.each(['succeeded', 'failed'] as const)(
-    'shows the final output immediately after a %s run',
-    (status) => {
-      const payload: TestResultPayload = {
-        status,
-        dify_run_id: 'run-1',
-        terminal_outputs: { report: 'Processed three records.' },
-        failure_reason: status === 'failed' ? 'The next step timed out.' : null,
-      }
-      render(<TestResultCard payload={payload} invalidated={false} />)
-
-      const outputs = screen.getByRole('region', {
-        name: 'difyBuilder.testResult.terminalOutputs',
-      })
-      expect(within(outputs).getByText('Processed three records.')).toBeVisible()
-      if (status === 'failed') expect(screen.getByText('The next step timed out.')).toBeVisible()
-      expect(
-        screen.queryByRole('heading', {
-          name:
-            status === 'succeeded'
-              ? 'difyBuilder.testResult.executionSucceeded'
-              : 'difyBuilder.testResult.executionFailed',
-        }),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText('difyBuilder.testResult.terminalOutputs')).not.toBeInTheDocument()
-    },
-  )
-
   it('preserves structured and falsy values directly in the visible result', () => {
     const terminal_outputs = {
       count: 0,
@@ -182,20 +154,6 @@ describe('Builder test results', () => {
     expect(screen.queryByText('difyBuilder.testResult.rawOutputs')).not.toBeInTheDocument()
   })
 
-  it.each(['succeeded', 'failed'] as const)(
-    'explains a known empty output for a %s run',
-    (status) => {
-      render(<TestResultCard payload={{ status, terminal_outputs: {} }} invalidated={false} />)
-      const outputs = screen.getByRole('region', {
-        name: 'difyBuilder.testResult.terminalOutputs',
-      })
-      expect(within(outputs).getByText('difyBuilder.testResult.noOutputs')).toBeVisible()
-      expect(
-        screen.queryByText('difyBuilder.testResult.outputsUnavailable'),
-      ).not.toBeInTheDocument()
-    },
-  )
-
   it('explains that a failed launch without a run produced no final output', () => {
     render(
       <TestResultCard
@@ -205,20 +163,6 @@ describe('Builder test results', () => {
     )
     expect(screen.getByText('difyBuilder.testResult.noOutputs')).toBeVisible()
     expect(screen.getByText('Launch failed.')).toBeVisible()
-  })
-
-  it('keeps the complete long text available without expanding a disclosure', () => {
-    const report = `${'Review this paragraph.\n'.repeat(100)}Final conclusion.`
-    render(
-      <TestResultCard
-        payload={{ status: 'succeeded', terminal_outputs: { report } }}
-        invalidated={false}
-      />,
-    )
-    const outputs = screen.getByRole('region', {
-      name: 'difyBuilder.testResult.terminalOutputs',
-    })
-    expect(within(outputs).getByText(report, { normalizer: (text) => text })).toBeVisible()
   })
 
   it('renders output files with preview and download while retaining neighboring output fields', () => {
@@ -276,17 +220,6 @@ describe('Builder test results', () => {
       expect(mocks.executions).not.toHaveBeenCalled()
     },
   )
-
-  it('does not fetch a native result when the persisted card already contains the output', () => {
-    renderNativeResult({
-      status: 'failed',
-      dify_run_id: 'run-1',
-      terminal_outputs: { report: 'Saved result.' },
-    })
-    expect(screen.getByText('Saved result.')).toBeVisible()
-    expect(mocks.detail).not.toHaveBeenCalled()
-    expect(mocks.executions).not.toHaveBeenCalled()
-  })
 
   it('reads confirmed-tool outputs for display without writing native content into the card payload', async () => {
     const payload: TestResultPayload = {

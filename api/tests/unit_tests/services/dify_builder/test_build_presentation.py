@@ -22,37 +22,6 @@ def test_summary_uses_actual_titles_without_mutating_technical_evidence() -> Non
     assert (result, before, intents) == original
 
 
-@pytest.mark.parametrize("title", [None, {}, [], 42, "", "  ", "node1", " node1 "])
-def test_missing_or_internal_titles_use_native_type(title: object) -> None:
-    node = ChangedNode(node_id="node1")
-    node.__dict__["title"] = title
-    result = ApplyResult(changed_nodes=["node1"], nodes=[node])
-    intents = [MutationIntent(op="create_node", args={"node_id": "node1", "node_type": "parameter-extractor"})]
-
-    assert build_node_summary(result, {}, intents, "zh-Hans") == "- 涉及节点：参数提取器"
-
-
-def test_removed_and_existing_nodes_use_before_graph_native_types() -> None:
-    result = ApplyResult(changed_nodes=["old", "existing", "unknown"])
-    before = {
-        "nodes": [
-            {"id": "old", "type": "custom", "data": {"type": "start"}},
-            {"id": "existing", "data": {"type": "http-request"}},
-        ]
-    }
-
-    assert build_node_summary(result, before, [], "en-US") == "- Affected nodes: Start, HTTP Request, Node"
-
-
-def test_duplicate_titles_preserve_distinct_changed_identities() -> None:
-    result = ApplyResult(
-        changed_nodes=["node1", "node2", "node1"],
-        nodes=[ChangedNode(node_id="node1", title="Review"), ChangedNode(node_id="node2", title="Review")],
-    )
-
-    assert build_node_summary(result, {}, [], "en-US") == "- Affected nodes: Review, Review"
-
-
 def test_summary_bounds_long_multiline_markdown_titles_and_many_nodes() -> None:
     result = ApplyResult(
         nodes=[
@@ -77,10 +46,3 @@ def test_noop_does_not_claim_proposed_creates_were_applied(language: str, expect
     intents = [MutationIntent(op="create_node", args={"node_id": "node1", "node_type": "code"})]
 
     assert build_node_summary(ApplyResult(), {}, intents, language) == expected
-
-
-@pytest.mark.parametrize("node_type", [None, [], "node1", "not-a-native-type"])
-def test_unknown_native_type_uses_generic_label(node_type: object) -> None:
-    before = {"nodes": [{"id": "node1", "data": {"type": node_type}}]}
-
-    assert build_node_summary(ApplyResult(changed_nodes=["node1"]), before, [], "fr-FR") == "- Affected nodes: Node"

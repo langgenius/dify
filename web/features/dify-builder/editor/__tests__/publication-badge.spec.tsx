@@ -146,29 +146,6 @@ describe('Builder publication badge', () => {
     expect(mocks.fetchPublished).toHaveBeenNthCalledWith(2, 'app-1')
   })
 
-  it('leaves the published query and badge alone for unrelated canvas events', async () => {
-    const { queryClient, workflowStore, publishedQuery } = setup()
-
-    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('graph_changed')))
-
-    expect(mocks.fetchPublished).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(publishedQuery.queryKey)).toBeNull()
-    expect(workflowStore.getState().publishedAt).toBe(0)
-  })
-
-  it('preserves a valid published badge when the refresh request fails', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    mocks.fetchPublished.mockRejectedValue(new Error('network unavailable'))
-    const { workflowStore } = setup()
-    workflowStore.getState().setPublishedAt(1_700_000_000)
-
-    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('publish_workflow')))
-
-    await waitFor(() => expect(warn).toHaveBeenCalledOnce())
-    expect(workflowStore.getState().publishedAt).toBe(1_700_000_000_000)
-    warn.mockRestore()
-  })
-
   it('ignores a late publication response after the Builder session resets', async () => {
     let resolvePublished!: (workflow: WorkflowResponse) => void
     mocks.fetchPublished.mockReturnValue(

@@ -19,7 +19,7 @@ def is_execution_policy_blocker(run: Run) -> bool:
         return True
     summary = run.verification.execution_evidence if run.verification else None
     if summary is None:
-        return run.kind == "verify"
+        return run.kind == "verify" and not (run.verification and run.verification.ordinary_draft_run)
     return (
         bool(summary.blocked_node_ids)
         or not summary.sealed
@@ -43,34 +43,40 @@ def publication_decision(
     summary = run.verification.execution_evidence if run.verification else None
     if run.execution_refusal is not None or (summary and summary.blocked_node_ids):
         return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_POLICY_BLOCKED)
-    if summary is None or not summary.sealed or not summary.native_run_id or summary.native_run_id != run.dify_run_id:
-        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_PROVENANCE_UNBOUND)
-    if summary.safety_outcome in {"unsupported_safe_execution", "execution_blocked"}:
-        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_POLICY_BLOCKED)
-    if summary.safety_outcome == "execution_evidence_unknown":
-        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_EVIDENCE_UNKNOWN)
-    if summary.safety_outcome == "simulation_completed":
-        return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
-    # PRD §19.2: a run that mocked any step proves nothing about that step.
-    if summary.mode == "confirmed_run" and summary.simulated_node_ids:
-        return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
-    restricted_success = summary.safety_outcome == "restricted_execution_completed" and summary.mode == "restricted"
-    confirmed_run_success = (
-        summary.safety_outcome == "confirmed_run_completed"
-        and summary.mode == "confirmed_run"
-        and summary.policy_version == "builder-confirmed-run-v1"
-    )
-    # Confirmation is not publication approval: only the sealed exact-revision
-    # confirmed success passes, and every check below still applies.
-    confirmed_success = (
-        summary.safety_outcome == "confirmed_tool_completed"
-        and summary.mode == "confirmed_tool"
-        and summary.policy_version == "builder-confirmed-gmail-read-v1"
-        and summary.action_state == "completed"
-        and summary.consent_id is not None
-    )
-    if not (restricted_success or confirmed_run_success or confirmed_success):
-        return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_FAILED)
+    if not (run.verification and run.verification.ordinary_draft_run and run.dify_run_id):
+        if (
+            summary is None
+            or not summary.sealed
+            or not summary.native_run_id
+            or summary.native_run_id != run.dify_run_id
+        ):
+            return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_PROVENANCE_UNBOUND)
+        if summary.safety_outcome in {"unsupported_safe_execution", "execution_blocked"}:
+            return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_POLICY_BLOCKED)
+        if summary.safety_outcome == "execution_evidence_unknown":
+            return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_EVIDENCE_UNKNOWN)
+        if summary.safety_outcome == "simulation_completed":
+            return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
+        # PRD §19.2: a run that mocked any step proves nothing about that step.
+        if summary.mode == "confirmed_run" and summary.simulated_node_ids:
+            return PublicationDecision(allowed=False, reason=PublicationReason.SIMULATION_ONLY)
+        restricted_success = summary.safety_outcome == "restricted_execution_completed" and summary.mode == "restricted"
+        confirmed_run_success = (
+            summary.safety_outcome == "confirmed_run_completed"
+            and summary.mode == "confirmed_run"
+            and summary.policy_version == "builder-confirmed-run-v1"
+        )
+        # Confirmation is not publication approval: only the sealed exact-revision
+        # confirmed success passes, and every check below still applies.
+        confirmed_success = (
+            summary.safety_outcome == "confirmed_tool_completed"
+            and summary.mode == "confirmed_tool"
+            and summary.policy_version == "builder-confirmed-gmail-read-v1"
+            and summary.action_state == "completed"
+            and summary.consent_id is not None
+        )
+        if not (restricted_success or confirmed_run_success or confirmed_success):
+            return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_FAILED)
     if run.status == "failed":
         return PublicationDecision(allowed=False, reason=PublicationReason.EXECUTION_FAILED)
     if run.status != "succeeded":

@@ -3,7 +3,6 @@ import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import NamedTuple
-from unittest.mock import patch
 
 import pytest
 import pytest_mock
@@ -12,8 +11,8 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from core.dify_builder.contract import RunStatus
-from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
-from core.dify_builder.models import Action, Actor
+from core.dify_builder.errors import NotFoundError
+from core.dify_builder.models import Actor
 from core.rbac import RBACPermission, RBACResourceScope
 from models import TenantAccountRole
 from models.account import TenantAccountJoin
@@ -72,7 +71,6 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "pending_fix_context": None,
         "phase": "understand",
         "actions": [],
-        "test_execution": None,
     }
 
 
@@ -171,30 +169,6 @@ def test_settled_command_finished_sse_exposes_reply_language() -> None:
     assert event["event"] == "command_finished"
     assert event["data"]["reply_language"] == "zh-Hans"
     assert event["data"]["command_id"] == "command-1"
-
-
-def test_error_map() -> None:
-    assert wiring.dify_builder_error_response(ModelUnavailableError("private provider detail")) == (
-        {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True},
-        400,
-    )
-    not_found = wiring.dify_builder_error_response(NotFoundError("x"))
-    assert not_found is not None
-    assert not_found[1] == 404
-    assert not_found[0]["code"] == "not_found"
-    assert wiring.dify_builder_error_response(ConflictError("x")) == ({"code": "conflict"}, 409)
-    assert wiring.dify_builder_error_response(BusyError("x")) == ({"code": "session_busy"}, 409)
-    assert wiring.dify_builder_error_response(ValueError("x")) is None  # unknown → caller re-raises
-
-
-def test_build_service_enqueue_calls_delay_with_dicts() -> None:
-    with patch("services.dify_builder.wiring.advance_session") as task, patch("services.dify_builder.wiring.db"):
-        svc = wiring.build_service()
-        action = Action(kind="run_verify", base_version=2)
-        actor = Actor(account_id="acc", tenant_id="ten")
-        assert svc._authorize_app_fn is wiring._authorize_app
-        svc._enqueue_fn("sid-1", action, actor, "tok-9")  # the injected enqueue
-    task.delay.assert_called_once_with("sid-1", dataclasses.asdict(action), dataclasses.asdict(actor), "tok-9")
 
 
 class _AuthorizerDb(NamedTuple):

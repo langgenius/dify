@@ -7,7 +7,6 @@ import { v4 as uuid4 } from 'uuid'
 import {
   difyBuilderCanvasReadyAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderNativeTestCancellingAtom,
   difyBuilderTaskControlOperationAtom,
 } from '../state'
 import { controlSessionTask, getSession } from './client'
@@ -45,8 +44,6 @@ export function useDifyBuilderTaskControl({
   streamingTurnBuffer,
   abortRef,
   pendingTaskControlRef,
-  nativeObservationRef,
-  pendingActionRef,
   pendingMessageRef,
   pendingRetestRef,
   traceRef,
@@ -64,8 +61,6 @@ export function useDifyBuilderTaskControl({
   | 'streamingTurnBuffer'
   | 'abortRef'
   | 'pendingTaskControlRef'
-  | 'nativeObservationRef'
-  | 'pendingActionRef'
   | 'pendingMessageRef'
   | 'pendingRetestRef'
   | 'traceRef'
@@ -103,11 +98,7 @@ export function useDifyBuilderTaskControl({
         return false
       if (!pending) {
         if (operation === 'stop') {
-          if (
-            store.get(difyBuilderTaskControlOperationAtom) !== 'stop' ||
-            store.get(difyBuilderNativeTestCancellingAtom)
-          )
-            return false
+          if (store.get(difyBuilderTaskControlOperationAtom) !== 'stop') return false
         } else if (
           view?.run_status !== 'paused' ||
           view.canvas_read_only ||
@@ -124,7 +115,6 @@ export function useDifyBuilderTaskControl({
       const controller = new AbortController()
       abortRef.current = controller
       pendingRetestRef.current = null
-      pendingActionRef.current = null
       pendingMessageRef.current = null
       setRetryableMessage(null)
       executionProgress.clear()
@@ -141,7 +131,6 @@ export function useDifyBuilderTaskControl({
       setLastError('')
 
       const readLatest = async () => {
-        const observedAtStart = nativeObservationRef.current
         const snapshot = await getSession(sessionId, controller.signal)
         controller.signal.throwIfAborted()
         traceRef.current.append({
@@ -150,7 +139,7 @@ export function useDifyBuilderTaskControl({
           payload: snapshot,
           version: snapshot.version,
         })
-        applySessionView(snapshot, observedAtStart)
+        applySessionView(snapshot)
         const latest = store.get(difyBuilderSessionViewAtom)!
         setActiveCommand(
           isActiveView(latest)
@@ -326,9 +315,7 @@ export function useDifyBuilderTaskControl({
       pendingTaskControlRef,
       abortRef,
       pendingRetestRef,
-      pendingActionRef,
       pendingMessageRef,
-      nativeObservationRef,
       traceRef,
     ],
   )

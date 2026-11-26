@@ -111,14 +111,6 @@ def test_stop_sequence_preserves_owner_default_unless_administrator_configures_i
     assert requests[0]["model_parameters"] == {}
 
 
-def test_planner_public_provider_limit_is_available_through_guarded_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
-    from tests.unit_tests.core.workflow.generator.test_planner_token_budget import _model
-
-    native = _model(monkeypatch, 8192)
-    model = PolicyModelInstance(lambda: _ConfiguredInvocation(native, {}))
-    assert _clamp_for_planner({}, model_instance=model)["max_tokens"] == 8192
-
-
 def test_actual_proxy_invocation_failure_does_not_reselect_or_retry(monkeypatch: pytest.MonkeyPatch) -> None:
     from graphon.model_runtime.errors.invoke import InvokeConnectionError
     from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError

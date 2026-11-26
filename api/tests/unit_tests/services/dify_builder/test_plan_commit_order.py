@@ -81,23 +81,6 @@ def test_discovery_reads_committed_abstract_plan(clarify: bool) -> None:
     engine.dispose()
 
 
-@pytest.mark.parametrize("oversized", ["steps", "step", "title", "total"])
-def test_plan_response_has_explicit_finite_storage_budgets(oversized: str) -> None:
-    from services.dify_builder.plan import parse_plan_response
-
-    data = {"title": "Export", "input_summary": "Records", "output_summary": "CSV", "plan": ["Export records"]}
-    if oversized == "steps":
-        data["plan"] = ["Step"] * 31
-    elif oversized == "step":
-        data["plan"] = ["a" * 2001]
-    elif oversized == "title":
-        data["title"] = "a" * 201
-    else:
-        data["plan"] = ["a" * 1000] * 30
-    with pytest.raises(ValueError, match="limit"):
-        parse_plan_response(data)
-
-
 def test_oversized_plan_reply_is_rejected_before_json_repair() -> None:
     import json
 

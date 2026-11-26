@@ -99,7 +99,7 @@ async def run_read(
                     "state": {},
                 },
             },
-            services=Services(client, client, inner_api_key="test-inner-key"),
+            services=Services(client, client),
             run_id="read-test",
         )
         if shell_session is not None:

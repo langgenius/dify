@@ -1,7 +1,7 @@
 """Connector cause is diagnostic only; it cannot establish native execution evidence."""
 
 import json
-from collections.abc import Callable, Generator
+from collections.abc import Callable
 from contextvars import copy_context
 
 import pytest
@@ -21,14 +21,9 @@ from services.dify_builder.native_launch_observation import (
     observe_resource,
 )
 from services.dify_builder.repository import SqlDifyBuilderRepository
-from tests.unit_tests.services.dify_builder.test_confirmed_full_run import FullRunCase, _run
 from tests.unit_tests.services.dify_builder.test_confirmed_full_run import harness as full_run_harness
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import engine as engine_fixture
-from tests.unit_tests.services.dify_builder.test_engine_on_sql_repo import repo as repo_fixture
 
 harness = full_run_harness
-engine = engine_fixture
-repo = repo_fixture
 
 PREFIX = (
     "Failed to activate plugin before invocation: unexpected response from serverless connector activation: status="
@@ -119,100 +114,6 @@ def test_no_active_native_observation_does_not_emit_native_diagnostic(monkeypatc
     records = []
     with diagnostics.scope(records.append, "inventory"), pytest.raises(PluginDaemonInnerError):
         fail()
-    assert records == []
-
-
-@pytest.mark.parametrize("dispatched", [False, True])
-def test_activation_failure_preserves_evidence_and_never_replays(
-    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch, dispatched: bool
-) -> None:
-    fail = _runtime_failure(monkeypatch)
-
-    def generate(**_kwargs: object) -> None:
-        begin_preparation()
-        if dispatched:
-            mark_dispatched()
-        fail()
-
-    harness.generate.side_effect = generate
-    records = []
-    with diagnostics.scope(records.append, "build-test-and-repair"):
-        first = _run(harness)
-        recovered = _run(harness)
-    assert first.status == recovered.status == ("running" if dispatched else "failed")
-    assert harness.generate.call_count == 1
-    assert not first.dify_run_id
-    assert first.per_node == []
-    assert first.verification is not None
-    evidence = first.verification.execution_evidence
-    assert evidence is not None
-    assert evidence.safety_outcome == ("execution_evidence_unknown" if dispatched else "preparation_failed")
-    if not dispatched:
-        assert evidence is not None
-        assert evidence.failure_reason == "service_unavailable"
-    assert any(record.get("reason") == "service_unavailable" for record in records)
-    assert "secret" not in json.dumps(records)
-
-
-def test_worker_stream_conversion_keeps_cause_without_claiming_a_run(
-    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from services.dify_builder.dify_port import WorkflowServiceDifyPort
-
-    fail = _runtime_failure(monkeypatch)
-    monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
-
-    def generate(**_kwargs: object) -> Generator[dict[str, str]]:
-        begin_preparation()
-        worker_context = copy_context()
-        mark_dispatched()
-
-        def stream() -> Generator[dict[str, str]]:
-            try:
-                worker_context.run(fail)
-            except PluginDaemonInnerError:
-                # The native stream has already erased type/adapter authority.
-                yield {"event": "error", "code": "invalid_param", "message": MESSAGE}
-
-        return stream()
-
-    harness.generate.side_effect = generate
-    records = []
-    with diagnostics.scope(records.append, "build-test-and-repair"):
-        run = _run(harness)
-        recovered = _run(harness)
-    assert run.status == "failed"  # Native error frame; execution evidence remains unknown.
-    assert recovered.status == "running"
-    assert harness.generate.call_count == 1
-    assert not run.dify_run_id
-    assert run.per_node == []
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert not run.verification.execution_evidence.sealed
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-    assert [(r["code"], r["reason"]) for r in records] == [("native_outcome_unknown", "service_unavailable")]
-    assert "secret" not in json.dumps(records)
-
-
-def test_unobserved_code_stream_text_cannot_acquire_connector_cause(
-    harness: FullRunCase, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from services.dify_builder.dify_port import WorkflowServiceDifyPort
-
-    monkeypatch.setattr(WorkflowServiceDifyPort, "_finish_run", harness.native_finish)
-    harness.generate.return_value = iter([{"event": "error", "message": MESSAGE}])
-    records = []
-    with diagnostics.scope(records.append, "build-test-and-repair"):
-        run = _run(harness)
-        recovered = _run(harness)
-    assert run.status == "failed"  # Native error frame; execution evidence remains unknown.
-    assert recovered.status == "running"
-    assert harness.generate.call_count == 1
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
     assert records == []
 
 

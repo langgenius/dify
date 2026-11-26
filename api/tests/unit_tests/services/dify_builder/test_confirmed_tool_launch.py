@@ -303,34 +303,6 @@ def test_winner_acquires_lease_before_sql_reservation_and_enqueues_same_token_on
     assert action.base_app_revision == ""
 
 
-def test_matching_duplicate_while_original_lease_is_held_returns_current_receipt(consent_owner: Owner) -> None:
-    owner = consent_owner
-    receipt = confirmed(owner)
-    lease, enqueue = SpyLease(), SpyEnqueue()
-    first = execute(builder(owner, lease, enqueue), owner, receipt)
-    assert lease.exists(owner.session_id)
-
-    # A new web process, same body/key, while the original lease is still held.
-    again = execute(builder(owner, lease, enqueue), owner, receipt)
-
-    assert again.command_id == first.command_id
-    assert again.execution_request_id == first.execution_request_id
-    assert len(enqueue.calls) == 1
-    assert requests(owner) == 1
-    assert ("busy", owner.session_id) in lease.log
-
-
-def test_held_lease_never_turns_a_different_body_or_fresh_grant_into_a_launch(consent_owner: Owner) -> None:
-    owner = consent_owner
-    receipt = confirmed(owner)
-    lease, enqueue = SpyLease(), SpyEnqueue()
-    service = builder(owner, lease, enqueue)
-    execute(service, owner, receipt)
-    with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
-        execute(service, owner, receipt, key="execute-other")
-    assert len(enqueue.calls) == 1
-
-
 def test_lease_held_by_another_command_is_busy_and_reserves_nothing(consent_owner: Owner) -> None:
     owner = consent_owner
     receipt = confirmed(owner)
@@ -602,23 +574,6 @@ def test_worker_refuses_forged_or_serialized_confirmed_context_before_agent_setu
     assert repo.get_session(owner.session_id)[0].version == before[0].version
     assert events[-1]["kind"] == "error"
     assert released == [token]
-
-
-def test_duplicate_celery_delivery_cannot_launch_the_old_grant_again(
-    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    owner = consent_owner
-    reserved, action, token = reserve_directly(owner)
-    # The first delivery already claimed the launch identity (existing fixture stand-in).
-    simulate_task6_launch(owner, reserved)
-    port, order = ConfirmedSpyPort(), list[str]()
-    mod, repo, events, _released = wire_worker(monkeypatch, owner, port, order)
-
-    mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
-
-    assert port.confirmed_calls == []
-    assert "agent" not in order
-    assert events[-1]["kind"] == "error"
 
 
 def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winner(

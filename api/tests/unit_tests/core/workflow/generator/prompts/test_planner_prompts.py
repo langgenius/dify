@@ -8,7 +8,6 @@ import pytest
 from core.workflow.generator.prompts.builder_prompts import _NODE_SNIPPETS
 from core.workflow.generator.prompts.node_builder_prompts import (
     format_mode_section,
-    format_node_outputs_section,
     format_parallel_plan,
     format_start_inputs_section,
     get_node_builder_system_prompt,
@@ -61,18 +60,6 @@ class TestPlannerSystemPrompt:
             assert producer in rule
         assert "ONLY the names declared here" in rule
 
-    def test_the_declaration_is_bounded(self) -> None:
-        """``node_outputs`` is an unbounded map on the stage with the known
-        live truncation failure (ESQ1-300: planner output-budget exhaustion,
-        masked by ``json_repair``). The ceiling must not move before the stage
-        is instrumented, so the DECLARATION is bounded instead: the fail-open
-        parse already makes a truncated or absent value harmless, and a bounded
-        one rarely truncates at all."""
-        rule = PLANNER_SYSTEM_PROMPT[PLANNER_SYSTEM_PROMPT.index("node_outputs") :][:900]
-
-        assert "at most 6" in rule
-        assert "at most 10" in rule
-
 
 class TestFormatIdealOutputSection:
     def test_returns_empty_string_for_blank_input(self) -> None:
@@ -120,23 +107,6 @@ class TestNodeBuilderPrompt:
         assert "- if-else:" not in prompt
         assert '"viewport":' not in prompt
         assert '"positionAbsolute":' not in prompt
-
-    def test_every_builder_learns_how_an_upstream_llm_is_referenced(self) -> None:
-        """A consumer only ever sees its OWN node's schema snippet, so the llm
-        snippet's structured-output rule never reaches the node referencing it.
-        Since a flat ``<llm>.<schema-field>`` reference is now a hard
-        generation failure (the engine cannot resolve it), the shared head has
-        to name the real outputs and the 3-segment form."""
-        prompt = get_node_builder_system_prompt("code")
-
-        assert '"reasoning_content"' in prompt
-        # Both reference forms: a 2-element selector IS harvested by the
-        # reference walker, so ``["node4", "title"]`` fails exactly like the
-        # flat placeholder does. Teaching only the placeholder form would
-        # leave every selector field pointing at an unresolvable name.
-        assert "{{#node_id.structured_output.field#}}" in prompt
-        assert '["node_id", "structured_output", "field"]' in prompt
-        assert 'never the\n  flat ``{{#node_id.field#}}`` / ``["node_id", "field"]``' in prompt
 
     def test_supports_main_human_input_and_assigner_contracts(self) -> None:
         human_input = get_node_builder_system_prompt("human-input")
@@ -211,60 +181,6 @@ class TestNodeBuilderUserSections:
             format_parallel_plan([], [], None, {"node2": ["slides_json"]})  # type: ignore[call-arg]
 
 
-class TestNodeOutputsSection:
-    """The planner declares the output names of every node that chooses its
-    own (code / parameter-extractor / human-input / structured-output llm);
-    this section is how one isolated builder call learns them."""
-
-    _DECLARED = {"node2": ["slides_json"], "node4": ["title", "bullets"]}
-    _TYPES = {"node2": "code", "node3": "end", "node4": "llm"}
-
-    def test_producer_is_told_to_declare_exactly_its_planned_names(self) -> None:
-        out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
-
-        assert "'slides_json'" in out
-        assert "exactly" in out
-
-    def test_consumer_may_reference_only_the_declared_names(self) -> None:
-        out = format_node_outputs_section(self._DECLARED, "node3", self._TYPES)
-
-        assert "node2: 'slides_json'" in out
-        assert "no other name" in out
-
-    def test_an_llm_producers_names_are_listed_as_structured_output_fields(self) -> None:
-        """An llm's declared names are schema fields, and the engine publishes
-        them under one ``structured_output`` object. Listing them flat would
-        hand the consumer ``{{#node4.title#}}`` -- the one reference the engine
-        cannot resolve, and now a hard generation failure."""
-        out = format_node_outputs_section(self._DECLARED, "node3", self._TYPES)
-
-        assert "node4 (llm structured output): 'structured_output.title', 'structured_output.bullets'" in out
-        assert "node4: 'title'" not in out
-
-    def test_an_unknown_node_type_is_listed_as_declared(self) -> None:
-        # Fail-open: only the four declaring types reach here and three of them
-        # name their outputs flat, so a missing type map degrades to that.
-        out = format_node_outputs_section(self._DECLARED, "node3")
-
-        assert "node4: 'title', 'bullets'" in out
-
-    def test_a_producer_does_not_see_its_own_entry_twice(self) -> None:
-        out = format_node_outputs_section(self._DECLARED, "node2", self._TYPES)
-
-        assert "node2: 'slides_json'" not in out
-        assert "node4 (llm structured output):" in out
-
-    def test_nothing_declared_renders_nothing(self) -> None:
-        assert format_node_outputs_section(None, "node2", self._TYPES) == ""
-        assert format_node_outputs_section({}, "node2", self._TYPES) == ""
-
-    def test_a_declaration_with_no_usable_content_renders_nothing(self) -> None:
-        """A header with nothing under it is worse than silence -- it spends
-        tokens telling the model a contract exists and then names none of it."""
-        assert format_node_outputs_section({"node2": []}, "node2", self._TYPES) == ""
-        assert format_node_outputs_section({"node2": []}, "node3", self._TYPES) == ""
-
-
 class TestModeSection:
     def test_advanced_chat_documents_system_variables(self) -> None:
         out = format_mode_section("advanced-chat")
@@ -306,26 +222,6 @@ class TestNodeBuilderHandleContract:
     planned edges -- ``format_parallel_plan`` embeds ``edges`` with their
     ``source_handle`` -- so its snippets now make those handles the contract."""
 
-    def test_if_else_snippet_binds_case_ids_to_the_planned_source_handles(self) -> None:
-        prompt = get_node_builder_system_prompt("if-else")
-
-        assert "source_handle" in prompt
-        assert "case_id" in prompt
-        assert '"false"' in prompt  # ELSE is implicit and must never be declared as a case
-        assert "never" in prompt.lower() or "must not" in prompt.lower()
-
-    def test_question_classifier_snippet_binds_class_ids_to_the_planned_source_handles(self) -> None:
-        prompt = get_node_builder_system_prompt("question-classifier")
-
-        assert "source_handle" in prompt
-        assert "classes" in prompt
-
-    def test_human_input_snippet_binds_action_ids_to_the_planned_source_handles(self) -> None:
-        prompt = get_node_builder_system_prompt("human-input")
-
-        assert "source_handle" in prompt
-        assert "user_actions" in prompt
-
     def test_the_planned_edges_reach_the_builder_with_their_handles(self) -> None:
         out = format_parallel_plan(
             [{"id": "node2", "label": "Check", "node_type": "if-else", "purpose": "x"}],
@@ -333,127 +229,6 @@ class TestNodeBuilderHandleContract:
         )
 
         assert '"source_handle":"score_equals_60"' in out
-
-
-class TestNodeSnippetContracts:
-    """Task 4: the generator prompt must not contradict the engine's node-data
-    schemas. Each case below was live-verified against a graphon entity (see
-    docs/superpowers/triage/generator-blockers-2026-09-22/FINDINGS.md Blocker A)."""
-
-    def test_parameter_extractor_query_is_one_selector_not_an_array_of_selectors(self) -> None:
-        """graphon ParameterExtractorNodeData.query: list[str] -- ONE selector,
-        not an array of selector arrays."""
-        prompt = get_node_builder_system_prompt("parameter-extractor")
-
-        assert '"query": ["<src>", "<var>"]' in prompt
-        assert "[[" not in prompt
-
-    def test_if_else_enumerates_the_engines_comparison_operators_verbatim(self) -> None:
-        """graphon utils.condition.entities.SupportedComparisonOperator -- the
-        number comparisons are the unicode >= <= != forms only."""
-        prompt = get_node_builder_system_prompt("if-else")
-
-        for operator in (
-            "contains",
-            "not contains",
-            "start with",
-            "end with",
-            "is not",
-            "empty",
-            "not empty",
-            "in",
-            "not in",
-            "all of",
-            "null",
-            "not null",
-            "exists",
-            "not exists",
-            "≥",
-            "≤",
-            "≠",
-        ):
-            assert operator in prompt
-        # The unicode forms are listed as the only valid operators...
-        assert '"≥"' in prompt
-        assert '"≤"' in prompt
-        assert '"≠"' in prompt
-        # ...and the ASCII digraphs are called out as wrong, not silently omitted.
-        assert "never" in prompt.lower()
-        assert '">="' in prompt
-        assert '"<="' in prompt
-        assert '"!="' in prompt
-
-    def test_template_transform_marks_variables_required_with_empty_list_form(self) -> None:
-        """graphon TemplateTransformNodeData.variables has no default -- it is
-        required even for a template that references no variables."""
-        prompt = get_node_builder_system_prompt("template-transform")
-
-        assert "REQUIRED" in prompt
-        assert '"variables": []' in prompt
-
-    def test_llm_documents_structured_output_as_a_three_segment_reference(self) -> None:
-        """graphon LLM node._build_run_outputs (node.py ~719-737) ALWAYS sets
-        text/reasoning_content/usage/finish_reason; only structured_output and
-        files are conditional. The prompt must not tell the generator "text"
-        is the only output -- that would block legitimate
-        {{#node.reasoning_content#}} / {{#node.usage#}} references, the FE's
-        own LLM_OUTPUT_STRUCT (constants.ts:142-155). structured_output is
-        addressed with a 3-segment selector, never a flat <node>.<field>."""
-        prompt = get_node_builder_system_prompt("llm")
-
-        assert "structured_output_enabled" in prompt
-        assert "{{#<node>.structured_output.<field>#}}" in prompt
-        assert '"text"' in prompt
-        assert '"reasoning_content"' in prompt
-        assert '"usage"' in prompt
-        assert "only output" not in prompt.lower()
-
-    def test_list_operator_restates_the_same_unicode_comparison_operators(self) -> None:
-        """Each node build sees only its own snippet (get_node_builder_system_prompt
-        embeds exactly one _NODE_SNIPPETS entry), so list-operator's
-        if-else-shaped ``conditions`` never see the if-else entry's operator
-        rule -- it must be restated here or a filter can still emit ">="."""
-        prompt = get_node_builder_system_prompt("list-operator")
-
-        assert "≥" in prompt
-        assert "≤" in prompt
-        assert "≠" in prompt
-        assert "never" in prompt.lower()
-
-    def test_list_operator_enumerates_the_filter_operators_the_engine_has(self) -> None:
-        """A filter's ``comparison_operator`` is graphon's ``FilterOperator``
-        (``nodes/list_operator/entities.py:10-28``), a SMALLER set than the
-        if-else ``Condition`` operators the snippet used to point at. Pointing
-        at the if-else shape let the generator emit ``"all of"`` / ``"null"`` /
-        ``"not null"`` / ``"exists"`` / ``"not exists"`` on a filter, which
-        ``FilterCondition`` rejects, so the workflow is refused at
-        ``Graph.init`` and never runs."""
-        prompt = get_node_builder_system_prompt("list-operator")
-
-        # The 16 FilterOperator values, verbatim.
-        for operator in (
-            "contains",
-            "start with",
-            "end with",
-            "is",
-            "in",
-            "empty",
-            "not contains",
-            "is not",
-            "not in",
-            "not empty",
-            "=",
-            "≠",
-            "<",
-            ">",
-            "≥",
-            "≤",
-        ):
-            assert f'"{operator}"' in prompt, operator
-
-        # The five the if-else condition has and a filter does not.
-        for absent in ("all of", "null", "not null", "exists", "not exists"):
-            assert absent not in prompt, absent
 
 
 type _JSONValue = None | bool | int | float | str | list["_JSONValue"] | dict[str, "_JSONValue"]

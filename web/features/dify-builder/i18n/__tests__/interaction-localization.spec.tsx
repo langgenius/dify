@@ -13,13 +13,11 @@ import englishWorkflow from '@/i18n/locales/en-US/workflow.json'
 import frenchBuilder from '@/i18n/locales/fr-FR/dify-builder.json'
 import chineseCommon from '@/i18n/locales/zh-Hans/common.json'
 import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
-import chineseAgent from '@/i18n/locales/zh-Hans/workflow-agent.json'
 import chineseWorkflow from '@/i18n/locales/zh-Hans/workflow.json'
-import { createNativeApproval } from '@/test/fixtures/dify-builder'
 import { ConversationCard } from '../../conversation/conversation-card'
 import { TestResultCard } from '../../conversation/test-result'
 import { DifyBuilderInteractionDock } from '../../interactions/interaction-dock'
-import { createNativeReceipt, createSessionView } from '../../session/__tests__/fixtures'
+import { createSessionView } from '../../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../../session/state'
 import { DifyBuilderLocaleProvider } from '../locale-provider'
 
@@ -213,103 +211,6 @@ describe('Builder interaction language', () => {
     expect(getI18n()?.language).toBe('en-US')
   })
 
-  it('names the selected no-repair action in the submit button', async () => {
-    renderInteraction({
-      decision: {
-        title: { type: 'copy', id: 'labels.noRepairAvailable' },
-        default_option_id: 'retry_repair',
-        options: [
-          { id: 'retry_repair', label: { type: 'copy', id: 'actions.tryAgain' } },
-          { id: 'finish_repair', label: { type: 'copy', id: 'actions.finish' } },
-        ],
-        submit: { id: 'confirm', kind: 'primary', label: '服务端提交标签' },
-      },
-    })
-    expect(
-      await screen.findByRole('button', { name: chineseBuilder['copy.actions.tryAgain'] }),
-    ).toBeEnabled()
-    expect(
-      await screen.findByRole('region', { name: chineseBuilder['copy.labels.noRepairAvailable'] }),
-    ).toBeVisible()
-    expect(
-      screen.getByRole('radio', { name: chineseBuilder['copy.actions.tryAgain'] }),
-    ).toBeChecked()
-    expect(screen.getByRole('radio', { name: chineseBuilder['copy.actions.finish'] })).toBeVisible()
-    expect(screen.queryByRole('textbox', { name: /reason/i })).not.toBeInTheDocument()
-  })
-
-  it('names the selected action when the decision has no submit metadata', async () => {
-    renderInteraction({
-      decision: { title: '服务器决策', options: [{ id: 'approve_plan', label: '服务器选项' }] },
-    })
-    expect(await screen.findByRole('button', { name: '服务器选项' })).toBeEnabled()
-    expect(screen.getByRole('radio', { name: '服务器选项' })).toBeChecked()
-  })
-
-  it.each([
-    { actionId: 'submit_requirements', variant: 'build_requirements' },
-    { actionId: 'submit_edit_rules', variant: 'edit_rules' },
-  ])(
-    'localizes $actionId while preserving its default and edited values',
-    async ({ actionId, variant }) => {
-      const user = userEvent.setup()
-      const { submitInteraction } = renderInteraction({
-        activeInteraction: {
-          ...testForm,
-          action_id: actionId,
-          card: {
-            ...testForm.card,
-            payload: {
-              variant,
-              fields: [{ key: 'message', label: 'Goal', type: 'text', default: 'Yes' }],
-            },
-          },
-        },
-      })
-      const submit = await screen.findByRole('button', {
-        name:
-          actionId === 'submit_requirements'
-            ? chineseBuilder['copy.actions.submitRequirements']
-            : chineseBuilder['copy.actions.submitRules'],
-      })
-      const input = screen.getByRole('textbox', { name: 'Goal' })
-      expect(input).toHaveValue('Yes')
-      await user.clear(input)
-      await user.type(input, 'Goal')
-      await user.click(submit)
-      expect(submitInteraction).toHaveBeenCalledWith(
-        actionId,
-        { message: 'Goal' },
-        expect.any(Object),
-      )
-    },
-  )
-
-  it('loads validation copy from the interaction language in the agent namespace', async () => {
-    const user = userEvent.setup()
-    const { submitInteraction } = renderInteraction({
-      activeInteraction: {
-        ...testForm,
-        card: {
-          ...testForm.card,
-          payload: {
-            variant: 'testdata',
-            fields: [{ key: 'profile', label: 'Goal', type: 'json_object' }],
-            values: { profile: '[]' },
-          },
-        },
-      },
-    })
-    await user.click(await screen.findByRole('button', { name: chineseBuilder.runTest }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      `Goal: ${chineseAgent['nodes.agent.outputVars.defaultValueObjectInvalid']}`,
-    )
-    expect(screen.getByRole('textbox', { name: 'Goal' })).toHaveAccessibleDescription(
-      `Goal: ${chineseAgent['nodes.agent.outputVars.defaultValueObjectInvalid']}`,
-    )
-    expect(submitInteraction).not.toHaveBeenCalled()
-  })
-
   it('localizes resource status and submits an empty selection with local receipt copy', async () => {
     const user = userEvent.setup()
     const { submitInteraction } = renderInteraction({
@@ -375,145 +276,7 @@ describe('Builder interaction language', () => {
   })
 })
 
-describe('native risk choice consent', () => {
-  it('requires explicit selection instead of preselecting approval', async () => {
-    const user = userEvent.setup()
-    const pending = createNativeApproval()
-    renderInteraction({
-      replyLanguage: 'en-US',
-      sessionView: {
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [pending],
-        }),
-        actions: [
-          {
-            id: 'confirm_test_operation',
-            label: 'Approve',
-            kind: 'primary',
-            payload: {
-              request_id: 'request-1',
-              pending_operation_id: pending.pending_operation_id,
-              pending_version: pending.version,
-              scope_digest: pending.scope_digest,
-            },
-          },
-        ],
-      },
-      decision: {
-        title: 'Approve this call?',
-        description: 'Reads one synthetic message',
-        options: [
-          { id: 'confirm_test_operation', label: 'Approve', tone: 'primary' },
-          { id: 'deny_test_operation', label: 'Reject', tone: 'danger' },
-        ],
-        default_option_id: '',
-      },
-    })
-    const submit = await screen.findByRole('button', { name: englishCommon['operation.submit'] })
-    expect(submit).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    expect(submit).toBeEnabled()
-  })
-})
-
-describe('replacement native disclosure', () => {
-  it('clears an approval selection when the pending scope changes at the same Builder version', async () => {
-    const user = userEvent.setup()
-    const { store, view, submitInteraction } = renderInteraction({
-      replyLanguage: 'en-US',
-      decision: {
-        title: 'Approve call',
-        options: [
-          { id: 'confirm_test_operation', label: 'Approve' },
-          { id: 'deny_test_operation', label: 'Reject' },
-        ],
-        default_option_id: '',
-      },
-    })
-    const payload = {
-      request_id: 'request-1',
-      pending_operation_id: 'pending-A',
-      pending_version: 1,
-      scope_digest: 'a'.repeat(64),
-    }
-    act(() =>
-      store.set(difyBuilderSessionViewAtom, {
-        ...view,
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [createNativeApproval({ pending_operation_id: payload.pending_operation_id })],
-        }),
-        actions: [{ id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload }],
-      }),
-    )
-    const submit = await screen.findByRole('button', { name: englishCommon['operation.submit'] })
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    expect(submit).toBeEnabled()
-    const replacement = {
-      ...payload,
-      pending_operation_id: 'pending-B',
-      scope_digest: 'b'.repeat(64),
-    }
-    act(() =>
-      store.set(difyBuilderSessionViewAtom, {
-        ...view,
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [
-            createNativeApproval({
-              pending_operation_id: replacement.pending_operation_id,
-              scope_digest: replacement.scope_digest,
-            }),
-          ],
-        }),
-        actions: [
-          { id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload: replacement },
-        ],
-      }),
-    )
-    expect(screen.getByRole('button', { name: englishCommon['operation.submit'] })).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    await user.click(screen.getByRole('button', { name: 'Approve' }))
-    expect(submitInteraction).toHaveBeenCalledWith(
-      'confirm',
-      { option_id: 'confirm_test_operation', ...replacement },
-      expect.any(Object),
-    )
-  })
-})
-
 describe('truthful result and publication interactions', () => {
-  it('reports an unknown execution without labeling it failed', async () => {
-    renderInteraction({
-      replyLanguage: 'en-US',
-      result: { status: 'failed', outcome: 'execution_unknown', terminal_outputs: {} },
-    })
-    expect(await screen.findByText('Outcome unknown')).toBeVisible()
-    expect(screen.queryByText('failed')).not.toBeInTheDocument()
-  })
-
-  it('reports execution success beside its review scope and simulated steps', async () => {
-    renderInteraction({
-      replyLanguage: 'en-US',
-      result: {
-        status: 'succeeded',
-        outcome: 'execution_succeeded_needs_review',
-        terminal_outputs: {},
-        review_note: 'Only the paid-order path ran.',
-        simulated_node_ids: ['export-docx'],
-      },
-    })
-    expect(await screen.findByText('Execution succeeded')).toBeVisible()
-    expect(screen.getByText('Only the paid-order path ran.')).toBeVisible()
-    expect(screen.getByText('Simulated steps')).toBeVisible()
-    expect(screen.getByText('export-docx')).toBeVisible()
-    expect(screen.queryByText('passed')).not.toBeInTheDocument()
-  })
-
   it.each([undefined, 'publish_workflow'])(
     'requires a deliberate publish choice with default %s',
     async (defaultOption) => {
@@ -541,48 +304,4 @@ describe('truthful result and publication interactions', () => {
       )
     },
   )
-})
-
-describe('provided sample inputs', () => {
-  it.each([
-    'replies.provideTestInputsOrUseMockDataToRunValidation',
-    'replies.provideTestInputsOrUseMockDataToRunTheAffectedPathTest',
-  ] as const)('describes the existing provide action for %s', async (id) => {
-    const user = userEvent.setup()
-    const { submitInteraction } = renderInteraction({
-      replyLanguage: 'en-US',
-      activeInteraction: {
-        ...testForm,
-        card: {
-          ...testForm.card,
-          payload: {
-            ...testForm.card.payload,
-            description: { type: 'copy', id },
-            values: { message: 'Sample order' },
-          },
-        },
-      },
-    })
-    expect(await screen.findByText(/^Review the sample inputs or provide your own/)).toBeVisible()
-    await user.click(screen.getByRole('button', { name: englishBuilder.runTest }))
-    expect(submitInteraction).toHaveBeenCalledWith(
-      'provide_testdata',
-      { mode: 'provide', inputs: { message: 'Sample order', enabled: true } },
-      expect.any(Object),
-    )
-  })
-})
-
-it('keeps an execution-only success scoped when a historical result has no review note', async () => {
-  renderInteraction({
-    replyLanguage: 'en-US',
-    result: {
-      status: 'succeeded',
-      outcome: 'execution_succeeded_needs_review',
-      terminal_outputs: {},
-    },
-  })
-  expect(
-    await screen.findByText('Other paths and goal acceptance were not verified.'),
-  ).toBeVisible()
 })

@@ -272,17 +272,11 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   )
 
   const restoreRun = useCallback<SessionRunEvents['restoreRun']>(
-    (sessionId, items, view) => {
-      const restored = getHistoricalRun(sessionId, items, view)
+    (sessionId, items) => {
+      const restored = getHistoricalRun(sessionId, items)
       const current = runRef.current
       const displayedResult = workflow.getState().workflowRunningData?.result
-      const receipt = view?.test_execution
       const native = nativeCanvasRef.current
-      const endedPausedRun =
-        receipt?.status === 'terminal' &&
-        receipt.native_run_id === displayedResult?.id &&
-        displayedResult?.status === 'paused' &&
-        receipt.native_status !== 'paused'
       if (
         !restored ||
         !appId ||
@@ -292,8 +286,7 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
         (current?.sessionId === sessionId &&
           (current.atVersion > restored.atVersion ||
             (current.runId === restored.runId &&
-              ((current.complete && !current.interrupted && !endedPausedRun) ||
-                current.restoring))))
+              ((current.complete && !current.interrupted) || current.restoring))))
       )
         return
 
@@ -436,7 +429,6 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   return useMemo(
     () => ({
       onWorkflowEvent,
-      onNativeCanvasPath,
       onStreamInterrupted,
       onCanvasEvent,
       restoreRun,
@@ -446,7 +438,6 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
     }),
     [
       onWorkflowEvent,
-      onNativeCanvasPath,
       onStreamInterrupted,
       onCanvasEvent,
       restoreRun,

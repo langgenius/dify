@@ -1,3 +1,4 @@
+from dify_agent.runtime.context import Services
 import asyncio
 from collections import defaultdict
 from collections.abc import Mapping
@@ -9,10 +10,11 @@ import httpx
 import pytest
 from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
 
+from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DifyOutputLayerConfig
-from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID, RunFailureType
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
@@ -27,9 +29,8 @@ from dify_agent.protocol.schemas import (
     RunStatus,
     utc_now,
 )
-from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.cancellation import RunCancellationIntent
-from dify_agent.runtime.context import Services
+from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunFinalizationResult,
@@ -38,7 +39,6 @@ from dify_agent.runtime.event_sink import (
     emit_run_succeeded,
     terminal_event_status_fields,
 )
-from dify_agent.runtime.observability import AgentObservability
 from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
 from dify_agent.runtime.runner import AgentRunRunner
 from dify_agent.server.schemas import RunRecord
@@ -109,7 +109,7 @@ class FakeStore:
         self.cancellation_intents = {}
         self.idempotency_claims = {}
 
-    async def create_run(self, *, identity=None) -> RunRecord:
+    async def create_run(self) -> RunRecord:
         run_id = f"run-{len(self.records) + 1}"
         record = RunRecord(run_id=run_id, status="running")
         self.records[run_id] = record
@@ -117,16 +117,14 @@ class FakeStore:
         self.cancellation_changes[run_id] = asyncio.Event()
         return record
 
-    async def create_run_idempotent(
-        self, *, idempotency_key: str, request_fingerprint: str, identity=None
-    ) -> tuple[RunRecord, bool]:
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
         existing = self.idempotency_claims.get(idempotency_key)
         if existing is not None:
             existing_fingerprint, run_id = existing
             if existing_fingerprint != request_fingerprint:
                 raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
             return await self.get_run(run_id), False
-        record = await self.create_run(identity=identity)
+        record = await self.create_run()
         self.idempotency_claims[idempotency_key] = (request_fingerprint, record.run_id)
         return record, True
 
@@ -219,10 +217,10 @@ class SlowCreateStore(FakeStore):
         self.create_started = create_started
         self.release_create = release_create
 
-    async def create_run(self, *, identity=None) -> RunRecord:
+    async def create_run(self) -> RunRecord:
         _ = self.create_started.set()
         await self.release_create.wait()
-        return await super().create_run(identity=identity)
+        return await super().create_run()
 
 
 class TrackingStore(FakeStore):

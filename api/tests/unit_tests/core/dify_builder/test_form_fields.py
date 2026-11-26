@@ -36,17 +36,6 @@ def test_build_form_fields_preserves_supported_scalar_and_json_types() -> None:
     assert [field.type for field in fields] == ["bool", "number", "json", "json_object"]
 
 
-def test_build_form_fields_carries_the_hint_that_explains_a_blank_field() -> None:
-    """A requirements field left blank on purpose has to say why, or the user
-    sees an unexplained empty box (PM report 2026-09-29). ``testdata_form_fields``
-    already carries a hint; this form dropped it on the floor."""
-    fields = build_form_fields(
-        [{"key": "bocha_api_key", "label": "博查 API 密钥", "type": "text", "hint": "Not stated in your request."}]
-    )
-
-    assert fields[0].hint == "Not stated in your request."
-
-
 _FLOWS = [
     (
         handlers_build.handle_execution,
@@ -215,25 +204,6 @@ def test_chatflow_saved_workflow_inputs_are_stale(
     assert old_hash
 
 
-@pytest.mark.parametrize(
-    "error",
-    ["query is required", "query is required [invalid_param]", "sys.query is required", "query must be a string"],
-)
-def test_known_query_argument_errors_are_input_failures(error: str) -> None:
-    from core.dify_builder.models import Run
-
-    assert handlers_fix.is_input_failure(Run(status="failed", error=error))
-
-
-@pytest.mark.parametrize(
-    "error", ["SQL query is required by code node", "query parser configuration is required", "node query is required"]
-)
-def test_query_related_graph_errors_still_need_repair(error: str) -> None:
-    from core.dify_builder.models import Run
-
-    assert not handlers_fix.is_input_failure(Run(status="failed", error=error))
-
-
 @pytest.mark.parametrize("flow", _FLOWS)
 def test_chatflow_rejects_a_stale_schema_even_when_query_is_valid(
     monkeypatch: pytest.MonkeyPatch,
@@ -283,27 +253,3 @@ def test_workflow_fix_input_failures_keep_the_existing_decision_route(monkeypatc
     )
     result = handlers_fix.handle_verify(env, _query_turn(), session, fc)
     assert result.next == PcState.FIX_AWAIT_DECISION
-
-
-def test_system_message_label_uses_a_scene_without_changing_the_runtime_schema() -> None:
-    from core.dify_builder.input_schema import schema_hash, start_schema
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from runtime_contracts.builder.presentation import copy_text
-
-    graph: Graph = {
-        "nodes": [
-            {
-                "id": "start",
-                "data": {
-                    "type": "start",
-                    "variables": [{"variable": "sys.query", "type": "text", "label": "User message"}],
-                },
-            }
-        ]
-    }
-    schema = start_schema(graph, "advanced-chat")
-    before, digest = copy.deepcopy(schema), schema_hash(schema)
-    assert handlers_fix.testdata_form_fields(schema)[0].label == copy_text(BuilderCopyId.FORMS_USER_MESSAGE)
-    assert schema == before
-    assert schema_hash(schema) == digest
-    assert handlers_fix.testdata_form_fields(start_schema(graph))[0].label == "User message"

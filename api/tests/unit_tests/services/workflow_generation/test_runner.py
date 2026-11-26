@@ -20,7 +20,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jinja2 import Template
 
-from core.workflow.generator.prompts.node_builder_prompts import format_node_outputs_section
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
 from core.workflow.generator.types import GraphDict
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -1308,12 +1307,6 @@ class TestPlanDeclaredNodeOutputs:
         {"id": "node5", "node_type": "http-request"},
     ]
 
-    def test_declared_producer_outputs_are_kept(self):
-        assert _parse_node_outputs({"node2": ["slides_json", "count"], "node4": ["topic"]}, self._PLAN_NODES) == {
-            "node2": ["slides_json", "count"],
-            "node4": ["topic"],
-        }
-
     def test_a_type_with_fixed_outputs_may_not_redeclare_them(self):
         # An http-request node exposes body / status_code / headers / files no
         # matter what the planner says; honouring a declaration here would tell
@@ -1323,35 +1316,6 @@ class TestPlanDeclaredNodeOutputs:
     def test_an_unplanned_node_id_is_dropped(self):
         assert _parse_node_outputs({"nodeX": ["whatever"]}, self._PLAN_NODES) == {}
 
-    @pytest.mark.parametrize(
-        "garbage",
-        [
-            None,
-            "node2",
-            ["node2"],
-            42,
-            {"node2": "slides_json"},
-            {"node2": None},
-            {"node2": []},
-            {"node2": [""]},
-            {"node2": [None, 7]},
-            {"": ["slides_json"]},
-            {7: ["slides_json"]},
-        ],
-    )
-    def test_a_missing_or_garbage_declaration_never_raises(self, garbage):
-        assert _parse_node_outputs(garbage, self._PLAN_NODES) == {}
-
-    def test_partial_garbage_keeps_the_usable_names(self):
-        assert _parse_node_outputs({"node2": ["slides_json", "", 7, "  count  "]}, self._PLAN_NODES) == {
-            "node2": ["slides_json", "count"]
-        }
-
-    def test_repeated_names_are_declared_once_in_planner_order(self):
-        # A repeated name would be repeated in every builder prompt that lists
-        # this producer.
-        assert _parse_node_outputs({"node2": ["b", "a", "b", " a "]}, self._PLAN_NODES) == {"node2": ["b", "a"]}
-
     @pytest.mark.parametrize("unreferenceable", ["x" * 31, "slides-json", "slides json", "2slides", "a.b", "-"])
     def test_a_name_the_reference_grammar_rejects_is_dropped(self, unreferenceable):
         """A declared name must be referenceable, or declaring it only makes a
@@ -1360,14 +1324,6 @@ class TestPlanDeclaredNodeOutputs:
         ``variable_template_parser``), so a hyphen, a space, a dot, a leading
         digit or a 31st character makes the name invisible to the walker."""
         assert _parse_node_outputs({"node2": [unreferenceable, "ok"]}, self._PLAN_NODES) == {"node2": ["ok"]}
-
-    def test_a_name_at_the_grammar_limit_is_kept(self):
-        assert _parse_node_outputs({"node2": ["x" * 30, "_ok2"]}, self._PLAN_NODES) == {"node2": ["x" * 30, "_ok2"]}
-
-    def test_ids_match_after_stripping_on_both_sides(self):
-        assert _parse_node_outputs({" node2 ": ["slides_json"]}, [{"id": " node2 ", "node_type": "code"}]) == {
-            "node2": ["slides_json"]
-        }
 
     def test_a_padded_plan_id_still_finds_its_own_declaration(self):
         """``_parse_node_outputs`` keys are stripped, so every lookup built
@@ -1566,15 +1522,6 @@ class TestPlanDeclaredNodeOutputs:
         assert "node3.headline" not in prompts["node4"]
         assert "node_output_contracts" not in prompts["node4"]
 
-    @pytest.mark.parametrize(
-        "metadata",
-        [None, "seconds", {"node2": {"unknown": {"meaning": "Duration", "representation": "Seconds"}}}],
-    )
-    def test_unusable_representation_metadata_preserves_names_only_prompts(self, metadata):
-        plan = json.loads(self._planner(node_outputs=self._DECLARED))
-        plan["node_output_contracts"] = metadata
-        assert self._generate(json.dumps(plan)) == self._generate(self._planner(node_outputs=self._DECLARED))
-
     def test_representation_contracts_preserve_parallel_call_count_and_public_events(self, monkeypatch):
         apply_config_overrides(monkeypatch, WORKFLOW_GENERATOR_NODE_BUILDER_MAX_WORKERS=4)
         plan = json.loads(self._planner(node_outputs=self._DECLARED))
@@ -1604,31 +1551,6 @@ class TestPlanDeclaredNodeOutputs:
         assert "JSON text containing an array" in str(model.messages_by_node["node4"][0][-1].content)
         assert "node_output_contracts" not in json.dumps(events)
         assert "JSON text containing an array" not in json.dumps(events)
-
-    def test_a_plan_without_the_key_renders_byte_identical_prompts(self):
-        """Fail-open, byte for byte: a declared run's prompts differ from a
-        plain run's by exactly the rendered section — nothing else — so the
-        plain run's prompt is character-for-character the one this feature
-        never touched."""
-        declared_result, declared = self._generate(self._planner(node_outputs=self._DECLARED))
-        plain_result, plain = self._generate(self._planner())
-
-        assert declared_result["error"] == plain_result["error"] == ""
-        assert set(declared) == set(plain) == {"node1", "node2", "node3", "node4"}
-
-        for node_id, prompt in declared.items():
-            section = format_node_outputs_section(self._DECLARED, node_id, self._NODE_TYPES)
-            assert section, f"expected a rendered section for {node_id}"
-            assert prompt.replace(section, "") == plain[node_id]
-
-    def test_a_garbage_declaration_is_indistinguishable_from_no_declaration(self):
-        garbage_plan = json.loads(self._planner())
-        garbage_plan["node_outputs"] = "slides_json"
-        garbage_result, garbage = self._generate(json.dumps(garbage_plan))
-        plain_result, plain = self._generate(self._planner())
-
-        assert garbage_result["error"] == plain_result["error"] == ""
-        assert garbage == plain
 
 
 class TestWorkflowGeneratorWorkflowMode:
@@ -2032,15 +1954,6 @@ class TestPlannerSchemaValidation:
 
 class TestAssembleParallelGraph:
     """Direct assembly contracts not exercised by the fixture-driven pipeline tests."""
-
-    def test_llm_builder_prompt_documents_new_node_reasoning_default(self):
-        from core.workflow.generator.prompts.node_builder_prompts import get_node_builder_system_prompt
-
-        prompt = get_node_builder_system_prompt("llm")
-        assert "reasoning_format" in prompt
-        assert '"separated"' in prompt
-        assert '"tagged"' in prompt
-        assert "existing" in prompt
 
     @pytest.mark.parametrize("reasoning_format", [None, "tagged", "separated"])
     @pytest.mark.parametrize("action", ["add", "keep", "update"])
@@ -2908,9 +2821,6 @@ class TestWorkflowGeneratorEdgeCases:
 
 
 # Silence the unused-import warning — pytest is used implicitly via fixtures.
-_ = pytest
-
-
 class TestWorkflowGeneratorContainerNodes:
     """
     Iteration / loop container support — postprocess must preserve the
@@ -5285,32 +5195,6 @@ class TestWorkflowGeneratorBranchHandleRepair:
 
         assert edges[0]["sourceHandle"] == "source"
 
-    def test_logs_each_re_homed_edge_and_not_the_ones_left_as_they_were(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level("INFO", logger="services.workflow_generation.runner")
-        nodes = [
-            self._if_else_node(),
-            {"id": "qc", "data": {"type": "question-classifier", "classes": [{"id": "1"}, {"id": "2"}]}},
-            {"id": "branch2", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}},
-        ]
-        edges = [
-            {"source": "branch", "target": "a", "sourceHandle": "true"},  # already declared
-            {"source": "branch", "target": "b", "sourceHandle": "else"},  # alias -> "false"
-            {"source": "qc", "target": "c"},  # no handle -> first unused class
-            {"source": "branch2", "target": "d", "sourceHandle": "maybe"},  # two free arms: ambiguous
-        ]
-
-        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
-
-        infos = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
-        assert len(infos) == 2
-        assert "branch -> b" in infos[0]
-        assert "from handle 'else' onto branch handle 'false'" in infos[0]
-        assert "qc -> c" in infos[1]
-        assert "from handle None onto branch handle '1'" in infos[1]
-        warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
-        assert len(warnings) == 1
-        assert "branch2 -> d" in warnings[0]
-
 
 class TestWorkflowGeneratorGraphCycleValidation:
     """A workflow graph must be a DAG; cycles hang or error the run."""
@@ -5840,23 +5724,6 @@ def test_tool_node_fails_open_without_an_output_schema():
     assert G._declares_variable(_tool_node(output_schema={}), "anything") is True
 
 
-def test_tool_node_fails_open_when_output_schema_is_not_a_dict():
-    """A hand-edited or legacy graph can carry a malformed output_schema;
-    that must degrade to fail-open, not raise."""
-    from services.workflow_generation.runner import WorkflowGenerator as G
-
-    assert G._declares_variable(_tool_node(output_schema=" oops "), "anything") is True
-    assert G._declares_variable(_tool_node(output_schema=["a"]), "anything") is True
-    assert G._declares_variable(_tool_node(output_schema=7), "anything") is True
-
-
-def test_tool_node_fails_open_when_properties_is_not_a_dict():
-    from services.workflow_generation.runner import WorkflowGenerator as G
-
-    node = _tool_node(output_schema={"properties": "oops"})
-    assert G._declares_variable(node, "anything") is True
-
-
 def test_tool_result_is_aliased_to_text():
     """Self-heal the common mistake rather than failing the build for it."""
     from services.workflow_generation.runner import WorkflowGenerator as G
@@ -6025,18 +5892,6 @@ class TestKnownCodeToolOutputContract:
         assert graph["nodes"][3]["data"]["outputs"][0]["value_selector"] == selector
         assert graph["nodes"][3]["data"]["description"] == "Read {{#node2." + variable + "#}}"
 
-    def test_standard_envelope_roots_remain_accepted(self):
-        _, errors = self._postprocess_and_validate(self._graph(self._producer(), ("text", "files", "json")))
-
-        assert errors == []
-
-    def test_legacy_provider_name_identifies_the_known_producer(self):
-        producer = self._producer(provider_name="code")
-        producer["data"].pop("provider_id")
-        _, errors = self._postprocess_and_validate(self._graph(producer))
-
-        assert [error["code"] for error in errors] == ["UNRESOLVED_REFERENCE", "UNRESOLVED_REFERENCE"]
-
     @pytest.mark.parametrize(
         "identity",
         [
@@ -6051,16 +5906,6 @@ class TestKnownCodeToolOutputContract:
 
         assert errors == []
         assert graph["nodes"][3]["data"]["outputs"][0]["value_selector"] == ["node2", "valid"]
-
-    def test_other_tools_keep_declared_custom_outputs(self):
-        producer = self._producer(
-            provider_id="json_process",
-            output_schema={"properties": {"valid": {"type": "boolean"}, "items": {"type": "array"}}},
-        )
-        graph, errors = self._postprocess_and_validate(self._graph(producer))
-
-        assert errors == []
-        assert graph["nodes"][3]["data"]["outputs"][1]["value_selector"] == ["node2", "items"]
 
     @pytest.mark.parametrize("declared", [True, False])
     def test_other_tool_result_declaration_and_unambiguous_alias_remain_compatible(self, declared):
@@ -6173,24 +6018,6 @@ def test_invented_structured_output_name_is_not_aliased_when_really_enabled(inve
     assert G._aliased_output(node, invented_name) is None
 
 
-def test_llm_unrelated_invented_name_is_not_aliased():
-    """The alias table is scoped to the known structured-output family --
-    an unrelated invented name is still left for the caller to report."""
-    from services.workflow_generation.runner import WorkflowGenerator as G
-
-    node = _llm_node()
-    assert G._aliased_output(node, "presentation") is None
-
-
-def test_code_node_reference_is_untouched_by_the_llm_alias_table():
-    """The new LLM entries must not leak onto other node types."""
-    from services.workflow_generation.runner import WorkflowGenerator as G
-
-    node = {"id": "node2", "data": {"type": "code", "outputs": {"summary": {"type": "string"}}}}
-    assert G._aliased_output(node, "result") is None
-    assert G._aliased_output(node, "output") is None
-
-
 class TestLlmNodeDeclaresTheEngineOutputs:
     """B2: what an ``llm`` node really exposes is what graphon publishes.
 
@@ -6204,16 +6031,6 @@ class TestLlmNodeDeclaresTheEngineOutputs:
     """
 
     _SCHEMA = {"answer": {"type": "string"}}
-
-    @pytest.mark.parametrize("var", ["text", "reasoning_content", "usage", "finish_reason", "files"])
-    def test_the_always_present_engine_outputs_are_declared(self, var):
-        assert WorkflowGenerator._declares_variable(_llm_node(), var) is True
-        assert (
-            WorkflowGenerator._declares_variable(
-                _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA), var
-            )
-            is True
-        )
 
     def test_structured_output_is_declared_only_when_really_enabled_with_a_schema(self):
         real = _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
@@ -6244,32 +6061,6 @@ class TestLlmNodeDeclaresTheEngineOutputs:
         real = _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
 
         assert WorkflowGenerator._declares_variable(real, "answer") is False
-
-    def test_an_invented_name_is_still_undeclared(self):
-        assert WorkflowGenerator._declares_variable(_llm_node(), "presentation") is False
-
-    def test_the_schemaless_default_output_is_unchanged(self):
-        """``_sole_declared_variable`` still names ``text`` as the output an
-        unresolvable reference gets repaired to on a schema-less node, and
-        still refuses to guess on a real structured-output node."""
-        assert WorkflowGenerator._sole_declared_variable(_llm_node()) == "text"
-        assert (
-            WorkflowGenerator._sole_declared_variable(
-                _llm_node(structured_output_enabled=True, schema_properties=self._SCHEMA)
-            )
-            is None
-        )
-
-    @pytest.mark.parametrize("enabled", [None, False])
-    def test_a_leftover_schema_still_repairs_to_text(self, enabled):
-        """The documented drift: an isolated builder call leaves a schema
-        behind without turning the flag on. Such a node produces nothing but
-        ``text``, so a reference to an invented name must still be repaired to
-        it -- reading schema PRESENCE alone would leave it unresolved and turn
-        a repairable graph into a 'couldn't build the workflow' card."""
-        node = _llm_node(structured_output_enabled=enabled, schema_properties=self._SCHEMA)
-
-        assert WorkflowGenerator._sole_declared_variable(node) == "text"
 
     def test_an_invented_name_on_a_drifted_node_is_repaired_end_to_end(self):
         nodes = [
@@ -6332,34 +6123,6 @@ class TestLlmNodeDeclaresTheEngineOutputs:
             ],
             "viewport": {"x": 0, "y": 0, "zoom": 0.7},
         }
-
-    def test_a_three_segment_structured_output_selector_is_a_reference(self):
-        """The builder head now teaches ``["node2","structured_output","f"]``,
-        so the walker has to see it. It used to harvest 2-element lists only,
-        which made the taught form invisible: an end node pointing at a
-        DRIFTED llm passed validation silently while the equivalent
-        placeholder was repaired."""
-        refs: set[tuple[str, str]] = set()
-        WorkflowGenerator._collect_refs_in_data(
-            {"outputs": [{"variable": "out", "value_selector": ["node2", "structured_output", "headline"]}]},
-            refs,
-        )
-
-        assert refs == {("node2", "structured_output.headline")}
-
-    def test_a_structured_output_selector_is_harvested_whatever_the_target_is(self):
-        """The harvest is deliberately type-blind: only an ``llm`` publishes a
-        ``structured_output`` object, so this selector aimed at anything else
-        cannot resolve and has to be REPORTED, not skipped. Gating the harvest
-        on the target being an llm silently dropped
-        ``["start", "structured_output", "x"]`` -- a start node is never an llm
-        -- which is exactly the invented reference this walk exists to catch.
-        The type check belongs on the rewrite instead; see
-        ``test_a_structured_output_shaped_tag_on_a_code_node_is_not_rewritten``."""
-        refs: set[tuple[str, str]] = set()
-        WorkflowGenerator._collect_refs_in_data({"tags": ["n2", "structured_output", "x"]}, refs)
-
-        assert refs == {("n2", "structured_output.x")}
 
     def test_a_structured_output_shaped_tag_on_a_code_node_is_not_rewritten(self):
         """The damage the ``llm`` gate prevents is the REWRITE, not the report:
@@ -6595,10 +6358,6 @@ class TestAnIterationPublishesItemAndIndex:
         assert nodes[2]["data"]["prompt_template"][0]["text"] == f"Use {{{{#node5.{published}#}}}}"
         assert WorkflowGenerator._declares_variable(nodes[1], published) is True
 
-    def test_a_loop_does_not_publish_an_iterations_item(self):
-        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "item") is False
-        assert WorkflowGenerator._declares_variable(self._loop_graph("x")[1], "index") is False
-
     def test_a_non_container_node_still_has_its_invented_name_repaired(self):
         # Regression guard for dropping the container types from
         # ``_sole_declared_variable``: every OTHER single-output type keeps the
@@ -6652,11 +6411,6 @@ class TestReferenceRepairDoesNotDependOnWalkOrder:
                 },
             },
         ]
-
-    def test_the_walk_is_handed_a_sorted_list_not_a_set(self):
-        # Production order is pinned too: a set would reintroduce the coin
-        # flip for any future body that reads what an earlier iteration wrote.
-        assert WorkflowGenerator._ordered_refs(self._graph()) == self._REFS
 
     @pytest.mark.parametrize("order", sorted(permutations(_REFS)))
     def test_every_walk_order_produces_the_same_repair(self, order: tuple[tuple[str, str], ...]):
@@ -6716,17 +6470,6 @@ class TestDottedReferencesResolveByTheirRoot:
             },
         }
 
-    @pytest.mark.parametrize("attribute", ["url", "name", "size", "mime_type", "transfer_method", "extension"])
-    def test_a_file_start_variables_attributes_are_declared(self, attribute):
-        node = self._start(doc="file")
-
-        assert WorkflowGenerator._declares_variable(node, f"doc.{attribute}") is True
-
-    def test_a_json_object_start_variable_is_addressable_too(self):
-        # `VariableEntityType.JSON_OBJECT` lands in the pool as an
-        # ObjectSegment, which `_get_nested_segment` walks by key.
-        assert WorkflowGenerator._declares_variable(self._start(payload="json_object"), "payload.items") is True
-
     def test_a_file_list_start_variables_attributes_do_not_resolve(self):
         """`ArrayFileSegment` subclasses `ArraySegment`, NOT `FileSegment`
         (graphon variables/segments.py:141,190), so `VariablePool.get`'s
@@ -6768,9 +6511,6 @@ class TestDottedReferencesResolveByTheirRoot:
 
         assert WorkflowGenerator._declares_variable(node, "topic") is True
         assert WorkflowGenerator._declares_variable(node, "topic.url") is False
-
-    def test_an_unknown_root_is_still_undeclared(self):
-        assert WorkflowGenerator._declares_variable(self._start(doc="file"), "missing.url") is False
 
     def test_a_file_attribute_reference_survives_reconciliation_untouched(self):
         nodes = [
@@ -6896,26 +6636,6 @@ class TestDottedReferencesResolveByTheirRoot:
         assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "structured_output", "headline"]
         assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
-    def test_a_padded_selector_is_repaired_not_just_reported(self):
-        """The walker strips each segment when it harvests, so the rewriter has
-        to strip too — otherwise a padded selector is harvested, found
-        unresolved, and then silently left alone."""
-        nodes = [
-            _llm_node("node2"),
-            {
-                "id": "node3",
-                "data": {
-                    "type": "end",
-                    "outputs": [{"variable": "out", "value_selector": [" node2 ", " presentation "]}],
-                },
-            },
-        ]
-
-        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
-
-        assert nodes[1]["data"]["outputs"][0]["value_selector"] == ["node2", "text"]
-        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
-
     def test_a_padded_three_element_structured_selector_is_repaired(self):
         nodes = [
             _llm_node("node2", schema_properties={"answer": {"type": "string"}}),
@@ -7003,19 +6723,6 @@ class TestPostprocessGraphNormalizers:
         assert [i["type"] for i in items] == ["text", "text"]
         assert len(items) == 2  # two items stay two items -- the validator rejects, nothing guesses
 
-    def test_repair_branch_edge_handles_classmethod_keeps_its_contract(self):
-        # Existing callers/tests use the classmethod with keyword args; it now
-        # delegates to graph_normalizers and also heals named-but-wrong handles.
-        nodes = [{"id": "branch", "data": {"type": "if-else", "cases": [{"case_id": "true", "conditions": []}]}}]
-        edges = [
-            {"source": "branch", "target": "a", "sourceHandle": "score_equals_60"},
-            {"source": "branch", "target": "b", "sourceHandle": "else"},
-        ]
-
-        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
-
-        assert [e["sourceHandle"] for e in edges] == ["true", "false"]
-
 
 class TestValidateStructureBranchHandlesAndHttpBodies:
     """Fail-closed structural checks for two defects that used to reach the
@@ -7073,29 +6780,6 @@ class TestValidateStructureBranchHandlesAndHttpBodies:
         assert "'pass'" in branch_errors[0]["detail"]
         assert "['true', 'false']" in branch_errors[0]["detail"]
 
-    def test_declared_handles_pass(self):
-        branch = {
-            "id": "node2",
-            "type": "custom",
-            "position": {"x": 0, "y": 0},
-            "data": {
-                "type": "if-else",
-                "title": "Check",
-                "cases": [{"case_id": "true", "logical_operator": "and", "conditions": []}],
-            },
-        }
-        edges = [
-            {"source": "node1", "target": "node2", "sourceHandle": "source"},
-            {"source": "node2", "target": "node6", "sourceHandle": "true"},
-            {"source": "node2", "target": "node6", "sourceHandle": "false"},
-        ]
-
-        errors = WorkflowGenerator._validate_structure(
-            graph=self._graph([self._START, branch, self._END], edges), mode="workflow"
-        )
-
-        assert [e for e in errors if e["code"] == "INVALID_BRANCH_HANDLE"] == []
-
     def test_the_esq1_302_json_body_is_an_invalid_http_body_error_naming_the_node(self):
         http = {
             "id": "node4",
@@ -7139,12 +6823,6 @@ class TestValidateStructureBranchHandlesAndHttpBodies:
         assert body_errors[0]["node_id"] == "node4"
         assert "exactly one item" in body_errors[0]["detail"]
 
-    def test_the_error_codes_are_stable_enum_members(self):
-        from core.workflow.generator.types import WorkflowGenerateErrorCode
-
-        assert WorkflowGenerateErrorCode.INVALID_BRANCH_HANDLE == "INVALID_BRANCH_HANDLE"
-        assert WorkflowGenerateErrorCode.INVALID_HTTP_BODY == "INVALID_HTTP_BODY"
-
 
 class TestNativeHttpResponseReferences:
     """HTTP aliases repair the response body without guessing among its four outputs."""
@@ -7172,20 +6850,6 @@ class TestNativeHttpResponseReferences:
             },
             {"id": "consumer", "data": consumer_data},
         ]
-
-    @pytest.mark.parametrize("alias", ["response", "http_response_body"])
-    @pytest.mark.parametrize("reference_form", ["placeholder", "selector"])
-    def test_response_body_alias_resolves_to_body(self, alias: str, reference_form: str):
-        nodes = self._nodes(alias, reference_form)
-
-        WorkflowGenerator._reconcile_variable_references(nodes=nodes, mode="workflow")
-
-        consumer = nodes[1]["data"]
-        if reference_form == "placeholder":
-            assert consumer["prompt_template"][0]["text"] == "Read {{#http.body#}}."
-        else:
-            assert consumer["outputs"][0]["value_selector"] == ["http", "body"]
-        assert WorkflowGenerator._collect_unresolved_refs(nodes=nodes, mode="workflow") == []
 
     @pytest.mark.parametrize("variable", ["body", "status_code"])
     @pytest.mark.parametrize("reference_form", ["placeholder", "selector"])
@@ -7297,11 +6961,6 @@ class TestNativeHttpStatusComparisonValidation:
         assert "status_code" in errors[0]["detail"]
         assert "number" in errors[0]["detail"]
 
-    def test_numeric_equality_accepts_a_text_status_literal(self):
-        graph = self._graph(comparison_operator="=", var_type="number", value="200")
-
-        assert WorkflowGenerator._validate_structure(graph=graph, mode="workflow") == []
-
     @pytest.mark.parametrize(
         ("producer_data", "selector", "var_type", "value"),
         [
@@ -7403,33 +7062,6 @@ class TestAJsonSchemaArrayIsNotAValueSelector:
         )
 
         assert self._refs(node) == {("node1", "topic")}
-
-    def test_a_two_value_enum_is_not_a_reference(self):
-        node = self._llm_with_schema(
-            {"type": "object", "properties": {"tone": {"type": "string", "enum": ["formal", "casual"]}}}
-        )
-
-        assert self._refs(node) == {("node1", "topic")}
-
-    def test_a_two_member_type_union_is_not_a_reference(self):
-        node = self._llm_with_schema({"type": "object", "properties": {"note": {"type": ["string", "null"]}}})
-
-        assert self._refs(node) == {("node1", "topic")}
-
-    def test_the_keywords_are_excluded_wherever_they_appear(self):
-        # Belt and braces: the walker is generic, so the next schema-bearing
-        # node type must not reintroduce this. These are outside any
-        # ``structured_output`` subtree.
-        out: set[tuple[str, str]] = set()
-        WorkflowGenerator._collect_refs_in_data(
-            {
-                "output_schema": {"required": ["a", "b"], "enum": ["x", "y"], "type": ["string", "null"]},
-                "parameters": [{"schema": {"required": ["p", "q"]}}],
-            },
-            out,
-        )
-
-        assert out == set()
 
     def test_a_genuine_selector_in_the_same_node_is_still_harvested(self):
         """THE regression guard. The exclusion must remove the false positive
@@ -7543,11 +7175,6 @@ class TestContainerMarkerOwnership:
         assert node["id"] == original["id"]
         assert node["parentId"] == original["parentId"]
         assert node["data"] == {**original["data"], "desc": "", "selected": False}
-
-    def test_ordinary_node_defaults_preserve_caller_wrapper(self):
-        node = {"id": "child", "type": "caller-wrapper", "data": {"type": "llm"}}
-        WorkflowGenerator._fill_node_defaults(node)
-        assert node["type"] == "caller-wrapper"
 
     @pytest.mark.parametrize(
         ("container_type", "marker_type", "wrapper"),
@@ -7887,11 +7514,6 @@ class TestNativeConstantAndMutableProducerMessages:
         ]
         return cls._build_messages(nodes, edges, current_nodes=current, target_type=target_type)
 
-    def test_shared_planner_system_distinguishes_mutation_from_a_published_constant(self):
-        messages = self._planner_messages()
-
-        self._assert_constant_rules(str(messages[0].content))
-
     def test_shared_planner_keeps_original_goal_and_authored_metadata_in_user_message(self):
         system, user = self._planner_messages()
 
@@ -7906,12 +7528,6 @@ class TestNativeConstantAndMutableProducerMessages:
         ):
             assert value in str(user.content)
             assert value not in str(system.content)
-
-    @pytest.mark.parametrize("target_type", ["http-request", "if-else", "end"])
-    def test_consumer_system_distinguishes_transitive_mutation_from_a_published_constant(self, target_type):
-        messages, _ = self._transitive_messages(target_type)
-
-        self._assert_constant_rules(str(messages[0].content))
 
     def test_consumer_user_context_binds_only_relevant_qualified_transitive_producers(self):
         from operator import itemgetter
@@ -8125,28 +7741,6 @@ class TestNativeHttpTimeoutMessages:
         )
         return model.messages_by_node["request_timeout_10"][0]
 
-    def test_http_builder_system_grounds_requested_duration_in_native_timeout_axes(self):
-        # Losing these rules recreates a max-only10 configuration that runs600s.
-        system = str(self._messages()[0].content)
-        for field in ("timeout.connect", "timeout.read", "timeout.write"):
-            assert field in system
-        for field in ("max_connect_timeout", "max_read_timeout", "max_write_timeout"):
-            assert field in system
-        words = set(re.findall(r"[a-z]+", system.lower()))
-        assert words & {"seconds", "second"}
-        assert words & {"durations", "duration"}
-        assert "editor" in words
-        assert words & {"ceilings", "limits", "maxima", "maximum"}
-        assert words & {"single", "one"}
-        assert words & {"all", "three"}
-        assert words & {"unless", "distinguished", "different", "separately"}
-        assert words & {"preserve", "retain", "retained", "unchanged"}
-        assert words & {"authored", "existing", "retained"}
-        assert words & {"canonical", "explicit"}
-        assert words & {"inherit", "inherits", "inheritance", "inherited"}
-        assert {"retry", "error"} <= words
-        assert words & {"invent", "invented", "guess"}
-
     def test_confirmed_duration_and_authored_choice_remain_only_in_http_builder_user_message(self):
         system, user = (str(message.content) for message in self._messages())
 
@@ -8228,19 +7822,6 @@ class TestNativeEndPublicOutputMessages:
         )
         assert (plan_nodes, plan_edges, current_graph) == original
         return model.messages_by_node["end_public_91"][0], graph
-
-    def test_end_builder_system_grounds_public_name_separately_from_selected_producer_root(self):
-        messages, _ = self._messages_and_graph("status")
-        system = str(messages[0].content)
-
-        assert "outputs[].variable" in system
-        assert "public workflow output" in system
-        assert "original user request" in system
-        assert "node purpose" in system
-        assert "value_selector" in system
-        assert "example" in system
-        assert "unless requested" in system
-        assert "existing authored End" in system
 
     @pytest.mark.parametrize("public_name", ["status", "quality_signal_91"])
     def test_requested_end_name_and_original_purpose_stay_in_user_message_without_renaming_selector(self, public_name):

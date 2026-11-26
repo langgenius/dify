@@ -50,17 +50,6 @@ def _prompt_loop_config() -> _LoopConfig:
     return TypeAdapter(_LoopConfig).validate_python(config)
 
 
-def test_loop_prompt_declares_native_state_instead_of_just_exit_conditions() -> None:
-    config = _prompt_loop_config()
-    assert config["loop_variables"] == [
-        {"label": "counter", "var_type": "number", "value_type": "constant", "value": 0}
-    ]
-    data = LoopNodeData.model_validate({"title": "Counter", "start_node_id": "loopstart", **config})
-    assert data.break_conditions[0].variable_selector == ["<loop-id>", "counter"]
-    assert data.break_conditions[0].comparison_operator == "≥"
-    assert "loop_variables[].label" in get_node_builder_system_prompt("loop")
-
-
 def test_loop_plan_names_reach_producer_and_consumers_without_granting_output_authority() -> None:
     nodes: list[dict[str, object]] = [{"id": "loop", "node_type": "loop"}, {"id": "end", "node_type": "end"}]
     parsed = _parse_node_outputs({"loop": ["counter"]}, nodes)

@@ -2,7 +2,7 @@ import type {
   NativeCanvasEdge,
   NativeCanvasPath,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
-import type { ConversationItem, SessionView } from '../types'
+import type { ConversationItem } from '../types'
 import type { Edge } from '@/app/components/workflow/types'
 import { groupConversationItems } from '../conversation/group-conversation-items'
 
@@ -16,21 +16,7 @@ export type BuilderRun = {
 export const getHistoricalRun = (
   sessionId: string,
   items: ConversationItem[],
-  view?: Pick<SessionView, 'test_execution' | 'version'>,
 ): BuilderRun | null => {
-  const receipt = view?.test_execution
-  if (
-    view &&
-    receipt?.native_run_id &&
-    (receipt.status !== 'terminal' || receipt.outcome === 'unknown')
-  ) {
-    return {
-      sessionId,
-      runId: receipt.native_run_id,
-      atVersion: view.version,
-      canvasPath: receipt.canvas_path,
-    }
-  }
   const latest = groupConversationItems(items)
     .flatMap((group) =>
       group.invalidated ? [] : group.type === 'assistant' ? group.cards : [group.item],
@@ -42,10 +28,7 @@ export const getHistoricalRun = (
     sessionId,
     runId: latest.payload.dify_run_id!,
     atVersion: latest.at_version,
-    canvasPath:
-      receipt?.native_run_id === latest.payload.dify_run_id
-        ? (receipt?.canvas_path ?? latest.payload.native_canvas_path)
-        : latest.payload.native_canvas_path,
+    canvasPath: latest.payload.native_canvas_path,
   }
 }
 

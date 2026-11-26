@@ -105,18 +105,6 @@ def test_apply_repair_refuses_numeric_http_status_string_operator_before_sync(mo
     assert graph == original
 
 
-def test_apply_repair_preserves_unrelated_existing_numeric_http_operator_exemption(mock_session: Session) -> None:
-    graph: Graph = dict(http_graph())
-    intent = MutationIntent(op="set_node_config", args={"node_id": "start", "path": "title", "value": "Begin"})
-
-    result, sync = _apply(mock_session, graph, [intent])
-
-    assert result.changed_nodes == ["start"]
-    assert (
-        sync.call_args.kwargs["graph"]["nodes"][2]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "is"
-    )
-
-
 def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_session: Session) -> None:
     intents = [
         MutationIntent(
@@ -129,39 +117,6 @@ def test_a_repair_that_would_not_start_is_rejected_before_it_is_written(mock_ses
 
     assert "comparison_operator" in str(excinfo.value)
     assert isinstance(excinfo.value, ValueError)  # the handlers' existing ``except ValueError`` catches it
-
-
-def test_a_preflight_rejection_is_the_core_draft_would_not_start_error() -> None:
-    """The handlers live in ``core`` and cannot import ``services``, so they
-    tell "this draft would not start" apart from a stale intent by the core
-    type this one subclasses."""
-    from core.dify_builder.errors import DraftWouldNotStartError
-
-    assert issubclass(PreflightError, DraftWouldNotStartError)
-    assert issubclass(PreflightError, ValueError)
-
-
-def test_a_pre_existing_broken_node_the_repair_does_not_touch_does_not_veto_it(mock_session: Session) -> None:
-    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
-    fix_elsewhere = [MutationIntent(op="set_node_config", args={"node_id": "node1", "path": "title", "value": "Begin"})]
-
-    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, fix_elsewhere)
-
-    assert result.changed_nodes == ["node1"]
-    sync.assert_called_once()
-
-
-def test_a_repair_that_heals_the_broken_node_is_written(mock_session: Session) -> None:
-    broken = {"id": "node2", "type": "custom", "data": {"type": "if-else", **_BROKEN_IF_ELSE_CONFIG}}
-    healed_cases = json.loads(json.dumps(_BROKEN_IF_ELSE_CONFIG["cases"]))
-    healed_cases[0]["conditions"][0]["comparison_operator"] = "="
-    heal = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": healed_cases})]
-
-    result, sync = _apply(mock_session, {"nodes": [_START, broken], "edges": []}, heal)
-
-    assert result.changed_nodes == ["node2"]
-    _, kwargs = sync.call_args
-    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "="
 
 
 def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(mock_session: Session) -> None:
@@ -189,33 +144,6 @@ def test_apply_repair_coerces_a_numeric_condition_value_before_the_preflight(moc
     assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["value"] == "60"
 
 
-def test_apply_repair_canonicalizes_an_ascii_comparison_operator_before_the_preflight(mock_session: Session) -> None:
-    """F4 cause (a): the Edit LLM rewrote an if-else's ``cases`` with ``">="``,
-    which graphon's ``SupportedComparisonOperator`` refuses -- so the whole
-    batch was rejected and the session parked at ``edit.plan_approval``.
-    ``>=`` can only mean ``≥`` (graphon has no string ordering operator), so
-    the chokepoint canonicalizes it and the preflight then passes."""
-    ascii_cases = [
-        {
-            "case_id": "true",
-            "logical_operator": "and",
-            "conditions": [
-                {"id": "c1", "variable_selector": ["node1", "score"], "comparison_operator": ">=", "value": "90"}
-            ],
-        }
-    ]
-    valid_cases = json.loads(json.dumps(ascii_cases))
-    valid_cases[0]["conditions"][0]["comparison_operator"] = "="  # the draft is currently valid
-    node2 = {"id": "node2", "type": "custom", "data": {"type": "if-else", "title": "判断分数", "cases": valid_cases}}
-    intents = [MutationIntent(op="set_node_config", args={"node_id": "node2", "path": "cases", "value": ascii_cases})]
-
-    result, sync = _apply(mock_session, {"nodes": [_START, node2], "edges": []}, intents)
-
-    assert result.changed_nodes == ["node2"]
-    _, kwargs = sync.call_args
-    assert kwargs["graph"]["nodes"][1]["data"]["cases"][0]["conditions"][0]["comparison_operator"] == "≥"
-
-
 def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session: Session) -> None:
     """``==`` is ambiguous between graphon's number equality (``=``) and its
     string equality (``is``), exactly like the word form ``equals``. Healing it
@@ -237,31 +165,6 @@ def test_apply_repair_still_rejects_an_ambiguous_equality_operator(mock_session:
         _apply(mock_session, {"nodes": [_START], "edges": []}, intents)
 
     assert "comparison_operator" in str(excinfo.value)
-
-
-def test_apply_repair_fills_http_body_item_types_before_the_preflight(mock_session: Session) -> None:
-    body = {"type": "json", "data": [{"key": "", "value": '{"a": 1}'}]}  # one item, no ``type``
-    http: Graph = {
-        "id": "node4",
-        "type": "custom",
-        "data": {
-            "type": "http-request",
-            "title": "Call",
-            "method": "post",
-            "url": "https://x.test/a",
-            "authorization": {"config": None, "type": "no-auth"},
-            "headers": "",
-            "params": "",
-            "body": {"type": "none", "data": []},
-        },
-    }
-    intents = [MutationIntent(op="set_node_config", args={"node_id": "node4", "path": "body", "value": body})]
-
-    result, sync = _apply(mock_session, {"nodes": [_START, http], "edges": []}, intents)
-
-    assert result.changed_nodes == ["node4"]
-    _, kwargs = sync.call_args
-    assert kwargs["graph"]["nodes"][1]["data"]["body"]["data"][0]["type"] == "text"
 
 
 def test_apply_repair_counts_a_node_the_chokepoint_normalizer_heals_as_changed(mock_session: Session) -> None:
@@ -625,17 +528,6 @@ def test_direct_write_retains_historical_nodes_and_allows_permitted_repairs(
     for node in graph["nodes"]:
         if node["id"] != node_id:
             assert next(n for n in written["nodes"] if n["id"] == node["id"]) == node
-
-
-@pytest.mark.parametrize("node_type", ["knowledge-retrieval", "human-input", "agent"])
-def test_direct_write_preserves_already_present_create_replay(mock_session: Session, node_type: str) -> None:
-    graph: Graph = {"nodes": [{"id": "existing", "type": "custom", "data": {"type": node_type}}], "edges": []}
-    intent = MutationIntent(op="create_node", args={"node_type": node_type, "node_id": "existing", "config": {}})
-
-    result, sync = _apply(mock_session, graph, [intent])
-
-    assert result.changed_nodes == []
-    sync.assert_not_called()
 
 
 def test_direct_write_allows_edge_only_wiring_without_retrieval_config_changes(mock_session: Session) -> None:

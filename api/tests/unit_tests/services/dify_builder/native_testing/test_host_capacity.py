@@ -485,30 +485,6 @@ def case(monkeypatch: pytest.MonkeyPatch) -> HostCapacityCase:
     )
 
 
-def test_initial_generation_claim_uses_acknowledged_context_without_fake_checkpoint(case: HostCapacityCase) -> None:
-    assert case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert case.state.state == "running"
-    assert not case.state.cleanup_complete
-    assert checked_rows(NativeContinuation, case.session.rows[NativeContinuation]) == []
-    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "claimed"
-    assert not case.lifecycle.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-
-
-@pytest.mark.parametrize(
-    "method",
-    ["prepare_dispatch_claim", "consume_dispatch_claim", "enqueue_initial_dispatch", "finalize_dispatch_locked"],
-)
-def test_transaction_local_c03_ports_are_explicit(method: str) -> None:
-    assert callable(
-        {
-            "prepare_dispatch_claim": NativeTestLifecycleService.prepare_dispatch_claim,
-            "consume_dispatch_claim": NativeTestLifecycleService.consume_dispatch_claim,
-            "enqueue_initial_dispatch": NativeTestLifecycleService.enqueue_initial_dispatch,
-            "finalize_dispatch_locked": NativeTestLifecycleService.finalize_dispatch_locked,
-        }[method]
-    )
-
-
 @pytest.mark.parametrize("cleanup_verifier", [None])
 def test_capacity_requires_actual_cleanup_verifier(
     case: HostCapacityCase, cleanup_verifier: NativeHostCleanupVerifier
@@ -547,91 +523,6 @@ def test_capacity_commits_initial_claim_after_private_io_and_app_then_request(
     )
     assert case.events[-1] == "commit"
     assert not owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-
-
-@pytest.mark.parametrize("status", ["claimed", "unknown", "completed"])
-@pytest.mark.parametrize("request_status", ["running", "sealed"])
-def test_unclean_existing_root_holds_capacity_across_sessions_and_terminal_status(
-    case: HostCapacityCase, status: str, request_status: str
-) -> None:
-    from services.dify_builder.native_testing.host_capacity import NativeHostCapacity
-
-    owner = NativeHostCapacity(case.lifecycle, cleanup_verifier=OnceVerifier(case.events))
-    q = DifyBuilderExecutionRequest(
-        test_input_id="other-input",
-        id="other-request",
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
-        actor_id="other-actor",
-        session_id="other-session",
-        context=case.request.context,
-        context_digest=case.request.context_digest,
-        state=request_status,
-    )
-    r = NativeInvocationState(
-        context_object_id="other-context",
-        generation=0,
-        pending_ids=[],
-        resolution=[],
-        request_id=q.id,
-        tenant_id="tenant",
-        invocation_id="other-root",
-        app_id="app",
-        workflow_id="workflow",
-        parent_invocation_id=None,
-        cleanup_complete=False,
-        state="cancelled",
-    )
-    d = NativeDispatch(
-        state=status,
-        request_id=q.id,
-        tenant_id=q.tenant_id,
-        invocation_id=r.invocation_id,
-        generation=0,
-        idempotency_digest="a" * 64,
-    )
-    b = DifyBuilderSession(
-        id=q.session_id,
-        tenant_id="tenant",
-        app_id="app",
-        owner_account_id=q.actor_id,
-        entry_mode="new",
-        current_state="build.review",
-    )
-    invocation = NativeTestInvocation(
-        request_id=q.id, tenant_id=q.tenant_id, invocation_id=r.invocation_id, active=True, bindings={}
-    )
-    scope = NativeTestScope(
-        request_id=q.id,
-        tenant_id=q.tenant_id,
-        generation=0,
-        task_approved=False,
-        cancelled=False,
-        expires_at=NOW + timedelta(days=1),
-        max_calls=16,
-        max_dispatches=16,
-        max_cost_units=16,
-        budget_limits={},
-        budget_spent={},
-        profile={},
-    )
-    case.session.occupancy = [
-        (
-            q,
-            d,
-            r,
-            invocation,
-            scope,
-            b,
-            DifyBuilderTestInput(
-                id="other-input", session_id=q.session_id, source="mock", inputs={}, start_schema_hash=""
-            ),
-        )
-    ]
-    with pytest.raises(BuilderExecutionPolicyError, match="native_capacity_busy"):
-        owner.claim_dispatch(ref=case.ref, generation=0, dispatch_id="dispatch")
-    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
 
 
 def test_cleanup_is_once_exact_current_lifetime_outside_writer_and_releases_only_after_proof(
@@ -730,17 +621,6 @@ def test_transaction_local_finalize_cannot_mutate_another_requests_claim(
             outcome=outcome,
         )
     assert foreign.state == "claimed"
-
-
-def test_initial_enqueue_is_real_acknowledged_idempotent_outbox_not_a_checkpoint(case: HostCapacityCase) -> None:
-    case.state.state = "running"
-    case.session.rows[NativeDispatch] = []
-    first = case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
-    assert first == case.lifecycle.enqueue_initial_dispatch(ref=case.ref)
-    assert (first.ref, first.generation, case.state.state) == (case.ref, 0, "queued")
-    assert len(checked_rows(NativeDispatch, case.session.rows[NativeDispatch])) == 1
-    assert checked_rows(NativeDispatch, case.session.rows[NativeDispatch])[0].state == "queued"
-    assert checked_rows(NativeContinuation, case.session.rows[NativeContinuation]) == []
 
 
 @pytest.mark.parametrize("fault", ["wrong_initial_key", "already_clean", "unrepresented_form"])

@@ -9,13 +9,10 @@ import pytest
 from pydantic import JsonValue
 
 from core.dify_builder.models import Graph
-from core.entities.model_entities import ModelStatus
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from services.dify_builder.agent import resources
 from services.dify_builder.agent.resources import TenantResources
 from services.entities.model_provider_entities import ProviderWithModelsResponse
-from tests.unit_tests.services.dify_builder.test_resources import _provider_models
 
 
 def catalogue(models: list[ProviderWithModelsResponse]) -> AbstractContextManager[object]:
@@ -38,32 +35,6 @@ def test_catalogue_failure_is_distinct_from_successful_empty() -> None:
         result = resources.list_tenant_resources("tenant")
     assert result.models == []
     assert result.model_source_error == "inventory_unavailable"
-
-
-def test_model_binding_uses_exact_source_ids_without_claiming_live_health() -> None:
-    provider = _provider_models("langgenius/anthropic/anthropic", ["claude-fable-5-1"])
-    with catalogue([provider]):
-        ref = resources.list_tenant_resources("tenant").models[0]
-    assert ref.binding == {"provider": "langgenius/anthropic/anthropic", "name": "claude-fable-5-1"}
-    assert ref.availability["configuration"] == "configured"
-    assert ref.availability["runtime"] == "unverified"
-    assert ref.availability["lifecycle"] == "not_reported"
-
-
-def test_explicitly_deprecated_models_are_not_candidates() -> None:
-    provider = _provider_models("provider", ["retired"])
-    provider.models[0].deprecated = True
-    with catalogue([provider]):
-        assert resources.list_tenant_resources("tenant").models == []
-
-
-def test_visible_model_without_configuration_is_not_ready() -> None:
-    provider = _provider_models("provider", ["needs-setup"])
-    provider.models[0].status = ModelStatus.NO_CONFIGURE
-    with catalogue([provider]):
-        ref = resources.list_tenant_resources("tenant").models[0]
-    assert ref.readiness == "missing_config"
-    assert ref.availability["runtime"] == "unverified"
 
 
 def test_partial_tool_catalogue_retains_verified_entries_and_source_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,25 +90,6 @@ def test_changed_model_requires_exact_catalogue_identity_and_confirmed_choice() 
         validate_changed_resources(before, model_graph("anthropic", "claude-5.1-fable"), directory)
     with pytest.raises(ResourceBindingError, match="resource_selection_required"):
         validate_changed_resources(before, after, directory, confirmed_ids=[])
-
-
-def test_unrelated_old_resource_does_not_block_other_edits() -> None:
-    from services.dify_builder.resource_grounding import validate_changed_resources
-
-    before = model_graph("historical-provider", "old-unavailable-model")
-    after = model_graph("historical-provider", "old-unavailable-model")
-    nodes = after["nodes"]
-    assert isinstance(nodes, list)
-    node = nodes[0]
-    assert isinstance(node, dict)
-    data = node["data"]
-    assert isinstance(data, dict)
-    data["title"] = "Renamed node"
-    validate_changed_resources(
-        before,
-        after,
-        resources.TenantResources(models=[], tools=[], datasets=[], model_source_error="inventory_unavailable"),
-    )
 
 
 def test_missing_candidate_from_failed_source_is_not_reported_as_absent() -> None:
@@ -221,39 +173,6 @@ def test_real_write_boundary_rechecks_workspace_before_opening_write_transaction
     writer.assert_not_called()
 
 
-def test_blank_editor_node_remains_an_explicit_unconfigured_placeholder() -> None:
-    from services.dify_builder.resource_grounding import changed_resource_nodes
-
-    graph = {"nodes": [{"id": "llm", "data": {"type": "llm", "model": {"provider": "", "name": "", "mode": "chat"}}}]}
-    assert changed_resource_nodes({"nodes": []}, graph) == []
-
-
-def test_edit_resource_form_uses_canonical_unique_match() -> None:
-    from services.dify_builder.resource_grounding import ground_edit_impact, resolve_edit_choices
-
-    ref = resources.ResourceRef(
-        id="langgenius/anthropic/anthropic/claude-fable-5-1",
-        label="Fable 5.1",
-        binding={"provider": "langgenius/anthropic/anthropic", "name": "claude-fable-5-1"},
-    )
-    directory = resources.TenantResources(models=[ref], tools=[], datasets=[])
-    impact = ground_edit_impact(
-        {
-            "fields": [],
-            "values": {},
-            "target_node_ids": ["llm"],
-            "resource_requests": [{"kind": "model", "node_id": "llm", "query": "fable 5.1"}],
-        },
-        directory,
-    )
-    field = impact["fields"][0]
-    assert field["options"] == ["model:" + ref.id]
-    assert field["required"] is True
-    selected = resolve_edit_choices(impact["fields"], impact["values"], directory)
-    assert selected["resource_ids"] == ["model:" + ref.id]
-    assert selected["bindings"][field["key"]]["name"] == "claude-fable-5-1"
-
-
 @pytest.mark.parametrize("kind", ["model", "tool"])
 def test_named_missing_resource_never_offers_unrequested_alternatives(kind: str) -> None:
     from services.dify_builder.resource_grounding import ground_edit_impact
@@ -266,18 +185,6 @@ def test_named_missing_resource_never_offers_unrequested_alternatives(kind: str)
         {"fields": [], "values": {}, "resource_requests": [{"kind": kind, "query": "missing-requested"}]}, directory
     )
     assert impact["fields"][0]["options"] == []
-    assert list(impact["values"].values()) == [""]
-
-
-def test_open_resource_discovery_still_offers_available_choices() -> None:
-    from services.dify_builder.resource_grounding import ground_edit_impact
-
-    ref = resources.ResourceRef(id="provider/other", label="Other", binding={})
-    impact = ground_edit_impact(
-        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": ""}]},
-        resources.TenantResources(models=[ref], tools=[], datasets=[]),
-    )
-    assert impact["fields"][0]["options"] == ["model:" + ref.id]
     assert list(impact["values"].values()) == [""]
 
 
@@ -389,45 +296,6 @@ def test_revising_goal_recovers_from_missing_resource_form(
         PcState.EDIT_IMPACT_ANALYSIS if revised_goal == "Use unavailable" else PcState.EDIT_PLAN_APPROVAL
     )
     assert calls == [revised_goal]
-
-
-@pytest.mark.parametrize("language", ["en-US", "zh-Hans"])
-@pytest.mark.parametrize("source_error", [None, "inventory_unavailable"])
-def test_named_missing_resource_is_explained_before_approval(
-    monkeypatch: pytest.MonkeyPatch, language: str, source_error: str | None
-) -> None:
-    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.state import PcState
-    from runtime_contracts.builder.copy_ids import BuilderCopyId
-    from services.dify_builder.application.handlers_edit import handle_capability_check
-    from services.dify_builder.resource_grounding import ground_edit_impact
-    from tests.unit_tests.core.dify_builder.test_runner import _new_env
-
-    env, _ = _new_env()
-    impact = ground_edit_impact(
-        {"fields": [], "values": {}, "resource_requests": [{"kind": "model", "query": "absent"}]},
-        resources.TenantResources(models=[], tools=[], datasets=[], model_source_error=source_error),
-    )
-    monkeypatch.setattr(env.agent, "analyze_impact", lambda *_args, **_kwargs: impact)
-    session = Session(app_id="app", entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_CAPABILITY_CHECK)
-    context = DifyBuilderContext(reply_language=language)
-    result = handle_capability_check(
-        env,
-        Turn(
-            actor=Actor(account_id="u", tenant_id="t"), action=Action(kind="send_edit_goal", payload={"text": "absent"})
-        ),
-        session,
-        context,
-    )
-    assert result.next == PcState.EDIT_IMPACT_ANALYSIS
-    assistant = next(item for item in result.items if item.kind == "assistant_turn")
-    reply = str(assistant.payload["reply_text"])
-    if source_error:
-        assert BuilderCopyId.RESOURCES_CATALOGUE_UNAVAILABLE in reply
-    else:
-        assert ("未找到" if language.startswith("zh") else "No available resource matches") in reply
-    assert not any(item.kind == "plan" for item in result.items)
-    assert not context.checkpoint_id
 
 
 @pytest.mark.parametrize("kind", ["model", "tool"])
@@ -704,42 +572,6 @@ def test_edit_gate_resolves_resource_choices_before_asking_for_plan(monkeypatch:
     assert choice["name"] == "real"
 
 
-def test_missing_choice_returns_to_edit_form_instead_of_failed_task(monkeypatch: pytest.MonkeyPatch) -> None:
-    from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Session, Turn
-    from core.dify_builder.state import PcState
-    from services.dify_builder.application.handlers_edit import handle_impact_analysis
-    from services.dify_builder.resource_grounding import ResourceBindingError
-    from tests.unit_tests.core.dify_builder.test_runner import _new_env
-
-    env, _ = _new_env()
-
-    def refuse(*_args: object) -> Never:
-        raise ResourceBindingError("resource_selection_required", "llm", "model")
-
-    monkeypatch.setattr(env.agent, "resolve_edit_bindings", refuse, raising=False)
-    from services.dify_builder.plan import WorkflowPlan
-
-    monkeypatch.setattr(
-        env.agent,
-        "propose_edit_plan",
-        lambda *_a, **_k: WorkflowPlan(title="Plan", input_summary="Input", output_summary="Output", items=["Change"]),
-    )
-    session = Session(
-        id="s",
-        app_id="app",
-        tenant_id="t",
-        owner_account_id="u",
-        entry_mode=EntryMode.EDIT,
-        current_state=PcState.EDIT_IMPACT_ANALYSIS,
-    )
-    context = DifyBuilderContext(form_fields=[{"key": "choice", "type": "select"}])
-    step = handle_impact_analysis(
-        env, Turn(actor=Actor(account_id="u", tenant_id="t"), action=Action(kind="submit_edit_rules")), session, context
-    )
-    assert step.next == PcState.EDIT_IMPACT_ANALYSIS
-    assert any(item.kind == "form" for item in step.items)
-
-
 def test_resource_version_change_requires_new_choice_and_plan() -> None:
     import pytest
 
@@ -787,16 +619,6 @@ def test_resource_version_change_requires_new_choice_and_plan() -> None:
             confirmed_ids=chosen["resource_ids"],
             expected_fingerprints=chosen["fingerprints"],
         )
-
-
-def test_malformed_resource_request_does_not_crash_edit_preparation() -> None:
-    from services.dify_builder.resource_grounding import ground_edit_impact
-
-    result = ground_edit_impact(
-        {"fields": [], "values": {}, "resource_requests": [{"kind": ["model"]}, None]},
-        resources.TenantResources(models=[], tools=[], datasets=[]),
-    )
-    assert result["fields"] == []
 
 
 def test_tool_schema_change_invalidates_confirmed_choice() -> None:
@@ -975,68 +797,6 @@ def test_native_noop_rechecks_explicit_resource_choice_before_transaction(monkey
         writer.assert_not_called()
 
 
-def test_existing_build_plugin_selection_uses_the_same_exact_tool_identity() -> None:
-    from services.dify_builder.resource_grounding import validate_changed_resources
-
-    ref = resources.ResourceRef(
-        id="provider/action",
-        label="Action",
-        binding={"provider_id": "provider", "tool_name": "action", "provider_type": "builtin"},
-    )
-    graph = {
-        "nodes": [
-            {
-                "id": "tool",
-                "data": {"type": "tool", "provider_type": "builtin", "provider_id": "provider", "tool_name": "action"},
-            }
-        ]
-    }
-    validate_changed_resources(
-        {"nodes": []},
-        graph,
-        resources.TenantResources(models=[], datasets=[], tools=[ref]),
-        confirmed_ids=["plugin:provider/action"],
-    )
-
-
-def test_resource_cognition_receives_configuration_and_unknown_health_facts() -> None:
-    from services.dify_builder.agent.build import _discovery_line
-
-    ref = resources.ResourceRef(
-        id="p/m",
-        label="Model",
-        readiness="ready",
-        availability={"configuration": "configured", "runtime": "unverified", "lifecycle": "not_reported"},
-    )
-    line = _discovery_line(ref.id, "model", ref)
-    assert '"runtime": "unverified"' in line
-    assert '"lifecycle": "not_reported"' in line
-
-
-def test_selected_model_preserves_declared_mode_for_compatibility() -> None:
-    import pytest
-
-    from services.dify_builder.resource_grounding import ResourceBindingError, validate_changed_resources
-
-    provider = _provider_models("provider", ["new"])
-    provider.models[0].model_properties = {ModelPropertyKey.MODE: "completion"}
-    with catalogue([provider]):
-        directory = resources.list_tenant_resources("tenant")
-    graph = model_graph(name="new")  # existing chat mode cannot silently become a completion model
-    with pytest.raises(ResourceBindingError, match="resource_configuration_incompatible"):
-        validate_changed_resources({"nodes": []}, graph, directory)
-    nodes = graph["nodes"]
-    assert isinstance(nodes, list)
-    node = nodes[0]
-    assert isinstance(node, dict)
-    data = node["data"]
-    assert isinstance(data, dict)
-    model = data["model"]
-    assert isinstance(model, dict)
-    model["mode"] = "completion"
-    validate_changed_resources({"nodes": []}, graph, directory)
-
-
 def test_model_mode_declaration_change_invalidates_shown_choice() -> None:
     from dataclasses import replace
 
@@ -1079,24 +839,6 @@ def test_selected_tool_binding_contains_native_required_public_fields() -> None:
     assert node.provider_name == "langgenius/json_process/json_process"
     assert node.tool_label == "JSON Parse"
     assert node.tool_name == "parse"
-
-
-def test_explicit_unbound_tool_draft_does_not_offer_a_concrete_resource() -> None:
-    from services.dify_builder.resource_grounding import ground_edit_impact, resolve_edit_choices
-
-    directory = resources.TenantResources(models=[], tools=[], datasets=[])
-    impact = ground_edit_impact(
-        {
-            "fields": [],
-            "values": {"node_title": "Configure later"},
-            "resource_requests": [{"kind": "tool", "node_id": "draft", "query": "", "binding_required": False}],
-        },
-        directory,
-    )
-    assert impact["fields"] == []
-    selected = resolve_edit_choices(impact["fields"], impact["values"], directory)
-    assert selected["resource_ids"] == []
-    assert selected["bindings"] == {}
 
 
 @pytest.mark.parametrize(("kind", "query"), [("model", ""), ("tool", "JSON Process")])

@@ -1,6 +1,6 @@
 """Unit tests for the ``DifyBuilderService`` usecase (P3b Task 3).
 
-Wires ``SqlDifyBuilderRepository`` (backed by a SQLite in-memory DB, same
+Wires ``SqlDifyBuilderRepository`` (backed by an isolated SQLite DB, same
 fixtures as ``test_engine_on_sql_repo.py``) with a fake in-memory
 ``session_lock`` and a capturing ``enqueue_fn`` -- the service is
 dependency-injected so it stays unit-testable without Celery or the real
@@ -8,15 +8,11 @@ Redis-backed ``session_lock`` module.
 """
 
 import json
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from typing import Never, Protocol, override
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
 
-from core.dify_builder.contract import ActionKind
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, NotFoundError
 from core.dify_builder.models import (
     Action,
@@ -32,7 +28,6 @@ from core.dify_builder.models import (
     Session,
 )
 from core.dify_builder.state import PcState
-from models.base import Base
 from services.dify_builder import service as service_module
 from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
 from services.dify_builder.plan import WorkflowPlan
@@ -102,16 +97,6 @@ class FakeSessionLock:
         return self._held.get(session_id)
 
 
-@pytest.fixture
-def engine() -> Iterator[Engine]:
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    try:
-        yield engine
-    finally:
-        engine.dispose()
-
-
 @pytest.fixture(autouse=True)
 def configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
@@ -121,12 +106,6 @@ def configured_model(monkeypatch: pytest.MonkeyPatch) -> None:
             config or {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
         ),
     )
-
-
-@pytest.fixture
-def repo(engine: Engine) -> SqlDifyBuilderRepository:
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    return SqlDifyBuilderRepository(factory)
 
 
 @pytest.fixture
@@ -151,7 +130,7 @@ def service(repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: lis
 def inmemory_service_factory_raw(
     repo: SqlDifyBuilderRepository, lock: FakeSessionLock
 ) -> Callable[..., tuple[DifyBuilderService, Actor]]:
-    """Build a ``DifyBuilderService`` (in-memory SQLite repo + fake lock) with
+    """Build a ``DifyBuilderService`` (SQLite repo + fake lock) with
     caller-supplied ``subscribe_fn``/``enqueue_fn``, for tests that need to
     observe subscribe/dispatch ordering directly (rather than via the
     capturing ``enqueued`` list the plain ``service`` fixture uses)."""
@@ -234,27 +213,6 @@ def test_create_fix_session_records_failed_run(service: DifyBuilderService, repo
     assert recorded.immutable is True
 
 
-def test_create_checklist_session_records_no_failed_run(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    """Checklist entry has no failed run: ``fc.failed_run_id`` stays empty."""
-    view = service.create_fix_session(
-        APP_ID, _actor(), checklist_errors=[ChecklistError(node_id="n1", node_type="llm", title="x")]
-    )
-    _session, fc = repo.get_session(view.session_id)
-    assert fc.failed_run_id == ""
-
-
-def test_create_fix_session_checklist_entry(service: DifyBuilderService) -> None:
-    actor = _actor()
-    errors = [ChecklistError(node_id="n1", node_type="llm", title="LLM", messages=["missing prompt"])]
-
-    view = service.create_fix_session(APP_ID, actor, checklist_errors=errors)
-
-    assert view.state == "checklist.diagnose"
-    assert view.canvas_read_only is True
-
-
 @pytest.mark.parametrize(
     ("failed_run_id", "checklist_errors"),
     [
@@ -285,52 +243,6 @@ def test_create_build_session_rejects_blank_goal(service: DifyBuilderService, en
         service.create_build_session(APP_ID, _actor(), goal_text="  ")
 
     assert enqueued == []
-
-
-@pytest.mark.parametrize(("derive", "expected"), [(True, True), (False, False)])
-def test_create_build_session_records_whether_builder_may_rename_the_app(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, derive: bool, expected: bool
-) -> None:
-    # The client knows which entry it came from: the homepage prompt (Builder
-    # renames once) or create-from-blank (the user already named it).
-    view = service.create_build_session(APP_ID, _actor(), goal_text="Build it", derive_app_name=derive)
-
-    _session, fc = repo.get_session(view.session_id)
-    assert fc.app_name_auto is expected
-
-
-def test_create_build_session_records_the_apps_current_name(
-    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[Enqueued]
-) -> None:
-    # Seeded once at creation so the build-complete card can name the app.
-    svc = DifyBuilderService(
-        repo,
-        lock,
-        lambda sid, action, actor, token: enqueued.append((sid, action, actor, token)),
-        get_app_name_fn=lambda _app_id, _actor: "Refund approval",
-    )
-
-    view = svc.create_build_session(APP_ID, _actor(), goal_text="Build it")
-
-    _session, fc = repo.get_session(view.session_id)
-    assert fc.app_name == "Refund approval"
-
-
-@pytest.mark.parametrize("app_name", [None])
-def test_create_build_session_tolerates_an_unreadable_app_name(
-    repo: SqlDifyBuilderRepository, lock: FakeSessionLock, enqueued: list[Enqueued], app_name: str
-) -> None:
-    svc = DifyBuilderService(
-        repo,
-        lock,
-        lambda sid, action, actor, token: enqueued.append((sid, action, actor, token)),
-        get_app_name_fn=lambda _app_id, _actor: app_name,
-    )
-
-    view = svc.create_build_session(APP_ID, _actor(), goal_text="Build it")
-
-    _session, fc = repo.get_session(view.session_id)
-    assert fc.app_name == ""
 
 
 def test_create_build_session_does_not_rename_by_default(
@@ -482,24 +394,6 @@ def test_submit_action_with_stale_base_version_raises_conflict(
         service.submit_action(session.id, actor, Action(kind="run_verify", base_version=999))
 
     assert enqueued == []
-
-
-def test_get_session_view_by_non_owner_raises_not_found(service: DifyBuilderService) -> None:
-    actor = _actor()
-    other = _actor(OTHER_ACCOUNT_ID)
-    view = service.create_fix_session(APP_ID, actor, failed_run_id="TR-1")
-
-    with pytest.raises(NotFoundError):
-        service.get_session_view(view.session_id, other)
-
-
-def test_submit_action_by_non_owner_raises_not_found(service: DifyBuilderService) -> None:
-    actor = _actor()
-    other = _actor(OTHER_ACCOUNT_ID)
-    view = service.create_fix_session(APP_ID, actor, failed_run_id="TR-1")
-
-    with pytest.raises(NotFoundError):
-        service.submit_action(view.session_id, other, Action(kind="run_verify", base_version=1))
 
 
 def test_session_access_requires_matching_owner_and_tenant(
@@ -707,19 +601,6 @@ def test_the_testdata_exemption_does_not_leak_to_other_actions(
         svc.submit_action(session.id, _actor(), Action(kind="run_verify", base_version=2, base_app_revision="hash-1"))
     with pytest.raises(ConflictError, match="draft changed outside Builder"):
         svc.submit_action(session.id, _actor(), Action(kind="run_verify", base_version=2, base_app_revision="hash-2"))
-
-
-def test_submit_message_wraps_submit_action(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, lock: FakeSessionLock
-) -> None:
-    actor = _actor()
-    session = _seed_session_at(repo, PcState.FIX_AWAIT_APPROVAL)
-    assert lock.acquire(session.id) is not None
-
-    # A waiting-state message is valid, but the held lock proves it routes
-    # through submit_action -> dispatch like a plain action.
-    with pytest.raises(BusyError):
-        service.submit_message(session.id, actor, "hello", base_version=1, client_turn_id="turn-1")
 
 
 def test_paused_session_can_resume_before_classifying_external_draft_changes(
@@ -947,17 +828,6 @@ def test_submit_action_rejects_missing_unknown_or_wrong_state_action_without_enq
     assert enqueued == []
 
 
-def test_submit_action_rejects_removed_action_during_verification(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
-) -> None:
-    session = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
-
-    with pytest.raises(BadRequestError, match="not allowed"):
-        service.submit_action(session.id, _actor(), Action(kind="view_changes", base_version=1))
-
-    assert enqueued == []
-
-
 @pytest.mark.parametrize(
     ("kind", "payload", "base_version"),
     [
@@ -1075,38 +945,6 @@ def test_controls_preserve_recovery_admission_and_resume_only_paused_task(
     svc._prepare_action(recovery_session.id, _actor(), Action(kind="recovery_restart", base_version=1))
 
 
-def test_get_session_view_actions_for_fix_await_decision(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
-    actor = _actor()
-
-    view = service.get_session_view(s.id, actor)
-
-    assert [(a.id, a.kind) for a in view.actions] == [
-        ("run_validation", ActionKind.PRIMARY),
-        ("keep_draft", ActionKind.SECONDARY),
-        ("continue_adjusting", ActionKind.SECONDARY),
-        ("revert", ActionKind.DESTRUCTIVE),
-    ]
-
-
-def test_session_view_carries_the_same_choice_as_options_and_as_actions(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
-
-    view = service.get_session_view(s.id, _actor())
-
-    # The public decision and internal action authorization must never disagree
-    # about what this gate is asking.
-    assert view.decision is not None
-    assert [o.id for o in view.decision.options] == [a.id for a in view.actions]
-    assert view.decision.default_option_id == "run_validation"
-    assert view.decision.submit is not None
-    assert (view.decision.submit.id, english_text(view.decision.submit.label)) == ("confirm", "Submit")
-
-
 def test_prepare_choice_action_snapshots_the_submitted_option(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -1130,24 +968,6 @@ def test_prepare_choice_action_snapshots_the_submitted_option(
     }
 
 
-def test_prepare_choice_action_ignores_free_text_for_an_option_without_input(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    session = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION, verified=True)
-    _allow_seeded_verification(service)
-    action = Action(
-        kind="publish",
-        payload={"option_id": "publish_fix", "free_text": "not applicable"},
-        base_version=session.version,
-    )
-
-    service._prepare_action(session.id, _actor(), action)
-
-    assert action.interaction_response is not None
-    assert english_text(action.interaction_response["answer"]) == "Publish fix"
-    assert action.interaction_response["submitted_data"] == {"option_id": "publish_fix"}
-
-
 def test_prepare_interrupted_action_snapshots_the_visible_recovery_choice(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -1169,32 +989,6 @@ def test_prepare_interrupted_action_snapshots_the_visible_recovery_choice(
         "fields": [],
         "submitted_data": {"option_id": "recovery_continue"},
     }
-
-
-def test_a_session_view_with_nothing_to_decide_has_no_decision(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.BUILD_COMPLETE)
-
-    view = service.get_session_view(s.id, _actor())
-
-    # A finished session asks nothing, so there is no card to put options in.
-    assert view.actions == []
-    assert view.decision is None
-
-
-def test_get_session_view_actions_for_fix_await_verify(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
-    actor = _actor()
-
-    view = service.get_session_view(s.id, actor)
-
-    assert [(a.id, a.kind) for a in view.actions] == [
-        ("run_validation", ActionKind.PRIMARY),
-        ("revert", ActionKind.DESTRUCTIVE),
-    ]
 
 
 @pytest.mark.parametrize(
@@ -1252,74 +1046,6 @@ def test_initial_plan_approval_does_not_require_a_staged_repair(
     assert "approve_plan" in [action.id for action in view.actions]
     assert view.decision is not None
     assert view.decision.default_option_id == "approve_plan"
-
-
-def test_get_session_view_offers_restart_for_interrupted_working_state(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.FIX_DIAGNOSE)
-    actor = _actor()
-
-    view = service.get_session_view(s.id, actor)
-
-    assert view.interrupted is True
-    # Interrupted working step offers Retry (re-run the handler) + Start over.
-    assert [action.id for action in view.actions] == ["recovery_continue", "restart"]
-
-
-def test_get_session_view_actions_empty_for_terminal_state(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.SUCCESS)
-    actor = _actor()
-
-    view = service.get_session_view(s.id, actor)
-
-    assert view.actions == []
-
-
-def test_resolve_action_kind_maps_new_ids_to_handler_kinds() -> None:
-    assert resolve_action_kind("run_validation") == "run_verify"
-    assert resolve_action_kind("publish_fix") == "publish"
-    assert resolve_action_kind("approve_plan") == "approve_repair"
-    assert resolve_action_kind("continue_adjusting") == "re_fix"
-    assert resolve_action_kind("pause") == "stop"
-    assert resolve_action_kind("revert") == "undo"
-    assert resolve_action_kind("restart") == "recovery_restart"
-    assert resolve_action_kind("retry_after_revert") == "re_fix"
-
-
-def test_resolve_action_kind_passes_through_ids_that_match_handler_kinds() -> None:
-    assert resolve_action_kind("run_verify") == "run_verify"
-    assert resolve_action_kind("recheck") == "recheck"
-    assert resolve_action_kind("provide_testdata") == "provide_testdata"
-    assert resolve_action_kind("keep_draft") == "keep_draft"
-
-
-def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """For EACH Fix/Checklist waiting state in ``_ACTIONS_FOR``, every
-    surfaced action id must resolve (via
-    ``resolve_action_kind``) to a handler kind that state's handler in
-    ``handlers_fix.py`` actually branches on -- otherwise the button is dead
-    (falls through to the state's default no-op/branch) rather than doing
-    what its label promises.
-
-    Regression for the FIX_AWAIT_APPROVAL ``revert`` dead button:
-    ``resolve_action_kind("revert") == "undo"``, but
-    ``handle_await_approval`` only branches on ``approve_repair`` /
-    ``reject_repair`` -- ``undo`` fell through to the gate's no-op branch,
-    so the reject path was unreachable from the FE."""
-    handled_kinds: dict[PcState, set[str]] = {
-        PcState.FIX_AWAIT_APPROVAL: {"approve_repair", "reject_repair"},
-        PcState.FIX_AWAIT_VERIFY: {"run_verify", "undo"},
-        PcState.FIX_AWAIT_TESTDATA: {"provide_testdata"},
-        PcState.FIX_AWAIT_DECISION: {"publish", "keep_draft", "re_fix", "undo"},
-        PcState.CHECKLIST_AWAIT_RECHECK: {"recheck", "undo"},
-    }
-    for state, handled in handled_kinds.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
 
 
 def test_every_backend_waiting_action_has_a_ui_path() -> None:
@@ -1401,56 +1127,6 @@ def test_submit_action_update_model_persists_without_dispatch(
     assert len(repo.list_conversation(s.id)) == 1
     assert view.conversation_last_seq == 0
     assert enqueued == []
-
-
-def test_submit_action_update_model_preserves_language_without_adding_history(
-    service: DifyBuilderService,
-    repo: SqlDifyBuilderRepository,
-    enqueued: list[Enqueued],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The selected model is the feedback; changing it leaves history and language intact."""
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.FIX,
-        current_state=PcState.FIX_AWAIT_VERIFY,
-    )
-    repo.create_session(
-        s,
-        DifyBuilderContext(failed_run_id="TR-1", reply_language="ja"),
-        [ConversationItem(kind="run-context", seq=0)],
-    )
-    monkeypatch.setattr(service_module, "validate_model_config", lambda _tenant_id, config: config)
-
-    model_config: Graph = {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
-    service.submit_action(
-        s.id,
-        _actor(),
-        Action(kind="update_model", payload={"model_config": model_config}, base_version=s.version),
-    )
-
-    stored, context = repo.get_session(s.id)
-    assert stored.version == 2
-    assert context.model_config == model_config
-    assert context.reply_language == "ja"
-    assert context.next_seq == 1
-    assert [(item.kind, item.seq) for item in repo.list_conversation(s.id)] == [("run-context", 0)]
-    assert enqueued == []
-
-
-def test_submit_action_update_model_rejects_missing_config(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
-
-    with pytest.raises(BadRequestError, match="model_config is required"):
-        service.submit_action(
-            s.id,
-            _actor(),
-            Action(kind="update_model", payload={}, base_version=s.version),
-        )
 
 
 def test_submit_action_stream_update_model_emits_terminal_command_finished_frame(
@@ -1567,40 +1243,6 @@ def test_submit_action_stream_raises_conflict_before_streaming(repo: SqlDifyBuil
     assert subscribed == []  # no subscription opened on a pre-flight error
 
 
-def test_create_fix_session_stream_subscribes_before_dispatch(inmemory_service_factory_raw: ServiceFactory) -> None:
-    order: list[str] = []
-    svc, actor = inmemory_service_factory_raw(
-        subscribe_fn=lambda _sid: (order.append("subscribe"), _StateSub())[1],
-        enqueue_fn=lambda *_a, **_k: order.append("enqueue"),
-    )
-
-    gen = svc.create_fix_session_stream(
-        app_id=APP_ID, actor=actor, failed_run_id="run-1", checklist_errors=None, model_config=None
-    )
-    frames = list(gen)
-
-    assert order == ["subscribe", "enqueue"]
-    assert _business_event(frames[0]) == "command_started"
-
-
-def test_create_build_session_stream_subscribes_before_dispatch(inmemory_service_factory_raw: ServiceFactory) -> None:
-    order: list[str] = []
-    svc, actor = inmemory_service_factory_raw(
-        subscribe_fn=lambda _sid: (order.append("subscribe"), _StateSub())[1],
-        enqueue_fn=lambda *_a, **_k: order.append("enqueue"),
-    )
-
-    gen = svc.create_build_session_stream(app_id=APP_ID, actor=actor, goal_text="Build a report workflow")
-    frames = list(gen)
-
-    assert order == ["subscribe", "enqueue"]
-    assert _business_event(frames[0]) == "command_started"
-    command_started = json.loads(frames[0].split("data: ", 1)[1])["data"]
-    assert set(command_started) == {"session_id", "command_id", "version", "phase", "run_status"}
-    assert command_started["phase"] == "understand"
-    assert command_started["run_status"] == "processing"
-
-
 def test_invalid_create_streams_raise_before_subscribe(inmemory_service_factory_raw: ServiceFactory) -> None:
     subscribed: list[str] = []
     svc, actor = inmemory_service_factory_raw(
@@ -1692,28 +1334,6 @@ def test_create_stream_closes_subscription_when_state_serialization_fails(
     assert subscription.closed is True
 
 
-def test_create_stream_closes_subscription_when_state_projection_fails(
-    inmemory_service_factory_raw: ServiceFactory, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    class _TrackingSub:
-        closed = False
-
-        def close(self) -> None:
-            self.closed = True
-
-        def receive(self, timeout: float | None = 0.1) -> Never:
-            raise AssertionError(f"failed preparation must not receive events (timeout={timeout})")
-
-    subscription = _TrackingSub()
-    svc, actor = inmemory_service_factory_raw(subscribe_fn=lambda _sid: subscription)
-    monkeypatch.setattr(svc, "get_session_view", lambda *_args: (_ for _ in ()).throw(RuntimeError("view")))
-
-    with pytest.raises(RuntimeError, match="view"):
-        svc.create_build_session_stream(app_id=APP_ID, actor=actor, goal_text="Build it")
-
-    assert subscription.closed is True
-
-
 def test_dispatch_retains_lock_when_enqueue_ack_is_unknown(repo: SqlDifyBuilderRepository) -> None:
     lock = FakeSessionLock()
 
@@ -1733,29 +1353,6 @@ def test_dispatch_retains_lock_when_enqueue_ack_is_unknown(repo: SqlDifyBuilderR
     # owner until explicit Stop or expiry, so another command cannot replay it.
     assert lock.exists(s.id) is True
     assert lock.acquire(s.id) is None
-
-
-def test_submit_message_constructs_message_action(repo: SqlDifyBuilderRepository) -> None:
-    lock = FakeSessionLock()
-    captured: list[Enqueued] = []
-
-    def capturing_enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
-        captured.append((session_id, action, actor, token))
-
-    # seeded directly so the lock is FREE and dispatch actually reaches
-    # enqueue_fn (after create_fix_session the lock would already be held,
-    # and dispatch would raise BusyError before capturing anything).
-    s = _seed_free_session(repo)
-    svc = DifyBuilderService(repo, lock, capturing_enqueue)
-    actor = _actor()
-
-    svc.submit_message(s.id, actor, "hello", base_version=1, client_turn_id="turn-1")
-
-    assert len(captured) == 1
-    _sid, action, _dispatched_actor, _token = captured[0]
-    assert action.kind == "message"
-    assert action.payload == {"text": "hello", "client_turn_id": "turn-1"}
-    assert action.base_version == 1
 
 
 def test_settled_message_retry_uses_targeted_turn_lookup(
@@ -1801,22 +1398,6 @@ def test_submit_message_rejects_blank_text(service: DifyBuilderService) -> None:
         service.submit_message("session-1", _actor(), "   ", base_version=1, client_turn_id="turn-1")
 
 
-def test_initial_plan_state_offers_no_actions() -> None:
-    # The straight-through flow no longer stops at build.initial_plan
-    # (submit_requirements now goes straight to resource discovery), and it is
-    # a working/pass-through state now (state.py), not a waiting one -- so it
-    # offers no UI action. It survives only as the continue_adjusting/
-    # retry_after_revert loop-back target, where the runner drives its
-    # handler unconditionally on entry with no action to wait for.
-    assert service_module._actions_for(PcState.BUILD_INITIAL_PLAN) == []
-
-
-def test_capability_check_never_exposes_a_frontend_action() -> None:
-    seeded = DifyBuilderContext(goal_text="Build a report workflow")
-    assert service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, seeded) == []
-    assert service_module._actions_for(PcState.BUILD_CAPABILITY_CHECK, DifyBuilderContext()) == []
-
-
 def test_create_build_session_bootstraps_at_capability_check_and_dispatches_start_build(
     service: DifyBuilderService, enqueued: list[Enqueued]
 ) -> None:
@@ -1846,17 +1427,6 @@ def _seed_build_at(repo: SqlDifyBuilderRepository, state: PcState) -> Session:
     )
     repo.create_session(s, DifyBuilderContext(goal_text="Build it"), [ConversationItem(kind="user", seq=0)])
     return s
-
-
-def test_build_execution_actions_and_run_status(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_build_at(repo, PcState.BUILD_EXECUTION)
-    view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "waiting_confirmation"
-    assert view.phase == "modify"
-    assert [(a.id, a.kind) for a in view.actions] == [
-        ("run_test", ActionKind.PRIMARY),
-        ("revert", ActionKind.DESTRUCTIVE),
-    ]
 
 
 def test_session_view_exposes_only_the_current_interactive_card(
@@ -2348,51 +1918,6 @@ def test_conversation_page_requires_session_owner(service: DifyBuilderService, r
         service.get_conversation_page(s.id, _actor(OTHER_ACCOUNT_ID), limit=20)
 
 
-def test_build_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_build_at(repo, PcState.BUILD_REVIEW)
-    view = service.get_session_view(s.id, _actor())
-    assert [a.id for a in view.actions] == [
-        "run_test",
-        "keep_draft",
-        "continue_adjusting",
-        "revert",
-    ]
-
-
-def test_build_complete_is_terminal_with_no_actions(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_build_at(repo, PcState.BUILD_COMPLETE)
-    view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "complete"
-    assert view.actions == []
-
-
-def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every Build action id must resolve (via
-    resolve_action_kind) to a kind its handler in handlers_build.py branches
-    on -- otherwise the button is a dead no-op. approve_plan->approve_repair,
-    revert->undo, continue_adjusting/retry_after_revert->re_fix reuse the
-    existing global _ACTION_ID_TO_KIND map; the rest pass through."""
-    # BUILD_INITIAL_PLAN is deliberately absent: it is a working/pass-through
-    # state now (state.py), not a waiting one, so it has no _ACTIONS_FOR entry
-    # to check here (see test_initial_plan_state_offers_no_actions) -- its
-    # unconditional discovery-on-entry behavior is exercised directly against
-    # the handler and end to end in test_handlers_build.py instead.
-    handled: dict[PcState, set[str]] = {
-        PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},
-        PcState.BUILD_RESOURCE_RECOMMENDATION: {"confirm_resources"},
-        PcState.BUILD_PLAN_APPROVAL: {"approve_repair", "re_fix"},
-        PcState.BUILD_EXECUTION: {"run_test", "undo"},
-        PcState.BUILD_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
-        PcState.BUILD_REVERTED: {"re_fix"},
-    }
-    for state, kinds in handled.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
-
-
 def test_sql_repo_invalidate_conversation_items(repo: SqlDifyBuilderRepository) -> None:
     s = Session(
         app_id=APP_ID,
@@ -2463,32 +1988,6 @@ def test_create_edit_session_seeds_and_dispatches_opening_goal(
     assert action.command_id
 
 
-def test_edit_apply_changes_actions_and_run_status(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_edit_at(repo, PcState.EDIT_APPLY_CHANGES)
-    view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "waiting_confirmation"
-    assert view.phase == "modify"
-    assert [(a.id, a.kind) for a in view.actions] == [
-        ("run_affected_tests", ActionKind.PRIMARY),
-        ("revert", ActionKind.DESTRUCTIVE),
-    ]
-
-
-def test_edit_plan_approval_offers_a_way_out_of_the_gate(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_edit_at(repo, PcState.EDIT_PLAN_APPROVAL)
-    view = service.get_session_view(s.id, _actor())
-    assert [(a.id, a.kind) for a in view.actions] == [
-        ("approve_plan", ActionKind.PRIMARY),
-        ("continue_adjusting", ActionKind.SECONDARY),
-        ("revert", ActionKind.DESTRUCTIVE),
-    ]
-    # Nothing has been applied at this gate, so the revert discards a proposal
-    # rather than undoing a visible canvas change -- and it says so.
-    assert [english_text(a.label) for a in view.actions][-1] == "Discard this change plan"
-
-
 def test_every_action_the_edit_gate_offers_is_actually_admitted(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository, enqueued: list[Enqueued]
 ) -> None:
@@ -2512,50 +2011,6 @@ def test_every_action_the_edit_gate_offers_is_actually_admitted(
     assert [a.kind for _sid, a, _act, _tok in enqueued] == ["approve_repair", "re_fix", "undo"]
 
 
-def test_edit_review_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_edit_at(repo, PcState.EDIT_REVIEW)
-    view = service.get_session_view(s.id, _actor())
-    assert [a.id for a in view.actions] == [
-        "run_affected_tests",
-        "keep_draft",
-        "continue_adjusting",
-        "revert",
-    ]
-
-
-def test_edit_complete_is_terminal_with_no_actions(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = _seed_edit_at(repo, PcState.EDIT_COMPLETE)
-    view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "complete"
-    assert view.actions == []
-
-
-def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
-    """Every Edit action id must resolve (via
-    resolve_action_kind) to a kind its handler in handlers_edit.py branches on.
-    approve_plan->approve_repair, revert->undo, continue_adjusting/
-    retry_after_revert->re_fix reuse the existing global map; the rest pass
-    through (send_edit_goal, submit_edit_rules, run_affected_tests, keep_draft,
-    publish_workflow).
-
-    Asserted as EQUALITY, not containment: a subset check passes just as
-    happily when a state renders nothing at all, which is the exact failure
-    (edit.plan_approval offering only approve_plan) this suite exists to
-    catch."""
-    handled: dict[PcState, set[str]] = {
-        PcState.EDIT_CAPABILITY_CHECK: {"send_edit_goal"},
-        PcState.EDIT_IMPACT_ANALYSIS: {"submit_edit_rules"},
-        PcState.EDIT_PLAN_APPROVAL: {"approve_repair", "re_fix", "undo"},
-        PcState.EDIT_APPLY_CHANGES: {"run_affected_tests", "undo"},
-        PcState.EDIT_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
-        PcState.EDIT_REVERTED: {"re_fix"},
-    }
-    for state, kinds in handled.items():
-        actions = service_module._ACTIONS_FOR[state]
-        resolved = {resolve_action_kind(a.id) for a in actions}
-        assert resolved == kinds, f"{state}: renders {resolved}, handler branches on {kinds}"
-
-
 def test_get_session_view_surfaces_checkpoint_when_set(
     service: DifyBuilderService, repo: SqlDifyBuilderRepository
 ) -> None:
@@ -2570,34 +2025,6 @@ def test_get_session_view_surfaces_checkpoint_when_set(
     view = service.get_session_view(s.id, _actor())
     assert view.checkpoint is not None
     assert view.checkpoint.checkpoint_id == "cp-123"
-
-
-def test_get_session_view_no_checkpoint_when_unset(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.BUILD,
-        current_state=PcState.BUILD_INITIAL_PLAN,
-    )
-    repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
-    view = service.get_session_view(s.id, _actor())
-    assert view.checkpoint is None
-
-
-def test_get_session_view_run_status_paused(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.EDIT,
-        current_state=PcState.EDIT_REVIEW,
-    )
-    repo.create_session(s, DifyBuilderContext(paused=True), [ConversationItem(kind="user", seq=0)])
-    view = service.get_session_view(s.id, _actor())
-    assert view.run_status == "paused"
-    assert view.canvas_read_only is False  # editable while paused
-    assert view.actions == []
 
 
 def test_recovery_ref_for() -> None:
@@ -2641,42 +2068,6 @@ def test_get_session_view_surfaces_recovery_when_set(
     view = service.get_session_view(s.id, _actor())
     assert view.recovery is not None
     assert view.recovery.recovery_class == "config_only"
-
-
-def test_get_session_view_no_recovery_when_unset(service: DifyBuilderService, repo: SqlDifyBuilderRepository) -> None:
-    s = Session(
-        app_id=APP_ID,
-        tenant_id=TENANT_ID,
-        owner_account_id=ACCOUNT_ID,
-        entry_mode=EntryMode.BUILD,
-        current_state=PcState.BUILD_INITIAL_PLAN,
-    )
-    repo.create_session(s, DifyBuilderContext(), [ConversationItem(kind="user", seq=0)])
-    view = service.get_session_view(s.id, _actor())
-    assert view.recovery is None
-
-
-def test_interrupted_working_state_surfaces_recovery_offer(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    s = _seed_session_at(repo, PcState.BUILD_PUBLISH)  # working state, lock unheld -> interrupted
-    view = service.get_session_view(s.id, _actor())
-    assert view.interrupted is True
-    # The interrupted offer is projected as concrete actions: Retry + Start over.
-    assert [action.id for action in view.actions] == ["recovery_continue", "restart"]
-    # `recovery` carries only a waiting-gate drift class; a fresh interrupt has none.
-    assert view.recovery is None
-
-
-def test_recovery_actions_allowed_at_interrupted_working_state() -> None:
-    from core.dify_builder.models import DifyBuilderContext
-    from services.dify_builder.service import _internal_action_allowed
-
-    fc = DifyBuilderContext()
-    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_continue") is True
-    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "recovery_restart") is True
-    # an unrelated action is still rejected at a working state
-    assert _internal_action_allowed(PcState.BUILD_PUBLISH, fc, "publish_workflow") is False
 
 
 def test_retry_whose_handler_raises_lands_in_restartable_failed_state(

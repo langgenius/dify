@@ -48,7 +48,6 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.state import PcState
 from services.dify_builder.application.execution_policy import HttpFixtureSetV1, HttpResponseFixtureV1
-from services.dify_builder.effect_disclosure import EffectDisclosure
 from services.dify_builder.plan import BuildClarification, WorkflowPlan
 
 __all__ = [
@@ -274,33 +273,6 @@ class DifyPort(Protocol):
         ``disclose_effects``) applies only when the draft takes the confirmed
         full run: a side effect runs for real only while its signature still
         matches, and every other side effect or destructive node is mocked.
-        """
-        ...
-
-    def prepare_code_risks(
-        self,
-        app_id: str,
-        actor: Actor,
-        *,
-        session_id: str,
-        inputs: Mapping[str, Any],
-        context: DifyBuilderContext,
-    ) -> dict[str, dict[str, Any]]:
-        """Prepare/reuse one bounded explanation using trusted in-turn cognition."""
-        ...
-
-    def disclose_effects(
-        self,
-        app_id: str,
-        actor: Actor,
-        *,
-        inputs: Mapping[str, Any] | None = None,
-        code_risk_context: DifyBuilderContext | None = None,
-    ) -> EffectDisclosure:
-        """What a Test Run of the current draft would reach outside Dify (PRD §9.1).
-
-        ``inputs`` binds direct Start references to submitted test values; omit
-        it to inspect configuration alone. Empty when nothing needs disclosure.
         """
         ...
 

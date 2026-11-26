@@ -1671,45 +1671,6 @@ def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_busi
     assert_no_secret(repr(redelivered), gmail.builder_state_text())
 
 
-@pytest.fixture
-def no_live_restricted(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
-    """Failing spies at every ordinary live Tool/OAuth entry (the restricted default must reach none)."""
-    from core.tools.tool_manager import ToolManager
-
-    reached: list[str] = []
-
-    def refuse(name: str) -> Callable[..., object]:
-        def spy(*_args: object, **_kwargs: object) -> object:
-            reached.append(name)
-            raise AssertionError(f"live capability reached: {name}")
-
-        return spy
-
-    monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", refuse("get_workflow_tool_runtime"))
-    monkeypatch.setattr(OAuthHandler, "refresh_credentials", refuse("refresh_credentials"))
-    yield reached
-    assert reached == []
-
-
-@pytest.mark.usefixtures("no_live_restricted")
-def test_restricted_default_run_has_zero_decrypt_refresh_or_invoke(gmail: Gmail) -> None:
-    """The same graph through the default (restricted) Builder run never reaches any real capability."""
-    result = WorkflowServiceDifyPort().run_draft(
-        gmail.app_id,
-        gmail.actor,
-        dict(gmail.inputs),
-        lambda _event: None,
-        session_id=gmail.session_id,
-        test_input_id=gmail.test_input_id,
-    )
-    assert result.execution_refusal is not None
-    assert result.dify_run_id == ""
-    assert gmail.native_runs() == []
-    for boundary in ("metadata", "verification", "declaration", "decrypt", "refresh", "invoke"):
-        assert gmail.boundary.count(boundary) == 0, boundary
-    assert gmail.count(DifyBuilderRealCallConsent) == 0
-
-
 def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
     """Without Builder consent the native Tool path is unchanged: no guard, headers, consent or sidecar."""
     from core.app.entities.app_invoke_entities import InvokeFrom

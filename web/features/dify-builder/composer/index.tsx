@@ -30,8 +30,6 @@ import {
   difyBuilderControlTaskAtom,
   difyBuilderDraftAtom,
   difyBuilderInteractionBusyAtom,
-  difyBuilderNativeCancelAtom,
-  difyBuilderNativeTestCancellingAtom,
   difyBuilderRunActiveAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
@@ -129,9 +127,8 @@ const DifyBuilderComposerAction = ({
   const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
   const operation = hideStop && taskControlOperation === 'stop' ? null : taskControlOperation
   const control = useAtomValue(difyBuilderTaskControlAtom)
-  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const controlTask = useSetAtom(difyBuilderControlTaskAtom)
-  const pending = operation !== null && (control ? control.phase !== 'unknown' : testCancelling)
+  const pending = operation !== null && control !== null && control.phase !== 'unknown'
   const label =
     operation === 'stop'
       ? t(($) => $['taskControl.stop'])
@@ -228,8 +225,7 @@ const DifyBuilderComposerContent = ({
   const files = view?.conversation_cleared ? [] : uploadFiles
   const canAddMaterial = useAtomValue(difyBuilderCanAddMaterialAtom)
   const showAttachments = !attachmentsOnly || canAddMaterial || files.length > 0
-  const nativeCancel = useAtomValue(difyBuilderNativeCancelAtom)
-  const showAction = !attachmentsOnly || files.length > 0 || (!hideStop && Boolean(nativeCancel))
+  const showAction = !attachmentsOnly || files.length > 0
   const material = useAtomValue(difyBuilderMaterialControlAtom)
   const runtime = useAtomValue(difyBuilderRuntimeAtom)
   const fileConfig = useMemo<FileUpload>(
@@ -266,7 +262,6 @@ const DifyBuilderComposerContent = ({
   const showStatus = showAttachments && (!hasModel || rejected)
   const control = useAtomValue(difyBuilderTaskControlAtom)
   const operation = useAtomValue(difyBuilderTaskControlOperationAtom)
-  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const runActive = useAtomValue(difyBuilderRunActiveAtom)
   const canvasReady = useAtomValue(difyBuilderCanvasReadyAtom)
   const controlStatusId = useId()
@@ -288,8 +283,6 @@ const DifyBuilderComposerContent = ({
       control.operation === 'stop'
         ? t(($) => $['taskControl.stopping'])
         : t(($) => $['taskControl.resuming'])
-  } else if (testCancelling) {
-    controlStatus = t(($) => $['taskControl.stopping'])
   } else if (operation === 'stop' && runActive) {
     controlStatus = t(($) => $['taskControl.running'])
   } else if (operation === 'resume') {

@@ -17,13 +17,9 @@ from dify_agent.protocol import (
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
-    RunResumedEvent,
-    RunResumedEventData,
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
-    RunWaitingEvent,
-    RunWaitingEventData,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import JsonValue
@@ -42,8 +38,6 @@ from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunEventAdapter,
-    AgentBackendRunSucceededInternalEvent,
-    AgentBackendRunWaitingInternalEvent,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
@@ -1533,91 +1527,6 @@ def test_agent_node_stream_end_without_terminal_fails_unfinished_tool_calls(stre
         assert agent_logs == []
     assert terminal is None
     assert failure is None
-
-
-class ToolCallThenWaitingThenResumedBackendClient(FakeAgentBackendRunClient):
-    """One confirmed child run: a tool call waits for approval, then resumes and finishes."""
-
-    @override
-    def _events(self, run_id: str):
-        created_at = datetime(2026, 1, 1, tzinfo=UTC)
-        return (
-            RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at),
-            PydanticAIStreamRunEvent(
-                id="2-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=FunctionToolCallEvent(
-                    part=ToolCallPart(tool_name="shell_run", args={"command": "ls"}, tool_call_id="call-1")
-                ),
-            ),
-            RunWaitingEvent(
-                id="3-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=RunWaitingEventData(generation=1, pending_actions=()),
-            ),
-            RunResumedEvent(id="4-0", run_id=run_id, created_at=created_at, data=RunResumedEventData(generation=2)),
-            PydanticAIStreamRunEvent(
-                id="5-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=FunctionToolResultEvent(
-                    part=ToolReturnPart(
-                        tool_name="shell_run", content="a.txt", tool_call_id="call-1", outcome="success"
-                    )
-                ),
-            ),
-            RunSucceededEvent(
-                id="6-0",
-                run_id=run_id,
-                created_at=created_at,
-                data=RunSucceededEventData(output="done", session_snapshot=SessionSnapshot(layers={})),
-            ),
-        )
-
-
-def test_confirmed_waiting_keeps_tool_activity_open_until_the_resumed_stream_finishes_it():
-    """Merge decision (builder-sync-main 2026-11-19): a confirmed Waiting terminal is a pause.
-
-    The projector must not close calls awaiting approval as failed, and the empty final text
-    chunk is withheld. The resumed stream of the same run, read from ``after``, closes the call
-    under the same activity ID.
-    """
-    from tests.unit_tests.services.dify_builder.native_testing.test_agent_context import marker
-
-    node = _node(agent_backend_client=ToolCallThenWaitingThenResumedBackendClient())
-    node.require_run_context_value(DIFY_RUN_CONTEXT_KEY).builder_agent_execution = marker()
-
-    waiting_events, (terminal, failure) = _collect_event_stream(node, stream_text=True)
-
-    assert isinstance(terminal, AgentBackendRunWaitingInternalEvent)
-    assert failure is None
-    waiting_logs = [event for event in waiting_events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in waiting_logs] == ["running"]
-    assert not any(isinstance(event, StreamChunkEvent) and event.is_final for event in waiting_events)
-
-    resumed = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-        stream_text=True,
-        after=terminal.source_event_id,
-    )
-    resumed_events = []
-    while True:
-        try:
-            resumed_events.append(next(resumed))
-        except StopIteration as stop:
-            resumed_terminal, resumed_failure = stop.value
-            break
-
-    assert isinstance(resumed_terminal, AgentBackendRunSucceededInternalEvent)
-    assert resumed_failure is None
-    resumed_logs = [event for event in resumed_events if isinstance(event, AgentLogEvent)]
-    assert [log.status for log in resumed_logs] == ["succeeded"]
-    assert resumed_logs[0].message_id == waiting_logs[0].message_id == "run-1:call-1"
 
 
 def test_agent_node_stream_end_without_terminal_run_fails_with_stream_exhausted_error():

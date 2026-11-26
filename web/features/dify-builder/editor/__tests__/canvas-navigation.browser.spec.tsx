@@ -322,57 +322,6 @@ it('preserves the manual view through collaboration recovery and still adopts th
   expect(recovered.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
 })
 
-it('preserves the manually panned view on a visibility refresh after Builder finishes', async () => {
-  // Native pan and the production refresh/update pipeline prove that new graph data can arrive without moving the view.
-  await page.viewport(1100, 700)
-  let refreshDraft!: RefreshDraft
-  const fetchDraft = fake.console.apps.byAppId.workflows.draft.get
-  const screen = await render(
-    <Fixture
-      saveDraft={saveDraft}
-      onRefreshReady={(refresh) => {
-        refreshDraft = refresh
-      }}
-    />,
-  )
-  const canvas = screen.getByRole('region', { name: 'app.types.workflow' })
-  const node = screen.getByText('Start', { exact: true })
-  await expect.element(node).toBeVisible()
-  const initial = node.element().getBoundingClientRect()
-  await screen.getByRole('button', { name: 'workflow.common.handMode' }).click()
-  await userEvent.dragAndDrop(canvas, canvas, {
-    sourcePosition: { x: 600, y: 300 },
-    targetPosition: { x: 700, y: 350 },
-    steps: 5,
-  })
-  await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
-
-  expect(await refreshDraft(false, { builderRefresh: true, resolveConflict: true })).toBe(
-    'refreshed',
-  )
-  await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x + 100)
-  const moved = node.element().getBoundingClientRect()
-  fetchDraft.mockResolvedValueOnce({
-    ...draftResponse,
-    graph: {
-      ...draftResponse.graph,
-      nodes: nodes.map((item) => ({ ...item, data: { ...item.data, title: 'Refreshed Start' } })),
-    },
-  })
-  expect(document.visibilityState).toBe('visible')
-  document.dispatchEvent(new Event('visibilitychange'))
-  const refreshedNode = screen.getByText('Refreshed Start', { exact: true })
-  await expect.element(refreshedNode).toBeVisible()
-  expect(fetchDraft).toHaveBeenCalledTimes(2)
-  expect(refreshedNode.element().getBoundingClientRect().x).toBeCloseTo(moved.x)
-  expect(refreshedNode.element().getBoundingClientRect().y).toBeCloseTo(moved.y)
-
-  // An explicit reload still adopts the saved draft viewport.
-  expect(await refreshDraft()).toBe('refreshed')
-  await expect.poll(() => node.element().getBoundingClientRect().x).toBeCloseTo(initial.x)
-  expect(node.element().getBoundingClientRect().y).toBeCloseTo(initial.y)
-})
-
 it('keeps the Builder prompt focused during native wheel panning in an ordinary Test Run', async () => {
   // Real wheel events reach React Flow's move-start callback; continued typing must remain in the composer.
   await page.viewport(1100, 700)

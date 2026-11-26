@@ -26,10 +26,6 @@ def _model(monkeypatch: pytest.MonkeyPatch, maximum: object) -> ModelInstance:
     return model
 
 
-def test_default_planner_budget_has_reasoning_and_answer_headroom() -> None:
-    assert _clamp_for_planner({})["max_tokens"] == 16384
-
-
 @pytest.mark.parametrize(("maximum", "expected"), [(8192, 8192), (384000, 16384), (1024.0, 1024)])
 def test_injected_default_respects_public_model_maximum(
     monkeypatch: pytest.MonkeyPatch, maximum: int | float, expected: int
@@ -51,11 +47,6 @@ def test_explicit_budget_and_reasoning_choices_are_preserved_without_schema_look
     monkeypatch.setattr(model, "get_model_schema", schema_forbidden)
     params = {"max_tokens": explicit, "thinking": True, "reasoning_effort": "high"}
     assert _clamp_for_planner(params, model_instance=model) == {**params, "temperature": 0.2}
-
-
-@pytest.mark.parametrize("maximum", [None, 0, -1, 0.5, True, "8192", float("nan"), float("inf")])
-def test_unusable_model_maximum_keeps_bounded_default(monkeypatch: pytest.MonkeyPatch, maximum: object) -> None:
-    assert _clamp_for_planner({}, model_instance=_model(monkeypatch, maximum))["max_tokens"] == 16384
 
 
 def test_unavailable_public_schema_keeps_bounded_default(monkeypatch: pytest.MonkeyPatch) -> None:

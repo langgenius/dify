@@ -3,7 +3,6 @@ import type {
   DifyBuilderCommandSubmissionResponse,
   DifyBuilderCreatedSessionResponse,
   DifyBuilderWorkflowEventData,
-  NativeCanvasPath,
   RunStatus,
 } from '@dify/contracts/api/console/dify-builder/types.gen'
 import type { CanvasEventData, ConversationItem, SessionView } from '../types'
@@ -14,14 +13,9 @@ export type SessionRunEvents = {
   onCommandStarted?: () => void
   onSessionStateChanged?: (state: Pick<SessionView, 'phase' | 'run_status'>) => void
   onWorkflowEvent: (event: DifyBuilderWorkflowEventData) => void
-  onNativeCanvasPath?: (sessionId: string, version: number, path: NativeCanvasPath) => void
   onStreamInterrupted: () => void
   onCanvasEvent: (event: CanvasEventData) => void
-  restoreRun: (
-    sessionId: string,
-    items: ConversationItem[],
-    view?: Pick<SessionView, 'test_execution' | 'version'>,
-  ) => void
+  restoreRun: (sessionId: string, items: ConversationItem[]) => void
   finishCommand: () => void
   reset: () => void
   onCanvasRefreshed: () => void
