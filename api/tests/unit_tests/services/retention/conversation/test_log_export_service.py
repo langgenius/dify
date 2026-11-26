@@ -44,6 +44,7 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_conv
 
 _RECOVERY_CANCELLED = "canceling statement due to conflict with recovery"
 _RECOVERY_TERMINATED = "terminating connection due to conflict with recovery"
+_CONNECTION_RESET = "connection reset by peer"
 _MESSAGE_PAGE_QUERY = "FROM messages JOIN conversations"
 
 
@@ -432,18 +433,21 @@ def paged_chatflow(
 
 
 @pytest.mark.parametrize(
-    ("query", "message", "sqlstate", "fail_rollback", "rows_before_retry"),
+    ("query", "message", "sqlstate", "confirmed_standby", "fail_rollback", "rows_before_retry"),
     [
-        ("SELECT conversations.created_at", _RECOVERY_CANCELLED, "40001", False, 2),
-        (_MESSAGE_PAGE_QUERY, _RECOVERY_TERMINATED, None, False, 1),
-        ("FROM messages LEFT OUTER JOIN workflow_runs", _RECOVERY_CANCELLED, "40001", True, 2),
+        ("SELECT conversations.created_at", _RECOVERY_CANCELLED, "40001", False, False, 2),
+        (_MESSAGE_PAGE_QUERY, _RECOVERY_TERMINATED, None, False, False, 1),
+        ("FROM messages LEFT OUTER JOIN workflow_runs", _RECOVERY_CANCELLED, "40001", False, True, 2),
+        ("SELECT conversations.created_at", _CONNECTION_RESET, None, True, False, 2),
+        (_MESSAGE_PAGE_QUERY, _CONNECTION_RESET, None, True, False, 1),
     ],
-    ids=("conversation-page", "message-page", "status-and-rollback"),
+    ids=("conversation-page", "message-page", "status-and-rollback", "conversation-reset", "message-reset"),
 )
 def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
     query: str,
     message: str,
     sqlstate: str | None,
+    confirmed_standby: bool,
     fail_rollback: bool,
     rows_before_retry: int,
     paged_chatflow: tuple[ConsoleConversationScope, ConsoleConversationLogFilters],
@@ -451,7 +455,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Replay the same bound query after a recovery conflict, keeping existing CSV rows intact."""
+    """Replay the same bound query on a fresh connection, keeping existing CSV rows intact."""
     scope, filters = paged_chatflow
     baseline = StringIO(newline="")
     output = StringIO(newline="")
@@ -461,6 +465,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
 
     progress: list[int] = []
     attempts: list[tuple[str, tuple[object, ...], int]] = []
+    attempt_connections: list[object] = []
     rollback_failed = False
     connections_held_during_retry: list[int] = []
     pool = sqlite_engine.pool
@@ -470,7 +475,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
         connections_held_during_retry.append(pool.checkedout())
 
     def interrupt_page(
-        _connection: Connection,
+        connection: Connection,
         _cursor: object,
         statement: str,
         parameters: tuple[object, ...],
@@ -479,6 +484,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
     ) -> None:
         if query in statement:
             attempts.append((statement, parameters, len(progress)))
+            attempt_connections.append(connection.connection.dbapi_connection)
             if len(attempts) == 2:
                 error: PostgresOperationalError
                 if sqlstate is None:
@@ -495,6 +501,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
             rollback_failed = True
             raise InterfaceError(None, None, PostgresInterfaceError("rollback failed"))
 
+    monkeypatch.setattr(conversation_repository, "_log_export_requires_standby", lambda _session: confirmed_standby)
     monkeypatch.setattr(conversation_repository, "sleep", record_sleep)
     event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
     event.listen(sqlite_engine, "rollback", interrupt_rollback)
@@ -507,6 +514,7 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
     assert connections_held_during_retry == [0]
     assert rollback_failed is fail_rollback
     assert attempts[1] == attempts[2]
+    assert attempt_connections[1] is not attempt_connections[2]
     _, _, written_rows = attempts[1]
     assert written_rows == rows_before_retry
     assert progress == [1, 2, 3]
@@ -514,19 +522,39 @@ def test_chatflow_csv_retries_the_failed_page_without_rewriting_rows(
 
 
 @pytest.mark.parametrize(
-    ("error_type", "message", "sqlstate", "expected_attempts"),
+    ("error_type", "message", "sqlstate", "connection_invalidated", "confirmed_standby", "expected_attempts"),
     [
-        (postgres_errors.SerializationFailure, _RECOVERY_CANCELLED, "40001", 4),
-        (postgres_errors.SerializationFailure, "could not serialize access due to concurrent update", "40001", 1),
-        (postgres_errors.QueryCanceled, "canceling statement due to statement timeout", "57014", 1),
-        (postgres_errors.DatabaseDropped, _RECOVERY_TERMINATED, "57P04", 1),
+        (postgres_errors.SerializationFailure, _RECOVERY_CANCELLED, "40001", False, False, 4),
+        (
+            postgres_errors.SerializationFailure,
+            "could not serialize access due to concurrent update",
+            "40001",
+            False,
+            False,
+            1,
+        ),
+        (postgres_errors.QueryCanceled, "canceling statement due to statement timeout", "57014", False, False, 1),
+        (postgres_errors.DatabaseDropped, _RECOVERY_TERMINATED, "57P04", True, False, 1),
+        (PostgresOperationalError, _CONNECTION_RESET, None, True, False, 1),
+        (PostgresOperationalError, _CONNECTION_RESET, None, False, True, 1),
+        (PostgresOperationalError, _CONNECTION_RESET, None, True, True, 4),
     ],
-    ids=("recovery-budget-exhausted", "ordinary-serialization-failure", "statement-timeout", "database-dropped"),
+    ids=(
+        "recovery-budget-exhausted",
+        "ordinary-serialization-failure",
+        "statement-timeout",
+        "database-dropped",
+        "standby-unconfirmed",
+        "connection-not-invalidated",
+        "reset-budget-exhausted",
+    ),
 )
 def test_chatflow_csv_propagates_unretryable_or_exhausted_page_errors(
     error_type: type[PostgresOperationalError],
     message: str,
-    sqlstate: str,
+    sqlstate: str | None,
+    connection_invalidated: bool,
+    confirmed_standby: bool,
     expected_attempts: int,
     paged_chatflow: tuple[ConsoleConversationScope, ConsoleConversationLogFilters],
     export: ConversationLogExportService,
@@ -548,11 +576,13 @@ def test_chatflow_csv_propagates_unretryable_or_exhausted_page_errors(
     ) -> None:
         if _MESSAGE_PAGE_QUERY in statement:
             error = error_type(message)
-            error.__setstate__({"pgcode": sqlstate})
-            wrapped = OperationalError(statement, parameters, error, connection_invalidated=sqlstate == "57P04")
+            if sqlstate is not None:
+                error.__setstate__({"pgcode": sqlstate})
+            wrapped = OperationalError(statement, parameters, error, connection_invalidated=connection_invalidated)
             errors.append(wrapped)
             raise wrapped
 
+    monkeypatch.setattr(conversation_repository, "_log_export_requires_standby", lambda _session: confirmed_standby)
     monkeypatch.setattr(conversation_repository, "sleep", retry_delays.append)
     event.listen(sqlite_engine, "before_cursor_execute", interrupt_page)
     try:
