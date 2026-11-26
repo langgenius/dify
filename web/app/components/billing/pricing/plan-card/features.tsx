@@ -128,7 +128,7 @@ export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
     {
       id: 'logs',
       label: paid
-        ? t(($) => $['pricing.logs.unlimited'])
+        ? t(($) => $['pricing.logs.paid'])
         : t(($) => $['pricing.logs.limited'], { count: 30 }),
       description: paid
         ? t(($) => $['pricing.logs.paidNote'])
