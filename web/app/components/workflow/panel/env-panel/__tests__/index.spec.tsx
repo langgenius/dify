@@ -834,7 +834,7 @@ describe('EnvPanel container', () => {
     })
     await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
     local.receive('status', { isLeader: false })
-    local.receive('graph_update', remote.snapshot())
+    local.receive('graph_update', remote.snapshot(local))
     await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
     local.emit.mockClear()
 
@@ -901,7 +901,7 @@ describe('EnvPanel container', () => {
     })
     await waitFor(() => expect(mockConnectSocket).toHaveBeenCalledWith('app-1'))
     local.receive('status', { isLeader: false })
-    local.receive('graph_update', remote.snapshot())
+    local.receive('graph_update', remote.snapshot(local))
     await waitFor(() => expect(collaborationManager.canPersistLocalGraph()).toBe(true))
 
     await openEditVariable(user, env.name)
