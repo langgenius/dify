@@ -55,10 +55,11 @@ machine-readable control commands and `pty` for interactive jobs.
 server's `DefaultCwd` (`$HOME` by default); relative paths resolve from
 `DefaultCwd`. The directory must exist and, after resolving symlinks, be an
 allowed root or one of its descendants. The default allowed roots are
-`DefaultCwd` and `/workspace`. Missing roots are skipped. Invalid directories
-and paths outside all allowed roots return HTTP `400` with error code
-`invalid_cwd` before a job is created, even when Landlock isolation is disabled.
-Accepted jobs use the canonical directory for execution and temp space.
+`DefaultCwd` and `WorkspaceDir` (`SHELLCTL_WORKSPACE_DIR`, defaulting to
+`/workspace`). Missing roots are skipped. Invalid directories and paths outside
+all allowed roots return HTTP `400` with error code `invalid_cwd` before a job
+is created, even when Landlock isolation is disabled. Accepted jobs use the
+canonical directory for execution and temp space.
 
 Set `SHELLCTL_ALLOWED_CWD_ROOTS` on the server to replace the default roots with
 a comma-separated list of absolute paths, for example
@@ -77,7 +78,7 @@ Produces binaries in `bin/`:
 
 ### Building docker image
 
-```
+```bash
 docker build -f dify-agent-runtime/docker/Dockerfile \
   --build-context agent=./dify-agent \
   -t dify-agent-runtime:latest \
@@ -89,7 +90,7 @@ docker build -f dify-agent-runtime/docker/Dockerfile \
 Set `SHELLCTL_AUTH_TOKEN` to a nonblank secret and configure the Agent Backend's
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` with the same value.
 
-```
+```bash
 docker run -d --name dify-agent-runtime \
   -p 15004:5004 \
   -e SHELLCTL_AUTH_TOKEN \
@@ -129,10 +130,20 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does not create a separate temp directory, so the active Workspace is both the working directory and temp space.
 
-`$HOME` and `cwd` allow cross-directory `rename` and `link` within their trees
-via `LANDLOCK_ACCESS_FS_REFER`. Extra `SHELLCTL_LANDLOCK_RW_PATHS` grant
-read-write access without `REFER`, so cross-directory renames and hard links
-within those extra paths or between them and `$HOME`/`cwd` remain denied.
+Path isolation requires the Landlock kernel feature. Linux >= 5.19 (Landlock
+ABI v2) is recommended: there `$HOME` and `cwd` allow cross-directory `rename`
+and `link` within their trees via `LANDLOCK_ACCESS_FS_REFER`. On ABI v1 kernels
+(Linux 5.13-5.18) the runner falls back to Landlock V1: the same path
+restrictions apply, but `REFER` cannot be granted, so the kernel denies all
+cross-directory `rename`/`link` with `EXDEV`, including inside `$HOME`/`cwd`.
+Most tools fall back to copy (e.g. `mv` does copy+unlink), but
+hard-link-preserving copies (e.g. Local Home snapshots with cross-directory
+hard links) and tools that require rename across directories can fail. On
+kernels without Landlock the job still aborts with exit code 125.
+
+Extra `SHELLCTL_LANDLOCK_RW_PATHS` grant read-write access without `REFER`, so
+cross-directory renames and hard links within those extra paths or between
+them and `$HOME`/`cwd` remain denied.
 
 ### Environment Variables
 
@@ -181,6 +192,22 @@ than falling back to it.
   than retry into it. Archives are plain tar+zstd; the decoder caps the zstd
   window at 64 MiB, so foreign archives produced with long-window settings
   are rejected as malformed.
+
+### Cold sandbox state
+
+The gateway uses `POST /v1/state/save` and `POST /v1/state/restore` to
+transfer a single tar+zstd stream with `workspace/` and `home/` roots.
+Both endpoints require `SHELLCTL_AUTH_TOKEN` and share the Home Snapshot
+operation gate, success trailers, and restore reply. `SHELLCTL_WORKSPACE_DIR`
+sets the Workspace path and defaults to `/workspace`. State transfers get
+at least 180 seconds, or `SHELLCTL_SNAPSHOT_TIMEOUT` when it is greater.
+
+State restore replaces the contents of both writable directories on a fresh
+runtime. Save excludes and restore preserves the default Home state path
+`.local/share/shellctl` and the configured state and runtime directories
+inside either writable root. This includes a state directory selected through
+`XDG_DATA_HOME` on Linux.
+The gateway discards the new Claim if extraction or verification fails.
 
 ## Dependencies
 

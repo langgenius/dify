@@ -33,6 +33,8 @@ from models.enums import DataSourceType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.upload_file_repository import SQLAlchemyKnowledgeUploadRepository
+from services.file_scan import FileScanBlockedError, FileScanService, ScanScope
+from services.file_scan.entities import SCOPE_DATASET
 from services.knowledge.indexing.adapters.cleanup import delete_index_entries
 from services.knowledge.indexing.adapters.sources import (
     CompositeStoredSourceResolver,
@@ -87,6 +89,7 @@ class IndexingExecutionAdapter:
     def extract(self, document: IndexingDocument) -> list[Document]:
         if not document.processing_rule:
             raise ValueError("no process rule found")
+        self._scan_uploaded_file(document)
         setting = self._sources.resolve_for_indexing(document.source)
         processor = IndexProcessorFactory(document.doc_form).init_index_processor()
         # Legacy extractors persist downloaded images and Notion source metadata.
@@ -97,6 +100,26 @@ class IndexingExecutionAdapter:
         for text in texts:
             text.metadata.update(document_id=document.ref.document_id, dataset_id=document.ref.dataset.dataset_id)
         return texts
+
+    def _scan_uploaded_file(self, document: IndexingDocument) -> None:
+        """Stop this document before its uploaded file is read when the malware scan rejects it.
+
+        The scan covers one document, so a rejected file fails only its own indexing run.
+        """
+        source = document.source
+        if source.source_type != DataSourceType.UPLOAD_FILE or not source.source_info:
+            return
+        upload_file_id = source.source_info.get("upload_file_id")
+        if not isinstance(upload_file_id, str) or not upload_file_id:
+            return
+        dataset = document.ref.dataset
+        outcome = FileScanService(self._session_factory).scan_upload_file(
+            tenant_id=dataset.tenant_id,
+            upload_file_id=upload_file_id,
+            scope=ScanScope(SCOPE_DATASET, dataset.dataset_id),
+        )
+        if not outcome.allowed:
+            raise FileScanBlockedError(outcome)
 
     def transform(self, document: IndexingDocument, texts: list[Document]) -> list[Document]:
         dataset, _ = self._documents.get_indexing_models(document.ref)

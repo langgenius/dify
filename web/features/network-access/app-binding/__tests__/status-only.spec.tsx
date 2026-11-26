@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import deploymentTranslations from '@/i18n/locales/en-US/deployments.json'
 import { consoleQuery } from '@/service/console'
-import { clearRequestErrorToasts } from '@/service/request-error-toast'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AccessControlEntry } from '..'
 
@@ -29,7 +29,7 @@ const createStatus = (
 })
 
 const renderNormalEntry = (response: () => Response) => {
-  const queryClient = createConsoleQueryClient()
+  const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
   vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
     const request = new Request(input, init)
     requests.push(request)
@@ -74,10 +74,6 @@ beforeEach(async () => {
       interpolation: { escapeValue: false },
       resources: { 'en-US': { deployments: deploymentTranslations } },
     })
-})
-
-afterEach(() => {
-  for (const request of requests) clearRequestErrorToasts(request)
 })
 
 describe('Normal member Access Control status', () => {
@@ -129,6 +125,7 @@ describe('Normal member Access Control status', () => {
       })
       expect(screen.queryByRole('button', { name: /Access Control/ })).not.toBeInTheDocument()
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      // The query cache reports the failed first load; the entry stays hidden.
       expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
       expectOnlyStatusRequest()
     },

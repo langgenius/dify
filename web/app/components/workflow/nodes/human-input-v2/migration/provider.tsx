@@ -90,6 +90,8 @@ const ActiveHumanInputMigrationProvider = ({
   )
 
   const migration = useMutation({
+    // The dialog shows migration failures.
+    meta: { errorToast: false },
     mutationFn: () =>
       executeHumanInputV2Migration({
         getGraph: () => {

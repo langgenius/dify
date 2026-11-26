@@ -3,13 +3,14 @@
 The Gateway owns immutable Home Snapshot capture, restore, and deletion, in
 addition to allocating, reconnecting to, and deleting a sandbox. Restore
 arrives as a `homeSnapshotRef` parameter on sandbox creation rather than its
-own call. One physical sandbox owns both the materialized Home and Workspace,
-so their cleanup is coupled. Runtime access remains operation-local and is
-routed through the Gateway's shellctl proxy.
+own call. One logical sandbox owns both the materialized Home and Workspace
+across pause and resume, so their cleanup is coupled. Runtime access remains
+operation-local and is routed through the Gateway's shellctl proxy.
 """
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 from http import HTTPStatus
 import logging
@@ -44,6 +45,7 @@ from dify_agent.runtime_backend.shellctl import (
     create_owned_shellctl_lease,
     run_shellctl_control_command,
 )
+from shellctl.client import ShellctlClientError
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +168,7 @@ class EnterpriseHomeSnapshotBackend:
 
 @dataclass(slots=True)
 class EnterpriseExecutionBindingBackend:
-    """Manage Gateway sandboxes as coupled physical Bindings and Workspaces."""
+    """Manage each logical Gateway sandbox as a coupled Binding and Workspace."""
 
     gateway_endpoint: str
     auth_token: str
@@ -176,6 +178,7 @@ class EnterpriseExecutionBindingBackend:
     layout: RuntimeLayout = field(
         default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
+    keepalive_interval: float = 60.0
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
@@ -233,10 +236,11 @@ class EnterpriseExecutionBindingBackend:
             raise
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
-        """Reconnect to one existing Gateway sandbox without creating a replacement."""
+        """Wake the existing Binding via health before checking its directory layout."""
         data_plane: ShellctlRuntimeLease | None = None
         try:
             data_plane = await self._create_data_plane(binding_ref)
+            await data_plane.client.health()
             validation_commands = ShellctlCommands(client=data_plane.client)
             result = await run_shellctl_control_command(
                 validation_commands,
@@ -251,8 +255,11 @@ class EnterpriseExecutionBindingBackend:
             )
             if result.exit_code != 0:
                 raise BindingLostError(f"Enterprise Binding {binding_ref!r} no longer contains its Home or Workspace")
-            return EnterpriseRuntimeLease(data_plane=data_plane)
-        except ShellProviderError as exc:
+            lease = EnterpriseRuntimeLease(data_plane=data_plane)
+            if self.keepalive_interval > 0:
+                lease.keepalive_task = asyncio.create_task(self._keepalive(data_plane))
+            return lease
+        except (ShellctlClientError, ShellProviderError) as exc:
             await _close_best_effort(data_plane, binding_ref=binding_ref)
             if _is_missing_sandbox(exc):
                 raise BindingLostError(f"Enterprise Binding {binding_ref!r} no longer exists") from exc
@@ -267,13 +274,31 @@ class EnterpriseExecutionBindingBackend:
             raise
 
     async def release(self, lease: RuntimeLease) -> None:
-        """Close operation-local shellctl resources without deleting the sandbox."""
+        """Stop lease renewal before closing the operation-local shellctl connection."""
         if not isinstance(lease, EnterpriseRuntimeLease):
             raise TypeError("EnterpriseExecutionBindingBackend can only release its own RuntimeLease")
         try:
-            await lease.data_plane.close()
+            try:
+                if lease.keepalive_task is not None:
+                    lease.keepalive_task.cancel()
+                    await asyncio.gather(lease.keepalive_task, return_exceptions=True)
+            finally:
+                await lease.data_plane.close()
         except Exception as exc:
             raise BindingAcquireError(str(exc)) from exc
+
+    async def _keepalive(self, data_plane: ShellctlRuntimeLease) -> None:
+        """Renew the Gateway inactivity timer for the lifetime of the lease."""
+        while True:
+            await asyncio.sleep(self.keepalive_interval)
+            try:
+                await data_plane.client.health()
+            except Exception:
+                logger.warning(
+                    "Enterprise sandbox keepalive failed",
+                    exc_info=True,
+                    extra={"binding_ref": data_plane.handle},
+                )
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
         """Delete the coupled sandbox only when its Workspace is also retired."""
@@ -345,6 +370,7 @@ class EnterpriseRuntimeLease:
     """Invocation-local Enterprise shellctl connection and canonical layout."""
 
     data_plane: ShellctlRuntimeLease
+    keepalive_task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     @property
     def handle(self) -> str:
@@ -359,8 +385,10 @@ class EnterpriseRuntimeLease:
         return self.data_plane.commands
 
 
-def _is_missing_sandbox(exc: ShellProviderError) -> bool:
-    return exc.status_code == 404 or (exc.code or "").casefold() in {
+def _is_missing_sandbox(exc: ShellctlClientError | ShellProviderError) -> bool:
+    if exc.status_code == HTTPStatus.NOT_FOUND:
+        return True
+    return isinstance(exc, ShellProviderError) and (exc.code or "").casefold() in {
         "not_found",
         "sandbox_expired",
         "sandbox_not_found",

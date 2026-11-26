@@ -60,6 +60,17 @@ def test_credentials_preserve_the_opaque_api_key(configuration: EmailChannelConf
     assert load_email_credentials(configuration.tenant_id, envelope).api_key == api_key
 
 
+def test_decrypted_credentials_accept_additive_fields(configuration: EmailChannelConfiguration) -> None:
+    plaintext = {
+        "api_key": "private-api-key",
+        "future_optional": None,
+        "future_credentials": {"nested": {"token": "opaque", "optional": None}},
+    }
+    envelope = ChannelEncryptedCredentials(ciphertext=encrypter.encrypt_token(str(_TENANT), json.dumps(plaintext)))
+
+    assert load_email_credentials(configuration.tenant_id, envelope).model_dump(mode="json") == plaintext
+
+
 @pytest.mark.parametrize(
     "plaintext",
     [
@@ -67,9 +78,6 @@ def test_credentials_preserve_the_opaque_api_key(configuration: EmailChannelConf
         json.dumps({}),
         json.dumps({"api_key": 123}),
         json.dumps({"api_key": None}),
-        json.dumps({"api_key": "private-api-key", "provider": "resend"}),
-        json.dumps({"api_key": "private-api-key", "sender_email": "sender@example.com"}),
-        json.dumps({"api_key": "private-api-key", "sender_name": "Sender"}),
     ],
 )
 def test_invalid_credentials_raise_validation_errors(configuration: EmailChannelConfiguration, plaintext: str) -> None:

@@ -12,6 +12,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { appChatMessagesSender } from '@/service/console-chat-messages'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -124,7 +125,7 @@ const DebugWithSingleModel = ({
 
       if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
-      handleSend(`apps/${appId}/chat-messages`, data, {
+      handleSend(appChatMessagesSender(appId), data, {
         onNotifyError: (message) => toast.error(message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),

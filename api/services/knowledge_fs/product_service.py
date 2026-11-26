@@ -115,7 +115,6 @@ class KnowledgeFSProductService:
             statement = statement.order_by(KnowledgeFSControlSpace.created_at.desc(), KnowledgeFSControlSpace.id.desc())
             candidates = tuple(session.scalars(statement))
             rbac_permissions = self._rbac.permission_keys_by_control_space(
-                session=session,
                 tenant_id=tenant_id,
                 account_id=account_id,
                 control_space_ids=[space.id for space in candidates],
@@ -248,7 +247,6 @@ class KnowledgeFSProductService:
             raise KnowledgeFSProductNotFoundError("KnowledgeFS space was not found")
         role = resolve_local_role(session, control_space=control_space, account_id=account_id)
         rbac_permissions = self._rbac.permission_keys_by_control_space(
-            session=session,
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_ids=(control_space.id,),

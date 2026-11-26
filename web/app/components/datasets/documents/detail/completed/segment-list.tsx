@@ -62,7 +62,7 @@ const SegmentList = ({
   // Search result is empty
   if (items.length === 0) {
     return (
-      <div className="h-full pl-6">
+      <div className="h-full ps-6">
         <Empty onClearFilter={onClearFilter} />
       </div>
     )

@@ -9,8 +9,6 @@ import {
   undo,
 } from './workflow-canvas-test-env'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-
 describe('Workflow canvas graph deletion and history', () => {
   it('keeps canvas focus when deletion and redo remove the focused node', async () => {
     const screen = await setupWorkflowCanvas()

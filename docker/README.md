@@ -89,11 +89,42 @@ Find settings in:
   sandboxes. [api-worker.defaults](envs/core-services/api-worker.defaults) contains the
   common API, worker, and Beat settings, grouped by function. API process options
   live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
+  [urls.defaults](envs/core-services/urls.defaults) contains public console and app
+  URLs shared by web, API, and workers, including Beat and KnowledgeFS workers.
 - [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
 - [Vector stores](envs/vectorstores/): bundled and external vector databases,
   including their API/worker client settings. Providers without a dedicated
   template are documented in `api-worker.defaults`.
 - [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
+
+### Change public URLs
+
+Configure public console and app URLs once for web, API, and workers:
+
+```bash
+cp envs/core-services/urls.defaults envs/core-services/urls.env
+```
+
+If `urls.env` already exists, edit it in place. For example:
+
+```dotenv
+CONSOLE_API_URL=https://dify.example.com
+```
+
+`CONSOLE_API_URL` is the browser-facing console API base URL on both sides: web
+uses it for browser requests, and API uses it for generated links such as plugin
+icons. Do not include `/console/api`; consumers append it. Empty values use the
+current origin and explicitly override the localhost defaults in Docker images.
+`CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, and `APP_WEB_URL` are configured
+in the same file, with separate values when those public endpoints differ.
+
+Explicit values in `urls.env` override URL settings in `web.env`, `api-worker.env`,
+and other service files. Root `.env` overrides both. Existing service URL overrides
+remain supported when `urls.env` is absent or copied without edits.
+
+Web's internal `SERVER_CONSOLE_API_URL` stays in `web.defaults` (override in
+`web.env`); its Docker default is `http://api:5001`. It serves server-side requests
+and can differ from the public URL. Run `docker compose up -d` after changes.
 
 ### Change a service setting
 
@@ -183,13 +214,13 @@ keep its service running. If any use bundled Weaviate, retain its profile with
 
 Bundled Weaviate connection defaults remain available when another provider is
 selected. An unchanged bundled service needs no additional connection settings;
-existing overrides in `weaviate.env`, `api-worker.env`, and `shared.env` still
+existing overrides in `weaviate.env` and `api-worker.env` still
 apply, with root `.env` taking precedence.
 
 To customize the connection, copy the provider's `.defaults` file under
 `envs/vectorstores/` to its `.env` path if that file does not already exist. Edit
 the copy or the existing `.env` file. Elasticsearch's two selectors use
-`elasticsearch.env`. Existing provider `.env` and `shared.env`
+`elasticsearch.env`. Existing provider `.env` and `api-worker.env`
 overrides remain supported. Keep `VECTOR_STORE` in root `.env`, since Compose
 selects the defaults file before reading service files.
 
@@ -305,17 +336,46 @@ Review any saved `OPENSEARCH_VERIFY_CERTS=false`: it stays in effect after an
 upgrade. Remove the assignment or set it to `true` to enable certificate
 verification.
 
-Bundled service templates now use the `.defaults` extension. Existing service
-`.env` paths still work. Root `.env.example` remains the only required starting
-template, and the Compose generator creates only a missing root `.env`.
+Bundled service templates now use the `.defaults` extension. Root `.env.example`
+remains the only required starting template, and the Compose generator creates
+only a missing root `.env`.
 
 Common API and worker application settings are documented in
 [api-worker.defaults](envs/core-services/api-worker.defaults). New customizations
-use `envs/core-services/api-worker.env`. Existing `shared.env` files and other
-service override paths remain supported; keep local files and edit them in place.
-If both `shared.env` and `api-worker.env` exist, `api-worker.env` takes precedence
-for matching settings. Root `.env` retains precedence over both files, including
-for settings documented in a provider template.
+use `envs/core-services/api-worker.env`. Root `.env` retains precedence, including
+for settings documented in a provider template. Other service override paths remain
+supported; keep local files and edit them in place.
+
+### Migrate the retired shared.env file
+
+`envs/core-services/shared.env` is no longer loaded by any service. Deployments
+without this file need no migration. If you have one, move its settings before
+starting the updated Compose configuration:
+
+1. Back up `shared.env`, `api-worker.env`, and `urls.env` if they exist.
+2. If `api-worker.env` does not exist, rename the old file from `docker/`:
+
+   ```bash
+   mv envs/core-services/shared.env envs/core-services/api-worker.env
+   ```
+
+   If both files exist, merge only missing settings from `shared.env` into
+   `api-worker.env`. Keep existing `api-worker.env` values for duplicate keys,
+   including intentional empty values; that preserves their previous precedence.
+   Do not replace an existing override file with a defaults template.
+3. For public URLs, create `urls.env` from `urls.defaults` only if it does not
+   already exist. Move the intended values of `CONSOLE_API_URL`, `CONSOLE_WEB_URL`,
+   `SERVICE_API_URL`, `APP_API_URL`, and `APP_WEB_URL` there so web, API, and workers
+   share one setting. Remove duplicate public URL assignments from individual
+   service files after moving them. Existing root `.env` values can stay there
+   and still take precedence over `urls.env`.
+4. Keep Web's internal `SERVER_CONSOLE_API_URL` in `web.env` when customizing it.
+   After preserving all needed settings, archive or remove any remaining
+   `shared.env`; leaving it in place has no effect.
+5. Apply the updated configuration with `docker compose up -d`. A plain restart
+   does not reload environment files.
+
+### Preserve intentional overrides
 
 Review accidental empty assignments left by older template copies. For example,
 `CELERY_WORKER_AMOUNT=` overrides the Docker default of `4` and lets the worker
@@ -530,10 +590,10 @@ For a directly exposed API, leave `RESPECT_XFORWARD_HEADERS_ENABLED=false`.
 The Python configuration and `api/.env.example` retain that default. To override
 the Compose default, set the variable in `docker/.env`, the shell used by Compose,
 or a Compose override. The API services' explicit `environment` entry takes
-precedence over `envs/core-services/api-worker.env` and legacy `shared.env` files.
+precedence over `envs/core-services/api-worker.env`.
 Existing `false` overrides in `docker/.env`, the invoking shell, or a Compose
 override remain in effect during upgrades. Move settings previously supplied only
-by `api-worker.env` or `shared.env` to one of those override locations if you need to preserve them.
+by `api-worker.env` to one of those override locations if you need to preserve them.
 After establishing the trusted ingress boundary, enable the setting to retain
 visitor IPs.
 

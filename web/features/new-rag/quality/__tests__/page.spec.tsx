@@ -64,18 +64,20 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+    [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
+    [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
+    [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
-      [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
-      [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
-      [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.goldenQuestions.bulkImport.post`]: serviceMock.bulkImport,
       [`${space}.goldenQuestions.byQuestionId.delete`]: serviceMock.deleteGolden,
       [`${space}.goldenQuestions.byQuestionId.patch`]: serviceMock.updateGolden,
@@ -789,6 +791,39 @@ describe('QualityPage', () => {
     )
   })
 
+  it('reports a failed saved-evidence lookup and keeps the edit dialog open', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite both permission rules.',
+          created_at: '2026-07-28T00:00:00Z',
+          expected_evidence_ids: ['node-1'],
+          id: 'golden-1',
+          question: 'Who can change permissions?',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Evidence lookup failed' }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Who can change permissions?')
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeQuality\.qualityPage\.questionActions/ }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+    )
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Evidence lookup failed'))
+    expect(screen.getByRole('dialog')).toBeVisible()
+  })
+
   it('resolves the protected trace reference before navigating', async () => {
     const user = userEvent.setup()
     navigationMock.tab = 'bad-cases'
@@ -807,12 +842,9 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
-        {
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -1041,7 +1073,7 @@ describe('QualityPage', () => {
           },
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() =>
@@ -1142,12 +1174,11 @@ describe('QualityPage', () => {
     await user.click(promote)
     await screen.findByText('dismiss failed')
     expect(toast.error).not.toHaveBeenCalled()
-    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
-      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: { silent: true } },
-    )
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith({
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
     expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: { silent: true },
+      context: expect.any(Object),
     })
     await user.click(promote)
 

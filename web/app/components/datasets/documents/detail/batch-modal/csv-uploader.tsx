@@ -12,8 +12,7 @@ import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/u
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { toast } from '@/app/notifications'
 import { useResolvedTheme } from '@/features/theme/hooks'
-import { upload } from '@/service/base'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   file: FileItem | undefined
@@ -36,32 +35,25 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     }),
     [fileUploadConfigResponse],
   )
-  type UploadResult = Awaited<ReturnType<typeof upload>>
   const fileUpload = useCallback(
     async (fileItem: FileItem): Promise<FileItem> => {
       fileItem.progress = 0
-      const formData = new FormData()
-      formData.append('file', fileItem.file)
-      const onProgress = (e: ProgressEvent) => {
-        if (e.lengthComputable) {
-          const progress = Math.floor((e.loaded / e.total) * 100)
-          updateFile({
-            ...fileItem,
-            progress,
-          })
-        }
-      }
-      return upload(
-        {
-          xhr: new XMLHttpRequest(),
-          data: formData,
-          onprogress: onProgress,
-        },
-        false,
-        undefined,
-        '?source=datasets',
-      )
-        .then((res: UploadResult) => {
+      return consoleClient.files.upload
+        .post(
+          { body: { file: fileItem.file, source: 'datasets' } },
+          {
+            context: {
+              onUploadProgress: ({ loaded, total }) => {
+                const progress = Math.floor((loaded / total) * 100)
+                updateFile({
+                  ...fileItem,
+                  progress,
+                })
+              },
+            },
+          },
+        )
+        .then((res) => {
           const updatedFile = Object.assign({}, fileItem.file, {
             id: res.id,
             ...(res as Partial<File>),

@@ -1,4 +1,5 @@
 import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { WorkflowRunOwner } from '@/service/log'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -10,7 +11,11 @@ const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
   fetchRunDetail: vi.fn(),
   fetchTracingList: vi.fn(),
 }))
-vi.mock('@/service/log', () => ({ fetchRunDetail, fetchTracingList }))
+vi.mock('@/service/log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/log')>()),
+  fetchRunDetail,
+  fetchTracingList,
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -21,37 +26,38 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
+const isExpectedRun = (owner: WorkflowRunOwner, runId: string) =>
+  owner.kind === 'app' &&
+  (owner.appId === 'inspected-app' || owner.appId === 'app-1') &&
+  runId === 'run-1'
+
 beforeEach(() => {
-  fetchRunDetail.mockImplementation(async (url: string): Promise<WorkflowRunDetailResponse> => {
-    if (
-      url !== '/apps/inspected-app/workflow-runs/run-1' &&
-      url !== '/apps/app-1/workflow-runs/run-1'
-    )
-      throw new Error(`Unexpected detail: ${url}`)
-    return {
-      id: 'run-1',
-      version: '1',
-      graph: { nodes: [], edges: [] },
-      inputs: '{}',
-      inputs_truncated: false,
-      outputs: 'message output',
-      outputs_truncated: false,
-      status: 'succeeded',
-      elapsed_time: 1,
-      total_tokens: 3,
-      total_steps: 1,
-      created_by_role: 'account',
-      created_by_account: { id: 'user', name: 'Alice', email: 'alice@example.com' },
-      created_at: 1710000000,
-      finished_at: 1710000001,
-    }
-  })
-  fetchTracingList.mockImplementation(async ({ url }: { url: string }) => {
-    if (
-      url !== '/apps/inspected-app/workflow-runs/run-1/node-executions' &&
-      url !== '/apps/app-1/workflow-runs/run-1/node-executions'
-    )
-      throw new Error(`Unexpected tracing: ${url}`)
+  fetchRunDetail.mockImplementation(
+    async (owner: WorkflowRunOwner, runId: string): Promise<WorkflowRunDetailResponse> => {
+      if (!isExpectedRun(owner, runId))
+        throw new Error(`Unexpected detail: ${JSON.stringify(owner)} ${runId}`)
+      return {
+        id: 'run-1',
+        version: '1',
+        graph: { nodes: [], edges: [] },
+        inputs: '{}',
+        inputs_truncated: false,
+        outputs: 'message output',
+        outputs_truncated: false,
+        status: 'succeeded',
+        elapsed_time: 1,
+        total_tokens: 3,
+        total_steps: 1,
+        created_by_role: 'account',
+        created_by_account: { id: 'user', name: 'Alice', email: 'alice@example.com' },
+        created_at: 1710000000,
+        finished_at: 1710000001,
+      }
+    },
+  )
+  fetchTracingList.mockImplementation(async (owner: WorkflowRunOwner, runId: string) => {
+    if (!isExpectedRun(owner, runId))
+      throw new Error(`Unexpected tracing: ${JSON.stringify(owner)} ${runId}`)
     return { data: [createNodeTracing({ title: 'Message execution' })] }
   })
 })
@@ -104,13 +110,8 @@ it.each([false, true])(
     )
     expect(screen.queryByRole('tab', { name: 'runLog.result' })).not.toBeInTheDocument()
     expect(await screen.findByText('Message execution')).toBeInTheDocument()
-    expect(fetchRunDetail).toHaveBeenCalledWith('/apps/inspected-app/workflow-runs/run-1', {
-      silent: true,
-    })
-    expect(fetchTracingList).toHaveBeenCalledWith(
-      { url: '/apps/inspected-app/workflow-runs/run-1/node-executions' },
-      { silent: true },
-    )
+    expect(fetchRunDetail).toHaveBeenCalledWith({ kind: 'app', appId: 'inspected-app' }, 'run-1')
+    expect(fetchTracingList).toHaveBeenCalledWith({ kind: 'app', appId: 'inspected-app' }, 'run-1')
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('Message execution')).not.toBeInTheDocument()

@@ -34,6 +34,7 @@ const (
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 45.0
 	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
+	workspaceDirEnv                      = "SHELLCTL_WORKSPACE_DIR"
 )
 
 // Config holds runtime configuration for the shellctl server.
@@ -48,7 +49,7 @@ type Config struct {
 	MaxWaitTimeout               time.Duration
 	IdleFlushDuration            time.Duration
 	DefaultCwd                   string
-	AllowedCwdRoots              []string // Empty uses the current DefaultCwd and /workspace.
+	AllowedCwdRoots              []string // Empty uses the current DefaultCwd and WorkspaceDir (default /workspace).
 	DefaultTerminalCols          int
 	DefaultTerminalRows          int
 	DefaultListLimit             int
@@ -64,6 +65,7 @@ type Config struct {
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
 	SnapshotTimeout              time.Duration
+	WorkspaceDir                 string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -79,6 +81,10 @@ func DefaultConfig() (*Config, error) {
 	allowedCwdRoots, err := parseAllowedCwdRoots(os.Getenv(AllowedCwdRootsEnv))
 	if err != nil {
 		return nil, err
+	}
+	workspaceDir := os.Getenv(workspaceDirEnv)
+	if workspaceDir == "" {
+		workspaceDir = DefaultWorkspaceCwd
 	}
 
 	cfg := &Config{
@@ -107,6 +113,7 @@ func DefaultConfig() (*Config, error) {
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
 		SnapshotTimeout:              snapshotTimeout,
+		WorkspaceDir:                 workspaceDir,
 	}
 
 	// Auth token from environment if not set explicitly
@@ -136,11 +143,15 @@ func (c *Config) allowedCwdRoots() []string {
 	if len(c.AllowedCwdRoots) > 0 {
 		return c.AllowedCwdRoots
 	}
-	// Derive defaults here so callers can override DefaultCwd after DefaultConfig.
-	if c.DefaultCwd != "" {
-		return []string{c.DefaultCwd, DefaultWorkspaceCwd}
+	// Derive defaults here so callers can override DefaultCwd or WorkspaceDir after DefaultConfig.
+	workspaceDir := c.WorkspaceDir
+	if workspaceDir == "" {
+		workspaceDir = DefaultWorkspaceCwd
 	}
-	return []string{DefaultWorkspaceCwd}
+	if c.DefaultCwd != "" {
+		return []string{c.DefaultCwd, workspaceDir}
+	}
+	return []string{workspaceDir}
 }
 
 // JobsDir returns the path to the jobs artifact directory.

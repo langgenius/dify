@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -16,7 +16,7 @@ import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 
 type DeleteConfirmModalProps = {
   isOpen: boolean
-  versionInfo: FetchWorkflowDraftResponse
+  versionInfo: WorkflowVersionListItem
   onClose: () => void
   onDelete: (id: string) => void
 }

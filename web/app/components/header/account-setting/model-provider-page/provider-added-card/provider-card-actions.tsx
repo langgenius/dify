@@ -1,6 +1,6 @@
 import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { ModelProviderPluginSummary } from '../index'
-import type { PluginDetail } from '@/app/components/plugins/types'
+import type { PluginDetail, UpdatePluginPayload } from '@/app/components/plugins/types'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import {
   Menu,
   MenuContent,
@@ -27,17 +27,25 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Badge from '@/app/components/base/badge'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/operation-menu'
 import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
-import { useModalContext } from '@/context/modal-context'
-import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
+import { toastRequestError } from '@/app/query-error-toast'
+import {
+  invalidateMarketplacePluginLists,
+  useMarketplace,
+  useMarketplacePluginVersions,
+} from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
-import { normalizeInstalledPluginDetail, usePluginAutoUpgradeSettings } from '@/service/use-plugins'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { isEarlierThanVersion } from '@/utils/semver'
 
 type Props =
@@ -76,7 +84,7 @@ function ProviderCardActions(props: Props) {
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
   const queryClient = useQueryClient()
   const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
-  const { setShowUpdatePluginModal } = useModalContext()
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const locale = useLocale()
   const { onUpdate } = props
   const pluginID = props.detail ? props.detail.plugin_id : props.summary.plugin_id
@@ -89,7 +97,11 @@ function ProviderCardActions(props: Props) {
   const isFromGitHub = source === PluginSource.github
   const hasNewVersion = isFromMarketplace && !!latestVersion && latestVersion !== version
   const category = props.detail?.declaration.category ?? PluginCategoryEnum.model
-  const autoUpgradeSettings = usePluginAutoUpgradeSettings(category)
+  const autoUpgradeSettings = useQuery(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryOptions({
+      input: { query: { category } },
+    }),
+  )
   const marketplace = useMarketplace()
   const canChangeVersion = canUpdatePlugin && isFromMarketplace && marketplace !== null
   const policy = autoUpgradeSettings.data?.auto_upgrade
@@ -146,8 +158,7 @@ function ProviderCardActions(props: Props) {
       queryClient.invalidateQueries({
         queryKey: consoleQuery.workspaces.current.modelProviders.get.key(),
       }),
-      queryClient.invalidateQueries({ queryKey: ['marketplacePlugins'] }),
-      queryClient.invalidateQueries({ queryKey: ['marketplaceCollectionPlugins'] }),
+      invalidateMarketplacePluginLists(queryClient),
     ])
     await onUpdate?.()
   }
@@ -157,6 +168,7 @@ function ProviderCardActions(props: Props) {
     const response = await queryClient.query(
       consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
         input: { body: { plugin_ids: [pluginID] } },
+        meta: { errorToast: false },
       }),
     )
     return response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined
@@ -169,15 +181,19 @@ function ProviderCardActions(props: Props) {
         setInfo(loaded)
         setInfoOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
   const handleUpdate = async () => {
     if (!canUpdatePlugin) return
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     try {
       const loaded = await loadDetail()
-      if (!loaded) return
+      if (!loaded || !isCurrent()) return
       if (isFromGitHub) {
-        await checkGitHubPluginUpdate(loaded, setShowUpdatePluginModal, handlePluginChanged)
+        const update = await checkGitHubPluginUpdate(loaded, isCurrent)
+        if (update) githubDialog.openWithPayload(update)
       } else if (latestVersion && latestIdentifier) {
         setUpdate({
           detail: loaded,
@@ -189,7 +205,9 @@ function ProviderCardActions(props: Props) {
         })
         setUpdateOpen(true)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
   }
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({
@@ -203,6 +221,9 @@ function ProviderCardActions(props: Props) {
 
   return (
     <>
+      {canUpdatePlugin && isFromGitHub && (
+        <GitHubInstallDialog handle={githubDialog} onUpdated={handlePluginChanged} />
+      )}
       <Menu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
         {!!version &&
           (canChangeVersion ? (

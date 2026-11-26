@@ -30,7 +30,12 @@ function PricingEntry() {
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockConsoleState: Record<string, unknown> = {}
-let mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+let mockEducationStatus = {
+  is_student: false,
+  can_redeem_discount: false,
+  allow_refresh: false,
+  expire_at: null,
+}
 let mockCurrentPlan: CloudPlan = 'sandbox'
 let mockEducationEnabled = false
 const navigateToCheckout = vi.fn()
@@ -38,6 +43,7 @@ const mockGetSubscription = vi.hoisted(() => vi.fn())
 
 const render = async (ui: React.ReactElement) => {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
     accountProfile: mockConsoleState.userProfile as { email?: string },
     accountProfileMeta: { currentVersion: '1.0.0' },
     educationStatus: mockEducationStatus,
@@ -101,7 +107,12 @@ const setupContexts = (
   planOverrides: { type?: CloudPlan } = {},
   appOverrides: Record<string, unknown> = {},
 ) => {
-  mockEducationStatus = { is_student: false, allow_refresh: false, expire_at: null }
+  mockEducationStatus = {
+    is_student: false,
+    can_redeem_discount: false,
+    allow_refresh: false,
+    expire_at: null,
+  }
   mockCurrentPlan = planOverrides.type ?? 'sandbox'
   mockEducationEnabled = false
   mockConsoleState = {
@@ -252,10 +263,9 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
 
       await waitFor(() => {
-        expect(mockGetSubscription).toHaveBeenCalledWith(
-          { query: { plan: 'professional', interval: 'month' } },
-          { context: { silent: true } },
-        )
+        expect(mockGetSubscription).toHaveBeenCalledWith({
+          query: { plan: 'professional', interval: 'month' },
+        })
         expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })
@@ -264,6 +274,7 @@ describe('Pricing Modal Flow', () => {
       setupContexts()
       mockEducationEnabled = true
       mockEducationStatus.is_student = true
+      mockEducationStatus.can_redeem_discount = true
       const user = userEvent.setup()
       await render(<Pricing />)
 
@@ -274,10 +285,9 @@ describe('Pricing Modal Flow', () => {
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 
       await waitFor(() => {
-        expect(mockGetSubscription).toHaveBeenCalledWith(
-          { query: { plan: 'professional', interval: 'year' } },
-          { context: { silent: true } },
-        )
+        expect(mockGetSubscription).toHaveBeenCalledWith({
+          query: { plan: 'professional', interval: 'year' },
+        })
         expect(navigateToCheckout).toHaveBeenCalledWith('https://pay.example.com')
       })
     })

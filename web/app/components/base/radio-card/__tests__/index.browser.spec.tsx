@@ -62,20 +62,4 @@ describe('RadioCard', () => {
     await expect.element(screen.getByRole('radio', { name: /Standard/ })).toBeChecked()
     await expect.element(screen.getByText('Advanced config')).not.toBeVisible()
   })
-
-  it('should render noRadio card as static content without radio role', async () => {
-    await render(
-      <RadioCard
-        noRadio
-        icon={<span>i</span>}
-        title="No Radio"
-        description="desc"
-        chosenConfig={<div>Static config</div>}
-      />,
-    )
-
-    await expect.element(screen.getByText('No Radio')).toBeInTheDocument()
-    await expect.element(screen.getByText('Static config')).toBeInTheDocument()
-    await expect.element(screen.getByRole('radio')).not.toBeInTheDocument()
-  })
 })

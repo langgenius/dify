@@ -1,9 +1,37 @@
+import type { ComponentProps } from 'react'
 import type { UpdateFromGitHubPayload } from '../../../types'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createPluginDeclarationFixture } from '@/test/fixtures/plugin'
-import InstallFromGitHub from '../index'
+import useHideLogic from '../../hooks/use-hide-logic'
+import { GitHubInstallContent } from '../dialog'
+import Installer from '../index'
+
+function InstallFromGitHub(
+  props: Omit<ComponentProps<typeof Installer>, 'onStartInstalling' | 'onFinishInstalling'>,
+) {
+  const { popupRef, foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(
+    props.onClose,
+  )
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) foldAnimInto()
+      }}
+    >
+      <GitHubInstallContent popupRef={popupRef}>
+        <Installer
+          {...props}
+          onStartInstalling={handleStartToInstall}
+          onFinishInstalling={() => setIsInstalling(false)}
+        />
+      </GitHubInstallContent>
+    </Dialog>
+  )
+}
 
 const { uploadGitHub, updateFromGitHub } = vi.hoisted(() => ({
   uploadGitHub: vi.fn(),
@@ -85,9 +113,7 @@ it('updates a GitHub plugin using the selected release and the existing installa
   await user.click(await screen.findByRole('option', { name: 'plugin.difypkg' }))
   await user.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
   const install = await screen.findByRole('button', { name: 'plugin.installModal.install' })
-  expect(uploadGitHub).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v2.0.0', 'plugin.difypkg', {
-    silent: true,
-  })
+  expect(uploadGitHub).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v2.0.0', 'plugin.difypkg')
   await user.click(install)
   await screen.findByRole('dialog', { name: 'plugin.installFromGitHub.installedSuccessfully' })
 

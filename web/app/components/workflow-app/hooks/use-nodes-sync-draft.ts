@@ -17,7 +17,6 @@ import {
   editorCollaborationEnabledAtom,
   workflowAppIdentityAtom,
 } from '@/app/components/workflow/editor-resource/state'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
   useNodesReadOnlyByCanEdit,
@@ -30,6 +29,7 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
+import { useSerialAsyncCallback } from '@/hooks/use-serial-async-callback'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
@@ -206,10 +206,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         // CRDT updates do not carry the persisted revision from another collaborator's save.
         const hashBeforeRefresh = workflowStore.getState().syncWorkflowDraftHash
         const [error, draft] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.get(
-            { params: { app_id: baseParams.appId } },
-            { context: { silent: true } },
-          ),
+          consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: baseParams.appId } }),
         )
         if (!canSaveEmptyGraph()) {
           callback?.onSettled?.()
@@ -283,10 +280,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         }
 
         const [error, res, isDefined] = await safe(
-          consoleClient.apps.byAppId.workflows.draft.post(
-            { params: { app_id: baseParams.appId }, body },
-            { context: { silent: true } },
-          ),
+          consoleClient.apps.byAppId.workflows.draft.post({
+            params: { app_id: baseParams.appId },
+            body,
+          }),
         )
         if (error) {
           const { isWorkflowDataLoaded } = workflowStore.getState()

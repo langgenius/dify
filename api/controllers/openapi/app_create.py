@@ -9,7 +9,9 @@ from http import HTTPStatus
 from typing import Final, Literal
 
 from flask_restx import Resource
+from werkzeug.exceptions import ServiceUnavailable
 
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -19,6 +21,7 @@ from extensions.ext_application_services import application_services
 from machinery.context import RequestContext
 from models import AppMode
 from services.entities.app_entities import CreateAppParams
+from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 
 _CREATE_GUARDS: Final = workspace_write_guards(
     RBACPermission.APP_CREATE_AND_MANAGEMENT, roles=EDITOR_ROLES, extra=(CheckAppQuota(),)
@@ -28,8 +31,12 @@ _CREATE_GUARDS: Final = workspace_write_guards(
 def _create(
     ctx: RequestContext, mode: Literal[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT], body: CreateAppPayload
 ) -> tuple[CreatedAppResponse, HTTPStatus]:
+    """Create a workflow App with a starter draft or report a busy initialization."""
     params = CreateAppParams(mode=mode.value, **body.model_dump(exclude_none=True))
-    app = application_services().apps.console.create_with_draft(ctx, params)
+    try:
+        app = application_services().apps.console.create_with_draft(ctx, params)
+    except WorkflowDraftInitializationBusyError as exc:
+        raise ServiceUnavailable(str(exc)) from exc
     return CreatedAppResponse(app_id=app.id, mode=mode.value, name=app.name), HTTPStatus.CREATED
 
 
@@ -38,6 +45,7 @@ class WorkflowAppCreateApi(Resource):
     @endpoint(
         context="workspace",
         op="create.console_app.workflow",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Create a blank workflow app; export its DSL to start building",
         examples=(Example(title="Create a workflow app", input={"name": "Release notes"}),),
@@ -54,6 +62,7 @@ class AdvancedChatAppCreateApi(Resource):
     @endpoint(
         context="workspace",
         op="create.console_app.advanced_chat",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
         kind=Kind.OBJECT,
         summary="Create an advanced-chat app with a Start, LLM and Answer draft; export its DSL to start building",
         examples=(Example(title="Create an advanced-chat app", input={"name": "Support bot"}),),

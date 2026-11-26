@@ -3,9 +3,11 @@ import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeIterationNext = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeIterationNext = useCallback(
@@ -13,7 +15,7 @@ export const useWorkflowNodeIterationNext = () => {
       const { iterTimes, setIterTimes } = workflowStore.getState()
 
       const { data } = params
-      const { getNodes, setNodes } = store.getState()
+      const { getNodes } = store.getState()
 
       const nodes = getNodes()
       const newNodes = produce(nodes, (draft) => {
@@ -21,9 +23,9 @@ export const useWorkflowNodeIterationNext = () => {
         currentNode.data._iterationIndex = iterTimes
         setIterTimes(iterTimes + 1)
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
     },
-    [workflowStore, store],
+    [collaborativeWorkflow, workflowStore, store],
   )
 
   return {

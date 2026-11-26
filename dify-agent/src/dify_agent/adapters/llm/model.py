@@ -40,7 +40,7 @@ from graphon.model_runtime.entities.message_entities import (
 from typing_extensions import assert_never, override
 
 from pydantic_ai._parts_manager import ModelResponsePartsManager
-from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior
 from pydantic_ai.messages import (
     AudioUrl,
     BinaryContent,
@@ -76,6 +76,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
 from .provider import DifyLLMClient
+from dify_agent.layers.read_media.history import collapse_read_media_content, is_read_media_content
 
 _THINK_START = "<think>\n"
 _THINK_END = "\n</think>"
@@ -133,7 +134,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete Dify usage accumulated across successful model requests."""
+        """Return complete Dify usage reported by the gateway across this run's requests.
+
+        Includes usage received before cancellation, failure, or early exit.
+        """
         return self._accumulated_usage
 
     @override
@@ -172,7 +176,10 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
             yield response
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed Dify request to this run's usage total."""
+        """Add one request's gateway-reported complete Dify usage to this run's total.
+
+        Includes usage received before cancellation, failure, or early exit; missing usage is a no-op.
+        """
         if usage is None:
             return
         if self._accumulated_usage is None:
@@ -193,40 +200,208 @@ class DifyLLMAdapterModel(Model[DifyLLMClient]):
 
         Close chunks here: ``StreamedResponse.close_stream()`` is a concurrent cancellation
         hook that may run during ``__anext__()``, when generator ``aclose()`` is unsafe.
-        Preserve primary failures, attaching secondary cleanup Exceptions with ``add_note``;
-        record usage only after the body and cleanup both succeed.
+        Preserve primary failures, attaching secondary cleanup Exceptions with ``add_note``.
+        Record gateway-reported complete Dify usage once before awaiting cleanup, retaining
+        usage received before cancellation, failure, or early exit even if cleanup fails or is cancelled.
+        Marked read_media attachments are retried as text once only when a
+        request-content error occurs before the first gateway chunk. Mutate the
+        shared prompt parts so later requests cannot replay rejected content.
         """
         prepared_settings, prepared_params = self.prepare_request(model_settings, model_request_parameters)
-        chunks = self.dify_provider.client.iter_llm_result_chunks(
-            provider=self.model_provider,
-            model=self.model_name,
-            prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
-            model_parameters=_map_model_settings_to_parameters(prepared_settings),
-            tools=_map_tool_definitions_to_prompt_tools(prepared_params),
-            stop=_get_stop_sequences(prepared_settings),
-            stream=stream,
-        )
-        response = DifyStreamedResponse(
-            model_request_parameters=prepared_params,
-            chunks=chunks,
-            response_model_name=self.model_name,
-            provider_name_value=self.system,
-            _reserved_tool_call_ids=_history_tool_call_ids(messages),
-        )
+
+        def open_chunks() -> AsyncGenerator[LLMResultChunk, None]:
+            return self.dify_provider.client.iter_llm_result_chunks(
+                provider=self.model_provider,
+                model=self.model_name,
+                prompt_messages=_map_messages_to_prompt_messages(messages, prepared_params),
+                model_parameters=_map_model_settings_to_parameters(prepared_settings),
+                tools=_map_tool_definitions_to_prompt_tools(prepared_params),
+                stop=_get_stop_sequences(prepared_settings),
+                stream=stream,
+            )
+
+        started_at = time.perf_counter()
+        chunks = open_chunks()
+        response: DifyStreamedResponse | None = None
+        prefetched_usage: LLMUsage | None = None
         primary_error: BaseException | None = None
         try:
+            response_chunks: AsyncIterator[LLMResultChunk] = chunks
+            if _has_read_media_content(messages):
+                try:
+                    first = await anext(chunks, None)
+                except ModelAPIError as exc:
+                    if not _is_media_request_rejection(exc):
+                        raise
+                    await chunks.aclose()
+                    collapse_read_media_content(messages, rejection_reason=str(exc)[:1000])
+                    chunks = open_chunks()
+                    # The retry has no catch: failures propagate and are never
+                    # retried again, including failures of the text request.
+                    first = await anext(chunks, None)
+                response_chunks = _prepend_chunk(first, chunks)
+                prefetched_usage = first.delta.usage if first is not None else None
+            response = DifyStreamedResponse(
+                model_request_parameters=prepared_params,
+                chunks=response_chunks,
+                response_model_name=self.model_name,
+                provider_name_value=self.system,
+                _reserved_tool_call_ids=_history_tool_call_ids(messages),
+            )
+            response._request_started_at = started_at
             yield response
         except BaseException as exc:
             primary_error = exc
             raise
         finally:
+            # A caller can close immediately after __aenter__, before the
+            # response consumes the chunk we already received from the gateway.
+            usage = response.dify_usage if response is not None else None
+            self._record_usage(usage if usage is not None else prefetched_usage)
             try:
                 await chunks.aclose()
             except Exception as close_error:
                 if primary_error is None:
                     raise
                 primary_error.add_note(f"Closing the Dify LLM stream also failed: {close_error!r}")
-        self._record_usage(response.dify_usage)
+
+
+def _has_read_media_content(messages: Sequence[ModelMessage]) -> bool:
+    return any(
+        is_read_media_content(item)
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, UserPromptPart) and not isinstance(part.content, str)
+        for item in part.content
+    )
+
+
+def _is_media_request_rejection(error: ModelAPIError) -> bool:
+    """Identify content rejections before the first chunk without changing errors.
+
+    HTTP status and structured gateway error types take precedence. Wrapped
+    upstream failures and explicit model-state errors never become media
+    retries; ordinary words in filenames are not failure classifications.
+    """
+    retryable_status_codes = {400, 413, 415, 422}
+    if isinstance(error, ModelHTTPError):
+        if error.status_code not in retryable_status_codes:
+            return False
+        if isinstance(error.body, Mapping) and "error_type" in error.body:
+            gateway_error_type = error.body["error_type"]
+            if not isinstance(gateway_error_type, str) or gateway_error_type not in {
+                "InvokeBadRequestError",
+                "PluginDaemonBadRequestError",
+            }:
+                return False
+
+    text = str(error.body if isinstance(error, ModelHTTPError) else error).lower()
+    # Non-HTTP SSE errors preserve "ErrorType: message". Match failure names
+    # only in that prefix, never against a filename in the message body.
+    error_type = re.match(r"^([\w.]+error):", text)
+    if error_type is not None and any(
+        token in error_type[1]
+        for token in (
+            "authoriz",
+            "authenticat",
+            "credential",
+            "permission",
+            "quota",
+            "ratelimit",
+            "notfound",
+            "notexist",
+            "uniqueidentifier",
+            "tokennotinit",
+            "currentlynotsupport",
+            "timeout",
+            "connection",
+            "unavailable",
+            "internalserver",
+        )
+    ):
+        return False
+
+    # Both HTTP 400 bodies and generic SSE errors can wrap an upstream status.
+    # Inspect every explicit status, including SDK "Error code: 503" messages;
+    # dimensions such as "512 pixels" carry no status context.
+    statuses = re.findall(
+        r"\b(?:http(?:/\d(?:\.\d)?)?(?:\s+(?:error|status)(?:\s+code)?)?"
+        r"|status(?:[_ ]code)?|error[_ ]code)['\"]?\s*[:=]?\s*([1-5]\d\d)\b",
+        text,
+    )
+    if any(int(status) not in retryable_status_codes for status in statuses):
+        return False
+    if re.search(
+        r"['\"](?:type|code)['\"]\s*:\s*['\"](?:server_error|invalid_api_key|insufficient_quota"
+        r"|rate_limit(?:_error|_exceeded)?|authentication_error|permission_denied|model_not_found|plugin_not_found)['\"]",
+        text,
+    ):
+        return False
+    # prepare() maps non-media ValueErrors to HTTP 400 too. These complete
+    # state/failure phrases remain exclusions when no error type is available.
+    if any(
+        phrase in text
+        for phrase in (
+            "credentials is not initialized",
+            "credentials are not initialized",
+            "provider token not init",
+            "model is not configured",
+            "model quota has been exceeded",
+            "no permission to use this model",
+            "model is disabled",
+            "model currently not support",
+            "invalid api key",
+            "incorrect api key",
+            "invalid credentials",
+            "authentication failed",
+            "authorization failed",
+            "insufficient quota",
+            "quota exhausted",
+            "rate limit",
+            "connection failed",
+            "connection refused",
+            "connection reset",
+            "timed out",
+            "service unavailable",
+            "server unavailable",
+            "internal server error",
+            "model not found",
+            "model does not exist",
+            "plugin not found",
+            "plugin does not exist",
+        )
+    ):
+        return False
+    return isinstance(error, ModelHTTPError) or any(
+        token in text
+        for token in (
+            "badrequest",
+            "bad request",
+            "invalid",
+            "unsupported",
+            "parameter",
+            "payload",
+            "multimodal",
+            "image",
+            "audio",
+            "video",
+            "document",
+            "media",
+            "format",
+            "too large",
+            "context length",
+        )
+    )
+
+
+async def _prepend_chunk(
+    first: LLMResultChunk | None, chunks: AsyncIterator[LLMResultChunk]
+) -> AsyncIterator[LLMResultChunk]:
+    if first is not None:
+        yield first
+    async for chunk in chunks:
+        yield chunk
 
 
 @dataclass

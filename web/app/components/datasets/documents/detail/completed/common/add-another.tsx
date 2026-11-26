@@ -14,7 +14,7 @@ const AddAnother: FC<AddAnotherProps> = ({ className, checked, onCheckedChange }
   const { t } = useTranslation(['datasetDocuments'])
 
   return (
-    <label className={cn('flex cursor-pointer items-center gap-x-1 pl-1', className)}>
+    <label className={cn('flex cursor-pointer items-center gap-x-1 ps-1', className)}>
       <Checkbox
         key="add-another-checkbox"
         className="shrink-0"

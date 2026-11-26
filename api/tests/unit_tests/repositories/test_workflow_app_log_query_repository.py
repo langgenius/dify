@@ -13,6 +13,7 @@ from models.enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from models.evaluation import EvaluationRun, EvaluationRunItem, EvaluationRunStatus, EvaluationTargetType
 from models.model import EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun, WorkflowType
@@ -185,6 +186,55 @@ def test_get_paginated_projects_plugin_workflow_run_summary(
     assert summary.triggered_from == WorkflowRunTriggeredFrom.PLUGIN.value
     assert summary.version == run.version
     assert summary.total_tokens == run.total_tokens
+
+
+@pytest.mark.parametrize("include_evaluation", [True, False])
+def test_get_paginated_attaches_completed_evaluation_metrics_when_enabled(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    include_evaluation: bool,
+) -> None:
+    log = _log(
+        "evaluated-log",
+        created_by="actor-1",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    evaluation_run = EvaluationRun(
+        id="evaluation-run-1",
+        tenant_id="tenant-1",
+        target_type=EvaluationTargetType.APPS,
+        target_id="app-1",
+        evaluation_config_id="evaluation-config-1",
+        config_snapshot="{}",
+        status=EvaluationRunStatus.COMPLETED,
+        total_items=1,
+        completed_items=1,
+        failed_items=0,
+        created_by="actor-1",
+    )
+    metric_details: dict[str, object] = {}
+    metrics = {
+        "name": "faithfulness",
+        "value": 0.9,
+        "details": metric_details,
+        "node_info": {"node_id": "llm-1", "type": "llm", "title": "Answer"},
+    }
+    evaluation_item = EvaluationRunItem(
+        evaluation_run_id=evaluation_run.id,
+        workflow_run_id=log.workflow_run_id,
+        item_index=1,
+        metrics=json.dumps([metrics]),
+    )
+    sqlite_session.add_all([_run(log.workflow_run_id), log, evaluation_run, evaluation_item])
+    sqlite_session.commit()
+
+    repository = WorkflowAppLogQueryRepository(
+        session_factory=sqlite_session_factory, include_evaluation=include_evaluation
+    )
+    result = repository.get_paginated(tenant_id="tenant-1", app_id="app-1")
+
+    assert result.data[0].evaluation == ((metrics,) if include_evaluation else ())
 
 
 def test_get_paginated_keeps_log_when_workflow_run_is_missing(

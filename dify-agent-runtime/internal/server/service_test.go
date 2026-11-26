@@ -54,6 +54,7 @@ func TestResolveCwd(t *testing.T) {
 	restrictedConfig := &Config{DefaultCwd: outside, AllowedCwdRoots: []string{workspace}}
 	cases := []struct {
 		name        string
+		chdir       string
 		config      *Config
 		cwd         *string
 		want        string
@@ -62,6 +63,9 @@ func TestResolveCwd(t *testing.T) {
 		{name: "omitted uses canonical default", want: workspace},
 		{name: "empty uses canonical default", cwd: strPtr(""), want: workspace},
 		{name: "dynamic default root", config: &Config{DefaultCwd: rootLink, AllowedCwdRoots: nil}, want: workspace},
+		{name: "dynamic default WorkspaceDir", config: &Config{DefaultCwd: workspace, WorkspaceDir: secondRoot}, cwd: strPtr(secondRoot), want: secondRoot},
+		{name: "dynamic default WorkspaceDir rejects outside", config: &Config{DefaultCwd: workspace, WorkspaceDir: secondRoot}, cwd: strPtr(outside), wantMessage: "outside allowed workspace roots"},
+		{name: "explicit roots override WorkspaceDir", config: &Config{DefaultCwd: workspace, WorkspaceDir: secondRoot, AllowedCwdRoots: []string{workspace}}, cwd: strPtr(secondRoot), wantMessage: "outside allowed workspace roots"},
 		{name: "root itself", cwd: strPtr(workspace), want: workspace},
 		{name: "nested directory", cwd: strPtr(nested), want: nested},
 		{name: "relative nested directory", cwd: strPtr("projects/demo"), want: nested},
@@ -78,6 +82,7 @@ func TestResolveCwd(t *testing.T) {
 		{name: "sibling prefix collision", cwd: strPtr(sibling), wantMessage: "outside allowed workspace roots"},
 		{name: "missing directory", cwd: strPtr(missing), wantMessage: "not a directory"},
 		{name: "regular file", cwd: strPtr(file), wantMessage: "not a directory"},
+		{name: "regular file root rejected", config: &Config{AllowedCwdRoots: []string{file}}, cwd: strPtr(file), wantMessage: "outside allowed workspace roots"},
 		{name: "regular file outside root", cwd: strPtr(outsideFile), wantMessage: "outside allowed workspace roots"},
 		{name: "file parent traversal", cwd: strPtr(file + "/.."), wantMessage: "not a directory"},
 		{name: "broken symlink", cwd: strPtr(brokenLink), wantMessage: "not a directory"},
@@ -87,15 +92,18 @@ func TestResolveCwd(t *testing.T) {
 		{name: "explicit roots replace defaults", config: &Config{DefaultCwd: workspace, AllowedCwdRoots: []string{secondRoot}}, cwd: strPtr(workspace), wantMessage: "outside allowed workspace roots"},
 		{name: "second explicit root", config: &Config{DefaultCwd: workspace, AllowedCwdRoots: []string{workspace, secondRoot}}, cwd: strPtr(secondRoot), want: secondRoot},
 		{name: "absent root skipped", config: &Config{AllowedCwdRoots: []string{missing, workspace}}, cwd: strPtr(nested), want: nested},
-		{name: "invalid roots fail closed", config: &Config{AllowedCwdRoots: []string{missing, file, brokenLink, "relative", ""}}, cwd: strPtr(workspace), wantMessage: "outside allowed workspace roots"},
+		{name: "invalid roots fail closed", chdir: base, config: &Config{DefaultCwd: workspace, AllowedCwdRoots: []string{missing, file, brokenLink, "workspace", "workspace-link", ""}}, cwd: strPtr(workspace), wantMessage: "outside allowed workspace roots"},
 		{name: "filesystem root allowed", config: &Config{AllowedCwdRoots: []string{string(filepath.Separator)}}, cwd: strPtr(nested), want: nested},
-		{name: "empty default omitted", config: &Config{}, wantMessage: "not a directory"},
-		{name: "relative default omitted", config: &Config{DefaultCwd: "workspace"}, wantMessage: "not a directory"},
-		{name: "relative cwd without default", config: &Config{AllowedCwdRoots: []string{workspace}}, cwd: strPtr("projects/demo"), wantMessage: "not a directory"},
-		{name: "relative cwd with relative default", config: &Config{DefaultCwd: "workspace", AllowedCwdRoots: []string{workspace}}, cwd: strPtr("projects/demo"), wantMessage: "not a directory"},
+		{name: "empty default omitted", chdir: workspace, config: &Config{AllowedCwdRoots: []string{workspace}}, wantMessage: "not a directory"},
+		{name: "relative default omitted", chdir: base, config: &Config{DefaultCwd: "workspace", AllowedCwdRoots: []string{workspace}}, wantMessage: "not a directory"},
+		{name: "relative cwd without default", chdir: workspace, config: &Config{AllowedCwdRoots: []string{workspace}}, cwd: strPtr("projects/demo"), wantMessage: "not a directory"},
+		{name: "relative cwd with relative default", chdir: base, config: &Config{DefaultCwd: "workspace-link", AllowedCwdRoots: []string{workspace}}, cwd: strPtr("projects/demo"), wantMessage: "not a directory"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.chdir != "" {
+				t.Chdir(tc.chdir)
+			}
 			config := tc.config
 			if config == nil {
 				config = baseConfig

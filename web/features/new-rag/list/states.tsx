@@ -102,9 +102,9 @@ function EmptyAction({
       href={href}
       aria-label={title}
       aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
+      className="relative flex min-h-14.5 w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-start text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
     >
-      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
+      <span className="me-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
         <span
           aria-hidden
           className={cn(
@@ -135,7 +135,7 @@ function EmptyAction({
         </span>
       </span>
       {!href && (
-        <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+        <span id={unavailableId} className="ms-3 shrink-0 system-xs-medium text-text-disabled">
           {unavailable}
         </span>
       )}
@@ -143,7 +143,7 @@ function EmptyAction({
         <div id={recommendedId}>
           <CornerLabel
             label={recommendedLabel}
-            className="absolute top-0 right-0 z-5"
+            className="absolute inset-e-0 top-0 z-5"
             cornerClassName="text-util-colors-indigo-indigo-100"
             labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
             textClassName="text-util-colors-indigo-indigo-700"

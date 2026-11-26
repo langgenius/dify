@@ -23,7 +23,8 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_configuration import ProviderConfiguration
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from core.errors.error import QuotaExceededError
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -122,7 +123,8 @@ def _get_provider_configuration(*, tenant_id: str, provider: str):
     return provider_configuration
 
 
-def _get_current_quota_configuration(system_configuration):
+def _get_current_quota_configuration(system_configuration: SystemConfiguration) -> QuotaConfiguration | None:
+    """Return the entry for the selected bucket, or None when it was not offered."""
     return next(
         (
             quota_configuration
@@ -143,8 +145,34 @@ def reserve_model_quota_for_model(
     app_type: CreditUsageAppTypeInput = None,
     created_by: CreditUsageCreatedByInput = None,
 ) -> ModelQuotaReservation:
-    """Reserve system-hosted model quota before invoking the provider."""
-    provider_configuration = _get_provider_configuration(tenant_id=tenant_id, provider=provider)
+    """Resolve the current provider and reserve its system-hosted quota before invocation."""
+    return reserve_model_quota_for_configuration(
+        _get_provider_configuration(tenant_id=tenant_id, provider=provider),
+        model_type=model_type,
+        model=model,
+        request_id=request_id,
+        app_type=app_type,
+        created_by=created_by,
+    )
+
+
+def reserve_model_quota_for_configuration(
+    provider_configuration: ProviderConfiguration,
+    *,
+    model_type: ModelType,
+    model: str,
+    request_id: str | None,
+    app_type: CreditUsageAppTypeInput,
+    created_by: CreditUsageCreatedByInput,
+) -> ModelQuotaReservation:
+    """Reserve quota for the supplied, tenant-bound route without reselecting credentials.
+
+    Custom routes incur no hosted charge. A System route must offer its selected quota
+    or raise QuotaExceededError without reserving credits. Billing evaluates the live
+    balance for metered hosted credits; a missing bucket is not an unlimited quota.
+    """
+    tenant_id = provider_configuration.tenant_id
+    provider = provider_configuration.provider.provider
     effective_app_type = normalize_credit_usage_app_type(app_type)
     effective_created_by = normalize_credit_usage_created_by(created_by)
     reservation = ModelQuotaReservation(
@@ -159,17 +187,19 @@ def reserve_model_quota_for_model(
     if provider_configuration.using_provider_type != ProviderType.SYSTEM:
         return reservation
 
+    system_configuration = provider_configuration.system_configuration
+    quota_configuration = _get_current_quota_configuration(system_configuration)
+    if not system_configuration.enabled or quota_configuration is None:
+        raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
+
     provider_model = provider_configuration.get_provider_model(model_type=model_type, model=model)
     if provider_model and provider_model.status == ModelStatus.QUOTA_EXCEEDED:
         raise QuotaExceededError(f"Model provider {provider} quota exceeded.")
-
-    system_configuration = provider_configuration.system_configuration
-    quota_configuration = _get_current_quota_configuration(system_configuration)
-    if quota_configuration is None or quota_configuration.quota_limit == -1:
+    if quota_configuration.quota_limit == -1:
         return reservation
 
     reservation.quota_unit = quota_configuration.quota_unit
-    quota_type = system_configuration.current_quota_type
+    quota_type = quota_configuration.quota_type
     if quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
         match quota_configuration.quota_unit:
             case QuotaUnit.CREDITS:
@@ -198,7 +228,6 @@ def reserve_model_quota_for_model(
             credits_required=amount,
             pool_type="paid" if quota_type == ProviderQuotaType.PAID else "trial",
             request_id=request_id or str(uuid4()),
-            session_factory=db.session,
             meta=reservation_meta,
         )
     elif quota_type == ProviderQuotaType.FREE:
@@ -347,24 +376,14 @@ def _deduct_used_model_quota(
         metadata[CREDIT_USAGE_CREATED_BY_META_KEY] = normalize_credit_usage_created_by(created_by)
 
         match system_configuration.current_quota_type:
-            case ProviderQuotaType.TRIAL:
+            case quota_type if quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID}:
                 from services.credit_pool_service import CreditPoolService
 
                 CreditPoolService.deduct_credits_capped(
                     tenant_id=tenant_id,
                     credits_required=used_quota,
+                    pool_type=quota_type,
                     metadata=metadata,
-                    session=db.session(),
-                )
-            case ProviderQuotaType.PAID:
-                from services.credit_pool_service import CreditPoolService
-
-                CreditPoolService.deduct_credits_capped(
-                    tenant_id=tenant_id,
-                    credits_required=used_quota,
-                    pool_type="paid",
-                    metadata=metadata,
-                    session=db.session(),
                 )
             case ProviderQuotaType.FREE:
                 _deduct_free_model_quota(
