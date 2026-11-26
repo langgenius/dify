@@ -40,7 +40,7 @@ from services.knowledge_agent.oauth import (
 logger = logging.getLogger(__name__)
 
 _CLIENT_METADATA_TTL = timedelta(hours=24)
-_CLIENT_METADATA_MAX_BYTES = 64 * 1024
+CLIENT_METADATA_MAX_BYTES = 64 * 1024
 _DCR_IDLE_RETENTION = timedelta(days=30)
 DCR_PER_IP_PER_HOUR = 20
 # Deployment-wide ceiling: 20 times the per-address limit. A client registers once per install,
@@ -221,7 +221,7 @@ class KnowledgeAgentClientRegistry:
             raise KnowledgeAgentAccessError(
                 422, "invalid_client", "The client metadata document could not be fetched"
             ) from None
-        if status != 200 or len(body) > _CLIENT_METADATA_MAX_BYTES:
+        if status != 200 or len(body) > CLIENT_METADATA_MAX_BYTES:
             raise KnowledgeAgentAccessError(422, "invalid_client", "The client metadata document could not be fetched")
         try:
             document = json.loads(body)

@@ -18,7 +18,7 @@ knowledge bases' own switches and the member's current permissions.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -122,10 +122,10 @@ class KnowledgeAgentAccessService:
         return self._clients.register(body, ip_address=ip_address)
 
     def describe_authorization(
-        self, *, tenant_id: str, params: dict[str, Any], urls: KnowledgeAgentUrls
+        self, *, account: Account, tenant_id: str, params: dict[str, Any], urls: KnowledgeAgentUrls
     ) -> dict[str, Any]:
-        """Validate an agent's authorization request and describe it for the consent page."""
-        return self._authorization.describe(tenant_id=tenant_id, params=params, urls=urls)
+        """Validate an agent's authorization request and describe it for the member's consent page."""
+        return self._authorization.describe(account=account, tenant_id=tenant_id, params=params, urls=urls)
 
     def decide_authorization(
         self, *, account: Account, tenant_id: str, body: dict[str, Any], urls: KnowledgeAgentUrls
@@ -147,9 +147,14 @@ class KnowledgeAgentAccessService:
         """The connection a ``dfok_`` bearer stands for, or the status and code to refuse it with."""
         return self._authentication.authenticate(token)
 
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]:
-        """Bases this connection may use now: chosen, readable by the member, not blocked."""
-        return self._policy.knowledge_bases_for(principal)
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]:
+        """Bases this connection may use now: chosen, readable by the member, not blocked.
+
+        ``among`` limits the check to those ids, for a tool that reads a single knowledge base.
+        """
+        return self._policy.knowledge_bases_for(principal, among=among)
 
     # -- Connections (Console) -------------------------------------------------------------------
 

@@ -10,6 +10,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { scanIsActive } from './use-tidy'
 
 const PAUSE_REASONS = {
   authorization_failed: 'tidy.pausedAuthorization',
@@ -36,7 +37,7 @@ function progressOf(summary: KnowledgeFsTidySummaryResponse) {
     done,
     percent: total ? Math.min(100, Math.round(((done + partial) / total) * 100)) : 0,
     current,
-    active: docs.pending + docs.scanning > 0,
+    active: scanIsActive(summary),
     failed: docs.failed,
     modelCalls: summary.modelCalls,
   }

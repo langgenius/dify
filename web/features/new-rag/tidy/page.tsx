@@ -17,7 +17,7 @@ export function TidyPage() {
   const { space } = useKnowledgeSpace()
   const spaceId = space.control_space_id
   const canManage = useKnowledgeSpacePermission('knowledge_space_edit')
-  const { settings, summary, configure, retry, save, resume } = useTidySettings(spaceId)
+  const { settings, summary, scanning, configure, retry, save, resume } = useTidySettings(spaceId)
   const { act, run, adopt } = useTidyActions(spaceId)
   const pending = configure.isPending || act.isPending || retry.isPending
   // Failures of actions taken on the page itself; a dialog reports its own.
@@ -68,6 +68,7 @@ export function TidyPage() {
         spaceId={spaceId}
         canManage={canManage}
         scanning={settings.data?.enabled ?? false}
+        live={scanning}
         retrying={retry.isPending}
         onRetry={retryScans}
       />
@@ -75,6 +76,7 @@ export function TidyPage() {
       <FindingsList
         spaceId={spaceId}
         summary={summary.data}
+        live={scanning}
         canManage={canManage}
         busy={pending}
         activeTabRef={queueFocusRef}

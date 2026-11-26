@@ -2,11 +2,11 @@ import type {
   KnowledgeFsTidyDocumentCardResponse,
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { PlanConfirmation } from '../review-cards'
+import type { PlanConfirmation } from '../card-parts'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { DuplicateGroupCard } from '../duplicate-group-card'
 import { groupDuplicates } from '../review'
-import { DuplicateGroupCard } from '../review-cards'
 
 const evidence = (documentId: string) => ({
   documentId,

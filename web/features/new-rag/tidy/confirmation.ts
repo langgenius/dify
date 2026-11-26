@@ -1,5 +1,5 @@
+import type { PlanConfirmation } from './card-parts'
 import type { RewriteRequest } from './review'
-import type { PlanConfirmation } from './review-cards'
 import { useState } from 'react'
 
 /** What the page asks the reviewer to confirm before it acts. */

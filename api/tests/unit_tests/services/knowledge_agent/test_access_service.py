@@ -114,6 +114,7 @@ def test_pkce_resource_and_redirect_are_enforced(world: World) -> None:
     _, challenge = _pkce()
     with pytest.raises(KnowledgeAgentAccessError) as plain:
         world.service.describe_authorization(
+            account=world.member_account,
             tenant_id=world.tenant,
             params={
                 "response_type": "code",
@@ -127,6 +128,7 @@ def test_pkce_resource_and_redirect_are_enforced(world: World) -> None:
     assert plain.value.code == "invalid_request"
     with pytest.raises(KnowledgeAgentAccessError) as target:
         world.service.describe_authorization(
+            account=world.member_account,
             tenant_id=world.tenant,
             params={
                 "response_type": "code",
@@ -205,13 +207,17 @@ def test_client_metadata_documents_are_fetched_and_validated(world: World) -> No
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     }
-    described = world.service.describe_authorization(tenant_id=world.tenant, params=base, urls=URLS)
+    described = world.service.describe_authorization(
+        account=world.member_account, tenant_id=world.tenant, params=base, urls=URLS
+    )
     assert described["client"] == {"kind": "cimd", "name": "Example Agent", "redirect_host": "localhost:61000"}
     assert described["blocked_knowledge_base_ids"] == ["kb-board"]
     liar = "https://agent.example/liar.json"
     world.documents[liar] = {"client_id": "https://agent.example/other.json", "redirect_uris": [CALLBACK]}
     with pytest.raises(KnowledgeAgentAccessError) as error:
-        world.service.describe_authorization(tenant_id=world.tenant, params={**base, "client_id": liar}, urls=URLS)
+        world.service.describe_authorization(
+            account=world.member_account, tenant_id=world.tenant, params={**base, "client_id": liar}, urls=URLS
+        )
     assert error.value.code == "invalid_client"
     with pytest.raises(KnowledgeAgentOAuthError) as bad:
         world.service.register_client({"redirect_uris": ["http://evil.example/cb"]}, ip_address="10.0.0.9")

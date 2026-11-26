@@ -5,9 +5,9 @@ import type {
   KnowledgeFsTidySummaryResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Ref } from 'react'
+import type { CardProps } from './card-parts'
 import type { FindingKind, FindingSection, FindingStatus, FindingTab } from './kinds'
 import type { DuplicateGroup, PairGroup } from './review'
-import type { CardProps } from './review-cards'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,6 +19,8 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
+import { KindSection } from './card-parts'
+import { DuplicateGroupCard } from './duplicate-group-card'
 import {
   DEFAULT_FINDING_TAB,
   FILTERABLE_STATUSES,
@@ -27,8 +29,9 @@ import {
   tabLabel,
   tabShows,
 } from './kinds'
+import { PairCard } from './pair-card'
+import { PairGroupCard } from './pair-group-card'
 import { groupDuplicates, groupPairs } from './review'
-import { DuplicateGroupCard, KindSection, PairCard, PairGroupCard } from './review-cards'
 import { useTidyFindings } from './use-tidy'
 
 type Finding = KnowledgeFsTidyFindingResponse
@@ -125,16 +128,19 @@ function arrange(
 /** The review queue: its type tabs and status filter, one page of review cards, and paging. */
 export function FindingsList({
   activeTabRef,
+  live,
   summary,
   ...card
 }: Omit<CardProps, 'cards'> & {
   /** The pressed type tab: where focus goes once a reviewed card has left the queue. */
   activeTabRef: Ref<HTMLButtonElement>
+  /** A scan is running or waiting, so findings can appear on their own. */
+  live: boolean
   summary: KnowledgeFsTidySummaryResponse | undefined
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: common } = useTranslation(['common'])
-  const queue = useTidyFindings(card.spaceId)
+  const queue = useTidyFindings(card.spaceId, live)
   const arranged = arrange(queue.items, queue.tab, queue.partial)
   // Cards leave as they are reviewed, so the page in the URL may lie past the last one.
   const pageCount = Math.max(1, Math.ceil(arranged.entries.length / CARDS_PER_PAGE))
@@ -220,12 +226,14 @@ export function FindingsList({
       />
       <div className="my-5 flex gap-2">
         {(page > 1 || queue.paged) && (
-          <Button onClick={() => (page > 1 ? queue.showPage(page - 1) : queue.firstPage())}>
+          <Button onClick={() => (page > 1 ? queue.showPage(page - 1) : queue.previousPage())}>
             {common(($) => $['operation.back'])}
           </Button>
         )}
         {(page < pageCount || queue.hasNext) && (
-          <Button onClick={() => (page < pageCount ? queue.showPage(page + 1) : queue.nextPage())}>
+          <Button
+            onClick={() => (page < pageCount ? queue.showPage(page + 1) : queue.nextPage(page))}
+          >
             {common(($) => $['pagination.next'])}
           </Button>
         )}

@@ -19,12 +19,15 @@ const SCAN_STATES = {
 /** Per-document scan progress, folded away by default, with a retry for scans that failed. */
 export function ScanList({
   canManage,
+  live,
   onRetry,
   retrying,
   scanning,
   spaceId,
 }: {
   canManage: boolean
+  /** A scan is running or waiting, so the list changes on its own. */
+  live: boolean
   onRetry: () => void
   retrying: boolean
   /** Tidy is on; with it off there is nothing to retry. */
@@ -33,7 +36,7 @@ export function ScanList({
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
   const { t: common } = useTranslation(['common'])
-  const { scans, paged, firstPage, nextPage } = useTidyScans(spaceId)
+  const { scans, paged, previousPage, nextPage } = useTidyScans(spaceId, live)
   return (
     <details className="mb-5 rounded-xl border border-divider-regular p-4">
       <summary className="cursor-pointer system-sm-semibold text-text-primary">
@@ -61,7 +64,7 @@ export function ScanList({
             {common(($) => $['operation.retry'])}
           </Button>
         )}
-        {paged && <Button onClick={firstPage}>{common(($) => $['operation.back'])}</Button>}
+        {paged && <Button onClick={previousPage}>{common(($) => $['operation.back'])}</Button>}
         {scans.data?.nextCursor && (
           <Button onClick={nextPage}>{common(($) => $['pagination.next'])}</Button>
         )}

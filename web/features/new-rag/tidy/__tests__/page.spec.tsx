@@ -84,6 +84,27 @@ const documentCard = (title: string, publishedAt: string) => ({
   publishedAt,
   enabled: true,
 })
+const tidyOn = {
+  enabled: true,
+  conflicts: false,
+  revision: 1,
+  lastError: null,
+  updatedAt: '2026-11-04',
+}
+const summaryWith = ({ pending }: { pending: number }) => ({
+  findings: [],
+  documents: { pending, scanning: 0, complete: 3, failed: 0 },
+  modelCalls: 0,
+})
+/** A handled overlap between document `a` and `right`, as the findings API lists it. */
+const handledPair = (id: string, right: string) => ({
+  ...copyOf(id, 'a', right),
+  kind: 'similar',
+  right: { ...evidence, documentId: right, title: `Guide ${right}` },
+  reason: 'textual_overlap',
+  similarity: 0.5,
+  status: 'reviewed',
+})
 describe('Tidy', () => {
   beforeEach(() => {
     service.settings.mockResolvedValue({
@@ -380,7 +401,8 @@ describe('Tidy', () => {
     })
     service.act.mockResolvedValue({})
     const user = userEvent.setup()
-    renderPage()
+    // A URL that keeps what is written to it: the cursor has to stay once Next was pressed.
+    renderAt('')
     expect(await screen.findByRole('note')).toHaveTextContent('knowledgeSpace.tidy.incomplete')
     expect(service.findings).toHaveBeenCalledTimes(OPEN_FINDING_PAGE_CAP)
     // The groups are still shown, built from what was loaded.
@@ -459,6 +481,9 @@ describe('Tidy', () => {
           : { items: [copyOf(first, 'c', 'd')], nextCursor: 'second' },
       )
     pages('d1')
+    // The list is only polled while a scan can add to it.
+    service.settings.mockResolvedValue(tidyOn)
+    service.summary.mockResolvedValue(summaryWith({ pending: 1 }))
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
       renderPage()
@@ -476,6 +501,186 @@ describe('Tidy', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+  it('asks for nothing but the summary while no scan runs and polls again once one does', async () => {
+    service.settings.mockResolvedValue(tidyOn)
+    service.summary.mockResolvedValue(summaryWith({ pending: 0 }))
+    const requests = () => ({
+      findings: service.findings.mock.calls.length,
+      scans: service.scans.mock.calls.length,
+      settings: service.settings.mock.calls.length,
+      summary: service.summary.mock.calls.length,
+    })
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderPage()
+      expect(await screen.findByText('knowledgeSpace.tidy.empty')).toBeVisible()
+      await waitFor(() =>
+        expect(requests()).toEqual({ findings: 1, scans: 1, settings: 1, summary: 1 }),
+      )
+      // Idle: almost a minute passes without a request.
+      await act(() => vi.advanceTimersByTimeAsync(59_000))
+      expect(requests()).toEqual({ findings: 1, scans: 1, settings: 1, summary: 1 })
+
+      // The slow summary poll finds documents published elsewhere waiting for a scan.
+      service.summary.mockResolvedValue(summaryWith({ pending: 2 }))
+      await act(() => vi.advanceTimersByTimeAsync(2_000))
+      expect(requests()).toEqual({ findings: 1, scans: 1, settings: 1, summary: 2 })
+      expect(screen.getByRole('progressbar')).toBeVisible()
+      // From then on everything is polled at the pace of a scan.
+      await act(() => vi.advanceTimersByTimeAsync(16_000))
+      expect(requests()).toEqual({ findings: 2, scans: 2, settings: 2, summary: 3 })
+
+      // The scan ends having found something: the lists are read one last time, then left alone.
+      service.summary.mockResolvedValue({
+        ...summaryWith({ pending: 0 }),
+        findings: [{ status: 'open', kind: 'duplicate', count: 1 }],
+      })
+      service.findings.mockResolvedValue({ items: [copyOf('d1', 'c', 'd')], nextCursor: null })
+      await act(() => vi.advanceTimersByTimeAsync(15_000))
+      expect(await screen.findByRole('article', { name: /copiesTitle/ })).toBeVisible()
+      const settled = requests()
+      expect(settled.summary).toBe(4)
+      await act(() => vi.advanceTimersByTimeAsync(50_000))
+      expect(requests()).toEqual(settled)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('polls nothing while Tidy is off', async () => {
+    // Documents wait, but with Tidy off no scan will take them.
+    service.summary.mockResolvedValue(summaryWith({ pending: 2 }))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderPage()
+      expect(await screen.findByText('knowledgeSpace.tidy.empty')).toBeVisible()
+      await waitFor(() => expect(service.scans).toHaveBeenCalledTimes(1))
+      await act(() => vi.advanceTimersByTimeAsync(180_000))
+      expect(service.summary).toHaveBeenCalledTimes(1)
+      expect(service.settings).toHaveBeenCalledTimes(1)
+      expect(service.findings).toHaveBeenCalledTimes(1)
+      expect(service.scans).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it('goes back one page of handled findings at a time', async () => {
+    const pages: Record<string, { items: unknown[]; nextCursor: string | null }> = {
+      first: { items: [handledPair('f1', 'b')], nextCursor: 'second' },
+      second: { items: [handledPair('f2', 'c')], nextCursor: 'third' },
+      third: { items: [handledPair('f3', 'd')], nextCursor: null },
+    }
+    service.findings.mockImplementation(async ({ query }) => pages[query.cursor ?? 'first'])
+    const user = userEvent.setup()
+    const next = () => user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    const back = () => user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    renderAt('?tidyStatus=reviewed')
+    expect(await screen.findByRole('article', { name: /Guide b/ })).toBeVisible()
+    await next()
+    expect(await screen.findByRole('article', { name: /Guide c/ })).toBeVisible()
+    await next()
+    expect(await screen.findByRole('article', { name: /Guide d/ })).toBeVisible()
+
+    await back()
+    expect(await screen.findByRole('article', { name: /Guide c/ })).toBeVisible()
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+    // A page that is opened again is read again.
+    await waitFor(() =>
+      expect(service.findings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: { status: 'reviewed', cursor: 'second' } }),
+      ),
+    )
+    expect(screen.getByRole('button', { name: 'common.pagination.next' })).toBeVisible()
+    await back()
+    expect(await screen.findByRole('article', { name: /Guide b/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
+  })
+  it('goes back to the first page from a linked page, whose earlier pages it cannot know', async () => {
+    service.findings.mockImplementation(async ({ query }) =>
+      query.cursor
+        ? { items: [handledPair('f3', 'd')], nextCursor: null }
+        : { items: [handledPair('f1', 'b')], nextCursor: 'second' },
+    )
+    const user = userEvent.setup()
+    renderAt('?tidyStatus=reviewed&tidyCursor=third')
+    expect(await screen.findByRole('article', { name: /Guide d/ })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    expect(await screen.findByRole('article', { name: /Guide b/ })).toBeVisible()
+    expect(service.findings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: { status: 'reviewed' } }),
+    )
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
+  })
+  it('returns from the findings past the cap to the page of cards it left', async () => {
+    const pair = (id: string) => ({
+      ...copyOf(id, 'a', id),
+      kind: 'similar',
+      right: { ...evidence, documentId: id, title: `Guide ${id}` },
+      reason: 'textual_overlap',
+      similarity: 0.5,
+    })
+    // Every API page holds two findings, so the capped list fills two pages of cards.
+    service.findings.mockImplementation(async ({ query }) => {
+      const at = Number(query.cursor ?? 0)
+      return at < OPEN_FINDING_PAGE_CAP
+        ? { items: [pair(`p${at}`), pair(`q${at}`)], nextCursor: String(at + 1) }
+        : { items: [pair('last')], nextCursor: null }
+    })
+    const user = userEvent.setup()
+    const next = () => user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    renderAt('')
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(CARDS_PER_PAGE))
+    await next()
+    await waitFor(() =>
+      expect(screen.getAllByRole('article')).toHaveLength(
+        2 * OPEN_FINDING_PAGE_CAP - CARDS_PER_PAGE,
+      ),
+    )
+    const lastCard = screen.getAllByRole('article').at(-1)?.getAttribute('aria-label')
+    await next()
+    expect(await screen.findByRole('article', { name: /Guide last/ })).toBeVisible()
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    await waitFor(() =>
+      expect(screen.getAllByRole('article').at(-1)).toHaveAttribute('aria-label', lastCard),
+    )
+    // Not the first page of cards: there is still one before it.
+    await user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(CARDS_PER_PAGE))
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
+  })
+  it('goes back one page of scanned documents at a time', async () => {
+    const scan = (title: string) => ({
+      documentId: title,
+      title,
+      state: 'complete',
+      windows: 1,
+      modelCalls: 0,
+    })
+    const pages: Record<string, { items: unknown[]; nextCursor: string | null }> = {
+      first: { items: [scan('One.md')], nextCursor: 'second' },
+      second: { items: [scan('Two.md')], nextCursor: 'third' },
+      third: { items: [scan('Three.md')], nextCursor: null },
+    }
+    service.scans.mockImplementation(async ({ query }) => pages[query.cursor ?? 'first'])
+    const user = userEvent.setup()
+    const next = () => user.click(screen.getByRole('button', { name: 'common.pagination.next' }))
+    const back = () => user.click(screen.getByRole('button', { name: 'common.operation.back' }))
+    renderAt('')
+    await user.click(await screen.findByText('knowledgeSpace.tidy.progress'))
+    expect(await screen.findByText('One.md')).toBeVisible()
+    await next()
+    expect(await screen.findByText('Two.md')).toBeVisible()
+    await next()
+    expect(await screen.findByText('Three.md')).toBeVisible()
+
+    await back()
+    expect(await screen.findByText('Two.md')).toBeVisible()
+    expect(screen.queryByText('Three.md')).not.toBeInTheDocument()
+    await back()
+    expect(await screen.findByText('One.md')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
   it('allows readers to compare evidence without management controls', async () => {
     renderPage(false)

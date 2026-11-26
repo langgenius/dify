@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session, sessionmaker
@@ -14,6 +14,9 @@ from services.knowledge_agent.contracts import (
     KnowledgeAgentSpacePort,
 )
 from services.knowledge_agent.oauth import MAX_GRANT_KNOWLEDGE_BASES
+
+# The space port checks at most this many ids per call; longer lists are checked in batches.
+_READABLE_BATCH = 500
 
 
 class KnowledgeAgentAccessPolicy:
@@ -61,9 +64,21 @@ class KnowledgeAgentAccessPolicy:
                 403, "agent_access_disabled", "Agent access is turned off for this workspace"
             )
 
-    def blocked_knowledge_bases(self, tenant_id: str) -> list[str]:
-        """Every knowledge base of the workspace whose managers turned personal agents off, sorted."""
-        return sorted(self._spaces.blocked(tenant_id=tenant_id))
+    def blocked_knowledge_bases(self, *, tenant_id: str, account_id: str) -> list[str]:
+        """Knowledge bases the member can read whose managers turned personal agents off, sorted.
+
+        The workspace's blocked bases are intersected with what the member may read, so the
+        answer never names a knowledge base the member cannot see.
+        """
+        blocked = sorted(self._spaces.blocked(tenant_id=tenant_id))
+        visible: set[str] = set()
+        for start in range(0, len(blocked), _READABLE_BATCH):
+            visible |= self._spaces.readable(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_ids=blocked[start : start + _READABLE_BATCH],
+            )
+        return [space_id for space_id in blocked if space_id in visible]
 
     def check_knowledge_bases(self, *, account_id: str, tenant_id: str, raw: object) -> list[str]:
         """Validate the bases chosen for a connection: 1-100 ids the member can read, none blocked."""
@@ -96,11 +111,26 @@ class KnowledgeAgentAccessPolicy:
             )
         return ids
 
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]:
-        """Bases this connection may use now: chosen, readable by the member, not blocked."""
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]:
+        """Bases this connection may use now: chosen, readable by the member, not blocked.
+
+        ``among`` narrows the question to those ids (a tool that reads one knowledge base asks
+        about that one only); ids the connection was not given are never looked up. Nothing is
+        cached: sharing and the per-base switch are read on every call.
+        """
+        chosen: Iterable[str] = principal.control_space_ids
+        if among is not None:
+            asked = set(among)
+            chosen = [space_id for space_id in principal.control_space_ids if space_id in asked]
+        if not chosen:
+            return set()
         readable = self._spaces.readable(
             tenant_id=principal.tenant_id,
             account_id=principal.account_id,
-            control_space_ids=principal.control_space_ids,
+            control_space_ids=chosen,
         )
+        if not readable:
+            return set()
         return readable - self._spaces.blocked(tenant_id=principal.tenant_id, control_space_ids=readable)

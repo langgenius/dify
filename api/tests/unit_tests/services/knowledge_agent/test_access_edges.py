@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import UTC, datetime, timedelta
 from typing import override
 
+import httpx
 import pytest
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.helper.ssrf_proxy import ResponseTooLargeError
 from models.account import Tenant
 from models.knowledge_agent import KnowledgeAgentGrant, KnowledgeAgentGrantSpace, KnowledgeAgentRefreshToken
 from models.oauth import OAuthAccessToken
+from services import knowledge_agent
 from services.knowledge_agent.access_service import (
     KnowledgeAgentAccessError,
     KnowledgeAgentAuthFailure,
@@ -20,12 +24,15 @@ from services.knowledge_agent.access_service import (
 )
 from services.knowledge_agent.authorization import CODE_REPLAY_MEMORY_SECONDS
 from services.knowledge_agent.clients import (
+    CLIENT_METADATA_MAX_BYTES,
     DCR_GLOBAL_PER_HOUR,
     DCR_PER_IP_PER_HOUR,
     DCR_RATE_WINDOW_SECONDS,
+    KnowledgeAgentClientRegistry,
 )
-from services.knowledge_agent.oauth import KnowledgeAgentOAuthError
+from services.knowledge_agent.oauth import KnowledgeAgentOAuthError, sha256_hex
 from tests.helpers.unit.knowledge_agent import (
+    CALLBACK,
     URLS,
     FakeRedis,
     World,
@@ -33,6 +40,7 @@ from tests.helpers.unit.knowledge_agent import (
     code_form,
     exchange,
     knowledge_agent_world,
+    pkce,
     register,
 )
 
@@ -365,3 +373,225 @@ def test_updating_an_expired_connection_is_a_clean_not_found(world: World) -> No
         ).all() == ["kb-handbook"]
     world.service.revoke_grant(account=world.member_account, tenant_id=world.tenant, role="normal", grant_id=grant_id)
     assert _live_grants(world) == []
+
+
+# -- Review fixes ------------------------------------------------------------------------------
+
+
+def test_blocked_knowledge_bases_are_only_those_the_member_can_read(world: World) -> None:
+    """Regression: the consent page and the connection view listed every blocked base of the workspace."""
+    world.spaces.blocked_ids.add("kb-secret")  # blocked, and not shared with the member
+    mine = world.service.list_mine(account=world.member_account, tenant_id=world.tenant, urls=URLS)
+    assert mine["blocked_knowledge_base_ids"] == ["kb-board"]
+    _, challenge = pkce()
+    described = world.service.describe_authorization(
+        account=world.member_account,
+        tenant_id=world.tenant,
+        params={
+            "response_type": "code",
+            "client_id": register(world),
+            "redirect_uri": CALLBACK,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+        },
+        urls=URLS,
+    )
+    assert described["blocked_knowledge_base_ids"] == ["kb-board"]
+    assert (world.tenant, world.member) in world.spaces.checks
+
+
+def test_a_connection_revoked_while_its_bases_are_being_checked_is_not_written_to(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: the ownership check and the write ran in separate transactions, unlocked."""
+    grant_id, _ = _personal_token(world)
+    check = world.spaces.readable
+
+    def revoke_then_check(*, tenant_id: str, account_id: str, control_space_ids: Iterable[str]) -> set[str]:
+        # Lands between the first look at the connection and the transaction that writes.
+        world.service.revoke_grant(account=world.admin_account, tenant_id=world.tenant, role="owner", grant_id=grant_id)
+        return check(tenant_id=tenant_id, account_id=account_id, control_space_ids=control_space_ids)
+
+    monkeypatch.setattr(world.spaces, "readable", revoke_then_check)
+    with pytest.raises(KnowledgeAgentAccessError) as error:
+        world.service.update_grant(
+            account=world.member_account,
+            tenant_id=world.tenant,
+            grant_id=grant_id,
+            body={"knowledge_base_ids": ["kb-finance"]},
+        )
+    assert (error.value.status, error.value.code) == (404, "agent_grant_not_found")
+    with world.sessions() as session:
+        assert session.scalars(
+            select(KnowledgeAgentGrantSpace.control_space_id).where(KnowledgeAgentGrantSpace.grant_id == grant_id)
+        ).all() == ["kb-handbook"]
+
+
+def _refresh(world: World, tokens: dict[str, str], client_id: str) -> dict[str, str]:
+    return world.service.exchange_token(
+        {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"], "client_id": client_id}, URLS
+    )
+
+
+def test_a_rotated_access_token_is_refused_even_if_its_cache_entry_comes_back(
+    world: World, redis: InterleavingRedis
+) -> None:
+    """Regression: a request racing the rotation could re-cache the old bearer for a minute."""
+    client_id = register(world)
+    tokens = exchange(world, authorize(world, client_id=client_id, spaces=["kb-handbook"]))
+    assert isinstance(world.service.authenticate(tokens["access_token"]), KnowledgeAgentPrincipal)
+    cached = {key: value for key, value in redis.values.items() if key.startswith("auth:token:")}
+    assert len(cached) == 1
+    rotated = _refresh(world, tokens, client_id)
+    # What a concurrent request that read the row just before the rotation committed leaves behind.
+    for key, value in cached.items():
+        redis.setex(key, 60, str(value))
+    assert world.service.authenticate(tokens["access_token"]) == INVALID
+    assert isinstance(world.service.authenticate(rotated["access_token"]), KnowledgeAgentPrincipal)
+    # Revocation still applies at once, cached bearer or not.
+    world.service.revoke_token({"token": rotated["refresh_token"]})
+    assert world.service.authenticate(rotated["access_token"]) == INVALID
+
+
+class CommitAwareRedis(FakeRedis):
+    """Notes, for every cache entry it drops, the bearer hash that was committed at that moment."""
+
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
+        super().__init__()
+        self._sessions = sessions
+        self.committed_when_dropped: dict[str, list[str | None]] = {}
+
+    @override
+    def delete(self, *names: str | bytes) -> int:
+        for name in names:
+            key = name.decode() if isinstance(name, bytes) else name
+            if key.startswith("auth:token:"):
+                # A session of its own: it sees committed rows only.
+                with self._sessions() as session:
+                    self.committed_when_dropped[key] = list(session.scalars(select(OAuthAccessToken.token_hash)))
+        return super().delete(*names)
+
+
+def test_the_old_bearer_leaves_the_cache_only_after_the_rotation_is_committed(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Regression: the entry was dropped before the commit, leaving a window to cache it again."""
+    redis = CommitAwareRedis(sqlite_session_factory)
+    with knowledge_agent_world(sqlite_session_factory, redis) as built:
+        client_id = register(built)
+        tokens = exchange(built, authorize(built, client_id=client_id, spaces=["kb-handbook"]))
+        old_hash = sha256_hex(tokens["access_token"])
+        assert isinstance(built.service.authenticate(tokens["access_token"]), KnowledgeAgentPrincipal)
+        rotated = _refresh(built, tokens, client_id)
+        new_hash = sha256_hex(rotated["access_token"])
+        old_key = next(key for key in redis.committed_when_dropped if key.endswith(old_hash))
+        assert redis.committed_when_dropped[old_key] == [new_hash]
+        assert not any(key.endswith(old_hash) for key in redis.values)
+
+
+def test_refreshing_requires_the_client_to_name_itself(world: World) -> None:
+    """Regression: a refresh without `client_id` skipped the client binding altogether."""
+    client_id = register(world)
+    tokens = exchange(world, authorize(world, client_id=client_id, spaces=["kb-handbook"]))
+    absent: list[dict[str, object]] = [
+        {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"]},
+        {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"], "client_id": ""},
+        {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"], "client_id": ["x"]},
+    ]
+    for form in absent:
+        with pytest.raises(KnowledgeAgentOAuthError) as missing:
+            world.service.exchange_token(form, URLS)
+        assert (missing.value.error, missing.value.status) == ("invalid_request", 400)
+    with pytest.raises(KnowledgeAgentOAuthError) as other:
+        _refresh(world, tokens, register(world, "Another client"))
+    assert other.value.error == "invalid_grant"
+    # None of the refusals spent the refresh token or ended the connection.
+    assert isinstance(world.service.authenticate(tokens["access_token"]), KnowledgeAgentPrincipal)
+    assert _refresh(world, tokens, client_id)["access_token"].startswith("dfok_")
+
+
+class _ChunkedBody(httpx.SyncByteStream):
+    """A response body served in chunks, counting how many were actually read."""
+
+    def __init__(self, chunks: int, size: int) -> None:
+        self.total = chunks
+        self.size = size
+        self.served = 0
+
+    @override
+    def __iter__(self) -> Iterator[bytes]:
+        for _ in range(self.total):
+            self.served += 1
+            yield b"x" * self.size
+
+
+def test_an_oversized_client_metadata_document_is_refused_without_being_read_to_the_end(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: the document was loaded whole and only then cut to the cap."""
+    body = _ChunkedBody(chunks=1024, size=16 * 1024)  # 16 MiB against a 64 KiB cap
+    requests: list[dict[str, object]] = []
+
+    def make_request(method: str, url: str, **kwargs: object) -> httpx.Response:
+        requests.append({"method": method, "url": url, **kwargs})
+        return httpx.Response(200, stream=body)
+
+    monkeypatch.setattr(knowledge_agent.ssrf_proxy, "make_request", make_request)
+    with pytest.raises(ResponseTooLargeError):
+        knowledge_agent._fetch_client_metadata("https://agent.example/client.json")
+    assert body.served <= CLIENT_METADATA_MAX_BYTES // body.size + 1
+    assert requests[0]["stream_response"] is True
+    assert requests[0]["follow_redirects"] is False
+
+    small = httpx.Response(200, content=b'{"client_id": "x"}')
+    monkeypatch.setattr(knowledge_agent.ssrf_proxy, "make_request", lambda *_args, **_kwargs: small)
+    assert knowledge_agent._fetch_client_metadata("https://agent.example/client.json") == (200, b'{"client_id": "x"}')
+
+
+def test_a_metadata_document_that_cannot_be_bounded_is_an_invalid_client(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    def too_large(_url: str) -> tuple[int, bytes]:
+        raise ResponseTooLargeError("response exceeded the limit")
+
+    with knowledge_agent_world(sqlite_session_factory) as built:
+        registry = KnowledgeAgentClientRegistry(
+            session_maker=sqlite_session_factory,
+            redis_client=built.redis,
+            fetch_client_metadata=too_large,
+            clock=lambda: datetime.now(UTC),
+        )
+        with pytest.raises(KnowledgeAgentAccessError) as error:
+            registry.resolve("https://agent.example/oauth/client.json")
+    assert (error.value.status, error.value.code) == (422, "invalid_client")
+
+
+class CacheOutageRedis(FakeRedis):
+    """Redis going away exactly when a rotated bearer's cache entry is dropped."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.down = False
+
+    @override
+    def delete(self, *names: str | bytes) -> int:
+        if self.down and any(str(name).startswith("auth:token:") for name in names):
+            raise RedisConnectionError("cache is down")
+        return super().delete(*names)
+
+
+def test_a_cache_outage_after_the_rotation_committed_neither_loses_the_new_tokens_nor_keeps_the_old_one(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = CacheOutageRedis()
+    with knowledge_agent_world(sqlite_session_factory, redis) as built:
+        client_id = register(built)
+        tokens = exchange(built, authorize(built, client_id=client_id, spaces=["kb-handbook"]))
+        assert isinstance(built.service.authenticate(tokens["access_token"]), KnowledgeAgentPrincipal)
+        redis.down = True
+        rotated = _refresh(built, tokens, client_id)
+        redis.down = False
+        # The old bearer is still in the cache, and still refused: the row no longer holds it.
+        assert any(key.endswith(sha256_hex(tokens["access_token"])) for key in redis.values)
+        assert built.service.authenticate(tokens["access_token"]) == INVALID
+        assert isinstance(built.service.authenticate(rotated["access_token"]), KnowledgeAgentPrincipal)

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from flask import Flask, Response
+from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.test import EnvironBuilder
@@ -49,8 +50,14 @@ class StubService:
         self.tokens.append(token)
         return self.auth
 
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]:
-        return set(principal.control_space_ids)
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]:
+        granted = set(principal.control_space_ids)
+        return granted if among is None else granted & set(among)
+
+    def require_enabled(self) -> None:
+        return None
 
     def exchange_token(self, form: dict[str, object], urls: KnowledgeAgentUrls) -> dict[str, object]:
         self.exchanges.append((form, urls))
@@ -393,3 +400,215 @@ def test_registration_is_limited_by_the_address_the_shared_helper_reports(
     ProxyFix(register_app, x_for=1, x_port=1)(environ(), _ignore_start)
     assert built.redis.values["knowledge_agent:dcr:203.0.113.9"] == 1
     assert built.redis.values["knowledge_agent:dcr:172.18.0.5"] == 1
+
+
+# -- Public URLs and the Host header -----------------------------------------------------------------
+
+
+def _post_from(app: Flask, *, host: str, origin: str | None) -> Response:
+    """A `ping` reaching the endpoint under ``host`` (what the caller put in the Host header)."""
+    headers = {"Content-Type": "application/json", "Authorization": "Bearer dfok_x"}
+    if origin is not None:
+        headers["Origin"] = origin
+    with app.test_request_context(
+        "/mcp/knowledge",
+        method="POST",
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}),
+        headers=headers,
+        base_url=host,
+    ):
+        return module.KnowledgeAgentMcpApi().post()
+
+
+@pytest.mark.usefixtures("service")
+def test_the_request_host_never_enters_the_origin_allow_list(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: the Host header was allow-listed, so a rebinding page (Origin == Host) got through."""
+    # Configured: only the configured origins, whatever host the request names.
+    rebinding = _post_from(app, host="http://attacker.example:5001", origin="http://attacker.example:5001")
+    assert rebinding.status_code == 403
+    assert json.loads(rebinding.get_data())["error"] == "forbidden_origin"
+    assert _post_from(app, host="http://attacker.example:5001", origin="https://cloud.dify.test").status_code == 200
+    assert _post_from(app, host="https://dify.test", origin="https://dify.test/").status_code == 200
+    assert _post_from(app, host="https://dify.test", origin="http://localhost:3000").status_code == 403
+
+    # Nothing configured: still not the request host; loopback origins and CLI agents keep working.
+    monkeypatch.setattr(module.dify_config, "SERVICE_API_URL", "")
+    monkeypatch.setattr(module.dify_config, "CONSOLE_WEB_URL", "")
+    assert (
+        _post_from(app, host="http://attacker.example:5001", origin="http://attacker.example:5001").status_code == 403
+    )
+    assert _post_from(app, host="http://localhost:5001", origin="http://attacker.example:5001").status_code == 403
+    for local in ("http://localhost:3000", "http://127.0.0.1:6274", "http://[::1]:3000"):
+        assert _post_from(app, host="http://localhost:5001", origin=local).status_code == 200
+    assert _post_from(app, host="http://192.168.1.20:5001", origin=None).status_code == 200
+
+
+def test_discovery_built_from_the_host_header_is_not_cacheable(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: a Host-derived document was served `Cache-Control: public` for an hour."""
+    monkeypatch.setattr(well_known.dify_config, "KNOWLEDGE_AGENT_ACCESS_ENABLED", True)
+
+    def discover() -> tuple[Response, Response]:
+        with app.test_request_context("/.well-known/oauth-authorization-server", base_url="http://localhost:5001"):
+            return well_known.oauth_protected_resource(), well_known.oauth_authorization_server()
+
+    for api_url, web_url, cacheable in (
+        ("", "", False),
+        ("https://dify.test", "", False),
+        ("", "https://cloud.dify.test", False),
+        ("https://dify.test", "https://cloud.dify.test", True),
+    ):
+        monkeypatch.setattr(well_known.dify_config, "SERVICE_API_URL", api_url)
+        monkeypatch.setattr(well_known.dify_config, "CONSOLE_WEB_URL", web_url)
+        for response in discover():
+            assert response.status_code == 200
+            assert response.headers["Cache-Control"] == ("public, max-age=3600" if cacheable else "no-store")
+    # Unconfigured deployments still answer for the host that asked.
+    monkeypatch.setattr(well_known.dify_config, "SERVICE_API_URL", "")
+    monkeypatch.setattr(well_known.dify_config, "CONSOLE_WEB_URL", "")
+    resource, server = discover()
+    assert json.loads(resource.get_data())["resource"] == "http://localhost:5001/mcp/knowledge"
+    assert json.loads(server.get_data())["issuer"] == "http://localhost:5001"
+
+
+# -- Request body cap --------------------------------------------------------------------------------
+
+
+class _CountingBody:
+    """A request body of ``size`` bytes that counts what is taken from it."""
+
+    def __init__(self, size: int) -> None:
+        self.left = size
+        self.taken = 0
+
+    def read(self, size: int = -1) -> bytes:
+        count = self.left if size is None or size < 0 else min(size, self.left)
+        self.left -= count
+        self.taken += count
+        return b" " * count
+
+    def readline(self, size: int = -1) -> bytes:
+        return self.read(size)
+
+
+def _oversized(
+    app: Flask, path: str, view: Callable[[], Response], *, declared: bool, content_type: str = "application/json"
+) -> tuple[Response, _CountingBody]:
+    body = _CountingBody(3 * module._MAX_BODY)
+    environ = EnvironBuilder(
+        path,
+        method="POST",
+        content_type=content_type,
+        headers=[("Authorization", "Bearer dfok_x")],
+        base_url="https://dify.test",
+    ).get_environ()
+    environ["wsgi.input"] = body
+    if declared:
+        environ["CONTENT_LENGTH"] = str(body.left)
+    else:
+        # Chunked transfer: no declared length; the server marks the stream as terminated.
+        environ.pop("CONTENT_LENGTH", None)
+        environ["wsgi.input_terminated"] = True
+    with app.request_context(environ):
+        return view(), body
+
+
+@pytest.mark.usefixtures("service")
+@pytest.mark.parametrize("declared", [True, False], ids=["content-length", "chunked"])
+def test_oversized_bodies_are_refused_without_being_loaded(app: Flask, declared: bool) -> None:
+    """Regression: the whole body was read into memory and cut to the cap afterwards."""
+    views: list[tuple[str, Callable[[], Response], str]] = [
+        ("/mcp/knowledge", lambda: module.KnowledgeAgentMcpApi().post(), "application/json"),
+        ("/mcp/knowledge/oauth/register", lambda: module.KnowledgeAgentRegisterApi().post(), "application/json"),
+        (
+            "/mcp/knowledge/oauth/token",
+            lambda: module.KnowledgeAgentTokenApi().post(),
+            "application/x-www-form-urlencoded",
+        ),
+        (
+            "/mcp/knowledge/oauth/revoke",
+            lambda: module.KnowledgeAgentRevokeApi().post(),
+            "application/x-www-form-urlencoded",
+        ),
+    ]
+    for path, view, content_type in views:
+        response, body = _oversized(app, path, view, declared=declared, content_type=content_type)
+        assert response.status_code == 413, path
+        # A declared length is refused before anything is read; otherwise reading stops at the cap.
+        assert body.taken <= (0 if declared else module._MAX_BODY + 1), path
+        assert json.loads(response.get_data())["error"] in {"payload_too_large", "invalid_request"}
+
+
+def test_a_body_of_exactly_the_cap_is_still_read(app: Flask, service: StubService) -> None:
+    padding = " " * (module._MAX_BODY - len('{"jsonrpc":"2.0","id":1,"method":"ping"}'))
+    with app.test_request_context(
+        "/mcp/knowledge",
+        method="POST",
+        data='{"jsonrpc":"2.0","id":1,"method":"ping"}' + padding,
+        headers={"Content-Type": "application/json", "Authorization": "Bearer dfok_x"},
+        base_url="https://dify.test",
+    ):
+        response = module.KnowledgeAgentMcpApi().post()
+    assert response.status_code == 200
+    assert service.tokens == ["dfok_x"]
+
+
+# -- Cost of a request -------------------------------------------------------------------------------
+
+
+def test_a_tool_call_costs_two_statements_and_two_permission_lookups(
+    app: Flask, world: tuple[World, DocumentFacade], sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """Pins the per-request cost so it cannot creep back up (it was seven statements and more).
+
+    Nothing is cached to get there: the connection, the member, the workspace switch and the
+    knowledge base's sharing are all still read on this very request.
+    """
+    built, facade = world
+    created = built.service.create_personal_token(
+        account=built.member_account,
+        tenant_id=built.tenant,
+        body={"name": "CI", "knowledge_base_ids": ["kb-handbook", "kb-finance"]},
+    )
+    token = created["token"]
+    # The first request also resolves the bearer (one lookup, then cached by hash) and stamps last use.
+    assert _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"}).status_code == 200
+
+    statements: list[str] = []
+
+    def record(_connection: object, _cursor: object, statement: str, *_rest: object) -> None:
+        statements.append(statement)
+
+    engine = sqlite_session_factory.kw["bind"]
+    built.spaces.calls.clear()
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        listed = _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"})
+        typical = list(statements)
+        typical_lookups = list(built.spaces.calls)
+        statements.clear()
+        built.spaces.calls.clear()
+        # The protocol's own methods and a base outside the connection resolve no knowledge base.
+        for method in ("ping", "tools/list"):
+            _post(app, {"jsonrpc": "2.0", "id": 1, "method": method}, {"Authorization": f"Bearer {token}"})
+        _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-board"})
+        cheap_lookups = list(built.spaces.calls)
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+    assert listed.status_code == 200
+    assert len(facade.calls) == 2
+    assert len(typical) == 2, typical
+    assert all(statement.lstrip().upper().startswith("SELECT") for statement in typical)
+    assert "JOIN knowledge_agent_grants" in typical[0]
+    assert typical_lookups == [("readable", ("kb-handbook",)), ("blocked", ("kb-handbook",))]
+    assert cheap_lookups == []
+    assert len(statements) == 3 * 2, statements
+
+    # Still nothing cached: revocation and unsharing apply to the very next request.
+    built.spaces.readable_ids.discard("kb-handbook")
+    refused = json.loads(_call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"}).get_data())
+    assert refused["result"]["isError"] is True
+    built.service.revoke_grant(
+        account=built.member_account, tenant_id=built.tenant, role="normal", grant_id=created["grant"]["id"]
+    )
+    assert _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"}).status_code == 401

@@ -11561,7 +11561,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/findings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**List a page of findings (duplicate, similar, conflict), optionally by status and kind**
+
+Unknown query parameters and malformed cursors are answered 400.
 
 #### Parameters
 
@@ -11584,7 +11586,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo**
+
+A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.
 
 #### Parameters
 
@@ -11612,7 +11616,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /knowledge-fs/spaces/{control_space_id}/tidy/retry
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Retry the knowledge base's Tidy scans and report how many were resumed**
 
 #### Parameters
 
@@ -11632,7 +11636,9 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/scans
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**List a page of per-document scan records, optionally by state**
+
+Unknown query parameters and malformed cursors are answered 400.
 
 #### Parameters
 
@@ -11654,7 +11660,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/settings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision**
 
 #### Parameters
 
@@ -11674,7 +11680,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /knowledge-fs/spaces/{control_space_id}/tidy/settings
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Turn Tidy or its conflict detection on or off; needs edit permission and the current revision**
 
 #### Parameters
 
@@ -11700,7 +11706,7 @@ Set the malware scan policy of an Agent Knowledge Base
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/tidy/summary
-**Validate admitted input, forward scoped operation, and preserve upstream errors**
+**Count findings by status and kind, and report scan progress and model calls so far**
 
 #### Parameters
 
@@ -32032,6 +32038,8 @@ What the review page shows about a document a finding quotes.
 
 #### KnowledgeFSTidyFindingQuery
 
+Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
@@ -32079,6 +32087,8 @@ Another finding settled in the same transaction as the one the request addresses
 | nextCursor | string |  | Yes |
 
 #### KnowledgeFSTidyScanQuery
+
+Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

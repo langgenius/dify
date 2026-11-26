@@ -5483,7 +5483,11 @@ export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansPath = z.object({
 })
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdTidyScansQuery = z.object({
-  cursor: z.string().optional(),
+  cursor: z
+    .string()
+    .length(36)
+    .regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+    .optional(),
   state: z.enum(['complete', 'failed', 'pending', 'scanning']).optional(),
 })
 

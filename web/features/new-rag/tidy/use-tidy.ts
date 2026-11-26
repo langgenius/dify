@@ -6,12 +6,18 @@ import type {
   KnowledgeFsTidyFindingListResponse,
   KnowledgeFsTidySummaryResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { Cards } from './card-parts'
 import type { FindingKind, FindingStatus, FindingTab } from './kinds'
 import type { PlannedAction, RewriteRequest } from './review'
-import type { Cards } from './review-cards'
-import { queryOptions, useMutation, useQueries, useQuery } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -25,9 +31,24 @@ import {
 import { planRequests } from './review'
 
 const api = consoleQuery.knowledgeFs.spaces.byControlSpaceId.tidy
-/** Scanning runs in the background, so every list on the page refreshes on its own. */
-const POLLED = { meta: { errorToast: false }, refetchInterval: 15000 } as const
 const SILENT = { meta: { errorToast: false } } as const
+/**
+ * What the page shows is read again whenever it is opened (the page itself, or a tab, status or
+ * page of a list) and when the window regains focus, whatever the age of the cache: between
+ * those and the reviewer's own actions (which invalidate it), an idle page asks for nothing but
+ * the summary.
+ */
+const WATCHED = { ...SILENT, refetchOnMount: 'always', refetchOnWindowFocus: 'always' } as const
+/** A scan changes the page on its own, so while one runs everything on it is read this often. */
+const SCAN_POLL_MS = 15_000
+/**
+ * With Tidy on and nothing to scan, only the summary is polled, to notice a scan the page did not
+ * start: documents published elsewhere, or work queued a moment after Tidy was enabled or a retry
+ * was asked for (the reload that follows those actions can come before the queue shows it). One
+ * small request a minute is cheap for a tab left open, and a new scan is still picked up within
+ * that minute; the lists start polling with it. With Tidy off nothing is polled.
+ */
+const IDLE_SUMMARY_POLL_MS = 60_000
 /** Cursor value of a list whose last page was already shown. */
 const END = 'end'
 /**
@@ -44,6 +65,11 @@ type FindingPages = {
   total: number | undefined
 }
 
+/** Whether documents wait for a scan or are in one: the only time the page changes by itself. */
+export function scanIsActive(summary: KnowledgeFsTidySummaryResponse | undefined) {
+  return Boolean(summary && summary.documents.pending + summary.documents.scanning > 0)
+}
+
 function countOf(
   summary: KnowledgeFsTidySummaryResponse | undefined,
   status: FindingStatus,
@@ -58,17 +84,19 @@ function countOf(
  * One list of findings from `cursor` on. Only open findings are grouped, so only they are loaded
  * past the first page: up to `OPEN_FINDING_PAGE_CAP` pages, following `nextCursor`.
  *
- * The list is polled, and re-reading every page each time would multiply the requests. A poll
- * reads the first page only and keeps the pages behind it while nothing says they changed: the
- * first page is the same and so is the count in the (separately polled) summary. A change deeper
- * in the list that leaves both as they were is therefore seen only on the next full load. After
- * an action of the reviewer's own the list is invalidated and every page is read again.
+ * The list is polled while a scan can add to it (`live`), and re-reading every page each time
+ * would multiply the requests. A poll reads the first page only and keeps the pages behind it
+ * while nothing says they changed: the first page is the same and so is the count in the
+ * (separately polled) summary. A change deeper in the list that leaves both as they were is
+ * therefore seen only on the next full load. After an action of the reviewer's own the list is
+ * invalidated and every page is read again.
  */
 function findingPagesOptions(
   spaceId: string,
   status: FindingStatus,
   kind: FindingKind | undefined,
   cursor: string | null,
+  live: boolean,
 ) {
   const params = { control_space_id: spaceId }
   const limit = status === 'open' ? OPEN_FINDING_PAGE_CAP : 1
@@ -110,15 +138,45 @@ function findingPagesOptions(
       }
       return { pages, total }
     },
-    ...POLLED,
+    ...WATCHED,
+    refetchInterval: live && SCAN_POLL_MS,
   })
 }
 
 /** The opt-in settings, scan progress, and the two actions that change how scanning runs. */
 export function useTidySettings(spaceId: string) {
   const params = { control_space_id: spaceId }
-  const settings = useQuery(api.settings.get.queryOptions({ input: { params }, ...POLLED }))
-  const summary = useQuery(api.summary.get.queryOptions({ input: { params }, ...POLLED }))
+  const input = { params }
+  const client = useQueryClient()
+  // How often each query is read depends on what the other returned, so both intervals are worked
+  // out from the cache; a change to either renders this hook again.
+  const enabled = client.getQueryData(api.settings.get.queryKey({ input }))?.enabled ?? false
+  const scanning = enabled && scanIsActive(client.getQueryData(api.summary.get.queryKey({ input })))
+  const settings = useQuery(
+    api.settings.get.queryOptions({
+      input,
+      ...WATCHED,
+      // A scan can pause itself with an error, which is reported here.
+      refetchInterval: scanning && SCAN_POLL_MS,
+    }),
+  )
+  const summary = useQuery(
+    api.summary.get.queryOptions({
+      input,
+      ...WATCHED,
+      refetchInterval: scanning ? SCAN_POLL_MS : enabled && IDLE_SUMMARY_POLL_MS,
+    }),
+  )
+  const wasScanningRef = useRef(scanning)
+  useEffect(() => {
+    // The lists were last polled before the summary said the scan was over, and what the scan
+    // found last can lie between the two: read them once more, now that nothing polls them.
+    if (wasScanningRef.current && !scanning) {
+      void client.refetchQueries({ queryKey: api.findings.get.key(), type: 'active' })
+      void client.refetchQueries({ queryKey: api.scans.get.key(), type: 'active' })
+    }
+    wasScanningRef.current = scanning
+  }, [client, scanning])
   const configure = useMutation(api.settings.patch.mutationOptions(SILENT))
   const retry = useMutation(api.retry.post.mutationOptions(SILENT))
 
@@ -138,23 +196,51 @@ export function useTidySettings(spaceId: string) {
   async function resume() {
     await retry.mutateAsync({ params })
   }
-  return { settings, summary, configure, retry, save, resume }
+  return {
+    settings,
+    summary,
+    /** Tidy is on and documents are being scanned or wait to be: the page changes by itself. */
+    scanning,
+    configure,
+    retry,
+    save,
+    resume,
+  }
 }
 
-/** Documents and how far their scan got, one page at a time (`tidyScanCursor`). */
-export function useTidyScans(spaceId: string) {
+/**
+ * Documents and how far their scan got, one page at a time (`tidyScanCursor`).
+ *
+ * The API pages forward only, so the way back is the cursors already passed. They are kept in
+ * memory, not in the URL: a link carries the page it shows, and opened anywhere else (or after a
+ * reload) its Back leads to the first page.
+ */
+export function useTidyScans(
+  spaceId: string,
+  /** A scan is running or waiting (`scanning` of `useTidySettings`). */
+  live: boolean,
+) {
   const [cursor, setCursor] = useQueryState('tidyScanCursor', parseAsString)
+  /** The cursor of every page passed on the way here, oldest first; the first page has none. */
+  const [trail, setTrail] = useState<Array<string | null>>([])
   const scans = useQuery(
     api.scans.get.queryOptions({
       input: { params: { control_space_id: spaceId }, query: cursor ? { cursor } : {} },
-      ...POLLED,
+      ...WATCHED,
+      refetchInterval: live && SCAN_POLL_MS,
     }),
   )
   return {
     scans,
     paged: Boolean(cursor),
-    firstPage: () => void setCursor(null),
-    nextPage: () => void setCursor(scans.data?.nextCursor ?? null),
+    previousPage: () => {
+      void setCursor(trail.at(-1) ?? null)
+      setTrail(trail.slice(0, -1))
+    },
+    nextPage: () => {
+      setTrail([...trail, cursor])
+      void setCursor(scans.data?.nextCursor ?? null)
+    },
   }
 }
 
@@ -165,8 +251,16 @@ export function useTidyScans(spaceId: string) {
  * Open findings are loaded whole (see `findingPagesOptions`) and their cards are paged in the
  * browser (`tidyPage`). The cursors only move for handled findings, which come one API page at a
  * time, and for an open list longer than the cap.
+ *
+ * The API pages forward only, so the way back is the steps already taken. They are kept in
+ * memory, not in the URL: a link carries the findings it shows, and opened anywhere else (or
+ * after a reload) its Back leads to the first page.
  */
-export function useTidyFindings(spaceId: string) {
+export function useTidyFindings(
+  spaceId: string,
+  /** A scan is running or waiting (`scanning` of `useTidySettings`). */
+  live: boolean,
+) {
   const [status, setStatus] = useQueryState(
     'tidyStatus',
     parseAsStringLiteral(FILTERABLE_STATUSES).withDefault(DEFAULT_FINDING_STATUS),
@@ -178,6 +272,8 @@ export function useTidyFindings(spaceId: string) {
   const [cursor, setCursor] = useQueryState('tidyCursor', parseAsString)
   const [secondCursor, setSecondCursor] = useQueryState('tidySimilarCursor', parseAsString)
   const [page, setPage] = useQueryState('tidyPage', parseAsInteger.withDefault(1))
+  /** Where every feed stood, and the page of cards shown, before each move on; oldest first. */
+  const [trail, setTrail] = useState<Array<{ cursors: Array<string | null>; page: number }>>([])
   const [kind, secondKind] = kindsOfTab(tab)
   const feeds = [
     { kind, cursor, setCursor },
@@ -185,7 +281,9 @@ export function useTidyFindings(spaceId: string) {
   ]
   const active = feeds.filter((feed) => feed.cursor !== END)
   const lists = useQueries({
-    queries: active.map((feed) => findingPagesOptions(spaceId, status, feed.kind, feed.cursor)),
+    queries: active.map((feed) =>
+      findingPagesOptions(spaceId, status, feed.kind, feed.cursor, live),
+    ),
   })
   const nextCursors = lists.map((list) => list.data?.pages.at(-1)?.nextCursor ?? null)
   const pages = lists.flatMap((list) => list.data?.pages ?? [])
@@ -201,6 +299,7 @@ export function useTidyFindings(spaceId: string) {
     void setCursor(null)
     void setSecondCursor(null)
     void setPage(null)
+    setTrail([])
   }
   return {
     tab,
@@ -233,9 +332,20 @@ export function useTidyFindings(spaceId: string) {
     showPage: (next: number) => void setPage(next),
     paged: Boolean(cursor || secondCursor),
     hasNext: nextCursors.some(Boolean),
-    firstPage,
-    /** Moves every list on to the findings after the ones loaded. */
-    nextPage: () => {
+    /** Returns every list to where it stood before the last move on, at the cards shown then. */
+    previousPage: () => {
+      const last = trail.at(-1)
+      if (!last) {
+        firstPage()
+        return
+      }
+      feeds.forEach((feed, index) => void feed.setCursor(last.cursors[index] ?? null))
+      void setPage(last.page)
+      setTrail(trail.slice(0, -1))
+    },
+    /** Moves every list on to the findings after the ones loaded; `fromPage` is the page left. */
+    nextPage: (fromPage: number) => {
+      setTrail([...trail, { cursors: feeds.map((feed) => feed.cursor), page: fromPage }])
       active.forEach((feed, index) => void feed.setCursor(nextCursors[index] ?? END))
       void setPage(null)
     },

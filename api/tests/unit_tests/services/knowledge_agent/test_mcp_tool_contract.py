@@ -3,16 +3,25 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+import logging
+from collections.abc import Callable, Iterable
 from types import SimpleNamespace
 from typing import TypedDict, cast, get_args
 
 import pytest
 
 from services.knowledge_agent.contracts import KnowledgeAgentPrincipal
-from services.knowledge_agent.mcp_server import TOOLS, KnowledgeAgentMcpServer, _KnowledgeBaseArgs, _Tool
+from services.knowledge_agent.mcp_server import (
+    TOOLS,
+    KnowledgeAgentMcpServer,
+    KnowledgeAgentToolError,
+    _downstream,
+    _KnowledgeBaseArgs,
+    _Tool,
+)
 from services.knowledge_fs.data_facade import KnowledgeFSDataFacade
-from services.knowledge_fs.tidy_dto import TidyFindingKind, TidyFindingStatus
+from services.knowledge_fs.product_dto import KnowledgeFSCatQuery, KnowledgeFSListQuery
+from services.knowledge_fs.tidy_dto import KnowledgeFSTidyFindingQuery, TidyFindingKind, TidyFindingStatus
 
 PRINCIPAL = KnowledgeAgentPrincipal(
     account_id="acct",
@@ -54,8 +63,11 @@ class RecordingFacade:
 
 
 class GrantedSpaces:
-    def knowledge_bases_for(self, principal: KnowledgeAgentPrincipal) -> set[str]:
-        return set(principal.control_space_ids)
+    def knowledge_bases_for(
+        self, principal: KnowledgeAgentPrincipal, *, among: Iterable[str] | None = None
+    ) -> set[str]:
+        granted = set(principal.control_space_ids)
+        return granted if among is None else granted & set(among)
 
 
 class NoNames:
@@ -230,3 +242,71 @@ def test_advertised_schemas_and_validation_agree_on_names_and_literals() -> None
     for tool in TOOLS:
         for name in advertised[tool.name]["properties"]:
             assert any((field.alias or key) == name for key, field in tool.args.model_fields.items())
+
+
+# What each tool refuses up front because the KnowledgeFS query it builds would refuse it.
+REFUSED_UPSTREAM: list[tuple[str, dict[str, object], str]] = [
+    ("list_tidy_findings", {"cursor": "not-a-finding-cursor"}, "cursor"),
+    ("list_tidy_findings", {"cursor": "E" * 64}, "cursor"),
+    ("search", {"query": "   "}, "query"),
+    ("grep", {"pattern": " \t "}, "pattern"),
+    ("grep", {"pattern": "E-1001", "path": "/knowledge//handbook"}, "path"),
+    ("browse", {"path": "/knowledge/"}, "path"),
+    ("browse", {"path": "/knowledge/" + "a" * 4096}, "path"),
+    ("read_path", {"path": "/knowledge/a b"}, "path"),
+    ("read_path", {"path": "/knowledge/handbook/"}, "path"),
+]
+
+
+@pytest.mark.parametrize(("tool", "arguments", "field"), REFUSED_UPSTREAM)
+def test_arguments_the_knowledge_service_would_refuse_are_invalid_arguments_not_an_outage(
+    tool: str, arguments: dict[str, object], field: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Regression: these passed the tool's model, failed the query's, and read as "temporarily unavailable"."""
+    server, facade, events = _server()
+    with caplog.at_level(logging.WARNING):
+        result = _call(server, tool, {**OTHER_ARGUMENTS[tool], **arguments, "knowledgeBaseId": "kb-granted"})
+    assert result["isError"] is True
+    text = result["content"][0]["text"]
+    assert text.startswith("Invalid arguments:")
+    assert field in text
+    assert "unavailable" not in text
+    assert facade.calls == []
+    assert events[-1]["error"] == "invalid_arguments"
+    # A caller's mistake is not logged as a failure, with or without a traceback.
+    assert caplog.records == []
+
+
+def test_the_advertised_schema_carries_the_constraints_of_the_queries_the_tools_build() -> None:
+    advertised = _advertised()
+    cursor = advertised["list_tidy_findings"]["properties"]["cursor"]
+    assert (
+        cursor["pattern"]
+        == KnowledgeFSTidyFindingQuery.model_json_schema()["properties"]["cursor"]["anyOf"][0]["pattern"]
+    )
+    # Every path a tool accepts is one the KnowledgeFS queries accept.
+    for tool, query in (
+        ("browse", KnowledgeFSListQuery),
+        ("grep", KnowledgeFSListQuery),
+        ("read_path", KnowledgeFSCatQuery),
+    ):
+        path = advertised[tool]["properties"]["path"]
+        assert path["maxLength"] == query.model_json_schema()["properties"]["path"]["maxLength"]
+        for accepted in ("/knowledge/handbook.md", "/sources/a/b", "/evidence/x"):
+            query.model_validate({"path": accepted})
+            assert _call_arguments_valid(tool, {"path": accepted})
+    assert advertised["search"]["properties"]["query"]["pattern"] == r"\S"
+    assert advertised["grep"]["properties"]["pattern"]["pattern"] == r"\S"
+
+
+def _call_arguments_valid(tool: str, arguments: dict[str, object]) -> bool:
+    model = next(candidate.args for candidate in TOOLS if candidate.name == tool)
+    model.model_validate({**OTHER_ARGUMENTS[tool], **arguments, "knowledgeBaseId": "kb-granted"})
+    return True
+
+
+def test_a_query_refused_after_the_tool_model_accepted_it_is_still_a_readable_argument_error() -> None:
+    """The safety net behind the argument models: a refused query never becomes a generic failure."""
+    with pytest.raises(KnowledgeAgentToolError, match=r"^Invalid arguments: cursor: "):
+        _downstream(KnowledgeFSTidyFindingQuery, {"status": "open", "cursor": "abc"})
+    assert _downstream(KnowledgeFSTidyFindingQuery, {"status": "open", "cursor": "a" * 64}).cursor == "a" * 64

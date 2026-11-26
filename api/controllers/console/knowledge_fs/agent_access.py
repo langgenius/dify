@@ -196,10 +196,10 @@ class KnowledgeAgentAuthorizeApi(Resource):
     @_agent_errors
     def get(self):
         """Validate an agent's authorization request for the consent page."""
-        _, tenant_id, _ = _context()
+        account, tenant_id, _ = _context()
         query = KnowledgeAgentAuthorizationQuery.model_validate(request.args.to_dict())
         result = knowledge_agent_access_service().describe_authorization(
-            tenant_id=tenant_id, params=query.model_dump(exclude_none=True), urls=_urls()
+            account=account, tenant_id=tenant_id, params=query.model_dump(exclude_none=True), urls=_urls()
         )
         return dump_response(KnowledgeAgentAuthorizationResponse, result)
 

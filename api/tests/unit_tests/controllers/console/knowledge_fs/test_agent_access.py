@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import controllers.console.knowledge_fs.agent_access as module
 from libs.exception import RelayedHTTPError
 from services.knowledge_agent.access_service import KnowledgeAgentAccessError, KnowledgeAgentPrincipal
-from tests.helpers.unit.knowledge_agent import World, knowledge_agent_world
+from tests.helpers.unit.knowledge_agent import CALLBACK, World, knowledge_agent_world, pkce, register
 
 GRANT = {
     "id": "grant-1",
@@ -166,6 +166,8 @@ def test_a_member_creates_lists_narrows_and_disconnects_a_personal_token(app: Fl
     assert isinstance(principal, KnowledgeAgentPrincipal)
     assert sorted(principal.control_space_ids) == ["kb-finance", "kb-handbook"]
 
+    # Blocked for agents but not shared with this member: it must not show up in their view.
+    signed_in.world.spaces.blocked_ids.add("kb-secret")
     with _console_request(app, "GET"):
         mine = _list_mine(module.KnowledgeAgentMineApi())
     assert mine["mcp_url"] == "https://dify.test/mcp/knowledge"
@@ -229,3 +231,26 @@ def _relayed(error: RelayedHTTPError) -> dict[str, object]:
     data = error.data
     assert data is not None
     return {**data, "status": error.code}
+
+
+def test_the_consent_page_names_only_blocked_bases_the_member_can_read(app: Flask, signed_in: SignedIn) -> None:
+    """Regression: the authorize route described the request without saying which member asked."""
+    world = signed_in.world
+    world.spaces.blocked_ids.add("kb-secret")
+    client_id = register(world)
+    _, challenge = pkce()
+    query = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": CALLBACK,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
+    }
+    describe = module._agent_errors(inspect.unwrap(module.KnowledgeAgentAuthorizeApi.get))
+    with app.test_request_context(
+        "/console/api/knowledge-fs/agent-access/authorize", query_string=query, base_url="https://dify.test"
+    ):
+        described = describe(module.KnowledgeAgentAuthorizeApi())
+    assert described["blocked_knowledge_base_ids"] == ["kb-board"]
+    assert described["client"]["name"] == "Claude Code"
+    assert (world.tenant, world.member) in world.spaces.checks

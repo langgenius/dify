@@ -3,6 +3,11 @@
 One ``KnowledgeAgentGrant`` per connection, one ``dfok_`` row in ``oauth_access_tokens`` per grant
 (rotated in place) and, for OAuth connections, rotating refresh tokens. Every method works inside
 the caller's session, so issuing and revoking stay atomic with whatever decided them.
+
+The bearer cache is keyed by token hash. A rotated bearer's entry is dropped only after the
+rotation commits: dropped earlier, a request racing the rotation could read the old hash from the
+database and cache it again for the cache's whole lifetime. Authentication also compares the
+presented bearer with the row's current hash, so a stale entry never admits a rotated bearer.
 """
 
 from __future__ import annotations
@@ -13,6 +18,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import sqlalchemy as sa
+from redis.exceptions import RedisError
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from libs.oauth_bearer import invalidate_oauth_token_cache
@@ -145,8 +152,25 @@ class KnowledgeAgentTokenStore:
             row.revoked_at = None
         session.flush()
         if previous_hash:
-            invalidate_oauth_token_cache(self._redis, previous_hash)
+            self._invalidate_after_commit(session, previous_hash)
         return token
+
+    def _invalidate_after_commit(self, session: Session, token_hash: str) -> None:
+        """Drop a bearer's cache entry once the session's transaction has committed.
+
+        The rotation is already durable when this runs, so a cache outage must not fail the call
+        (the caller would lose tokens it can no longer ask for again). Leaving the entry behind
+        is safe: authentication compares the presented bearer with the row's current hash.
+        """
+        redis = self._redis
+
+        def invalidate(_session: Session) -> None:
+            try:
+                invalidate_oauth_token_cache(redis, token_hash)
+            except RedisError:
+                logger.warning("knowledge agent bearer cache entry was not dropped after rotation", exc_info=True)
+
+        event.listen(session, "after_commit", invalidate, once=True)
 
     def issue_tokens(self, session: Session, grant: KnowledgeAgentGrant) -> dict[str, Any]:
         """Rotate the access token, add a refresh token and return the RFC 6749 token response."""

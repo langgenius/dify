@@ -2,9 +2,9 @@
 
 import type { DialogContentProps } from '@langgenius/dify-ui/dialog'
 import type { ReactNode } from 'react'
+import type { PlanConfirmation } from './card-parts'
 import type { Confirmation } from './confirmation'
 import type { PlannedAction, RewriteRefusal, RewriteRequest } from './review'
-import type { PlanConfirmation } from './review-cards'
 import type { I18nKeysWithoutVariables } from '@/types/i18n'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'

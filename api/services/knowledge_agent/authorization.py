@@ -99,15 +99,22 @@ class KnowledgeAgentAuthorizationServer:
 
     # -- Consent page ---------------------------------------------------------------------------
 
-    def describe(self, *, tenant_id: str, params: dict[str, Any], urls: KnowledgeAgentUrls) -> dict[str, Any]:
-        """What the consent page shows for a valid authorization request: client, scopes, workspace."""
+    def describe(
+        self, *, account: Account, tenant_id: str, params: dict[str, Any], urls: KnowledgeAgentUrls
+    ) -> dict[str, Any]:
+        """What the consent page shows for a valid authorization request: client, scopes, workspace.
+
+        The blocked knowledge bases are the member's own view: only bases the member can read.
+        """
         self._policy.require_enabled()
         request = self._parse_request(params, urls)
         with self._sessions() as session:
             tenant_name = session.scalar(sa.select(Tenant.name).where(Tenant.id == tenant_id)) or ""
         return {
             "agent_access_enabled": self._policy.workspace_enabled(tenant_id),
-            "blocked_knowledge_base_ids": self._policy.blocked_knowledge_bases(tenant_id),
+            "blocked_knowledge_base_ids": self._policy.blocked_knowledge_bases(
+                tenant_id=tenant_id, account_id=account.id
+            ),
             "client": {
                 "kind": request["client"].kind,
                 "name": request["client"].name,
@@ -266,6 +273,11 @@ class KnowledgeAgentAuthorizationServer:
 
     def _refresh(self, form: dict[str, Any]) -> dict[str, Any] | KnowledgeAgentOAuthError:
         refresh_token = form.get("refresh_token") if isinstance(form.get("refresh_token"), str) else ""
+        # Clients are public (no client authentication), so RFC 6749 §6 binds the refresh token to
+        # the client it was issued to: the client must name itself, as it does when redeeming a code.
+        client_id = form.get("client_id")
+        if not isinstance(client_id, str) or not client_id:
+            raise KnowledgeAgentOAuthError("invalid_request", "refresh_token and client_id are required")
         if not refresh_token.startswith(REFRESH_TOKEN_PREFIX):
             return KnowledgeAgentOAuthError("invalid_grant", "The refresh token is invalid")
         with self._sessions.begin() as session:
@@ -278,7 +290,7 @@ class KnowledgeAgentAuthorizationServer:
             if row is None or grant is None or grant.revoked_at is not None:
                 return KnowledgeAgentOAuthError("invalid_grant", "The refresh token is invalid")
             client = session.get(KnowledgeAgentClient, grant.client_ref) if grant.client_ref else None
-            if isinstance(form.get("client_id"), str) and (client is None or form["client_id"] != client.client_id):
+            if client is None or client_id != client.client_id:
                 return KnowledgeAgentOAuthError("invalid_grant", "The refresh token belongs to another client")
             if row.rotated_at is not None:
                 # Refresh tokens rotate: a second use means a copy leaked. End the whole connection.

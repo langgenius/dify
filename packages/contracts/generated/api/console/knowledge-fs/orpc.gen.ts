@@ -3862,15 +3862,20 @@ export const tags = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo
+ *
+ * A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.
  */
 export const post37 = oc
   .route({
+    description:
+      'A conflict (409) carries ``details.parameters.status`` when a passage could not be rewritten.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postKnowledgeFsSpacesByControlSpaceIdTidyFindingsByFindingIdActions',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/findings/{finding_id}/actions',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary:
+      'Act on one finding: dismiss, mark reviewed, disable a document, adopt a side, or undo',
     tags: ['console'],
   })
   .input(
@@ -3902,15 +3907,19 @@ export const byFindingId = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * List a page of findings (duplicate, similar, conflict), optionally by status and kind
+ *
+ * Unknown query parameters and malformed cursors are answered 400.
  */
 export const get55 = oc
   .route({
+    description: 'Unknown query parameters and malformed cursors are answered 400.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidyFindings',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/findings',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary:
+      'List a page of findings (duplicate, similar, conflict), optionally by status and kind',
     tags: ['console'],
   })
   .input(
@@ -3938,7 +3947,7 @@ export const findings = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * Retry the knowledge base's Tidy scans and report how many were resumed
  */
 export const post38 = oc
   .route({
@@ -3946,7 +3955,7 @@ export const post38 = oc
     method: 'POST',
     operationId: 'postKnowledgeFsSpacesByControlSpaceIdTidyRetry',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/retry',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary: "Retry the knowledge base's Tidy scans and report how many were resumed",
     tags: ['console'],
   })
   .input(z.object({ params: zPostKnowledgeFsSpacesByControlSpaceIdTidyRetryPath }))
@@ -3968,15 +3977,18 @@ export const retry4 = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * List a page of per-document scan records, optionally by state
+ *
+ * Unknown query parameters and malformed cursors are answered 400.
  */
 export const get56 = oc
   .route({
+    description: 'Unknown query parameters and malformed cursors are answered 400.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidyScans',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/scans',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary: 'List a page of per-document scan records, optionally by state',
     tags: ['console'],
   })
   .input(
@@ -4003,7 +4015,7 @@ export const scans = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision
  */
 export const get57 = oc
   .route({
@@ -4011,7 +4023,8 @@ export const get57 = oc
     method: 'GET',
     operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidySettings',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/settings',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary:
+      'Read whether Tidy and its conflict detection are on for the knowledge base, with the settings revision',
     tags: ['console'],
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTidySettingsPath }))
@@ -4029,7 +4042,7 @@ export const get57 = oc
   })
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * Turn Tidy or its conflict detection on or off; needs edit permission and the current revision
  */
 export const patch11 = oc
   .route({
@@ -4037,7 +4050,8 @@ export const patch11 = oc
     method: 'PATCH',
     operationId: 'patchKnowledgeFsSpacesByControlSpaceIdTidySettings',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/settings',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary:
+      'Turn Tidy or its conflict detection on or off; needs edit permission and the current revision',
     tags: ['console'],
   })
   .input(
@@ -4065,7 +4079,7 @@ export const settings2 = {
 }
 
 /**
- * Validate admitted input, forward scoped operation, and preserve upstream errors
+ * Count findings by status and kind, and report scan progress and model calls so far
  */
 export const get58 = oc
   .route({
@@ -4073,7 +4087,7 @@ export const get58 = oc
     method: 'GET',
     operationId: 'getKnowledgeFsSpacesByControlSpaceIdTidySummary',
     path: '/knowledge-fs/spaces/{control_space_id}/tidy/summary',
-    summary: 'Validate admitted input, forward scoped operation, and preserve upstream errors',
+    summary: 'Count findings by status and kind, and report scan progress and model calls so far',
     tags: ['console'],
   })
   .input(z.object({ params: zGetKnowledgeFsSpacesByControlSpaceIdTidySummaryPath }))

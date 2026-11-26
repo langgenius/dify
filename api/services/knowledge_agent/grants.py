@@ -63,7 +63,9 @@ class KnowledgeAgentGrantConsole:
         return {
             "available": self._policy.deployment_enabled(),
             "agent_access_enabled": self._policy.workspace_enabled(tenant_id),
-            "blocked_knowledge_base_ids": self._policy.blocked_knowledge_bases(tenant_id),
+            "blocked_knowledge_base_ids": self._policy.blocked_knowledge_bases(
+                tenant_id=tenant_id, account_id=account.id
+            ),
             "mcp_url": urls.resource,
             "grants": grants,
         }
@@ -106,20 +108,19 @@ class KnowledgeAgentGrantConsole:
         return {"grant": self._live_view(grant_id), "token": token}
 
     def update_grant(self, *, account: Account, tenant_id: str, grant_id: str, body: dict[str, Any]) -> dict[str, Any]:
-        """Replace the knowledge bases of the member's own live connection."""
+        """Replace the knowledge bases of the member's own live connection.
+
+        The connection is checked twice: first so a caller who may not change it is told so
+        before the chosen bases are looked at, then again, under a row lock, in the transaction
+        that writes. A connection revoked, expired or disconnected in between is not written to.
+        """
         with self._sessions() as session:
-            grant = self._find_grant(session, tenant_id=tenant_id, grant_id=grant_id)
-            if grant.account_id != account.id:
-                raise KnowledgeAgentAccessError(
-                    403, "permission_denied", "Only the owner of a connection can change it"
-                )
-            if grant.expires_at is not None and aware(grant.expires_at) <= self._now():
-                # An expired connection is no longer listed and cannot come back: it is gone.
-                raise _grant_not_found()
+            self._owned_live_grant(session, account=account, tenant_id=tenant_id, grant_id=grant_id, lock=False)
         space_ids = self._policy.check_knowledge_bases(
             account_id=account.id, tenant_id=tenant_id, raw=body.get("knowledge_base_ids")
         )
         with self._sessions.begin() as session:
+            self._owned_live_grant(session, account=account, tenant_id=tenant_id, grant_id=grant_id, lock=True)
             session.execute(
                 sa.delete(KnowledgeAgentGrantSpace)
                 .where(KnowledgeAgentGrantSpace.grant_id == grant_id)
@@ -167,15 +168,29 @@ class KnowledgeAgentGrantConsole:
             setting.updated_by_account_id = account.id
         return self.workspace_settings(tenant_id=tenant_id, role=role)
 
+    def _owned_live_grant(
+        self, session: Session, *, account: Account, tenant_id: str, grant_id: str, lock: bool
+    ) -> KnowledgeAgentGrant:
+        """The member's own connection, if it is live; ``lock`` holds its row until the transaction ends."""
+        grant = self._find_grant(session, tenant_id=tenant_id, grant_id=grant_id, lock=lock)
+        if grant.account_id != account.id:
+            raise KnowledgeAgentAccessError(403, "permission_denied", "Only the owner of a connection can change it")
+        if grant.expires_at is not None and aware(grant.expires_at) <= self._now():
+            # An expired connection is no longer listed and cannot come back: it is gone.
+            raise _grant_not_found()
+        return grant
+
     @staticmethod
-    def _find_grant(session: Session, *, tenant_id: str, grant_id: str) -> KnowledgeAgentGrant:
-        grant = session.scalar(
-            sa.select(KnowledgeAgentGrant).where(
-                KnowledgeAgentGrant.id == grant_id,
-                KnowledgeAgentGrant.tenant_id == tenant_id,
-                KnowledgeAgentGrant.revoked_at.is_(None),
-            )
+    def _find_grant(session: Session, *, tenant_id: str, grant_id: str, lock: bool = False) -> KnowledgeAgentGrant:
+        statement = sa.select(KnowledgeAgentGrant).where(
+            KnowledgeAgentGrant.id == grant_id,
+            KnowledgeAgentGrant.tenant_id == tenant_id,
+            KnowledgeAgentGrant.revoked_at.is_(None),
         )
+        if lock:
+            # A row lock, and a fresh read even if the session has seen the row before.
+            statement = statement.with_for_update().execution_options(populate_existing=True)
+        grant = session.scalar(statement)
         if grant is None:
             raise _grant_not_found()
         return grant

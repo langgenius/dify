@@ -107,14 +107,28 @@ class KnowledgeFSTidyFindingListResponse(ResponseModel):
 
 
 class KnowledgeFSTidyFindingQuery(BaseModel):
+    """Query of the findings list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused."""
+
     cursor: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
     status: TidyFindingStatus | None = None
     kind: TidyFindingKind | None = None
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class KnowledgeFSTidyScanQuery(BaseModel):
-    cursor: str | None = None
+    """Query of the scans list; ``cursor`` is the previous page's ``nextCursor``. Unknown keys are refused."""
+
+    # KnowledgeFS accepts a UUID here (`format: uuid`); the pattern says so in the generated schema.
+    cursor: str | None = Field(
+        default=None,
+        min_length=36,
+        max_length=36,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    )
     state: TidyScanState | None = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class KnowledgeFSTidyFurtherAction(BaseModel):

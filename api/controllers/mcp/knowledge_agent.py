@@ -2,13 +2,16 @@
 
 Stateless Streamable HTTP (POST only, JSON responses). Bearers are `dfok_` knowledge-agent tokens;
 the general openapi authenticator never resolves them, and this endpoint resolves nothing else.
+
+Request bodies are capped at ``_MAX_BODY`` while they are read: a declared ``Content-Length`` over
+the cap is refused outright and at most one byte more than the cap is ever taken from the stream.
 """
 
 from __future__ import annotations
 
 import json
 from typing import Any
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import parse_qsl
 
 from flask import Response, request
 from flask_restx import Resource
@@ -24,6 +27,7 @@ from services.knowledge_agent import (
     KnowledgeAgentAuthFailure,
     KnowledgeAgentOAuthError,
     knowledge_agent_access_service,
+    knowledge_agent_origin_allowed,
     knowledge_agent_urls,
 )
 from services.knowledge_agent.mcp_server import KnowledgeAgentMcpServer
@@ -51,26 +55,31 @@ def _urls():
     return knowledge_agent_urls(request.host_url)
 
 
-def _origin_allowed(origin: str | None) -> bool:
-    """Browsers send Origin; CLI agents do not. Foreign origins are refused (DNS rebinding)."""
-    if not origin:
-        return True
-    allowed = {
-        _origin_of(value)
-        for value in (dify_config.CONSOLE_WEB_URL, dify_config.SERVICE_API_URL, request.host_url)
-        if value
-    }
-    return origin.rstrip("/") in allowed
+class _BodyTooLargeError(Exception):
+    """The request body is larger than ``_MAX_BODY``."""
 
 
-def _origin_of(url: str) -> str:
-    parts = urlsplit(url)
-    return f"{parts.scheme}://{parts.netloc}"
+def _body() -> str:
+    """The request body as text, never holding more than the cap (plus one byte) in memory."""
+    declared = request.content_length
+    if declared is not None and declared > _MAX_BODY:
+        raise _BodyTooLargeError
+    raw = request.stream.read(_MAX_BODY + 1)
+    if len(raw) > _MAX_BODY:
+        raise _BodyTooLargeError
+    return raw.decode("utf-8", errors="replace")
+
+
+def _too_large() -> Response:
+    return _json({"error": "payload_too_large", "error_description": "The request body is too large"}, 413)
 
 
 def _form() -> dict[str, Any]:
     """Token and revocation bodies are form-encoded; JSON is tolerated."""
-    raw = request.get_data(cache=False, as_text=True)[:_MAX_BODY]
+    try:
+        raw = _body()
+    except _BodyTooLargeError as exc:
+        raise KnowledgeAgentOAuthError("invalid_request", "The request body is too large", 413) from exc
     if (request.mimetype or "").endswith("json"):
         try:
             parsed = json.loads(raw or "{}")
@@ -88,7 +97,7 @@ class KnowledgeAgentMcpApi(Resource):
     @mcp_ns.doc(description="Model Context Protocol endpoint for personal agents reading Agent Knowledge Bases")
     def post(self):
         # response-contract:ignore MCP route returns a Flask Response carrying JSON-RPC
-        if not _origin_allowed(request.headers.get("Origin")):
+        if not knowledge_agent_origin_allowed(request.headers.get("Origin")):
             return _json({"error": "forbidden_origin", "error_description": "Origin not allowed"}, 403)
         service = knowledge_agent_access_service()
         urls = _urls()
@@ -118,7 +127,9 @@ class KnowledgeAgentMcpApi(Resource):
             )
 
         try:
-            message = json.loads(request.get_data(cache=False, as_text=True)[:_MAX_BODY] or "null")
+            message = json.loads(_body() or "null")
+        except _BodyTooLargeError:
+            return _too_large()
         except ValueError:
             return _json(
                 {"jsonrpc": "2.0", "id": None, "error": {"code": mcp_types.PARSE_ERROR, "message": "Parse error"}}, 400
@@ -177,7 +188,12 @@ class KnowledgeAgentRegisterApi(Resource):
         service = knowledge_agent_access_service()
         try:
             service.require_enabled()
-            body = request.get_json(silent=True)
+            try:
+                body = json.loads(_body() or "null") if request.is_json else None
+            except _BodyTooLargeError:
+                return _too_large()
+            except ValueError:
+                body = None
             if not isinstance(body, dict):
                 raise KnowledgeAgentOAuthError("invalid_client_metadata", "Body must be a JSON object")
             return _json(service.register_client(body, ip_address=extract_remote_ip(request)), 201)

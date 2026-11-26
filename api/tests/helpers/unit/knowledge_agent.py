@@ -91,22 +91,32 @@ class FakeRedis:
 
 
 class FakeSpaces:
-    """Sharing and per-base switches by base id; records which workspace and member each check ran for."""
+    """Sharing and per-base switches by base id; records which workspace and member each check ran for.
+
+    ``calls`` lists every lookup in order with the ids it asked about (``None`` for the whole
+    workspace), so a test can pin how many lookups an operation costs.
+    """
 
     def __init__(self, readable: Iterable[str], blocked: Iterable[str] = ()) -> None:
         self.readable_ids = set(readable)
         self.blocked_ids = set(blocked)
         self.checks: set[tuple[str, str | None]] = set()
+        self.calls: list[tuple[str, tuple[str, ...] | None]] = []
 
     def readable(self, *, tenant_id: str, account_id: str, control_space_ids: Iterable[str]) -> set[str]:
+        ids = tuple(control_space_ids)
         self.checks.add((tenant_id, account_id))
-        return {space_id for space_id in control_space_ids if space_id in self.readable_ids}
+        self.calls.append(("readable", tuple(sorted(ids))))
+        return {space_id for space_id in ids if space_id in self.readable_ids}
 
     def blocked(self, *, tenant_id: str, control_space_ids: Iterable[str] | None = None) -> set[str]:
         self.checks.add((tenant_id, None))
         if control_space_ids is None:
+            self.calls.append(("blocked", None))
             return set(self.blocked_ids)
-        return {space_id for space_id in control_space_ids if space_id in self.blocked_ids}
+        ids = tuple(control_space_ids)
+        self.calls.append(("blocked", tuple(sorted(ids))))
+        return {space_id for space_id in ids if space_id in self.blocked_ids}
 
 
 @dataclass

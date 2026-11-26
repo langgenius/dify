@@ -1,11 +1,17 @@
 """Bearer authentication for the knowledge MCP endpoint.
 
 Only this endpoint resolves ``dfok_`` bearers. A resolved bearer is not enough: the connection,
-the member, the deployment switch and the workspace switch are all re-checked on every request.
+the member, the deployment switch and the workspace switch are all re-checked on every request,
+and so is the bearer itself (the resolver's cache may still hold a bearer that was rotated away).
+
+The re-check costs two statements per request (one join, then the connection's knowledge bases)
+on top of the resolver's own lookup when its cache is cold. It is deliberately not cached:
+revocation, membership and switch changes take effect on the next request.
 """
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import Callable
 from datetime import timedelta
 
@@ -14,7 +20,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TokenType
 from libs.oauth_bearer import BearerAuthenticator, InvalidBearerError, OAuthAccessTokenResolver
-from models.knowledge_agent import KnowledgeAgentClient, KnowledgeAgentGrant, KnowledgeAgentGrantSpace
+from models.account import Account, AccountStatus, TenantAccountJoin
+from models.knowledge_agent import (
+    KnowledgeAgentClient,
+    KnowledgeAgentGrant,
+    KnowledgeAgentGrantSpace,
+    KnowledgeAgentWorkspaceSetting,
+)
 from models.oauth import OAuthAccessToken
 from services.knowledge_agent.contracts import (
     Clock,
@@ -23,8 +35,8 @@ from services.knowledge_agent.contracts import (
     KnowledgeAgentRedis,
     aware,
 )
+from services.knowledge_agent.oauth import sha256_hex
 from services.knowledge_agent.policy import KnowledgeAgentAccessPolicy
-from services.knowledge_agent.tokens import member_active
 
 _TOUCH_INTERVAL = timedelta(minutes=5)
 
@@ -61,36 +73,59 @@ class KnowledgeAgentBearerAuthentication:
             return invalid
         now = self._now()
         with self._sessions.begin() as session:
-            row = session.get(OAuthAccessToken, str(context.token_id))
-            grant = (
-                session.get(KnowledgeAgentGrant, row.knowledge_agent_grant_id)
-                if row is not None and row.knowledge_agent_grant_id
-                else None
-            )
+            # One statement for everything that decides the request: the bearer row, its
+            # connection, the member's account and membership, the workspace switch and the
+            # client's name. Nothing here is cached, so a change applies to the next request.
+            found = session.execute(
+                sa.select(
+                    OAuthAccessToken,
+                    KnowledgeAgentGrant,
+                    Account.status,
+                    TenantAccountJoin.id,
+                    KnowledgeAgentWorkspaceSetting.enabled,
+                    KnowledgeAgentClient.name,
+                )
+                .join(KnowledgeAgentGrant, KnowledgeAgentGrant.id == OAuthAccessToken.knowledge_agent_grant_id)
+                .outerjoin(Account, Account.id == KnowledgeAgentGrant.account_id)
+                .outerjoin(
+                    TenantAccountJoin,
+                    sa.and_(
+                        TenantAccountJoin.tenant_id == KnowledgeAgentGrant.tenant_id,
+                        TenantAccountJoin.account_id == KnowledgeAgentGrant.account_id,
+                    ),
+                )
+                .outerjoin(
+                    KnowledgeAgentWorkspaceSetting,
+                    KnowledgeAgentWorkspaceSetting.tenant_id == KnowledgeAgentGrant.tenant_id,
+                )
+                .outerjoin(KnowledgeAgentClient, KnowledgeAgentClient.id == KnowledgeAgentGrant.client_ref)
+                .where(OAuthAccessToken.id == str(context.token_id))
+                .limit(1)
+            ).first()
+            if found is None:
+                return invalid
+            row, grant, account_status, membership_id, workspace_enabled, registered_name = found
             if (
-                grant is None
+                # The bearer cache is keyed by hash and outlives a rotation by up to its lifetime;
+                # the row holds the one bearer that is valid now (none once it is revoked).
+                row.token_hash is None
+                or not secrets.compare_digest(row.token_hash, sha256_hex(token))
                 or grant.revoked_at is not None
                 or (grant.expires_at is not None and aware(grant.expires_at) <= now)
-                or not member_active(session, grant)
+                or account_status != AccountStatus.ACTIVE
+                or membership_id is None
             ):
                 return invalid
             if not self._policy.deployment_enabled():
                 return KnowledgeAgentAuthFailure(404, "agent_access_unavailable")
-            if not self._policy.workspace_enabled_in(session, grant.tenant_id):
+            # A workspace without a settings row allows agents.
+            if workspace_enabled is not None and not workspace_enabled:
                 return KnowledgeAgentAuthFailure(403, "agent_access_disabled")
             last_used = aware(grant.last_used_at)
             if last_used is None or now - last_used > _TOUCH_INTERVAL:
                 grant.last_used_at = now
-                if row is not None:
-                    row.last_used_at = now
-            client_name = grant.name
-            if grant.client_ref:
-                client_name = (
-                    session.scalar(
-                        sa.select(KnowledgeAgentClient.name).where(KnowledgeAgentClient.id == grant.client_ref)
-                    )
-                    or grant.name
-                )
+                row.last_used_at = now
+            client_name = registered_name or grant.name
             space_ids = tuple(
                 session.scalars(
                     sa.select(KnowledgeAgentGrantSpace.control_space_id).where(
