@@ -3119,7 +3119,55 @@ class TestDatasetServiceDocumentCases:
             assert dataset.data_source_type == "upload_file"
             assert documents == [updated_document]
             assert batch == "batch-existing"
-            update_document.assert_called_once_with(dataset, knowledge_config, account_context, session=sqlite_session)
+            update_document.assert_called_once_with(
+                dataset,
+                knowledge_config,
+                account_context,
+                dataset_process_rule=None,
+                created_from=DocumentCreatedFrom.WEB,
+                session=sqlite_session,
+            )
+
+        @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+        def test_save_document_with_dataset_id_preserves_created_from_when_updating_existing_document(
+            self, account_context: _dataset_service_document_Account, sqlite_session: Session
+        ) -> None:
+            dataset = _dataset_row(data_source_type=DataSourceType.UPLOAD_FILE)
+            document = _document_row(document_id="doc-1")
+            upload_file = _upload_file(file_id="file-2", name="updated.txt")
+            sqlite_session.add_all([dataset, document, upload_file])
+            sqlite_session.commit()
+
+            knowledge_config = _make_upload_knowledge_config(
+                original_document_id="doc-1",
+                file_ids=["file-2"],
+            )
+            knowledge_config.name = "updated.txt"
+
+            with (
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.FeatureService.get_features", return_value=_make_features()
+                ),
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.document_indexing_update_task.delay"
+                ) as update_delay,
+            ):
+                documents, batch = _dataset_service_document_DocumentService.save_document_with_dataset_id(
+                    dataset,
+                    knowledge_config,
+                    account_context,
+                    created_from=DocumentCreatedFrom.API,
+                    session=sqlite_session,
+                )
+
+            assert [doc.id for doc in documents] == ["doc-1"]
+            assert batch == "batch-1"
+            assert documents[0].created_from == DocumentCreatedFrom.API
+            sqlite_session.expire_all()
+            persisted = sqlite_session.get(_dataset_service_document_Document, "doc-1")
+            assert persisted is not None
+            assert persisted.created_from == DocumentCreatedFrom.API
+            update_delay.assert_called_once_with("dataset-1", "doc-1")
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         def test_save_document_with_dataset_id_requires_data_source_for_new_documents(
