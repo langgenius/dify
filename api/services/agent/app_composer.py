@@ -5,7 +5,6 @@ from typing import Protocol
 
 from machinery.context import RequestContext
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids
 from models.agent_soul_state import agent_soul_has_model, backfill_cli_tool_ids
 from services.agent.app_composer_store import (
     AgentAppComposerStore,
@@ -93,7 +92,7 @@ class AgentAppComposer:
 
     def _validate_datasets(self, tenant_id: str, soul: AgentSoulConfig) -> None:
         """Reject missing or foreign datasets when validating or publishing a configuration."""
-        ids = list_agent_soul_knowledge_dataset_ids(soul)
+        ids = soul.knowledge.dataset_ids()
         if ids:
             missing = self._store.missing_composer_datasets(tenant_id=tenant_id, dataset_ids=ids)
             if missing:

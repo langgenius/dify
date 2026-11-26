@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, AlertActions, AlertTitle } from '@langgenius/dify-ui/alert'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -37,9 +37,9 @@ export function ArchivedLogsNotice() {
     return null
 
   return (
-    <Alert type="info" className="mb-3 shrink-0">
-      <AlertTitle>{t(($) => $['archives.notice.description'], { ns: 'appLog' })}</AlertTitle>
-      <AlertActions>
+    <Alert type="info" className="mb-3 shrink-0 items-center">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+        <AlertTitle>{t(($) => $['archives.notice.description'], { ns: 'appLog' })}</AlertTitle>
         <Button
           size="small"
           variant="primary"
@@ -47,7 +47,7 @@ export function ArchivedLogsNotice() {
         >
           {t(($) => $['archives.notice.action'], { ns: 'appLog' })}
         </Button>
-      </AlertActions>
+      </div>
     </Alert>
   )
 }

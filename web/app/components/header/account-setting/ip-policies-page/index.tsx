@@ -1,9 +1,14 @@
 'use client'
 
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { IpPolicySource } from '@/features/network-access/analytics'
+import type { DialogChangeEventDetails } from '@langgenius/dify-ui/dialog'
+import type { DeletePolicyPayload, PolicyDialogPayload } from './policy-dialog-payload'
+import type { IpPolicyFormContext } from '@/features/network-access/analytics'
+import type { IpPolicyDialogSubmit } from '@/features/network-access/policy-editor'
 import type { IpPolicyFormSession } from '@/features/network-access/policy-editor/policy-form-analytics'
+import { createAlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -14,9 +19,8 @@ import {
 import { isDefinedError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import Image from 'next/image'
 import { useQueryState } from 'nuqs'
-import { useEffect, useId, useRef, useState } from 'react'
+import { Suspense, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
@@ -29,9 +33,13 @@ import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
 } from '@/features/network-access/permissions'
-import { IpPolicyDialog } from '@/features/network-access/policy-editor'
-import { startIpPolicyForm } from '@/features/network-access/policy-editor/policy-form-analytics'
+import { IpPolicyDialogContent, IpPolicyForm } from '@/features/network-access/policy-editor'
+import {
+  recordPolicyValidation,
+  startIpPolicyForm,
+} from '@/features/network-access/policy-editor/policy-form-analytics'
 import { consoleQuery } from '@/service/console'
+import { DeletePolicyDialog } from './delete-policy-dialog'
 import {
   policyActionsColClassName,
   policyIpEntriesColClassName,
@@ -42,27 +50,72 @@ import {
   policyUsedByColClassName,
 } from './policy-item'
 
-type DialogRequest =
-  | { mode: 'create' }
-  | { mode: 'edit' | 'view'; group: NetworkAccessGroupResponse }
-  | null
-type DialogState = (NonNullable<DialogRequest> & { analytics: IpPolicyFormSession }) | null
+type PolicyRecovery = {
+  group?: NetworkAccessGroupResponse
+  status: 'loading' | 'failed' | 'ready'
+}
+
+type EditPolicySessionProps = {
+  request: PolicyDialogPayload
+  recovery?: PolicyRecovery
+  canMutate: boolean
+  isSaving: boolean
+  onRetry: (groupId: string) => void
+  onValidateEntries: (entries: readonly string[]) => void
+  onSubmit: (group: NetworkAccessGroupResponse, input: IpPolicyDialogSubmit) => void
+}
+
+function EditPolicySession({
+  request,
+  recovery,
+  canMutate,
+  isSaving,
+  onRetry,
+  onValidateEntries,
+  onSubmit,
+}: EditPolicySessionProps) {
+  // List refetches can update a detached trigger's payload while the form is open.
+  const [initialRequest] = useState(request)
+  const group = recovery?.group ?? initialRequest.group
+  return (
+    <IpPolicyForm
+      key={group.version}
+      mode={canMutate ? initialRequest.mode : 'view'}
+      initialName={group.name}
+      initialEntries={group.allowed_cidrs}
+      usedByCount={group.used_by_count}
+      referencedApps={group.apps}
+      isPending={isSaving || recovery?.status === 'loading'}
+      dismissDisabled={isSaving}
+      recoveryError={recovery?.status === 'failed'}
+      onRetryRecovery={() => onRetry(group.id)}
+      onValidateEntries={onValidateEntries}
+      onSubmit={(input) => onSubmit(group, input)}
+    />
+  )
+}
 
 function IpPoliciesListSkeleton() {
-  const { t } = useTranslation(['common', 'deployments'])
+  const { t } = useTranslation(['common'])
 
   return (
-    <div role="status" aria-label={t(($) => $.loading, { ns: 'common' })}>
+    <div role="progressbar" aria-label={t(($) => $.loading, { ns: 'common' })}>
       {Array.from({ length: 2 }, (_, index) => (
         <div key={index} className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
           <SkeletonContainer className="h-4 min-w-0 flex-1">
             <SkeletonRow>
-              <SkeletonRectangle className="h-4 w-1/2 animate-pulse" />
+              <SkeletonRectangle className="h-4 w-1/2 motion-safe:animate-pulse" />
             </SkeletonRow>
           </SkeletonContainer>
-          <SkeletonRectangle className={`${policyIpEntriesColClassName} h-4 animate-pulse`} />
-          <SkeletonRectangle className={`${policyUsedByColClassName} h-4 animate-pulse`} />
-          <SkeletonRectangle className={`${policyUpdatedColClassName} h-4 animate-pulse`} />
+          <SkeletonRectangle
+            className={`${policyIpEntriesColClassName} h-4 motion-safe:animate-pulse`}
+          />
+          <SkeletonRectangle
+            className={`${policyUsedByColClassName} h-4 motion-safe:animate-pulse`}
+          />
+          <SkeletonRectangle
+            className={`${policyUpdatedColClassName} h-4 motion-safe:animate-pulse`}
+          />
           <div className={policyActionsColClassName} />
         </div>
       ))}
@@ -70,9 +123,18 @@ function IpPoliciesListSkeleton() {
   )
 }
 
+function IpPoliciesStatusMessage({ reason }: { reason: 'error' | 'read-only' }) {
+  const { t } = useTranslation(['deployments'])
+
+  return reason === 'error'
+    ? t(($) => $['common.loadFailed'], { ns: 'deployments' })
+    : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })
+}
+
 export default function IpPoliciesPage() {
-  const { t } = useTranslation(['common', 'deployments'])
+  const { t } = useTranslation(['common'])
   const titleId = useId()
+  const titleRef = useRef<HTMLHeadingElement>(null)
   const queryClient = useQueryClient()
   const { plan } = useAtomValue(currentWorkspaceAtom)
   const canReadPolicies = useAtomValue(canReadNetworkAccessAtom)
@@ -83,21 +145,27 @@ export default function IpPoliciesPage() {
     retry: false,
   })
   const { data, isPending, isError } = useQuery(groupsQuery)
+  // Fail offline saves instead of queueing a write behind a locked dialog.
   const createGroup = useMutation(
-    consoleQuery.workspaces.current.networkAccessGroups.post.mutationOptions(),
+    consoleQuery.workspaces.current.networkAccessGroups.post.mutationOptions({
+      networkMode: 'always',
+    }),
   )
   const updateGroup = useMutation(
-    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.put.mutationOptions(),
+    consoleQuery.workspaces.current.networkAccessGroups.byGroupId.put.mutationOptions({
+      networkMode: 'always',
+    }),
   )
-  const [dialogState, setDialogState] = useState<DialogState>(null)
-  const dialogSessionRef = useRef(0)
-  const [isRecovering, setIsRecovering] = useState(false)
-  const [recoveryError, setRecoveryError] = useState(false)
+  const [createDialog] = useState(() => createDialogHandle())
+  const [deleteDialog] = useState(() => createAlertDialogHandle<DeletePolicyPayload>())
+  const [policyDialog] = useState(() => createDialogHandle<PolicyDialogPayload>())
+  const [recovery, setRecovery] = useState<PolicyRecovery>()
+  const createButtonRef = useRef<HTMLButtonElement>(null)
+  const formAnalyticsRef = useRef<IpPolicyFormSession | null>(null)
   const groups = data?.groups ?? []
   const isEmpty = !isPending && !isError && groups.length === 0
   const entitled = data?.entitled === true
   const canMutate = canManagePolicies && entitled
-  const selectedGroup = dialogState && dialogState.mode !== 'create' ? dialogState.group : null
   const isSaving = createGroup.isPending || updateGroup.isPending
   const viewedRef = useRef(false)
   useEffect(() => {
@@ -106,31 +174,9 @@ export default function IpPoliciesPage() {
     trackNetworkAccessEvent('ip_policy_interaction', { action: 'settings_tab_viewed' })
   }, [canReadPolicies])
 
-  const openDialog = (
-    next: DialogRequest,
-    source: Extract<IpPolicySource, `list_${string}`> = 'list_row',
-  ) => {
-    dialogSessionRef.current += 1
-    setIsRecovering(false)
-    setRecoveryError(false)
-    setDialogState(
-      next
-        ? {
-            ...next,
-            analytics: startIpPolicyForm({
-              mode: next.mode,
-              source,
-              ...(next.mode === 'create' ? {} : { policy_id: next.group.id }),
-            }),
-          }
-        : null,
-    )
-  }
-
-  const refreshGroupsAfterConflict = async (groupId: string, session: number) => {
-    if (dialogSessionRef.current !== session) return
-    setIsRecovering(true)
-    setRecoveryError(false)
+  const refreshGroupsAfterConflict = async (groupId: string, session: IpPolicyFormSession) => {
+    if (formAnalyticsRef.current !== session) return
+    setRecovery((current) => ({ ...current, status: 'loading' }))
     try {
       const refreshed = await queryClient.query(
         consoleQuery.workspaces.current.networkAccessGroups.get.queryOptions({
@@ -138,31 +184,152 @@ export default function IpPoliciesPage() {
           retry: false,
         }),
       )
-      if (dialogSessionRef.current !== session) return
+      if (formAnalyticsRef.current !== session) return
       const nextGroup = refreshed.groups.find((group) => group.id === groupId)
-      setDialogState((current) =>
-        current?.mode === 'edit' && current.group.id === groupId
-          ? nextGroup
-            ? { ...current, group: nextGroup }
-            : null
-          : current,
-      )
+      if (nextGroup) setRecovery({ group: nextGroup, status: 'ready' })
+      else policyDialog.close()
     } catch {
-      if (dialogSessionRef.current === session) setRecoveryError(true)
-    } finally {
-      if (dialogSessionRef.current === session) setIsRecovering(false)
+      if (formAnalyticsRef.current === session)
+        setRecovery((current) => ({ ...current, status: 'failed' }))
     }
   }
 
-  const handleOpenCreate = (
-    source: Extract<IpPolicySource, 'list_add_button' | 'list_empty_state'>,
+  const handleFormOpen = (context: IpPolicyFormContext) => {
+    formAnalyticsRef.current = startIpPolicyForm(context)
+  }
+
+  const handleValidateEntries = (entries: readonly string[]) => {
+    if (formAnalyticsRef.current) recordPolicyValidation(formAnalyticsRef.current, entries)
+  }
+
+  const handleDialogOpenChange = (
+    open: boolean,
+    details: DialogChangeEventDetails,
+    isSubmitting: boolean,
   ) => {
-    if (!canManagePolicies || isPending || isError) return
-    if (!entitled) {
-      void setPricing('open')
+    if (!open && isSubmitting && details.reason !== 'imperative-action') {
+      details.cancel()
       return
     }
-    openDialog({ mode: 'create' }, source)
+    if (open) setRecovery(undefined)
+    else formAnalyticsRef.current = null
+  }
+
+  const renderCreateButton = (source: 'list_add_button' | 'list_empty_state') => {
+    const isEmptyAction = source === 'list_empty_state'
+    const content = (
+      <>
+        <span aria-hidden className="i-ri-add-line size-4" />
+        {isEmptyAction
+          ? t(($) => $['settings.ipPolicyEmptyCreate'], { ns: 'common' })
+          : t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
+      </>
+    )
+    const size = isEmptyAction ? undefined : 'small'
+    if (!entitled) {
+      return (
+        <Button
+          variant="primary"
+          size={size}
+          onClick={() => {
+            void setPricing('open')
+          }}
+        >
+          {content}
+        </Button>
+      )
+    }
+    return (
+      <DialogTrigger
+        handle={createDialog}
+        onClick={() => handleFormOpen({ mode: 'create', source })}
+        render={<Button variant="primary" size={size} ref={createButtonRef} />}
+      >
+        {content}
+      </DialogTrigger>
+    )
+  }
+
+  const submitPolicy = (
+    selectedGroup: NetworkAccessGroupResponse | null,
+    payload: IpPolicyDialogSubmit,
+  ) => {
+    const formSession = formAnalyticsRef.current
+    if (!formSession || !canMutate || isSaving || (recovery && recovery.status !== 'ready')) return
+    const { mode } = formSession.context
+    const dialog = selectedGroup ? policyDialog : createDialog
+    if (!dialog.isOpen || mode === 'view') return
+    const analytics = {
+      ...formSession.context,
+      mode,
+      entry_count: payload.allowed_cidrs.length,
+      validation_error_types: [...formSession.validationErrors],
+    }
+    const trackFailure = (error: unknown) => {
+      trackNetworkAccessEvent('ip_policy_save', {
+        ...analytics,
+        result: 'failed',
+        fail_reason: getIpPolicyFailReason(error),
+      })
+    }
+    if (selectedGroup) {
+      void updateGroup
+        .mutateAsync(
+          {
+            params: { group_id: selectedGroup.id },
+            body: {
+              name: payload.name,
+              description: selectedGroup.description ?? '',
+              allowed_cidrs: payload.allowed_cidrs,
+              expected_version: selectedGroup.version,
+            },
+          },
+          {
+            onSuccess: () => {
+              if (formAnalyticsRef.current === formSession && dialog.isOpen) dialog.close()
+            },
+            onError: (error) => {
+              if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
+              void refreshGroupsAfterConflict(selectedGroup.id, formSession)
+            },
+          },
+        )
+        .then(
+          (data) =>
+            trackNetworkAccessEvent('ip_policy_save', {
+              ...analytics,
+              result: 'success',
+              policy_id: data.group.id,
+            }),
+          trackFailure,
+        )
+      return
+    }
+
+    void createGroup
+      .mutateAsync(
+        {
+          body: {
+            name: payload.name,
+            description: '',
+            allowed_cidrs: payload.allowed_cidrs,
+          },
+        },
+        {
+          onSuccess: () => {
+            if (formAnalyticsRef.current === formSession && dialog.isOpen) dialog.close()
+          },
+        },
+      )
+      .then(
+        (data) =>
+          trackNetworkAccessEvent('ip_policy_save', {
+            ...analytics,
+            result: 'success',
+            policy_id: data.group.id,
+          }),
+        trackFailure,
+      )
   }
 
   if (!canReadPolicies) return null
@@ -171,7 +338,12 @@ export default function IpPoliciesPage() {
     <div className="@container flex flex-col gap-4">
       <div className="flex min-h-15 items-start justify-between gap-4 py-2 @max-[480px]:flex-col">
         <div className="flex min-w-0 flex-col gap-1">
-          <h2 id={titleId} className="title-2xl-semi-bold text-text-primary">
+          <h2
+            ref={titleRef}
+            tabIndex={-1}
+            id={titleId}
+            className="title-2xl-semi-bold text-text-primary"
+          >
             {t(($) => $['settings.ipPolicies'], { ns: 'common' })}
           </h2>
           <p className="system-sm-regular text-text-tertiary">
@@ -183,44 +355,40 @@ export default function IpPoliciesPage() {
             </p>
           )}
         </div>
-        {canManagePolicies && !isEmpty && (
-          <Button
-            variant="primary"
-            size="small"
-            onClick={() => handleOpenCreate('list_add_button')}
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['settings.ipPolicyAddEntry'], { ns: 'common' })}
-          </Button>
-        )}
+        {canManagePolicies &&
+          !isPending &&
+          !isError &&
+          groups.length > 0 &&
+          renderCreateButton('list_add_button')}
       </div>
 
       {isPending && <IpPoliciesListSkeleton />}
       {!isPending && isError && (
         <p className="py-10 text-center system-sm-regular text-text-tertiary">
-          {t(($) => $['common.loadFailed'], { ns: 'deployments' })}
+          <Suspense fallback={null}>
+            <IpPoliciesStatusMessage reason="error" />
+          </Suspense>
         </p>
       )}
 
       {isEmpty && (
         <div className="flex min-h-100 flex-col items-center justify-center gap-4 py-6 text-center">
-          <Image src="/illustrations/ip-policies-empty.svg" alt="" width={48} height={48} />
+          <img src="/illustrations/ip-policies-empty.svg" alt="" width={48} height={48} />
           <div className="flex w-full max-w-105 flex-col gap-2">
             <h3 className="title-xl-semi-bold leading-6 text-text-primary">
               {t(($) => $['settings.ipPolicyEmptyTitle'], { ns: 'common' })}
             </h3>
             <p className="system-sm-regular leading-5 whitespace-pre-line text-text-tertiary">
-              {canManagePolicies
-                ? t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })
-                : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })}
+              {canManagePolicies ? (
+                t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })
+              ) : (
+                <Suspense fallback={null}>
+                  <IpPoliciesStatusMessage reason="read-only" />
+                </Suspense>
+              )}
             </p>
           </div>
-          {canManagePolicies && (
-            <Button variant="primary" onClick={() => handleOpenCreate('list_empty_state')}>
-              <span aria-hidden className="i-ri-add-line size-4" />
-              {t(($) => $['settings.ipPolicyEmptyCreate'], { ns: 'common' })}
-            </Button>
-          )}
+          {canManagePolicies && renderCreateButton('list_empty_state')}
         </div>
       )}
 
@@ -260,11 +428,9 @@ export default function IpPoliciesPage() {
                     key={group.id}
                     group={group}
                     canMutate={canMutate}
-                    onView={(group) => openDialog({ mode: canMutate ? 'edit' : 'view', group })}
-                    onEdit={(group) => {
-                      if (!canMutate) return
-                      openDialog({ mode: 'edit', group }, 'list_row_menu')
-                    }}
+                    policyDialog={policyDialog}
+                    deleteDialog={deleteDialog}
+                    onFormOpen={handleFormOpen}
                   />
                 ))}
               </div>
@@ -276,113 +442,62 @@ export default function IpPoliciesPage() {
         </ScrollArea>
       )}
 
-      {dialogState && (dialogState.mode !== 'create' || canMutate) && (
-        <IpPolicyDialog
-          analyticsSession={dialogState.analytics}
-          key={selectedGroup ? `${selectedGroup.id}:${selectedGroup.version}` : 'create'}
-          mode={canMutate ? dialogState.mode : 'view'}
-          open
-          initialName={selectedGroup?.name}
-          initialEntries={selectedGroup?.allowed_cidrs}
-          usedByCount={selectedGroup?.used_by_count}
-          referencedApps={selectedGroup?.apps}
-          isPending={isSaving || isRecovering}
-          recoveryError={recoveryError}
-          onRetryRecovery={() => {
-            if (selectedGroup)
-              void refreshGroupsAfterConflict(selectedGroup.id, dialogSessionRef.current)
-          }}
-          onOpenChange={(open) => {
-            if (!open) openDialog(null)
-          }}
-          onSubmit={(payload) => {
-            if (
-              !canMutate ||
-              isSaving ||
-              isRecovering ||
-              recoveryError ||
-              dialogState.mode === 'view'
-            )
-              return
-            const session = dialogSessionRef.current
-            const analytics = {
-              ...dialogState.analytics.context,
-              mode: dialogState.mode,
-              entry_count: payload.allowed_cidrs.length,
-              validation_error_types: [...dialogState.analytics.validationErrors],
-            }
-            const trackFailure = (error: unknown) => {
-              trackNetworkAccessEvent('ip_policy_save', {
-                ...analytics,
-                result: 'failed',
-                fail_reason: getIpPolicyFailReason(error),
-              })
-            }
-            if (selectedGroup) {
-              void updateGroup
-                .mutateAsync(
-                  {
-                    params: { group_id: selectedGroup.id },
-                    body: {
-                      name: payload.name,
-                      description: selectedGroup.description ?? '',
-                      allowed_cidrs: payload.allowed_cidrs,
-                      expected_version: selectedGroup.version,
-                    },
-                  },
-                  {
-                    onSuccess: () => {
-                      if (dialogSessionRef.current === session) openDialog(null)
-                    },
-                    onError: (error) => {
-                      if (
-                        !isDefinedError(error) ||
-                        error.code !== 'network_access_version_conflict'
-                      )
-                        return
-                      void refreshGroupsAfterConflict(selectedGroup.id, session)
-                    },
-                  },
-                )
-                .then(
-                  (data) =>
-                    trackNetworkAccessEvent('ip_policy_save', {
-                      ...analytics,
-                      result: 'success',
-                      policy_id: data.group.id,
-                    }),
-                  trackFailure,
-                )
-              return
-            }
-
-            void createGroup
-              .mutateAsync(
-                {
-                  body: {
-                    name: payload.name,
-                    description: '',
-                    allowed_cidrs: payload.allowed_cidrs,
-                  },
-                },
-                {
-                  onSuccess: () => {
-                    if (dialogSessionRef.current === session) openDialog(null)
-                  },
-                },
-              )
-              .then(
-                (data) =>
-                  trackNetworkAccessEvent('ip_policy_save', {
-                    ...analytics,
-                    result: 'success',
-                    policy_id: data.group.id,
-                  }),
-                trackFailure,
-              )
-          }}
-        />
+      {canMutate && (
+        <DeletePolicyDialog dialog={deleteDialog} groups={groups} fallbackFocus={titleRef} />
       )}
+      {canMutate && (
+        <Dialog
+          handle={createDialog}
+          disablePointerDismissal
+          onOpenChange={(open, details) =>
+            handleDialogOpenChange(open, details, createGroup.isPending)
+          }
+        >
+          <IpPolicyDialogContent
+            finalFocus={() =>
+              isEmpty && queryClient.getQueryData(groupsQuery.queryKey)?.groups.length
+                ? titleRef.current
+                : (createButtonRef.current ?? titleRef.current)
+            }
+          >
+            <IpPolicyForm
+              mode="create"
+              isPending={createGroup.isPending}
+              dismissDisabled={createGroup.isPending}
+              onValidateEntries={handleValidateEntries}
+              onSubmit={(input) => submitPolicy(null, input)}
+            />
+          </IpPolicyDialogContent>
+        </Dialog>
+      )}
+      <Dialog
+        handle={policyDialog}
+        disablePointerDismissal={canMutate}
+        onOpenChange={(open, details) =>
+          handleDialogOpenChange(open, details, updateGroup.isPending)
+        }
+      >
+        {({ payload: request }) => {
+          if (!request) return null
+          return (
+            <IpPolicyDialogContent finalFocus={() => request.opener.current ?? titleRef.current}>
+              <EditPolicySession
+                request={request}
+                recovery={recovery}
+                canMutate={canMutate}
+                isSaving={updateGroup.isPending}
+                onRetry={(groupId) => {
+                  const session = formAnalyticsRef.current
+                  if (policyDialog.isOpen && session)
+                    void refreshGroupsAfterConflict(groupId, session)
+                }}
+                onValidateEntries={handleValidateEntries}
+                onSubmit={submitPolicy}
+              />
+            </IpPolicyDialogContent>
+          )
+        }}
+      </Dialog>
     </div>
   )
 }

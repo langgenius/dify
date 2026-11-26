@@ -15,16 +15,19 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
+import { selectEvaluationEntryVisible } from '@/app/components/evaluation/entry'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import { getAgentSectionAccess } from '@/features/agent-v2/acl'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 import { AgentDetailSidebarActions } from './sidebar-actions'
 
@@ -42,14 +45,21 @@ type AgentDetailNavItem = {
   href: string
   icon: string
   activeIcon: string
+  requiresPublishedAgent?: boolean
 }
-
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
     icon: 'i-custom-vender-agent-v2-configure',
     activeIcon: 'i-custom-vender-agent-v2-configure-active',
+  },
+  {
+    labelKey: 'agentDetail.sections.evaluation',
+    href: getAgentDetailPath(agentId, 'evaluation'),
+    icon: 'i-ri-flask-line',
+    activeIcon: 'i-ri-flask-fill',
+    requiresPublishedAgent: true,
   },
   {
     labelKey: 'agentDetail.sections.access',
@@ -169,6 +179,9 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
+  const { data: isEvaluationVisible = false } = useQuery(
+    consoleQuery.features.get.queryOptions({ select: selectEvaluationEntryVisible }),
+  )
 
   if (!agentId) return null
 
@@ -176,6 +189,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const sectionAccess = getAgentSectionAccess(capabilities)
   const navigation = getAgentDetailNavigation(agentId).filter(
     (item) =>
+      (item.labelKey !== 'agentDetail.sections.evaluation' || isEvaluationVisible) &&
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
 
@@ -246,6 +260,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
+            disabled={item.requiresPublishedAgent && agent?.access_ready !== true}
           />
         ))}
       </nav>

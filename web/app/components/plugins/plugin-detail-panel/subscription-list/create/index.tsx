@@ -11,6 +11,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,10 +19,10 @@ import Badge from '@/app/components/base/badge'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
-  useInitiateTriggerOAuth,
-  useTriggerOAuthConfig,
-  useTriggerProviderInfo,
-} from '@/service/use-triggers'
+  initiateTriggerOAuthMutationOptions,
+  triggerOAuthConfigQueryOptions,
+  triggerProviderInfoQueryOptions,
+} from '@/service/trigger-queries'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -62,16 +63,18 @@ export const CreateSubscriptionButton = ({
   const detail = usePluginStore((state) => state.detail)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
+  const { data: providerInfo } = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
   const supportedMethods = useMemo(
     () => providerInfo?.supported_creation_methods || [],
     [providerInfo?.supported_creation_methods],
   )
-  const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(
-    detail?.provider || '',
-    supportedMethods.includes(SupportedCreationMethods.OAUTH),
+  const { data: oauthConfig, refetch: refetchOAuthConfig } = useQuery(
+    triggerOAuthConfigQueryOptions(
+      detail?.provider || '',
+      supportedMethods.includes(SupportedCreationMethods.OAUTH),
+    ),
   )
-  const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
+  const { mutate: initiateOAuth } = useMutation(initiateTriggerOAuthMutationOptions())
 
   const methodType = supportedMethods.length === 1 ? supportedMethods[0] : DEFAULT_METHOD
 
@@ -148,7 +151,7 @@ export const CreateSubscriptionButton = ({
         value: SupportedCreationMethods.OAUTH,
         label: t(($) => $['subscription.addType.options.oauth.title'], { ns: 'pluginTrigger' }),
         tag: !showCustomBadge ? null : (
-          <Badge className="mr-0.5 ml-1">{t(($) => $['auth.custom'], { ns: 'plugin' })}</Badge>
+          <Badge className="ms-1 me-0.5">{t(($) => $['auth.custom'], { ns: 'plugin' })}</Badge>
         ),
         extra: (
           <Tooltip>
@@ -189,7 +192,6 @@ export const CreateSubscriptionButton = ({
               aria-label={t(($) => $['subscription.addType.options.manual.description'], {
                 ns: 'pluginTrigger',
               })}
-              className="size-3.5"
             />
             <InfotipContent
               aria-label={t(($) => $['subscription.addType.options.manual.description'], {
@@ -307,18 +309,18 @@ export const CreateSubscriptionButton = ({
               onClick={onClickCreate}
             >
               <div className="flex flex-1 items-center justify-center">
-                <span aria-hidden className="mr-2 i-ri-add-line size-4" />
+                <span aria-hidden className="me-2 i-ri-add-line size-4" />
                 {buttonTextMap[methodType!]}
                 {methodType === SupportedCreationMethods.OAUTH &&
                   oauthConfig?.custom_enabled &&
                   oauthConfig?.custom_configured && (
-                    <Badge className="mr-0.5 ml-1 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface">
+                    <Badge className="ms-1 me-0.5 border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface">
                       {t(($) => $['auth.custom'], { ns: 'plugin' })}
                     </Badge>
                   )}
               </div>
               {methodType === SupportedCreationMethods.OAUTH && (
-                <div className="ml-auto flex items-center">
+                <div className="ms-auto flex items-center">
                   <div className="h-4 w-px bg-text-primary-on-surface opacity-15" />
                   <Tooltip>
                     <TooltipTrigger
@@ -351,7 +353,7 @@ export const CreateSubscriptionButton = ({
                     disabled={subscriptionCount >= MAX_COUNT}
                     focusableWhenDisabled
                     className={cn(
-                      'float-right',
+                      'float-end',
                       subscriptionCount >= MAX_COUNT &&
                         shape === 'square' &&
                         'data-disabled:hover:bg-state-base-hover',
@@ -373,7 +375,7 @@ export const CreateSubscriptionButton = ({
         <SelectContent>
           {visibleOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
-              <div className="mr-8 flex grow items-center gap-1 truncate px-1">
+              <div className="me-8 flex grow items-center gap-1 truncate px-1">
                 {option.label}
                 {option.tag}
               </div>

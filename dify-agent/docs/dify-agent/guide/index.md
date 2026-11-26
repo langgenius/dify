@@ -43,7 +43,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
-| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records, event streams, cancellation intents, and idempotency claims after their last write; defaults to 2 hours. |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Retention window in seconds shared by Redis run records, event streams, cancellation intents, and idempotency claims; defaults to 2 hours. |
 | `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Soft debounce interval for compatible text deltas. Already-ready source events may continue to merge after this interval; a waiting source triggers the timed flush. Must be greater than zero; use `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED=false` to disable coalescing. |
@@ -61,7 +61,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
-| `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Gateway endpoint required by configuration. Default-Home Bindings are supported; immutable Home Snapshot operations remain unsupported. |
+| `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Gateway endpoint required by configuration. Home Snapshot support depends on the Gateway's storage configuration. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_AUTH_TOKEN` | empty | Optional `X-Inner-Api-Key` sent to the Enterprise Gateway. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT` | `30` | Enterprise control-plane timeout in seconds. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT` | `60` | Enterprise shellctl-proxy timeout in seconds. |
@@ -72,7 +72,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
-| `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` | `50` | Agent service-owned maximum Agent Stub upload size in MiB. The file-request handler factory converts it to bytes and sends it to Dify API as the required `max_size` used to sign a size-limited upload URL. |
+| `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` | `50` | Agent service-owned maximum size in MiB for Agent Stub uploads and plugin tool `BLOB` persistence. The service converts it to bytes and sends it to Dify API as the required `max_size` used to sign a size-limited upload URL. Oversized plugin blobs return a text observation without allocating an upload URL. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
 | `DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT` | `600` | Shared outbound HTTP read timeout in seconds. |
@@ -251,16 +251,22 @@ only the opaque `backend_binding_ref` resolved by Dify API. See
 [Runtime resources](../concepts/runtime-resources/index.md) for the ownership
 and lifecycle contract.
 
-Run records and event streams use the same `DIFY_AGENT_RUN_RETENTION_SECONDS`
-retention. Status writes refresh the record TTL, and event writes refresh both
-the stream TTL and the corresponding record TTL so active runs that keep
-producing events remain observable. Idempotency claims share that TTL. Event
-appends, accepted cancellation intents, and terminal success/failure/cancellation
-writes refresh a claim only when it is unowned or still belongs to the writing
-run; an older run cannot overwrite a newer owner after claim expiry. Passive
-admission replays extend neither the claim nor the run record TTL. Redis stores
-only the key digest, normalized request fingerprint, and run id for admission,
-never raw keys, layer Config, prompts, snapshots, or credentials.
+Run records, event streams, and pending cancellation intents share the same
+`DIFY_AGENT_RUN_RETENTION_SECONDS` retention. Status writes refresh the record
+TTL, and event writes refresh both the stream TTL and the corresponding record
+TTL so active runs that keep producing events remain observable. While a run is
+`running`, accepted non-terminal event appends also atomically refresh any
+existing pending cancellation intent's TTL alongside the stream and record TTLs;
+they do not create an intent when none exists. Late appends rejected after a
+terminal transition do not refresh retention.
+
+Idempotency claims share that TTL. Event appends, accepted cancellation intents,
+and terminal success/failure/cancellation writes refresh a claim only when it is
+unowned or still belongs to the writing run; an older run cannot overwrite a newer
+owner after claim expiry. Passive admission replays extend neither the claim nor
+the run record TTL. Redis stores only the key digest, normalized request
+fingerprint, and run id for admission, never raw keys, layer Config, prompts,
+snapshots, or credentials.
 
 Text deltas for the same response part and provider metadata are coalesced within a
 soft debounce/size window before being published. The debounce timer flushes

@@ -7,11 +7,21 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select
 
+from core.db.session_factory import session_factory
 from models import ToolFile, UploadFile
 from models.enums import CreatorUserRole
 
 from .protocols import FileAccessControllerProtocol
 from .scope import FileAccessScope, get_current_file_access_scope
+
+
+def require_scoped_upload_file_access(upload_file_id: str, controller: FileAccessControllerProtocol) -> None:
+    """When a file access scope is active, require the upload to exist and be visible in that scope."""
+    if controller.current_scope() is None:
+        return
+    with session_factory.create_session() as session:
+        if controller.get_upload_file(session=session, file_id=upload_file_id) is None:
+            raise ValueError(f"Upload file {upload_file_id} not found")
 
 
 class DatabaseFileAccessController(FileAccessControllerProtocol):

@@ -43,6 +43,7 @@ from services.agent.workflow_composer_gateway import (
     WorkflowComposerAppMissingError,
     WorkflowComposerSnippetMissingError,
     WorkflowComposerTarget,
+    WorkflowComposerTargetKind,
 )
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -102,7 +103,7 @@ class WorkflowAgentComposerApi(Resource):
         with _workflow_composer_errors():
             result = application_services().workflow_composer.get(
                 context,
-                WorkflowComposerTarget("workflow", str(app_id)),
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 node_id=node_id,
                 snapshot_id=req_data.snapshot_id,
             )
@@ -131,7 +132,10 @@ class WorkflowAgentComposerApi(Resource):
         """Save the admitted workflow or snippet node’s configuration."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.save(
-                context, WorkflowComposerTarget("workflow", str(app_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 
@@ -158,7 +162,10 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
         """Copy the admitted node’s roster Agent into an inline Agent."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.copy_from_roster(
-                context, WorkflowComposerTarget("workflow", str(app_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 
@@ -181,7 +188,7 @@ class WorkflowAgentComposerValidateApi(Resource):
         """Validate the configuration for the admitted workflow or snippet."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.validate(
-                context, WorkflowComposerTarget("workflow", str(app_id)), payload=req_data
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)), payload=req_data
             )
         return dump_response(AgentComposerValidateResponse, result)
 
@@ -197,7 +204,7 @@ class WorkflowAgentComposerCandidatesApi(Resource):
         """Return candidates for the admitted workflow or snippet node."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.candidates(
-                context, WorkflowComposerTarget("workflow", str(app_id)), node_id=node_id
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)), node_id=node_id
             )
         return dump_response(AgentComposerCandidatesResponse, result)
 
@@ -218,7 +225,7 @@ class WorkflowAgentComposerImpactApi(Resource):
         with _workflow_composer_errors():
             result = application_services().workflow_composer.impact(
                 context,
-                WorkflowComposerTarget("workflow", str(app_id)),
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 snapshot_id=req_data.binding.current_snapshot_id if req_data.binding else None,
             )
         return dump_response(AgentComposerImpactResponse, result)
@@ -253,7 +260,10 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
         """Save the admitted workflow or snippet node’s configuration."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.save(
-                context, WorkflowComposerTarget("workflow", str(app_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 
@@ -274,7 +284,7 @@ class SnippetAgentComposerApi(Resource):
         with _workflow_composer_errors():
             result = application_services().workflow_composer.get(
                 context,
-                WorkflowComposerTarget("snippet", str(snippet_id)),
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 node_id=node_id,
                 snapshot_id=req_data.snapshot_id,
             )
@@ -303,7 +313,10 @@ class SnippetAgentComposerApi(Resource):
         """Save the admitted workflow or snippet node’s configuration."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.save(
-                context, WorkflowComposerTarget("snippet", str(snippet_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 
@@ -328,7 +341,10 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
         """Copy the admitted node’s roster Agent into an inline Agent."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.copy_from_roster(
-                context, WorkflowComposerTarget("snippet", str(snippet_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 
@@ -348,7 +364,7 @@ class SnippetAgentComposerValidateApi(Resource):
         """Validate the configuration for the admitted workflow or snippet."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.validate(
-                context, WorkflowComposerTarget("snippet", str(snippet_id)), payload=req_data
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)), payload=req_data
             )
         return dump_response(AgentComposerValidateResponse, result)
 
@@ -363,7 +379,7 @@ class SnippetAgentComposerCandidatesApi(Resource):
         """Return candidates for the admitted workflow or snippet node."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.candidates(
-                context, WorkflowComposerTarget("snippet", str(snippet_id)), node_id=node_id
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)), node_id=node_id
             )
         return dump_response(AgentComposerCandidatesResponse, result)
 
@@ -383,7 +399,7 @@ class SnippetAgentComposerImpactApi(Resource):
         with _workflow_composer_errors():
             result = application_services().workflow_composer.impact(
                 context,
-                WorkflowComposerTarget("snippet", str(snippet_id)),
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 snapshot_id=req_data.binding.current_snapshot_id if req_data.binding else None,
             )
         return dump_response(AgentComposerImpactResponse, result)
@@ -415,7 +431,10 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
         """Save the admitted workflow or snippet node’s configuration."""
         with _workflow_composer_errors():
             result = application_services().workflow_composer.save(
-                context, WorkflowComposerTarget("snippet", str(snippet_id)), node_id=node_id, payload=req_data
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
+                node_id=node_id,
+                payload=req_data,
             )
         return dump_response(WorkflowAgentComposerResponse, result)
 

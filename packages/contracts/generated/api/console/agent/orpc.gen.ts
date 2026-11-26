@@ -239,15 +239,21 @@ import {
 } from './zod.gen.ts'
 
 /**
- * Return visible Workflow-callable Agents and their current workflow usage
+ * Return visible Workflow-callable Agents matching validated tag filters
+ *
+ * Preconditions: Console admission supplies the active workspace identity.
+ * Postconditions: repeated tag_ids are validated as UUIDs and passed with
+ * name/pagination filters; the response contains detached Agent tags.
  */
 export const get = oc
   .route({
+    description:
+      'Preconditions: Console admission supplies the active workspace identity.\nPostconditions: repeated tag_ids are validated as UUIDs and passed with\nname/pagination filters; the response contains detached Agent tags.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentInviteOptions',
     path: '/agent/invite-options',
-    summary: 'Return visible Workflow-callable Agents and their current workflow usage',
+    summary: 'Return visible Workflow-callable Agents matching validated tag filters',
     tags: ['console'],
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }).optional())

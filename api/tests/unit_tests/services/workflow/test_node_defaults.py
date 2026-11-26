@@ -5,6 +5,13 @@ def test_start_gets_empty_variables() -> None:
     assert fill_node_data({"type": "start", "title": "Start"})["variables"] == []
 
 
+def test_human_input_defaults_preserve_the_node_version() -> None:
+    assert fill_node_data({"type": "human-input", "version": "1"})["delivery_methods"] == []
+    v2 = fill_node_data({"type": "human-input", "version": "2", "recipients_spec": []})
+    assert "delivery_methods" not in v2
+    assert v2["recipients_spec"] == []
+
+
 def test_http_body_gets_data() -> None:
     assert fill_node_data({"type": "http-request", "body": {"type": "json"}})["body"]["data"] == []
     assert fill_node_data({"type": "http-request"})["body"] == {"type": "none", "data": []}

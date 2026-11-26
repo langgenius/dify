@@ -1,6 +1,6 @@
 # Workspace channels
 
-The Account Settings Channels tab configures Email and IM delivery and inspects directory synchronization. It is available only to workspace managers when `NEXT_PUBLIC_ENABLE_HITL_IM` is true and `/features.im_centrally_managed` is false. The release flag defaults to false; disabling it preserves saved channels and credentials and restores the existing V1 entry points.
+The Account Settings Channels tab configures Email and IM delivery and inspects directory synchronization. It is available only to workspace managers when `NEXT_PUBLIC_ENABLE_HITL_IM` is true and `/features.im_centrally_managed` is false. The release flag defaults to true; disabling it preserves saved channels and credentials and restores the existing V1 entry points.
 
 ## Data ownership
 

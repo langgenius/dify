@@ -18,7 +18,7 @@ from models.enums import ConversationFromSource, CreatorUserRole, InvokeFrom
 from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message, MessageAnnotation
 from models.web import PinnedConversation
 from repositories.app.console_repository import find_console_app
-from repositories.conversation_lifecycle import retire_conversation
+from repositories.conversation_lifecycle import retire_conversation, retire_debug_conversation_workspaces
 from repositories.message_projection import snapshot_console_message
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
@@ -36,6 +36,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationPage,
     ConsoleConversationRecord,
     ConsoleConversationScope,
+    ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationInputValue,
     ConversationListSource,
@@ -476,6 +477,25 @@ class ConversationRepository:
                 tenant_id=app.tenant_id,
                 conversation_id=conversation.id,
                 retired_workspace_ids=retired_workspace_ids,
+            )
+
+    def retire_console_debug_agent_workspaces(
+        self, context: RequestContext, app_id: str
+    ) -> ConversationAgentWorkspaceRetirement:
+        with self._session_factory.begin() as session:
+            app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
+            if app is None:
+                raise ConsoleAppNotFoundError("App not found.")
+            if app.mode != AppMode.ADVANCED_CHAT:
+                raise ConsoleAppNotFoundError(f"App mode is not in the supported list: {[AppMode.ADVANCED_CHAT.value]}")
+            retired_agent_workspace_ids = retire_debug_conversation_workspaces(
+                session=session,
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                account_id=context.account_id,
+            )
+            return ConversationAgentWorkspaceRetirement(
+                tenant_id=app.tenant_id, retired_agent_workspace_ids=retired_agent_workspace_ids
             )
 
     def set_pinned(self, *, ref: ConversationRef, is_pinned: bool) -> None:

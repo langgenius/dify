@@ -31,6 +31,7 @@ from services.agent_config_service import (
     ConfigPushPayload,
 )
 from services.entities.agent_entities import ComposerSavePayload
+from services.evaluation_service import EvaluationService
 from tests.helpers.unit.model_factories import make_account, make_app, make_workflow
 
 
@@ -155,7 +156,9 @@ def save_composer(
             payload=payload,
         )
         return AgentSoulConfig.model_validate(state["agent_soul"])
-    state = AgentAppRepository(session_factory=factory).save_composer(
+    state = AgentAppRepository(
+        session_factory=factory, stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup
+    ).save_composer(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         account_id=target.account_id,

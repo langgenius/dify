@@ -300,10 +300,12 @@ export const useExternalToolOptions = (
         )
       },
       onSelect: () => {
-        externalToolBlockType?.onAddExternalTool?.()
+        externalToolBlockType?.onAddExternalTool?.((name) => {
+          editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${name}}}`)
+        })
       },
     })
-  }, [externalToolBlockType, t])
+  }, [editor, externalToolBlockType, t])
 
   return useMemo(() => {
     return externalToolBlockType?.show ? [...options, addOption] : []

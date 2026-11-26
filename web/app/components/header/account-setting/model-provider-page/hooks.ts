@@ -1,23 +1,21 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import type {
-  ConfigurationMethodEnum,
-  Credential,
   CustomConfigurationModelFixedFields,
-  CustomModel,
   DefaultModel,
-  ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
-import type { ModelModalType } from '@/context/modal-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useDebounce } from 'ahooks'
+import { useCallback, useMemo, useState } from 'react'
 import { useLocale } from '#i18n'
+import { useMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/hooks'
 import {
+  MARKETPLACE_PANEL_CACHE_OPTIONS,
   useMarketplacePlugins,
-  useMarketplacePluginsByCollectionId,
-} from '@/app/components/plugins/marketplace/hooks'
+} from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useModalContextSelector } from '@/context/modal-context'
+import { toastRequestError } from '@/app/query-error-toast'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useExpandModelProviderList } from './atoms'
@@ -188,9 +186,13 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.query(modelProviderDetailsQueryOptions())
+      const response = await queryClient.query({
+        ...modelProviderDetailsQueryOptions(),
+        meta: { errorToast: false },
+      })
       return response.data.find((provider) => provider.provider === providerName)
-    } catch {
+    } catch (error) {
+      toastRequestError(error)
       return undefined
     }
   }, [providerName, queryClient])
@@ -211,51 +213,41 @@ export const useMarketplaceAllPlugins = (
   const exclude = installedPluginIds
   const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
     useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
-  const {
-    plugins,
-    queryPlugins,
-    queryPluginsWithDebounced,
-    cancelQueryPluginsWithDebounced = () => {},
-    resetQueryParams = () => {},
-    isLoading: isPluginsLoading,
-  } = useMarketplacePlugins(enabled)
-
-  useEffect(() => {
-    if (!enabled) {
-      cancelQueryPluginsWithDebounced()
-      resetQueryParams()
-      return
-    }
-
-    if (searchText) {
-      queryPluginsWithDebounced({
-        query: searchText,
+  // Typing waits 500 ms before searching; clearing the search lists the whole category at once.
+  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
+  const marketplaceSearchParams = useMemo<PluginsSearchParams | undefined>(() => {
+    if (!enabled) return undefined
+    if (searchText && debouncedSearchText) {
+      return {
+        query: debouncedSearchText,
         category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
         sort_by: 'install_count',
         sort_order: 'DESC',
-      })
-    } else {
-      queryPlugins({
-        query: '',
-        category: PluginCategoryEnum.model,
-        type: 'plugin',
-        page_size: 1000,
-        exclude,
-        sort_by: 'install_count',
-        sort_order: 'DESC',
-      })
+      }
     }
-  }, [
-    cancelQueryPluginsWithDebounced,
-    enabled,
-    queryPlugins,
-    queryPluginsWithDebounced,
-    resetQueryParams,
-    searchText,
-    exclude,
-  ])
+    return {
+      query: '',
+      category: PluginCategoryEnum.model,
+      type: 'plugin',
+      page_size: 1000,
+      exclude,
+      sort_by: 'install_count',
+      sort_order: 'DESC',
+    }
+  }, [debouncedSearchText, enabled, exclude, searchText])
+  const pluginsQuery = useMarketplacePlugins(marketplaceSearchParams, {
+    keepPreviousResults: false,
+    ...MARKETPLACE_PANEL_CACHE_OPTIONS,
+  })
+  const plugins = useMemo(
+    () =>
+      pluginsQuery.data?.pages.flatMap((page) => page.plugins) ??
+      // A failed search lists nothing beyond the pinned collection.
+      (pluginsQuery.isError ? [] : undefined),
+    [pluginsQuery.data, pluginsQuery.isError],
+  )
 
   const allPlugins = useMemo(() => {
     if (!enabled) return []
@@ -283,7 +275,7 @@ export const useMarketplaceAllPlugins = (
       enabled && searchText
         ? plugins?.filter((plugin) => !exclude.includes(plugin.plugin_id))
         : allPlugins,
-    isLoading: enabled && (isCollectionLoading || isPluginsLoading),
+    isLoading: enabled && (isCollectionLoading || pluginsQuery.isLoading),
   }
 }
 
@@ -338,37 +330,5 @@ export const useRefreshModel = () => {
 
   return {
     handleRefreshModel,
-  }
-}
-
-export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector((state) => state.setShowModelModal)
-
-  return (
-    provider: ModelProvider,
-    configurationMethod: ConfigurationMethodEnum,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    extra: {
-      isModelCredential?: boolean
-      credential?: Credential
-      model?: CustomModel
-      onUpdate?: (newPayload?: ModelModalType, formValues?: Record<string, unknown>) => void
-      mode?: ModelModalModeEnum
-    } = {},
-  ) => {
-    setShowModelModal({
-      payload: {
-        currentProvider: provider,
-        currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-        isModelCredential: extra.isModelCredential,
-        credential: extra.credential,
-        model: extra.model,
-        mode: extra.mode,
-      },
-      onSaveCallback: (newPayload, formValues) => {
-        extra.onUpdate?.(newPayload, formValues)
-      },
-    })
   }
 }

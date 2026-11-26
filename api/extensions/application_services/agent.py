@@ -14,20 +14,24 @@ from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
+from repositories.knowledge_fs_app_bindings import stage_published_agent_knowledge_bindings
 from services.agent.app_composer import AgentAppComposer
+from services.agent.build_config_gateway import AgentBuildConfigGateway
+from services.agent.build_session_service import AgentBuildSessionService
+from services.agent.build_snapshot_gateway import AgentBuildSnapshotGateway
 from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
     authorize_composer_knowledge,
     authorize_published_agent_knowledge_bindings,
-    stage_published_agent_knowledge_bindings,
 )
 from services.agent.observability_contracts import AgentObservability
+from services.agent.sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
+from services.agent.sandbox_service import AgentAppSandboxService
 from services.agent.version_service import AgentVersionService
 from services.agent_config_service import AgentConfigService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
-from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
     AgentApiAccessService,
     AgentAppAccessService,
@@ -36,10 +40,6 @@ from services.app.agent_app_service import (
     AgentAppDetailService,
     AgentAppFeatureConfigService,
 )
-from services.app.agent_build_config_gateway import AgentBuildConfigGateway
-from services.app.agent_build_session_service import AgentBuildSessionService
-from services.app.agent_build_snapshot_gateway import AgentBuildSnapshotGateway
-from services.app.agent_sandbox_file_gateway import AgentSandboxFileGateway, create_sandbox_client
 from services.app.console_gateway import (
     AgentAppDetailPresentationGateway,
     inherit_agent_webapp_access,
@@ -48,8 +48,10 @@ from services.app.console_gateway import (
     notify_app_deleted,
 )
 from services.app_service import AppService
+from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
 from services.file_request_service import FileRequestService
+from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 from services.model_provider.service import ModelProviderService
 from services.rbac.agent_list_gateway import AgentListVisibilityGateway
 from services.rbac.members import MemberService
@@ -70,9 +72,11 @@ class AgentAppServices:
     config_assets: AgentConfigService
 
 
-def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
+def _can_restore_version(
+    tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan | None]
+) -> bool:
     """Require a paid plan for Cloud restores; other editions do not query billing."""
-    return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
+    return edition != DeploymentEdition.CLOUD or ((plan := get_plan(tenant_id)) is not None and plan.is_paid)
 
 
 def build_agent_app_services(
@@ -81,7 +85,11 @@ def build_agent_app_services(
     """Wire Agent App use cases to the shared repository and their post-commit effects."""
     apps = AgentAppRepository(
         session_factory=database_client,
-        stage_publication_bindings=partial(stage_published_agent_knowledge_bindings, session_maker=database_client),
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+        stage_publication_bindings=partial(
+            stage_published_agent_knowledge_bindings,
+            load_stager=lambda: get_knowledge_fs_runtime(database_client).app_bindings,
+        ),
     )
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(

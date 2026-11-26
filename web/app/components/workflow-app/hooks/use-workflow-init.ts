@@ -10,7 +10,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
@@ -88,9 +88,9 @@ export const useWorkflowInit = () => {
     workflowStore.getState().setFileUploadConfig(fileUploadConfigResponse)
   }, [fileUploadConfigResponse, workflowStore])
 
-  const handleGetInitialWorkflowData = useCallback(async () => {
+  const handleGetInitialWorkflowData = useCallback(async (): Promise<void> => {
     try {
-      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const res = await fetchAppWorkflowDraft(appDetail.id)
       const initialData = {
         ...res,
         graph: {
@@ -157,26 +157,25 @@ export const useWorkflowInit = () => {
             return
           }
 
-          consoleClient.apps.byAppId.workflows.draft
-            .post(
-              {
-                params: { app_id: appDetail.id },
-                body: {
-                  graph: initialGraph,
-                  force: true,
-                  features: {
-                    retriever_resource: { enabled: true },
-                  },
-                  conversation_variables: [],
+          try {
+            const res = await consoleClient.apps.byAppId.workflows.draft.post({
+              params: { app_id: appDetail.id },
+              body: {
+                graph: initialGraph,
+                force: true,
+                features: {
+                  retriever_resource: { enabled: true },
                 },
+                conversation_variables: [],
               },
-              { context: { silent: true } },
-            )
-            .then((res) => {
-              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-              setSyncWorkflowDraftHash(res.hash, initialGraph)
-              handleGetInitialWorkflowData()
             })
+            workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+            setSyncWorkflowDraftHash(res.hash, initialGraph)
+          } catch (saveError) {
+            if (!(saveError instanceof ORPCError) || saveError.code !== 'draft_workflow_not_sync')
+              throw saveError
+          }
+          await handleGetInitialWorkflowData()
         }
       }
     }
@@ -199,7 +198,6 @@ export const useWorkflowInit = () => {
       queryClient.query(
         consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          staleTime: 0,
         }),
       ),
       queryClient.query(appWorkflowQueryOptions(appDetail.id)),

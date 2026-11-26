@@ -13,13 +13,21 @@ import {
 } from '@/app/components/workflow/types'
 import useLastRun from '../use-last-run'
 
-const request = vi.hoisted(() => vi.fn())
-vi.mock('@/service/base', () => ({ ssePost: request }))
+const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents,
+}))
+const runIteration = vi.hoisted(() => vi.fn())
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.iteration.nodes.byNodeId.run.post': runIteration,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'spec.schemaDefinitions.get': async () => [],
       'workspaces.current.tools.builtin.get': async () => [],
@@ -132,9 +140,15 @@ describe('useLastRun', () => {
       })
     })
 
-    expect(request).toHaveBeenCalledWith(
-      'apps/flow-id/workflows/draft/iteration/nodes/iteration/run',
+    expect(streamEvents).toHaveBeenCalledWith(expect.any(Function), expect.any(Object))
+    const options = {
+      signal: new AbortController().signal,
+      context: { stream: true },
+    } as const
+    await streamEvents.mock.lastCall![0](options)
+    expect(runIteration).toHaveBeenCalledWith(
       {
+        params: { app_id: 'flow-id', node_id: 'iteration' },
         body: {
           inputs: {
             'list.#source.items#': [1, 2],
@@ -144,7 +158,7 @@ describe('useLastRun', () => {
           },
         },
       },
-      expect.any(Object),
+      options,
     )
     expect(
       result.current.flow

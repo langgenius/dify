@@ -120,7 +120,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -497,7 +497,8 @@ const RecipientsContent = ({
                           <InfotipTrigger
                             aria-label={infoName(item.label)}
                             iconVariant="information"
-                            iconSize="small"
+                            size="sm"
+                            className="m-0.5"
                           />
                           <InfotipContent side="left" align="start">
                             <InfotipTitle className="wrap-anywhere">
@@ -903,7 +904,7 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )

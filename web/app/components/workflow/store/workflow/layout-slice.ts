@@ -14,10 +14,6 @@ export type LayoutSliceShape = {
   setPreviewPanelWidth: (width: number) => void
   otherPanelWidth: number
   setOtherPanelWidth: (width: number) => void
-  bottomPanelWidth: number // min-width = 400px; default-width = auto || 480px;
-  setBottomPanelWidth: (width: number) => void
-  bottomPanelHeight: number
-  setBottomPanelHeight: (height: number) => void
   variableInspectPanelHeight: number // min-height = 120px; default-height = 320px;
   setVariableInspectPanelHeight: (height: number) => void
 }
@@ -43,12 +39,6 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = (set) => ({
   otherPanelWidth: 400,
   setOtherPanelWidth: (width) =>
     set((state) => (state.otherPanelWidth === width ? state : { otherPanelWidth: width })),
-  bottomPanelWidth: 480,
-  setBottomPanelWidth: (width) =>
-    set((state) => (state.bottomPanelWidth === width ? state : { bottomPanelWidth: width })),
-  bottomPanelHeight: 324,
-  setBottomPanelHeight: (height) =>
-    set((state) => (state.bottomPanelHeight === height ? state : { bottomPanelHeight: height })),
   variableInspectPanelHeight: 320,
   setVariableInspectPanelHeight: (height) =>
     set((state) =>

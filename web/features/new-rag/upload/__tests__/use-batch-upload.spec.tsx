@@ -15,6 +15,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 function renderUploadPolicy(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE') {
   return renderHookWithConsoleQuery(() => useKnowledgeBatchUpload(), {
+    features: null,
     systemFeatures: { deployment_edition: edition },
   })
 }

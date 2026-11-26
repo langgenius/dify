@@ -73,6 +73,8 @@ export type AgentAppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentNameConflictError = ErrorResponse & {
@@ -810,6 +812,8 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentPublicationCountsResponse = {
@@ -914,6 +918,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -947,6 +953,7 @@ export type AgentInviteOptionResponse = {
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
+  tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
   workflow_id?: string | null
@@ -992,6 +999,7 @@ export type ComposerBindingPayload = {
 export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type WorkflowNodeJobConfig = {
+  continue_agent_session?: boolean
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   metadata?: WorkflowNodeJobMetadata
@@ -999,6 +1007,7 @@ export type WorkflowNodeJobConfig = {
   output_routes?: WorkflowOutputRoutes
   previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
   schema_version?: number
+  readonly session_generation?: string
   workflow_prompt?: string
 }
 
@@ -1488,8 +1497,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -2595,6 +2604,26 @@ export type AgentAppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
+}
+
+export type ComposerSavePayloadWritable = {
+  agent_soul?: AgentSoulConfig | null
+  binding?: ComposerBindingPayload | null
+  client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
+  idempotency_key?: string | null
+  new_agent_name?: string | null
+  node_job?: WorkflowNodeJobConfigWritable | null
+  role?: string | null
+  save_strategy: ComposerSaveStrategy
+  soul_lock?: ComposerSoulLockPayload
+  variant: ComposerVariant
+  version_note?: string | null
 }
 
 export type AgentAppPartialWritable = {
@@ -2631,6 +2660,8 @@ export type AgentAppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {
@@ -2658,6 +2689,18 @@ export type AppDetailSiteResponseWritable = {
   updated_at: number
   updated_by: string | null
   use_icon_as_answer_icon: boolean
+}
+
+export type WorkflowNodeJobConfigWritable = {
+  continue_agent_session?: boolean
+  declared_outputs?: Array<DeclaredOutputConfig>
+  human_contacts?: Array<AgentHumanContactConfig>
+  metadata?: WorkflowNodeJobMetadata
+  mode?: WorkflowNodeJobMode
+  output_routes?: WorkflowOutputRoutes
+  previous_node_output_refs?: Array<WorkflowPreviousNodeOutputRef>
+  schema_version?: number
+  workflow_prompt?: string
 }
 
 export type GetAgentData = {
@@ -2730,6 +2773,7 @@ export type GetAgentInviteOptionsData = {
     keyword?: string
     limit?: number
     page?: number
+    tag_ids?: Array<string>
   }
   url: '/agent/invite-options'
 }
@@ -3061,7 +3105,7 @@ export type GetAgentByAgentIdBuildDraftResponse =
   GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
 
 export type PutAgentByAgentIdBuildDraftData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3259,7 +3303,7 @@ export type GetAgentByAgentIdComposerResponse =
   GetAgentByAgentIdComposerResponses[keyof GetAgentByAgentIdComposerResponses]
 
 export type PutAgentByAgentIdComposerData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }
@@ -3312,7 +3356,7 @@ export type GetAgentByAgentIdComposerCandidatesResponse =
   GetAgentByAgentIdComposerCandidatesResponses[keyof GetAgentByAgentIdComposerCandidatesResponses]
 
 export type PostAgentByAgentIdComposerValidateData = {
-  body: ComposerSavePayload
+  body: ComposerSavePayloadWritable
   path: {
     agent_id: string
   }

@@ -11,7 +11,7 @@ import logging
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, Protocol, cast, override
 
 import sqlalchemy as sa
 from pydantic import TypeAdapter
@@ -35,8 +35,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus
-from models.model import App, AppMode, AppModelConfig, AppStar, IconType
+from models.enums import AppStatus, TagType
+from models.evaluation import EvaluationTargetType
+from models.model import App, AppMode, AppModelConfig, AppStar, IconType, Tag, TagBinding
 from models.skill import AgentSkillBinding
 from models.workflow import Workflow
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
@@ -82,6 +83,14 @@ from services.openapi.visibility import apply_openapi_gate
 logger = logging.getLogger(__name__)
 
 _app_trace_settings_adapter = TypeAdapter(AppTraceSettings)
+
+
+class StageTargetEvaluationCleanup(Protocol):
+    """Stage target evaluation cleanup in an existing transaction, deferring external effects until commit."""
+
+    def __call__(self, *, session: Session, tenant_id: str, target_type: str, target_id: str) -> None:
+        """Delete evaluation records in the caller's session without committing it."""
+        ...
 
 
 def find_console_app(session: Session, *, workspace_id: str, app_id: str) -> App | None:
@@ -401,6 +410,12 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
     def _build_app_list_filters(
         user_id: str, tenant_id: str, params: AppListBaseParams, session: Session
     ) -> list[sa.ColumnElement[bool]]:
+        """Build tenant-owned filters, matching all tags in the resource's own pool.
+
+        Preconditions: params is transport-validated and session is caller-owned.
+        Postconditions: Agent tags match roster IDs while App tags match App IDs;
+        an unknown, foreign or wrong-type selected tag yields an empty result.
+        """
         filters = [App.tenant_id == tenant_id, App.is_universal.is_(False)]
 
         if params.mode == "workflow":
@@ -456,10 +471,23 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
             )
         if params.tag_ids and len(params.tag_ids) > 0:
             target_ids = TagRepository.get_target_ids_by_tag_ids(
-                "app", tenant_id, params.tag_ids, session, match_all=True
+                "agent" if params.mode == "agent" else "app", tenant_id, params.tag_ids, session, match_all=True
             )
             if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
+                if params.mode == "agent":
+                    # Agent tags bind canonical roster IDs, independently of Studio App tags.
+                    filters.append(
+                        App.id.in_(
+                            select(Agent.app_id).where(
+                                Agent.tenant_id == tenant_id,
+                                Agent.scope == AgentScope.ROSTER,
+                                Agent.status == AgentStatus.ACTIVE,
+                                Agent.id.in_(target_ids),
+                            )
+                        )
+                    )
+                else:
+                    filters.append(App.id.in_(target_ids))
             else:
                 return []
 
@@ -1040,10 +1068,41 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
         return app
 
     @classmethod
-    def delete_app_record(cls, app: App, *, account_id: str | None, session: Session) -> AppDeletion:
-        """Stage deletion of the resolved App and retirement of its resources in the caller transaction."""
+    def delete_app_record(
+        cls,
+        app: App,
+        *,
+        account_id: str | None,
+        session: Session,
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+    ) -> AppDeletion:
+        """Stage App deletion, evaluation cleanup and resource retirement together.
+
+        Preconditions: app belongs to the admitted tenant's write transaction
+        and the caller supplies its evaluation cleanup adapter. Postconditions:
+        archived Agents retain no Agent tag bindings, target evaluation records
+        are staged for cleanup and resources are retired in this transaction.
+        Independent Studio tags and other Agents' bindings remain unchanged.
+        Never commits or performs external effects before the caller commits.
+        """
         app_event = AppEvent(app.id, app.tenant_id, str(app.mode))
         backing_agent = cls._get_backing_agent(app, session=session)
+        if backing_agent is not None:
+            # Binding writes lock this same row before validating the active
+            # target, so archival cannot miss a concurrently inserted binding.
+            backing_agent = session.scalar(
+                select(Agent)
+                .where(Agent.tenant_id == app.tenant_id, Agent.id == backing_agent.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+        if backing_agent is not None:
+            stage_evaluation_cleanup(
+                session=session,
+                tenant_id=app.tenant_id,
+                target_type=EvaluationTargetType.AGENTS.value,
+                target_id=backing_agent.id,
+            )
         workflow_agent_ids = set(
             session.scalars(
                 select(Agent.id).where(
@@ -1084,6 +1143,15 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 )
             )
         if backing_agent is not None:
+            session.execute(
+                delete(TagBinding).where(
+                    TagBinding.tenant_id == app.tenant_id,
+                    TagBinding.target_id == backing_agent.id,
+                    TagBinding.tag_id.in_(
+                        select(Tag.id).where(Tag.tenant_id == app.tenant_id, Tag.type == TagType.AGENT)
+                    ),
+                )
+            )
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id

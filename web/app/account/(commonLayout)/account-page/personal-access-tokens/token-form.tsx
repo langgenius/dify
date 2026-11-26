@@ -1,5 +1,4 @@
 import type {
-  PersonalAccessTokenCreatedResponse,
   PersonalAccessTokenCreatePayload,
   PersonalAccessTokenDetailResponse,
   PersonalAccessTokenResourceResponse,
@@ -24,6 +23,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
@@ -78,15 +78,17 @@ export default function TokenForm({
     initial?.workspaces.filter((item) => !duplicate || item.available) ?? [],
   )
   const [expanded, setExpanded] = useState<'resources' | 'workspaces'>('resources')
-  const [created, setCreated] = useState<PersonalAccessTokenCreatedResponse | null>(null)
   const { copied, failed: copyFailed, copySecret } = useTokenClipboard()
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null)
   const create = useMutation(
-    consoleQuery.account.personalAccessTokens.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.personalAccessTokens.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
+  const created = create.data
   const update = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const pending = create.isPending || update.isPending
@@ -139,13 +141,8 @@ export default function TokenForm({
       return
     }
     if (attemptRef.current?.fingerprint !== fingerprint)
-      attemptRef.current = { fingerprint, key: crypto.randomUUID() }
-    create.mutate(
-      { body, headers: { 'Idempotency-Key': attemptRef.current.key } },
-      {
-        onSuccess: setCreated,
-      },
-    )
+      attemptRef.current = { fingerprint, key: uuid4() }
+    create.mutate({ body, headers: { 'Idempotency-Key': attemptRef.current.key } })
   }
   return (
     <>
@@ -213,7 +210,7 @@ export default function TokenForm({
           </p>
           <div className="mt-12 flex items-center justify-between gap-4">
             <a
-              href={docLink('/api-reference/guides/get-started')}
+              href={docLink('/cli/personal-access-tokens')}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-accent hover:underline"
@@ -228,7 +225,7 @@ export default function TokenForm({
         </div>
       ) : (
         <form onSubmit={submit}>
-          <div className="flex flex-col gap-5 px-6 py-3">
+          <fieldset disabled={pending} className="flex min-w-0 flex-col gap-5 px-6 py-3">
             {duplicate && (
               <p className="system-xs-regular text-text-tertiary">
                 {t(($) => $['personalAccessToken.duplicateDescription'])}
@@ -426,7 +423,7 @@ export default function TokenForm({
                 {t(($) => $['personalAccessToken.scopeRequired'])}
               </p>
             )}
-          </div>
+          </fieldset>
           {(create.isError ||
             (update.isError && !editExpired && getHttpErrorStatus(update.error) !== 409)) && (
             <p role="alert" className="px-6 system-xs-regular text-text-warning">

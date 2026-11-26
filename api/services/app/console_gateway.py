@@ -27,7 +27,12 @@ from models.agent import AgentIconType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from repositories.app.agent_runtime_app import create_backing_agent_for_app
-from repositories.app.console_repository import ConsoleAppRepository, console_app_actor, require_console_app
+from repositories.app.console_repository import (
+    ConsoleAppRepository,
+    StageTargetEvaluationCleanup,
+    console_app_actor,
+    require_console_app,
+)
 from repositories.app.response import app_record
 from services.agent.errors import AgentNameConflictError
 from services.agent.roster_package_entities import RosterAgentPackageExport
@@ -69,6 +74,7 @@ from services.entities.dsl_entities import (
     ImportStatus,
     PackagedWorkflowTool,
 )
+from services.errors.app import WorkflowHashNotEqualError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.rbac import contracts as rbac_contracts
@@ -252,9 +258,8 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
 
     @override
     def can_export_version(self, workspace_id: str) -> bool:
-        return (
-            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-            or FeatureService.get_workspace_plan(workspace_id).is_paid
+        return dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or (
+            (plan := FeatureService.get_workspace_plan(workspace_id)) is not None and plan.is_paid
         )
 
 
@@ -568,8 +573,12 @@ class AppLifecycleGateway(AppLifecycle):
     the App transaction; notification and resource cleanup run after it closes.
     """
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+    ) -> None:
+        """Prepare legacy App operations with transactional evaluation cleanup supplied by composition."""
         self._session_factory = session_factory
+        self._stage_evaluation_cleanup = stage_evaluation_cleanup
 
     @override
     def create(self, context: RequestContext, params: CreateAppParams, settings: AppCreationSettings) -> AppRecord:
@@ -600,24 +609,35 @@ class AppLifecycleGateway(AppLifecycle):
 
     @override
     def create_draft(self, context: RequestContext, app_id: str) -> None:
+        """Ensure an admitted Workflow App has a draft, keeping any competing first save."""
         with self._session_factory() as session:
             app = require_console_app(session, context, app_id)
-            WorkflowService(self._session_factory).sync_draft_workflow(
-                app_model=app,
-                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
-                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
-                unique_hash=None,
-                account=console_app_actor(session, context),
-                environment_variables=[],
-                conversation_variables=[],
-                session=session,
-            )
+            try:
+                WorkflowService(self._session_factory).sync_draft_workflow(
+                    app_model=app,
+                    graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                    features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
+                    unique_hash=None,
+                    account=console_app_actor(session, context),
+                    environment_variables=[],
+                    conversation_variables=[],
+                    session=session,
+                    serialize_creation=True,
+                )
+            except WorkflowHashNotEqualError:
+                # A hashless save only conflicts if a draft already exists.
+                return
 
     @override
     def delete(self, context: RequestContext, app_id: str) -> AppDeletion:
         with self._session_factory.begin() as session:
             app = require_console_app(session, context, app_id)
-            return ConsoleAppRepository.delete_app_record(app, account_id=context.account_id, session=session)
+            return ConsoleAppRepository.delete_app_record(
+                app,
+                account_id=context.account_id,
+                session=session,
+                stage_evaluation_cleanup=self._stage_evaluation_cleanup,
+            )
 
     @override
     def prepare_creation(self, context: RequestContext, params: CreateAppParams) -> AppCreationSettings:

@@ -1,4 +1,5 @@
 {
+  "roster.clearFilters": "フィルターをクリア",
   "roster.createAgent": "エージェントを作成",
   "roster.createDialog.description": "このワークスペースに再利用可能な Agent を作成します。",
   "roster.createDialog.title": "エージェントを作成",
@@ -24,6 +25,7 @@
   "roster.editInfo": "情報を編集",
   "roster.empty": "エージェントはまだありません",
   "roster.emptySearch": "一致するエージェントがありません",
+  "roster.emptySearchDescription": "別の検索を試すか、現在のフィルターをクリアしてください。",
   "roster.filters.all": "すべて",
   "roster.filters.createdByMe": "自分が作成",
   "roster.filters.drafts": "ドラフト",
@@ -37,7 +39,7 @@
   "roster.nodeSelector.createInlineFailed": "インラインエージェントの作成に失敗しました。更新してもう一度お試しください。",
   "roster.nodeSelector.dialogLabel": "エージェントを選択",
   "roster.nodeSelector.manageInAgentConsole": "Agents で管理",
-  "roster.nodeSelector.searchPlaceholder": "検索…",
+  "roster.nodeSelector.searchPlaceholder": "エージェントを検索…",
   "roster.nodeSelector.startFromScratch": "ゼロから始める",
   "roster.references.label": "{{name}} を使用するワークフロー",
   "roster.references.trigger": "{{name}} を使用するワークフロー",

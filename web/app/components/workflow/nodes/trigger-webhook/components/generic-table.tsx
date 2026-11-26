@@ -285,11 +285,11 @@ const GenericTable: FC<GenericTableProps> = ({
               <div
                 key={column.key}
                 className={cn(
-                  'flex h-full items-center pl-3',
+                  'flex h-full items-center ps-3',
                   column.width && column.width.startsWith('w-') ? 'shrink-0' : 'flex-1',
                   column.width,
                   // Add right border except for last column
-                  index < columns.length - 1 && 'border-r border-divider-regular',
+                  index < columns.length - 1 && 'border-e border-divider-regular',
                 )}
               >
                 {column.title}
@@ -318,17 +318,17 @@ const GenericTable: FC<GenericTableProps> = ({
                   <div
                     key={column.key}
                     className={cn(
-                      'shrink-0 pl-3 has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:ring-inset',
+                      'shrink-0 ps-3 has-[input:focus]:ring-2 has-[input:focus]:ring-state-accent-solid has-[input:focus]:ring-inset',
                       column.width,
                       // Add right border except for last column
-                      columnIndex < columns.length - 1 && 'border-r border-divider-regular',
+                      columnIndex < columns.length - 1 && 'border-e border-divider-regular',
                     )}
                   >
                     {renderCell(column, row, dataIndex)}
                   </div>
                 ))}
                 {!readonly && dataIndex !== null && hasContent && (
-                  <div className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                  <div className="absolute inset-e-2 top-1/2 -translate-y-1/2 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => removeRow(dataIndex)}

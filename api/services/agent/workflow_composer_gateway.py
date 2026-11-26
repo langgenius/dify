@@ -1,6 +1,7 @@
 """Connect Console workflow and snippet Composer routes to the shared draft runtime."""
 
-from typing import Literal, NamedTuple
+from enum import StrEnum
+from typing import NamedTuple
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,8 +23,15 @@ from services.entities.agent_entities import (
 )
 
 
+class WorkflowComposerTargetKind(StrEnum):
+    """Select the workspace-scoped owner lookup for the target ID."""
+
+    WORKFLOW = "workflow"
+    SNIPPET = "snippet"
+
+
 class WorkflowComposerTarget(NamedTuple):
-    kind: Literal["workflow", "snippet"]
+    kind: WorkflowComposerTargetKind
     id: str
 
 
@@ -51,7 +59,7 @@ class WorkflowComposerGateway:
     @staticmethod
     def _require_target(session: Session, *, tenant_id: str, target: WorkflowComposerTarget) -> str:
         """Resolve an eligible tenant App or snippet, preserving each surface's owner gate."""
-        if target.kind == "snippet":
+        if target.kind == WorkflowComposerTargetKind.SNIPPET:
             snippet_id = find_composer_snippet_id(session, tenant_id=tenant_id, snippet_id=target.id)
             if snippet_id is None:
                 raise WorkflowComposerSnippetMissingError
