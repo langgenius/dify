@@ -70,7 +70,15 @@ func TestStateEndpointsRestoreBothTreesWithRuntimeStateExcluded(t *testing.T) {
 	if err := os.Chmod(stateParent, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	srv := newSnapshotTestServer(t, cfg)
+	// State saves now take the suspension path, so the route needs a Service
+	// with a real (empty) state DB. The DB lives outside cfg.StateDir so it
+	// does not interfere with the archive fixture.
+	svc := NewService(cfg)
+	db := setupTestDB(t, t.TempDir())
+	t.Cleanup(func() { _ = db.Close() })
+	svc.db = db
+	srv := httptest.NewServer(Handler(svc, cfg))
+	t.Cleanup(srv.Close)
 
 	post := func(path, token string, body io.Reader) (*http.Response, []byte) {
 		t.Helper()

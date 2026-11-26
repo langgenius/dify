@@ -31,6 +31,7 @@ func Handler(svc *Service, config *Config) http.Handler {
 
 	{ // Snapshot handlers
 		snap := newSnapshotHandlers(config)
+		snap.service = svc
 		mux.HandleFunc("POST /v1/snapshot/save", auth(snap.handleSnapshotSave()))
 		mux.HandleFunc("POST /v1/snapshot/restore", auth(snap.handleSnapshotRestore()))
 		mux.HandleFunc("POST /v1/state/save", stateTransferAuth(config.AuthToken, snap.handleStateSave()))

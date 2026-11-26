@@ -28,6 +28,10 @@ const (
 	defaultStateTimeout = 180 * time.Second
 )
 
+// errSuspendInterrupted is the cancellation cause a job admission delivers to
+// an in-flight suspension save so the partial archive is never published.
+var errSuspendInterrupted = errors.New("suspend interrupted by job admission")
+
 type SaveRequest struct {
 	Excludes []string `json:"excludes"`
 }
@@ -48,8 +52,9 @@ func decodeSaveExcludes(body io.Reader) ([]string, error) {
 // SIZE CONTRACT: these endpoints impose no archive size limit. Consumers MUST bound
 // the streams in their own logic.
 type snapshotHandlers struct {
-	config *Config
-	gate   sync.Mutex
+	config  *Config
+	service *Service
+	gate    sync.Mutex
 }
 
 func newSnapshotHandlers(config *Config) *snapshotHandlers {
@@ -81,7 +86,7 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 			return
 		}
 
-		h.saveArchive(w, r, h.config.SnapshotTimeout, func(ctx context.Context, dst io.Writer, home string) error {
+		h.saveArchive(w, r, h.config.SnapshotTimeout, false, func(ctx context.Context, dst io.Writer, home string) error {
 			return snapshot.SaveHome(ctx, dst, home, excludes)
 		})
 	}
@@ -89,7 +94,7 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 
 func (h *snapshotHandlers) handleStateSave() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		h.saveArchive(w, r, h.stateTimeout(), func(ctx context.Context, dst io.Writer, home string) error {
+		h.saveArchive(w, r, h.stateTimeout(), true, func(ctx context.Context, dst io.Writer, home string) error {
 			return snapshot.SaveState(ctx, dst, home, h.config.WorkspaceDir, h.config.StateDir, h.config.RuntimeDir)
 		})
 	}
@@ -99,7 +104,7 @@ func (h *snapshotHandlers) stateTimeout() time.Duration {
 	return max(defaultStateTimeout, h.config.SnapshotTimeout)
 }
 
-func (h *snapshotHandlers) saveArchive(w http.ResponseWriter, r *http.Request, timeout time.Duration, save func(context.Context, io.Writer, string) error) {
+func (h *snapshotHandlers) saveArchive(w http.ResponseWriter, r *http.Request, timeout time.Duration, suspend bool, save func(context.Context, io.Writer, string) error) {
 	if !h.gate.TryLock() {
 		writeError(w, 409, "snapshot_busy", "another snapshot operation is in progress")
 		return
@@ -119,15 +124,42 @@ func (h *snapshotHandlers) saveArchive(w http.ResponseWriter, r *http.Request, t
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
+	// A suspension save must win admission before streaming: any job starting
+	// or already running makes the archive a lie.
+	if suspend {
+		if h.service == nil {
+			writeError(w, 503, "suspend_unavailable", "Suspension admission is unavailable")
+			return
+		}
+		saveCtx, interrupt := context.WithCancelCause(ctx)
+		defer interrupt(nil)
+		if err := h.service.suspend.begin(h.service.hasActiveJobs, func() { interrupt(errSuspendInterrupted) }); err != nil {
+			writeServerError(w, err)
+			return
+		}
+		defer h.service.suspend.endSave()
+		ctx = saveCtx
+	}
+
 	w.Header().Set("Trailer", TrailerSnapshotStatus+", "+TrailerSnapshotSha256+", "+TrailerSnapshotBytes)
 	w.Header().Set("Content-Type", "application/octet-stream")
 
 	hcw := &hashCountWriter{w: w, h: sha256.New()}
-	if err := save(ctx, hcw, home); err != nil {
-		log.Printf("ERROR snapshot save: %v", err)
+	saveErr := save(ctx, hcw, home)
+	if suspend && (errors.Is(context.Cause(ctx), errSuspendInterrupted) || (saveErr == nil && (ctx.Err() != nil || !h.service.suspend.seal()))) {
 		if hcw.n == 0 {
 			w.Header().Del("Trailer")
-			writeError(w, 500, "snapshot_failed", err.Error())
+			writeError(w, 409, "suspend_interrupted", "Job admission interrupted the suspension save")
+			return
+		}
+		w.Header().Set(TrailerSnapshotStatus, "suspend_interrupted")
+		return
+	}
+	if saveErr != nil {
+		log.Printf("ERROR snapshot save: %v", saveErr)
+		if hcw.n == 0 {
+			w.Header().Del("Trailer")
+			writeError(w, 500, "snapshot_failed", saveErr.Error())
 			return
 		}
 		panic(http.ErrAbortHandler)
