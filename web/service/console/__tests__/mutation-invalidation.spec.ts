@@ -185,6 +185,29 @@ describe('mutation invalidation fallback', () => {
     expect(queryFn).toHaveBeenCalledTimes(2)
   })
 
+  it('leaves a read the callbacks started after the success running', async () => {
+    const client = createClient()
+    const appsList = await mountQuery(client, appsListKey())
+    const read = createDeferred<string>()
+    const queryFn = vi.fn(() => read.promise)
+    let pending: Promise<unknown> | undefined
+
+    await mutate(client, {
+      mutationKey: renameApp(),
+      // An unobserved read started by a callback, like a policy's detached refresh.
+      onSuccess: () => {
+        tick()
+        pending = client.query({ queryKey: appDetailKey(), queryFn })
+      },
+    })
+    await settle()
+    read.resolve('fresh')
+
+    await expect(pending).resolves.toBe('fresh')
+    expect(queryFn).toHaveBeenCalledTimes(1)
+    expect(appsList).toHaveBeenCalledTimes(2)
+  })
+
   it('never refreshes a query that sets meta.invalidateAfterWrites: false', async () => {
     const client = createClient()
     const queryFn = vi.fn(async () => queryFn.mock.calls.length)

@@ -91,8 +91,10 @@ export function createMutationInvalidation() {
   const needsRefresh = (time: number) => (query: Query) => {
     if (query.meta?.invalidateAfterWrites === false) return false
     const origin = origins.get(query)
-    if (!origin || origin.dataFrom < time) return true
-    return query.state.fetchStatus === 'fetching' && origin.fetchStartedAt < time
+    // A read started after the success is already bringing current data; restarting it would
+    // also cancel an unobserved read (an imperative `query()`) without starting another.
+    if (query.state.fetchStatus === 'fetching') return !origin || origin.fetchStartedAt < time
+    return !origin || origin.dataFrom < time
   }
 
   return {
