@@ -48,6 +48,7 @@ type MutationSpec = {
   mutationKey?: MutationKey
   meta?: MutationMeta
   mutationFn?: () => Promise<unknown>
+  onMutate?: () => unknown
   onSuccess?: () => unknown
 }
 
@@ -484,4 +485,38 @@ describe('mutation invalidation fallback', () => {
       expect(published).toHaveBeenCalledTimes(calls)
     },
   )
+
+  it('does not restart a deferred read that a newer write cancelled for its optimistic value', async () => {
+    const client = createClient()
+    const firstLoad = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('server')
+    // An observed first load still running when the first write succeeds.
+    const observer = new QueryObserver(client, { queryKey: appDetailKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+
+    // A newer write stops that read and shows its value, like a comment move.
+    const second = createDeferred<string>()
+    const pending = mutate(client, {
+      mutationKey: renameApp(),
+      mutationFn: () => second.promise,
+      onMutate: async () => {
+        await client.cancelQueries({ queryKey: appDetailKey() })
+        client.setQueryData(appDetailKey(), 'optimistic')
+      },
+    })
+    await settle()
+    await settle()
+
+    expect(queryFn).toHaveBeenCalledTimes(1)
+    expect(client.getQueryData(appDetailKey())).toBe('optimistic')
+
+    // Once it settles, its own refresh reads the server again.
+    tick()
+    second.resolve('ok')
+    await pending
+    await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
+  })
 })

@@ -6,6 +6,7 @@ import type {
   QueryClient,
   QueryKey,
 } from '@tanstack/react-query'
+import { CancelledError, partialMatchKey } from '@tanstack/react-query'
 
 // The part of a mutation the fallback reads, whatever its data and error types.
 type AnyMutation = {
@@ -163,6 +164,18 @@ export function createMutationInvalidation() {
 const isUnrestartedFetch = (query: Query) =>
   query.state.fetchStatus === 'fetching' && (query.state.data === undefined || !query.isActive())
 
+// Whether a pending console mutation will refresh this query when it settles.
+function isRefreshPending(client: QueryClient, query: Query) {
+  return client
+    .getMutationCache()
+    .findAll({ status: 'pending' })
+    .some((mutation) =>
+      participantOf(mutation)?.targets.some((target) =>
+        partialMatchKey(query.queryKey, consolePathKey(target)),
+      ),
+    )
+}
+
 function refresh(client: QueryClient, targets: string[], needsRefresh: (query: Query) => boolean) {
   const cache = client.getQueryCache()
   for (const target of targets) {
@@ -170,9 +183,16 @@ function refresh(client: QueryClient, targets: string[], needsRefresh: (query: Q
     for (const query of cache.findAll({ queryKey, predicate: isUnrestartedFetch })) {
       if (!needsRefresh(query)) continue
       // Its response predates the write: once it lands, mark it stale (and refetch if observed).
-      void query.promise
-        ?.catch(() => undefined)
-        .then(() => client.invalidateQueries({ queryKey: query.queryKey, exact: true }))
+      // A read cancelled meanwhile belongs to whoever cancelled it (a newer write's `onMutate`),
+      // and a pending write that refreshes this query will do so when it settles; starting a
+      // read now could land over its optimistic value.
+      const markStale = () => {
+        if (!isRefreshPending(client, query))
+          void client.invalidateQueries({ queryKey: query.queryKey, exact: true })
+      }
+      void query.promise?.then(markStale, (error: unknown) => {
+        if (!(error instanceof CancelledError)) markStale()
+      })
     }
     void client.invalidateQueries({
       queryKey,
