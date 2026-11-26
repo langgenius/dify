@@ -528,7 +528,7 @@ def test_submit_form_by_token_rejects_invalid_date_and_datetime(
     form_repository: Callable[[HumanInputFormRecord | None], HumanInputFormSubmissionRepository],
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],
-    form_data: dict[str, object],
+    form_data: dict[str, JsonValue],
     match_pattern: str,
 ) -> None:
     definition = FormDefinition(
@@ -552,7 +552,10 @@ def test_submit_form_by_token_rejects_invalid_date_and_datetime(
             form_data=form_data,
         )
 
-    cast(MagicMock, repo.mark_submitted).assert_not_called()
+    persisted = repo.get_by_form_id(sample_form_record.form_id)
+    assert persisted is not None
+    assert persisted.status == HumanInputFormStatus.WAITING
+    assert persisted.submitted_data is None
 
 
 def test_submit_form_by_token_missing_inputs(
