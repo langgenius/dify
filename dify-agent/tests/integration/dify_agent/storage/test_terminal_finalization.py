@@ -98,6 +98,31 @@ def test_idempotent_run_admission_is_atomic_across_redis_clients(redis_url: str)
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("contents", [b"invalid JSON", b'{"idempotency_fingerprint":"fingerprint-a"}', None])
+def test_idempotent_replay_preserves_unreadable_record(redis_url: str, contents: bytes | None) -> None:
+    async def scenario() -> None:
+        async with Redis.from_url(redis_url) as client:
+            store = RedisRunStore(client, prefix="replay-test")
+            key = "retry"
+            record, _ = await store.create_run_idempotent(idempotency_key=key, request_fingerprint="fingerprint-a")
+            record_key = run_record_key(store.prefix, record.run_id)
+            claim_key = run_idempotency_key(store.prefix, hashlib.sha256(key.encode()).hexdigest())
+            if contents is None:
+                await client.delete(record_key)
+                await client.rpush(record_key, b"wrong type")
+            else:
+                await client.set(record_key, contents)
+            before = await client.dump(record_key)
+
+            with pytest.raises(IdempotencyConflictError, match="cannot be read"):
+                await store.create_run_idempotent(idempotency_key=key, request_fingerprint="fingerprint-a")
+
+            assert await client.dump(record_key) == before
+            assert await client.get(claim_key) == record.run_id.encode()
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("refresh_path", ["event", "cancel_intent", "finalize", "finalize_cancel"])
 @pytest.mark.parametrize("claim_state", ["decaying", "expired", "reclaimed"])
 def test_active_run_refresh_preserves_idempotency_claim_ownership(
