@@ -58,7 +58,7 @@ const ViewWorkflowHistory = () => {
     ({ index: diff }: ChangeHistoryEntry) => {
       if (diff === 0 || nodesReadOnly) return
       if (historyAppId) {
-        if (stepDraftHistory(historyAppId, identity, diff, 'jump')) handleSyncWorkflowDraft()
+        stepDraftHistory(historyAppId, identity, diff, 'jump', handleSyncWorkflowDraft)
         return
       }
 

@@ -10,7 +10,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import { consoleQuery } from '@/service/console'
 import {
@@ -96,25 +95,10 @@ export function usePublishController({
     await publishHandler?.(params, options)
     setPublished(true)
 
-    const socket = appId ? webSocketClient.getSocket(appId) : null
     if (appId) {
       invalidateAppWorkflow(appId)
       if (supportsMultiEnvironment) refreshAppDeploymentData(queryClient, appId)
-    } else {
-      console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-    }
-    if (socket) {
-      const timestamp = Date.now()
-      socket.emit('collaboration_event', {
-        type: 'app_publish_update',
-        data: {
-          action: 'published',
-          timestamp,
-        },
-        timestamp,
-      })
-    } else if (appId) {
-      console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+      collaborationManager.emitAppPublishUpdate(appId)
     }
 
     trackEvent('app_published_time', {

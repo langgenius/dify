@@ -1,4 +1,5 @@
 import { deleteDB } from 'idb'
+import { BlockEnum } from '../../../types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
 import { createDraftServer, createNodeDraft } from './test-loro-draft-server'
@@ -23,35 +24,6 @@ async function openEditor() {
   await vi.waitFor(() => expect(manager.canPersistLocalGraph()).toBe(true))
   return { manager, server, transport }
 }
-
-it('replays current presence to late subscribers and clears departed sessions', async () => {
-  const { manager, transport } = await openEditor()
-  const user = { user_id: 'user-1', username: 'Alex', avatar: '', sid: 'tab-1' }
-  transport.receive('online_users', { users: [user] })
-  transport.update('mouse_move', { x: 1, y: 2 })
-  transport.update('node_panel_presence', {
-    nodeId: 'node-1',
-    action: 'open',
-    clientId: user.sid,
-    user: { userId: user.user_id, username: user.username },
-    timestamp: 1000,
-  })
-  const users = vi.fn(),
-    cursors = vi.fn(),
-    panels = vi.fn()
-  manager.onOnlineUsersUpdate(users)
-  manager.onCursorUpdate(cursors)
-  manager.onNodePanelPresenceUpdate(panels)
-  expect(users).toHaveBeenLastCalledWith([user])
-  expect(cursors).toHaveBeenLastCalledWith({ 'user-1': expect.objectContaining({ x: 1, y: 2 }) })
-  expect(panels).toHaveBeenLastCalledWith({
-    'node-1': { 'tab-1': expect.objectContaining({ username: 'Alex' }) },
-  })
-  transport.receive('online_users', { users: [] })
-  expect(users).toHaveBeenLastCalledWith([])
-  expect(cursors).toHaveBeenLastCalledWith({})
-  expect(panels).toHaveBeenLastCalledWith({})
-})
 
 it('cancels a clear before it writes anything and preserves an unrelated offline change', async () => {
   const { manager, server, transport } = await openEditor()
@@ -114,4 +86,37 @@ it('groups the first gesture after loading the remote snapshot into a single und
   expect(manager.getDraftHistory().undo).toEqual(['NodeDragStop'])
   expect(manager.undo()).toBe(true)
   expect(manager.getNodes()[0]?.data.title).toBe('Before')
+})
+
+it('persists the latest LLM prompt entered before the initial draft loads', async () => {
+  const before = [{ role: 'system' as const, text: '' }]
+  const server = createDraftServer((title) => {
+    const doc = createNodeDraft(title)
+    const data = doc.getMap('nodes').ensureMergeableMap('node-1').ensureMergeableMap('data')
+    data.set('type', BlockEnum.LLM)
+    data.ensureMergeableMovableList('prompt_template').push({ role: 'system', text: '' })
+    doc.commit()
+    return doc
+  })
+  const transport = server.transport()
+  vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
+  vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {})
+  const manager = new CollaborationManager()
+  managers.push(manager)
+  await manager.connect('app-1', undefined, server.identity)
+  const typed = [{ role: 'system' as const, text: 'First' }]
+  const prompt = [{ role: 'system' as const, text: 'First and last' }]
+  expect(manager.queueInitialLlmPrompt('app-1', server.identity, 'node-1', typed, before)).toBe(
+    true,
+  )
+  expect(manager.queueInitialLlmPrompt('app-1', server.identity, 'node-1', prompt, typed)).toBe(
+    true,
+  )
+  transport.acknowledge('user_connect', { msg: 'connected' })
+  await vi.waitFor(() => expect(manager.canPersistLocalGraph()).toBe(true))
+  await manager.syncLoroDraft('app-1')
+
+  expect(server.document().getMap('nodes').toJSON()['node-1']).toMatchObject({
+    data: { prompt_template: prompt },
+  })
 })

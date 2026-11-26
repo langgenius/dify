@@ -53,7 +53,6 @@ type CollaborationEventPayload = {
   type: CollaborationUpdate['type']
   data: Record<string, unknown>
   timestamp: number
-  userId?: string
 }
 
 type InitialFieldChange = { before: unknown; after: unknown }
@@ -70,6 +69,7 @@ export class CollaborationManager {
   private currentAppId?: string
   private loroDraft?: LoroDraftIdentity
   private socket?: Socket
+  private unsubscribeSocket?: () => void
   private reactFlowStore?: ReactFlowStore
   private runtime?: CrdtRuntime
   private doc?: LoroDoc
@@ -133,7 +133,7 @@ export class CollaborationManager {
   historyWillClear(steps: number) {
     const direction = steps < 0 ? 'undo' : 'redo'
     const ids = new Set(this.getNodes().map((node) => node.id))
-    if (!ids.size) return false
+    if (!steps || !ids.size) return false
     for (const step of this.members[direction].slice(-Math.abs(steps)).reverse()) {
       for (const id of steps < 0 ? step.added : step.removed) ids.delete(id)
       for (const id of steps < 0 ? step.removed : step.added) ids.add(id)
@@ -156,6 +156,9 @@ export class CollaborationManager {
       this.currentAppId = appId
       this.loroDraft = identity
       this.initialLlmPrompts = new Map()
+      this.setFailure(null)
+    } else {
+      this.replaceLoroDraft(appId, identity)
     }
     this.connections.add(id)
     if (reactFlowStore) this.reactFlowStore = reactFlowStore
@@ -169,28 +172,36 @@ export class CollaborationManager {
       throw error
     }
     if (!this.connections.has(id) || this.currentAppId !== appId) return id
-    if (this.socket) {
-      if (!isEqual(this.loroDraft, identity)) this.replaceLoroDraft(appId, identity)
-      return id
-    }
+    if (this.socket) return id
     const socket = webSocketClient.connect(appId)
     this.socket = socket
     this.startDraft()
-    socket.on('connect', this.join)
-    socket.on('connect_error', () => {
+    const onConnectError = () => {
       if (!this.previouslyJoined) this.setFailure('unavailable')
-    })
-    socket.on('disconnect', (reason: string) => {
+    }
+    const onDisconnect = (reason: string) => {
       this.provider?.leave()
       this.joined = this.joining = false
       clearTimeout(this.joinRetry)
       this.eventEmitter.emit('stateChange', { isConnected: false, disconnectReason: reason })
-    })
-    socket.on('loro_draft_changed', (data) => this.provider?.pull(data))
-    socket.on('online_users', ({ users }: { users: OnlineUser[] }) =>
-      this.presence.updateUsers(users),
-    )
+    }
+    const onDraftChanged = (data: Parameters<LoroDraftProvider['pull']>[0]) =>
+      this.provider?.pull(data)
+    const onOnlineUsers = ({ users }: { users: OnlineUser[] }) => this.presence.updateUsers(users)
+    socket.on('connect', this.join)
+    socket.on('connect_error', onConnectError)
+    socket.on('disconnect', onDisconnect)
+    socket.on('loro_draft_changed', onDraftChanged)
+    socket.on('online_users', onOnlineUsers)
     socket.on('collaboration_update', this.receive)
+    this.unsubscribeSocket = () => {
+      socket.off('connect', this.join)
+      socket.off('connect_error', onConnectError)
+      socket.off('disconnect', onDisconnect)
+      socket.off('loro_draft_changed', onDraftChanged)
+      socket.off('online_users', onOnlineUsers)
+      socket.off('collaboration_update', this.receive)
+    }
     if (socket.connected) this.join()
     return id
   }
@@ -198,6 +209,12 @@ export class CollaborationManager {
   private join = () => {
     const socket = this.socket
     if (!socket?.connected || this.joining) return
+    clearTimeout(this.joinRetry)
+    if (this.joined) {
+      this.joined = false
+      this.provider?.leave()
+      this.eventEmitter.emit('stateChange', { isConnected: false })
+    }
     const sid = socket.id
     this.joining = true
     socket
@@ -265,6 +282,11 @@ export class CollaborationManager {
         this.eventEmitter.emit('graphReady', false)
         this.eventEmitter.emit('workflowUpdate', { appId, timestamp: Date.now() })
       },
+      onEmptyConfirmationRequired: () =>
+        this.guardClear(
+          () => this.getNodes().length === 0,
+          () => {},
+        ),
       onUnavailable: () => this.setFailure('session_unavailable'),
       onUnauthorized: this.join,
     })
@@ -316,21 +338,26 @@ export class CollaborationManager {
     clearTimeout(this.joinRetry)
     this.provider?.destroy()
     this.releaseDocument()
-    this.socket?.off('collaboration_update', this.receive)
+    this.unsubscribeSocket?.()
+    this.unsubscribeSocket = undefined
     if (this.currentAppId && this.socket) webSocketClient.disconnect(this.currentAppId)
     this.provider =
       this.socket =
       this.doc =
-      this.undoManager =
       this.loroDraft =
       this.currentAppId =
       this.reactFlowStore =
         undefined
     this.initialLlmPrompts = undefined
     this.confirmedEmpty = true
+    this.inGroup = false
+    this.lastInput = undefined
+    this.initializedFields.clear()
     this.joined = this.joining = this.previouslyJoined = this.ready = false
-    this.joinFailure = null
-    this.presence = new PresenceManager(this.eventEmitter)
+    this.clearUndoStack()
+    this.presence.updateUsers([])
+    this.eventEmitter.emit('stateChange', { isConnected: false })
+    this.setFailure(null)
   }
 
   private receive = (update: CollaborationUpdate) => {
@@ -362,8 +389,9 @@ export class CollaborationManager {
   }
 
   private sendCollaborationEvent(payload: CollaborationEventPayload) {
-    if (this.joined && !this.joinFailure)
-      emitWithAuthGuard(this.socket, 'collaboration_event', payload, { onUnauthorized: this.join })
+    if (!this.isConnected() || this.joinFailure) return false
+    emitWithAuthGuard(this.socket, 'collaboration_event', payload, { onUnauthorized: this.join })
+    return true
   }
 
   onJoinFailure(callback: (failure: JoinFailure | null) => void) {
@@ -384,7 +412,7 @@ export class CollaborationManager {
     return !!this.socket?.connected && this.joined
   }
   usesLoroDraft(appId: string) {
-    return this.currentAppId === appId && !!this.loroDraft
+    return this.currentAppId === appId
   }
   isDraftHistoryReady(appId: string, identity: LoroDraftIdentity) {
     return (
@@ -474,7 +502,7 @@ export class CollaborationManager {
     }
   }
 
-  setNodes = (before: Node[], after: Node[], _source?: string) => {
+  setNodes = (before: Node[], after: Node[]) => {
     if (!this.canPersistLocalGraph()) return
     const label =
       after.length > before.length
@@ -560,20 +588,18 @@ export class CollaborationManager {
       !(action === 'undo' ? undo.canUndo() : undo.canRedo())
     )
       return false
-    const changed = undo[action]()
+    if (!undo[action]()) return false
     const other = action === 'undo' ? 'redo' : 'undo'
     const membership = this.members[action].pop()
-    if (changed && membership) this.members[other].push(membership)
+    if (membership) this.members[other].push(membership)
     const labels = this.draftHistory[action]
     this.draftHistory = {
       ...this.draftHistory,
       [action]: labels.slice(0, -1),
-      [other]: changed
-        ? [...this.draftHistory[other], labels.at(-1) ?? 'NodeChange']
-        : this.draftHistory[other],
+      [other]: [...this.draftHistory[other], labels.at(-1) ?? 'NodeChange'],
     }
     this.lastInput = undefined
-    if (changed) this.refreshGraphSynchronously()
+    this.refreshGraphSynchronously()
     this.emitHistory()
     return true
   }
@@ -594,7 +620,11 @@ export class CollaborationManager {
   }
 
   replaceLoroDraft(appId: string, identity: LoroDraftIdentity) {
-    if (!this.usesLoroDraft(appId) || !this.socket || isEqual(identity, this.loroDraft))
+    if (
+      !this.usesLoroDraft(appId) ||
+      this.loroDraft?.accountId !== identity.accountId ||
+      isEqual(identity, this.loroDraft)
+    )
       return false
     const retirements = this.provider?.retirementCandidates
     this.provider?.destroy()
@@ -602,7 +632,7 @@ export class CollaborationManager {
     this.initialLlmPrompts = undefined
     this.ready = false
     this.eventEmitter.emit('graphReady', false)
-    this.startDraft(retirements)
+    if (this.socket) this.startDraft(retirements)
     return true
   }
   syncLoroDraft(appId: string, allowEmpty = false) {
@@ -659,30 +689,33 @@ export class CollaborationManager {
   }
 
   emitCursorMove(position: CursorPosition): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
-    const socket = this.socket
-    if (!socket) return
-
     this.sendCollaborationEvent({
       type: 'mouse_move',
-      userId: socket.id,
       data: { x: position.x, y: position.y },
       timestamp: Date.now(),
     })
   }
 
   emitWorkflowUpdate(appId: string): void {
-    if (this.usesLoroDraft(appId)) {
-      this.provider?.pull()
-      this.eventEmitter.emit('workflowUpdate', { appId })
-    }
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.usesLoroDraft(appId)) return
 
+    const timestamp = Date.now()
+    this.provider?.pull()
+    this.eventEmitter.emit('workflowUpdate', { appId, timestamp })
     this.sendCollaborationEvent({
       type: 'workflow_update',
-      data: { appId, timestamp: Date.now() },
-      timestamp: Date.now(),
+      data: { appId, timestamp },
+      timestamp,
+    })
+  }
+
+  emitAppPublishUpdate(appId: string) {
+    if (!this.usesLoroDraft(appId)) return
+    const timestamp = Date.now()
+    this.sendCollaborationEvent({
+      type: 'app_publish_update',
+      data: { action: 'published', timestamp },
+      timestamp,
     })
   }
 
@@ -695,26 +728,25 @@ export class CollaborationManager {
   }
 
   emitNodePanelPresence(nodeId: string, isOpen: boolean, user: NodePanelPresenceUser): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
-    const socket = this.socket
-    if (!socket || !nodeId || !user?.userId) return
+    const clientId = this.socket?.id
+    if (!clientId || !nodeId || !user.userId) return
 
     const payload: NodePanelPresenceEventData = {
       nodeId,
       action: isOpen ? 'open' : 'close',
       user,
-      clientId: socket.id as string,
+      clientId,
       timestamp: Date.now(),
     }
 
-    this.sendCollaborationEvent({
-      type: 'node_panel_presence',
-      data: payload,
-      timestamp: payload.timestamp,
-    })
-
-    this.presence.applyNodePanelPresenceUpdate(payload)
+    if (
+      this.sendCollaborationEvent({
+        type: 'node_panel_presence',
+        data: payload,
+        timestamp: payload.timestamp,
+      })
+    )
+      this.presence.applyNodePanelPresenceUpdate(payload)
   }
 
   onGraphImport(callback: (payload: { nodes: Node[]; edges: Edge[] }) => void): () => void {
@@ -762,7 +794,7 @@ export class CollaborationManager {
   }
 
   emitCommentsUpdate(appId: string): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
+    if (!this.usesLoroDraft(appId)) return
 
     this.sendCollaborationEvent({
       type: 'comments_update',
@@ -772,8 +804,6 @@ export class CollaborationManager {
   }
 
   emitHistoryAction(action: 'undo' | 'redo' | 'jump'): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
     this.sendCollaborationEvent({
       type: 'workflow_history_action',
       data: { action },
@@ -794,8 +824,6 @@ export class CollaborationManager {
   }
 
   emitRestoreIntent(data: RestoreIntentData): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
     this.sendCollaborationEvent({
       type: 'workflow_restore_intent',
       data: data as Record<string, unknown>,
@@ -804,8 +832,6 @@ export class CollaborationManager {
   }
 
   emitRestoreComplete(data: RestoreCompleteData): void {
-    if (!this.currentAppId || !webSocketClient.isConnected(this.currentAppId)) return
-
     this.sendCollaborationEvent({
       type: 'workflow_restore_complete',
       data: data as Record<string, unknown>,
@@ -836,7 +862,7 @@ export class CollaborationManager {
 
   private emitImportedGraph(graph: { nodes: Node[]; edges: Edge[] }): void {
     const local = this.reactFlowStore?.getState()
-    if (this.loroDraft && local) {
+    if (local) {
       const transient = local
         .getNodes()
         .filter((node) => !isDraftNode(node) && node.data.type !== BlockEnum.StartPlaceholder)
@@ -867,7 +893,7 @@ export class CollaborationManager {
         edges,
       }
     }
-    const hydrated = (this.loroDraft && this.reactFlowStore?.hydrateGraph?.(graph)) || graph
+    const hydrated = this.reactFlowStore?.hydrateGraph?.(graph) ?? graph
     const projected = new Map(graph.nodes.map((node) => [node.id, node.data]))
     for (const node of hydrated.nodes) inheritDraftRowIds(projected.get(node.id), node.data)
     this.eventEmitter.emit('graphImport', hydrated)
@@ -901,7 +927,7 @@ export class CollaborationManager {
       )
         nextDataRecord.selected = localNode.selected
 
-      if (this.loroDraft && localNode.selected !== undefined) nextNode.selected = localNode.selected
+      if (localNode.selected !== undefined) nextNode.selected = localNode.selected
       nextNode.data = nextData
       return nextNode
     })

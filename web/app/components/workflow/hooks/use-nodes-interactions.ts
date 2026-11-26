@@ -827,7 +827,7 @@ export const useNodesInteractions = () => {
         })
         draft.splice(currentNodeIndex, 1)
       })
-      setNodes(newNodes, true, 'nodes:perform-batch-cascade-delete')
+      setNodes(newNodes)
       const newEdges = produce(edges, (draft) => {
         return draft.filter(
           (edge) => !connectedEdges.some((connectedEdge) => connectedEdge.id === edge.id),
@@ -2389,15 +2389,13 @@ export const useNodesInteractions = () => {
     (direction: 'undo' | 'redo') => {
       if (getNodesReadOnly() || getWorkflowReadOnly()) return
       if (historyAppId) {
-        if (
-          stepDraftHistory(
-            historyAppId,
-            workflowStore.getState().loroDraft,
-            direction === 'undo' ? -1 : 1,
-            direction,
-          )
+        stepDraftHistory(
+          historyAppId,
+          workflowStore.getState().loroDraft,
+          direction === 'undo' ? -1 : 1,
+          direction,
+          handleSyncWorkflowDraft,
         )
-          handleSyncWorkflowDraft()
       } else {
         if (direction === 'undo') undo()
         else redo()

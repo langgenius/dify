@@ -11,6 +11,14 @@ function data(doc: LoroDoc): Record<string, unknown> {
   return projectDraftGraph(doc).nodes[0]!.data
 }
 
+it('persists an edit to an optional field that was still showing a hydrated default', () => {
+  const doc = seed()
+  const before = { rows: [{ text: 'Default' }], config: { format: 'json', enabled: false } }
+  const after = { rows: [{ text: 'Edited' }], config: { format: 'json', enabled: true } }
+  changeDraftData(doc, 'start', before, after)
+  expect(data(doc)).toMatchObject(after)
+})
+
 it('undoes only the local row when two editors create an optional list', () => {
   const a = seed(),
     b = a.fork(),

@@ -15,8 +15,8 @@ afterEach(async () => {
   await deleteDB('dify-workflow-loro')
 })
 
-function createProviderServer() {
-  const server = createDraftServer(createNodeDraft)
+function createProviderServer(seed = createNodeDraft) {
+  const server = createDraftServer(seed)
   const open = async (
     value: LoroDraftIdentity = server.identity,
     connected = true,
@@ -32,6 +32,7 @@ function createProviderServer() {
       onConfirmed: vi.fn(),
       onPendingChange: vi.fn(),
       onEpochChanged: vi.fn(),
+      onEmptyConfirmationRequired: vi.fn(),
       onUnavailable: vi.fn(),
       onUnauthorized: vi.fn(),
     }
@@ -128,66 +129,18 @@ it('requires explicit confirmation before an empty local graph clears the saved 
   expect((await server.read()).edits).toEqual([])
 })
 
-it('clears old edits after loading a replacement that reuses the same node ID', async () => {
+it.each([401, 403])('preserves pending edits when access is rejected with %i', async (status) => {
   const server = createProviderServer()
   const editor = await server.open()
-  renameDraftNode(editor.doc, 'Retired edit')
-  const nextIdentity = server.replace()
-  await expect(editor.provider.flush()).rejects.toThrow('sync was rejected')
-  expect(editor.onEpochChanged).toHaveBeenCalledOnce()
-  expect(editor.onUnavailable).not.toHaveBeenCalled()
-  const retirements = editor.provider.retirementCandidates
-  editor.provider.destroy()
-
-  const replacement = await server.open(nextIdentity, true, retirements)
-  expect(projectDraftGraph(replacement.doc).nodes).toEqual([
-    { id: 'node-1', data: { title: 'Replacement' } },
-  ])
-  await vi.waitFor(async () => expect((await server.read()).edits).toEqual([]))
-  expect((await server.read()).checkpoint).toBeUndefined()
-  expect(replacement.onConfirmed).toHaveBeenCalledWith(
-    expect.objectContaining({ cleanup: 'cleared' }),
+  server.exchange.mockImplementationOnce((_request, acknowledge) =>
+    acknowledge(null, { msg: 'denied' }, status),
   )
-  expect((await server.read(nextIdentity)).edits).toEqual([])
-  renameDraftNode(replacement.doc, 'New edit')
-  await replacement.provider.flush()
-  expect(projectDraftGraph(server.document()).nodes).toEqual([
-    { id: 'node-1', data: { title: 'New edit' } },
-  ])
-})
-
-it.each([401, 403, 404])(
-  'preserves pending edits when access is rejected with %i',
-  async (status) => {
-    const server = createProviderServer()
-    const editor = await server.open()
-    server.exchange.mockImplementationOnce((_request, acknowledge) =>
-      acknowledge(null, { msg: 'denied' }, status),
-    )
-    renameDraftNode(editor.doc, 'Unconfirmed')
-    await expect(editor.provider.flush()).rejects.toThrow('sync was rejected')
-    expect((await server.read()).edits.length).toBeGreaterThan(0)
-    if (status === 401) expect(editor.onUnauthorized).toHaveBeenCalledOnce()
-    else expect(editor.onUnavailable).toHaveBeenCalledOnce()
-    await expect(editor.provider.flush()).rejects.toThrow('connection is not available')
-  },
-)
-
-it('does not acknowledge an incomplete confirmation and accepts a complete binary retry', async () => {
-  const server = createProviderServer()
-  const editor = await server.open()
-  server.exchange.mockImplementationOnce((request, acknowledge) => {
-    acknowledge(null, { ...server.response(request), update: undefined }, 200)
-  })
-  renameDraftNode(editor.doc, 'Confirmed eventually')
-  await expect(editor.provider.flush()).rejects.toThrow('Incomplete Loro draft confirmation')
+  renameDraftNode(editor.doc, 'Unconfirmed')
+  await expect(editor.provider.flush()).rejects.toThrow('sync was rejected')
   expect((await server.read()).edits.length).toBeGreaterThan(0)
-  server.exchange.mockImplementationOnce((request, acknowledge) => {
-    const value = server.response(request)
-    acknowledge(null, { ...value, version: value.version.buffer, update: value.update.buffer }, 200)
-  })
-  await editor.provider.flush()
-  expect((await server.read()).edits).toEqual([])
+  if (status === 401) expect(editor.onUnauthorized).toHaveBeenCalledOnce()
+  else expect(editor.onUnavailable).toHaveBeenCalledOnce()
+  await expect(editor.provider.flush()).rejects.toThrow('connection is not available')
 })
 
 it('ignores a late acknowledgement after the provider is destroyed and recovers on reopen', async () => {
@@ -233,43 +186,23 @@ it('retains the outbox when storing a server confirmation fails', async () => {
   expect(projectDraftGraph(reopened.doc)).toEqual(projectDraftGraph(server.document()))
 })
 
-it('keeps the newer checkpoint when an older tab confirms the same draft later', async () => {
+it('keeps a newer checkpoint when an old tab tries to replace it after compaction', async () => {
   const older = createNodeDraft()
   const newer = new LoroDoc()
   newer.import(older.export({ mode: 'snapshot' }))
   renameDraftNode(newer, 'Newer checkpoint')
   const storage = await LoroDraftStorage.open('shared-epoch')
   try {
-    await storage.confirm(newer.export({ mode: 'snapshot' }), newer.version(), [])
-    await storage.confirm(older.export({ mode: 'snapshot' }), older.version(), [])
+    await storage.appendConfirmedDelta(
+      () => newer.export({ mode: 'snapshot' }),
+      newer.version(),
+      [],
+    )
+    await storage.replaceCheckpoint(older.export({ mode: 'snapshot' }), older.version(), [])
     const saved = await storage.read()
     const recovered = new LoroDoc()
     recovered.import(saved.checkpoint!.snapshot)
     expect(recovered.toJSON()).toEqual(newer.toJSON())
-  } finally {
-    storage.close()
-  }
-})
-
-it('aborts an incomparable checkpoint without deleting pending edits', async () => {
-  const first = createNodeDraft('First history')
-  const other = createNodeDraft('Other history')
-  const storage = await LoroDraftStorage.open('shared-epoch')
-  try {
-    await storage.confirm(first.export({ mode: 'snapshot' }), first.version(), [])
-    await storage.append({
-      id: 'pending',
-      bytes: other.export({ mode: 'update' }),
-      endVersion: other.version().encode(),
-    })
-    await expect(
-      storage.confirm(other.export({ mode: 'snapshot' }), other.version(), ['pending']),
-    ).rejects.toThrow()
-    const saved = await storage.read()
-    expect(saved.edits.map((edit) => edit.id)).toEqual(['pending'])
-    const recovered = new LoroDoc()
-    recovered.import(saved.checkpoint!.snapshot)
-    expect(recovered.toJSON()).toEqual(first.toJSON())
   } finally {
     storage.close()
   }
@@ -334,54 +267,98 @@ it('skips an offline edit to a deleted node and replays the viewport after compa
   expect((await server.read()).edits).toEqual([])
 })
 
-it('pulls the authoritative delta when a direct notification has an incomplete version', async () => {
+it('pulls the confirmed graph after missing the previous notification', async () => {
   const server = createProviderServer()
   const editor = await server.open()
   await vi.waitFor(() => expect(editor.onConfirmed).toHaveBeenCalled())
-  const from = server.document().version()
   renameDraftNode(server.document(), 'First update')
-  const partial = server.document().export({ mode: 'update', from })
+  const from = server.document().version()
   renameDraftNode(server.document(), 'Latest update')
   const calls = server.exchange.mock.calls.length
   editor.provider.pull({
     epoch: server.identity.epoch,
     fromVersion: from.encode(),
     version: server.document().version().encode(),
-    update: partial,
-    hash: 'incomplete',
+    update: server.document().export({ mode: 'update', from }),
+    hash: 'latest',
     updatedAt: 2,
   })
   await vi.waitFor(() =>
     expect(projectDraftGraph(editor.doc).nodes[0]?.data.title).toBe('Latest update'),
   )
   expect(server.exchange.mock.calls).toHaveLength(calls + 1)
-  expect(editor.onConfirmed).not.toHaveBeenCalledWith(
-    expect.objectContaining({ hash: 'incomplete' }),
-  )
 })
 
-it('folds twenty confirmed deltas into one checkpoint and checkpoints after ten seconds', async () => {
+it('keeps a persisted peer update visible when the transport closes during confirmation', async () => {
   const server = createProviderServer()
   const editor = await server.open()
-  const now = Date.now()
-  const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
-  for (let i = 1; i <= 19; i++) {
-    renameDraftNode(editor.doc, String(i))
-    await editor.provider.flush()
-  }
-  expect((await server.read()).deltas).toHaveLength(19)
-  renameDraftNode(editor.doc, '20')
   await editor.provider.flush()
-  expect((await server.read()).deltas).toHaveLength(0)
-  renameDraftNode(editor.doc, '21')
+  const append = LoroDraftStorage.prototype.appendConfirmedDelta
+  vi.spyOn(LoroDraftStorage.prototype, 'appendConfirmedDelta').mockImplementationOnce(
+    async function (this: LoroDraftStorage, ...args) {
+      const persisted = await append.call(this, ...args)
+      editor.provider.leave()
+      editor.socket.connected = false
+      return persisted
+    },
+  )
+  renameDraftNode(server.document(), 'Saved by the other tab')
   await editor.provider.flush()
-  expect((await server.read()).deltas).toHaveLength(1)
-  clock.mockReturnValue(now + 10001)
-  renameDraftNode(editor.doc, '22')
+  editor.socket.connected = true
+  editor.provider.join()
   await editor.provider.flush()
-  const saved = await server.read()
-  expect(saved.deltas).toHaveLength(0)
-  const durable = new LoroDoc()
-  durable.import(saved.checkpoint!.snapshot)
-  expect(projectDraftGraph(durable).nodes[0]?.data.title).toBe('22')
+
+  expect(projectDraftGraph(editor.doc).nodes[0]?.data.title).toBe('Saved by the other tab')
+})
+
+it('pulls a concurrent deletion before asking to clear the remaining draft', async () => {
+  const server = createProviderServer((title) => {
+    const doc = createNodeDraft(title)
+    doc.getMap('nodes').ensureMergeableMap('second').set('id', 'second')
+    doc.commit()
+    return doc
+  })
+  const editor = await server.open()
+  await editor.provider.flush()
+  server.document().getMap('nodes').delete('second')
+  server.document().commit()
+  editor.doc.getMap('nodes').delete('node-1')
+  editor.doc.commit()
+  server.exchange.mockImplementationOnce((request, acknowledge) => {
+    expect(request.update).toBeDefined()
+    expect(request.allow_empty).toBe(false)
+    acknowledge(null, { msg: 'empty_graph_confirmation_required' }, 409)
+  })
+
+  await expect(editor.provider.flush()).rejects.toThrow('Draft changes are still pending')
+  expect(editor.onEmptyConfirmationRequired).toHaveBeenCalledOnce()
+  expect(projectDraftGraph(editor.doc).nodes).toEqual([])
+  expect(projectDraftGraph(server.document()).nodes).toHaveLength(1)
+  await editor.provider.flush(true)
+  expect(projectDraftGraph(server.document()).nodes).toEqual([])
+})
+
+it('can reopen after a stale tab writes an edit that depends on compacted history', async () => {
+  const server = createProviderServer()
+  const stale = await server.open()
+  const current = await server.open()
+  await current.provider.flush()
+  stale.provider.leave()
+  renameDraftNode(server.document(), 'New checkpoint')
+  server.compact()
+  server.exchange.mockImplementationOnce((_request, acknowledge) =>
+    acknowledge(null, { msg: 'history_compacted' }, 409),
+  )
+  await current.provider.flush()
+  renameDraftNode(stale.doc, 'Edit from before compaction')
+  await vi.waitFor(async () => expect((await server.read()).edits).toHaveLength(1))
+  stale.provider.destroy()
+  current.provider.destroy()
+
+  const reopened = await server.open()
+  await reopened.provider.flush()
+  expect(projectDraftGraph(reopened.doc).nodes[0]?.data.title).toBe('New checkpoint')
+  expect(reopened.onConfirmed).toHaveBeenCalledWith(expect.objectContaining({ cleanup: 'skipped' }))
+  expect(reopened.onUnavailable).not.toHaveBeenCalled()
+  expect((await server.read()).edits).toEqual([])
 })

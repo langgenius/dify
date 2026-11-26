@@ -80,7 +80,7 @@ export const useSelectionInteractions = () => {
           if (dragNode) node.position = dragNode.position
         })
       })
-      setNodes(newNodes, true, 'use-selection-interactions:handleSelectionDrag')
+      setNodes(newNodes)
     },
     [collaborativeWorkflow, getNodesReadOnly, workflowStore],
   )

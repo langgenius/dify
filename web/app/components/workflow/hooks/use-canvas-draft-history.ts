@@ -9,7 +9,10 @@ const emptyHistory = { undo: [], redo: [] } as const
 
 export function useCollaborativeHistoryAppId() {
   const resource = useAtomValue(editorResourceAtom)
-  return resource.kind === 'app' && resource.collaborationEnabled ? resource.appId : undefined
+  const hasLoroDraft = useStore((s) => !!s.loroDraft)
+  return hasLoroDraft && resource.kind === 'app' && resource.collaborationEnabled
+    ? resource.appId
+    : undefined
 }
 
 export function stepDraftHistory(
@@ -17,9 +20,11 @@ export function stepDraftHistory(
   identity: LoroDraftIdentity | undefined,
   steps: number,
   action: 'undo' | 'redo' | 'jump',
+  onApplied: () => void,
 ) {
-  if (!identity || !collaborationManager.isDraftHistoryReady(appId, identity)) return
+  if (!steps || !identity || !collaborationManager.isDraftHistoryReady(appId, identity)) return
   const history = collaborationManager.getDraftHistory()
+  if (!history[steps < 0 ? 'undo' : 'redo'].length) return
   collaborationManager.guardClear(
     () => collaborationManager.historyWillClear(steps),
     () => {
@@ -33,10 +38,12 @@ export function stepDraftHistory(
         if (!(steps < 0 ? collaborationManager.undo() : collaborationManager.redo())) break
         applied++
       }
-      if (applied) collaborationManager.emitHistoryAction(action)
+      if (applied) {
+        collaborationManager.emitHistoryAction(action)
+        onApplied()
+      }
     },
   )
-  return true
 }
 
 export function useCanvasDraftHistory() {

@@ -213,7 +213,7 @@ function syncMovableList(
         Array.isArray(before[old])
       )
         syncMovableList(child, before[old], value, scaffold, initialize)
-      else if (!scaffold && (!initialize || isEqual(read(child), before[old]))) {
+      else if (!scaffold) {
         list.delete(index, 1)
         insert(list, index, value)
       }
@@ -249,7 +249,7 @@ function changeMap(
       continue
     if (Array.isArray(value) || object(value)) {
       const array = Array.isArray(value)
-      if (live === undefined && previous !== undefined && !initialize) continue
+      if (scaffold && live === undefined && previous !== undefined) continue
       const correct = array ? live instanceof LoroMovableList : live instanceof LoroMap
       if (!correct && live !== undefined) {
         if (scaffold || !isEqual(read(live), previous)) continue
@@ -259,12 +259,19 @@ function changeMap(
       if (child instanceof LoroMovableList)
         syncMovableList(
           child,
-          Array.isArray(previous) ? previous : [],
+          live !== undefined && Array.isArray(previous) ? previous : [],
           value as unknown[],
           scaffold,
           initialize,
         )
-      else changeMap(child, object(previous) ? previous : {}, value as Fields, scaffold, initialize)
+      else
+        changeMap(
+          child,
+          live !== undefined && object(previous) ? previous : {},
+          value as Fields,
+          scaffold,
+          initialize,
+        )
     } else if (!scaffold) {
       if (value === undefined) map.delete(key)
       else map.set(key, value as Value)

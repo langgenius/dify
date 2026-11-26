@@ -83,8 +83,8 @@ const ActiveHumanInputMigrationProvider = ({
   const migrationApi = useMemo(() => createHumanInputMigrationApi(), [])
 
   const replaceGraph = useCallback(
-    (graph: { nodes: Node[]; edges: Edge[] }, source: string) => {
-      collaborativeWorkflow.setNodes(graph.nodes, true, source)
+    (graph: { nodes: Node[]; edges: Edge[] }) => {
+      collaborativeWorkflow.setNodes(graph.nodes)
     },
     [collaborativeWorkflow],
   )

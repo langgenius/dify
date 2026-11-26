@@ -8,7 +8,7 @@ import type {
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { editorCollaborationEnabledAtom } from '@/app/components/workflow/editor-resource/state'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { collaborationManager } from '../core/collaboration-manager'
 import { CursorService } from '../services/cursor-service'
 
@@ -38,24 +38,30 @@ export function useCollaboration(
   const cursorServiceRef = useRef<CursorService | null>(null)
   const lastDisconnectReasonRef = useRef<string | null>(null)
   const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
-  const loroDraft = useStore((state) => state.loroDraft)
+  const workflowStore = useWorkflowStore()
+  const accountId = useStore((state) => state.loroDraft?.accountId)
+  const isEnabled = isCollaborationEnabled && canEdit && !!accountId
 
   useEffect(() => {
-    if (!appId || !isCollaborationEnabled || !canEdit || !loroDraft) {
-      Promise.resolve().then(() => {
-        setState(initialState)
+    let isUnmounted = false
+    if (!appId || !isEnabled) {
+      queueMicrotask(() => {
+        if (!isUnmounted) setState(initialState)
       })
-      return
+      return () => {
+        isUnmounted = true
+      }
     }
 
+    const identity = workflowStore.getState().loroDraft
+    if (!identity || identity.accountId !== accountId) return
     let connectionId: string | null = null
-    let isUnmounted = false
 
     if (!cursorServiceRef.current) cursorServiceRef.current = new CursorService()
 
     const initCollaboration = async () => {
       try {
-        const id = await collaborationManager.connect(appId, reactFlowStore, loroDraft)
+        const id = await collaborationManager.connect(appId, reactFlowStore, identity)
         if (isUnmounted) {
           collaborationManager.disconnect(id)
           return
@@ -75,9 +81,10 @@ export function useCollaboration(
           lastDisconnectReasonRef.current = newState.disconnectReason || newState.error || null
         if (newState.isConnected === true) lastDisconnectReasonRef.current = null
 
-        if (newState.isConnected === undefined) return
+        const { isConnected } = newState
+        if (isConnected === undefined) return
 
-        setState((prev) => ({ ...prev, isConnected: newState.isConnected ?? prev.isConnected }))
+        setState((prev) => ({ ...prev, isConnected }))
       },
     )
 
@@ -106,7 +113,7 @@ export function useCollaboration(
       cursorServiceRef.current?.stopTracking()
       if (connectionId) collaborationManager.disconnect(connectionId)
     }
-  }, [appId, canEdit, reactFlowStore, isCollaborationEnabled, loroDraft])
+  }, [appId, accountId, reactFlowStore, isEnabled, workflowStore])
 
   const prevIsConnectedRef = useRef(false)
   useEffect(() => {
@@ -115,24 +122,19 @@ export function useCollaboration(
       if (reason) console.warn('WebSocket disconnected:', reason)
       else console.warn('WebSocket disconnected.')
     }
-    prevIsConnectedRef.current = state.isConnected || false
+    prevIsConnectedRef.current = state.isConnected
   }, [state.isConnected])
 
   const startCursorTracking = (
     containerRef: React.RefObject<HTMLElement>,
     reactFlowInstance?: ReactFlowInstance,
   ) => {
-    if (!isCollaborationEnabled || !canEdit || !cursorServiceRef.current) return
-
-    if (cursorServiceRef.current) {
-      cursorServiceRef.current.startTracking(
-        containerRef,
-        (position) => {
-          collaborationManager.emitCursorMove(position)
-        },
-        reactFlowInstance,
-      )
-    }
+    if (!isEnabled) return
+    cursorServiceRef.current?.startTracking(
+      containerRef,
+      (position) => collaborationManager.emitCursorMove(position),
+      reactFlowInstance,
+    )
   }
 
   const stopCursorTracking = () => {
@@ -140,11 +142,8 @@ export function useCollaboration(
   }
 
   const result = {
-    isConnected: state.isConnected || false,
-    onlineUsers: state.onlineUsers || [],
-    cursors: state.cursors || {},
-    nodePanelPresence: state.nodePanelPresence || {},
-    isEnabled: isCollaborationEnabled && canEdit,
+    ...(isEnabled ? state : initialState),
+    isEnabled,
     startCursorTracking,
     stopCursorTracking,
   }

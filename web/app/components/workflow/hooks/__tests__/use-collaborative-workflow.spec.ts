@@ -57,18 +57,17 @@ it('updates the local graph while stripping selection state from broadcasts', as
   const { result } = setup()
   await waitFor(() => expect(result.current.getState().nodes).toHaveLength(2))
   act(() => {
-    result.current.setNodes([newNode], true, 'user-edit')
+    result.current.setNodes([newNode])
     result.current.setEdges([newEdge])
   })
   expect(result.current.getState().nodes).toMatchObject([newNode])
   expect(result.current.getState().edges).toMatchObject([newEdge])
   expect(mocks.setNodes).toHaveBeenCalledTimes(1)
-  const [before, after, source] = mocks.setNodes.mock.calls[0]!
+  const [before, after] = mocks.setNodes.mock.calls[0]!
   expect(before).toMatchObject([{ id: 'old-node', data: { title: 'Old' } }, { id: 'target' }])
   expect(after).toMatchObject([{ id: 'new-node', data: { title: 'New' } }])
   expect(before[0].data).not.toHaveProperty('selected')
   expect(after[0].data).not.toHaveProperty('selected')
-  expect(source).toBe('user-edit')
   expect(mocks.setEdges).toHaveBeenCalledTimes(1)
   const [previousEdges, nextEdges] = mocks.setEdges.mock.calls[0]!
   expect(previousEdges).toMatchObject([{ id: 'old-edge', source: 'old-node', target: 'target' }])

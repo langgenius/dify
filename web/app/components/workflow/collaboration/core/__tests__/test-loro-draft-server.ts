@@ -27,13 +27,16 @@ export function renameDraftNode(doc: LoroDoc, title: string) {
   doc.commit()
 }
 
-export function createDraftServer(seed: (title: string) => LoroDoc) {
+export function createDraftServer(
+  seed: (title: string) => LoroDoc,
+  identity = { epoch: 'epoch-1', accountId: 'editor-b' },
+  appId = 'app-1',
+) {
   let doc = seed('Before')
-  let epoch = 'epoch-1'
+  let epoch = identity.epoch
   let revision = 1
   let socketSequence = 0
-  const identity = { epoch, accountId: 'editor-b' }
-  const scope = (value = identity) => JSON.stringify([value.accountId, 'app-1', value.epoch])
+  const scope = (value = identity) => JSON.stringify([value.accountId, appId, value.epoch])
   const response = (request: Request) => {
     const before = doc.version()
     if (request.update) doc.import(request.update)
@@ -85,9 +88,9 @@ export function createDraftServer(seed: (title: string) => LoroDoc) {
       doc = new LoroDoc()
       doc.import(snapshot)
     },
-    replace: () => {
-      epoch = 'epoch-2'
-      doc = seed('Replacement')
+    replace: (nextEpoch = 'epoch-2', title = 'Replacement') => {
+      epoch = nextEpoch
+      doc = seed(title)
       revision += 1
       return { ...identity, epoch }
     },

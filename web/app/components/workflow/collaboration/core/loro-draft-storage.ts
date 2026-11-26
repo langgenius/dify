@@ -101,8 +101,10 @@ export class LoroDraftStorage {
     })
   }
 
-  confirm(snapshot: Uint8Array, version: VersionVector, coveredIds: string[]) {
-    return this.appendConfirmedDelta(() => snapshot, version, coveredIds)
+  discardEdits(ids: string[]) {
+    return this.write(async ({ store }) => {
+      await Promise.all(ids.map((id) => store.delete([this.scope, id])))
+    })
   }
 
   replaceCheckpoint(
@@ -141,8 +143,8 @@ export class LoroDraftStorage {
       const latestVersion =
         latest && 'version' in latest ? VersionVector.decode(latest.version) : undefined
       const order = latestVersion ? version.compare(latestVersion) : 1
-      if (order === undefined && !replace) throw new Error('Incomparable draft checkpoint.')
-      if (replace || order === 1 || (!delta && order === 0 && deltas.length > 0) || !previous) {
+      if (order === undefined) throw new Error('Incomparable draft checkpoint.')
+      if (order === 1 || (!delta && order === 0 && (replace || deltas.length > 0)) || !previous) {
         const compact =
           !delta ||
           !previous ||

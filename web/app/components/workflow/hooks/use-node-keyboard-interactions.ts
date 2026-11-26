@@ -101,7 +101,7 @@ export function useNodeKeyboardInteractions(onSelect: (id: string, cancel?: bool
     })
     if (!moved) return
     workflowStore.setState({ nodeAnimation: false })
-    setNodes(nextNodes, true, 'keyboard-node-movement')
+    setNodes(nextNodes)
     handleSyncWorkflowDraft()
     saveStateToHistory(
       WorkflowHistoryEvent.NodeDragStop,
