@@ -10,6 +10,7 @@ import OnlineUsers from '../../header/online-users'
 import Control from '../../operator/control'
 import { CollaborationUpgradeModal } from '../upgrade-modal'
 
+// boundary: collaboration analytics stop at the telemetry adapter.
 vi.mock('@/app/components/base/amplitude', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/app/components/base/amplitude')>()),
   trackEvent: vi.fn(),

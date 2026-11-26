@@ -13,11 +13,13 @@ import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import CollaborationDemoPage from '../page'
 
+// boundary: collaboration analytics stop at the telemetry adapter.
 vi.mock('@/app/components/base/amplitude', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/app/components/base/amplitude')>()),
   trackEvent: vi.fn(),
 }))
 
+// boundary: shorten the scripted demo so a natural finish fits a spec; playback stays real.
 vi.mock('../playback-script', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../playback-script')>()),
   demoDuration: 0.5,
