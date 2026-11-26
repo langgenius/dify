@@ -30,6 +30,90 @@ describe('Validators', () => {
   })
 
   describe('forbidBooleanProperties', () => {
+    it.each([true, false])('finds a boolean property schema inside array items: %s', (flag) => {
+      const schema = {
+        type: 'object',
+        properties: {
+          rows: {
+            type: 'array',
+            items: { type: 'object', properties: { flag } },
+          },
+        },
+      }
+
+      expect(draft07Validator(schema).valid).toBe(true)
+      expect(forbidBooleanProperties(schema)).toEqual([
+        "Error: Property 'rows.items.flag' must not be a boolean schema",
+      ])
+    })
+
+    it.each(['allOf', 'anyOf', 'oneOf'])(
+      'checks property schemas inside %s branches',
+      (keyword) => {
+        const schema = {
+          type: 'object',
+          [keyword]: [{ type: 'object', properties: { flag: false } }],
+        }
+        expect(forbidBooleanProperties(schema)).toEqual([
+          `Error: Property '${keyword}.0.flag' must not be a boolean schema`,
+        ])
+      },
+    )
+
+    it.each(['definitions', '$defs', 'dependencies', 'patternProperties'])(
+      'checks property schemas inside %s entries',
+      (keyword) => {
+        const schema = { [keyword]: { row: { type: 'object', properties: { flag: true } } } }
+        expect(forbidBooleanProperties(schema)).toEqual([
+          `Error: Property '${keyword}.row.flag' must not be a boolean schema`,
+        ])
+      },
+    )
+
+    it('checks tuple item schemas and object-valued additionalProperties', () => {
+      const schema = {
+        properties: {
+          rows: { type: 'array', items: [{ properties: { flag: false } }] },
+        },
+        additionalProperties: { properties: { other: true } },
+      }
+      expect(forbidBooleanProperties(schema)).toEqual([
+        "Error: Property 'rows.items.0.flag' must not be a boolean schema",
+        "Error: Property 'additionalProperties.other' must not be a boolean schema",
+      ])
+    })
+
+    it('keeps boolean field types, schema flags, and literal data valid', () => {
+      const literal = { properties: { flag: true } }
+      const schema = {
+        type: 'object',
+        properties: {
+          flag: { type: 'boolean', default: false },
+          rows: { type: 'array', items: true, additionalItems: false },
+          data: {
+            type: 'object',
+            default: literal,
+            const: literal,
+            examples: [literal],
+            enum: [literal],
+          },
+        },
+        additionalProperties: false,
+        allOf: [true],
+        anyOf: [true],
+        oneOf: [true],
+        not: false,
+        if: true,
+        then: true,
+        else: false,
+        definitions: { anything: true },
+        dependencies: { data: ['flag'] },
+      }
+
+      expect(draft07Validator(schema).valid).toBe(true)
+      expect(forbidBooleanProperties(schema)).toEqual([])
+    })
+
     it('should return empty array for schema without boolean properties', () => {
       const schema = {
         properties: {

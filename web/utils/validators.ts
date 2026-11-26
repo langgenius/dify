@@ -18,15 +18,50 @@ export const draft07Validator = (schema: any): Draft07ValidationResult => {
 }
 
 export const forbidBooleanProperties = (schema: any, path: string[] = []): string[] => {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return []
   let errors: string[] = []
 
-  if (schema && typeof schema === 'object' && schema.properties) {
+  if (schema.properties) {
     for (const [key, val] of Object.entries(schema.properties)) {
       if (typeof val === 'boolean') {
         errors.push(`Error: Property '${[...path, key].join('.')}' must not be a boolean schema`)
       } else if (typeof val === 'object') {
         errors = errors.concat(forbidBooleanProperties(val, [...path, key]))
       }
+    }
+  }
+
+  // Traverse schema containers only. Annotation/data keywords such as default,
+  // examples, const and enum may contain objects that are not schemas.
+  for (const keyword of [
+    'items',
+    'additionalItems',
+    'contains',
+    'additionalProperties',
+    'propertyNames',
+    'not',
+    'if',
+    'then',
+    'else',
+    'allOf',
+    'anyOf',
+    'oneOf',
+  ]) {
+    const child = schema[keyword]
+    if (Array.isArray(child)) {
+      child.forEach((item, index) => {
+        errors = errors.concat(forbidBooleanProperties(item, [...path, keyword, String(index)]))
+      })
+    } else if (child !== undefined) {
+      errors = errors.concat(forbidBooleanProperties(child, [...path, keyword]))
+    }
+  }
+
+  for (const keyword of ['definitions', '$defs', 'patternProperties', 'dependencies']) {
+    const children = schema[keyword]
+    if (children && typeof children === 'object' && !Array.isArray(children)) {
+      for (const [name, child] of Object.entries(children))
+        errors = errors.concat(forbidBooleanProperties(child, [...path, keyword, name]))
     }
   }
   return errors

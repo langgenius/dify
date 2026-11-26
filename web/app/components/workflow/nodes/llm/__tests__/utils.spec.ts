@@ -9,10 +9,28 @@ import {
   isEnvironmentModelSource,
   isLLMModelProviderInstalled,
   LLMModelIssueCode,
+  preValidateSchema,
   resolveLLMNodeModel,
+  validateSchemaAgainstDraft7,
 } from '../utils'
 
 describe('llm utils', () => {
+  it('rejects unsupported boolean property schemas inside structured-output array items', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        rows: { type: 'array', items: { type: 'object', properties: { flag: true } } },
+      },
+      required: ['rows'],
+      additionalProperties: false,
+    }
+
+    expect(preValidateSchema(schema).success).toBe(true)
+    expect(validateSchemaAgainstDraft7(schema)).toEqual([
+      "Error: Property 'rows.items.flag' must not be a boolean schema",
+    ])
+  })
+
   describe('getLLMModelIssue', () => {
     it('returns provider-required when the model provider is missing', () => {
       expect(getLLMModelIssue({ modelProvider: undefined })).toBe(
