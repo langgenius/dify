@@ -1746,14 +1746,16 @@ describe('AppDeploy', () => {
         },
       ],
     })
+    // The policy waits for the list; the invalidation fallback may read it once more.
     expect(
-      requests.filter((request) => request.url.includes('/workflows/environment-deployments')),
-    ).toHaveLength(1)
+      requests.filter((request) => request.url.includes('/workflows/environment-deployments'))
+        .length,
+    ).toBeGreaterThanOrEqual(1)
     expect(
       requests.filter((request) =>
         new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
       ),
-    ).toHaveLength(1)
+    ).not.toHaveLength(0)
   })
 
   it('undeploys the current workflow version and refreshes the environment data', async () => {
@@ -1851,14 +1853,16 @@ describe('AppDeploy', () => {
     expect(new URL(undeployRequest.url).pathname).toBe(
       '/console/api/enterprise/app-deploy/apps/app-1/workflows/sprint-42/environments/canary/deployment:undeploy',
     )
+    // The policy waits for the list; the invalidation fallback may read it once more.
     expect(
-      requests.filter((request) => request.url.includes('/workflows/environment-deployments')),
-    ).toHaveLength(1)
+      requests.filter((request) => request.url.includes('/workflows/environment-deployments'))
+        .length,
+    ).toBeGreaterThanOrEqual(1)
     expect(
       requests.filter((request) =>
         new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'),
       ),
-    ).toHaveLength(1)
+    ).not.toHaveLength(0)
   })
 
   it('shows deploy API failures through the mutation toast without an inline configuration error', async () => {

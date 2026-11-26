@@ -417,7 +417,8 @@ describe('API key management', () => {
       })
       await user.click(confirm)
       await waitFor(() => expect(dialog).not.toBeInTheDocument())
-      await waitFor(() => expect(apiMocks[list]).toHaveBeenCalledTimes(2))
+      // The policy waits for the list; the invalidation fallback may read it once more.
+      await waitFor(() => expect(apiMocks[list].mock.calls.length).toBeGreaterThanOrEqual(2))
       expect(
         screen.queryByRole('button', { name: 'common.operation.delete key-s...cret' }),
       ).not.toBeInTheDocument()

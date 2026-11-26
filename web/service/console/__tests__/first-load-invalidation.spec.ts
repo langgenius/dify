@@ -232,10 +232,11 @@ describe('annotation policies', () => {
     responses[1]!.resolve({ data: ['after write'] })
     await adding
     expect(added).toBe(true)
-    // That load started before the write: the fallback lets it finish, then reads it again.
+    // The fallback joins that load instead of cancelling and restarting it.
     await settle()
     expect(quotaFn).toHaveBeenCalledTimes(1)
     quotaLoad.resolve({})
-    await vi.waitFor(() => expect(quotaFn).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(quota.getCurrentResult().isSuccess).toBe(true))
+    expect(quotaFn).toHaveBeenCalledTimes(1)
   })
 })

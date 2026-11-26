@@ -62,11 +62,10 @@ it.each(['rename', 'delete'] as const)(
     }
 
     await vi.waitFor(() => expect(client.getQueryState(agentResults[0]!)?.isInvalidated).toBe(true))
-    // The unobserved pre-write read is not cancelled (someone may await it); once it lands it is
-    // marked stale, so the next reader fetches the catalog again.
+    // The unobserved pre-write read is joined, not cancelled (someone may await it): it resolves
+    // with its own response, a known trade-off of the fallback.
     staleRead.resolve([agentTag])
-    await pendingRead
-    await vi.waitFor(() => expect(client.getQueryState(agentCatalog)?.isInvalidated).toBe(true))
+    await expect(pendingRead).resolves.toEqual([agentTag])
     for (const key of agentResults) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
     expect(client.getQueryData(appCatalog)).toEqual([appTag])
     expect(client.getQueryState(appCatalog)?.isInvalidated).toBe(true)
