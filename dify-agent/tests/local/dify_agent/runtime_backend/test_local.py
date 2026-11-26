@@ -49,9 +49,7 @@ class _Client:
     ) -> JobResult:
         if not self.execute_script:
             commands = tuple(
-                tuple(shlex.split(line))
-                for line in script.splitlines()
-                if line.strip() and line.strip() != "set -eu"
+                tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
             )
         else:
             commands = ()
