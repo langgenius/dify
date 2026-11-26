@@ -55,8 +55,9 @@ export async function executeCall(req: CallRequest, ctx: CommandContext): Promis
   assertSupportedFlags(req.op.kind, req.flags)
 
   const out = await ctx.get(io)
+  let stdin: Promise<string> | undefined
   const source = {
-    stdin: () => readAll(out.streams.in),
+    stdin: () => (stdin ??= readAll(out.streams.in)),
     readFile: (path: string) => readFile(path, FILE_ENCODING),
   }
   const whole = await loadInput({ ...source, raw: req.flags.input })

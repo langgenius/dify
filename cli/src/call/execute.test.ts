@@ -212,3 +212,16 @@ it('registers the stream abort as a deferred cleanup', async () => {
   await (await w.ctx.get(commands)).run()
   expect(w.ctx.deferred).toHaveLength(1)
 })
+
+it('reuses piped JSON when whole input and a structured field both reference stdin', async () => {
+  const input = { app_id: 'app-2', inputs: { question: 'hello' } }
+  const w = await testContext({
+    login: true,
+    argv: ['run', 'console_app', 'workflow', '--input', '@-', '--inputs', '@-'],
+    stdin: JSON.stringify(input),
+  })
+  worlds.push(w)
+  expect(await (await w.ctx.get(commands)).run()).toBe(0)
+  expect(w.mock.lastRequest?.path).toBe('/openapi/v1/apps/app-2/workflow:run')
+  expect(w.mock.lastRunBody).toMatchObject({ inputs: input })
+})
