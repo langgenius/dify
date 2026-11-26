@@ -4,18 +4,22 @@ Every case below runs against the production entities instead of mocks: the app 
 ``EasyUIBasedAppConfig``, the provider graph is a real ``ProviderConfiguration`` holding a real
 ``LargeLanguageModel``, and the returned value is a real ``ModelConfigWithCredentialsEntity``. The
 converter accepts an already resolved ``ProviderModelBundle``, so these tests exercise the real
-credential, model-status and schema logic without reaching the plugin daemon; the one case that must
-cover bundle resolution stubs only ``create_plugin_provider_manager``.
+credential, model-status and schema logic with the plugin daemon and cache confined to local
+transports. The bundle-resolution case also stubs ``create_plugin_provider_manager``.
 """
 
+import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from unittest.mock import patch
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
+from redis import Redis
 
+import core.plugin.impl.base as plugin_client_module
+import core.plugin.impl.model_runtime as model_runtime_module
 from core.app.app_config.easy_ui_based_app.model_config.converter import (
     CompletionParameters,
     ModelConfigConverter,
@@ -43,8 +47,10 @@ from core.entities.provider_entities import (
     SystemConfiguration,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginModelSchemaEntity
 from core.plugin.impl.model import PluginModelClient
-from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.plugin_service import PluginService
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
@@ -57,6 +63,7 @@ TENANT_ID = "tenant_1"
 APP_ID = "app_1"
 PROVIDER_ID = "langgenius/openai/openai"
 MODEL_NAME = "gpt-4"
+SCHEMA_USER_ID = "converter-test-user"
 
 
 def _model_schema(model_properties: dict[ModelPropertyKey, object] | None = None) -> AIModelEntity:
@@ -141,12 +148,19 @@ def _provider_configuration(
 
 
 def _provider_model_bundle(configuration: ProviderConfiguration) -> ProviderModelBundle:
-    """Build a real bundle around the configuration, with a real LLM model type instance."""
+    """Share a fixture-owned plugin runtime between the real configuration and LLM."""
+    runtime = PluginModelRuntime(
+        tenant_id=configuration.tenant_id,
+        user_id=SCHEMA_USER_ID,
+        client=PluginModelClient(),
+        plugin_service=PluginService,
+    )
+    configuration.bind_model_runtime(runtime)
     return ProviderModelBundle(
         configuration=configuration,
         model_type_instance=LargeLanguageModel(
-            provider_schema=_provider_schema(),
-            model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID),
+            provider_schema=configuration.provider,
+            model_runtime=runtime,
         ),
     )
 
@@ -175,18 +189,59 @@ def _app_config(
 
 
 @contextmanager
-def _provider_schema_lookup(schema: AIModelEntity | None) -> Generator[None]:
-    """Serve ``schema`` (or a miss) for the plugin model client the real runtime delegates to.
+def _provider_schema_lookup(schema: AIModelEntity | None) -> Generator[list[httpx.Request]]:
+    """Serve schema dispatch over HTTPX, with a fresh network-free Redis cache per lookup."""
+    requests: list[httpx.Request] = []
+    cache_data: dict[str, str] = {}
 
-    ``PluginModelRuntime.get_model_schema`` consults the schema cache first and treats an
-    uninitialized cache as a miss, so patching the client keeps the lookup offline.
-    """
+    def dispatch(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        stream = ""
+        if schema is not None:
+            envelope = PluginDaemonBasicResponse[PluginModelSchemaEntity](
+                code=0, message="", data=PluginModelSchemaEntity(model_schema=schema)
+            )
+            stream = f"data: {envelope.model_dump_json()}\n\n"
+        return httpx.Response(200, text=stream, headers={"Content-Type": "text/event-stream"})
 
-    def _get_model_schema(_client: PluginModelClient, **_kwargs: object) -> AIModelEntity | None:
-        return schema
+    def execute_cache_command(command: str, key: str, *args: object, **_kwargs: object) -> str | bool | None:
+        """Read or write only the schema cache in this test's local store."""
+        if command == "GET":
+            return cache_data.get(key)
+        if command == "SETEX":
+            _expiry, value = args
+            assert isinstance(value, str)
+            cache_data[key] = value
+            return True
+        raise AssertionError(f"Unexpected schema cache command: {command}")
 
-    with patch.object(PluginModelClient, "get_model_schema", _get_model_schema):
-        yield
+    with (
+        httpx.Client(transport=httpx.MockTransport(dispatch)) as http_client,
+        Redis() as cache,
+        pytest.MonkeyPatch.context() as monkeypatch,
+    ):
+        monkeypatch.setattr(cache, "execute_command", execute_cache_command)
+        monkeypatch.setattr(model_runtime_module, "redis_client", cache)
+        monkeypatch.setattr(plugin_client_module, "_httpx_client", http_client)
+        yield requests
+
+
+def _assert_schema_dispatch(requests: list[httpx.Request]) -> None:
+    """Require one real dispatch carrying the fixture runtime's caller and credentials."""
+    (request,) = requests
+    assert request.method == "POST"
+    assert request.url.path == f"/plugin/{TENANT_ID}/dispatch/model/schema"
+    assert request.headers["Content-Type"] == "application/json"
+    assert request.headers["X-Plugin-ID"] == "langgenius/openai"
+    assert json.loads(request.content) == {
+        "user_id": SCHEMA_USER_ID,
+        "data": {
+            "provider": "openai",
+            "model_type": ModelType.LLM.value,
+            "model": MODEL_NAME,
+            "credentials": {"api_key": "key"},
+        },
+    }
 
 
 @dataclass
@@ -231,7 +286,8 @@ class TestModelConfigConverter:
     def test_convert_success_default_mode(self) -> None:
         bundle = _provider_model_bundle(_provider_configuration())
 
-        with _provider_schema_lookup(_model_schema()):
+        schema = _model_schema({ModelPropertyKey.CONTEXT_SIZE: 8192})
+        with _provider_schema_lookup(schema) as requests:
             result = ModelConfigConverter.convert(
                 _app_config(parameters={"temperature": 0.5}), provider_model_bundle=bundle
             )
@@ -241,8 +297,9 @@ class TestModelConfigConverter:
         assert result.mode == LLMMode.CHAT
         assert result.parameters == {"temperature": 0.5}
         assert result.stop == []
-        assert result.model_schema.model == MODEL_NAME
+        assert result.model_schema == schema
         assert result.credentials == {"api_key": "key"}
+        _assert_schema_dispatch(requests)
 
     def test_convert_success_with_stop_parameter(self) -> None:
         bundle = _provider_model_bundle(_provider_configuration())
@@ -346,9 +403,10 @@ class TestModelConfigConverter:
     def test_convert_model_schema_none_raises(self) -> None:
         bundle = _provider_model_bundle(_provider_configuration())
 
-        with _provider_schema_lookup(None):
+        with _provider_schema_lookup(None) as requests:
             with pytest.raises(ValueError, match="Model gpt\\-4 not exist\\."):
                 ModelConfigConverter.convert(_app_config(), provider_model_bundle=bundle)
+        _assert_schema_dispatch(requests)
 
     # =============================
     # Edge Cases
