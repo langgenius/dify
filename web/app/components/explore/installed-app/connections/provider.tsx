@@ -6,15 +6,10 @@ import type {
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { RefetchOptions } from '@tanstack/react-query'
 import type { PropsWithChildren } from 'react'
-import {
-  skipToken,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { skipToken, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { consoleQuery } from '@/service/console'
+import { installedAppConnectionConfigurationKey } from '@/service/console/installed-app-connection-key'
 import { InstalledAppConnectionsContext } from './use-installed-app-connections'
 
 type Props = PropsWithChildren<{
@@ -33,7 +28,6 @@ function useConnectionData({
   parametersError: Error | null
   reloadParameters: () => void
 }) {
-  const queryClient = useQueryClient()
   const scope = JSON.stringify([installedAppId, conversationId, parameters?.connection_revision])
   const activeScopeRef = useRef<string | null>(scope)
   useEffect(() => {
@@ -49,14 +43,14 @@ function useConnectionData({
   const revision = parameters?.connection_revision
   const enabled = required && requirements.length > 0 && !!revision
   const configurationInput = { params, query: { conversation_id: conversationId } }
-  const configurationKey = [
-    ...api.configuration.get.queryKey({ input: configurationInput }),
-    revision,
-  ]
   const configuration = useQuery(
     api.configuration.get.queryOptions({
       input: enabled ? configurationInput : skipToken,
-      queryKey: configurationKey,
+      queryKey: installedAppConnectionConfigurationKey(
+        api.configuration.get,
+        configurationInput,
+        revision,
+      ),
       meta: { errorToast: false },
       retry: false,
     }),
@@ -100,20 +94,6 @@ function useConnectionData({
   const save = useMutation(
     api.configuration.put.mutationOptions({
       meta: { errorToast: false },
-      onSuccess: (result, variables) => {
-        const input = {
-          params: variables.params,
-          query: { conversation_id: variables.body.conversation_id ?? undefined },
-        }
-        const savedConfiguration = api.configuration.get.queryOptions({
-          input,
-          queryKey: [
-            ...api.configuration.get.queryKey({ input }),
-            variables.body.connection_revision,
-          ],
-        })
-        queryClient.setQueryData(savedConfiguration.queryKey, result)
-      },
     }),
   )
   const currentSave =

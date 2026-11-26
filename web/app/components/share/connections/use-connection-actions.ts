@@ -18,6 +18,7 @@ import { isAbortError } from '@/service/client-error'
 import { webAppClient, webAppQuery } from '@/service/webapp'
 import { getWebAppScopeKey, resolveWebAppAddress } from '@/service/webapp-address'
 import { captureWebAppAuthSession } from '@/service/webapp-auth'
+import { webAppConnectionConfigurationKey } from './connection-configuration-key'
 import { authorizeConnection } from './oauth-popup'
 
 type Props = {
@@ -109,7 +110,6 @@ export default function useConnectionActions({
   )
   const [isMutating, setIsMutating] = useState(false)
   const operationRef = useRef<AbortController | null>(null)
-  const configurationKey = ['webapp', ...webAppQuery.connections.configuration.get.key()]
 
   useEffect(
     () => () => {
@@ -148,7 +148,7 @@ export default function useConnectionActions({
         // An in-flight write can still commit after the user switches conversations.
         if (controller.signal.aborted) {
           await queryClient.invalidateQueries({
-            queryKey: configurationKey,
+            queryKey: webAppConnectionConfigurationKey(),
           })
         }
       } finally {
