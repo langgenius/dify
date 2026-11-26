@@ -18,7 +18,7 @@ export type Shape = (typeof SHAPE)[keyof typeof SHAPE]
 export type ShapeNode = Readonly<{
   shape: Shape
   item?: ShapeNode
-  values?: readonly string[]
+  values?: readonly unknown[]
   alternatives?: readonly ShapeNode[]
 }>
 
@@ -70,8 +70,14 @@ const SHAPE_INFO: Readonly<Record<Shape, ShapeInfo>> = {
   [SHAPE.Number]: { label: () => SHAPE.Number, coerce: () => toNumber, scalar: true },
   [SHAPE.Boolean]: { label: () => SHAPE.Boolean, coerce: () => toBoolean, scalar: true },
   [SHAPE.Enum]: {
-    label: (n) => (n.values ?? []).join(ALTERNATIVE_SEPARATOR),
-    coerce: () => keepRaw,
+    label: (n) => (n.values ?? []).map(String).join(ALTERNATIVE_SEPARATOR),
+    coerce: (n) => (raw) => {
+      // Prefer an exact string member when an enum contains both string and typed values.
+      const values = n.values ?? []
+      if (values.includes(raw)) return raw
+      const parsed = toJson(raw)
+      return values.includes(parsed) ? parsed : raw
+    },
     scalar: true,
   },
   [SHAPE.File]: { label: () => SHAPE.File, coerce: () => keepRaw, scalar: true },
@@ -113,9 +119,7 @@ export function shapeOf(schema: JsonSchema): ShapeNode {
   // An enum with no members names no value at all, so it degrades to json rather than
   // labelling as the empty string.
   if (Array.isArray(schema.enum))
-    return schema.enum.length === 0
-      ? JSON_NODE
-      : { shape: SHAPE.Enum, values: schema.enum.map(String) }
+    return schema.enum.length === 0 ? JSON_NODE : { shape: SHAPE.Enum, values: schema.enum }
   if (type === STRING_TYPE && schema.format === BINARY_FORMAT) return { shape: SHAPE.File }
   if (type !== undefined && type in SCALAR_TYPES) return { shape: SCALAR_TYPES[type] as Shape }
   if (type === ARRAY_TYPE)

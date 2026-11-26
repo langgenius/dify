@@ -42,3 +42,23 @@ it('a list of scalars or files repeats; a list of objects takes json', () => {
   expect(isRepeatable(shapeOf({ type: 'array', items: binary }))).toBe(true)
   expect(isRepeatable(shapeOf({ type: 'array', items: { type: 'object' } }))).toBe(false)
 })
+
+it.each([
+  [{ type: 'integer', enum: [0, 1] }, '0', 0],
+  [{ type: 'number', enum: [0.5, 1000] }, '1e3', 1000],
+  [{ type: 'boolean', enum: [false, true] }, 'false', false],
+  [{ enum: [null, true] }, 'null', null],
+  [{ type: 'string', enum: ['0', '1'] }, '0', '0'],
+  [{ enum: [1, '1'] }, '1', '1'],
+  [{ type: 'integer', enum: [0, 1] }, 'invalid', 'invalid'],
+])('preserves the value type of enum input %j', (schema, raw, value) => {
+  expect(coerceFor(shapeOf(schema))(raw)).toBe(value)
+})
+
+it('coerces repeated numeric enum items without changing their help labels', () => {
+  const schema = { type: 'array', items: { type: 'integer', enum: [0, 1] } }
+  const node = shapeOf(schema)
+  expect(isRepeatable(node)).toBe(true)
+  expect(['0', '1'].map(coerceFor(node))).toEqual([0, 1])
+  expect(labelOf(node)).toBe('0 | 1[]')
+})

@@ -1,6 +1,6 @@
 import type { Example, JsonSchema } from '@/plugins/catalog'
 import { COMMAND_SEPARATOR } from '@/protocol/op-id'
-import { isRepeatable, isScalar, propertiesOf, shapeOf } from '@/protocol/shape'
+import { isRepeatable, isScalar, propertiesOf, shapeOf, takesValue } from '@/protocol/shape'
 import { argToken, flagToken } from '@/util/flag-name'
 import { shellWord } from '@/util/shell-word'
 import { BINARY } from '@/version/info'
@@ -27,7 +27,7 @@ function valueToken(property: JsonSchema | undefined, value: unknown): string {
 // once per item, anything else as one value.
 function flagTokens(name: string, property: JsonSchema | undefined, value: unknown): string[] {
   const flag = flagToken(name)
-  if (value === true) return [flag]
+  if (value === true && property !== undefined && !takesValue(shapeOf(property))) return [flag]
   if (value === false) return [`${flag}=false`]
   if (property !== undefined && isRepeatable(shapeOf(property)) && Array.isArray(value))
     return value.flatMap((item) => [flag, word(String(item))])

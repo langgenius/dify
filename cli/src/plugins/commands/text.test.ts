@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { expect, it } from 'vite-plus/test'
 import { callOptionsSchema } from '@/call/flags'
 import SkillsInstall from '@/commands/install/skills/index'
+import { parseArgv } from '@/plugins/argv/parse'
 import { parseCatalog } from '@/plugins/catalog'
 import { colorScheme } from '@/sys/io/color'
 import { commandRow } from './describe'
@@ -173,6 +174,24 @@ it('a boolean field is typed as its presence, not as a value', () => {
   expect(exampleLine(login, { title: 't', input: { no_browser: false } })).toBe(
     'difyctl login --no-browser=false',
   )
+})
+
+it.each([true, false])('a boolean enum example round-trips its %s value', (enabled) => {
+  const descriptor = {
+    id: 'configure',
+    input: {
+      type: 'object',
+      properties: { enabled: { type: 'boolean', enum: [true, false] } },
+    },
+    positional: [],
+  }
+  const line = exampleLine(descriptor, { title: 'Configure', input: { enabled } })
+  expect(
+    parseArgv(line.split(' ').slice(2), {
+      positional: descriptor.positional,
+      schema: descriptor.input,
+    }),
+  ).toEqual({ enabled })
 })
 
 it('a description prints its first line only', () => {
