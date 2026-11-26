@@ -112,6 +112,69 @@ def _selection(case: AgentCase) -> AgentBindingSelection:
     )
 
 
+def test_preparing_agent_graph_preserves_the_draft_hash_until_save(
+    agent_case: AgentCase,
+    sqlite_session: sqlalchemy.orm.Session,
+    sqlite_session_factory: sqlalchemy.orm.sessionmaker[sqlalchemy.orm.Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sqlalchemy import select
+
+    from models.account import Account
+    from models.agent import WorkflowAgentNodeBinding
+    from models.agent_config_entities import WorkflowNodeJobConfig
+    from models.model import App
+    from services.dify_builder import dify_port
+    from services.dify_builder.agent_binding import native_node_data
+    from services.workflow_service import WorkflowService
+
+    actor, workflow = agent_case.actor, agent_case.workflow
+    selection = _selection(agent_case)
+    original_hash = workflow.unique_hash
+    candidate = dict(workflow.graph_dict)
+    candidate["nodes"].append(
+        {
+            "id": "review",
+            "data": native_node_data(
+                agent_id=selection.agent_id,
+                snapshot_id=selection.snapshot_id,
+                node_job=WorkflowNodeJobConfig(declared_outputs=[{"name": "summary", "type": "string"}]),
+            ),
+        }
+    )
+    selections = {"review": selection}
+    prepared, bindings = dify_port._prepare_native_agent_graph(
+        session=sqlite_session,
+        actor=actor,
+        workflow=workflow,
+        graph=candidate,
+        selections=selections,
+        authorization=None,
+    )
+    assert bindings is not None
+    assert workflow.unique_hash == original_hash
+
+    app = sqlite_session.get(App, workflow.app_id)
+    account = sqlite_session.get(Account, actor.account_id)
+    assert app is not None
+    assert account is not None
+    monkeypatch.setattr(dify_port, "WorkflowService", lambda: WorkflowService(sqlite_session_factory))
+    updated = dify_port._sync_graph_only(
+        app, prepared, workflow, original_hash, account, sqlite_session, app.id, commit=False
+    )
+    bindings.sync_prepared_bindings(actor=actor, workflow=updated, selections=selections)
+    assert updated.graph_dict["nodes"][1]["data"]["agent_binding"]["agent_id"] == selection.agent_id
+    binding = sqlite_session.scalar(
+        select(WorkflowAgentNodeBinding).where(
+            WorkflowAgentNodeBinding.tenant_id == actor.tenant_id,
+            WorkflowAgentNodeBinding.workflow_id == workflow.id,
+            WorkflowAgentNodeBinding.node_id == "review",
+        )
+    )
+    assert binding is not None
+    assert binding.current_snapshot_id == selection.snapshot_id
+
+
 def test_prepare_then_native_sync_share_one_rollback(
     agent_case: AgentCase, sqlite_session: sqlalchemy.orm.Session
 ) -> None:
@@ -130,6 +193,7 @@ def test_prepare_then_native_sync_share_one_rollback(
     data = service.prepare_node(
         actor=case.actor,
         workflow=case.workflow,
+        candidate_graph=dict(case.workflow.graph_dict),
         node_id="review",
         selection=selection,
         node_job=WorkflowNodeJobConfig(
@@ -191,6 +255,7 @@ def test_changed_start_snapshot_stops_before_native_sync(
         AgentBindingService(sqlite_session).prepare_node(
             actor=case.actor,
             workflow=case.workflow,
+            candidate_graph=dict(case.workflow.graph_dict),
             node_id="review",
             selection=selection,
             node_job=WorkflowNodeJobConfig(),
@@ -222,6 +287,7 @@ def test_prepare_uses_native_input_and_output_validators(
         AgentBindingService(sqlite_session).prepare_node(
             actor=agent_case.actor,
             workflow=agent_case.workflow,
+            candidate_graph=dict(agent_case.workflow.graph_dict),
             node_id="review",
             selection=_selection(agent_case),
             node_job=WorkflowNodeJobConfig.model_validate(job),
@@ -243,6 +309,7 @@ def test_current_membership_revocation_blocks_apply(
         AgentBindingService(sqlite_session).prepare_node(
             actor=agent_case.actor,
             workflow=agent_case.workflow,
+            candidate_graph=dict(agent_case.workflow.graph_dict),
             node_id="review",
             selection=_selection(agent_case),
             node_job=WorkflowNodeJobConfig(),
@@ -295,7 +362,12 @@ def test_full_native_node_job_is_persisted_in_existing_binding_owner(
         }
     )
     data = service.prepare_node(
-        actor=agent_case.actor, workflow=agent_case.workflow, node_id="review", selection=selection, node_job=job
+        actor=agent_case.actor,
+        workflow=agent_case.workflow,
+        candidate_graph=dict(agent_case.workflow.graph_dict),
+        node_id="review",
+        selection=selection,
+        node_job=job,
     )
     graph = agent_case.workflow.graph_dict
     graph["nodes"].append({"id": "review", "data": data})
@@ -342,6 +414,7 @@ def test_native_authorization_rpc_precedes_draft_transaction(
     AgentBindingService(sqlite_session, authorization=grant).prepare_node(
         actor=agent_case.actor,
         workflow=agent_case.workflow,
+        candidate_graph=dict(agent_case.workflow.graph_dict),
         node_id="review",
         selection=_selection(agent_case),
         node_job=WorkflowNodeJobConfig(),
@@ -373,6 +446,7 @@ def test_sync_requires_complete_graph_and_existing_binding_coverage(
     data = service.prepare_node(
         actor=case.actor,
         workflow=case.workflow,
+        candidate_graph=dict(case.workflow.graph_dict),
         node_id="review",
         selection=selection,
         node_job=WorkflowNodeJobConfig(),
@@ -458,6 +532,7 @@ def test_complete_prepared_multi_agent_graph_syncs_all_owned_bindings(
         data = service.prepare_node(
             actor=agent_case.actor,
             workflow=agent_case.workflow,
+            candidate_graph=dict(agent_case.workflow.graph_dict),
             node_id=node_id,
             selection=selection,
             node_job=WorkflowNodeJobConfig(),
