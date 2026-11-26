@@ -587,21 +587,23 @@ export class CollaborationManager {
       !undo ||
       !(action === 'undo' ? undo.canUndo() : undo.canRedo())
     )
-      return false
-    if (!undo[action]()) return false
+      return undefined
+    const applied = undo[action]()
     const other = action === 'undo' ? 'redo' : 'undo'
     const membership = this.members[action].pop()
-    if (membership) this.members[other].push(membership)
+    if (applied && membership) this.members[other].push(membership)
     const labels = this.draftHistory[action]
     this.draftHistory = {
       ...this.draftHistory,
       [action]: labels.slice(0, -1),
-      [other]: [...this.draftHistory[other], labels.at(-1) ?? 'NodeChange'],
+      [other]: applied
+        ? [...this.draftHistory[other], labels.at(-1) ?? 'NodeChange']
+        : this.draftHistory[other],
     }
     this.lastInput = undefined
-    this.refreshGraphSynchronously()
+    if (applied) this.refreshGraphSynchronously()
     this.emitHistory()
-    return true
+    return applied ? 'applied' : 'consumed'
   }
   undo() {
     return this.step('undo')

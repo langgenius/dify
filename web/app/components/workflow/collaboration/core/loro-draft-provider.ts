@@ -97,7 +97,7 @@ export class LoroDraftProvider {
   private requested = false
   private timer?: ReturnType<typeof setTimeout>
   private inFlight?: Promise<WorkflowSyncResult>
-  private confirmedEmpty?: VersionVector
+  private emptyConfirmation?: 'requested' | 'granted'
 
   constructor(options: Options) {
     this.options = options
@@ -119,6 +119,7 @@ export class LoroDraftProvider {
   private watch(doc: LoroDoc) {
     return doc.subscribeLocalUpdates((bytes) => {
       if (this.retired || this.unavailable) return
+      if (this.emptyConfirmation && !isDraftEmpty(doc)) this.emptyConfirmation = undefined
       const edit = this.edit(doc, bytes)
       this.edits.set(edit.id, edit)
       this.options.onPendingChange(true)
@@ -151,18 +152,24 @@ export class LoroDraftProvider {
       this.retirements = []
     }
     const { checkpoint, deltas, edits, retired } = await storage.read()
-    if (!this.closed && retired) {
+    if (this.closed) return
+    if (retired) {
       this.markRetired()
       return
     }
-    if (this.closed || !checkpoint) return
-    const committed = [checkpoint.snapshot, ...deltas.map((delta) => delta.bytes)]
-    this.serverDoc.importBatch(committed)
-    if (this.serverDoc.exportPendingUpdates()) throw new Error('Incomplete confirmed Loro history.')
-    let replayable = edits
-    if (this.serverDoc.isShallow() && edits.length) {
+    if (!checkpoint) return
+    const committed = deltas.map((delta) => delta.bytes)
+    this.serverDoc.import(checkpoint.snapshot)
+    if (this.serverDoc.importBatch(committed).pending)
+      throw new Error('Incomplete confirmed Loro history.')
+    const serverVersion = this.serverDoc.version()
+    const pending = edits.filter(
+      (edit) => !covers(serverVersion, VersionVector.decode(edit.endVersion)),
+    )
+    let replayable = pending
+    if (this.serverDoc.isShallow() && pending.length) {
       const replay = this.serverDoc.fork()
-      for (const edit of edits) {
+      for (const edit of pending) {
         try {
           replay.import(edit.bytes)
         } catch {
@@ -170,16 +177,17 @@ export class LoroDraftProvider {
         }
       }
       const applied = replay.version()
-      replayable = edits.filter((edit) => covers(applied, VersionVector.decode(edit.endVersion)))
-      if (replayable.length !== edits.length) {
-        const retained = new Set(replayable.map((edit) => edit.id))
-        await storage.discardEdits(
-          edits.filter((edit) => !retained.has(edit.id)).map((edit) => edit.id),
-        )
-        if (this.closed) return
-        this.skippedLocalEdits = true
-      }
+      replayable = pending.filter((edit) => covers(applied, VersionVector.decode(edit.endVersion)))
+      this.skippedLocalEdits = replayable.length !== pending.length
     }
+    if (replayable.length !== edits.length) {
+      const retained = new Set(replayable.map((edit) => edit.id))
+      await storage.discardEdits(
+        edits.filter((edit) => !retained.has(edit.id)).map((edit) => edit.id),
+      )
+      if (this.closed) return
+    }
+    doc.import(checkpoint.snapshot)
     const restored = doc.importBatch([...committed, ...replayable.map((edit) => edit.bytes)])
     if (restored.pending) throw new Error('Incomplete local Loro draft history.')
     replayable.forEach((edit) => this.edits.set(edit.id, edit))
@@ -196,9 +204,24 @@ export class LoroDraftProvider {
   }
 
   private markRetired() {
+    if (this.closed) return
     this.retired = true
     this.options.onEpochChanged()
     this.schedule(RETRY_DELAY)
+  }
+
+  private checkStorageWrite(accepted: boolean) {
+    if (this.closed) throw new Error('Draft connection closed.')
+    if (!accepted) {
+      this.markRetired()
+      throw new Error('Draft epoch changed.')
+    }
+  }
+
+  private requestEmptyConfirmation() {
+    if (this.emptyConfirmation) return
+    this.emptyConfirmation = 'requested'
+    this.options.onEmptyConfirmationRequired?.()
   }
 
   private markReady() {
@@ -276,7 +299,7 @@ export class LoroDraftProvider {
     if (!this.ready) throw new Error('Loro draft has not been loaded.')
     const original = this.options.doc
     const target = original.version()
-    if (allowEmpty && isDraftEmpty(this.options.doc)) this.confirmedEmpty = target
+    if (allowEmpty && isDraftEmpty(original)) this.emptyConfirmation = 'granted'
     const result = await this.sync()
     if (this.options.doc !== original) return this.flush(allowEmpty)
     if (covers(this.serverDoc.version(), target)) return result
@@ -303,7 +326,7 @@ export class LoroDraftProvider {
           const body = await this.request(connection, this.serverDoc.version().encode())
           const result = await this.confirm(body)
           if (isDraftEmpty(this.options.doc) && !isDraftEmpty(this.serverDoc))
-            this.options.onEmptyConfirmationRequired?.()
+            this.requestEmptyConfirmation()
           else this.requested = true
           return result
         }
@@ -342,13 +365,13 @@ export class LoroDraftProvider {
     const { doc, socket } = this.options
     const target = doc.version()
     const base = this.serverDoc.version()
-    const allowEmpty = !!this.confirmedEmpty && covers(this.confirmedEmpty, target)
+    const changed = !this.retired && !covers(base, target)
+    const allowEmpty = this.emptyConfirmation === 'granted'
+    const needsConfirmation =
+      changed && !allowEmpty && isDraftEmpty(doc) && !isDraftEmpty(this.serverDoc)
+    if (needsConfirmation) this.requestEmptyConfirmation()
     const update =
-      !this.retired &&
-      !covers(base, target) &&
-      (allowEmpty || !isDraftEmpty(doc) || isDraftEmpty(this.serverDoc))
-        ? doc.export({ mode: 'update', from: base })
-        : undefined
+      changed && !needsConfirmation ? doc.export({ mode: 'update', from: base }) : undefined
     // Capture the delta before awaiting the writes. Edits made during the wait belong to the next batch.
     await this.writes
     if (this.closed || this.unavailable || connection !== this.connection || !socket.connected)
@@ -441,6 +464,8 @@ export class LoroDraftProvider {
     this.unsubscribe()
     this.serverDoc = server
     this.options.doc = local
+    if (this.emptyConfirmation && (!isDraftEmpty(local) || isDraftEmpty(server)))
+      this.emptyConfirmation = undefined
     this.edits.clear()
     for (const edit of rebased) this.edits.set(edit.id, edit)
     this.unsubscribe = this.watch(local)
@@ -457,11 +482,7 @@ export class LoroDraftProvider {
       this.markUnavailable()
       throw error
     }
-    if (!accepted) {
-      this.markRetired()
-      throw new Error('Draft epoch changed.')
-    }
-    if (this.closed) throw new Error('Draft connection closed.')
+    this.checkStorageWrite(accepted)
     this.options.onPendingChange(!!this.edits.size)
     const result = { hash: body.hash, updatedAt: body.updatedAt, isEmpty: isDraftEmpty(server) }
     this.options.onConfirmed({ ...result, cleanup: removed.length ? 'skipped' : undefined })
@@ -484,23 +505,12 @@ export class LoroDraftProvider {
     const confirmed = VersionVector.decode(encodedVersion)
     const delta = bytes(body.update)
     if (sent && !covers(confirmed, sent)) throw new Error('Incomplete Loro draft confirmation.')
+    let server = this.serverDoc
     if (delta) {
-      const metadata = decodeImportBlobMeta(delta, false)
-      if (metadata.mode === 'update') {
-        const end = VersionVector.parseJSON(from.toJSON())
-        for (const [peer, counter] of metadata.partialEndVersionVector.toJSON())
-          if (counter > (end.get(peer) ?? 0)) end.setEnd({ peer, counter })
-        if (end.compare(confirmed) !== 0) throw new Error('Incomplete Loro draft confirmation.')
-        this.serverDoc.import(delta)
-      } else {
-        const checkpoint = new LoroDoc()
-        checkpoint.import(delta)
-        if (checkpoint.version().compare(confirmed) !== 0)
-          throw new Error('Incomplete Loro draft confirmation.')
-        this.serverDoc = checkpoint
-      }
+      server = decodeImportBlobMeta(delta, false).mode === 'update' ? server.fork() : new LoroDoc()
+      if (server.import(delta).pending) throw new Error('Incomplete Loro draft confirmation.')
     }
-    if (this.serverDoc.version().compare(confirmed) !== 0)
+    if (server.version().compare(confirmed) !== 0)
       throw new Error('Incomplete Loro draft confirmation.')
 
     const coveredIds = [...this.edits.values()]
@@ -509,7 +519,7 @@ export class LoroDraftProvider {
     let accepted: boolean
     try {
       accepted = await this.storage!.appendConfirmedDelta(
-        () => this.serverDoc.export({ mode: 'snapshot' }),
+        () => server.export({ mode: 'snapshot' }),
         confirmed,
         coveredIds,
         from,
@@ -519,32 +529,37 @@ export class LoroDraftProvider {
       this.markUnavailable()
       throw error
     }
-    if (!accepted) throw new SyncRejected(409, 'epoch_changed')
-    if (this.closed) throw new Error('Loro draft connection closed.')
-    coveredIds.forEach((id) => this.edits.delete(id))
-    this.options.onPendingChange(this.edits.size > 0)
-    if (delta) doc.import(delta)
-    this.markReady()
+    this.checkStorageWrite(accepted)
     let cleanup: LoroDraftConfirmation['cleanup']
+    let active = true
     try {
       if (this.previousDrafts?.length) {
-        if (!(await this.storage!.queueRetirements(this.previousDrafts)))
-          throw new SyncRejected(409, 'epoch_changed')
+        active = await this.storage!.queueRetirements(this.previousDrafts)
         this.previousDrafts = undefined
       }
-      const cleared = await this.storage!.clearRetiredDrafts()
-      if (cleared.retired) throw new SyncRejected(409, 'epoch_changed')
-      this.cleanupRetry = false
-      if (cleared.hadPendingEdits) cleanup = 'cleared'
+      if (active && !this.closed) {
+        const cleared = await this.storage!.clearRetiredDrafts()
+        active = !cleared.retired
+        this.cleanupRetry = false
+        if (cleared.hadPendingEdits) cleanup = 'cleared'
+      }
     } catch (error) {
-      if (error instanceof SyncRejected) throw error
+      if (this.closed) throw error
       this.cleanupRetry = true
       if (!this.cleanupFailureReported) {
         cleanup = 'failed'
         this.cleanupFailureReported = true
       }
     }
-    if (this.closed) throw new Error('Loro draft connection closed.')
+    this.checkStorageWrite(active)
+    this.serverDoc = server
+    coveredIds.forEach((id) => this.edits.delete(id))
+    this.options.onPendingChange(this.edits.size > 0)
+    if (delta) doc.import(delta)
+    const isEmpty = isDraftEmpty(server)
+    if (this.emptyConfirmation && (isEmpty || !isDraftEmpty(doc)))
+      this.emptyConfirmation = undefined
+    this.markReady()
     if (!cleanup && this.skippedLocalEdits) {
       cleanup = 'skipped'
       this.skippedLocalEdits = false
@@ -553,7 +568,7 @@ export class LoroDraftProvider {
     this.options.onConfirmed({
       ...result,
       cleanup,
-      isEmpty: isDraftEmpty(this.serverDoc),
+      isEmpty,
     })
     return result
   }

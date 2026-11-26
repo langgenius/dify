@@ -63,10 +63,13 @@ it('keeps the joined socket and active collaborators when the draft epoch change
     expect(result.current.onlineUsers).toEqual([user])
   } finally {
     unmount()
-    collaborationManager.disconnect()
-    vi.restoreAllMocks()
-    await deleteDB('dify-workflow-loro')
+    try {
+      expect(transport.socket.listeners('loro_draft_changed')).toEqual([])
+      expect(transport.socket.listeners('online_users')).toEqual([])
+    } finally {
+      collaborationManager.disconnect()
+      vi.restoreAllMocks()
+      await deleteDB('dify-workflow-loro')
+    }
   }
-  expect(transport.socket.listeners('loro_draft_changed')).toEqual([])
-  expect(transport.socket.listeners('online_users')).toEqual([])
 })

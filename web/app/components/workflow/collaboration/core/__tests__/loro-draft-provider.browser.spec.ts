@@ -115,18 +115,48 @@ it('retries a committed edit after a lost acknowledgement without creating anoth
   expect((await server.read()).edits).toEqual([])
 })
 
-it('requires explicit confirmation before an empty local graph clears the saved draft', async () => {
+it('asks again before clearing a pending empty draft after reopening offline', async () => {
   const server = createProviderServer()
   const editor = await server.open()
+  editor.provider.leave()
+  editor.socket.connected = false
   editor.doc.getMap('nodes').delete('node-1')
   editor.doc.commit()
-  await expect(editor.provider.flush()).rejects.toThrow('Draft changes are still pending')
+  await expect(editor.provider.flush(true)).rejects.toThrow('connection is not available')
+  await vi.waitFor(async () => expect((await server.read()).edits).toHaveLength(1))
+  editor.provider.destroy()
+
+  const reopened = await server.open(server.identity, false)
+  reopened.socket.connected = true
+  reopened.provider.join()
+  await expect(reopened.provider.flush()).rejects.toThrow('Draft changes are still pending')
+  expect(reopened.onEmptyConfirmationRequired).toHaveBeenCalledOnce()
   expect(projectDraftGraph(server.document()).nodes).toHaveLength(1)
   expect((await server.read()).edits).toHaveLength(1)
-  await editor.provider.flush(true)
+  await reopened.provider.flush(true)
   expect(projectDraftGraph(server.document()).nodes).toHaveLength(0)
-  expect(editor.onConfirmed).toHaveBeenLastCalledWith(expect.objectContaining({ isEmpty: true }))
+  expect(reopened.onConfirmed).toHaveBeenLastCalledWith(expect.objectContaining({ isEmpty: true }))
   expect((await server.read()).edits).toEqual([])
+})
+
+it('saves a confirmed offline clear after a later viewport change', async () => {
+  const server = createProviderServer()
+  const editor = await server.open()
+  editor.provider.leave()
+  editor.socket.connected = false
+  editor.doc.getMap('nodes').delete('node-1')
+  editor.doc.commit()
+  await expect(editor.provider.flush(true)).rejects.toThrow('connection is not available')
+  const viewport = { x: 30, y: 40, zoom: 2 }
+  setDraftViewport(editor.doc, viewport)
+
+  editor.socket.connected = true
+  editor.provider.join()
+  await editor.provider.flush()
+
+  expect(projectDraftGraph(server.document()).nodes).toEqual([])
+  expect(server.document().getMap('graph').toJSON().viewport).toEqual(viewport)
+  expect(editor.onEmptyConfirmationRequired).not.toHaveBeenCalled()
 })
 
 it.each([401, 403])('preserves pending edits when access is rejected with %i', async (status) => {
@@ -228,6 +258,42 @@ it('applies a small server push without issuing another RPC', async () => {
   )
   expect(server.exchange.mock.calls).toHaveLength(requests)
   expect((await server.read()).deltas).toHaveLength(1)
+})
+
+it('detects retirement during a peer update even after the transport closes', async () => {
+  const server = createProviderServer()
+  const editor = await server.open()
+  await editor.provider.flush()
+  const append = LoroDraftStorage.prototype.appendConfirmedDelta
+  vi.spyOn(LoroDraftStorage.prototype, 'appendConfirmedDelta').mockImplementationOnce(
+    async function (this: LoroDraftStorage, ...args) {
+      editor.provider.leave()
+      editor.socket.connected = false
+      const storage = await LoroDraftStorage.open(
+        server.scope({ ...server.identity, epoch: 'epoch-2' }),
+      )
+      try {
+        await storage.queueRetirements([{ scope: server.scope(), hadPendingEdits: false }])
+      } finally {
+        storage.close()
+      }
+      return append.call(this, ...args)
+    },
+  )
+  const from = server.document().version()
+  renameDraftNode(server.document(), 'Late peer update')
+  editor.provider.pull({
+    epoch: server.identity.epoch,
+    fromVersion: from.encode(),
+    version: server.document().version().encode(),
+    update: server.document().export({ mode: 'update', from }),
+    hash: 'pushed',
+    updatedAt: 2,
+  })
+
+  await vi.waitFor(() => expect(editor.onEpochChanged).toHaveBeenCalledOnce())
+  expect(projectDraftGraph(editor.doc).nodes[0]?.data.title).toBe('Before')
+  expect(editor.onUnavailable).not.toHaveBeenCalled()
 })
 
 it('replays an offline field on a compacted checkpoint in the same epoch', async () => {
@@ -360,5 +426,32 @@ it('can reopen after a stale tab writes an edit that depends on compacted histor
   expect(projectDraftGraph(reopened.doc).nodes[0]?.data.title).toBe('New checkpoint')
   expect(reopened.onConfirmed).toHaveBeenCalledWith(expect.objectContaining({ cleanup: 'skipped' }))
   expect(reopened.onUnavailable).not.toHaveBeenCalled()
+  expect((await server.read()).edits).toEqual([])
+})
+
+it('reopens a shallow checkpoint with a later saved update and an offline edit', async () => {
+  const server = createProviderServer()
+  server.compact()
+  const editor = await server.open()
+  await editor.provider.flush()
+  renameDraftNode(server.document(), 'Saved after compaction')
+  await editor.provider.flush()
+  expect((await server.read()).deltas).toHaveLength(1)
+  editor.provider.leave()
+  editor.socket.connected = false
+  const viewport = { x: 15, y: 20, zoom: 1.5 }
+  setDraftViewport(editor.doc, viewport)
+  await vi.waitFor(async () => expect((await server.read()).edits).toHaveLength(1))
+  editor.provider.destroy()
+
+  const reopened = await server.open(server.identity, false)
+  const restored = projectDraftGraph(reopened.doc)
+  expect(restored.nodes[0]?.data.title).toBe('Saved after compaction')
+  expect(reopened.doc.getMap('graph').toJSON().viewport).toEqual(viewport)
+  reopened.socket.connected = true
+  reopened.provider.join()
+  await reopened.provider.flush()
+  expect(projectDraftGraph(server.document())).toEqual(restored)
+  expect(server.document().getMap('graph').toJSON().viewport).toEqual(viewport)
   expect((await server.read()).edits).toEqual([])
 })

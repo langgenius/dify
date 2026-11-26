@@ -2,6 +2,7 @@ import { deleteDB } from 'idb'
 import { BlockEnum } from '../../../types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { createNode } from './test-graph-fixtures'
 import { createDraftServer, createNodeDraft } from './test-loro-draft-server'
 
 const managers: CollaborationManager[] = []
@@ -12,8 +13,8 @@ afterEach(async () => {
   await deleteDB('dify-workflow-loro')
 })
 
-async function openEditor() {
-  const server = createDraftServer(createNodeDraft)
+async function openEditor(seed = createNodeDraft) {
+  const server = createDraftServer(seed)
   const transport = server.transport()
   vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
   vi.spyOn(webSocketClient, 'disconnect').mockImplementation(() => {})
@@ -73,7 +74,7 @@ it('preserves saved fields when initializing a stale panel and keeps its default
   initialize()
   expect(manager.getNodes()[0]?.data).toMatchObject({ title: 'Saved', rows: [{ text: 'System' }] })
   expect(manager.getDraftHistory().undo).toHaveLength(1)
-  expect(manager.undo()).toBe(true)
+  expect(manager.undo()).toBe('applied')
   expect(manager.getNodes()[0]?.data).toMatchObject({ title: 'Before', rows: [{ text: 'System' }] })
 })
 
@@ -84,8 +85,37 @@ it('groups the first gesture after loading the remote snapshot into a single und
     manager.updateDraftNodeData('node-1', { title: 'One' }, { title: 'Two' })
   })
   expect(manager.getDraftHistory().undo).toEqual(['NodeDragStop'])
-  expect(manager.undo()).toBe(true)
+  expect(manager.undo()).toBe('applied')
   expect(manager.getNodes()[0]?.data.title).toBe('Before')
+})
+
+it('consumes an empty undo step and still asks before the next undo clears the saved canvas', async () => {
+  const { manager, server } = await openEditor((title) => {
+    const doc = createNodeDraft(title)
+    doc.getMap('nodes').delete('node-1')
+    doc.commit()
+    return doc
+  })
+  manager.setNodes([], [createNode('local', 'Original')])
+  await manager.syncLoroDraft('app-1')
+  manager.runDraftHistoryAction('NodeChange', () => {
+    manager.updateDraftNodeData('local', { title: 'Original' }, { title: 'Temporary' })
+    manager.updateDraftNodeData('local', { title: 'Temporary' }, { title: 'Original' })
+  })
+
+  expect(manager.undo()).toBe('consumed')
+  expect(manager.getDraftHistory()).toEqual({ undo: ['NodeAdd'], redo: [] })
+  const request = vi.fn<(confirm: () => void) => void>()
+  manager.onClearRequested(request)
+  manager.guardClear(
+    () => manager.historyWillClear(-1),
+    () => manager.undo(),
+  )
+
+  expect(request).toHaveBeenCalledOnce()
+  expect(manager.getNodes()).toHaveLength(1)
+  request.mock.calls[0]![0]()
+  await vi.waitFor(() => expect(server.document().getMap('nodes').size).toBe(0))
 })
 
 it('persists the latest LLM prompt entered before the initial draft loads', async () => {

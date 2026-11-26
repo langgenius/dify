@@ -33,10 +33,11 @@ export function stepDraftHistory(
         history !== collaborationManager.getDraftHistory()
       )
         return
-      let applied = 0
-      while (applied < Math.abs(steps)) {
-        if (!(steps < 0 ? collaborationManager.undo() : collaborationManager.redo())) break
-        applied++
+      let applied = false
+      for (let index = 0; index < Math.abs(steps); index++) {
+        const result = steps < 0 ? collaborationManager.undo() : collaborationManager.redo()
+        if (!result) break
+        if (result === 'applied') applied = true
       }
       if (applied) {
         collaborationManager.emitHistoryAction(action)
