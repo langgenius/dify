@@ -459,12 +459,14 @@ export type AgentLogExportCreatePayload = {
   account_ids?: Array<string>
   end?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   sources?: Array<string>
   start?: string | null
 }
 
 export type AgentLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -493,6 +495,9 @@ export type AgentLogExportPreviewResponse = {
 }
 
 export type AgentLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -500,6 +505,19 @@ export type AgentLogExportStatusResponse = {
 export type AgentLogExportTaskNotFoundError = ErrorResponse & {
   code: 'agent_log_export_task_not_found'
   status: 404
+}
+
+export type LogExportEmailNotificationPayload = {
+  enabled: boolean
+}
+
+export type LogExportEmailNotificationResponse = {
+  email_notification: LogExportEmailState
+}
+
+export type LogExportTaskNotCancelableError = ErrorResponse & {
+  code: 'log_export_task_not_cancelable'
+  status: 409
 }
 
 export type BinaryFileResponse = Blob | File
@@ -1237,8 +1255,12 @@ export type LogExportIdentityLabel = {
 }
 
 export type AgentLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
   filters: AgentLogExportFilters
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -1248,7 +1270,14 @@ export type AgentLogExportCountsResponse = {
   row_count: number
 }
 
-export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
+export type LogExportEmailState = 'off' | 'queued' | 'waiting'
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
+}
+
+export type LogExportStatus = 'canceled' | 'failed' | 'pending' | 'processing' | 'ready'
 
 export type AgentLogSourceResponse = {
   app_icon?: string | null
@@ -1918,6 +1947,8 @@ export type AgentLogExportFilters = {
   sources: Array<string>
   start: string | null
 }
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type AgentLogFeedbackResponse = {
   content?: string | null
@@ -4112,6 +4143,59 @@ export type GetAgentByAgentIdLogExportsByTaskIdResponses = {
 
 export type GetAgentByAgentIdLogExportsByTaskIdResponse =
   GetAgentByAgentIdLogExportsByTaskIdResponses[keyof GetAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type PutAgentByAgentIdLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}'
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdError =
+  PutAgentByAgentIdLogExportsByTaskIdErrors[keyof PutAgentByAgentIdLogExportsByTaskIdErrors]
+
+export type PutAgentByAgentIdLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAgentByAgentIdLogExportsByTaskIdResponse =
+  PutAgentByAgentIdLogExportsByTaskIdResponses[keyof PutAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}/cancel'
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelError =
+  PostAgentByAgentIdLogExportsByTaskIdCancelErrors[keyof PostAgentByAgentIdLogExportsByTaskIdCancelErrors]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponses = {
+  200: AgentLogExportStatusResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponse =
+  PostAgentByAgentIdLogExportsByTaskIdCancelResponses[keyof PostAgentByAgentIdLogExportsByTaskIdCancelResponses]
 
 export type GetAgentByAgentIdLogExportsByTaskIdFileData = {
   body?: never

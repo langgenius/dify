@@ -136,6 +136,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           appId={appDetail.id}
           filterOptions={filterOptions}
           queryParams={effectiveQueryParams}
+          timezone={timezone}
           setQueryParams={handleQueryParamsChange}
           identityOptions={supportsLogExport ? identityOptions : undefined}
           actions={

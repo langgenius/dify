@@ -25,13 +25,17 @@ import { keepPreviousData, skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { userTimezoneQueryOptions } from '@/features/account-profile/client'
+import {
+  isLogTimePeriodRestricted,
+  useCloudSandboxPlanStatus,
+} from '@/features/log-export/cloud-sandbox-retention'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogDetailPanel } from './components/log-detail-panel'
@@ -50,7 +54,13 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const docLink = useDocLink()
   const canExportLogs = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { data: timezone } = useQuery(userTimezoneQueryOptions())
+  const planState = useCloudSandboxPlanStatus()
+  const allowCustom = !isLogTimePeriodRestricted(planState)
   const [filters, setFilters] = useState(defaultAgentLogFilters)
+  const effectiveFilters =
+    !allowCustom && filters.period === 'custom'
+      ? { ...filters, period: defaultAgentLogFilters.period, customRange: undefined }
+      : filters
   const [identityOptionsBeforeFilter, setIdentityOptionsBeforeFilter] = useState<LogIdentity[]>([])
   const [keyword, setKeyword] = useState('')
   const [sort, setSort] = useState<AgentLogsSort>({
@@ -62,7 +72,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
   const [selectedLog, setSelectedLog] = useState<AgentLogConversationItemResponse>()
   const periodItems = agentLogPeriods.map((period) => ({
     value: period,
-    name: t(($) => $[`agentDetail.logs.filters.period.${period}`]),
+    label: t(($) => $[`agentDetail.logs.filters.period.${period}`]),
   }))
   const logSourcesQuery = useQuery(
     consoleQuery.agent.byAgentId.logSources.get.queryOptions({
@@ -81,7 +91,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
               agent_id: agentId,
             },
             query: {
-              ...toAgentLogQuery(filters, timezone),
+              ...toAgentLogQuery(effectiveFilters, timezone),
               page,
               limit,
               keyword: keyword.trim() || undefined,
@@ -145,7 +155,7 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
             <AgentLogExportDialog
               key={agentId}
               agentId={agentId}
-              currentFilters={filters}
+              currentFilters={effectiveFilters}
               sourcePicker={sourcePicker}
               identityOptions={identityOptions}
               timezone={timezone}
@@ -154,20 +164,15 @@ export function AgentLogsPage({ agentId }: AgentLogsPageProps) {
         </div>
 
         <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-          <Chip
-            value={filters.period}
-            items={periodItems}
-            leftIcon={
-              <span aria-hidden className="i-ri-calendar-line block size-4 text-text-secondary" />
-            }
-            className="min-w-32"
-            onSelect={(item) => {
+          <LogTimeRangePicker
+            value={effectiveFilters}
+            options={periodItems}
+            timezone={timezone}
+            clearedPeriod="allTime"
+            allowCustom={allowCustom}
+            onChange={({ period, customRange }) => {
               setPage(1)
-              setFilters((previous) => ({ ...previous, period: item.value }))
-            }}
-            onClear={() => {
-              setPage(1)
-              setFilters((previous) => ({ ...previous, period: 'allTime' }))
+              setFilters((previous) => ({ ...previous, period, customRange }))
             }}
           />
 

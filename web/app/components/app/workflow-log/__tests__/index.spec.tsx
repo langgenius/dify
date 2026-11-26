@@ -198,7 +198,9 @@ describe('Logs Container', () => {
 
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      await user.click(screen.getByText('appLog.status.all'))
+      await user.click(
+        screen.getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' }),
+      )
       await user.click(await screen.findByText('appLog.status.succeeded'))
 
       await waitFor(() => {
@@ -277,10 +279,12 @@ describe('Logs Container', () => {
       expect(
         screen.getByRole('combobox', { name: 'appLog.filter.period.last30days' }),
       ).toBeInTheDocument()
-      const params = getMockCallParams()?.params
-      expect(
-        dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
-      ).toBe(30)
+      await waitFor(() => {
+        const params = getMockCallParams()?.params
+        expect(
+          dayjs(String(params?.created_at__before)).diff(String(params?.created_at__after), 'day'),
+        ).toBe(30)
+      })
     })
 
     it('should update query when typing keyword', async () => {

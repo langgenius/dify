@@ -11,8 +11,8 @@ from extensions import ext_application_services
 from extensions.ext_application_services import application_services, init_app
 from services.entities.conversation_entities import ConsoleConversationLogFilters
 from services.retention.conversation.log_export_service import ConversationLogExportTask
-from services.retention.log_export_adapters import dispatch_log_export
-from services.retention.log_export_task import LogExportKind, LogExportLeaseBusyError
+from services.retention.log_export_adapters import dispatch_log_export_head
+from services.retention.log_export_task import LogExportLeaseBusyError, LogExportStatus
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from tasks import log_export_tasks
 from tests.helpers.unit.log_export_fixtures import LogExportRedisIo
@@ -33,14 +33,22 @@ def conversation_export_task() -> ConversationLogExportTask:
 
 
 def test_conversation_log_export_uses_shared_task(
-    log_export_publish: MagicMock, conversation_export_task: ConversationLogExportTask
+    log_export_publish: MagicMock,
+    log_export_redis: LogExportRedisIo,
+    conversation_export_task: ConversationLogExportTask,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     task = conversation_export_task
     worker = log_export_tasks.prepare_log_export_task
     app = Flask(__name__)
     init_app(app)
+    monkeypatch.setattr(log_export_tasks, "redis_client", log_export_redis.client)
+    store = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+    )
+    store.save(task)
 
-    dispatch_log_export(task, export_kind=LogExportKind.CONVERSATION)
+    dispatch_log_export_head(task.tenant_id, redis=log_export_redis.client)
 
     args = {"tenant_id": task.tenant_id, "app_id": task.app_id, "task_id": task.task_id}
     message = {**args, "export_kind": "conversation"}
@@ -48,9 +56,12 @@ def test_conversation_log_export_uses_shared_task(
     assert task_options(worker)["queue"] == "retention"
     assert worker.acks_late
     assert worker.reject_on_worker_lost
-    log_export_publish.assert_called_once_with(kwargs=message, task_id=task.task_id, expires=task.expires_at)
+    log_export_publish.assert_called_once_with(kwargs=message, task_id=task.task_id)
 
-    with app.app_context(), patch.object(application_services().conversation_log_exports, "prepare_task") as prepare:
+    with (
+        app.app_context(),
+        patch.object(application_services().conversation_log_exports, "prepare_task", return_value=None) as prepare,
+    ):
         worker.run(**message)
         prepare.assert_called_once_with(**args)
 
@@ -87,6 +98,7 @@ def test_worker_retries_only_transient_redis_failures(
         log_export_redis.claim_error = error
 
     monkeypatch.setattr(ext_application_services, "redis_client", log_export_redis.client)
+    monkeypatch.setattr(log_export_tasks, "redis_client", log_export_redis.client)
     app = Flask(__name__)
     init_app(app)
     worker = log_export_tasks.prepare_log_export_task
@@ -105,3 +117,47 @@ def test_worker_retries_only_transient_redis_failures(
     else:
         assert failure.value is error
         retry.assert_not_called()
+
+
+def test_worker_dispatches_next_workspace_export_after_failure(
+    log_export_publish: MagicMock,
+    log_export_redis: LogExportRedisIo,
+    conversation_export_task: ConversationLogExportTask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Publish the next waiting export when the previous attempt records a terminal failure."""
+    first = conversation_export_task
+    second = first.model_copy(update={"task_id": "next", "app_id": "other-app"})
+    monkeypatch.setattr(log_export_tasks, "redis_client", log_export_redis.client)
+    store = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=ConversationLogExportTask, key_prefix="conversation_log_export"
+    )
+    assert store.save(first)
+    assert not store.save(second)
+
+    def prepare_task(**_scope: str) -> None:
+        processing = store.claim(first)
+        assert processing is not None
+        assert store.finish(processing, status=LogExportStatus.FAILED) is not None
+        raise OSError("CSV upload failed")
+
+    app = Flask(__name__)
+    init_app(app)
+    with (
+        app.app_context(),
+        patch.object(application_services().conversation_log_exports, "prepare_task", new=prepare_task),
+        pytest.raises(OSError, match="CSV upload failed"),
+    ):
+        log_export_tasks.prepare_log_export_task.run(
+            tenant_id=first.tenant_id, app_id=first.app_id, task_id=first.task_id, export_kind="conversation"
+        )
+
+    log_export_publish.assert_called_once_with(
+        kwargs={
+            "tenant_id": second.tenant_id,
+            "app_id": second.app_id,
+            "task_id": second.task_id,
+            "export_kind": "conversation",
+        },
+        task_id=second.task_id,
+    )

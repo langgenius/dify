@@ -6,6 +6,7 @@ import type {
 import type { Dayjs } from 'dayjs'
 import type { CloudSandboxPlanState } from '@/features/log-export/cloud-sandbox-retention'
 import type { LogIdentity } from '@/features/log-export/log-identity'
+import type { LogCustomDateRange } from '@/features/log-export/log-time-range'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -17,9 +18,11 @@ import {
   CLOUD_SANDBOX_CLEARED_TIME_PERIOD,
   CLOUD_SANDBOX_TIME_PERIOD_KEYS,
   isLogTimePeriodRestricted,
+  resolveLogTimePeriod,
   resolveLogTimePeriodOption,
 } from '@/features/log-export/cloud-sandbox-retention'
 import { identityKey, logIdentityFilters } from '@/features/log-export/log-identity'
+import { customLogDateRange } from '@/features/log-export/log-time-range'
 import { consoleQuery } from '@/service/console'
 
 dayjs.extend(quarterOfYear)
@@ -57,12 +60,20 @@ export const TIME_PERIOD_MAPPING: Record<string, LogTimePeriod> = {
   9: { value: -1, name: 'allTime' },
 }
 
-export function logDateRange(period: string, planState: CloudSandboxPlanState, timezone: string) {
-  if (period === '9') return null
+export function logDateRange(
+  period: string,
+  planState: CloudSandboxPlanState,
+  timezone: string,
+  customRange?: LogCustomDateRange,
+) {
+  const effectivePeriod = resolveLogTimePeriod(period, planState)
+  if (effectivePeriod === '9') return null
+  if (effectivePeriod === 'custom' && customRange) return customLogDateRange(customRange, timezone)
   const today = dayjs().tz(timezone)
+  const preset = effectivePeriod === 'custom' ? '2' : effectivePeriod
   const option: LogTimePeriod = resolveLogTimePeriodOption(
-    period,
-    TIME_PERIOD_MAPPING[period]!,
+    preset,
+    TIME_PERIOD_MAPPING[preset]!,
     planState,
   )
   return {
@@ -75,6 +86,7 @@ type ConversationsQuery = NonNullable<GetAppsByAppIdChatConversationsData['query
 
 export type QueryParam = {
   period: string
+  customRange?: LogCustomDateRange
   annotation_status?: ConversationsQuery['annotation_status']
   keyword?: string
   sort_by?: ConversationsQuery['sort_by']
@@ -90,7 +102,11 @@ export function useLogTimeFilterOptions(planState: CloudSandboxPlanState) {
       const { name } = resolveLogTimePeriodOption(value, option, planState)
       return { value, label: t(($) => $[`filter.period.${name}`], { ns: 'appLog' }) }
     })
-  return { periods, clearedPeriod: restricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9' }
+  return {
+    periods,
+    allowCustom: !restricted,
+    clearedPeriod: restricted ? CLOUD_SANDBOX_CLEARED_TIME_PERIOD : '9',
+  }
 }
 
 export function useLogFilterOptions(appId: string, planState: CloudSandboxPlanState) {
@@ -145,11 +161,11 @@ export function getLogIdentities(logs: (Conversation | ConversationWithSummary)[
 }
 
 export function toLogFilters(
-  { period, identities, ...filters }: QueryParam,
+  { period, customRange, identities, ...filters }: QueryParam,
   planState: CloudSandboxPlanState,
   timezone: string,
 ) {
-  const range = logDateRange(period, planState, timezone)
+  const range = logDateRange(period, planState, timezone, customRange)
   return {
     ...filters,
     ...logIdentityFilters(identities),

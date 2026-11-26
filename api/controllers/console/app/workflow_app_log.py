@@ -21,18 +21,30 @@ from controllers.console import console_ns
 from controllers.console.app.error import (
     AppNotFoundError,
     LogExportLimitReachedHTTPError,
+    LogExportTaskNotCancelableHTTPError,
     WorkflowLogExportFileNotFoundHTTPError,
     WorkflowLogExportTaskNotFoundHTTPError,
     WorkflowLogExportTaskNotReadyHTTPError,
 )
-from controllers.console.app.log_export_response import log_export_file_response
+from controllers.console.app.log_export_response import (
+    log_export_file_response,
+    log_export_status_email_preference,
+    update_log_export_email_preference,
+)
 from controllers.console.app.wraps import get_app_model
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan
+from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, model_validate
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
+from fields.log_export_fields import (
+    LogExportEmailNotificationPayload,
+    LogExportEmailNotificationResponse,
+    LogExportEstimatedRows,
+    LogExportProgressResponse,
+    LogExportTaskResponse,
+)
 from fields.member_fields import SimpleAccount
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import ensure_naive_utc
@@ -46,15 +58,22 @@ from models.model import AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.feature_service import FeatureService
+from services.retention.log_export_email import LogExportEmailState
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
+    LogExportKind,
     LogExportLimitReachedError,
     LogExportStatus,
+    LogExportTaskNotCancelableError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
-from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportScope
+from services.retention.workflow_run.log_export_service import (
+    WorkflowLogExportFilters,
+    WorkflowLogExportScope,
+    WorkflowLogExportTask,
+)
 
 
 class WorkflowAppLogQuery(BaseModel):
@@ -267,16 +286,17 @@ class WorkflowLogExportCreatePayload(WorkflowLogExportPreviewQuery):
     """Submit unpaginated preview filters and their display labels for the export."""
 
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: LogExportEstimatedRows = None
 
 
-class WorkflowLogExportTaskResponse(ResponseModel):
-    task_id: str
+class WorkflowLogExportTaskResponse(LogExportTaskResponse):
     status: Literal["pending"]
 
 
-class WorkflowLogExportStatusResponse(ResponseModel):
-    task_id: str
+class WorkflowLogExportStatusResponse(LogExportTaskResponse):
     status: LogExportStatus
+    progress: LogExportProgressResponse | None = None
+    email_notification: LogExportEmailState | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class WorkflowLogExportFiltersResponse(ResponseModel):
@@ -298,6 +318,7 @@ class WorkflowLogExportFiltersResponse(ResponseModel):
 class WorkflowLogExportLatestTaskResponse(WorkflowLogExportStatusResponse):
     filters: WorkflowLogExportFiltersResponse
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    expires_at: datetime | None = Field(default=None, description="UTC deadline for downloading the export")
 
 
 class WorkflowLogExportLatestResponse(ResponseModel):
@@ -334,7 +355,7 @@ def _resolve_log_export_scope(request_context: RequestContext, app_id: UUID) -> 
     return scope
 
 
-register_schema_models(console_ns, WorkflowLogExportCreatePayload)
+register_schema_models(console_ns, WorkflowLogExportCreatePayload, LogExportEmailNotificationPayload)
 register_response_schema_models(
     console_ns,
     WorkflowLogExportPreviewResponse,
@@ -343,6 +364,7 @@ register_response_schema_models(
     WorkflowLogExportTaskResponse,
     WorkflowLogExportStatusResponse,
     WorkflowLogExportLatestResponse,
+    LogExportEmailNotificationResponse,
     BinaryFileResponse,
 )
 
@@ -450,6 +472,7 @@ class WorkflowLogExportApi(Resource):
                 requested_by=request_context.account_id,
                 filters=payload.to_filters(),
                 identity_labels=payload.identity_labels,
+                estimated_rows=payload.estimated_rows,
             )
         except LogExportLimitReachedError as exc:
             raise LogExportLimitReachedHTTPError() from exc
@@ -481,6 +504,12 @@ class WorkflowLogExportLatestApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>")
 class WorkflowLogExportTaskApi(Resource):
+    @staticmethod
+    def _get_task(request_context: RequestContext, app_id: UUID, task_id: UUID) -> WorkflowLogExportTask:
+        """Load an export in the caller's admitted Workflow scope."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        return application_services().workflow_log_exports.get_task(scope=scope, task_id=str(task_id))
+
     @error_responses(AppNotFoundError, WorkflowLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
     @console_ns.doc("get_workflow_log_export_status")
     @console_ns.doc(description="Get the current status of a Workflow CSV export task")
@@ -493,11 +522,70 @@ class WorkflowLogExportTaskApi(Resource):
         self, request_context: RequestContext, app_id: UUID, task_id: UUID
     ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live task for the admitted workspace and Workflow app."""
-        scope = _resolve_log_export_scope(request_context, app_id)
         try:
-            task = application_services().workflow_log_exports.get_task(scope=scope, task_id=str(task_id))
+            task = self._get_task(request_context, app_id, task_id)
         except LogExportTaskNotFoundError as exc:
             raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+        return (
+            dump_response(WorkflowLogExportStatusResponse, task)
+            | log_export_status_email_preference(
+                task, account_id=request_context.account_id, export_kind=LogExportKind.WORKFLOW
+            ),
+            HTTPStatus.OK,
+            {"Cache-Control": "no-store"},
+        )
+
+    @error_responses(AppNotFoundError, WorkflowLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError)
+    @console_ns.doc("set_workflow_log_export_email_notification")
+    @console_ns.doc(description="Set the requester's email preference for this Workflow CSV export")
+    @console_ns.expect(console_ns.models[LogExportEmailNotificationPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Email notification preference", console_ns.models[LogExportEmailNotificationResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    @model_validate(LogExportEmailNotificationPayload)
+    def put(
+        self, payload: LogExportEmailNotificationPayload, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Update the caller's preference for a live Workflow export."""
+        try:
+            task = self._get_task(request_context, app_id, task_id)
+            return update_log_export_email_preference(
+                task, account_id=request_context.account_id, export_kind=LogExportKind.WORKFLOW, enabled=payload.enabled
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>/cancel")
+class WorkflowLogExportCancelApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        WorkflowLogExportTaskNotFoundHTTPError,
+        LogExportTaskNotCancelableHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc(
+        "cancel_workflow_log_export",
+        description="Cancel a queued Workflow CSV export task",
+        params={"app_id": "Application ID", "task_id": "Export task ID"},
+    )
+    @console_ns.response(HTTPStatus.OK, "Export canceled", console_ns.models[WorkflowLogExportStatusResponse.__name__])
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def post(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Cancel the admitted requester's queued Workflow task and return its new status."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().workflow_log_exports.cancel_task(
+                scope=scope, task_id=str(task_id), requested_by=request_context.account_id
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotCancelableError as exc:
+            raise LogExportTaskNotCancelableHTTPError() from exc
         return dump_response(WorkflowLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 

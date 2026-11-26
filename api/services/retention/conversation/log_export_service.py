@@ -22,6 +22,7 @@ from services.retention.log_export_task import (
     LogExportTaskStore,
     OpenLogExportFile,
     StoreLogExportFile,
+    cancel_pending_log_export_task,
     filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
@@ -74,7 +75,7 @@ class ConversationLogExportService:
         *,
         conversations: ConversationLogExportStore,
         tasks: LogExportTaskStore[ConsoleConversationLogFilters],
-        dispatch: Callable[[ConversationLogExportTask], None],
+        dispatch: Callable[[str], None],
         store_csv: StoreLogExportFile,
         open_csv: OpenLogExportFile,
     ) -> None:
@@ -96,11 +97,12 @@ class ConversationLogExportService:
         requested_by: str,
         filters: ConsoleConversationLogFilters,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> ConversationLogExportTask:
-        """Save and dispatch a pending task for an admitted app and caller before returning its ID.
+        """Queue a pending task for an admitted app and caller before returning its ID.
 
         Require time filters converted from the caller's timezone to UTC and keep labels for
-        selected identities. Propagate publication failures and mark the task failed if pending.
+        selected identities. The workspace worker runs queued tasks in submission order.
         """
         if scope.app_mode not in _LOG_CSV_LAYOUTS:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -112,6 +114,7 @@ class ConversationLogExportService:
             identity_labels=filter_log_export_identity_labels(
                 identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
             ),
+            estimated_rows=estimated_rows,
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task
@@ -122,6 +125,15 @@ class ConversationLogExportService:
         if task is None:
             raise LogExportTaskNotFoundError()
         return task
+
+    def cancel_task(
+        self, *, scope: ConsoleConversationScope, requested_by: str, task_id: str
+    ) -> ConversationLogExportTask:
+        """Cancel the requester's queued export in the admitted app."""
+        task = self.get_task(scope=scope, task_id=task_id)
+        return cancel_pending_log_export_task(
+            task, requested_by=requested_by, tasks=self._tasks, dispatch=self._dispatch
+        )
 
     def get_latest_task(
         self, *, scope: ConsoleConversationScope, requested_by: str
@@ -134,10 +146,10 @@ class ConversationLogExportService:
         task = self.get_task(scope=scope, task_id=task_id)
         return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
-    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Load the task for the workspace and app and prepare its CSV if it is still pending."""
+    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
+        """Load the task in the workspace and return it if this attempt publishes its CSV."""
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        prepare_log_export_task(
+        return prepare_log_export_task(
             task,
             tasks=self._tasks,
             storage_prefix="conversation-log-exports",
@@ -152,13 +164,16 @@ class ConversationLogExportService:
         *,
         filters: ConsoleConversationLogFilters,
         output: TextIO,
+        report_rows: CsvRowProgress | None = None,
     ) -> int:
         """Write the app's filtered logs with its mode's columns and return the data row count.
 
         Require an admitted caller and a writable stream opened with newline="". The caller
         owns the stream and publishes it only after success, since a failure may leave partial output.
         """
-        return self.write_scoped_csv(scope=self.get_scope(context, app_id), filters=filters, output=output)
+        return self.write_scoped_csv(
+            scope=self.get_scope(context, app_id), filters=filters, output=output, report_rows=report_rows
+        )
 
     def write_scoped_csv(
         self,

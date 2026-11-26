@@ -8,6 +8,7 @@ import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import { Sort } from '@/app/components/base/sort'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 
 type IFilterProps = {
   isChatMode?: boolean
@@ -16,36 +17,36 @@ type IFilterProps = {
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
   identityOptions?: LogIdentity[]
+  timezone?: string
   actions?: ReactNode
 }
 
 const Filter: FC<IFilterProps> = ({
   isChatMode,
   appId,
-  filterOptions: { periods, annotations, hasAnnotationCount, clearedPeriod },
+  filterOptions: { periods, annotations, hasAnnotationCount, clearedPeriod, allowCustom },
   queryParams,
   setQueryParams,
   identityOptions,
+  timezone,
   actions,
 }: IFilterProps) => {
   const { t } = useTranslation(['appLog', 'common'])
 
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
-      <Chip
-        className="min-w-37.5"
-        panelClassName="w-[270px]"
-        leftIcon={<span className="i-ri-calendar-line size-4 text-text-secondary" aria-hidden />}
-        value={queryParams.period}
-        onSelect={(item) => {
-          setQueryParams({ ...queryParams, period: item.value })
-        }}
-        onClear={() => setQueryParams({ ...queryParams, period: clearedPeriod })}
-        items={periods.map(({ value, label }) => ({ value, name: label }))}
+      <LogTimeRangePicker
+        value={queryParams}
+        options={periods}
+        onChange={(timeRange) => setQueryParams({ ...queryParams, ...timeRange })}
+        timezone={timezone}
+        allowCustom={allowCustom}
+        clearedPeriod={clearedPeriod}
       />
       <Chip
         className="min-w-37.5"
         panelClassName="w-[270px]"
+        label={t(($) => $['table.header.status'], { ns: 'appLog' })}
         disabled={!hasAnnotationCount}
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
@@ -69,7 +70,7 @@ const Filter: FC<IFilterProps> = ({
         />
       )}
       <SearchInput
-        className="w-50"
+        className="max-w-50 min-w-24 flex-1"
         value={queryParams.keyword ?? ''}
         placeholder={t(($) => $['operation.search'], { ns: 'common' })!}
         onValueChange={(value) => {
@@ -97,7 +98,7 @@ const Filter: FC<IFilterProps> = ({
           />
         </>
       )}
-      {actions ? <div className="ms-auto">{actions}</div> : null}
+      {actions ? <div className="ms-auto shrink-0">{actions}</div> : null}
     </div>
   )
 }

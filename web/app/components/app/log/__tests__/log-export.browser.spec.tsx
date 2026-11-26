@@ -3,7 +3,6 @@ import appLogCopy from '@/i18n/locales/en-US/app-log.json'
 import { createDeferred } from '@/test/deferred'
 import {
   accountId,
-  conversation,
   endUserId,
   observeDownloads,
   olderEndUser,
@@ -11,14 +10,14 @@ import {
   previousTaskId,
 } from './log-export-fixture'
 
-// boundary: Use the English preview text to assert rendered counts and description.
+// boundary: Use English copy to assert rendered counts, description, and expiration.
 vi.mock('react-i18next', async (importOriginal) => {
   const original = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
   const { default: copy } = await import('@/i18n/locales/en-US/app-log.json')
   function createMock(category: 'one' | 'other') {
     return createReactI18nextMock({
-      'export.limitReached': copy['export.limitReached'],
+      'export.expiresAt': copy['export.expiresAt'],
       'export.previewRowCount': copy[`export.previewRowCount_${category}`],
       'export.previewConversationCount': copy[`export.previewConversationCount_${category}`],
       'export.previewChatflowDescription': copy['export.previewChatflowDescription'],
@@ -47,6 +46,10 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test${path}`,
 }))
 
+const progressDialog = page.getByRole('dialog', { name: 'appLog.export.progressTitle' })
+const progressClose = progressDialog.getByRole('button', { name: 'common.operation.close' }).last()
+const progressDownload = progressDialog.getByRole('button', { name: 'common.operation.download' })
+
 it.each([
   ['chat', 'previewConversationDescription'],
   ['agent-chat', 'previewConversationDescription'],
@@ -71,11 +74,46 @@ it.each([
   },
 )
 
+it('defaults the list to all identities and clears specific selections from the field', async () => {
+  const { screen, listQueries } = await openExport(false, 'advanced-chat')
+  const label = 'appLog.table.header.endUser'
+  const all = 'appLog.status.all'
+  const listIdentity = screen.getByRole('combobox', { name: label })
+  const allOption = page.getByRole('option', { name: all })
+  const clear = screen.getByRole('button', { name: `common.operation.clear ${label}` })
+
+  await expect.element(listIdentity.getByText(all, { exact: true })).toBeVisible()
+  await listIdentity.click()
+  await expect.element(allOption).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await page.getByRole('option', { name: 'Mia Chen' }).click()
+  await userEvent.keyboard('{Escape}')
+  await expect.poll(() => listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
+  expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([endUserId])
+  await clear.click()
+  await expect.element(listIdentity).toHaveFocus()
+  await expect.element(listIdentity.getByText(all, { exact: true })).toBeVisible()
+  await expect.element(clear).not.toBeInTheDocument()
+})
+
+it('resets specific export identities from the All option', async () => {
+  const { trigger, dialog } = await openExport(false, 'advanced-chat')
+  const allOption = page.getByRole('option', { name: 'appLog.export.identitiesAll' })
+
+  await trigger.click()
+  const exportIdentity = dialog.getByRole('combobox', { name: 'appLog.table.header.endUser' })
+  await exportIdentity.click()
+  await page.getByRole('option', { name: 'user-1024' }).click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('Conversation 1 · CSV rows 2.')
+  await allOption.click()
+  await expect
+    .element(dialog.getByRole('status'))
+    .toHaveTextContent('Conversations 2 · CSV rows 4.')
+  await expect.element(allOption).toHaveAttribute('aria-selected', 'true')
+})
+
 it('previews CSV rows and submits a Completion export with the list identities', async () => {
-  const { screen, trigger, dialog, lastExport, listQueries, requests } = await openExport(
-    false,
-    'completion',
-  )
+  const { screen, trigger, dialog, listQueries, requests } = await openExport(false, 'completion')
   await screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }).click()
   await page.getByRole('option', { name: 'user-1024' }).click()
   await page.getByRole('option', { name: 'Mia Chen' }).click()
@@ -85,62 +123,38 @@ it('previews CSV rows and submits a Completion export with the list identities',
   await trigger.click()
   await expect.element(dialog.getByRole('status')).toHaveTextContent('CSV rows 4.')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
-  await expect
-    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
-    .toBeEnabled()
+  await expect.element(progressDownload).toBeEnabled()
   expect(requests).toEqual([
-    expect.objectContaining({ end_user_ids: [endUserId], account_ids: [accountId] }),
+    expect.objectContaining({
+      estimated_rows: 4,
+      end_user_ids: [endUserId],
+      account_ids: [accountId],
+    }),
   ])
-})
-
-it('can export the same filters again after a CSV is ready', async () => {
-  const downloadPaths = observeDownloads()
-  const { screen, trigger, dialog, lastExport, listQueries, previews, requests } =
-    await openExport()
-  await expect.element(screen.getByText(conversation.summary, { exact: true })).toBeVisible()
-  await screen.getByPlaceholder('common.operation.search').fill('refund')
-  await expect.poll(() => listQueries.at(-1)?.get('keyword')).toBe('refund')
-  await trigger.click()
-  const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
-  await expect
-    .element(dialog.getByRole('status'))
-    .toHaveTextContent('Conversations 2 · CSV rows 4.')
-  expect(previews.at(-1)?.has('keyword')).toBe(false)
-  expect(previews.at(-1)?.has('page')).toBe(false)
-  await submit.click()
-  await expect
-    .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
-    .toBeDisabled()
-  const download = lastExport.getByRole('button', { name: 'common.operation.download' })
-  await expect.element(download).toBeEnabled()
-  await expect.element(submit).toBeEnabled()
-  expect(downloadPaths).toEqual([])
-  expect(requests).toEqual([
-    {
-      annotation_status: 'all',
-      sort_by: '-created_at',
-      start: expect.any(String),
-      end: expect.any(String),
-    },
-  ])
-  await submit.click()
-  await expect
-    .element(lastExport.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  expect(requests).toHaveLength(2)
-  expect(requests[1]).toEqual(requests[0])
-  expect(downloadPaths).toEqual([])
 })
 
 it('keeps the previous export and Download available while editing the form', async () => {
   const downloadPaths = observeDownloads()
-  const { appId, trigger, dialog, lastExport, requests } = await openExport(true)
+  const readyResponse = createDeferred()
+  let latestReads = 0
+  onTestFinished(() => readyResponse.resolve())
+  const { appId, trigger, dialog, lastExport, requests } = await openExport(true, 'chat', {
+    existingTaskExpiresAt: '2026-12-02T18:45:00Z',
+    timezone: 'Asia/Shanghai',
+    waitForLatest: () => (++latestReads > 1 ? readyResponse.promise : undefined),
+  })
   await trigger.click()
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.exporting' }))
     .toBeDisabled()
+  await expect
+    .element(lastExport.getByRole('button', { name: 'appLog.export.viewProgress' }))
+    .toBeVisible()
+  await expect.element(lastExport.getByText(/^Expires /)).not.toBeInTheDocument()
+  readyResponse.resolve()
   const download = lastExport.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeEnabled()
+  await expect.element(lastExport.getByText('Expires 2026-12-03 02:45')).toBeVisible()
   await expect.element(lastExport.getByText(/invoice/)).toBeVisible()
   await expect.element(lastExport.getByText(/appLog\.export\.annotated/)).toBeVisible()
   await expect.element(lastExport.getByText(/user-1024/)).toBeVisible()
@@ -214,21 +228,6 @@ it.each(['response-lost', 'active-export'] as const)(
   },
 )
 
-it('shows the workspace limit error even when a previous export is ready', async () => {
-  const { trigger, dialog, lastExport } = await openExport(true, 'chat', {
-    createFailure: 'workspace-limit',
-  })
-  await trigger.click()
-  await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
-
-  await expect
-    .element(dialog.getByRole('alert'))
-    .toHaveTextContent(appLogCopy['export.limitReached'])
-  await expect
-    .element(lastExport.getByRole('button', { name: 'common.operation.download' }))
-    .toBeEnabled()
-})
-
 it('shows the last export filters in its own row after the user leaves and returns', async () => {
   const { screen, trigger, dialog, lastExport, renderLogs, requests } = await openExport()
   await trigger.click()
@@ -241,11 +240,9 @@ it('shows the last export filters in its own row after the user leaves and retur
   await userEvent.keyboard('{Escape}')
   await dialog.getByRole('button', { name: 'appLog.export.submit' }).click()
 
-  await expect
-    .element(lastExport.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  await dialog.getByRole('button', { name: 'common.operation.close' }).last().click()
-  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(progressDownload).toBeEnabled()
+  await progressClose.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
   await screen.unmount()
   const reopened = await renderLogs()
   await reopened.trigger.click()
@@ -411,8 +408,8 @@ it('shares the Chatflow list filters with export while keeping a separate export
 
   const { innerWidth, innerHeight } = window
   await page.viewport(280, innerHeight)
-  await expect.element(twoVisibleIdentities).toBeVisible()
-  await expect.element(exportIdentity.getByText('+1', { exact: true }).first()).toBeVisible()
+  await expect.element(exportIdentity.getByText('user-1024', { exact: true }).first()).toBeVisible()
+  await expect.element(exportIdentity.getByText('+2', { exact: true }).first()).toBeVisible()
   expect(exportFieldHeight()).toBe(initialExportHeight)
   await page.viewport(innerWidth, innerHeight)
   await expect.element(allIdentities).toBeVisible()
@@ -422,7 +419,7 @@ it('shares the Chatflow list filters with export while keeping a separate export
   await expect.poll(() => previews.at(-1)?.has('start')).toBe(false)
   expect(listQueries.at(-1)?.has('start')).toBe(true)
 
-  await dialog.getByRole('combobox', { name: 'appAnnotation.title' }).click()
+  await dialog.getByRole('combobox', { name: 'appLog.table.header.status' }).click()
   await page.getByRole('option', { name: 'appLog.filter.annotation.not_annotated' }).click()
   await expect.poll(() => previews.at(-1)?.get('annotation_status')).toBe('not_annotated')
   expect(listQueries.at(-1)?.get('annotation_status')).toBe('all')
@@ -430,6 +427,10 @@ it('shares the Chatflow list filters with export while keeping a separate export
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await expect.element(submit).toBeEnabled()
   await submit.click()
+  await expect.element(progressDownload).toBeEnabled()
+  await progressClose.click()
+  await expect.element(progressDialog).not.toBeInTheDocument()
+  await trigger.click()
   const savedIdentities = lastExport.getByText('user-1024, customer-42, Mia Chen', { exact: true })
   await expect.element(savedIdentities).toBeVisible()
   await expect
@@ -437,6 +438,7 @@ it('shares the Chatflow list filters with export while keeping a separate export
     .toEqual([
       {
         annotation_status: 'not_annotated',
+        estimated_rows: 6,
         end_user_ids: [endUserId, olderEndUser.id],
         account_ids: [accountId],
         identity_labels: [

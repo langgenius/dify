@@ -34,7 +34,13 @@ class AgentLogCsvWriter:
         self._logs = logs
 
     def write_csv(
-        self, context: RequestContext, agent_id: str, *, filters: AgentLogExportFilters, output: TextIO
+        self,
+        context: RequestContext,
+        agent_id: str,
+        *,
+        filters: AgentLogExportFilters,
+        output: TextIO,
+        report_rows: CsvRowProgress | None = None,
     ) -> int:
         """Write Agent-specific columns and rows for an admitted Agent and return the row count.
 
@@ -42,7 +48,11 @@ class AgentLogCsvWriter:
         may leave partial output.
         """
         return self.write_scoped_csv(
-            tenant_id=context.active_workspace_id, agent_id=agent_id, filters=filters, output=output
+            tenant_id=context.active_workspace_id,
+            agent_id=agent_id,
+            filters=filters,
+            output=output,
+            report_rows=report_rows,
         )
 
     def write_agent_csv(

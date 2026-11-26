@@ -29,10 +29,20 @@ from controllers.console.app.error import (
     ConversationLogExportTaskNotFoundHTTPError,
     ConversationLogExportTaskNotReadyHTTPError,
     LogExportLimitReachedHTTPError,
+    LogExportTaskNotCancelableHTTPError,
 )
-from controllers.console.app.log_export_response import log_export_file_response
+from controllers.console.app.log_export_response import (
+    log_export_file_response,
+    log_export_status_email_preference,
+    update_log_export_email_preference,
+)
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
+from controllers.console.wraps import (
+    RBACPermission,
+    is_cloud_edition_billing_paid_plan,
+    model_validate,
+    validate_request,
+)
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -50,6 +60,13 @@ from fields.conversation_fields import (
 )
 from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
+)
+from fields.log_export_fields import (
+    LogExportEmailNotificationPayload,
+    LogExportEmailNotificationResponse,
+    LogExportEstimatedRows,
+    LogExportProgressResponse,
+    LogExportTaskResponse,
 )
 from libs.datetime_utils import parse_time_range
 from libs.exception import BaseHTTPException
@@ -71,12 +88,16 @@ from services.errors.conversation import ConversationNotExistsError
 from services.feature_service import FeatureService
 from services.retention.conversation.log_export_service import (
     ConversationLogExportStatus,
+    ConversationLogExportTask,
     UnsupportedConversationLogExportModeError,
 )
+from services.retention.log_export_email import LogExportEmailState
 from services.retention.log_export_task import (
     LogExportFileNotFoundError,
     LogExportIdentityLabel,
+    LogExportKind,
     LogExportLimitReachedError,
+    LogExportTaskNotCancelableError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
@@ -145,6 +166,7 @@ class ConversationLogExportCreatePayload(ChatConversationFilterQuery):
     model_config = ConfigDict(extra="forbid")
 
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    estimated_rows: LogExportEstimatedRows = None
 
 
 class _ConversationLogValidationError(BaseHTTPException):
@@ -171,14 +193,14 @@ class ConversationLogExportPreviewResponse(ResponseModel):
     counts: ConversationLogExportCountsResponse | None = Field(description="Null if the count query timed out")
 
 
-class ConversationLogExportTaskResponse(ResponseModel):
-    task_id: str
+class ConversationLogExportTaskResponse(LogExportTaskResponse):
     status: Literal["pending"]
 
 
-class ConversationLogExportStatusResponse(ResponseModel):
-    task_id: str
+class ConversationLogExportStatusResponse(LogExportTaskResponse):
     status: ConversationLogExportStatus
+    progress: LogExportProgressResponse | None = None
+    email_notification: LogExportEmailState | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class ConversationLogExportFiltersResponse(ResponseModel):
@@ -196,6 +218,7 @@ class ConversationLogExportFiltersResponse(ResponseModel):
 class ConversationLogExportLatestTaskResponse(ConversationLogExportStatusResponse):
     filters: ConversationLogExportFiltersResponse
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
+    expires_at: datetime | None = Field(default=None, description="UTC deadline for downloading the export")
 
 
 class ConversationLogExportLatestResponse(ResponseModel):
@@ -250,6 +273,7 @@ register_schema_models(
     CompletionConversationQuery,
     ChatConversationQuery,
     ConversationLogExportCreatePayload,
+    LogExportEmailNotificationPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -264,6 +288,7 @@ register_response_schema_models(
     ConversationLogExportTaskResponse,
     ConversationLogExportStatusResponse,
     ConversationLogExportLatestResponse,
+    LogExportEmailNotificationResponse,
     BinaryFileResponse,
 )
 
@@ -504,6 +529,7 @@ class ConversationLogExportApi(Resource):
                 requested_by=request_context.account_id,
                 filters=filters,
                 identity_labels=payload.identity_labels,
+                estimated_rows=payload.estimated_rows,
             )
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc
@@ -539,6 +565,12 @@ class ConversationLogExportLatestApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
 class ConversationLogExportTaskApi(Resource):
+    @staticmethod
+    def _get_task(request_context: RequestContext, app_id: UUID, task_id: UUID) -> ConversationLogExportTask:
+        """Load the export in the caller's admitted app scope."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        return application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
+
     @error_responses(
         AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
     )
@@ -553,16 +585,78 @@ class ConversationLogExportTaskApi(Resource):
         self, request_context: RequestContext, app_id: UUID, task_id: UUID
     ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
         """Return the state of a live export task for an admitted app."""
-        scope = _resolve_log_export_scope(request_context, app_id)
         try:
-            task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
+            task = self._get_task(request_context, app_id, task_id)
         except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
         return (
-            dump_response(ConversationLogExportStatusResponse, task),
+            dump_response(ConversationLogExportStatusResponse, task)
+            | log_export_status_email_preference(
+                task, account_id=request_context.account_id, export_kind=LogExportKind.CONVERSATION
+            ),
             HTTPStatus.OK,
             {"Cache-Control": "no-store"},
         )
+
+    @error_responses(
+        AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
+    )
+    @console_ns.doc("set_conversation_log_export_email_notification")
+    @console_ns.doc(description="Set the requester's email preference for this CSV export")
+    @console_ns.expect(console_ns.models[LogExportEmailNotificationPayload.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Email notification preference", console_ns.models[LogExportEmailNotificationResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    @model_validate(LogExportEmailNotificationPayload)
+    def put(
+        self, payload: LogExportEmailNotificationPayload, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Update the caller's preference for a live export in the app."""
+        try:
+            task = self._get_task(request_context, app_id, task_id)
+            return update_log_export_email_preference(
+                task,
+                account_id=request_context.account_id,
+                export_kind=LogExportKind.CONVERSATION,
+                enabled=payload.enabled,
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/cancel")
+class ConversationLogExportCancelApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        ConversationLogExportTaskNotFoundHTTPError,
+        LogExportTaskNotCancelableHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc(
+        "cancel_conversation_log_export",
+        description="Cancel a queued conversation CSV export task",
+        params={"app_id": "Application ID", "task_id": "Export task ID"},
+    )
+    @console_ns.response(
+        HTTPStatus.OK, "Export canceled", console_ns.models[ConversationLogExportStatusResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def post(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Cancel the admitted requester's queued task and return its new status."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().conversation_log_exports.cancel_task(
+                scope=scope, task_id=str(task_id), requested_by=request_context.account_id
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotCancelableError as exc:
+            raise LogExportTaskNotCancelableHTTPError() from exc
+        return dump_response(ConversationLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")

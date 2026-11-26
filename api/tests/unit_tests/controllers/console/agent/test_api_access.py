@@ -31,6 +31,7 @@ from controllers.console.agent.roster import (
     AgentAppListApi,
     AgentInviteOptionsApi,
     AgentLogExportApi,
+    AgentLogExportCancelApi,
     AgentLogExportFileApi,
     AgentLogExportLatestApi,
     AgentLogExportPreviewApi,
@@ -181,6 +182,7 @@ def harness(
         api.add_resource(AgentLogExportApi, "/agent/<uuid:agent_id>/log-exports")
         api.add_resource(AgentLogExportLatestApi, "/agent/<uuid:agent_id>/log-exports/latest")
         api.add_resource(AgentLogExportTaskApi, "/agent/<uuid:agent_id>/log-exports/<uuid:task_id>")
+        api.add_resource(AgentLogExportCancelApi, "/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/cancel")
         api.add_resource(AgentLogExportFileApi, "/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/file")
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
@@ -444,29 +446,34 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
             "start": "2026-07-23 15:00",
             "end": "2026-07-23 16:00",
             "identity_labels": labels,
+            "estimated_rows": 5,
         },
     )
     assert response.status_code == HTTPStatus.ACCEPTED
     task_id = response.get_json()["task_id"]
-    assert response.json == {"task_id": task_id, "status": "pending"}
+    assert response.json == {"task_id": task_id, "status": "pending", "estimated_rows": 5}
     task_key = f"agent_log_export:{{{harness.tenant_id}}}:{agent_id}:{task_id}"
     task = AgentLogExportTask.model_validate_json(harness.redis.get(task_key))
     assert task.app_id == agent_id
     assert task.tenant_id == harness.tenant_id
     assert task.requested_by == harness.account_id
+    assert task.estimated_rows == 5
     assert task.filters.sources == (f"webapp:{app_id}",)
     assert task.filters.end_user_ids == (end_user_id,)
     assert task.filters.account_ids == (harness.account_id,)
     assert task.filters.start == datetime(2026, 7, 23, 7, tzinfo=UTC)
     assert task.filters.end == datetime(2026, 7, 23, 8, tzinfo=UTC)
-    assert task.expires_at - task.created_at == timedelta(days=1)
+    assert task.expires_at is None
     assert (
         harness.redis.get(f"agent_log_export_latest:{{{harness.tenant_id}}}:{agent_id}:{harness.account_id}") == task_id
     )
     arguments = {"tenant_id": harness.tenant_id, "app_id": agent_id, "task_id": task_id, "export_kind": "agent"}
-    publish.assert_called_once_with(kwargs=arguments, task_id=task_id, expires=task.expires_at)
+    publish.assert_called_once_with(kwargs=arguments, task_id=task_id)
     pending = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
-    assert (pending.status_code, pending.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "pending"})
+    assert (pending.status_code, pending.json) == (
+        HTTPStatus.OK,
+        {"task_id": task_id, "status": "pending", "estimated_rows": 5, "progress": None},
+    )
 
     for source in ("webapp:", "webapp:not-an-app-id", "workflow:"):
         assert (
@@ -509,11 +516,21 @@ def test_create_agent_log_export_dispatches_utc_filters_and_prepares_the_csv(
     assert rows[account_message_id]["end_user_id"] == ""
     save_from_path.assert_called_once()
     status = harness.client.get(f"{base}/{task_id}", headers=harness.headers)
-    assert (status.status_code, status.json) == (HTTPStatus.OK, {"task_id": task_id, "status": "ready"})
+    assert (status.status_code, status.json) == (
+        HTTPStatus.OK,
+        {
+            "task_id": task_id,
+            "status": "ready",
+            "estimated_rows": 5,
+            "progress": {"stage": "uploading", "rows_written": 2},
+        },
+    )
     assert status.headers["Cache-Control"] == "no-store"
     latest = harness.client.get(f"{base}/latest", headers=harness.headers)
     assert latest.status_code == HTTPStatus.OK
     assert latest.get_json()["task"]["identity_labels"] == labels
+    assert latest.get_json()["task"]["estimated_rows"] == 5
+    assert latest.get_json()["task"]["progress"] == status.json["progress"]
 
 
 def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_filters(harness: Harness) -> None:
@@ -551,7 +568,10 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
         "task": {
             "task_id": task.task_id,
             "status": "processing",
+            "estimated_rows": None,
+            "progress": None,
             "identity_labels": [],
+            "expires_at": None,
             "filters": {
                 "sources": ["webapp"],
                 "end_user_ids": [end_user_id],
@@ -569,6 +589,16 @@ def test_agent_log_export_status_scopes_tasks_and_restores_the_callers_latest_fi
     assert wrong_agent.get_json()["code"] == "agent_log_export_task_not_found"
     foreign = harness.client.get(f"/console/api/agent/{foreign_agent_id}/log-exports/latest", headers=harness.headers)
     assert foreign.status_code == HTTPStatus.NOT_FOUND
+    other_cancel = harness.client.post(f"{path}/{other_task.task_id}/cancel", headers=harness.headers)
+    assert (other_cancel.status_code, other_cancel.get_json()["code"]) == (
+        HTTPStatus.NOT_FOUND,
+        "agent_log_export_task_not_found",
+    )
+    processing_cancel = harness.client.post(f"{path}/{task.task_id}/cancel", headers=harness.headers)
+    assert (processing_cancel.status_code, processing_cancel.get_json()["code"]) == (
+        HTTPStatus.CONFLICT,
+        "log_export_task_not_cancelable",
+    )
 
     cache[task_prefix + task.task_id] = task.model_copy(
         update={"expires_at": task.created_at - timedelta(seconds=1)}

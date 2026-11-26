@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="margin: 0; padding: 24px; background: #f2f4f7; color: #101828; font-family: Arial, sans-serif; line-height: 1.5;">
+    <div style="max-width: 500px; margin: 0 auto; padding: 24px; border-radius: 12px; background: #ffffff;">
+      <h1 style="margin: 0; font-size: 24px;">日志导出已完成</h1>
+      <p>{% if app_name %}应用 <strong>{{ app_name }}</strong> 的日志{% else %}日志{% endif %}已导出为 CSV。</p>
+      <p><a href="{{ download_url }}" style="display: inline-block; padding: 8px 16px; border-radius: 8px; background: #155aef; color: #ffffff; text-decoration: none;">下载 CSV</a></p>
+      <p style="margin-bottom: 0; color: #475467;">到期时间 {{ expires_at }}。</p>
+    </div>
+  </body>
+</html>

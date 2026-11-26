@@ -11,7 +11,8 @@ import { initialWorkspaceSummary } from '@/context/app-context-defaults'
 import agentV2 from '@/i18n/locales/en-US/agent-v-2.json'
 import appLog from '@/i18n/locales/en-US/app-log.json'
 import common from '@/i18n/locales/en-US/common.json'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper, createFeaturesFixture } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AgentLogsPage } from '../page'
 
@@ -21,7 +22,9 @@ const mocks = vi.hoisted(() => ({
   preview: vi.fn(),
   create: vi.fn(),
   latest: vi.fn(),
+  status: vi.fn(),
   workspace: vi.fn(),
+  features: vi.fn(),
 }))
 
 vi.unmock('react-i18next')
@@ -32,6 +35,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': mocks.features,
       'workspaces.current.summary.get': mocks.workspace,
       'agent.byAgentId.get': async () => ({ name: 'Agent log export test' }),
       'agent.byAgentId.logSources.get': mocks.sources,
@@ -44,6 +48,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       }),
       'agent.byAgentId.logExports.latest.get': mocks.latest,
       'agent.byAgentId.logExports.preview.get': mocks.preview,
+      'agent.byAgentId.logExports.byTaskId.get': mocks.status,
       'agent.byAgentId.logExports.post': mocks.create,
     }),
   }
@@ -98,7 +103,7 @@ it('keeps log filters and pagination reachable at a 320 by 256 viewport', async 
     const controls = [
       screen.getByRole('combobox', { name: 'Last 7 days' }),
       screen.getByRole('combobox', { name: 'Log source' }),
-      screen.getByRole('combobox', { name: 'End User or Account' }),
+      screen.getByRole('combobox', { name: 'End user or account' }),
       screen.getByRole('searchbox', { name: 'Search logs' }),
       screen.getByRole('button', { name: /Sort by:/ }),
     ]
@@ -164,8 +169,10 @@ it('keeps identities selectable after narrowing the list and exports both select
     return { ...emptyLogs, data, total: data.length } satisfies AgentLogListResponse
   })
   mocks.sources.mockResolvedValue(emptySources)
-  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 1 } })
-  mocks.create.mockResolvedValue({ task_id: 'test-export', status: 'pending' })
+  mocks.preview.mockResolvedValue({ counts: { log_count: 1, row_count: 3 } })
+  const exportTaskId = '41d982c1-6581-44c9-ae35-b6a7365aa446'
+  mocks.create.mockResolvedValue({ task_id: exportTaskId, status: 'pending', estimated_rows: 3 })
+  mocks.status.mockResolvedValue({ task_id: exportTaskId, status: 'ready', estimated_rows: 3 })
   mocks.latest.mockResolvedValue({ task: null })
   const workspace = { ...initialWorkspaceSummary, id: 'workspace-1', role: 'owner' } as const
   mocks.workspace.mockResolvedValue(workspace)
@@ -186,7 +193,7 @@ it('keeps identities selectable after narrowing the list and exports both select
     const exportButton = screen.getByRole('button', { name: 'Export logs' })
     await expect.element(exportButton).toBeVisible()
     await expect.element(screen.getByRole('cell', { name: 'account-1' })).toBeVisible()
-    const identityFilter = screen.getByRole('combobox', { name: 'End User or Account' })
+    const identityFilter = screen.getByRole('combobox', { name: 'End user or account' })
     await identityFilter.click()
     const search = screen.getByRole('combobox', { name: 'Search', exact: true })
     await search.fill('001')
@@ -203,10 +210,59 @@ it('keeps identities selectable after narrowing the list and exports both select
     await expect.poll(() => mocks.logs.mock.lastCall?.[0].query).toMatchObject(identities)
 
     const dialog = screen.getByRole('dialog', { name: 'Export logs' })
-    await expect.element(dialog.getByText('Log 1 · CSV row 1.')).toBeVisible()
+    await expect.element(dialog.getByText('Log 1 · CSV rows 3.')).toBeVisible()
     expect(mocks.preview.mock.lastCall?.[0].query).toMatchObject(identities)
     await dialog.getByRole('button', { name: 'Export as CSV' }).click()
-    await expect.poll(() => mocks.create.mock.lastCall?.[0].body).toMatchObject(identities)
+    await expect
+      .poll(() => mocks.create.mock.lastCall?.[0].body)
+      .toMatchObject({
+        ...identities,
+        estimated_rows: 3,
+      })
+    await expect.element(dialog).not.toBeInTheDocument()
+    const progress = screen.getByRole('dialog', { name: 'Export', exact: true })
+    await expect.element(progress.getByRole('button', { name: 'Download' })).toBeEnabled()
+    expect(mocks.status.mock.lastCall?.[0].params).toEqual({
+      agent_id: 'agent-1',
+      task_id: exportTaskId,
+    })
+  } finally {
+    queryClient.clear()
+  }
+})
+
+it('falls back to the default date preset when Cloud custom dates become unavailable', async () => {
+  mocks.logs.mockResolvedValue(emptyLogs)
+  mocks.sources.mockResolvedValue(emptySources)
+  mocks.workspace.mockResolvedValue(initialWorkspaceSummary)
+  const paidPlan = createFeaturesFixture({ billing: { subscription: { plan: 'professional' } } })
+  mocks.features.mockResolvedValue(paidPlan)
+  const i18n = await createLogsI18n()
+  const { queryClient } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    currentWorkspace: initialWorkspaceSummary,
+    features: paidPlan,
+  })
+
+  try {
+    const screen = await render(
+      <QueryClientTestProvider queryClient={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <AgentLogsPage agentId="agent-1" />
+        </I18nextProvider>
+      </QueryClientTestProvider>,
+    )
+    await screen.getByRole('combobox', { name: 'Last 7 days' }).click()
+    await screen.getByRole('option', { name: 'Custom' }).click()
+    await expect.element(screen.getByRole('combobox', { name: 'Custom' })).toBeVisible()
+
+    mocks.features.mockResolvedValue(
+      createFeaturesFixture({ billing: { subscription: { plan: 'sandbox' } } }),
+    )
+    await queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    await screen.getByRole('combobox', { name: 'Last 7 days' }).click()
+    await expect.element(screen.getByRole('option', { name: 'Last 30 days' })).toBeVisible()
+    await expect.element(screen.getByRole('option', { name: 'Custom' })).not.toBeInTheDocument()
   } finally {
     queryClient.clear()
   }

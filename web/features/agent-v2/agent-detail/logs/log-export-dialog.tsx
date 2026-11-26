@@ -1,16 +1,17 @@
 import type { ComponentProps } from 'react'
 import type { AgentLogFilters } from './log-filters'
 import type { LogIdentity } from '@/features/log-export/log-identity'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { API_PREFIX } from '@/config'
 import { useCloudSandboxPlanStatus } from '@/features/log-export/cloud-sandbox-retention'
-import { LogExportDialog, LogExportSelect } from '@/features/log-export/dialog'
+import { LogExportDialog } from '@/features/log-export/dialog'
 import { logIdentityLabels } from '@/features/log-export/log-identity'
 import { LogIdentityField } from '@/features/log-export/log-identity-picker'
+import { LogTimeRangePicker } from '@/features/log-export/log-time-range-picker'
 import { logExportRequest, useLogExport } from '@/features/log-export/use-log-export'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { AgentLogSourcePicker } from './components/source-picker'
 import { agentLogPeriods, toAgentLogQuery } from './log-filters'
 
@@ -33,7 +34,6 @@ export function AgentLogExportDialog({
   timezone: string
 }) {
   const { t } = useTranslation(['appLog', 'agentV2'])
-  const [open, setOpen] = useState(false)
   const [selection, setSelection] = useState(currentFilters)
   const planState = useCloudSandboxPlanStatus()
   const params = { agent_id: agentId }
@@ -44,15 +44,31 @@ export function AgentLogExportDialog({
     }),
   )
   const query = toAgentLogQuery(selection, timezone)
-  const { create, reset, latest, preview, dialogState } = useLogExport({
-    enabled: open && planState === 'unrestricted',
+  const { create, latest, preview, dialogState, progressState, onViewProgress } = useLogExport({
+    enabled: planState === 'unrestricted',
     latestOptions: exportsApi.latest.get.queryOptions({ ...logExportRequest, input: { params } }),
     previewOptions: exportsApi.preview.get.queryOptions({
       ...logExportRequest,
       input: { params, query },
     }),
     createOptions: exportsApi.post.mutationOptions(logExportRequest),
+    statusOptions: (taskId) =>
+      exportsApi.byTaskId.get.queryOptions({
+        ...logExportRequest,
+        input: taskId ? { params: { ...params, task_id: taskId } } : skipToken,
+      }),
+    cancelExport: (taskId) =>
+      consoleClient.agent.byAgentId.logExports.byTaskId.cancel.post(
+        { params: { ...params, task_id: taskId } },
+        logExportRequest,
+      ),
+    updateEmailNotification: (taskId, enabled) =>
+      consoleClient.agent.byAgentId.logExports.byTaskId.put(
+        { params: { ...params, task_id: taskId }, body: { enabled } },
+        logExportRequest,
+      ),
   })
+  const fileUrl = (taskId: string) => `${API_PREFIX}/agent/${agentId}/log-exports/${taskId}/file`
   const task = latest?.task
   const counts = preview?.counts
   const disabled = dialogState.phase !== 'selecting'
@@ -65,20 +81,19 @@ export function AgentLogExportDialog({
       appName={name}
       planState={planState}
       timezone={timezone}
-      open={open}
       onOpenChange={(next) => {
-        if (next) {
-          setSelection(currentFilters)
-          reset()
-        }
-        setOpen(next)
+        if (next) setSelection(currentFilters)
+        dialogState.onOpenChange(next)
       }}
+      progress={progressState && { ...progressState, fileUrl: fileUrl(progressState.taskId) }}
       counts={counts ? { rows: counts.row_count, logs: counts.log_count } : undefined}
       previewDescription={t(($) => $['export.previewAgentDescription'], { ns: 'appLog' })}
       lastExport={
         task && {
           status: task.status,
-          fileUrl: `${API_PREFIX}/agent/${agentId}/log-exports/${task.task_id}/file`,
+          fileUrl: fileUrl(task.task_id),
+          expiresAt: task.expires_at,
+          onViewProgress,
           start: task.filters.start,
           end: task.filters.end,
           sources: task.filters.sources.map(
@@ -92,19 +107,22 @@ export function AgentLogExportDialog({
           params,
           body: {
             ...query,
+            estimated_rows: counts?.row_count,
             identity_labels: selection.identities.length ? selection.identities : undefined,
           },
         })
       }
     >
-      <LogExportSelect
-        label={t(($) => $['export.timeRange'], { ns: 'appLog' })}
-        value={selection.period}
+      <LogTimeRangePicker
+        value={selection}
         options={agentLogPeriods.map((period) => ({
           value: period,
           label: t(($) => $[`agentDetail.logs.filters.period.${period}`], { ns: 'agentV2' }),
         }))}
-        onChange={(period) => setSelection((previous) => ({ ...previous, period }))}
+        timezone={timezone}
+        onChange={({ period, customRange }) =>
+          setSelection((previous) => ({ ...previous, period, customRange }))
+        }
         disabled={disabled}
       />
       <AgentLogSourcePicker

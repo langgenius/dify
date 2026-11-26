@@ -629,6 +629,7 @@ export type ConversationLogExportCreatePayload = {
   annotation_status?: 'all' | 'annotated' | 'not_annotated'
   end?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
@@ -636,6 +637,7 @@ export type ConversationLogExportCreatePayload = {
 }
 
 export type ConversationLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -669,6 +671,9 @@ export type ConversationLogExportPreviewResponse = {
 }
 
 export type ConversationLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -676,6 +681,19 @@ export type ConversationLogExportStatusResponse = {
 export type ConversationLogExportTaskNotFoundError = ErrorResponse & {
   code: 'conversation_log_export_task_not_found'
   status: 404
+}
+
+export type LogExportEmailNotificationPayload = {
+  enabled: boolean
+}
+
+export type LogExportEmailNotificationResponse = {
+  email_notification: LogExportEmailState
+}
+
+export type LogExportTaskNotCancelableError = ErrorResponse & {
+  code: 'log_export_task_not_cancelable'
+  status: 409
 }
 
 export type BinaryFileResponse = Blob | File
@@ -1211,12 +1229,14 @@ export type WorkflowLogExportCreatePayload = {
   created_at__after?: string | null
   created_at__before?: string | null
   end_user_ids?: Array<string>
+  estimated_rows?: number | null
   identity_labels?: Array<LogExportIdentityLabel>
   keyword?: string | null
   status?: WorkflowExecutionStatus | null
 }
 
 export type WorkflowLogExportTaskResponse = {
+  estimated_rows?: number | null
   status: 'pending'
   task_id: string
 }
@@ -1230,6 +1250,9 @@ export type WorkflowLogExportPreviewResponse = {
 }
 
 export type WorkflowLogExportStatusResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -2218,8 +2241,12 @@ export type LogExportIdentityLabel = {
 }
 
 export type ConversationLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
   filters: ConversationLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -2229,7 +2256,14 @@ export type ConversationLogExportCountsResponse = {
   message_count: number
 }
 
-export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
+export type LogExportEmailState = 'off' | 'queued' | 'waiting'
+
+export type LogExportProgressResponse = {
+  rows_written: number
+  stage: LogExportStage
+}
+
+export type LogExportStatus = 'canceled' | 'failed' | 'pending' | 'processing' | 'ready'
 
 export type ConversationVariableResponse = {
   created_at?: number | null
@@ -2627,8 +2661,12 @@ export type WorkflowExecutionStatus =
   | 'succeeded'
 
 export type WorkflowLogExportLatestTaskResponse = {
+  email_notification?: LogExportEmailState | null
+  estimated_rows?: number | null
+  expires_at?: string | null
   filters: WorkflowLogExportFiltersResponse
   identity_labels?: Array<LogExportIdentityLabel>
+  progress?: LogExportProgressResponse | null
   status: LogExportStatus
   task_id: string
 }
@@ -3389,6 +3427,8 @@ export type ConversationLogExportFiltersResponse = {
   sort_by: ConversationSort
   start: string | null
 }
+
+export type LogExportStage = 'preparing' | 'uploading' | 'writing'
 
 export type SimpleAccount = {
   email: string
@@ -7030,6 +7070,59 @@ export type GetAppsByAppIdConversationLogExportsByTaskIdResponses = {
 export type GetAppsByAppIdConversationLogExportsByTaskIdResponse =
   GetAppsByAppIdConversationLogExportsByTaskIdResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdResponses]
 
+export type PutAppsByAppIdConversationLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}'
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdError =
+  PutAppsByAppIdConversationLogExportsByTaskIdErrors[keyof PutAppsByAppIdConversationLogExportsByTaskIdErrors]
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAppsByAppIdConversationLogExportsByTaskIdResponse =
+  PutAppsByAppIdConversationLogExportsByTaskIdResponses[keyof PutAppsByAppIdConversationLogExportsByTaskIdResponses]
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}/cancel'
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelError =
+  PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors[keyof PostAppsByAppIdConversationLogExportsByTaskIdCancelErrors]
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses = {
+  200: ConversationLogExportStatusResponse
+}
+
+export type PostAppsByAppIdConversationLogExportsByTaskIdCancelResponse =
+  PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses[keyof PostAppsByAppIdConversationLogExportsByTaskIdCancelResponses]
+
 export type GetAppsByAppIdConversationLogExportsByTaskIdFileData = {
   body?: never
   path: {
@@ -8445,6 +8538,59 @@ export type GetAppsByAppIdWorkflowLogExportsByTaskIdResponses = {
 
 export type GetAppsByAppIdWorkflowLogExportsByTaskIdResponse =
   GetAppsByAppIdWorkflowLogExportsByTaskIdResponses[keyof GetAppsByAppIdWorkflowLogExportsByTaskIdResponses]
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdData = {
+  body: LogExportEmailNotificationPayload
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}'
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | WorkflowLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdError =
+  PutAppsByAppIdWorkflowLogExportsByTaskIdErrors[keyof PutAppsByAppIdWorkflowLogExportsByTaskIdErrors]
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdResponses = {
+  200: LogExportEmailNotificationResponse
+}
+
+export type PutAppsByAppIdWorkflowLogExportsByTaskIdResponse =
+  PutAppsByAppIdWorkflowLogExportsByTaskIdResponses[keyof PutAppsByAppIdWorkflowLogExportsByTaskIdResponses]
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-log-exports/{task_id}/cancel'
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | WorkflowLogExportTaskNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelError =
+  PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors[keyof PostAppsByAppIdWorkflowLogExportsByTaskIdCancelErrors]
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses = {
+  200: WorkflowLogExportStatusResponse
+}
+
+export type PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponse =
+  PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses[keyof PostAppsByAppIdWorkflowLogExportsByTaskIdCancelResponses]
 
 export type GetAppsByAppIdWorkflowLogExportsByTaskIdFileData = {
   body?: never

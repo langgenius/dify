@@ -78,6 +78,7 @@ async function renderLogs({
         task = {
           task_id: taskId,
           status: 'pending',
+          estimated_rows: filters.estimated_rows,
           identity_labels: filters.identity_labels ?? [],
           filters: {
             created_at__after: filters.created_at__after ?? null,
@@ -88,11 +89,24 @@ async function renderLogs({
             keyword: null,
           },
         }
-        return Response.json({ task_id: taskId, status: 'pending' }, { status: 202 })
+        return Response.json(
+          { task_id: taskId, status: 'pending', estimated_rows: task.estimated_rows },
+          { status: 202 },
+        )
       }
       case 'workflow-log-exports/latest':
         return Response.json({
-          task: task ? { ...task, status: ++reads === 1 ? 'processing' : 'ready' } : null,
+          task: task
+            ? { ...task, status: task.status !== 'ready' && ++reads === 1 ? 'processing' : 'ready' }
+            : null,
+        })
+      case `workflow-log-exports/${taskId}`:
+        if (!task) throw new Error('The export must be created before reading its status')
+        task = { ...task, status: 'ready' }
+        return Response.json({
+          task_id: taskId,
+          status: 'ready',
+          estimated_rows: task.estimated_rows,
         })
       default:
         throw new Error(`Unexpected request ${url.pathname}`)
@@ -123,10 +137,25 @@ async function renderLogs({
 }
 
 it('uses the Workflow list filters for CSV preview, restores the task, and downloads from the Workflow endpoint', async () => {
+  vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-11-24T12:00:00Z'))
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
   await page.viewport(1024, 800)
   const { screen, listQueries, previews, requests } = await renderLogs()
   await expect.element(screen.getByText('Mia Chen', { exact: true })).toBeVisible()
-  await screen.getByRole('combobox', { name: 'appLog.status.all' }).click()
+  await screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }).click()
+  await page.getByRole('option', { name: 'appLog.filter.period.custom' }).click()
+  await screen.getByRole('button', { name: /time\.picker\.startDate/ }).click()
+  await page.getByRole('button', { name: /November 12th, 2026/ }).click()
+  await screen.getByRole('button', { name: /time\.picker\.endDate/ }).click()
+  await page.getByRole('button', { name: /November 23rd, 2026/ }).click()
+  await expect.element(screen.getByText('Nov 12', { exact: true })).toBeVisible()
+  await expect.element(screen.getByText('Nov 23', { exact: true })).toBeVisible()
+  await screen
+    .getByRole('combobox', { name: 'appLog.table.header.status appLog.status.all' })
+    .click()
   await page.getByRole('option', { name: 'appLog.status.succeeded' }).click()
   const identityLabel = 'appLog.table.header.endUser'
   await screen.getByRole('combobox', { name: identityLabel }).click()
@@ -143,6 +172,8 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   expect(listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
   const listFilters = listQueries.at(-1)!
+  expect(listFilters.get('created_at__after')).toBe('2026-11-12T00:00:00+00:00')
+  expect(listFilters.get('created_at__before')).toBe('2026-11-23T23:59:59.999999+00:00')
 
   const trigger = screen.getByRole('button', { name: 'appLog.export.title' })
   await trigger.click()
@@ -155,8 +186,15 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
   expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
   expect(previews.at(-1)?.get('created_at__after')).toBe(listFilters.get('created_at__after'))
+  expect(previews.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
   expect(previews.at(-1)?.has('keyword')).toBe(false)
   expect(previews.at(-1)?.has('page')).toBe(false)
+
+  await dialog.getByRole('button', { name: /time\.picker\.endDate/ }).click()
+  await page.getByRole('button', { name: /November 24th, 2026/ }).click()
+  const exportEnd = '2026-11-24T23:59:59.999999+00:00'
+  await expect.poll(() => previews.at(-1)?.get('created_at__before')).toBe(exportEnd)
+  expect(listQueries.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
 
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await status.click()
@@ -173,8 +211,9 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
     .toEqual([
       {
         status: 'succeeded',
+        estimated_rows: 3,
         created_at__after: listFilters.get('created_at__after'),
-        created_at__before: listFilters.get('created_at__before'),
+        created_at__before: exportEnd,
         end_user_ids: [olderEndUserId],
         account_ids: [accountId],
         identity_labels: [
@@ -184,12 +223,14 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
       },
     ])
 
-  const last = dialog.getByRole('group', { name: 'appLog.export.last' })
+  await expect.element(dialog).not.toBeInTheDocument()
+  const progress = page.getByRole('dialog', { name: 'appLog.export.progressTitle' })
   await expect
-    .element(last.getByRole('status'))
-    .toHaveTextContent('appLog.archives.downloadHint.preparing')
-  await dialog.getByRole('button', { name: 'common.operation.close', exact: true }).first().click()
+    .element(progress.getByRole('button', { name: 'common.operation.download' }))
+    .toBeEnabled()
+  await progress.getByRole('button', { name: 'common.operation.close', exact: true }).last().click()
   await trigger.click()
+  const last = dialog.getByRole('group', { name: 'appLog.export.last' })
   const download = last.getByRole('button', { name: 'common.operation.download' })
   await expect.element(download).toBeVisible()
   await expect.element(last.getByText(/appLog.status.succeeded/)).toBeVisible()

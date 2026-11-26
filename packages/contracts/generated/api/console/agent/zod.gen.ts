@@ -482,6 +482,7 @@ export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
  * AgentLogExportTaskResponse
  */
 export const zAgentLogExportTaskResponse = z.object({
+  estimated_rows: z.int().gte(0).nullish(),
   status: z.literal('pending'),
   task_id: z.string(),
 })
@@ -513,7 +514,7 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
 /**
  * LogExportLimitReachedError
  *
- * There is already an export for this requester and app, or the workspace export limit was reached.
+ * There is already an active log export for this requester and app.
  */
 export const zLogExportLimitReachedError = zErrorResponse.and(
   z.object({
@@ -531,6 +532,27 @@ export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('agent_log_export_task_not_found'),
     status: z.literal(404),
+  }),
+)
+
+/**
+ * LogExportEmailNotificationPayload
+ *
+ * Set the requester's mail preference for a single export.
+ */
+export const zLogExportEmailNotificationPayload = z.object({
+  enabled: z.boolean(),
+})
+
+/**
+ * LogExportTaskNotCancelableError
+ *
+ * Only queued log export tasks can be canceled.
+ */
+export const zLogExportTaskNotCancelableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_task_not_cancelable'),
+    status: z.literal(409),
   }),
 )
 
@@ -1329,17 +1351,25 @@ export const zAgentLogExportPreviewResponse = z.object({
 })
 
 /**
- * LogExportStatus
+ * LogExportEmailState
+ *
+ * The public opt-in state for a task with a live download.
  */
-export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
+export const zLogExportEmailState = z.enum(['off', 'queued', 'waiting'])
 
 /**
- * AgentLogExportStatusResponse
+ * LogExportEmailNotificationResponse
+ *
+ * Return the stored preference or that a mail job has been queued.
  */
-export const zAgentLogExportStatusResponse = z.object({
-  status: zLogExportStatus,
-  task_id: z.string(),
+export const zLogExportEmailNotificationResponse = z.object({
+  email_notification: zLogExportEmailState,
 })
+
+/**
+ * LogExportStatus
+ */
+export const zLogExportStatus = z.enum(['canceled', 'failed', 'pending', 'processing', 'ready'])
 
 /**
  * AgentLogSourceResponse
@@ -1959,6 +1989,7 @@ export const zAgentLogExportCreatePayload = z.object({
   account_ids: z.array(z.uuid()).optional(),
   end: z.string().nullish(),
   end_user_ids: z.array(z.uuid()).optional(),
+  estimated_rows: z.int().gte(0).nullish(),
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
   sources: z.array(z.string()).optional(),
   start: z.string().nullish(),
@@ -1992,11 +2023,41 @@ export const zAgentLogExportFilters = z.object({
 })
 
 /**
+ * LogExportStage
+ */
+export const zLogExportStage = z.enum(['preparing', 'uploading', 'writing'])
+
+/**
+ * LogExportProgressResponse
+ *
+ * The last reported stage and CSV data-row count for the current attempt.
+ */
+export const zLogExportProgressResponse = z.object({
+  rows_written: z.int().gte(0),
+  stage: zLogExportStage,
+})
+
+/**
+ * AgentLogExportStatusResponse
+ */
+export const zAgentLogExportStatusResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  progress: zLogExportProgressResponse.nullish(),
+  status: zLogExportStatus,
+  task_id: z.string(),
+})
+
+/**
  * AgentLogExportLatestTaskResponse
  */
 export const zAgentLogExportLatestTaskResponse = z.object({
+  email_notification: zLogExportEmailState.nullish(),
+  estimated_rows: z.int().gte(0).nullish(),
+  expires_at: z.iso.datetime().nullish(),
   filters: zAgentLogExportFilters,
   identity_labels: z.array(zLogExportIdentityLabel).optional().default([]),
+  progress: zLogExportProgressResponse.nullish(),
   status: zLogExportStatus,
   task_id: z.string(),
 })
@@ -4754,6 +4815,28 @@ export const zGetAgentByAgentIdLogExportsByTaskIdPath = z.object({
  * Export task status
  */
 export const zGetAgentByAgentIdLogExportsByTaskIdResponse = zAgentLogExportStatusResponse
+
+export const zPutAgentByAgentIdLogExportsByTaskIdBody = zLogExportEmailNotificationPayload
+
+export const zPutAgentByAgentIdLogExportsByTaskIdPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Email notification preference
+ */
+export const zPutAgentByAgentIdLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
+
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export canceled
+ */
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelResponse = zAgentLogExportStatusResponse
 
 export const zGetAgentByAgentIdLogExportsByTaskIdFilePath = z.object({
   agent_id: z.uuid(),

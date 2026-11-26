@@ -13,6 +13,7 @@ from services.retention.log_export_task import (
     OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    cancel_pending_log_export_task,
     filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
@@ -30,7 +31,7 @@ class AgentLogExportService:
         *,
         logs: AgentObservability,
         tasks: LogExportTaskStore[AgentLogExportFilters],
-        dispatch: Callable[[AgentLogExportTask], None],
+        dispatch: Callable[[str], None],
         store_csv: StoreLogExportFile,
         write_csv: WriteLogExportCsv[AgentLogExportFilters],
         open_csv: OpenLogExportFile,
@@ -50,6 +51,7 @@ class AgentLogExportService:
         query: AgentLogExportQuery,
         *,
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
+        estimated_rows: int | None = None,
     ) -> AgentLogExportTask:
         """Save and dispatch a task with the admitted scope, resolved filters and selected labels."""
         filters = self._logs.resolve_log_export_filters(context, agent_id, query)
@@ -61,6 +63,7 @@ class AgentLogExportService:
             identity_labels=filter_log_export_identity_labels(
                 identity_labels, end_user_ids=filters.end_user_ids, account_ids=filters.account_ids
             ),
+            estimated_rows=estimated_rows,
         )
         save_and_dispatch_log_export_task(task, tasks=self._tasks, dispatch=self._dispatch)
         return task
@@ -72,6 +75,13 @@ class AgentLogExportService:
         if task is None:
             raise LogExportTaskNotFoundError()
         return task
+
+    def cancel_task(self, context: RequestContext, agent_id: str, *, task_id: str) -> AgentLogExportTask:
+        """Cancel the requester's queued export in the admitted Agent."""
+        task = self.get_task(context, agent_id, task_id=task_id)
+        return cancel_pending_log_export_task(
+            task, requested_by=context.account_id, tasks=self._tasks, dispatch=self._dispatch
+        )
 
     def get_latest_task(self, context: RequestContext, agent_id: str) -> AgentLogExportTask | None:
         """Return the caller's latest live task in the admitted Agent's scope, if one exists."""
@@ -85,10 +95,10 @@ class AgentLogExportService:
         task = self.get_task(context, agent_id, task_id=task_id)
         return open_ready_log_export_csv(task, open_csv=self._open_csv, filename=filename)
 
-    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
-        """Load the workspace's task by its Agent ID and prepare the CSV if it is still pending."""
+    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> AgentLogExportTask | None:
+        """Load the task by its scoped Agent ID and return it if this attempt publishes its CSV."""
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        prepare_log_export_task(
+        return prepare_log_export_task(
             task,
             tasks=self._tasks,
             storage_prefix="agent-log-exports",

@@ -23,8 +23,14 @@ class AppNotFoundError(BaseHTTPException):
 
 class LogExportLimitReachedHTTPError(BaseHTTPException):
     error_code = "log_export_limit_reached"
-    description = "There is already an export for this requester and app, or the workspace export limit was reached."
+    description = "There is already an active log export for this requester and app."
     code = HTTPStatus.TOO_MANY_REQUESTS
+
+
+class LogExportTaskNotCancelableHTTPError(BaseHTTPException):
+    error_code = "log_export_task_not_cancelable"
+    description = "Only queued log export tasks can be canceled."
+    code = HTTPStatus.CONFLICT
 
 
 class ConversationLogExportTaskNotFoundHTTPError(BaseHTTPException):
