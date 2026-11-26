@@ -8,8 +8,10 @@ import type { ConsoleClient } from '../index'
 const isUnrestartedFetch = (query: Query) =>
   query.state.fetchStatus === 'fetching' && (query.state.data === undefined || !query.isActive())
 
-function invalidateEach(client: QueryClient, queryKeys: QueryKey[]) {
-  return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
+type QueryPredicate = (query: Query) => boolean
+
+function invalidateEach(client: QueryClient, queryKeys: QueryKey[], predicate?: QueryPredicate) {
+  return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey, predicate })))
 }
 
 /**
@@ -20,16 +22,22 @@ function invalidateEach(client: QueryClient, queryKeys: QueryKey[]) {
  * the stale flag. Those fetches are cancelled first. Observed queries with data
  * are restarted by `invalidateQueries` itself, so nothing on screen reverts to
  * earlier data. Without such a fetch the invalidation starts right away, as before.
+ * `predicate` narrows the queries under the keys that are invalidated.
  */
-export function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
+export function invalidateQueryKeys(
+  client: QueryClient,
+  queryKeys: QueryKey[],
+  predicate?: QueryPredicate,
+) {
   const cache = client.getQueryCache()
+  const restarts = (query: Query) => isUnrestartedFetch(query) && (!predicate || predicate(query))
   const hasUnrestartedFetch = queryKeys.some(
-    (queryKey) => cache.findAll({ queryKey, predicate: isUnrestartedFetch }).length > 0,
+    (queryKey) => cache.findAll({ queryKey, predicate: restarts }).length > 0,
   )
-  if (!hasUnrestartedFetch) return invalidateEach(client, queryKeys)
+  if (!hasUnrestartedFetch) return invalidateEach(client, queryKeys, predicate)
   return Promise.all(
-    queryKeys.map((queryKey) => client.cancelQueries({ queryKey, predicate: isUnrestartedFetch })),
-  ).then(() => invalidateEach(client, queryKeys))
+    queryKeys.map((queryKey) => client.cancelQueries({ queryKey, predicate: restarts })),
+  ).then(() => invalidateEach(client, queryKeys, predicate))
 }
 
 export async function refreshAgentTagCatalogs(

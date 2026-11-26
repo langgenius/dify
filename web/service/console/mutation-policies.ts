@@ -59,8 +59,8 @@ function settle(callback: () => unknown): Promise<unknown> {
  * the policy first, so its query cancellation lands before the caller's optimistic
  * write. `onSuccess`, `onError`, and `onSettled` start both at once, so caller
  * feedback (toasts, navigation, locale switches) does not wait for a refetch, and
- * the mutation stays pending until both finish. Other options keep oRPC's shallow
- * merge: the caller's value wins.
+ * the mutation stays pending until both finish. `meta` merges by key, the caller's
+ * value winning. Other options keep oRPC's shallow merge: the caller's value wins.
  */
 export function composeMutationOptions<TOptions extends object>(
   policy: object | undefined,
@@ -68,6 +68,10 @@ export function composeMutationOptions<TOptions extends object>(
 ): TOptions {
   if (!policy) return options
   const composed: Record<string, unknown> = { ...(options as Record<string, unknown>) }
+  // A caller's `meta` (an error message, say) must not drop the policy's invalidation flags.
+  const policyMeta = (policy as { meta?: unknown }).meta
+  const callerMeta = (options as { meta?: unknown }).meta
+  if (isObject(policyMeta) && isObject(callerMeta)) composed.meta = { ...policyMeta, ...callerMeta }
   const policyMutate = callbackOf(policy, 'onMutate')
   const callerMutate = callbackOf(options, 'onMutate')
   const splitMutateResult = Boolean(policyMutate && callerMutate)

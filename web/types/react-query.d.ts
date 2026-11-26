@@ -14,6 +14,16 @@ declare module '@tanstack/react-query' {
     mutationMeta: ErrorToastMeta & {
       /** The tag-creation policy leaves the agent tag catalog to the caller's own refresh. */
       deferAgentTagCatalogRefresh?: boolean
+      /**
+       * `false`: the console invalidation fallback skips this mutation, because it changes no
+       * cached data or its owner reconciles the cache itself. See `service/console/README.md`.
+       */
+      invalidate?: false
+      /**
+       * Console paths (`'agent'`, `'workspaces.current.features'`) the fallback refreshes besides
+       * the mutation's own domain, for known cross-domain effects.
+       */
+      alsoInvalidate?: readonly string[]
     }
   }
 }
