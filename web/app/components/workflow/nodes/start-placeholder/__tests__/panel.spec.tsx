@@ -138,7 +138,6 @@ it('replaces the placeholder and generates webhook URLs only after the graph is 
         }),
       }),
     }),
-    expect.anything(),
   )
   expect(fetchWebhook).not.toHaveBeenCalled()
   await act(async () => pending.resolve({ hash: 'saved-hash', updated_at: 123 }))

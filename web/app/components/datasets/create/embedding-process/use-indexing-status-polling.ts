@@ -1,10 +1,11 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { useEffect, useRef, useState } from 'react'
-import { fetchIndexingStatusBatch } from '@/service/datasets'
+import { useQuery } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 
 const POLLING_INTERVAL = 2500
 const COMPLETED_STATUSES = ['completed', 'error', 'paused'] as const
 const EMBEDDING_STATUSES = ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'] as const
+const EMPTY_STATUS_LIST: DocumentStatusResponse[] = []
 
 type IndexingStatusPollingParams = {
   datasetId: string
@@ -24,54 +25,34 @@ const isAllCompleted = (statusList: DocumentStatusResponse[]): boolean =>
   statusList.every((item) => isStatusCompleted(item.indexing_status))
 
 /**
- * Custom hook for polling indexing status with automatic stop on completion.
- * Handles the polling lifecycle and provides derived states for UI rendering.
+ * Batch indexing status, polled until every document has finished. A failed request keeps
+ * the last statuses and is tried again at the next interval.
  */
-export const useIndexingStatusPolling = ({
+export const indexingStatusBatchQueryOptions = ({
   datasetId,
   batchId,
-}: IndexingStatusPollingParams): IndexingStatusPollingResult => {
-  const [statusList, setStatusList] = useState<DocumentStatusResponse[]>([])
-  const isStopPollingRef = useRef(false)
+}: IndexingStatusPollingParams) =>
+  consoleQuery.datasets.byDatasetId.batch.byBatch.indexingStatus.get.queryOptions({
+    input: { params: { dataset_id: datasetId, batch: batchId } },
+    retry: false,
+    refetchIntervalInBackground: true,
+    refetchInterval: (query) => {
+      const statusList = query.state.data?.data
+      return statusList && isAllCompleted(statusList) ? false : POLLING_INTERVAL
+    },
+  })
 
-  useEffect(() => {
-    // Reset polling state on mount
-    isStopPollingRef.current = false
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-
-    const fetchStatus = async (): Promise<DocumentStatusResponse[]> => {
-      const response = await fetchIndexingStatusBatch({ datasetId, batchId })
-      setStatusList(response.data)
-      return response.data
-    }
-
-    const poll = async (): Promise<void> => {
-      if (isStopPollingRef.current) return
-
-      try {
-        const data = await fetchStatus()
-        if (isAllCompleted(data)) {
-          isStopPollingRef.current = true
-          return
-        }
-      } catch {
-        // Continue polling on error
-      }
-
-      if (!isStopPollingRef.current) {
-        timeoutId = setTimeout(() => {
-          poll()
-        }, POLLING_INTERVAL)
-      }
-    }
-
-    poll()
-
-    return () => {
-      isStopPollingRef.current = true
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [datasetId, batchId])
+/**
+ * Polls indexing status with automatic stop on completion and provides derived states for
+ * UI rendering.
+ */
+export const useIndexingStatusPolling = (
+  params: IndexingStatusPollingParams,
+): IndexingStatusPollingResult => {
+  const { data: statusList = EMPTY_STATUS_LIST } = useQuery({
+    ...indexingStatusBatchQueryOptions(params),
+    select: (response) => response.data,
+  })
 
   const isEmbedding = statusList.some((item) =>
     EMBEDDING_STATUSES.includes(item?.indexing_status as (typeof EMBEDDING_STATUSES)[number]),

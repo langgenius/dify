@@ -50,7 +50,7 @@
   "scanner.lastTested": "Laatst getest {{time}}",
   "scanner.loadFailed": "De scanners konden niet worden geladen.",
   "scanner.neverTested": "Nog niet getest",
-  "scanner.readOnly": "Alleen eigenaren en beheerders van de workspace kunnen scanners beheren.",
+  "scanner.readOnly": "Je hebt geen toestemming om scanners te beheren.",
   "scanner.status.active": "Actief",
   "scanner.status.error": "Fout",
   "scanner.test": "Testen",

@@ -146,13 +146,10 @@ it('saves edits through the modal and refreshes the displayed card', async () =>
   }
   await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(updateExternalAPI).toHaveBeenCalledWith(
-    {
-      params: { external_knowledge_api_id: api.id },
-      body: { name: updated.name, settings: updated.settings },
-    },
-    { context: { silent: true } },
-  )
+  expect(updateExternalAPI).toHaveBeenCalledWith({
+    params: { external_knowledge_api_id: api.id },
+    body: { name: updated.name, settings: updated.settings },
+  })
   expect(await screen.findByText(updated.name)).toBeVisible()
   expect(screen.getByText(updated.settings.endpoint)).toBeVisible()
   expect(screen.queryByText(api.name)).not.toBeInTheDocument()

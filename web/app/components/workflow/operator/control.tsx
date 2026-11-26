@@ -4,10 +4,13 @@ import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Toggle } from '@langgenius/dify-ui/toggle'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { collaborationUpgradeDialogAtom } from '../collaboration/upgrade-state'
+import {
+  collaborationUpgradeDialogAtom,
+  collaborationUpgradeOpenedAtom,
+} from '../collaboration/upgrade-state'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
@@ -22,6 +25,7 @@ import { toolbarClassName, toolbarModeToggleClassName } from './toolbar-styles'
 const Control = () => {
   const { t } = useTranslation(['workflow', 'billing'])
   const upgradeDialog = useAtomValue(collaborationUpgradeDialogAtom)
+  const upgradeOpened = useSetAtom(collaborationUpgradeOpenedAtom)
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
@@ -127,6 +131,7 @@ const Control = () => {
         <TipPopup title={upgradeLabel}>
           <DialogTrigger
             handle={upgradeDialog}
+            onClick={() => upgradeOpened('canvas_comment_tool')}
             render={
               <IconButton size="lg" aria-label={upgradeLabel} className="ms-px rounded-md">
                 <span aria-hidden className="i-custom-public-other-comment size-4" />

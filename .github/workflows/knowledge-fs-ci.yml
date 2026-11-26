@@ -263,6 +263,7 @@ jobs:
             api/tests/unit_tests/extensions/test_ext_celery.py
             api/tests/unit_tests/models/test_agent_config_entities.py
             api/tests/unit_tests/controllers/common/test_errors.py
+            api/tests/unit_tests/controllers/console/agent/test_api_access.py
             api/tests/unit_tests/controllers/console/datasets/test_data_source.py
             api/tests/unit_tests/controllers/console/datasets/test_datasets.py
             api/tests/unit_tests/controllers/console/test_wraps.py
@@ -436,7 +437,7 @@ jobs:
 
   final:
     name: KnowledgeFS CI
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     needs:
       - check-changes
       - quality

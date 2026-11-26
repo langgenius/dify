@@ -99,6 +99,7 @@ const server = vi.hoisted(() => ({ inflight: 0, reads: new Map<string, number>()
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const forever = () => new Promise<never>(() => {})
@@ -147,20 +148,21 @@ vi.mock('@/service/console', async (importOriginal) => {
           : current
       })
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
+    [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
+    [`${space}.goldenQuestions.post`]: (input: never) => apiMock.createGolden(input),
+    [`${space}.quality.badCases.post`]: apiMock.createBadCase,
+    [`${space}.queries.admission.post`]: apiMock.queryAdmission,
+    [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
+    [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
+    [`${space}.researchTasks.post`]: apiMock.createResearch,
+    [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'knowledgeFs.tasks.byTaskId.streamCapability.post': apiMock.streamCapability,
-      [`${space}.documentReferences.resolve.get`]: apiMock.resolveDocumentReference,
-      [`${space}.goldenQuestions.post`]: apiMock.createGolden,
-      [`${space}.quality.badCases.post`]: apiMock.createBadCase,
-      [`${space}.queries.admission.post`]: apiMock.queryAdmission,
-      [`${space}.researchTasks.byTaskId.delete`]: apiMock.cancelResearch,
-      [`${space}.researchTasks.plan.post`]: apiMock.planResearch,
-      [`${space}.researchTasks.post`]: apiMock.createResearch,
-      [`${space}.traces.byTraceId.evidence.get`]: apiMock.getTraceEvidence,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'files.upload.post': apiMock.uploadFile,
       [`${space}.goldenQuestions.evidenceMatches.post`]: apiMock.matchEvidence,
       [`${space}.researchTasks.byTaskId.get`]: (input: { params: { task_id: string } }) => {
@@ -390,13 +392,10 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: { mode: 'research', query: 'Compare the refund policies' },
-          params: { control_space_id: 'space-1' },
-        },
-        { context: { silent: true } },
-      ),
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: { mode: 'research', query: 'Compare the refund policies' },
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -408,7 +407,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -767,7 +766,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -794,17 +793,14 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: {
-            mode: 'research',
-            query: '',
-            queryImages: [{ uploadFileId: 'historical-image-1' }],
-          },
-          params: { control_space_id: 'space-1' },
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: {
+          mode: 'research',
+          query: '',
+          queryImages: [{ uploadFileId: 'historical-image-1' }],
         },
-        { context: { silent: true } },
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -817,7 +813,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: { silent: true } },
+      { context: expect.any(Object) },
     )
   })
 
@@ -2084,7 +2080,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
@@ -2255,7 +2251,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2340,7 +2336,7 @@ describe('RetrievalTestPage', () => {
           body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
           params: { control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2550,16 +2546,13 @@ describe('RetrievalTestPage', () => {
       ),
     )
     expect(apiMock.resolveDocumentReference).toHaveBeenCalledOnce()
-    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1' },
-        query: {
-          document_asset_id: 'asset-1',
-          document_asset_version: 1,
-        },
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: {
+        document_asset_id: 'asset-1',
+        document_asset_version: 1,
       },
-      { context: { silent: true } },
-    )
+    })
   })
 
   it('preserves the server reason when opening asset-only evidence fails', async () => {

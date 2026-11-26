@@ -14,7 +14,6 @@ export function useDeploymentConfigurationQueries({
 }) {
   const precheckQueryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.precheckWorkflowDeployment.queryOptions({
-      gcTime: 0,
       input: appId
         ? {
             params: {
@@ -32,7 +31,6 @@ export function useDeploymentConfigurationQueries({
 
   const deploymentOptionsQueryOptions =
     consoleQuery.enterprise.appDeploy.deploymentService.getWorkflowDeploymentOptions.queryOptions({
-      gcTime: 0,
       input: appId
         ? {
             params: {

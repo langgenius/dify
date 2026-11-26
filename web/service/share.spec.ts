@@ -271,7 +271,7 @@ describe('console message queries and feedback', () => {
     expect(getMock).not.toHaveBeenCalled()
   })
 
-  it('keeps saved-message errors silent and requests more-like-this in blocking mode', async () => {
+  it('reads saved messages and requests more-like-this in blocking mode', async () => {
     request.mockResolvedValueOnce(Response.json({ data: [] }))
     await expect(fetchSavedMessage(AppSourceType.installedApp, 'installed-1')).resolves.toEqual({
       data: [],
@@ -279,7 +279,6 @@ describe('console message queries and feedback', () => {
     expect(new URL(request.mock.calls[0]![0]).pathname).toBe(
       '/console/api/installed-apps/installed-1/saved-messages',
     )
-    expect(request.mock.calls[0]?.[2]?.silent).toBe(true)
     request.mockResolvedValueOnce(Response.json({ answer: 'Another answer' }))
     await expect(
       fetchMoreLikeThis('message-1', AppSourceType.installedApp, 'installed-1'),
@@ -539,10 +538,9 @@ describe('public app requests through the generated WebApp client', () => {
     expect(getMock).not.toHaveBeenCalled()
   })
 
-  it('keeps saved-message reads silent and resolves empty deletes as success', async () => {
+  it('reads saved messages and resolves empty deletes as success', async () => {
     await fetchSavedMessage(AppSourceType.webApp)
     expect(publicRequestCalls()).toEqual([['/saved-messages', 'GET']])
-    expect(request.mock.calls[0]?.[2]?.silent).toBe(true)
   })
 
   it('reads app metadata from the current Web App address', async () => {

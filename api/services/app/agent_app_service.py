@@ -8,6 +8,8 @@ from machinery.context import RequestContext
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
+    AgentAppCopied,
+    AgentAppCopy,
     AgentAppDetail,
     AgentAppListPage,
     AgentAppNotFoundError,
@@ -173,6 +175,12 @@ class AgentAppCollectionStore(Protocol):
         """
         ...
 
+    def copy_agent_app(
+        self, context: RequestContext, agent_id: str, overrides: AgentAppCopy, settings: AppCreationSettings
+    ) -> AgentAppCopied:
+        """Commit a private copy and detach the source/target identities."""
+        ...
+
 
 class AgentAppCollectionAccess(Protocol):
     """Resolve list visibility before starting the database work."""
@@ -194,6 +202,7 @@ class AgentAppCollectionService:
         resolve_default_model: Callable[[str], tuple[str, str] | None],
         notify_created: Callable[[RequestContext, AppRecord], None],
         detail: AgentAppDetailService,
+        inherit_webapp_access: Callable[[str, str], None],
     ) -> None:
         self._store = store
         self._access = access
@@ -201,6 +210,7 @@ class AgentAppCollectionService:
         self._resolve_default_model = resolve_default_model
         self._notify_created = notify_created
         self._detail = detail
+        self._inherit_webapp_access = inherit_webapp_access
 
     def list_apps(self, context: RequestContext, params: AppListParams) -> AgentAppListPage:
         """Return only visible Agents with permission keys, with no open session on return."""
@@ -225,6 +235,19 @@ class AgentAppCollectionService:
         if app.bound_agent_id is None:
             raise AgentAppNotFoundError
         return self._detail.get(context, app.bound_agent_id)
+
+    def copy(self, context: RequestContext, agent_id: str, overrides: AgentAppCopy) -> AgentAppDetail:
+        """Create a private copy, initialize its access, and return the committed Agent detail."""
+        # Agent App template settings depend only on the mode.
+        settings = self._prepare_creation(
+            context.active_workspace_id, CreateAppParams(name=overrides.name or "Agent", mode="agent")
+        )
+        copied = self._store.copy_agent_app(context, agent_id, overrides, settings)
+        self._notify_created(context, copied.app)
+        self._inherit_webapp_access(copied.source_app_id, copied.app.id)
+        if copied.app.bound_agent_id is None:
+            raise AgentAppNotFoundError
+        return self._detail.get(context, copied.app.bound_agent_id)
 
 
 class AgentAppAccessService:

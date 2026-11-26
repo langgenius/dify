@@ -39,7 +39,7 @@ describe('KnowledgeFS upload quota preflight', () => {
     vi.restoreAllMocks()
   })
 
-  it('allows uploads with remaining capacity and makes both requests silent', async () => {
+  it('allows uploads with remaining capacity and keeps both reads out of the error toast', async () => {
     await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBeUndefined()
 
     expect(request).toHaveBeenCalledTimes(2)
@@ -47,7 +47,9 @@ describe('KnowledgeFS upload quota preflight', () => {
       '/console/api/features',
       '/console/api/features/vector-space',
     ])
-    for (const call of request.mock.calls) expect(call[2]).toMatchObject({ silent: true })
+    const queries = queryClient.getQueryCache().getAll()
+    expect(queries).toHaveLength(2)
+    for (const query of queries) expect(query.meta).toMatchObject({ errorToast: false })
   })
 
   it.each([

@@ -50,7 +50,7 @@
   "scanner.lastTested": "最終テスト：{{time}}",
   "scanner.loadFailed": "スキャナーを読み込めませんでした。",
   "scanner.neverTested": "未テスト",
-  "scanner.readOnly": "スキャナーを管理できるのは、ワークスペースの Owner と Admin のみです。",
+  "scanner.readOnly": "スキャナーを管理する権限がありません。",
   "scanner.status.active": "有効",
   "scanner.status.error": "エラー",
   "scanner.test": "テスト",

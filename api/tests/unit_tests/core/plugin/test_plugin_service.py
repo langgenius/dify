@@ -24,6 +24,7 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
 from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
+from services.feature_service import ProviderCatalogBilling
 from tests.unit_tests.services.plugin.conftest import mock_features as mock_features  # noqa: PLC0414
 from tests.unit_tests.services.plugin.conftest import mock_installer as mock_installer  # noqa: PLC0414
 
@@ -300,7 +301,9 @@ class TestPluginModelProviderCache:
             ),
             patch("core.plugin.plugin_service.PluginService.is_plugin_verified") as is_plugin_verified,
         ):
-            system_configuration = provider_manager._to_system_configuration("tenant-1", result[0], [])
+            system_configuration = provider_manager._to_system_configuration(
+                ProviderCatalogBilling("tenant-1"), result[0], []
+            )
 
         assert system_configuration.enabled is False
         is_plugin_verified.assert_not_called()

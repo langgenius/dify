@@ -24,7 +24,7 @@ describe('workflowRunEventsRequest', () => {
 
     const output = await workflowRunEventsRequest('run-1')({
       signal: controller.signal,
-      context: { silent: true, stream: true },
+      context: { stream: true },
     })
 
     const url = fetchedURL()
@@ -43,7 +43,7 @@ describe('workflowRunEventsRequest', () => {
 
     await workflowRunEventsRequest('run-1', { isPublicAPI: true })({
       signal: new AbortController().signal,
-      context: { silent: true, stream: true },
+      context: { stream: true },
     })
 
     const url = fetchedURL()

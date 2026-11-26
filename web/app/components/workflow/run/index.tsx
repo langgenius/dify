@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { WorkflowRunOwner } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -98,7 +98,7 @@ function RunSession({
   const getResult = async (lifetime: RequestLifetime, runId: string) => {
     const request = ++lifetime.detailRequest
     try {
-      const res = await fetchRunDetail(runOwner, runId, { silent: true })
+      const res = await fetchRunDetail(runOwner, runId)
       if (!lifetime.active || request !== lifetime.detailRequest) return
       setRunDetail(res)
       if (getResultCallback) getResultCallback(res)
@@ -116,7 +116,7 @@ function RunSession({
   const getTracingList = async (lifetime: RequestLifetime, runId: string) => {
     const request = ++lifetime.tracingRequest
     try {
-      const { data: nodeList } = await fetchTracingList(runOwner, runId, { silent: true })
+      const { data: nodeList } = await fetchTracingList(runOwner, runId)
       if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
     } catch (err) {
       if (lifetime.active && request === lifetime.tracingRequest)
@@ -206,6 +206,7 @@ function RunSession({
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
         </TabsTab>
+        <TabsIndicator />
       </TabsList>
       {/* panel detail */}
       <div
