@@ -368,6 +368,25 @@ Get account avatar url
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /accounts/{account_id}/avatars/{file_id}
+**Serve an account's assigned raster avatar to an authenticated Console account**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| account_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Avatar image | **image/bmp**: binary<br>**image/gif**: binary<br>**image/jpeg**: binary<br>**image/png**: binary<br>**image/webp**: binary<br> |
+| 304 | Avatar image has not changed |  |
+| 404 | Avatar file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
 
@@ -452,7 +471,11 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
-**Return visible Workflow-callable Agents and their current workflow usage**
+**Return visible Workflow-callable Agents matching validated tag filters**
+
+Preconditions: Console admission supplies the active workspace identity.
+Postconditions: repeated tag_ids are validated as UUIDs and passed with
+name/pagination filters; the response contains detached Agent tags.
 
 #### Parameters
 
@@ -462,6 +485,7 @@ Check if activation token is valid
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Agent tag IDs; every selected tag must match | No | [ string (uuid) ] |
 
 #### Responses
 
@@ -698,6 +722,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
+**Save the admitted account's Build draft and return its committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -715,11 +741,13 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
+**Apply the admitted account's Build draft to the shared draft and return its metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -733,11 +761,14 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
+**Copy the shared draft for the admitted account, or reuse the existing personal draft unless forced**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -820,6 +851,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
+**Return the Agent's effective shared configuration without creating a draft**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -835,6 +868,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
+**Save the shared draft and return the committed state with validation findings**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -857,6 +892,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
+**Return mention candidates from tenant-scoped configuration and workspace tools**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -872,6 +909,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
+**Check publish rules for the supplied configuration and report findings without writing**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -894,6 +933,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -911,6 +952,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -934,6 +977,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files/batch
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -957,6 +1002,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -975,6 +1022,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -993,6 +1042,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1011,6 +1062,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1028,6 +1081,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1045,6 +1100,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1068,6 +1125,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1086,6 +1145,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1104,6 +1165,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1120,6 +1183,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1139,6 +1204,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1158,6 +1225,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1176,6 +1245,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
+**Copy an admitted roster Agent App and render its committed private detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1359,6 +1430,8 @@ Get Agent App message details by ID
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
+**Publish the current shared draft and return the committed version and draft metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1379,6 +1452,7 @@ Get Agent App message details by ID
 | 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -2368,6 +2442,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2387,6 +2463,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2412,6 +2490,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files/batch
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2437,6 +2517,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2457,6 +2539,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2477,6 +2561,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2497,6 +2583,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2516,6 +2604,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2535,6 +2625,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2560,6 +2652,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2580,6 +2674,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2600,6 +2696,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2617,6 +2715,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2638,6 +2738,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2659,6 +2761,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2856,6 +2960,12 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -5071,6 +5181,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5088,6 +5200,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5112,6 +5226,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5128,6 +5244,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5152,6 +5270,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5174,6 +5294,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5198,6 +5320,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -6684,7 +6808,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | ZIP archive downloaded successfully |  |
+| 200 | ZIP archive downloaded successfully | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -8384,6 +8508,12 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -13454,6 +13584,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13471,6 +13603,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13495,6 +13629,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13510,6 +13646,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13534,6 +13672,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13555,6 +13695,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13579,6 +13721,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14021,7 +14165,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "agent", "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -14031,6 +14175,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tags
+**Create a validated tag only after authorization for its pool; conflicts preserve existing tags**
+
 #### Request Body
 
 | Required | Schema |
@@ -14045,6 +14191,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
+**Delete an authorized tenant-owned tag and its bindings; other tag pools remain independent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14059,6 +14207,8 @@ Remove one or more tag bindings from a target.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /tags/{tag_id}
+**Rename a tenant-owned tag after pool authorization; a missing tag is a 404 without writes**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -14282,6 +14432,12 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
@@ -17042,6 +17198,12 @@ performs no writes or provider I/O. Storage failures propagate normally.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"bundle"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -18241,7 +18403,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft Skill zip archive |  |
+| 200 | Draft Skill zip archive | **application/zip**: [BinaryFileResponse](#binaryfileresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
@@ -21070,6 +21232,7 @@ Supported icon storage formats for Agent roster entries.
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
+| tags | [ [Tag](#tag) ] | Workspace Agent tags, independent of Studio App tags | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | workflow_id | string |  | No |
@@ -21083,6 +21246,7 @@ Supported icon storage formats for Agent roster entries.
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| tag_ids | [ string (uuid) ] | Agent tag IDs; every selected tag must match | No |
 
 #### AgentInviteOptionsResponse
 
@@ -37207,7 +37371,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
+| type | [TagType](#tagtype) | Tag type filter | Yes |
 
 #### TagListResponse
 
@@ -39310,6 +39474,7 @@ tenant's default model. The underlying generator never raises — an empty
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| continue_agent_session | boolean, <br>**Default:** true | Reuse this node's Agent history and working resources across messages in the same Chatflow chat. | No |
 | declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
@@ -39317,6 +39482,7 @@ tenant's default model. The underlying generator never raises — an empty
 | output_routes | [WorkflowOutputRoutes](#workflowoutputroutes) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
+| session_generation | string | Server-managed session generation. Empty preserves the scope of legacy Chatflow nodes. | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata

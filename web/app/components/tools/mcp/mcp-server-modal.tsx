@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
@@ -33,26 +33,11 @@ type ModalProps = {
 
 const MCPServerModal = ({ appID, latestParams = [], data, show, onHide, appInfo }: ModalProps) => {
   const { t } = useTranslation(['common', 'tools'])
-  const queryClient = useQueryClient()
   const { mutate: createMCPServer, isPending: creating } = useMutation(
-    consoleQuery.apps.byAppId.server.post.mutationOptions({
-      onSuccess: (_response, { params }) => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.server.get.queryKey({ input: { params } }),
-        })
-        onHide()
-      },
-    }),
+    consoleQuery.apps.byAppId.server.post.mutationOptions({ onSuccess: () => onHide() }),
   )
   const { mutate: updateMCPServer, isPending: updating } = useMutation(
-    consoleQuery.apps.byAppId.server.put.mutationOptions({
-      onSuccess: (_response, { params }) => {
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.apps.byAppId.server.get.queryKey({ input: { params } }),
-        })
-        onHide()
-      },
-    }),
+    consoleQuery.apps.byAppId.server.put.mutationOptions({ onSuccess: () => onHide() }),
   )
   const isSaving = creating || updating
 

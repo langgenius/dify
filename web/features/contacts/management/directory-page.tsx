@@ -45,7 +45,7 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { isNotFoundError } from '@/service/http-error'
+import { getRequestErrorMessage, isNotFoundError } from '@/service/http-error'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
@@ -246,7 +246,7 @@ export function ContactsDirectoryPage() {
         Boolean(context.workspaceId) &&
         context.permissions.canViewContacts &&
         context.imCentrallyManaged !== undefined,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const contacts = [
@@ -268,7 +268,7 @@ export function ContactsDirectoryPage() {
         im_binding_details: response.im_binding_details,
       }),
       retry: false,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const kinds = ['workspace', 'platform', 'external'] as const
@@ -282,7 +282,8 @@ export function ContactsDirectoryPage() {
           context.imCentrallyManaged !== undefined &&
           (group !== 'platform' || context.imCentrallyManaged === true),
         select: (page) => page.total,
-        context: { silent: true },
+        // Filter counts are optional; a failed count shows a dash.
+        meta: { errorToast: false },
       }),
     ),
   })
@@ -291,7 +292,9 @@ export function ContactsDirectoryPage() {
     platform: counts[1]?.data,
     external: counts[2]?.data,
   }
-  const removeContacts = useMutation(api.remove.post.mutationOptions({ context: { silent: true } }))
+  const removeContacts = useMutation(
+    api.remove.post.mutationOptions({ meta: { errorToast: false } }),
+  )
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
     (filter) => filter !== 'platform' || context.imCentrallyManaged,
@@ -546,7 +549,10 @@ export function ContactsDirectoryPage() {
                       {t(($) => $['action.retry'])}
                     </Button>
                   }
-                  description={t(($) => $['directory.errorDescription'])}
+                  description={
+                    getRequestErrorMessage(directoryQuery.error) ??
+                    t(($) => $['directory.errorDescription'])
+                  }
                   icon="i-ri-error-warning-line"
                   title={t(($) => $['directory.errorTitle'])}
                 />
@@ -654,7 +660,8 @@ export function ContactsDirectoryPage() {
                       {directoryQuery.isFetchNextPageError && (
                         <div className="flex flex-col items-center gap-2 p-3">
                           <p role="alert" className="system-xs-regular text-text-destructive">
-                            {t(($) => $['directory.pageError'])}
+                            {getRequestErrorMessage(directoryQuery.error) ??
+                              t(($) => $['directory.pageError'])}
                           </p>
                           <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
                             {t(($) => $['action.retry'])}
@@ -723,7 +730,9 @@ export function ContactsDirectoryPage() {
                 role={detailsQuery.isError ? 'alert' : undefined}
                 className="my-auto text-center system-sm-regular text-text-tertiary"
               >
-                {t(($) => $[detailsFailed ? 'details.error' : 'details.notFound'])}
+                {detailsFailed
+                  ? (getRequestErrorMessage(detailsQuery.error) ?? t(($) => $['details.error']))
+                  : t(($) => $['details.notFound'])}
               </p>
             )}
             {detailsFailed && (
@@ -814,14 +823,15 @@ export function ContactsDirectoryPage() {
           {removalError && (
             <AlertDialogBody>
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(
-                  ($) =>
-                    $[
-                      removalContactName
-                        ? 'directory.removalSingleFailed'
-                        : 'directory.removalFailed'
-                    ],
-                )}
+                {getRequestErrorMessage(removeContacts.error) ??
+                  t(
+                    ($) =>
+                      $[
+                        removalContactName
+                          ? 'directory.removalSingleFailed'
+                          : 'directory.removalFailed'
+                      ],
+                  )}
               </p>
             </AlertDialogBody>
           )}

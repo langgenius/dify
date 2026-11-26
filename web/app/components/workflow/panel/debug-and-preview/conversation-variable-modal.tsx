@@ -34,11 +34,9 @@ const ConversationVariableModal = ({ conversationID, onHide }: Props) => {
   const { data: latestValues } = useQuery(
     consoleQuery.apps.byAppId.conversationVariables.get.queryOptions({
       input:
-        appID && conversationID
+        varList.length > 0 && appID && conversationID
           ? { params: { app_id: appID }, query: { conversation_id: conversationID } }
           : skipToken,
-      enabled: varList.length > 0,
-      staleTime: 0,
     }),
   )
   const latestVariable = latestValues?.data.find((variable) => variable.id === currentVar.id)

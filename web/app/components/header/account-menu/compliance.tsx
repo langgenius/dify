@@ -14,7 +14,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import {
   pricingQueryParamName,
   pricingQueryParser,
@@ -116,7 +116,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
 
   const { isPending, mutate: downloadCompliance } = useMutation(
     consoleQuery.compliance.download.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (ret) => {
         downloadUrl({ url: ret.url })
         toast.success(t(($) => $['operation.downloadSuccess'], { ns: 'common' }))
@@ -129,7 +129,7 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
           toast.error(t(($) => $['compliance.documentNotFound'], { ns: 'common' }))
         else if (code === 'compliance_rate_limit')
           toast.error(t(($) => $['compliance.rateLimit'], { ns: 'common' }))
-        else toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+        else toast.error(getBillingErrorMessage(error, t))
       },
     }),
   )

@@ -1,6 +1,7 @@
 import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
 import { ConfigurationMethodEnum } from '../../declarations'
 import {
@@ -77,6 +78,18 @@ it.each(['missing provider', 'request failure'])(
     }
   },
 )
+
+it('reports a rejected provider detail request once, with the server reason', async () => {
+  api.detail.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 503 }), { message: 'Provider service is down' }),
+  )
+  const { user } = renderModelList({ currentProvider: summaryProvider, errorToasts: true })
+  await user.click(configureButtons()[0]!)
+  expect(await screen.findByText('Provider service is down')).toBeVisible()
+  expect(screen.getAllByText('Provider service is down')).toHaveLength(1)
+  expect(screen.queryByText('common.api.actionFailed')).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog', { name: dialogName })).not.toBeInTheDocument()
+})
 
 it.each([
   {

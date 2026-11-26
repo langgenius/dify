@@ -2,7 +2,7 @@ import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.ge
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useInvalidateAppWorkflow, useUpdateWorkflow } from '@/service/use-workflow'
+import { useUpdateWorkflow } from '@/service/use-workflow'
 import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfoUpdate = {
@@ -22,8 +22,7 @@ export function useVersionInfo({
 }) {
   const { t } = useTranslation(['workflowHistory'])
   const [isOpen, setIsOpen] = useState(false)
-  const { mutateAsync: updateWorkflow } = useUpdateWorkflow({ silent: true })
-  const invalidateAppWorkflow = useInvalidateAppWorkflow()
+  const { mutateAsync: updateWorkflow } = useUpdateWorkflow()
 
   function openEditor() {
     if (!publishedWorkflow) return
@@ -43,7 +42,6 @@ export function useVersionInfo({
         releaseNotes: params.releaseNotes,
       })
       toast.success(t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }))
-      invalidateAppWorkflow(appId)
     } catch (error) {
       toast.error(
         getErrorMessage(error) ??

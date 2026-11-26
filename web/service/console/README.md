@@ -11,26 +11,70 @@ transport for the Python Console API.
   [Instrumentation] and the [root layout]
   register this transport. Only the transport is shared globally;
   request identity is resolved per request.
-- Shared query/mutation defaults live in
-  [query-policies.ts].
-  In oRPC v1, caller options override defaults, including callbacks.
+- Shared query/mutation defaults live in [policies/], one file per
+  API domain, and are registered in [query-policies.ts].
 - Routes/layouts own prefetching and hydration. Use the existing
   [QueryClient factory].
 
 ## Policy ownership
 
-Shared operation defaults belong in `query-policies.ts`. Call sites own inputs,
-execution conditions, projections, and interaction feedback. A local option
-overrides the corresponding default; callbacks are not composed automatically.
-When a mutation uses shared `onSettled` invalidation, keep local toast, close, and
-navigation behavior in `onSuccess` / `onError`. Do not override `onSettled` without
-preserving that cache contract. The returned invalidation promise keeps the
-mutation pending until active consumers have refreshed.
+Shared operation defaults belong in the domain file under `policies/`. Call sites own inputs,
+execution conditions, projections, and interaction feedback.
 
-List affected generated keys inline in the owning operation's policy. Whether
-invalidation runs after an error depends on the write contract: a rejected
-request does not imply the server rolled back. Record that decision per module.
-Do not add an invalidation helper to hide the cache dependencies.
+Mutation policy callbacks (`onMutate`, `onSuccess`, `onError`, `onSettled`)
+always run. `mutationOptions({ onSuccess })` runs the caller's callback together
+with the policy's: `onMutate` runs the policy first (so cancellation precedes an
+optimistic write), and the other callbacks start both at once and wait for both.
+A returned invalidation promise keeps the mutation pending until active consumers
+have refreshed, while caller feedback does not wait for that refetch.
+
+Await the primary source; detach everything else:
+
+- **Primary source, awaited:** the list and detail the mutated entity itself is read
+  from (the roles list after a role edit, the group list after a group update, the
+  list a new entity appears in, a run's own history row). Either return its
+  invalidation, or write the response into that cache before the callback resolves.
+  Editors and flows copy these values into local state right after a save (reopening
+  a dialog, "deploy latest", resending a batch), so a late refetch would let them act
+  on the old row. Creates that reveal a one-time secret (tokens, API keys) write the
+  created entry into the list instead, so the secret shows without waiting.
+- **Secondary, `void`:** plan and quota, counts, catalogs and option lists, other
+  resources' lists or details, summaries. Awaiting them would delay success feedback
+  and keep `isPending` buttons pending on unrelated refetches.
+
+When the policy and the caller both define `onMutate`, each side receives its own
+result in later callbacks. Other
+options (`retry`, `context`, `meta`) still merge shallowly: the caller's value
+wins.
+
+Pass callbacks to `mutationOptions()`. Spreading `...mutationOptions()` into
+`useMutation` and then setting a callback, or calling a policy callback by hand,
+replaces the policy; `dify/no-mutation-policy-bypass` reports both. Callbacks
+passed to `mutate(variables, { onSuccess })` run after both and are skipped when
+the component has unmounted, so keep cache work out of them.
+
+List affected generated keys in the owning operation's policy. When several
+operations of one resource refresh the same set, name that set once in a helper
+next to them (for example `invalidateEndpointQueries`); helpers used by more than
+one domain live in `policies/shared.ts`. Whether invalidation runs after an error
+depends on the write contract: a rejected request does not imply the server
+rolled back. Record that decision per module.
+
+Invalidate through `invalidateQueryKeys` (`policies/shared.ts`) rather than
+`client.invalidateQueries`. TanStack Query joins an invalidation onto a first
+load that is already in flight, so a page that started loading before the write
+would keep the pre-write response, and an unobserved query's read keeps running.
+The helper cancels those fetches before invalidating, so the refetch starts after
+the write. Observed queries with data are left to `invalidateQueries`, which
+restarts them without showing earlier data.
+
+## Freshness
+
+The QueryClient default `staleTime` is five minutes. When a procedure needs
+different freshness everywhere it is read (a credential form that must load the
+current secret, a one-shot export, a validity check), set `staleTime` / `gcTime` /
+`refetchOnMount` in its `queryOptions` policy instead of at each call site. Keep a
+call-site override only when that screen needs something the others do not.
 
 Use generated options and types directly. A feature-owned options factory is
 appropriate only when it owns a shared request policy or a composed query;
@@ -38,6 +82,7 @@ forwarding hooks and handwritten API DTOs create a second owner.
 [Instrumentation]: ../../instrumentation.ts
 [QueryClient factory]: ../../app/get-query-client.ts
 [Server transport]: ./server.ts
+[policies/]: ./policies
 [query-policies.ts]: ./query-policies.ts
 [root layout]: ../../app/layout.tsx
 [server configuration]: ../../config/server.ts

@@ -12,6 +12,7 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
@@ -24,7 +25,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useInfiniteSnippetList } from '@/service/use-snippets'
+import { snippetListInfiniteOptions } from '@/service/snippet-queries'
 import CreatorsFilter from '../apps/creators-filter'
 import Empty from '../apps/empty'
 import { StudioListHeader } from '../apps/studio-list-header'
@@ -110,7 +111,8 @@ const SnippetList = () => {
     hasNextPage,
     error,
     refetch,
-  } = useInfiniteSnippetList(snippetListQuery, {
+  } = useInfiniteQuery({
+    ...snippetListInfiniteOptions(snippetListQuery),
     enabled: canQuerySnippetList,
   })
 

@@ -10,17 +10,20 @@ import ModelListItem from '../model-list-item'
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const responses = {
+    'workspaces.current.modelProviders.byProvider.models.enable.patch': vi
+      .fn()
+      .mockResolvedValue({ result: 'success' }),
+    'workspaces.current.modelProviders.byProvider.models.disable.patch': vi
+      .fn()
+      .mockResolvedValue({ result: 'success' }),
+  }
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.modelProviders.byProvider.models.enable.patch': vi
-        .fn()
-        .mockResolvedValue({ result: 'success' }),
-      'workspaces.current.modelProviders.byProvider.models.disable.patch': vi
-        .fn()
-        .mockResolvedValue({ result: 'success' }),
-    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, responses),
+    consoleQuery: withConsoleResponses(actual.consoleQuery, responses),
   }
 })
 

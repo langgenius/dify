@@ -1,28 +1,29 @@
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { consoleQuery } from '@/service/console'
+import { createFeaturesFixture } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
+import { createTestQueryClient } from '@/test/query-client'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
-const api = vi.hoisted(() => ({ addAnnotation: vi.fn() }))
+// The contract requires a UUID app id.
+const appId = '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a'
+const annotationId = '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 vi.unmock('react-i18next')
-// boundary: annotation creation is a generated Console HTTP request.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.annotations.post': api.addAnnotation,
-    }),
-  }
-})
 
+const fake = setupFakeApi(() => ({
+  console: {
+    apps: { byAppId: { annotations: { post: () => ({ id: annotationId }) } } },
+    // Adding an annotation refreshes the quota the button reads.
+    features: {
+      get: () => createFeaturesFixture({ annotation_quota_limit: { size: 6, limit: 100 } }),
+    },
+  },
+}))
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  onTestFinished(guardUnexpectedFetch())
-  api.addAnnotation.mockResolvedValue({ id: 'annotation-1' })
 })
 
 function Answer({ answer = 'test answer' }: { answer?: string }) {
@@ -31,7 +32,7 @@ function Answer({ answer = 'test answer' }: { answer?: string }) {
     <>
       <output aria-label="Added annotation">{added}</output>
       <AnnotationCtrlButton
-        appId="test-app"
+        appId={appId}
         messageId="msg-1"
         query="test query"
         answer={answer}
@@ -58,12 +59,39 @@ it('creates an annotation from the answer and displays the returned identity and
   await screen.getByRole('button', { name: 'Add annotation' }).click()
   await expect
     .element(screen.getByRole('status', { name: 'Added annotation' }))
-    .toHaveTextContent('annotation-1:')
+    .toHaveTextContent(`${annotationId}:`)
   await expect.element(screen.getByRole('dialog', { name: 'Action succeeded' })).toBeVisible()
-  expect(api.addAnnotation).toHaveBeenCalledExactlyOnceWith({
-    params: { app_id: 'test-app' },
+  expect(fake.console.apps.byAppId.annotations.post).toHaveBeenCalledExactlyOnceWith({
+    params: { app_id: appId },
     body: { message_id: 'msg-1', question: 'test query', answer: 'test answer' },
   })
+})
+
+it('marks the cached annotation list and export stale after adding from the answer', async () => {
+  const queryClient = createTestQueryClient()
+  const listKey = consoleQuery.apps.byAppId.annotations.get.queryKey({
+    input: { params: { app_id: appId }, query: { page: 1, limit: 10, keyword: '' } },
+  })
+  const exportKey = consoleQuery.apps.byAppId.annotations.export.get.queryKey({
+    input: { params: { app_id: appId } },
+  })
+  queryClient.setQueryData(listKey, { data: [], total: 0, has_more: false, limit: 10, page: 1 })
+  queryClient.setQueryData(exportKey, { data: [] })
+  const { screen } = await renderFeature(
+    <Answer />,
+    {},
+    {
+      queryClient,
+      systemFeatures: { deployment_edition: 'CLOUD' },
+      features: { annotation_quota_limit: { size: 5, limit: 100 } },
+    },
+  )
+  await screen.getByRole('button', { name: 'Add annotation' }).click()
+  await expect
+    .element(screen.getByRole('status', { name: 'Added annotation' }))
+    .toHaveTextContent(`${annotationId}:`)
+  await expect.poll(() => queryClient.getQueryState(listKey)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(exportKey)?.isInvalidated).toBe(true)
 })
 
 // https://github.com/langgenius/dify/issues/46103: GridMask intercepts the Close control.
@@ -80,7 +108,7 @@ it('opens the real quota modal instead of posting an annotation and restores tri
   await trigger.click()
   const dialog = screen.getByRole('dialog')
   await expect.element(dialog.getByText('Upgrade your plan to', { exact: true })).toBeVisible()
-  expect(api.addAnnotation).not.toHaveBeenCalled()
+  expect(fake.console.apps.byAppId.annotations.post).not.toHaveBeenCalled()
   const close = dialog.getByRole('button', { name: 'Close', exact: true })
   await expect.element(close).toBeVisible()
   const button = close.element()

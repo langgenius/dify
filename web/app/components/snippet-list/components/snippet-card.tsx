@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,11 +25,6 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { TagSelector } from '@/features/tag-management/tag-selector'
 import { consoleQuery } from '@/service/console'
-import {
-  useDeleteSnippetMutation,
-  useExportSnippetMutation,
-  useUpdateSnippetMutation,
-} from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { formatTime } from '@/utils/time'
@@ -55,9 +50,21 @@ const SnippetCard = ({
   )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
-  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
-  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
+  const updateSnippetMutation = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const exportSnippetMutation = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const deleteSnippetMutation = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -92,7 +99,10 @@ const SnippetCard = ({
     if (!canCreateAndModifySnippet) return
 
     try {
-      const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
+      const data = await exportSnippetMutation.mutateAsync({
+        params: { snippet_id: snippet.id },
+        query: { include_secret: 'false' },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     } catch (error) {
@@ -103,7 +113,7 @@ const SnippetCard = ({
   const handleDeleteSnippet = () => {
     deleteSnippetMutation.mutate(
       {
-        params: { snippetId: snippet.id },
+        params: { snippet_id: snippet.id },
       },
       {
         onSuccess: () => {
@@ -120,7 +130,7 @@ const SnippetCard = ({
   const handleUpdateSnippet = ({ name, description }: { name: string; description: string }) => {
     updateSnippetMutation.mutate(
       {
-        params: { snippetId: snippet.id },
+        params: { snippet_id: snippet.id },
         body: {
           name,
           description,

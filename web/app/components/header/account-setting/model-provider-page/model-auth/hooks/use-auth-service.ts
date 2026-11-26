@@ -25,8 +25,6 @@ export const useGetCredential = (
           ? { params: { provider }, query: { credential_id: credentialId } }
           : skipToken,
     }),
-    staleTime: 0,
-    gcTime: 0,
   })
   const modelData = useQuery({
     ...modelProvider.models.credentials.get.queryOptions({
@@ -43,8 +41,6 @@ export const useGetCredential = (
             }
           : skipToken,
     }),
-    staleTime: 0,
-    gcTime: 0,
   })
   return isModelCredential ? modelData : providerData
 }

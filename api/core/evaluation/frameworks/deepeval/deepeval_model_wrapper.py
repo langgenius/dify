@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, override
 
 from pydantic import BaseModel
 
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from libs.structured_output_schema import to_strict_json_schema
 
 # DeepEval reads these settings while its package is imported. Evaluation runs
@@ -37,6 +38,7 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
         super().__init__(model_name)
 
     def load_model(self) -> Any:
+        """Resolve and store the configured judge model with Evaluation credit attribution."""
         from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -46,6 +48,7 @@ class DifyDeepEvalModel(DeepEvalBaseLLM):
             provider=self.model_provider,
             model_type=ModelType.LLM,
             model=self.dify_model_name,
+            request_metadata=get_evaluation_credit_usage_metadata(),
         )
         self._dify_model = model_instance
         return model_instance

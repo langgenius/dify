@@ -45,6 +45,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.triggers.get': async (input) => {
         mocks.getTriggers(input)
         return mocks.triggerQuery.data ?? { data: [] }
@@ -64,10 +65,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-}))
 
 const appInfo = createAppDetailFixture({
   id: 'app-1',

@@ -1,10 +1,14 @@
 import type { BannerResponse } from '@dify/contracts/api/console/explore/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { Banner } from '../banner'
+
+// Autoplay is the contract of every case here.
+beforeEach(() => emulateReducedMotion(false))
 
 const banner = (id: string, title: string): BannerResponse => ({
   id,

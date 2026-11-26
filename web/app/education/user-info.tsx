@@ -1,9 +1,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useLogout } from '@/service/use-common'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { getAvatarInitial } from '@/utils/avatar'
 
 const UserInfo = () => {
@@ -13,7 +13,7 @@ const UserInfo = () => {
     select: (data) => data.profile,
   })
 
-  const { mutate: logout } = useLogout()
+  const { mutate: logout } = useMutation(logoutMutationOptions())
 
   return (
     <div className="relative flex items-center justify-between rounded-xl border-4 border-components-panel-on-panel-item-bg bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 ps-6 pe-8 pt-9 pb-6 shadow-shadow-shadow-5">

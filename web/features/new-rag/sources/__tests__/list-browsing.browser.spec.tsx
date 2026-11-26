@@ -1,27 +1,17 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
-import { clearSourceClients, lastInput, renderSources as render } from './source-browser-env'
+import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
 import { resetSourceServer, sourceResponses } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Sources: list-browsing', () => {
@@ -31,10 +21,12 @@ describe('Sources: list-browsing', () => {
     await render(<SourcesPage knowledgeSpaceId="space-1" />, { settle: false })
 
     await expect.element(page.getByRole('progressbar')).toBeInTheDocument()
-    expect(lastInput('sources')).toEqual({
-      params: { control_space_id: 'space-1' },
-      query: { limit: 200 },
-    })
+    await expect
+      .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.sources.get.mock.lastCall?.[0])
+      .toEqual({
+        params: { control_space_id: 'space-1' },
+        query: { limit: 200 },
+      })
   })
 
   it('renders the designed empty state and exposes source-type shortcuts', async () => {

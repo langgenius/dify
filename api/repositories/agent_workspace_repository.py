@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
+    Agent,
     AgentConfigVersionKind,
     AgentHomeSnapshot,
+    AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspace,
     AgentWorkspaceBinding,
@@ -57,6 +59,23 @@ def workflow_tool_workspace_owned_by_app(tenant_id: str, app_id: str) -> ColumnE
     )
 
 
+def has_owned_home_snapshot(session: Session, *, agent: Agent, home_snapshot_id: str) -> bool:
+    """Check whether the active Agent owns the active Home snapshot referenced by its configuration."""
+    if agent.status != AgentStatus.ACTIVE:
+        return False
+    return (
+        session.scalar(
+            select(AgentHomeSnapshot.id).where(
+                AgentHomeSnapshot.id == home_snapshot_id,
+                AgentHomeSnapshot.tenant_id == agent.tenant_id,
+                AgentHomeSnapshot.agent_id == agent.id,
+                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        is not None
+    )
+
+
 class AgentWorkspaceRepository:
     """Borrow a session without committing, rolling back, or closing it."""
 
@@ -69,9 +88,10 @@ class AgentWorkspaceRepository:
         tenant_id: str,
         binding_id: str,
         expected_owner_scope: WorkspaceOwnerScope,
+        for_update: bool = False,
     ) -> AgentWorkspaceBinding | None:
-        """Return the active binding in the exact owner scope, or None if unavailable."""
-        return self._session.scalar(
+        """Return the active owner-scoped binding, optionally locking it and its workspace for mutation."""
+        stmt = (
             select(AgentWorkspaceBinding)
             .join(
                 AgentWorkspace,
@@ -81,6 +101,7 @@ class AgentWorkspaceRepository:
             .where(
                 AgentWorkspaceBinding.id == binding_id,
                 AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.app_id == expected_owner_scope.app_id,
                 AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 AgentWorkspace.tenant_id == expected_owner_scope.tenant_id,
                 AgentWorkspace.app_id == expected_owner_scope.app_id,
@@ -90,6 +111,9 @@ class AgentWorkspaceRepository:
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         )
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return self._session.scalar(stmt)
 
     def retire_binding(self, *, tenant_id: str, binding_id: str) -> str | None:
         """Retire the active tenant binding and its workspace if no active siblings remain."""

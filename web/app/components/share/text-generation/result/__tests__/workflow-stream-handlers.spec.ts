@@ -1,6 +1,6 @@
 import type { TextGenerationTranslate } from '../../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { HumanInputFormData, NodeTracing } from '@/types/workflow'
 import { act } from '@testing-library/react'
 import {
@@ -25,19 +25,23 @@ import {
   upsertWorkflowNode,
 } from '../workflow-stream-handlers'
 
-const sseGetMock = vi.fn()
+const sseGetMock = vi.hoisted(() => vi.fn())
 
 type TraceOverrides = Omit<Partial<NodeTracing>, 'execution_metadata'> & {
   execution_metadata?: Partial<NonNullable<NodeTracing['execution_metadata']>>
 }
 
-vi.mock('@/service/base', async () => {
-  const actual = await vi.importActual<typeof import('@/service/base')>('@/service/base')
-  return {
-    ...actual,
-    sseGet: (...args: Parameters<typeof actual.sseGet>) => sseGetMock(...args),
-  }
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: vi.fn(), get: sseGetMock })
 })
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
 
 const createTrace = (overrides: TraceOverrides = {}): NodeTracing => {
   const { execution_metadata, ...restOverrides } = overrides
@@ -304,7 +308,7 @@ describe('createWorkflowStreamHandlers', () => {
     const setup = setupHandlers({ isPublicAPI: true })
     const handlers = setup.handlers as Required<
       Pick<
-        IOtherOptions,
+        StreamCallbacks,
         | 'onWorkflowStarted'
         | 'onTextChunk'
         | 'onHumanInputRequired'
@@ -536,7 +540,7 @@ describe('createWorkflowStreamHandlers', () => {
       isTimedOut: () => true,
     })
     const timeoutHandlers = timeoutSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowFinished'>
+      Pick<StreamCallbacks, 'onWorkflowFinished'>
     >
 
     act(() => {
@@ -582,7 +586,7 @@ describe('createWorkflowStreamHandlers', () => {
   it('should handle workflow failures', () => {
     const failureSetup = setupHandlers()
     const failureHandlers = failureSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>
+      Pick<StreamCallbacks, 'onWorkflowStarted' | 'onWorkflowFinished'>
     >
 
     act(() => {
@@ -632,7 +636,7 @@ describe('createWorkflowStreamHandlers', () => {
   it('should localize a KnowledgeFS workflow admission failure before notifying the user', () => {
     const failureSetup = setupHandlers()
     const failureHandlers = failureSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowFinished'>
+      Pick<StreamCallbacks, 'onWorkflowFinished'>
     >
 
     act(() => {
@@ -708,7 +712,7 @@ describe('createWorkflowStreamHandlers', () => {
       t: withSelectorKey((key: string) => key) as TextGenerationTranslate,
       taskId: 5,
     }) as Required<
-      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
+      Pick<StreamCallbacks, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
     >
 
     act(() => {
@@ -765,7 +769,7 @@ describe('createWorkflowStreamHandlers', () => {
 
     const noOutputSetup = setupHandlers()
     const noOutputHandlers = noOutputSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
+      Pick<StreamCallbacks, 'onWorkflowStarted' | 'onWorkflowFinished' | 'onTextReplace'>
     >
 
     act(() => {
@@ -809,7 +813,7 @@ describe('createWorkflowStreamHandlers', () => {
 
     const objectOutputSetup = setupHandlers()
     const objectOutputHandlers = objectOutputSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowStarted' | 'onWorkflowFinished'>
+      Pick<StreamCallbacks, 'onWorkflowStarted' | 'onWorkflowFinished'>
     >
 
     act(() => {
@@ -863,7 +867,7 @@ describe('createWorkflowStreamHandlers', () => {
   it('preserves plain text workflow outputs', () => {
     const stringOutputSetup = setupHandlers()
     const stringOutputHandlers = stringOutputSetup.handlers as Required<
-      Pick<IOtherOptions, 'onWorkflowFinished'>
+      Pick<StreamCallbacks, 'onWorkflowFinished'>
     >
 
     act(() => {

@@ -1,5 +1,5 @@
 import type { Datasource } from '../../test-run/types'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,8 +20,10 @@ const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourcePro
   const { data: paramsConfig } = useQuery(
     consoleQuery.rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get.queryOptions(
       {
-        input: { params: { pipeline_id: pipelineId! }, query: { node_id: dataSourceNodeId } },
-        enabled: !!pipelineId && !!dataSourceNodeId,
+        input:
+          pipelineId && dataSourceNodeId
+            ? { params: { pipeline_id: pipelineId }, query: { node_id: dataSourceNodeId } }
+            : skipToken,
         select: selectPipelineStepParameters,
       },
     ),
