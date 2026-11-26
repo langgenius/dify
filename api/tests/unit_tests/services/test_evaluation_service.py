@@ -2,6 +2,8 @@
 
 import io
 import json
+import threading
+import time
 from collections.abc import Callable
 from functools import partial
 
@@ -928,6 +930,27 @@ def test_trigger_target_template_is_rejected_even_with_snippet_input_fields(
     for target, target_type in [(app, "apps"), (snippet, "snippets")]:
         with pytest.raises(ValueError, match="Trigger-started workflows cannot be evaluated"):
             EvaluationService.get_dataset_column_names(target, target_type, EvaluationConfigData(), sqlite_session)
+
+
+def test_snippet_template_uses_saved_input_fields_without_a_workflow(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    input_fields = [{"variable": "query", "type": "text-input"}]
+    snippet = CustomizedSnippet(
+        tenant_id="tenant-1",
+        name="Saved Inputs Snippet",
+        input_fields=json.dumps(input_fields),
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.SnippetService.get_published_workflow",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.SnippetService.get_draft_workflow",
+        lambda *_args, **_kwargs: None,
+    )
+
+    assert EvaluationService._get_snippet_input_fields(snippet, sqlite_session) == input_fields
 
 
 def test_start_workflow_without_input_variables_still_has_a_template(
@@ -2673,6 +2696,48 @@ def test_run_app_for_evaluation_waits_reserves_quota_and_releases_slot(monkeypat
     ]
 
 
+def test_run_app_for_evaluation_refunds_quota_and_releases_slot_after_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = make_app(app_id="app-1")
+    app.tenant_id = "tenant-1"
+    events: list[str] = []
+
+    class RecordingQuotaCharge:
+        def commit(self) -> None:
+            events.append("commit")
+
+        def refund(self) -> None:
+            events.append("refund")
+
+    monkeypatch.setattr("services.evaluation_service.AppGenerateService.get_max_active_requests", lambda _app: 2)
+    monkeypatch.setattr(
+        "services.evaluation_service.RateLimit.enter_with_wait",
+        lambda _self, **_kwargs: events.append("enter") or "evaluation-request",
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.RateLimit.exit",
+        lambda _self, request_id: events.append(f"exit:{request_id}"),
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.QuotaService.reserve",
+        lambda *_args: events.append("reserve") or RecordingQuotaCharge(),
+    )
+
+    def fail_action() -> dict[str, object]:
+        events.append("action")
+        raise RuntimeError("target failed")
+
+    with pytest.raises(RuntimeError, match="target failed"):
+        EvaluationService.run_app_for_evaluation(
+            app=app,
+            action=fail_action,
+            cancellation_check=None,
+        )
+
+    assert events == ["enter", "reserve", "commit", "action", "refund", "exit:evaluation-request"]
+
+
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -2788,6 +2853,77 @@ def test_execute_targets_propagates_missing_pinned_workflow_and_stops_tasks(monk
         )
 
     assert stopped == [("run-1", [7])]
+
+
+@pytest.mark.usefixtures("sqlite_session")
+def test_execute_targets_checks_cancellation_before_starting_workers() -> None:
+    cancellation_checks: list[bool] = []
+
+    results = EvaluationService.execute_targets(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        target_workflow_version_id="workflow-version-1",
+        input_list=[],
+        max_workers=1,
+        cancellation_check=lambda: cancellation_checks.append(True),
+    )
+
+    assert results == ([], [], [])
+    assert cancellation_checks == [True]
+
+
+@pytest.mark.usefixtures("sqlite_session")
+def test_execute_targets_notifies_started_workers_after_fatal_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    sibling_started = threading.Event()
+    observed_abort_errors: list[Exception] = []
+
+    def run_target(**kwargs: object) -> dict[str, str]:
+        item = kwargs["item"]
+        assert isinstance(item, EvaluationDatasetInput)
+        cancellation_check = kwargs["cancellation_check"]
+        assert callable(cancellation_check)
+        if item.index == 1:
+            assert sibling_started.wait(timeout=1)
+            raise EvaluationWorkflowVersionNotFoundError("workflow-version-1")
+
+        sibling_started.set()
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            try:
+                cancellation_check()
+            except Exception as error:
+                observed_abort_errors.append(error)
+                raise
+            time.sleep(0.001)
+        raise AssertionError("worker did not observe the batch abort signal")
+
+    stopped: list[tuple[str, list[int]]] = []
+    monkeypatch.setattr(EvaluationService, "_run_single_target", staticmethod(run_target))
+    monkeypatch.setattr(
+        EvaluationService,
+        "_stop_workflow_task_positions",
+        lambda run_id, positions: stopped.append((run_id, list(positions))),
+    )
+
+    with pytest.raises(EvaluationWorkflowVersionNotFoundError):
+        EvaluationService.execute_targets(
+            evaluation_run_id="run-1",
+            tenant_id="tenant-1",
+            target_type="apps",
+            target_id="app-1",
+            target_workflow_version_id="workflow-version-1",
+            input_list=[
+                EvaluationDatasetInput(index=1, inputs={"prompt": "first"}),
+                EvaluationDatasetInput(index=2, inputs={"prompt": "second"}),
+            ],
+            max_workers=2,
+            task_positions=[4, 5],
+        )
+
+    assert [type(error).__name__ for error in observed_abort_errors] == ["_EvaluationTargetBatchAbortedError"]
+    assert stopped == [("run-1", [4, 5])]
 
 
 def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(

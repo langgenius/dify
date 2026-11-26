@@ -389,6 +389,26 @@ class TestRateLimitEnterExit:
         redis_patch.hlen.assert_not_called()
         redis_patch.hset.assert_not_called()
 
+    @pytest.mark.parametrize(
+        ("kwargs", "expected_message"),
+        [
+            ({"timeout_seconds": 0}, "timeout_seconds must be greater than 0"),
+            (
+                {"timeout_seconds": 1, "poll_interval_seconds": 0},
+                "poll_interval_seconds must be greater than 0",
+            ),
+        ],
+    )
+    def test_enter_with_wait_rejects_nonpositive_intervals(
+        self,
+        kwargs: dict[str, float],
+        expected_message: str,
+    ) -> None:
+        rate_limit = RateLimit(f"invalid-wait-{expected_message}", 0)
+
+        with pytest.raises(ValueError, match=expected_message):
+            rate_limit.enter_with_wait(**kwargs)
+
 
 class TestRateLimitGenerator:
     """Rate limit generator wrapper tests."""

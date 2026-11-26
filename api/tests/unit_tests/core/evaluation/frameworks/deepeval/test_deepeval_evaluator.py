@@ -198,6 +198,47 @@ def test_evaluation_records_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> 
     assert results[0].metrics[0].details == {"reason": "The response matches the supplied evidence."}
 
 
+def test_evaluation_omits_empty_deepeval_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    def measure_without_reason(
+        metric: _FakeMetric,
+        test_case: _FakeTestCase,
+        *,
+        _show_indicator: bool,
+    ) -> float:
+        assert _show_indicator is False
+        assert test_case.actual_output == "Paris"
+        metric.score = 0.875
+        metric.reason = None
+        return metric.score
+
+    monkeypatch.setattr(_FakeMetric, "measure", measure_without_reason)
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator.DifyDeepEvalModel",
+        lambda *_args: object(),
+    )
+    monkeypatch.setattr(
+        "core.evaluation.frameworks.deepeval.deepeval_evaluator._load_deepeval_components",
+        _fake_components,
+    )
+
+    result = DeepEvalEvaluator(DeepEvalConfig()).evaluate_llm(
+        [
+            EvaluationItemInput(
+                index=7,
+                inputs={"prompt": "What is the capital of France?"},
+                output="Paris",
+                context=["Paris is the capital of France."],
+            )
+        ],
+        ["faithfulness"],
+        "provider",
+        "model",
+        "tenant",
+    )[0]
+
+    assert result.metrics[0].details == {}
+
+
 @pytest.mark.parametrize("context", [None, ["", " \t "]])
 @pytest.mark.parametrize(
     ("metric_name", "category"),
