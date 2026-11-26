@@ -1,6 +1,7 @@
 // These Python endpoints expect repeated keys; oRPC v1 serializes arrays with indexed keys.
-const repeatedQueryArrayRules = [
+export const repeatedQueryArrayRules = [
   { path: /\/agent$/, fields: ['tag_ids', 'creator_ids'] },
+  { path: /\/agent\/invite-options$/, fields: ['tag_ids'] },
   { path: /\/agent\/[^/]+\/logs$/, fields: ['sources', 'statuses'] },
   { path: /\/agent\/[^/]+\/logs\/[^/]+\/messages$/, fields: ['sources', 'statuses'] },
   { path: /\/apps$/, fields: ['tag_ids', 'creator_ids'] },

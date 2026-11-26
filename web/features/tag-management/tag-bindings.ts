@@ -1,6 +1,8 @@
 import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { refreshAgentTagCatalogs } from '@/service/console/policies/shared'
+import { invalidateTaggedResources } from '@/service/console/policies/tags'
 
 type ApplyTagBindingsInput = {
   currentTagIds: string[]
@@ -49,24 +51,19 @@ export const useApplyTagBindingsMutation = () => {
         )
       }
 
-      return Promise.all(operations)
+      // Either request may succeed independently. Refresh only after both writes have settled.
+      const results = await Promise.allSettled(operations)
+      const failed = results.find((result) => result.status === 'rejected')
+      if (failed) throw failed.reason
     },
-    onSettled: (_data, _error, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.tags.get.key({
-          type: 'query',
-          input: {
-            query: {
-              type: variables.type,
-            },
-          },
-        }),
-      })
-      if (variables.type === 'app') {
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.starred.get.key() })
-        void queryClient.invalidateQueries({ queryKey: consoleQuery.apps.recent.get.key() })
-      }
-    },
+    onSettled: (_data, _error, { type, targetId }) =>
+      Promise.all([
+        type === 'agent'
+          ? refreshAgentTagCatalogs(consoleQuery, queryClient)
+          : queryClient.invalidateQueries({
+              queryKey: consoleQuery.tags.get.key({ type: 'query', input: { query: { type } } }),
+            }),
+        invalidateTaggedResources(consoleQuery, queryClient, type, targetId),
+      ]),
   })
 }

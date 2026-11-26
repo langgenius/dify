@@ -19,10 +19,23 @@ import Node from '../node'
 import { createProvider, createStrategy } from './strategy-fixture'
 
 // Plugin installation metadata is external; strategy resolution and node configuration stay real.
-vi.mock('@/service/use-plugins', () => ({
-  useFetchPluginsInMarketPlaceByIds: () => ({ isLoading: false, data: { data: { plugins: [] } } }),
-  useCheckInstalled: () => ({ data: { plugins: [] } }),
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+    }),
+  }
+})
+
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), {
+    pluginsByIdentifiers: async () => ({ data: { plugins: [], total: 0 } }),
+  })
+})
 
 const createStrategyParam = (overrides: Partial<AgentStrategyParameter> = {}) =>
   zAgentStrategyParameter.parse({

@@ -29,7 +29,6 @@ export function availablePlatformCandidatesOptions(
               { workspaceId },
             ],
             context: { silent: true },
-            staleTime: 30_000,
           }),
         )
         signal.throwIfAborted()
@@ -52,7 +51,6 @@ export function availablePlatformCandidatesOptions(
                   { workspaceId },
                 ],
                 context: { silent: true },
-                staleTime: 30_000,
               }),
             )
           : undefined

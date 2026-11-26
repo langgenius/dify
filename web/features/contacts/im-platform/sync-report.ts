@@ -22,7 +22,6 @@ export async function loadContactImSyncReport(queryClient: QueryClient, runId: s
         api.results.get.queryOptions({
           input: { query: { result, page, limit: 100 } },
           context: { silent: true },
-          staleTime: 0,
         }),
       )
       if (response.page !== page)

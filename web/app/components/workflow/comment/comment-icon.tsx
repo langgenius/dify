@@ -320,7 +320,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
               aria-label={t(($) => $['keyboard.openComment'], {
                 name: comment.created_by_account?.name ?? '',
               })}
-              className="nokey absolute z-10 size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
+              className="nokey absolute size-auto -translate-y-full rounded-[13.5px] rounded-es-[3px] p-0 hover:bg-transparent"
             >
               <CommentMarker
                 participants={participants}
@@ -387,7 +387,7 @@ export const CommentIcon: FC<CommentIconProps> = memo(
           <div
             data-open={previewOpen || undefined}
             ref={previewRef}
-            className="absolute z-20 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:opacity-0 not-data-open:duration-100 motion-safe:not-data-open:scale-95 starting:opacity-0 motion-safe:starting:scale-95"
+            className="absolute z-1 origin-bottom-left -translate-y-full transition-[opacity,scale,visibility] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] not-data-open:invisible not-data-open:opacity-0 not-data-open:duration-100 motion-safe:not-data-open:scale-95 starting:opacity-0 motion-safe:starting:scale-95"
             style={{
               left: canvasPosition.x,
               top: canvasPosition.y,

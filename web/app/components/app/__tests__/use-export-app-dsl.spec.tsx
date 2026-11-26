@@ -1,12 +1,17 @@
 import type { ReactNode } from 'react'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ExportAppDialog } from '@/app/components/app-sidebar/app-info/export-app-dialog'
+import { ExportAppWarning } from '@/app/components/app-sidebar/app-info/export-app-warning'
 import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import AppExportConfirmModal from '../export-confirm-modal'
+import { ExportSecretsDialogContent } from '../export-secrets-dialog'
 import { useExportAppDsl, useExportWorkflowAppDsl } from '../use-export-app-dsl'
 
 const mocks = vi.hoisted(() => ({
@@ -36,22 +41,32 @@ const mocks = vi.hoisted(() => ({
   ),
 }))
 
-vi.mock('@/service/console', async () => {
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  const consoleClient = {
-    apps: {
-      byAppId: {
-        export: { get: mocks.exportAppDsl },
-        workflows: {
-          draft: { environmentVariables: { get: mocks.getEnvironmentVariables } },
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
+  // Keep the real policies (including read freshness) over stubbed export requests.
+  const consoleClient = new Proxy(actual.consoleClient, {
+    get(target, property, receiver) {
+      if (property !== 'apps') return Reflect.get(target, property, receiver)
+      return new Proxy(target.apps, {
+        get(apps, appsProperty, appsReceiver) {
+          if (appsProperty !== 'byAppId') return Reflect.get(apps, appsProperty, appsReceiver)
+          return {
+            ...apps.byAppId,
+            export: { get: mocks.exportAppDsl },
+            workflows: {
+              ...apps.byAppId.workflows,
+              draft: {
+                ...apps.byAppId.workflows.draft,
+                environmentVariables: { get: mocks.getEnvironmentVariables },
+              },
+            },
+          }
         },
-      },
+      })
     },
-  }
-  return {
-    consoleClient,
-    consoleQuery: createTanstackQueryUtils(consoleClient, { path: ['console'] }),
-  }
+  })
+  return { ...actual, consoleClient, consoleQuery: createConsoleQuery(consoleClient) }
 })
 
 vi.mock('@/utils/download', () => ({
@@ -101,21 +116,23 @@ describe('useExportAppDsl', () => {
     function ExportConfirmation() {
       const { exportAppDsl, isExporting, errorMessage } = useExportAppDsl()
       return (
-        <AppExportConfirmModal
-          envList={[{ name: 'TOKEN', value: 'masked' }]}
-          isExporting={isExporting}
-          errorMessage={errorMessage}
-          onClose={onClose}
-          onConfirm={async (includeSecret) => {
-            const result = await exportAppDsl({
-              appId: 'app-1',
-              appName: 'App',
-              includeSecret,
-              feedback: 'dialog',
-            })
-            return result.status === 'downloaded'
-          }}
-        />
+        <AlertDialog open>
+          <ExportSecretsDialogContent
+            envList={[{ name: 'TOKEN', value: 'masked' }]}
+            isExporting={isExporting}
+            errorMessage={errorMessage}
+            onConfirm={async (includeSecret) => {
+              if (isExporting) return
+              const result = await exportAppDsl({
+                appId: 'app-1',
+                appName: 'App',
+                includeSecret,
+                feedback: 'dialog',
+              })
+              if (result.status === 'downloaded') onClose()
+            }}
+          />
+        </AlertDialog>
       )
     }
     render(<ExportConfirmation />, { wrapper: createWrapper() })
@@ -409,16 +426,25 @@ describe('useExportWorkflowAppDsl', () => {
       .mockResolvedValueOnce(new File(['package'], 'workflow.ifpkg'))
 
     function ExportEntry() {
-      const [open, setOpen] = useState(true)
+      const [handle] = useState(() => createAlertDialogHandle())
       return (
         <>
-          <button onClick={() => setOpen(true)}>Reopen</button>
-          <ExportAppDialog appDetail={app} open={open} onClose={() => setOpen(false)} />
+          <button onClick={() => handle.open(null)}>Reopen</button>
+          <AlertDialog handle={handle}>
+            <AlertDialogContent>
+              <ExportAppWarning
+                appDetail={app}
+                onSecretsRequired={vi.fn()}
+                onExported={() => handle.close()}
+              />
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )
     }
 
     render(<ExportEntry />, { wrapper: createWrapper() })
+    await user.click(screen.getByRole('button', { name: 'Reopen' }))
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Draft unavailable')
     expect(mocks.exportAppDsl).not.toHaveBeenCalled()

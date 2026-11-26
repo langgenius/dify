@@ -87,8 +87,6 @@ const ModelLoadBalancingModal = ({
         },
       },
     ),
-    staleTime: 0,
-    gcTime: 0,
   })
   const modelCredential = useMemo<ModelCredential | undefined>(
     () =>

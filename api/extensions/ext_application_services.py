@@ -679,7 +679,12 @@ def build_application_services(
         session_factory=database_client,
         repository=messages,
     )
-    workflow_app_logs = WorkflowAppLogQueryService(logs=WorkflowAppLogQueryRepository(session_factory=database_client))
+    workflow_app_logs = WorkflowAppLogQueryService(
+        logs=WorkflowAppLogQueryRepository(
+            session_factory=database_client,
+            include_evaluation=dify_config.ENABLE_EVALUATION,
+        ),
+    )
     agent_observability = build_agent_observability(database_client=database_client)
     agent_log_csv = AgentLogCsvWriter(logs=agent_observability)
     workflow_log_csv = WorkflowLogCsvWriter(logs=workflow_app_logs)

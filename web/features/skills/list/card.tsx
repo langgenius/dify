@@ -53,7 +53,6 @@ function DeleteSkillDialog({
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
-  const queryClient = useQueryClient()
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
       context: { silent: true },
@@ -94,7 +93,6 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
         onError: (error) => {
@@ -246,7 +244,6 @@ export function SkillCard({
       },
       {
         onSuccess: (copiedSkill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
         onError: (error) => {

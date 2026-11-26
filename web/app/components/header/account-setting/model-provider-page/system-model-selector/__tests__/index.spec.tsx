@@ -62,7 +62,6 @@ vi.mock('react-i18next', async () => {
 
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
-const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 const getModelList = vi.hoisted(() => vi.fn())
 const getDefaultModel = vi.hoisted(() => vi.fn())
@@ -109,7 +108,6 @@ vi.mock('../../hooks', async (importOriginal) => {
   return {
     ...actual,
     useUpdateModelList: () => mockUpdateModelList,
-    useInvalidateDefaultModel: () => mockInvalidateDefaultModel,
   }
 })
 
@@ -384,6 +382,7 @@ describe('SystemModel', () => {
     }
 
     await waitFor(() => expect(screen.getByRole('button', { name: /save/i })).toBeEnabled())
+    const defaultFetchesBeforeSave = getDefaultModel.mock.calls.length
     await user.click(screen.getByRole('button', { name: /save/i }))
 
     await waitFor(() => {
@@ -399,7 +398,8 @@ describe('SystemModel', () => {
         },
       })
       expect(mockToastSuccess).not.toHaveBeenCalled()
-      expect(mockInvalidateDefaultModel).toHaveBeenCalledTimes(5)
+      // The save policy refreshes the five saved default model types.
+      expect(getDefaultModel).toHaveBeenCalledTimes(defaultFetchesBeforeSave + 5)
       expect(mockUpdateModelList).toHaveBeenCalledTimes(5)
     })
   })
@@ -450,7 +450,6 @@ describe('SystemModel', () => {
       screen.queryByRole('button', { name: 'Clear System Reasoning Model' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled()
-    expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() =>
@@ -481,7 +480,6 @@ describe('SystemModel', () => {
     })
     expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
     expect(mockToastSuccess).not.toHaveBeenCalled()
-    expect(mockInvalidateDefaultModel).not.toHaveBeenCalled()
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
@@ -663,7 +661,8 @@ describe('SystemModel', () => {
       screen.queryByRole('button', { name: 'Clear System Reasoning Model' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(getDefaultModel).toHaveBeenCalledTimes(10)
+    // Initial load, the save policy's refresh, and the reopen each fetch all five types.
+    expect(getDefaultModel).toHaveBeenCalledTimes(15)
   })
 
   it('keeps the edited draft when background query data changes', async () => {

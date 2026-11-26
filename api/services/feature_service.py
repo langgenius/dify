@@ -1,4 +1,5 @@
 from configs import dify_config
+from core.entities.provider_entities import ProviderQuotaType
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
@@ -57,6 +58,21 @@ class FeatureService:
         return CloudPlan(billing_info.subscription.plan)
 
     @classmethod
+    def get_credit_pool_type(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> ProviderQuotaType | None:
+        """Return the hosted credit pool a workspace spends from, or ``None`` outside Cloud.
+
+        Only Cloud bills hosted model calls against a credit pool, and the plan selects the
+        bucket: Sandbox spends trial credits while every paid plan spends paid credits. A
+        caller that already loaded the subscription passes ``plan`` to skip a second lookup;
+        billing failures propagate so the caller decides whether to fail closed.
+        """
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+
+        workspace_plan = plan if plan is not None else cls.get_workspace_plan(tenant_id)
+        return ProviderQuotaType.TRIAL if workspace_plan == CloudPlan.SANDBOX else ProviderQuotaType.PAID
+
+    @classmethod
     def _is_paid_cloud_workspace(cls, tenant_id: str, plan: CloudPlan | None = None) -> bool:
         """Return whether a Cloud workspace has a paid plan, using ``plan`` when the caller already loaded it."""
         workspace_plan = plan if plan is not None else cls.get_workspace_plan(tenant_id)
@@ -75,8 +91,11 @@ class FeatureService:
 
     @staticmethod
     def is_evaluation_supported() -> bool:
-        """Return whether this deployment ships Evaluation; Cloud workspaces still need a paid plan."""
-        return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD}
+        """Report Evaluation's deployment availability before checking Cloud workspace plans."""
+        return dify_config.ENABLE_EVALUATION and dify_config.DEPLOYMENT_EDITION in {
+            DeploymentEdition.ENTERPRISE,
+            DeploymentEdition.CLOUD,
+        }
 
     @classmethod
     def can_use_evaluation(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
@@ -150,6 +169,11 @@ class FeatureService:
 
         return vector_space
 
+    @staticmethod
+    def has_knowledge_subscription_limits() -> bool:
+        """Whether knowledge writes are subject to workspace subscription limits."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str) -> feature_entities.KnowledgeRateLimitModel:
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()
@@ -195,12 +219,14 @@ class FeatureService:
 
     @classmethod
     def get_trial_models(cls, tenant_id: str) -> list[str]:
-        """Return hosted credit providers filtered by the workspace subscription plan."""
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return cls._fulfill_trial_models_from_env()
+        """List providers offering this workspace's credit pool; propagate subscription lookup failures.
 
-        quota_types = ("PAID", "TRIAL") if cls._is_paid_cloud_workspace(tenant_id) else ("TRIAL",)
-        return cls._fulfill_trial_models_from_env(quota_types)
+        Outside Cloud this remains the deployment's provider list, not an entitlement to hosted credits.
+        """
+        credit_pool_type = cls.get_credit_pool_type(tenant_id)
+        if credit_pool_type is None:
+            return cls._fulfill_trial_models_from_env()
+        return cls._fulfill_trial_models_from_env((credit_pool_type.name,))
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel) -> None:

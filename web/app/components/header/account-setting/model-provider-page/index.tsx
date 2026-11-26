@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
@@ -16,6 +17,7 @@ import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { UpdateSettingDialog } from '../update-setting-dialog'
+import { canConfigureModelsAtom } from './atoms'
 import { ModelTypeEnum } from './declarations'
 import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
@@ -58,7 +60,8 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation(['modelProvider'])
   const { canSetPluginPreferences } = usePluginSettingsAccess()
-  const defaultModelQueryOptions = { enabled: canSetPluginPreferences }
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
+  const defaultModelQueryOptions = { enabled: canConfigureModels }
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
     useDefaultModel(ModelTypeEnum.textGeneration, defaultModelQueryOptions)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
@@ -173,12 +176,9 @@ const ModelProviderPage = ({
       ? 'modelProvider.noneConfigured'
       : null
   const showWarning =
-    canSetPluginPreferences &&
-    !isLoadingModelProviders &&
-    !isDefaultModelLoading &&
-    !!warningTextKey
+    canConfigureModels && !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
   const systemModelSelector = (className: string) => {
-    if (!canSetPluginPreferences) return null
+    if (!canConfigureModels) return null
 
     return (
       <SystemModelSelector

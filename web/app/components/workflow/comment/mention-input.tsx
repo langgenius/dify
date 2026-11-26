@@ -2,7 +2,6 @@
 
 import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
@@ -19,18 +18,15 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from 'react-textarea-autosize'
 import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
 import { consoleQuery } from '@/service/console'
 import { CollaboratorAvatar } from '../collaboration/components/collaborator-avatar'
-import { CommentComposerActions } from './comment-composer'
-import { highlightMentions } from './mention-highlight'
+import { CommentComposerActions, CommentComposerField } from './comment-composer'
 import { toCommentCollaborator } from './participants'
 
 type MentionInputProps = {
@@ -66,8 +62,6 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
   ) => {
     const { t } = useTranslation(['common', 'workflowComments', 'workflowAgent'])
     const textareaRef = useRef<HTMLTextAreaElement>(null)
-    const highlightContentRef = useRef<HTMLDivElement>(null)
-    const lineProbeRef = useRef<HTMLDivElement>(null)
     const rootRef = useRef<HTMLDivElement>(null)
     const listboxId = useId()
 
@@ -90,43 +84,11 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
     const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([])
     const resolvedPlaceholder =
       placeholder ?? t(($) => $['comments.placeholder.add'], { ns: 'workflowComments' })
-    const [isMultiline, setIsMultiline] = useState(false)
 
     const mentionNameList = useMemo(
       () => mentionUsers.map((user) => user.name ?? ''),
       [mentionUsers],
     )
-
-    const highlightedValue = useMemo(
-      () => highlightMentions(value, mentionNameList),
-      [value, mentionNameList],
-    )
-
-    const syncHighlightScroll = useCallback(() => {
-      const textarea = textareaRef.current
-      const highlightContent = highlightContentRef.current
-      if (!textarea || !highlightContent) return
-
-      const { scrollTop, scrollLeft } = textarea
-      highlightContent.style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
-    }, [])
-
-    useLayoutEffect(() => {
-      syncHighlightScroll()
-    }, [value, syncHighlightScroll])
-
-    useEffect(() => {
-      const probe = lineProbeRef.current
-      if (!probe || isEditing) return
-      const observer = new ResizeObserver(() => {
-        const { lineHeight, paddingTop, paddingBottom } = getComputedStyle(probe)
-        const contentHeight =
-          probe.offsetHeight - Number.parseFloat(paddingTop) - Number.parseFloat(paddingBottom)
-        setIsMultiline(contentHeight > Number.parseFloat(lineHeight) * 1.5)
-      })
-      observer.observe(probe)
-      return () => observer.disconnect()
-    }, [isEditing])
 
     const filteredMentionUsers = useMemo(() => {
       if (!mentionQuery) return mentionUsers
@@ -177,10 +139,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           } else {
             setShowMentionDropdown(false)
           }
-          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [onChange, syncHighlightScroll],
+      [onChange],
     )
 
     const handleMentionButtonClick = useCallback(
@@ -211,10 +172,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           setMentionPosition(cursorPosition)
           setShowMentionDropdown(true)
           setSelectedMentionIndex(0)
-          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [value, onChange, syncHighlightScroll, showMentionDropdown],
+      [value, onChange, showMentionDropdown],
     )
 
     const insertMention = useCallback(
@@ -240,10 +200,9 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
           const newCursorPos = mentionPosition + extraSpace + user.name.length + 2 // (space) + @ + name + space
           textarea.setSelectionRange(newCursorPos, newCursorPos)
           textarea.focus()
-          window.requestAnimationFrame(syncHighlightScroll)
         }, 0)
       },
-      [value, mentionPosition, onChange, mentionedUserIds, syncHighlightScroll],
+      [value, mentionPosition, onChange, mentionedUserIds],
     )
 
     const handleSubmit = useCallback(
@@ -367,100 +326,71 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
 
     return (
       <>
-        <div
-          ref={rootRef}
-          className={cn(
-            'relative flex body-sm-regular leading-4.5 pointer-coarse:text-base pointer-coarse:leading-6',
-            isEditing || isMultiline ? 'flex-col gap-1' : 'items-end',
-            className,
-          )}
-        >
-          <div className="relative min-w-0 flex-1">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 overflow-hidden px-2 py-1.75 wrap-break-word whitespace-pre-wrap text-text-secondary"
-            >
-              <div ref={highlightContentRef} className="min-h-full will-change-transform">
-                {highlightedValue}
-              </div>
-            </div>
-            <Textarea
-              ref={textareaRef}
-              className="relative block w-full resize-none bg-transparent px-2 py-1.75 text-transparent caret-primary-500 outline-hidden placeholder:text-components-input-text-placeholder"
-              placeholder={resolvedPlaceholder}
-              aria-label={resolvedPlaceholder}
-              autoFocus={autoFocus}
-              minRows={isEditing ? 2 : 1}
-              maxRows={isEditing || isMultiline ? 4 : 1}
-              value={value}
-              disabled={disabled}
-              readOnly={locked}
-              aria-busy={loading || undefined}
-              onChange={(e) => handleContentChange(e.target.value)}
-              aria-controls={isMentionMenuOpen ? listboxId : undefined}
-              aria-activedescendant={
-                isMentionMenuOpen ? `${listboxId}-${selectedMentionIndex}` : undefined
-              }
-              onKeyDown={handleKeyDown}
-              onCompositionEnd={(e) => {
-                compositionEndedAtRef.current = e.nativeEvent.timeStamp
-              }}
-              onScroll={syncHighlightScroll}
-            />
-          </div>
-          {!isEditing && (
-            <div
-              ref={lineProbeRef}
-              aria-hidden
-              className="pointer-events-none invisible absolute inset-s-0 inset-e-18 top-0 px-2 py-1.75 wrap-break-word whitespace-pre-wrap"
-            >
-              {`${value}\u200B`}
-            </div>
-          )}
-
-          {!isEditing && (
-            <CommentComposerActions
-              canSend={Boolean(value.trim()) && !disabled}
-              sending={loading}
-              onSend={handleSubmit}
-              mentionDisabled={shouldDisableMentionButton}
-              onMention={handleMentionButtonClick}
-            />
-          )}
-
-          {isEditing && (
-            <div className="flex items-center justify-between">
-              <IconButton
-                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
-                size="lg"
-                disabled={shouldDisableMentionButton}
-                className="transition-opacity data-disabled:opacity-40"
-                onClick={handleMentionButtonClick}
-              >
-                <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
-              </IconButton>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
-                  {t(($) => $['operation.cancel'], { ns: 'common' })}
-                </Button>
-                <Button
-                  variant="primary"
-                  size="small"
-                  disabled={loading || !value.trim()}
-                  onClick={() => handleSubmit()}
+        <CommentComposerField
+          ref={textareaRef}
+          rootRef={rootRef}
+          className={className}
+          value={value}
+          mentionNames={mentionNameList}
+          editing={isEditing}
+          placeholder={resolvedPlaceholder}
+          aria-label={resolvedPlaceholder}
+          autoFocus={autoFocus}
+          disabled={disabled}
+          readOnly={locked}
+          aria-busy={loading || undefined}
+          onChange={(e) => handleContentChange(e.target.value)}
+          aria-controls={isMentionMenuOpen ? listboxId : undefined}
+          aria-activedescendant={
+            isMentionMenuOpen ? `${listboxId}-${selectedMentionIndex}` : undefined
+          }
+          onKeyDown={handleKeyDown}
+          onCompositionEnd={(e) => {
+            compositionEndedAtRef.current = e.nativeEvent.timeStamp
+          }}
+          actions={
+            isEditing ? (
+              <div className="flex items-center justify-between">
+                <IconButton
+                  aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflowAgent' })}
+                  size="lg"
+                  disabled={shouldDisableMentionButton}
+                  className="transition-opacity data-disabled:opacity-40"
+                  onClick={handleMentionButtonClick}
                 >
-                  {loading && (
-                    <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
-                  )}
-                  <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
-                  {!loading && (
-                    <span aria-hidden className="i-custom-public-common-enter-key size-4" />
-                  )}
-                </Button>
+                  <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
+                </IconButton>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="small"
+                    disabled={loading || !value.trim()}
+                    onClick={() => handleSubmit()}
+                  >
+                    {loading && (
+                      <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
+                    )}
+                    <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
+                    {!loading && (
+                      <span aria-hidden className="i-custom-public-common-enter-key size-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            ) : (
+              <CommentComposerActions
+                canSend={Boolean(value.trim()) && !disabled}
+                sending={loading}
+                onSend={handleSubmit}
+                mentionDisabled={shouldDisableMentionButton}
+                onMention={handleMentionButtonClick}
+              />
+            )
+          }
+        />
 
         <Popover
           open={isMentionMenuOpen}

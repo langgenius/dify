@@ -2,6 +2,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SelectorFooter from '../selector-footer'
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
+}))
+
 const props = {
   title: 'Custom metrics',
   description: 'Connect a published evaluation workflow',
@@ -39,4 +43,23 @@ it('keeps help and creation available when the custom metric limit disables addi
   expect(await screen.findByText(props.infoDescription)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Create workflow' })).toBeInTheDocument()
   expect(onClick).not.toHaveBeenCalled()
+})
+
+it('links the custom evaluator guide from its explanation', async () => {
+  const user = userEvent.setup()
+  render(
+    <SelectorFooter
+      {...props}
+      infoDocPath="/use-dify/evaluate/custom-evaluators"
+      onClick={vi.fn()}
+    />,
+  )
+
+  await user.click(screen.getByRole('button', { name: 'Custom Evaluator' }))
+  const docLink = await screen.findByRole('link', { name: /operation\.learnMore/ })
+  expect(docLink).toHaveAttribute(
+    'href',
+    'https://docs.example.com/use-dify/evaluate/custom-evaluators',
+  )
+  expect(docLink).toHaveAttribute('target', '_blank')
 })

@@ -54,7 +54,6 @@ async function getSecretEnvironmentVariables(
         consoleQuery.apps.byAppId.workflows.draft.environmentVariables.get.queryOptions({
           input,
           context,
-          staleTime: 0,
         }),
       )
   return items.filter((environmentVariable) => environmentVariable.value_type === 'secret')
@@ -89,8 +88,6 @@ export async function exportAppDslFile(
         consoleQuery.apps.byAppId.export.get.queryOptions({
           input,
           context,
-          staleTime: 0,
-          gcTime: 0,
         }),
       )
 

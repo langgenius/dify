@@ -2,30 +2,14 @@ import type {
   FileScanProviderResponse,
   FileScanProviderTypeResponse,
 } from '@dify/contracts/api/console/file-scan/types.gen'
-import { ORPCError } from '@orpc/client'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import { FileScanProviderDialog } from '../scanner-dialog'
 
-const api = vi.hoisted(() => ({
-  createProvider: vi.fn(),
-  updateProvider: vi.fn(),
-}))
-
-// boundary: the console API transport; generated keys, policies and Query observers stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'fileScan.providers.post': api.createProvider,
-      'fileScan.providers.byProviderId.patch': api.updateProvider,
-    }),
-  }
-})
+// Provider ids are UUIDs in the contract.
+const scannerId = '00000000-0000-4000-8000-000000000001'
 
 const providerTypes: FileScanProviderTypeResponse[] = [
   { provider_type: 'cloudmersive', available: true, credential_fields: ['api_key'] },
@@ -36,7 +20,7 @@ const providerTypes: FileScanProviderTypeResponse[] = [
 
 function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanProviderResponse {
   return {
-    id: 'scanner-1',
+    id: scannerId,
     name: 'Office scanner',
     provider_type: 'scanii',
     config: { region: 'eu1' },
@@ -74,9 +58,16 @@ const apiSecretField = () => page.getByLabelText('fileScan.dialog.apiSecret')
 const endpointUrlField = () => page.getByLabelText('fileScan.dialog.endpointUrl')
 const saveButton = () => page.getByRole('button', { name: 'common.operation.save' })
 
-beforeEach(() => {
-  vi.clearAllMocks()
-})
+const fake = setupFakeApi(() => ({
+  console: {
+    fileScan: {
+      providers: {
+        post: async ({ body }) => scanner({ name: body.name, provider_type: body.provider_type }),
+        byProviderId: { patch: () => scanner() },
+      },
+    },
+  },
+}))
 
 it('offers only the available services and swaps the fields with the selected one', async () => {
   await renderDialog()
@@ -149,7 +140,6 @@ it.each([
 })
 
 it('saves a custom endpoint only once its address is an http or https URL', async () => {
-  api.createProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
   const { onSaved } = await renderDialog()
 
   await typeCard('fileScan.type.customEndpoint').click()
@@ -159,13 +149,13 @@ it('saves a custom endpoint only once its address is an http or https URL', asyn
   await saveButton().click()
 
   await expect.element(page.getByText('fileScan.dialog.endpointUrlInvalid')).toBeVisible()
-  expect(api.createProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.post).not.toHaveBeenCalled()
 
   await endpointUrlField().fill(' https://scanner.example.com/scan ')
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.createProvider).toHaveBeenCalledWith({
+  expect(fake.console.fileScan.providers.post).toHaveBeenCalledWith({
     body: {
       name: 'In-house scanner',
       provider_type: 'api',
@@ -179,9 +169,10 @@ it.each([
   ['api', 'fileScan.dialog.endpointUrl'],
   ['cloudmersive', 'fileScan.dialog.endpoint'],
 ])('asks for the API key again when the address of a %s scanner changes', async (type, label) => {
-  api.updateProvider.mockRejectedValue(
-    new ORPCError('bad_request', {
+  fake.console.fileScan.providers.byProviderId.patch.mockRejectedValue(
+    apiError({
       status: 400,
+      code: 'bad_request',
       message: 'The scanner at the new address rejected the API key.',
     }),
   )
@@ -205,15 +196,15 @@ it.each([
   await saveButton().click()
 
   await expect.element(apiKeyField()).toHaveFocus()
-  expect(api.updateProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.byProviderId.patch).not.toHaveBeenCalled()
 
   await apiKeyField().fill('key-for-new-address')
   await saveButton().click()
 
   await expect
-    .poll(() => api.updateProvider.mock.calls.at(-1)?.[0])
-    .toEqual({
-      params: { provider_id: 'scanner-1' },
+    .poll(() => fake.console.fileScan.providers.byProviderId.patch)
+    .toHaveBeenLastCalledWith({
+      params: { provider_id: scannerId },
       body: {
         name: 'Office scanner',
         config: { endpoint: 'https://new.example.com/scan' },
@@ -227,7 +218,6 @@ it.each([
 })
 
 it('keeps the stored key of a custom endpoint whose address is unchanged', async () => {
-  api.updateProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
   const { onSaved } = await renderDialog(
     scanner({
       provider_type: 'api',
@@ -240,15 +230,14 @@ it('keeps the stored key of a custom endpoint whose address is unchanged', async
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.updateProvider).toHaveBeenCalledWith({
-    params: { provider_id: 'scanner-1' },
+  expect(fake.console.fileScan.providers.byProviderId.patch).toHaveBeenCalledWith({
+    params: { provider_id: scannerId },
     body: { name: 'Renamed scanner', config: { endpoint: 'https://old.example.com/scan' } },
   })
 })
 
 it('keeps save busy during the live check and shows the backend reason when it fails', async () => {
-  const check = createDeferred<FileScanProviderResponse>()
-  api.createProvider.mockReturnValue(check.promise)
+  const check = hold(fake.console.fileScan.providers.post)
   const { onSaved } = await renderDialog()
 
   await typeCard('Scanii').click()
@@ -260,18 +249,21 @@ it('keeps save busy during the live check and shows the backend reason when it f
   await saveButton().click()
 
   await expect.element(saveButton()).toBeDisabled()
-  expect(api.createProvider).toHaveBeenCalledWith({
-    body: {
-      name: 'Office scanner',
-      provider_type: 'scanii',
-      config: { region: 'eu2' },
-      credentials: { api_key: 'key-123', api_secret: 'secret-456' },
-    },
-  })
+  await expect
+    .poll(() => fake.console.fileScan.providers.post)
+    .toHaveBeenCalledWith({
+      body: {
+        name: 'Office scanner',
+        provider_type: 'scanii',
+        config: { region: 'eu2' },
+        credentials: { api_key: 'key-123', api_secret: 'secret-456' },
+      },
+    })
 
   check.reject(
-    new ORPCError('bad_request', {
+    apiError({
       status: 400,
+      code: 'bad_request',
       message: 'Scanii rejected the API key (HTTP 401).',
     }),
   )
@@ -290,11 +282,10 @@ it('requires the secrets of a new scanner before it contacts the backend', async
   await saveButton().click()
 
   await expect.element(apiKeyField()).toHaveFocus()
-  expect(api.createProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.post).not.toHaveBeenCalled()
 })
 
 it('keeps stored secrets when they are left blank while editing', async () => {
-  api.updateProvider.mockImplementation(async () => scanner({ name: 'Renamed scanner' }))
   const { onSaved } = await renderDialog(scanner())
 
   // The service of an existing scanner cannot be changed.
@@ -307,8 +298,8 @@ it('keeps stored secrets when they are left blank while editing', async () => {
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.updateProvider).toHaveBeenCalledWith({
-    params: { provider_id: 'scanner-1' },
+  expect(fake.console.fileScan.providers.byProviderId.patch).toHaveBeenCalledWith({
+    params: { provider_id: scannerId },
     body: {
       name: 'Renamed scanner',
       config: { region: 'eu1' },

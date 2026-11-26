@@ -23,7 +23,7 @@ import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
-export const ContentType = {
+const ContentType = {
   json: 'application/json',
   stream: 'text/event-stream',
   audio: 'audio/mpeg',
@@ -33,7 +33,7 @@ export const ContentType = {
   upload: 'multipart/form-data', // for upload
 }
 
-export type FetchOptionType = Omit<RequestInit, 'body'> & {
+type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, string | number | boolean | undefined>
   body?: BodyInit | Record<string, unknown> | null
 }
@@ -98,16 +98,6 @@ const baseClient = ky.create({
   timeout: TIME_OUT,
 })
 
-export const getBaseOptions = (): RequestInit => ({
-  method: 'GET',
-  mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
-  redirect: 'follow',
-})
-
 /** @deprecated Use generated contract clients for new APIs. Special transports require a scoped lint exception. */
 async function base<T>(
   url: string,
@@ -141,6 +131,8 @@ async function base<T>(
     getAbortController,
     fetchCompat = false,
     request,
+    onUploadProgress,
+    timeout,
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
@@ -189,15 +181,21 @@ async function base<T>(
     retry: {
       methods: [],
     },
+    // Event streams and uploads with progress (as the legacy XHR) have no client-side timeout.
+    ...(timeout === false || onUploadProgress ? { timeout: false as const } : {}),
     ...(bodyStringify && !fetchCompat ? { json: body } : { body: body as BodyInit }),
     searchParams: !fetchCompat ? params : undefined,
-    fetch(resource: RequestInfo | URL, options?: RequestInit) {
+    async fetch(resource: RequestInfo | URL, options?: RequestInit) {
       if (resource instanceof Request && options) {
         const mergedHeaders = new Headers(options.headers || {})
         resource.headers.forEach((value, key) => {
           mergedHeaders.append(key, value)
         })
         options.headers = mergedHeaders
+      }
+      if (onUploadProgress) {
+        const { createXhrFetch } = await import('./xhr-fetch')
+        return createXhrFetch(onUploadProgress)(resource, options)
       }
       return globalThis.fetch(resource, options)
     },

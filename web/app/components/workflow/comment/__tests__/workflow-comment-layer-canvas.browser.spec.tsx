@@ -1,5 +1,6 @@
 import type { WorkflowCommentBasic } from '@dify/contracts/api/console/apps/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
+import { networkError, setupFakeApi } from '@/test/fake-api'
 import { ControlMode } from '../../types'
 import {
   markers,
@@ -12,6 +13,7 @@ import {
 import {
   api,
   avatar,
+  commentLayerApi,
   deferred,
   listItem,
   resetFakeServer,
@@ -21,21 +23,12 @@ import {
 
 // Markers, the composer, hover previews and keyboard focus on a real canvas.
 
-// boundary: relative times depend on the clock
-vi.mock('@/hooks/use-format-time-from-now', () => ({
-  useFormatTimeFromNow: () => ({ formatTimeFromNow: () => 'just now' }),
-}))
 // boundary: collaboration runs over a socket to other editors
 vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', async () => ({
   collaborationManager: (await import('./comment-layer-fake-server')).fakeCollaborationManager,
 }))
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  const { consoleResponses } = await import('./comment-layer-fake-server')
-  return { ...actual, consoleQuery: withConsoleResponses(actual.consoleQuery, consoleResponses) }
-})
 
+setupFakeApi(commentLayerApi)
 beforeEach(resetFakeServer)
 
 describe('markers and the composer', () => {
@@ -78,7 +71,10 @@ describe('markers and the composer', () => {
     await userEvent.keyboard('{Tab}')
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x + 5)
 
-    move.reject(new Error('Network error'))
+    await expect
+      .poll(() => api.update.mock.calls[0]?.[0])
+      .toMatchObject({ params: { comment_id: 'first' } })
+    move.reject(networkError())
     await expect.poll(() => marker.element().getBoundingClientRect().x).toBe(before.x)
     await openThread(screen)
     await expect.element(thread(screen).getByText('Written meanwhile')).toBeVisible()
@@ -89,7 +85,7 @@ describe('markers and the composer', () => {
       async ({ params, body }: { params: { comment_id: string }; body: WorkflowCommentBasic }) => {
         const saved = server.current.list.find((item) => item.id === params.comment_id)!
         Object.assign(saved, { position_x: body.position_x, position_y: body.position_y })
-        return {}
+        return { id: params.comment_id, updated_at: 200 }
       },
     )
     const screen = await renderLayer()
@@ -161,7 +157,7 @@ describe('markers and the composer', () => {
   })
 
   it('keeps a new comment’s text to send again when creating it fails', async () => {
-    api.create.mockRejectedValueOnce(new Error('Network error'))
+    api.create.mockRejectedValueOnce(networkError())
     const screen = await renderLayer()
     await expect.element(markers(screen).first()).toBeVisible()
     screen.store.getState().setPendingComment({ x: 600, y: 400 })
@@ -307,6 +303,10 @@ describe('keyboard and hover', () => {
 
     await pointerToEmptyCanvas()
     await userEvent.tab()
+    await expect.element(screen.getByRole('region', { name: 'app.types.workflow' })).toHaveFocus()
+    await userEvent.tab()
+    await expect.element(screen.getByRole('link', { name: 'React Flow attribution' })).toHaveFocus()
+    await userEvent.tab()
     await expect.element(markers(screen).first()).toHaveFocus()
     await expect.element(preview).toBeVisible()
     await userEvent.keyboard('{Escape}')
@@ -331,10 +331,8 @@ describe('keyboard and hover', () => {
   })
 
   it('opens from the keyboard and gives focus back to its marker, which still moves with the arrow keys', async () => {
-    api.update.mockResolvedValue({})
     const screen = await renderLayer()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
 
     await userEvent.keyboard('{Escape}')
@@ -347,8 +345,7 @@ describe('keyboard and hover', () => {
 
   it('keeps focus on Next as it moves the thread, and gives focus to the comment shown last on close', async () => {
     const screen = await renderLayer()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
     const next = thread(screen).getByRole('button', {
       name: 'workflowComments.comments.aria.nextComment',
@@ -366,8 +363,7 @@ describe('keyboard and hover', () => {
 
   it('closes from the keyboard after comment markers were hidden', async () => {
     const screen = await renderLayer()
-    await userEvent.tab()
-    await userEvent.keyboard('{Enter}')
+    await openThread(screen)
     await expect.element(replyBox(screen)).toHaveFocus()
 
     screen.store.getState().setShowUserComments(false)
@@ -380,16 +376,17 @@ describe('keyboard and hover', () => {
 
 describe('avatars', () => {
   it('shows an avatar already shown on the canvas at once in a thread that opens', async () => {
-    avatar.file = '/logo/logo-embedded-chat-avatar.png'
+    const avatarUrl = '/logo/logo-embedded-chat-avatar.png'
+    avatar.url = avatarUrl
     saveReplyOnServer('first', 'With a picture', 'reply-picture')
-    // The current user is the author; their profile signs the picture differently again.
-    const screen = await renderLayer({ avatarUrl: `${avatar.file}?signature=profile` })
+    // Profile, list and detail responses all identify the same avatar with the same stable URL.
+    const screen = await renderLayer({ avatarUrl })
     const markerPicture = () => markers(screen).first().element().querySelector('img')
     await expect
       .poll(() => markerPicture()?.complete && markerPicture()!.naturalWidth > 0)
       .toBe(true)
 
-    // The thread's own read signs the picture anew; its avatars must not fall back meanwhile.
+    // Opening the thread must reuse the loaded picture without showing the initials meanwhile.
     let fellBack = false
     const watch = new MutationObserver(() => {
       const dialog = document.querySelector('[role="dialog"]')
