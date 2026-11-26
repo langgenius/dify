@@ -212,7 +212,9 @@ describe('Configure chat sessions', () => {
   it('clears Build through confirmation and leaves later Preview messages intact', async () => {
     const user = userEvent.setup()
     createEnvironment().render()
-    expect(await screen.findByText('Earlier answer')).toBeVisible()
+    // The answer renders through the lazily imported Markdown renderer, whose first import can
+    // take longer than the default lookup timeout when this test runs on its own.
+    expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
     await user.click(restartButton())
     expect(api.refresh).not.toHaveBeenCalled()
     await confirm(user)

@@ -34,6 +34,10 @@ shellctl. When shellctl path isolation is enabled, Landlock setup errors abort
 the job before its user script executes. Deployment settings may explicitly
 disable path isolation. See the [operations guide](guide/index.md) for setup.
 
+If a referenced Local Home Snapshot is missing from the sandbox filesystem,
+creating a Binding starts with an empty Home and logs a warning. This does not
+restore lost files or change how an existing Binding is acquired.
+
 Model, output type, current user content and initial history use explicit runner
 assembly and native Agent arguments. Knowledge eager results stay in the user
 role through a native model-request hook. Tool dispatch, instructions and

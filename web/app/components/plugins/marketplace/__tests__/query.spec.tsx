@@ -4,6 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
+import { invalidateMarketplacePluginLists } from '@/features/marketplace/client'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createTestQueryClient } from '@/test/query-client'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from '../query'
@@ -210,5 +211,51 @@ describe('useMarketplacePlugins', () => {
       }),
       expect.any(Object),
     )
+  })
+})
+
+describe('useMarketplacePlugins search requests', () => {
+  it('sends the excluded plugins and refreshes on marketplace list invalidation', async () => {
+    mockSearchAdvanced.mockResolvedValue({ data: { plugins: [], total: 0 } })
+    const { Wrapper, queryClient } = createWrapper()
+    const { result } = renderHook(
+      () =>
+        useMarketplacePlugins({
+          query: 'search',
+          category: 'tool',
+          exclude: ['installed/plugin'],
+          type: 'plugin',
+        }),
+      { wrapper: Wrapper },
+    )
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(mockSearchAdvanced).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { kind: 'plugins' },
+        body: expect.objectContaining({ query: 'search', exclude: ['installed/plugin'] }),
+      },
+      expect.anything(),
+    )
+
+    await act(() => invalidateMarketplacePluginLists(queryClient))
+
+    expect(mockSearchAdvanced).toHaveBeenCalledTimes(2)
+  })
+
+  it('starts each search empty when previous results are not kept', async () => {
+    mockSearchAdvanced.mockResolvedValue({ data: { plugins: [], total: 0 } })
+    const { Wrapper } = createWrapper()
+    const { result, rerender } = renderHook(
+      ({ query }) => useMarketplacePlugins({ query }, { keepPreviousResults: false }),
+      { wrapper: Wrapper, initialProps: { query: 'first' } },
+    )
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    mockSearchAdvanced.mockReturnValue(new Promise(() => {}))
+    rerender({ query: 'second' })
+
+    expect(result.current.data).toBeUndefined()
+    expect(result.current.isLoading).toBe(true)
   })
 })

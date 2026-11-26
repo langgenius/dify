@@ -112,6 +112,7 @@ describe('compatible contracts exports', () => {
     expect(Object.keys(legacy.exports)).toEqual([
       './marketplace',
       './console',
+      './sso',
       './api/*',
       './enterprise/*',
       './enterprise-app-deploy/*',

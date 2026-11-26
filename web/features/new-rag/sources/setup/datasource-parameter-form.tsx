@@ -321,11 +321,17 @@ export function WebsiteDatasourceParameterForm({
   disabled = false,
   parameters,
   schemas,
+  primaryFallback,
   onChange,
 }: {
   additionalPrimaryField?: ReactNode
   disabled?: boolean
   parameters: DatasourceParameters
+  /**
+   * Shown next to `additionalPrimaryField` while the schemas are unavailable. Rendering it here
+   * keeps that field mounted, and focused, when the schemas arrive.
+   */
+  primaryFallback?: ReactNode
   schemas: DatasourceParameterSchema[]
   onChange: (parameters: DatasourceParameters) => void
 }) {
@@ -343,7 +349,7 @@ export function WebsiteDatasourceParameterForm({
     onChange({ ...next, ...optionDefaults })
   }
 
-  if (!schemas.length) return null
+  if (!schemas.length && !primaryFallback) return null
 
   return (
     <div className="flex flex-col gap-3">
@@ -364,6 +370,7 @@ export function WebsiteDatasourceParameterForm({
             }}
           />
         ))}
+        {primaryFallback}
       </div>
       {optionSchemas.length > 0 && (
         <Collapsible

@@ -83,12 +83,12 @@ const DatasetSettingsForm = ({
   const saveAll = async () => {
     // The scan policy has its own endpoint; it goes first so a rejected policy stops the save.
     const fileScanResult = await fileScan.save()
-    if (fileScanResult === 'invalid') {
+    if (fileScanResult.status === 'invalid') {
       toast.error(tFileScan(($) => $['policy.scannerRequired']))
       return
     }
-    if (fileScanResult === 'failed') {
-      toast.error(tFileScan(($) => $['policy.saveFailed']))
+    if (fileScanResult.status === 'failed') {
+      toast.error(fileScanResult.errorMessage ?? tFileScan(($) => $['policy.saveFailed']))
       return
     }
     await handleSave()

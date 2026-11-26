@@ -89,13 +89,10 @@ it.each([
     await user.type(input, 'updated')
     await user.click(save())
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-    expect(requests.update).toHaveBeenCalledExactlyOnceWith(
-      {
-        params: { subscription_id: 'subscription-1' },
-        body: { name: 'Renamed', [payloadKey]: { [field]: 'updated' } },
-      },
-      { context: { silent: true } },
-    )
+    expect(requests.update).toHaveBeenCalledExactlyOnceWith({
+      params: { subscription_id: 'subscription-1' },
+      body: { name: 'Renamed', [payloadKey]: { [field]: 'updated' } },
+    })
     expect(requests.refetch).toHaveBeenCalledOnce()
   },
 )
@@ -114,24 +111,18 @@ it('verifies edited API credentials before saving them with the configuration', 
     await screen.findByRole('button', { name: 'pluginTrigger.modal.common.verifying' }),
   ).toBeDisabled()
   expect(requests.update).not.toHaveBeenCalled()
-  expect(requests.verify).toHaveBeenCalledWith(
-    {
-      params: { provider: 'provider-a', subscription_id: 'subscription-1' },
-      body: { credentials: { api_key: 'new-secret' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.verify).toHaveBeenCalledWith({
+    params: { provider: 'provider-a', subscription_id: 'subscription-1' },
+    body: { credentials: { api_key: 'new-secret' } },
+  })
   verification.resolve({ verified: true })
   await screen.findByRole('textbox', { name: subscriptionName })
   await user.click(save())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
-  expect(requests.update).toHaveBeenCalledWith(
-    {
-      params: { subscription_id: 'subscription-1' },
-      body: { name: 'Original', parameters: undefined, credentials: { api_key: 'new-secret' } },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.update).toHaveBeenCalledWith({
+    params: { subscription_id: 'subscription-1' },
+    body: { name: 'Original', parameters: undefined, credentials: { api_key: 'new-secret' } },
+  })
 })
 
 it('preserves unchanged hidden credentials and leaves the dialog open if saving fails', async () => {
@@ -144,13 +135,10 @@ it('preserves unchanged hidden credentials and leaves the dialog open if saving 
   await user.click(save())
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Save failed'))
   expect(onClose).not.toHaveBeenCalled()
-  expect(requests.update).toHaveBeenCalledWith(
-    {
-      params: { subscription_id: 'subscription-1' },
-      body: { name: 'Original', parameters: undefined, credentials: undefined },
-    },
-    { context: { silent: true } },
-  )
+  expect(requests.update).toHaveBeenCalledWith({
+    params: { subscription_id: 'subscription-1' },
+    body: { name: 'Original', parameters: undefined, credentials: undefined },
+  })
   await user.click(save())
   await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
 })

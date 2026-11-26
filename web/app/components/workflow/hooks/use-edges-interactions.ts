@@ -54,20 +54,20 @@ export const useEdgesInteractions = () => {
     (_, edge) => {
       if (getNodesReadOnly()) return
 
-      const { edges, setEdges } = store.getState()
-      setEdges(updateEdgeHoverState(edges, edge.id, true))
+      const { edges } = store.getState()
+      collaborativeWorkflow.setEdges(updateEdgeHoverState(edges, edge.id, true), false)
     },
-    [getNodesReadOnly, store],
+    [collaborativeWorkflow, getNodesReadOnly, store],
   )
 
   const handleEdgeLeave = useCallback<EdgeMouseHandler>(
     (_, edge) => {
       if (getNodesReadOnly()) return
 
-      const { edges, setEdges } = store.getState()
-      setEdges(updateEdgeHoverState(edges, edge.id, false))
+      const { edges } = store.getState()
+      collaborativeWorkflow.setEdges(updateEdgeHoverState(edges, edge.id, false), false)
     },
-    [getNodesReadOnly, store],
+    [collaborativeWorkflow, getNodesReadOnly, store],
   )
 
   // The caller owns draft synchronization and history for the complete user action.

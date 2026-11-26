@@ -61,8 +61,9 @@ export const ensureAccountProfileQuery = (
 export const createAccountProfileQueryClient = (
   profile: Partial<GetAccountProfileResponse> = {},
   meta: Partial<AccountProfileMeta> = {},
+  options?: Parameters<typeof createTestQueryClient>[1],
 ) => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createTestQueryClient(undefined, options)
 
   seedAccountProfileQuery(queryClient, profile, meta)
 

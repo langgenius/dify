@@ -81,12 +81,14 @@ export default function TokenForm({
   const { copied, failed: copyFailed, copySecret } = useTokenClipboard()
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null)
   const create = useMutation(
-    consoleQuery.account.personalAccessTokens.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.personalAccessTokens.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const created = create.data
   const update = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const pending = create.isPending || update.isPending

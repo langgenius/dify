@@ -5,14 +5,16 @@ import { ORPCError } from '@orpc/client'
 import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { upload } from '@/service/base'
+import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { TransferMethod } from '@/types/app'
+import { uploadPublicFile } from './public-upload'
 import { FileAppearanceTypeEnum } from './types'
 
 /**
  * Get appropriate error message for file upload errors
  * @param error - The error object from upload failure
- * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param defaultMessage - Fallback when the server returned no message
  * @param t - Translation function
  * @returns Localized error message
  */
@@ -21,14 +23,10 @@ export const getFileUploadErrorMessage = (
   defaultMessage: string,
   t: TFunction<['common']>,
 ): string => {
-  const errorCode = error instanceof ORPCError ? error.code : undefined
-
-  if (errorCode === 'forbidden') return error instanceof Error ? error.message : defaultMessage
-
-  if (errorCode === 'file_extension_blocked')
+  if (error instanceof ORPCError && error.code === 'file_extension_blocked')
     return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
 
-  return defaultMessage
+  return getRequestErrorMessage(error) ?? defaultMessage
 }
 
 type FileUploadResponse = {
@@ -48,30 +46,30 @@ type FileUploadParams = {
   onSuccessCallback: (res: FileUploadResponse) => void
   onErrorCallback: (error?: unknown) => void
 }
-type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
+type FileUpload = (v: FileUploadParams, isPublic?: boolean, trialAppId?: string) => void
 export const fileUpload: FileUpload = (
   { file, onProgressCallback, onSuccessCallback, onErrorCallback },
   isPublic,
-  url,
+  trialAppId,
 ) => {
-  const formData = new FormData()
-  formData.append('file', file)
-  const onProgress = (e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor((e.loaded / e.total) * 100)
-      onProgressCallback(percent)
-    }
+  const onUploadProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+    onProgressCallback(Math.floor((loaded / total) * 100))
+  }
+  const context = { onUploadProgress }
+
+  let uploading: Promise<unknown>
+  if (isPublic) {
+    uploading = uploadPublicFile(file, onUploadProgress)
+  } else if (trialAppId) {
+    uploading = consoleClient.trialApps.byAppId.files.upload.post(
+      { params: { app_id: trialAppId }, body: { file } },
+      { context },
+    )
+  } else {
+    uploading = consoleClient.files.upload.post({ body: { file } }, { context })
   }
 
-  upload(
-    {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-      onprogress: onProgress,
-    },
-    isPublic,
-    url,
-  )
+  uploading
     .then((res) => {
       onSuccessCallback(res as FileUploadResponse)
     })

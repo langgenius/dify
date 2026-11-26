@@ -4,6 +4,7 @@ import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { toast } from '@/app/notifications'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { createHttpError } from '@/service/http-error'
 import { createDeferred } from '@/test/deferred'
@@ -16,7 +17,7 @@ vi.mock('@/service/base', () => ({
   request: mockRequest,
 }))
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (url: string) => mockFetchWorkflowDraft(url),
+  fetchPipelineWorkflowDraft: (pipelineId: string) => mockFetchWorkflowDraft(pipelineId),
 }))
 
 // Default block/publish/upload config queries are covered by use-pipeline-config.spec.
@@ -33,6 +34,19 @@ const createDraft = (overrides: Record<string, unknown> = {}) => ({
   rag_pipeline_variables: [],
   ...overrides,
 })
+
+const notExistError = () =>
+  createHttpError(new Response(null, { status: 404 }), {
+    code: 'draft_workflow_not_exist',
+    message: 'Draft workflow not exist.',
+    status: 404,
+  })
+const draftUnavailableError = () =>
+  createHttpError(
+    { status: 500, statusText: '', headers: new Headers() },
+    { message: 'Draft unavailable' },
+  )
+const toastError = vi.spyOn(toast, 'error')
 
 const knowledgeDataset = {
   name: 'Test Knowledge',
@@ -79,9 +93,7 @@ describe('usePipelineInit', () => {
     const { result, store } = renderPipelineInit()
 
     expect(result.current).toEqual({ data: undefined, isLoading: true })
-    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
-      '/rag/pipelines/test-pipeline-id/workflows/draft',
-    )
+    expect(mockFetchWorkflowDraft).toHaveBeenCalledExactlyOnceWith('test-pipeline-id')
     expect(store.getState().isWorkflowDataLoaded).toBe(false)
 
     await act(async () => pending.resolve(draft))
@@ -127,13 +139,7 @@ describe('usePipelineInit', () => {
   })
 
   it('creates the knowledge base template draft when the pipeline has no draft yet', async () => {
-    mockFetchWorkflowDraft.mockRejectedValueOnce(
-      createHttpError(new Response(null, { status: 404 }), {
-        code: 'draft_workflow_not_exist',
-        message: 'Draft workflow not exist.',
-        status: 404,
-      }),
-    )
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
     mockFetchWorkflowDraft.mockResolvedValueOnce(createDraft({ hash: 'new-hash' }))
     mockRequest.mockResolvedValue(Response.json({ updated_at: 1_704_153_600 }))
     const { result, store } = renderPipelineInit()
@@ -157,5 +163,23 @@ describe('usePipelineInit', () => {
       },
       environment_variables: [],
     })
+  })
+
+  it('shows the server message when the draft fails to load', async () => {
+    mockFetchWorkflowDraft.mockRejectedValue(draftUnavailableError())
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
+    expect(mockRequest).not.toHaveBeenCalled()
+  })
+
+  it('shows the server message when creating the template draft fails', async () => {
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
+    mockRequest.mockResolvedValue(Response.json({ message: 'Draft unavailable' }, { status: 500 }))
+    const { result } = renderPipelineInit()
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledExactlyOnceWith('Draft unavailable'))
+    expect(result.current.isLoading).toBe(true)
   })
 })

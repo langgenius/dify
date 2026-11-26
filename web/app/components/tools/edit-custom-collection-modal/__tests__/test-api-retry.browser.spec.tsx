@@ -3,28 +3,8 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { AuthType } from '@/app/components/tools/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { apiError, hold, setupFakeApi } from '@/test/fake-api'
 import TestApi from '../test-api'
-
-const api = vi.hoisted(() => ({
-  preview:
-    vi.fn<
-      typeof import('@/service/console').consoleClient.workspaces.current.toolProvider.api.test.pre.post
-    >(),
-}))
-
-// boundary: only the generated preview response is replaced; the Drawer and form stay real.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.toolProvider.api.test.pre.post': api.preview,
-    }),
-  }
-})
 
 const collection: CustomCollectionBackend = {
   provider: 'custom',
@@ -54,14 +34,19 @@ const tool: CustomParamSchema = {
   ],
 }
 
-beforeEach(() => {
-  api.preview.mockReset().mockResolvedValue({ result: 'Test completed' })
-  onTestFinished(guardUnexpectedFetch())
+const fake = setupFakeApi({
+  console: {
+    workspaces: {
+      current: {
+        toolProvider: { api: { test: { pre: { post: () => ({ result: 'Test completed' }) } } } },
+      },
+    },
+  },
 })
+const preview = () => fake.console.workspaces.current.toolProvider.api.test.pre.post
 
 it('releases loading after a rejected preview and retries with the preserved form', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof api.preview>>>()
-  api.preview.mockReturnValueOnce(pending.promise)
+  const pending = hold(preview())
   const { wrapper: Wrapper } = createConsoleQueryWrapper()
   await render(
     <Wrapper>
@@ -74,16 +59,17 @@ it('releases loading after a rejected preview and retries with the preserved for
   await button.click()
   await expect.element(button).toHaveAttribute('aria-disabled', 'true')
   await userEvent.keyboard('{Enter}')
-  expect(api.preview).toHaveBeenCalledTimes(1)
-  pending.reject(new Error('Preview request failed'))
+  await pending.arrived
+  expect(preview()).toHaveBeenCalledTimes(1)
+  pending.reject(apiError({ status: 500, message: 'Preview request failed' }))
   await expect.element(button).not.toHaveAttribute('aria-disabled', 'true')
   await expect.element(button).toHaveFocus()
   await expect.element(parameter).toHaveValue('5')
   await parameter.fill('7')
   await userEvent.keyboard('{Enter}')
   await expect.element(page.getByRole('status')).toHaveTextContent('Test completed')
-  expect(api.preview).toHaveBeenCalledTimes(2)
-  expect(api.preview).toHaveBeenLastCalledWith({
+  expect(preview()).toHaveBeenCalledTimes(2)
+  expect(preview()).toHaveBeenLastCalledWith({
     body: {
       provider_name: 'custom',
       tool_name: 'testOp',

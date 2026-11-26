@@ -1,13 +1,8 @@
 import { submitHumanInputForm } from '../share'
 
 const mocks = vi.hoisted(() => ({
-  legacyPost: vi.fn(),
   fetch: vi.fn<typeof globalThis.fetch>(),
   address: vi.fn(),
-}))
-vi.mock('../base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../base')>()),
-  postPublic: mocks.legacyPost,
 }))
 vi.mock('../webapp-address', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../webapp-address')>()),
@@ -50,7 +45,6 @@ describe('Web App human input submission', () => {
     expect(request.headers.get('X-App-Code')).toBe('app-code')
     expect(request.headers.get('X-App-Passport')).toBe('test-passport')
     expect(await request.json()).toEqual(body)
-    expect(mocks.legacyPost).not.toHaveBeenCalled()
   })
 
   it.each([undefined, '1'] as const)(
@@ -58,8 +52,12 @@ describe('Web App human input submission', () => {
     async (version) => {
       const body = { inputs: {}, action: 'approve' }
       await submitHumanInputForm('legacy-token', body, version)
-      expect(mocks.legacyPost).toHaveBeenCalledWith('/form/human_input/legacy-token', { body })
-      expect(mocks.fetch).not.toHaveBeenCalled()
+      const request = submittedRequest()
+      expect(request.url).toMatch(/\/api\/form\/human_input\/legacy-token$/)
+      expect(request.method).toBe('POST')
+      expect(request.headers.get('X-App-Code')).toBe('app-code')
+      expect(await request.json()).toEqual(body)
+      expect(mocks.fetch).toHaveBeenCalledOnce()
     },
   )
 
@@ -75,20 +73,25 @@ describe('Web App human input submission', () => {
       await expect(
         submitHumanInputForm('v2-token', { inputs: {}, action: 'approve' }, '2'),
       ).rejects.toBeDefined()
-      expect(mocks.legacyPost).not.toHaveBeenCalled()
       expect(mocks.fetch.mock.calls.length).toBeGreaterThanOrEqual(1)
+      for (const [input] of mocks.fetch.mock.calls)
+        expect(input instanceof Request ? input.url : String(input)).not.toMatch(
+          /\/form\/human_input\//,
+        )
     },
   )
 
   it('uses the environment app API prefix when submitting its v2 form', async () => {
     mocks.address.mockReturnValue({ kind: 'environment', code: 'environment-code' })
 
-    await submitHumanInputForm('v2-token', { inputs: {}, action: 'approve' }, '2')
+    const body = { inputs: { note: 'Approved' }, action: 'approve' }
+    await submitHumanInputForm('v2-token', body, '2')
 
     const request = submittedRequest()
     expect(request.url).toMatch(
       /\/api\/environment\/environment-code\/form\/human-input\/v2\/v2-token$/,
     )
+    expect(await request.json()).toEqual(body)
     expect(request.headers.get('X-App-Code')).toBe('environment-code')
     expect(request.headers.get('X-App-Passport')).toBe('test-passport')
   })

@@ -28,7 +28,7 @@ export function ServiceApiAccessPointCard({
   const { t } = useTranslation(['common'])
   const toggleApiMutation = useMutation(
     consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       scope: {
         id: `app-service-api-toggle:${appInfo.id}`,
       },

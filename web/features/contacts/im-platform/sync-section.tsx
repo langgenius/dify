@@ -7,7 +7,7 @@ import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { CONTACT_IM_SYNC_POLL_INTERVAL_MS } from './hooks'
 
@@ -24,7 +24,7 @@ export function ContactImDirectorySyncSection({
   const api = consoleQuery.workspaces.current.humanInput.v2.imSyncRuns
   const runQuery = useQuery(
     api.latest.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: (count, error) => getHttpErrorStatus(error) !== 404 && count < 2,
       refetchInterval: ({ state }) =>
         state.data?.run.status === 'queued' || state.data?.run.status === 'running'
@@ -32,7 +32,7 @@ export function ContactImDirectorySyncSection({
           : false,
     }),
   )
-  const startSync = useMutation(api.post.mutationOptions({ context: { silent: true } }))
+  const startSync = useMutation(api.post.mutationOptions({ meta: { errorToast: false } }))
   const queryClient = useQueryClient()
   const previousRunRef = useRef<{ id: string; active: boolean } | null>(null)
   const run = runQuery.data?.run
@@ -79,7 +79,7 @@ export function ContactImDirectorySyncSection({
       : runQuery.isPending
         ? t(($) => $['imPlatform.sync.loading'])
         : requestError
-          ? t(($) => $['imPlatform.sync.startFailed'])
+          ? (getRequestErrorMessage(runQuery.error) ?? t(($) => $['imPlatform.sync.startFailed']))
           : undefined
   return (
     <div className="mt-2 rounded-xl bg-background-section-burn px-4 py-3">
@@ -143,7 +143,8 @@ export function ContactImDirectorySyncSection({
       )}
       {(requestError || startSync.isError) && (
         <div role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $['imPlatform.sync.startFailed'])}
+          {getRequestErrorMessage(startSync.error ?? runQuery.error) ??
+            t(($) => $['imPlatform.sync.startFailed'])}
           {requestError && (
             <Button className="ms-3" onClick={() => runQuery.refetch()} size="small">
               {t(($) => $['imPlatform.action.retry'])}
