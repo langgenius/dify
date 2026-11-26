@@ -94,6 +94,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
   const publishMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const queriedDetail = detailQuery.data

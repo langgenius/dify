@@ -44,6 +44,7 @@ function SkillDetailDeleteDialog({
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const referencesQuery = useQuery({
@@ -203,9 +204,11 @@ export function SkillDetailSidebarActions({
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const exportMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: () => fetchSkillArchiveBlob(detail.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${detail.name}.zip` })

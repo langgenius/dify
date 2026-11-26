@@ -8,6 +8,7 @@ import type {
   FormValue,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { IOnCompleted, IOnData, IOnError } from '@/service/event-stream'
+import { noop } from 'es-toolkit/function'
 import { consoleClient } from '@/service/console'
 import { streamEvents } from '@/service/event-stream'
 
@@ -111,6 +112,7 @@ export async function sendSkillAssistMessage({
       ),
     {
       silent: true,
+      onNotifyError: noop,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)

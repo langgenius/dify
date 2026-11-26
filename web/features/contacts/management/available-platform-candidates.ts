@@ -29,6 +29,7 @@ export function availablePlatformCandidatesOptions(
               { workspaceId },
             ],
             context: { silent: true },
+            meta: { errorToast: false },
           }),
         )
         signal.throwIfAborted()
@@ -51,6 +52,7 @@ export function availablePlatformCandidatesOptions(
                   { workspaceId },
                 ],
                 context: { silent: true },
+                meta: { errorToast: false },
               }),
             )
           : undefined

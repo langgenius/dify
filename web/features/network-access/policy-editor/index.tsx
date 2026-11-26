@@ -115,6 +115,7 @@ export function IpPolicyForm({
       enabled: mode !== 'view' && currentIp === undefined,
       retry: false,
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const resolvedCurrentIp =

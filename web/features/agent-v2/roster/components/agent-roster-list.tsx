@@ -477,7 +477,10 @@ export function AgentRosterList({
   const agentCopy = useMutation(consoleQuery.agent.byAgentId.copy.post.mutationOptions())
   const regionRef = useRef<HTMLDivElement>(null)
   const deletion = useMutation(
-    consoleQuery.agent.byAgentId.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.delete.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
 
   return (

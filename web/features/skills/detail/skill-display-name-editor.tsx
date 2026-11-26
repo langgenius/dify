@@ -37,6 +37,7 @@ export function SkillDisplayNameEditor({
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const saving = metadataMutation.isPending

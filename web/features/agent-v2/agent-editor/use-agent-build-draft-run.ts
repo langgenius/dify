@@ -27,6 +27,7 @@ export function usePrepareAgentBuildDraftBeforeRun({
   const checkoutBuildDraftMutation = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: checkoutBuildDraft, isPending: isCheckingOutBuildDraft } =
