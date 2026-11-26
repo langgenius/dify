@@ -380,10 +380,13 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
       if (document.activeElement === focusTarget) closeButton?.focus()
     } catch (error) {
       const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+      // A 403 is also how a knowledge rate limit fails, so the failure stays recorded while write
+      // access is rechecked; it is shown only if that access holds.
       if (getHttpErrorStatus(error) === 403) {
         closeButton?.focus()
-        denyWrite()
-      } else if (
+        void denyWrite()
+      }
+      if (
         mountedRef.current &&
         canReadRef.current &&
         taskLifecycleRef.current === actionLifecycle
@@ -435,7 +438,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
 
   return (
     <div className="flex shrink-0 flex-col items-end">
-      {actionFailure?.lifecycle === taskLifecycle(task) && (
+      {canWrite && actionFailure?.lifecycle === taskLifecycle(task) && (
         <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
           {actionFailureMessageKey
             ? tError(($) => $[actionFailureMessageKey])

@@ -2016,6 +2016,30 @@ describe('DocumentDetailPage', () => {
     expect(toastState.error).not.toHaveBeenCalled()
   })
 
+  it('keeps a rate-limited task interrupt failure in the row once write access is confirmed', async () => {
+    const user = userEvent.setup()
+    // The knowledge rate limit fails with a plain 403, like a permission denial.
+    const message = 'Sorry, you have reached the knowledge base request rate limit.'
+    documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
+    tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
+    cancelMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      errorToasts: true,
+    })
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const taskDrawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(
+      within(taskDrawer).getByRole('button', { name: 'knowledgeTasks.interruptTask' }),
+    )
+
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
+    expect(await within(taskDrawer).findByRole('alert')).toHaveTextContent(message)
+    expect(toastState.error).not.toHaveBeenCalled()
+  })
+
   it('loads task document titles only while the task drawer is open', async () => {
     documentQuery.data = logicalDocument({ latestTask: task({ state: 'running' }) })
     const user = userEvent.setup()
