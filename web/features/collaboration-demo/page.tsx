@@ -3,8 +3,8 @@
 import type { TourOutcome } from './analytics'
 import { useAtomValue } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
-import { flushEvents } from '@/app/components/base/amplitude/utils'
-import { currentWorkspaceAtom, currentWorkspaceLoadingAtom } from '@/context/workspace-state'
+import { useAmplitudeInitialized } from '@/app/components/base/amplitude/use-amplitude-initialized'
+import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { trackCollabTour } from './analytics'
 import { DemoHeader, DemoToolbar } from './components/demo-editor-chrome'
 import { DemoStage } from './components/demo-stage'
@@ -18,7 +18,7 @@ export default function CollaborationDemoPage() {
   const exitDemo = useExitDemo()
   const endState = useDemoOutcome()
   const workspace = useAtomValue(currentWorkspaceAtom)
-  const workspaceLoading = useAtomValue(currentWorkspaceLoadingAtom)
+  const amplitudeReady = useAmplitudeInitialized()
   const [step, setStep] = useState<Step>('members')
   const [membersTarget, setMembersTarget] = useState<HTMLElement | null>(null)
   const [commentTarget, setCommentTarget] = useState<HTMLButtonElement | null>(null)
@@ -26,22 +26,20 @@ export default function CollaborationDemoPage() {
   const trackedRef = useRef({ shown: false, outcome: false })
 
   useEffect(() => {
-    if (!guideShown || workspaceLoading || trackedRef.current.shown) return
+    if (!guideShown || !amplitudeReady || !workspace.id || trackedRef.current.shown) return
     trackedRef.current.shown = true
     trackCollabTour({ action: 'tour_shown' }, workspace)
-  }, [guideShown, workspaceLoading, workspace])
+  }, [guideShown, amplitudeReady, workspace])
 
   const recordOutcome = (outcome: TourOutcome) => {
-    if (trackedRef.current.outcome) return
+    if (!trackedRef.current.shown || trackedRef.current.outcome) return
     trackedRef.current.outcome = true
     trackCollabTour(outcome, workspace)
   }
 
   const exit = () => {
     recordOutcome({ action: 'tour_skipped', step: step === 'playing' ? 'playback' : step })
-    const sending = flushEvents()?.promise
-    if (sending) void sending.finally(exitDemo)
-    else exitDemo()
+    exitDemo()
   }
 
   return (

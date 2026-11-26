@@ -19,6 +19,29 @@ vi.mock('@/app/components/base/amplitude', async (importOriginal) => ({
   trackEvent: vi.fn(),
 }))
 
+const amplitude = vi.hoisted(() => {
+  const listeners = new Set<() => void>()
+  const state = { ready: true }
+  return {
+    state,
+    setReady(ready: boolean) {
+      state.ready = ready
+      listeners.forEach((listener) => listener())
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+  }
+})
+
+// boundary: the Amplitude SDK loads lazily outside the test page; only its ready signal is supplied.
+vi.mock('@/app/components/base/amplitude/init', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/amplitude/init')>()),
+  getIsAmplitudeInitialized: () => amplitude.state.ready,
+  subscribeAmplitudeInitialization: amplitude.subscribe,
+}))
+
 // boundary: shorten the scripted demo so a natural finish fits a spec; playback stays real.
 vi.mock('../playback-script', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../playback-script')>()),
@@ -72,6 +95,7 @@ async function playToEnd(screen: Awaited<ReturnType<typeof renderDemo>>) {
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  amplitude.state.ready = true
   await page.viewport(1440, 900)
 })
 
@@ -95,6 +119,27 @@ it('counts the guide once it is on screen and a skip with the step it left from'
   ])
 })
 
+it('waits for Amplitude before counting the guide, and counts no outcome without it', async () => {
+  amplitude.state.ready = false
+  const screen = await renderDemo()
+  await expect
+    .element(screen.getByRole('heading', { name: /collaborationDemo\.steps\.members\.title/ }))
+    .toBeVisible()
+  await screen.getByRole('button', { name: 'collaborationDemo.exit' }).first().click()
+  expect(eventsNamed('collab_tour')).toEqual([])
+
+  amplitude.setReady(true)
+  await expect
+    .poll(() => eventsNamed('collab_tour'))
+    .toEqual([{ action: 'tour_shown', ...workspace }])
+  await screen.getByRole('button', { name: 'collaborationDemo.steps.members.action' }).click()
+  await screen.getByRole('button', { name: 'collaborationDemo.exit' }).first().click()
+  expect(eventsNamed('collab_tour')).toEqual([
+    { action: 'tour_shown', ...workspace },
+    { action: 'tour_skipped', step: 'comment', ...workspace },
+  ])
+})
+
 it('counts a skip during playback and nothing for the replay or close after it', async () => {
   const screen = await renderDemo()
   await screen.getByRole('button', { name: 'collaborationDemo.steps.members.action' }).click()
@@ -107,7 +152,8 @@ it('counts a skip during playback and nothing for the replay or close after it',
     .toBeVisible()
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
 
-  expect(eventsNamed('collab_tour').slice(1)).toEqual([
+  expect(eventsNamed('collab_tour')).toEqual([
+    { action: 'tour_shown', ...workspace },
     { action: 'tour_skipped', step: 'playback', ...workspace },
   ])
 })
@@ -121,7 +167,10 @@ it('counts a natural finish once across replays', async () => {
     .toBeVisible()
   await screen.getByRole('button', { name: 'collaborationDemo.end.close' }).click()
 
-  expect(eventsNamed('collab_tour').slice(1)).toEqual([{ action: 'tour_completed', ...workspace }])
+  expect(eventsNamed('collab_tour')).toEqual([
+    { action: 'tour_shown', ...workspace },
+    { action: 'tour_completed', ...workspace },
+  ])
 })
 
 it('counts the end-page upgrade each time it is shown and when it is clicked', async () => {

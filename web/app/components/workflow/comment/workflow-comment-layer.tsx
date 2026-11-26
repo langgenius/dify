@@ -521,13 +521,14 @@ function ShownThread({
         const thread = queryClient
           .getQueryData(listKeyOf(params.app_id))
           ?.data.find((item) => item.id === params.comment_id)
+        const threadAuthor = (queryClient.getQueryData(detailKeyOf(params)) ?? thread)?.created_by
         trackCollabCommentSent({
           workspace_id: workspaceId,
           app_id: params.app_id,
           thread_id: params.comment_id,
           comment_id: reply.id,
           comment_kind: 'reply',
-          is_thread_author: thread?.created_by === author.id,
+          is_thread_author: threadAuthor === author.id,
         })
         queryClient.setQueryData(detailKeyOf(params), (detail) => {
           if (detail)

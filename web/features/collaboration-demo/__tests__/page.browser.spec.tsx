@@ -288,7 +288,7 @@ it('closes a demo tab opened from the product and goes to Studio otherwise', asy
 
   vi.spyOn(window, 'opener', 'get').mockReturnValue(window)
   await exit.click()
-  expect(close).toHaveBeenCalledOnce()
+  await expect.poll(() => close).toHaveBeenCalledOnce()
 })
 
 it('closes a demo tab opened from the in-site notification', async () => {
@@ -296,7 +296,7 @@ it('closes a demo tab opened from the in-site notification', async () => {
   const screen = await renderDemo('owner', '?source=notification')
 
   await screen.getByRole('button', { name: 'collaborationDemo.exit' }).first().click()
-  expect(close).toHaveBeenCalledOnce()
+  await expect.poll(() => close).toHaveBeenCalledOnce()
 })
 
 it('lays out playback and the thread in the page direction, which React Flow resets', async () => {
