@@ -1,4 +1,10 @@
-export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable'
+export type JoinFailure = 'denied' | 'unavailable' | 'session_unavailable' | 'outdated'
+
+/**
+ * Version of the graph layout inside the shared Loro document. Clients that model the graph
+ * differently would overwrite each other's containers, so the server keeps one version per room.
+ */
+export const GRAPH_SCHEMA_VERSION = 2
 
 export type OnlineUser = {
   user_id: string

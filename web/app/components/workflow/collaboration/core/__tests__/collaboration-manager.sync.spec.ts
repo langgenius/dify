@@ -98,3 +98,62 @@ it('discards the follower document and asks for a snapshot when an update is rej
   expect(follower.messages('graph_resync_request')).toHaveLength(1)
   expect(follower.manager.canApplyLocalGraphMutation()).toBe(false)
 })
+
+it('replaces an older history with a rebuilt one instead of merging the two', async () => {
+  vi.useFakeTimers()
+  const node = withData(createNode('n-1', 'Original'), {
+    variables: [{ variable: 'a', label: 'a' }],
+  })
+  const previous = await createSession({ nodes: [node] })
+  const follower = await createSession({ role: 'follower', nodes: [node] })
+  follower.receive('graph_update', previous.snapshot())
+  await vi.runAllTimersAsync()
+  // Another leader rebuilt the same graph from the saved draft later: a separate history.
+  vi.advanceTimersByTime(1000)
+  const rebuilt = await createSession({ nodes: [node] })
+
+  follower.receive('graph_update', rebuilt.snapshot())
+  await vi.runAllTimersAsync()
+  expect(follower.manager.getNodes()).toEqual(rebuilt.manager.getNodes())
+  expect(follower.manager.getNodes()[0]).toHaveProperty('data.variables.length', 1)
+})
+
+it('shows the newest history when its first update reaches a replica holding another one', async () => {
+  vi.useFakeTimers()
+  const node = withData(createNode('n-1', 'Original'), {
+    variables: [{ variable: 'a', label: 'a' }],
+  })
+  const previous = await createSession({ nodes: [node] })
+  const follower = await createSession({ role: 'follower', nodes: [node] })
+  follower.receive('graph_update', previous.snapshot())
+  await vi.runAllTimersAsync()
+  vi.advanceTimersByTime(1000)
+  const rebuilt = await createSession({ nodes: [node], preserveEmits: true })
+
+  for (const update of graphUpdates(rebuilt.emit)) follower.receive('graph_update', update)
+  await vi.runAllTimersAsync()
+  expect(follower.manager.getNodes()).toEqual(rebuilt.manager.getNodes())
+  expect(follower.manager.getNodes()[0]).toHaveProperty('data.variables.length', 1)
+
+  // A save request carrying the older history merges it into the rebuilt leader's document.
+  rebuilt.receive(
+    'collaboration_update',
+    {
+      type: 'sync_request',
+      userId: 'peer',
+      data: { requestId: 'r-1', graphSnapshot: previous.snapshot() },
+      timestamp: Date.now(),
+    },
+    vi.fn(),
+  )
+  expect(rebuilt.manager.getNodes()).toEqual(follower.manager.getNodes())
+  expect(rebuilt.manager.getNodes()[0]).toHaveProperty('data.variables.length', 1)
+})
+
+it('offers a reload when the server hands the room to a newer client', async () => {
+  const { manager, receive } = await createSession()
+  const failures = vi.fn()
+  manager.onJoinFailure(failures)
+  receive('disconnect', 'io server disconnect')
+  expect(failures).toHaveBeenLastCalledWith('outdated')
+})

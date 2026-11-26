@@ -18,7 +18,10 @@ from extensions.ext_redis import RedisClientWrapper
 from extensions.otel import workflow_collaboration
 from extensions.otel.workflow_collaboration import WorkflowCollaborationMetrics
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError
+from services.workflow_collaboration_service import (
+    WorkflowCollaborationClientOutdatedError,
+    WorkflowCollaborationNotEntitledError,
+)
 
 
 @pytest.fixture
@@ -217,3 +220,26 @@ def test_disconnect_type_error_is_not_retried(
     assert calls == [sid]
     if otel_enabled:
         _assert_single_event(_read_metrics(reader), "disconnect", "error")
+
+
+def test_user_connect_forwards_graph_schema_and_reports_outdated_clients(
+    collaboration_server: tuple[socketio.Server, WorkflowCollaborationMetrics, InMemoryMetricReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server, _, _ = collaboration_server
+    monkeypatch.setattr(workflow.session_factory, "create_session", Session)
+    received: list[object] = []
+
+    def outdated(*_args: object, graph_schema: object, **_kwargs: object) -> None:
+        received.append(graph_schema)
+        raise WorkflowCollaborationClientOutdatedError
+
+    monkeypatch.setattr(workflow.collaboration_service, "authorize_and_join_workflow_room", outdated)
+    handler = server.handlers["/"]["user_connect"]
+
+    assert handler("sid-1", {"workflow_id": "wf-1"}) == ({"msg": "client_outdated"}, 503)
+    assert handler("sid-1", {"workflow_id": "wf-1", "graph_schema": 2}) == ({"msg": "client_outdated"}, 503)
+    assert received == [1, 2]
+    assert handler("sid-1", {"workflow_id": "wf-1", "graph_schema": True}) == ({"msg": "invalid graph_schema"}, 400)
+    assert handler("sid-1", {"workflow_id": "wf-1", "graph_schema": 0}) == ({"msg": "invalid graph_schema"}, 400)
+    assert handler("sid-1", {"workflow_id": "wf-1", "graph_schema": 3}) == ({"msg": "invalid graph_schema"}, 400)

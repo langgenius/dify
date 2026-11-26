@@ -17,6 +17,8 @@ WS_SERVER_HEARTBEAT_PREFIX = "ws_server_heartbeat:"
 WS_SERVER_SESSIONS_PREFIX = "ws_server_sessions:"
 GRAPH_VIEW_STATE_LOCK_PREFIX = "workflow_graph_view_state_lock:"
 GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS = 15
+ROOM_JOIN_LOCK_PREFIX = "workflow_room_join_lock:"
+ROOM_JOIN_LOCK_TIMEOUT_SECONDS = 15
 
 _UPDATE_SESSION_GRAPH_ACTIVE_LUA = """
 local raw = redis.call('HGET', KEYS[1], ARGV[1])
@@ -50,6 +52,7 @@ class WorkflowSessionInfo(TypedDict):
     connected_at: int
     server_id: NotRequired[str]
     graph_active: NotRequired[bool]
+    graph_schema: NotRequired[int]
 
 
 class SidMapping(TypedDict):
@@ -180,6 +183,9 @@ class WorkflowCollaborationRepository:
             }
             if isinstance(session_info.get("graph_active"), bool):
                 user["graph_active"] = session_info["graph_active"]
+            graph_schema = session_info.get("graph_schema")
+            if isinstance(graph_schema, int) and not isinstance(graph_schema, bool):
+                user["graph_schema"] = graph_schema
             users.append(user)
 
         return users
@@ -210,6 +216,9 @@ class WorkflowCollaborationRepository:
             user["server_id"] = session_info["server_id"]
         if isinstance(session_info.get("graph_active"), bool):
             user["graph_active"] = session_info["graph_active"]
+        graph_schema = session_info.get("graph_schema")
+        if isinstance(graph_schema, int) and not isinstance(graph_schema, bool):
+            user["graph_schema"] = graph_schema
         return user
 
     def update_session_graph_active(self, workflow_id: str, sid: str, active: bool, sequence: int) -> bool:
@@ -232,6 +241,10 @@ class WorkflowCollaborationRepository:
             f"{GRAPH_VIEW_STATE_LOCK_PREFIX}{workflow_id}",
             timeout=GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS,
         )
+
+    def room_join_lock(self, workflow_id: str) -> Lock:
+        """Serialize joins to one room so its graph schema check and the session write happen together."""
+        return self._redis.lock(f"{ROOM_JOIN_LOCK_PREFIX}{workflow_id}", timeout=ROOM_JOIN_LOCK_TIMEOUT_SECONDS)
 
     def refresh_server_heartbeat(self, server_id: str) -> None:
         self._redis.set(self.server_key(server_id), "1", ex=SERVER_HEARTBEAT_TTL_SECONDS)
