@@ -5,7 +5,7 @@ import { isCancelled } from '@/plugins/commands/cancel'
 import { DEFAULT_CLIENT_ID } from './device-api'
 
 export const DEFAULT_INTERVAL_MS = 5_000
-export const MAX_INTERVAL_MS = 60_000
+export const SLOW_DOWN_INCREMENT_MS = 5_000
 export const POLL_RETRY_ATTEMPTS = 5
 export const POLL_RETRY_INITIAL_MS = 1_000
 export const POLL_RETRY_CAP_MS = 16_000
@@ -42,7 +42,8 @@ export async function awaitAuthorization(
     const result = await pollWithRetry(api, req, opts.clock)
     const success = settle(result)
     if (success !== undefined) return success
-    if (result.status === 'slow_down') interval = Math.min(interval * 2, MAX_INTERVAL_MS)
+    // RFC 8628 section 3.5 applies this increase to this and every later poll.
+    if (result.status === 'slow_down') interval += SLOW_DOWN_INCREMENT_MS
     await opts.clock.sleepMs(interval)
     if (opts.clock.isCancelled()) throw cancelledError()
   }
