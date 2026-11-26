@@ -70,6 +70,7 @@ export async function renderTestPanel(overview = testOverview()) {
   const rendered = await render(ui(overview))
   return {
     ...rendered,
+    i18n,
     queryClient,
     rerenderOverview: (value: ExternalAgentOverview) => rendered.rerender(ui(value)),
   }

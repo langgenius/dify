@@ -5,6 +5,7 @@ import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/d
 import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
+import { externalAgentReplyError } from './response-issue'
 import { TestAgentOutputValue } from './result-output'
 
 const isTokenCount = (value: unknown): value is number =>
@@ -26,6 +27,10 @@ export function TestAgentResults({
   const stopped = run.status === 'stopped'
   const ended = run.status === 'ended'
   const completed = succeeded || failed || stopped || ended
+  const replyError =
+    run.status === 'failed' && !run.errorMessage
+      ? externalAgentReplyError(run.result, t)
+      : undefined
   const labels = {
     running: t(($) => $['external.overview.testRun.running']),
     stopping: t(($) => $['external.overview.testRun.stopping']),
@@ -148,9 +153,9 @@ export function TestAgentResults({
                 </div>
               ))}
             </div>
-          ) : run.errorMessage || run.result?.error_message ? (
+          ) : replyError || run.errorMessage || run.result?.error_message ? (
             <p className="system-sm-regular text-text-destructive">
-              {run.errorMessage || run.result?.error_message}
+              {replyError || run.errorMessage || run.result?.error_message}
             </p>
           ) : failed ? (
             <p className="system-sm-regular text-text-destructive">
