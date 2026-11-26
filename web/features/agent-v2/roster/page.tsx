@@ -1,6 +1,6 @@
 'use client'
 
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { defaultRateLimit, useQueryStates } from 'nuqs'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -78,6 +78,7 @@ export default function RosterPage() {
           <TabsTab value="external" className="py-2 text-[13px]/4 uppercase">
             {t(($) => $['roster.tabs.external'])}
           </TabsTab>
+          <TabsIndicator />
         </TabsList>
       </div>
       <TabsPanel value="dify" className="flex min-h-0 flex-1 flex-col">

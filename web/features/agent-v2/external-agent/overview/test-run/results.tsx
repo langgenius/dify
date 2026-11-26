@@ -1,7 +1,7 @@
 import type { TestAgentResultTab, TestAgentRun } from './use-test-run'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
@@ -134,6 +134,7 @@ export function TestAgentResults({
           <TabsTab value="tracing" className="pt-2 pb-2.5 system-sm-semibold-uppercase">
             {t(($) => $['external.overview.tracing'])}
           </TabsTab>
+          <TabsIndicator />
         </TabsList>
         <TabsPanel value="result" className="pt-3">
           {succeeded && outputs ? (
