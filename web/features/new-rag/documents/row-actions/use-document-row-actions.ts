@@ -361,7 +361,7 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
   const ensureModelReady = useSetAtom(ensureDocumentModelReadyAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'reindex')
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: reindexDocument } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
       context: { silent: true },
@@ -388,7 +388,6 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
             : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
         )
       } else toast.success(t(($) => $.documentsReindexStarted, { ns: 'knowledgeDocuments' }))
-      invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -410,7 +409,6 @@ export function useReindexDocumentAction(document: LogicalDocument, status: Docu
     document.id,
     ensureModelReady,
     finish,
-    invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onWriteDenied,
     reindexDocument,

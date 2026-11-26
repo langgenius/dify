@@ -33,7 +33,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
-import { useInvalidateDefaultModel, useUpdateModelList } from '../hooks'
+import { useUpdateModelList } from '../hooks'
 import { ModelSelector } from '../model-selector'
 
 type SystemModelSelectorProps = {
@@ -84,7 +84,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'modelProvider'])
   const updateModelList = useUpdateModelList()
-  const invalidateDefaultModel = useInvalidateDefaultModel()
   const [activeDialog, setActiveDialog] = useQueryState('dialog', systemModelDialogQueryParser)
   const [manuallyOpen, setManuallyOpen] = useState(false)
   const open = manuallyOpen || activeDialog === 'system-models'
@@ -96,7 +95,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 
         setManuallyOpen(false)
         if (activeDialog === 'system-models') void setActiveDialog(null)
-        systemModelTypes.forEach((type) => invalidateDefaultModel(type))
       },
     }),
   )

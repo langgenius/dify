@@ -116,17 +116,7 @@ export default function DeleteExternalApiDialog({
     operation.mutationOptions({
       context: { silent: true },
       networkMode: 'always',
-      onSuccess: (_response, { params }) => {
-        const key = endpoints.get.queryKey({ input: {} })
-        client.setQueryData(
-          key,
-          (previous) =>
-            previous && {
-              ...previous,
-              data: previous.data.filter((api) => api.id !== params.external_knowledge_api_id),
-            },
-        )
-        void client.invalidateQueries({ queryKey: key, exact: true })
+      onSuccess: () => {
         finalFocusRef.current = fallbackFocus.current
         handle.close()
       },

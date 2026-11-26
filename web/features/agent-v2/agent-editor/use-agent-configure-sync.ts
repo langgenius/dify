@@ -198,28 +198,12 @@ export function useAgentConfigureSync({
       if (publish) {
         if (!publishEnabledRef.current || !getCurrentPermissions().canReleaseAndVersion)
           return false
-        const result = await publishAgent({
+        return publishAgent({
           params: {
             agent_id: agentId,
           },
           body: {},
         })
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-          queryClient.invalidateQueries({
-            queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
-              input: { params: { agent_id: agentId } },
-            }),
-          }),
-        ])
-        return result
       }
 
       return true
