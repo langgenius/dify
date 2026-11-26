@@ -587,7 +587,7 @@ docs = [
 requires-dist = [
     { name = "e2b", marker = "extra == 'server'", specifier = ">=2.55.1,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.8.0" },
+    { name = "graphon", marker = "extra == 'server'", url = "https://github.com/langgenius/graphon/archive/cef47af8c60b9dbd5ad49ea90dd899517c140e0f.tar.gz" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "httpx2", specifier = ">=2.5.0,<3.0.0" },
@@ -842,8 +842,8 @@ wheels = [
 
 [[package]]
 name = "graphon"
-version = "0.8.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.8.0.post1"
+source = { url = "https://github.com/langgenius/graphon/archive/cef47af8c60b9dbd5ad49ea90dd899517c140e0f.tar.gz" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "defusedxml" },
@@ -865,9 +865,29 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/82/a2ded2b6a7879e7ee855936db7410014cd41c1c709155a1ccfe07e208633/graphon-0.8.0.tar.gz", hash = "sha256:654ad8f5cb7ff1711cf6b09e68a6afc7fe1e552b2f8306babdb848142d0a6bf7", size = 281821, upload-time = "2026-09-09T20:03:19.606Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0d/8d/64552a2dc8ef4d1b0c43d927301000533be75d6c51664d5a33fb1ead00ff/graphon-0.8.0-py3-none-any.whl", hash = "sha256:183b668cdd2b1b6c39e75e68778994855400c9a8e314e0bda3b59a2b0fe7e8a0", size = 400203, upload-time = "2026-09-09T20:03:18.198Z" },
+sdist = { hash = "sha256:87b9930095c1914459ebd5656b3da77bcbddd6a7e28526d976bc0c156f04233b" }
+
+[package.metadata]
+requires-dist = [
+    { name = "charset-normalizer", specifier = ">=2.1" },
+    { name = "defusedxml", specifier = ">=0.7" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "json-repair", specifier = ">=0.55" },
+    { name = "jsonschema", specifier = ">=4.18" },
+    { name = "odfdo", specifier = ">=3.22.8" },
+    { name = "orjson", specifier = ">=3" },
+    { name = "pandas", extras = ["excel"], specifier = ">=2.1" },
+    { name = "pydantic", specifier = ">=2.7" },
+    { name = "pydantic-extra-types", specifier = ">=2" },
+    { name = "pypdf", specifier = ">=6.14.2" },
+    { name = "pypdfium2", specifier = ">=5" },
+    { name = "python-docx", specifier = ">=1.2" },
+    { name = "pyyaml", specifier = ">=6" },
+    { name = "tiktoken", specifier = ">=0.12" },
+    { name = "transformers", specifier = ">=4" },
+    { name = "typing-extensions", specifier = ">=4.10.0" },
+    { name = "unstructured", extras = ["docx", "md", "ppt", "pptx"], specifier = ">=0.21" },
+    { name = "webvtt-py", specifier = ">=0.5" },
 ]
 
 [[package]]

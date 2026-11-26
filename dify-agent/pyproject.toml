@@ -22,7 +22,7 @@ server = [
     "pillow>=13.0.0,<14",
     "e2b>=2.55.1,<3.0.0",
     "fastapi==0.136.0",
-    "graphon==0.8.0",
+    "graphon==0.8.0.post1",
     # Explicit constraint because this package imports grpc directly for the
     # generated openshell stubs.
     "grpcio>=1.60.0,<2.0.0",
@@ -70,6 +70,9 @@ include = ["src/**/*.py", "examples/**/*.py", "tests/**/*.py", "docs/**/*.py"]
 # Override the stale upper bound to take the required security fixes.
 # TODO: Remove this override once unstructured permits filelock>=4.2.1.
 override-dependencies = ["filelock==4.2.1"]
+
+[tool.uv.sources]
+graphon = { url = "https://github.com/langgenius/graphon/archive/cef47af8c60b9dbd5ad49ea90dd899517c140e0f.tar.gz" }
 
 [dependency-groups]
 dev = [
