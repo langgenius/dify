@@ -3,7 +3,7 @@ from collections.abc import Generator, Iterable, Mapping
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from types import MappingProxyType
-from typing import Any, ClassVar
+from typing import ClassVar
 from uuid import uuid4
 
 import numpy as np
@@ -20,9 +20,9 @@ from models.tools import ToolFile
 
 
 class _FakeToolFileManager:
-    """Fake ToolFileManager to capture the mimetype passed in."""
+    """Keep the ToolFile returned by the patched file manager for assertions."""
 
-    last_call: ClassVar[dict[str, Any] | None] = None
+    last_file: ClassVar[ToolFile | None] = None
 
     def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         pass
@@ -37,14 +37,6 @@ class _FakeToolFileManager:
         mimetype: str,
         filename: str | None = None,
     ) -> ToolFile:
-        _FakeToolFileManager.last_call = {
-            "user_id": user_id,
-            "tenant_id": tenant_id,
-            "conversation_id": conversation_id,
-            "file_binary": file_binary,
-            "mimetype": mimetype,
-            "filename": filename,
-        }
         tool_file = ToolFile(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -55,6 +47,7 @@ class _FakeToolFileManager:
             size=len(file_binary),
         )
         tool_file.id = "fake-tool-file-id"
+        _FakeToolFileManager.last_file = tool_file
         return tool_file
 
 
@@ -107,7 +100,7 @@ class TestMessageTransformerCases:
         monkeypatch.setattr(mt, "ToolFileManager", _FakeToolFileManager)
         # also ensure predictable URL generation (no need to patch; uses id and extension only)
         yield
-        _FakeToolFileManager.last_call = None
+        _FakeToolFileManager.last_file = None
 
     @staticmethod
     @pytest.mark.parametrize("mime_type", [None, ""], ids=["none", "empty"])
@@ -131,8 +124,8 @@ class TestMessageTransformerCases:
         )
 
         # The file manager receives a usable MIME type for either empty value.
-        assert _FakeToolFileManager.last_call is not None
-        assert _FakeToolFileManager.last_call["mimetype"] == "application/octet-stream"
+        assert _FakeToolFileManager.last_file is not None
+        assert _FakeToolFileManager.last_file.mimetype == "application/octet-stream"
 
         # Should yield a BINARY_LINK (not IMAGE_LINK) and the URL ends with .bin
         assert len(out) == 1
@@ -168,8 +161,8 @@ class TestMessageTransformerCases:
             )
         )
 
-        assert _FakeToolFileManager.last_call is not None
-        assert _FakeToolFileManager.last_call["filename"] == "report.docx"
+        assert _FakeToolFileManager.last_file is not None
+        assert _FakeToolFileManager.last_file.name == "report.docx"
         assert len(out) == 1
         assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
         assert out[0].message.text.endswith(".docx")
