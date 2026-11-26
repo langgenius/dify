@@ -115,6 +115,17 @@ class PluginModelProviderBinding(BaseModel):
     verified: bool = False
 
 
+class PluginInstallationSourceRecord(BaseModel):
+    """The fields of a plugin installation that say where the plugin was installed from.
+
+    The daemon returns complete installations, each with its full plugin declaration. Callers
+    that only need the source validate against this model so the declarations are not parsed.
+    """
+
+    plugin_unique_identifier: str
+    source: PluginInstallationSource
+
+
 class PluginTextEmbeddingNumTokensResponse(BaseModel):
     """
     Response for number of tokens.

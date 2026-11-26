@@ -1,6 +1,11 @@
 import binascii
-from collections.abc import Generator, Sequence
-from typing import IO, Any
+from collections.abc import Generator, Iterable, Sequence
+from hashlib import sha256
+from threading import Lock
+from typing import IO, Any, Self
+
+import httpx
+from cachetools import LRUCache, cached
 
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -30,7 +35,34 @@ _POLLING_UNSUPPORTED_INVOKE_ERROR_TYPES = frozenset((NotImplementedError.__name_
 _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 
+class PluginModelProviderListing(tuple[PluginModelProviderEntity, ...]):
+    """Model providers validated from one daemon listing response.
+
+    ``payload_key`` is the length and SHA-256 of the response body the providers were parsed
+    from. Two listings with equal keys hold equal providers, so work derived only from a listing
+    can be reused for as long as the daemon keeps returning the same bytes. Listings are shared
+    between callers and must be treated as read-only.
+    """
+
+    payload_key: tuple[int, bytes]
+
+    def __new__(cls, providers: Iterable[PluginModelProviderEntity], payload_key: tuple[int, bytes]) -> Self:
+        listing = super().__new__(cls, providers)
+        listing.payload_key = payload_key
+        return listing
+
+
 class PluginModelClient(BasePluginClient):
+    # The daemon answers a tenant's provider listing with identical bytes until that tenant's
+    # plugins change, and validating the listing costs far more than fetching it. Keep the
+    # validated listings of the most recently seen response bodies. A changed body has a
+    # different key, so nothing here can go stale; the small LRU bounds per-process memory.
+    MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES = 8
+    _model_provider_listing_cache: LRUCache[tuple[int, bytes], PluginModelProviderListing] = LRUCache(
+        maxsize=MODEL_PROVIDER_LISTING_CACHE_MAX_ENTRIES
+    )
+    _model_provider_listing_cache_lock = Lock()
+
     @staticmethod
     def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
@@ -43,14 +75,28 @@ class PluginModelClient(BasePluginClient):
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
         Fetch model providers for the given tenant.
+
+        The daemon is asked on every call. The response is validated only when its body differs
+        from the bodies seen most recently; otherwise the listing validated earlier is returned.
+        Postcondition: the result equals what validating this call's response would produce.
         """
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/models",
-            list[PluginModelProviderEntity],
-            params={"page": 1, "page_size": 256},
-        )
-        return response
+        path = f"plugin/{tenant_id}/management/models"
+        response = self._request_plugin_daemon("GET", path, params={"page": 1, "page_size": 256})
+        payload = response.content
+        payload_key = (len(payload), sha256(payload).digest())
+        return self._validate_model_provider_listing(response, path, payload_key)
+
+    # Looked up and stored under the lock, validated outside it; a failed validation is not cached.
+    @cached(
+        _model_provider_listing_cache,
+        key=lambda self, response, path, payload_key: payload_key,
+        lock=_model_provider_listing_cache_lock,
+    )
+    def _validate_model_provider_listing(
+        self, response: httpx.Response, path: str, payload_key: tuple[int, bytes]
+    ) -> PluginModelProviderListing:
+        providers = self._parse_plugin_daemon_response(response, path, list[PluginModelProviderEntity])
+        return PluginModelProviderListing(providers, payload_key)
 
     def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
         """Fetch only model-provider installation identities from the daemon."""

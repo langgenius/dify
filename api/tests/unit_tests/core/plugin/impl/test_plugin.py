@@ -56,6 +56,7 @@ from graphon.model_runtime.errors.invoke import (
 )
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from models.provider_ids import GenericProviderID
+from tests.helpers.unit.model_provider_daemon_fixtures import ModelProviderDaemon
 
 """
 Unit tests for Plugin Manager (PluginInstaller).
@@ -730,6 +731,31 @@ class TestPluginManagerCases:
                 assert len(result) == 1
                 assert result[0].plugin_id == "plugin-1"
                 mock_request.assert_called_once()
+
+        def test_fetch_plugin_installation_sources_by_ids_does_not_validate_declarations(
+            self, model_provider_daemon: ModelProviderDaemon
+        ) -> None:
+            model_provider_daemon.serve_installations(
+                {
+                    "plugin_id": "org/plugin1",
+                    "plugin_unique_identifier": "org/plugin1:1.0.0@checksum",
+                    "source": "marketplace",
+                    "declaration": {"this": "is not a plugin declaration"},
+                },
+                {"plugin_unique_identifier": "org/plugin2:2.0.0@checksum", "source": "remote"},
+            )
+
+            result = PluginInstaller().fetch_plugin_installation_sources_by_ids(
+                "test-tenant", ["org/plugin1", "org/plugin2"]
+            )
+
+            assert [(record.plugin_unique_identifier, record.source) for record in result] == [
+                ("org/plugin1:1.0.0@checksum", PluginInstallationSource.Marketplace),
+                ("org/plugin2:2.0.0@checksum", PluginInstallationSource.Remote),
+            ]
+            assert model_provider_daemon.installation_requests == [
+                ("test-tenant", {"plugin_ids": ["org/plugin1", "org/plugin2"]})
+            ]
 
         def test_dependency_chain_resolution(self, plugin_installer):
             """Test resolving a chain of dependencies."""
