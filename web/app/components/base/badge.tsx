@@ -26,7 +26,7 @@ const Badge = ({
   return (
     <Component
       className={cn(
-        'relative inline-flex items-center rounded-[5px] border border-divider-deep leading-3 whitespace-nowrap text-text-tertiary',
+        'relative inline-flex items-center rounded-[5px] border border-divider-deep whitespace-nowrap text-text-tertiary',
         size === 'xs' ? 'min-w-4 justify-center px-1 py-0.5' : 'h-5 px-1.25',
         variant === 'dimm' && 'bg-components-badge-bg-dimm',
         uppercase ? 'system-2xs-medium-uppercase' : 'system-xs-medium',
