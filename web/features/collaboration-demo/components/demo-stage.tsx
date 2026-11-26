@@ -1,10 +1,11 @@
 'use client'
 
+import type { TourOutcome } from '../analytics'
 import type { DemoEndState } from '../end-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { createDemoGraph } from '../demo-graph'
@@ -22,6 +23,7 @@ type DemoStageProps = {
   /** Whether the guide has handed over to playback. */
   playing: boolean
   endState: DemoEndState
+  onOutcome: (outcome: TourOutcome) => void
   onExit: () => void
 }
 
@@ -29,7 +31,7 @@ type DemoStageProps = {
  * The demo canvas and its playback: what moves with the canvas renders inside React Flow, and
  * the controls, end panel and message log beside it.
  */
-export function DemoStage({ playing, endState, onExit }: DemoStageProps) {
+export function DemoStage({ playing, endState, onOutcome, onExit }: DemoStageProps) {
   const { t } = useTranslation(['collaborationDemo'])
   const messageContent = useMessageContent()
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)', { noSsr: true })
@@ -40,6 +42,11 @@ export function DemoStage({ playing, endState, onExit }: DemoStageProps) {
   const frame = getPlaybackFrame(playback.seconds, reducedMotion)
 
   useHotkey('Escape', playback.pause, { enabled: playback.playing })
+
+  const onFinished = useEffectEvent(() => onOutcome({ action: 'tour_completed' }))
+  useEffect(() => {
+    if (playback.finished) onFinished()
+  }, [playback.finished])
 
   const changeThreadOpen = (open: boolean, fromMarker: boolean) => {
     if (!open) playback.pause()
@@ -122,7 +129,13 @@ export function DemoStage({ playing, endState, onExit }: DemoStageProps) {
                 />
                 {playback.playing ? t(($) => $['playback.pause']) : t(($) => $['playback.resume'])}
               </Button>
-              <Button variant="ghost" onClick={playback.skip}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  onOutcome({ action: 'tour_skipped', step: 'playback' })
+                  playback.skip()
+                }}
+              >
                 {t(($) => $['playback.skip'])}
               </Button>
             </div>
