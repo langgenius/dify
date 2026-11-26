@@ -351,9 +351,11 @@ def test_received_reply_diagnostic_survives_sql_result_reads_and_unknown_cancel_
     repo, sessions, scope, agent, revision = domain
     payload = diagnostic_message(omit=omit, **changes)
     with wire([stream(payload) if streaming else response(payload)]) as (gateway, spec, peer):
+        interface_url = spec.interface_url
+        assert interface_url
         with sessions.begin() as session:
             connection = stored(session, ExternalAgentConnectionRevision, revision)
-            connection.endpoint, connection.interface_url = spec.endpoint, spec.interface_url
+            connection.endpoint, connection.interface_url = spec.endpoint, interface_url
             connection.agent_card = {"defaultInputModes": ["text/plain"], "capabilities": {"streaming": streaming}}
         runtime, clock, *_ = service(domain, gateway)
         value = runtime.start(
@@ -426,11 +428,15 @@ def test_valid_gateway_reply_has_no_failure_diagnostic_in_sql_or_result(domain: 
     from tests.unit_tests.providers.a2a.test_gateway_branches import wire
 
     repo, sessions, scope, agent, revision = domain
-    peer_metadata = {"response_issue": {"source": "external_agent_reply", "code": "message_context_id_missing"}}
+    peer_metadata: JsonObject = {
+        "response_issue": {"source": "external_agent_reply", "code": "message_context_id_missing"}
+    }
     with wire([response(diagnostic_message(metadata=peer_metadata))]) as (gateway, spec, peer):
+        interface_url = spec.interface_url
+        assert interface_url
         with sessions.begin() as session:
             connection = stored(session, ExternalAgentConnectionRevision, revision)
-            connection.endpoint, connection.interface_url = spec.endpoint, spec.interface_url
+            connection.endpoint, connection.interface_url = spec.endpoint, interface_url
         runtime, clock, *_ = service(domain, gateway)
         value = runtime.start(
             scope, draft(agent, declared_outputs=(OutputField(name="text", kind=OutputFieldKind.STRING),))
