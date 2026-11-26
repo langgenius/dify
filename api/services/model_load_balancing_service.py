@@ -586,6 +586,7 @@ class ModelLoadBalancingService:
                         encrypted_config=credential_record.encrypted_config,
                         credential_id=credential_id,
                         credential_source_type=credential_source,
+                        enabled=enabled,
                     )
                 else:
                     parsed_credentials = _parse_submitted_credentials(credentials) if credentials else None
@@ -611,6 +612,7 @@ class ModelLoadBalancingService:
                         model_name=model,
                         name=name,
                         encrypted_config=parsed_credentials.model_dump_json(),
+                        enabled=enabled,
                     )
 
                 session.add(load_balancing_model_config)
