@@ -117,6 +117,7 @@ class AgentToolInnerService:
                 use_default_for_missing_form_parameters=True,
             )
             tool_runtime.runtime.dify_run_context = dify_run_context
+            tool_runtime.runtime.request_header_context = request.caller.request_headers
             tool_runtime.runtime.tool_invoke_from = (
                 ToolInvokeFrom.WORKFLOW if request.caller.workflow_id is not None else ToolInvokeFrom.AGENT
             )
