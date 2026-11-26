@@ -506,6 +506,7 @@ export const reindexDocumentAtom = atom(
         return {
           status: 'failed',
           messageKey: knowledgeFsTaskFailureMessageKey(undefined, item.code ?? undefined),
+          errorMessage: undefined,
         } as const
       }
       const taskId =
@@ -525,6 +526,7 @@ export const reindexDocumentAtom = atom(
       return {
         status: 'failed',
         messageKey: await knowledgeFsRequestFailureMessageKey(error),
+        errorMessage: getRequestErrorMessage(error),
       } as const
     } finally {
       updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: false }))

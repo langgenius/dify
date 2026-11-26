@@ -701,17 +701,17 @@ function ProvisioningConnection({
 }) {
   const { t } = useTranslation(['knowledgeSources'])
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<{ message: string | undefined }>()
 
   const refresh = async () => {
     if (pending) return
     setPending(true)
-    setError(false)
+    setError(undefined)
     try {
       const reconciledConnection = await onReconcile()
-      if (!reconciledConnection) setError(true)
-    } catch {
-      setError(true)
+      if (!reconciledConnection) setError({ message: undefined })
+    } catch (error) {
+      setError({ message: getRequestErrorMessage(error) })
     } finally {
       setPending(false)
     }
@@ -724,7 +724,7 @@ function ProvisioningConnection({
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
-          {t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
+          {error.message ?? t(($) => $.connectionRefreshFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <Button className="mt-3" loading={pending} onClick={() => void refresh()}>
@@ -1100,7 +1100,9 @@ function AddSourcePageContent({
               {queryError ? (
                 <div className="rounded-xl bg-background-section p-4">
                   <p className="system-sm-semibold text-text-primary">
-                    {t(($) => $.providerLoadFailed)}
+                    {getRequestErrorMessage(
+                      queryError === true ? connectionsQuery.error : queryError,
+                    ) ?? t(($) => $.providerLoadFailed)}
                   </p>
                   <Button
                     className="mt-3"

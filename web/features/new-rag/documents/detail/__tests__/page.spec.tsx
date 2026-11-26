@@ -2822,6 +2822,36 @@ describe('DocumentDetailPage', () => {
     expect(permissionState.refresh).not.toHaveBeenCalled()
   })
 
+  it('shows the server message when a detail re-index fails', async () => {
+    const user = userEvent.setup()
+    reindexMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.reindexDocument' }))
+
+    await waitFor(() => expect(toastState.error).toHaveBeenCalledWith('Server says why'))
+  })
+
+  it('shows the server message when a detail task retry fails', async () => {
+    const user = userEvent.setup()
+    const failedTask = task({ state: 'failed' })
+    taskSnapshotQuery.data = failedTask
+    documentQuery.data = logicalDocument({ latestTask: failedTask })
+    tasksQuery.data = { pages: [{ items: [failedTask] }] }
+    retryTaskRequest.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { message: 'Server says why' }),
+    )
+
+    await render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'knowledgeDocuments.viewTask' }))
+    const drawer = screen.getByRole('dialog', { name: 'knowledgeSpace.backgroundTasks' })
+    await user.click(within(drawer).getByRole('button', { name: 'knowledgeSpace.retryTask' }))
+
+    expect(await within(drawer).findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
   it('refreshes the document and the drawer documents after a drawer task action', async () => {
     const user = userEvent.setup()
     const failedTask = task({ state: 'failed' })

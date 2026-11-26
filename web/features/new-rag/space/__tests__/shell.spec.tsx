@@ -242,4 +242,16 @@ describe('KnowledgeSpaceShell', () => {
 
     expect(await screen.findByText('source content')).toBeInTheDocument()
   })
+
+  it('describes a load failure with the server message under the fixed title', async () => {
+    service.getSpace.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+    )
+
+    renderShell()
+
+    expect(await screen.findByText('Server says why')).toBeInTheDocument()
+    expect(screen.getByText('knowledgeSpace.detailErrorTitle')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSpace.detailErrorDescription')).not.toBeInTheDocument()
+  })
 })

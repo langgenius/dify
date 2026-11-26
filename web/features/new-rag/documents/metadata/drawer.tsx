@@ -41,7 +41,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import { documentMetadataAtom, documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { denyDocumentWriteAtom, documentCanReadAtom, documentCanWriteAtom } from '../state/runtime'
@@ -381,9 +381,10 @@ export function DocumentMetadataDrawer() {
                 {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
-                      {t(($) => $.documentLoadErrorDescription, {
-                        ns: 'knowledgeCitation',
-                      })}
+                      {getRequestErrorMessage(metadataFieldsQuery.error) ??
+                        t(($) => $.documentLoadErrorDescription, {
+                          ns: 'knowledgeCitation',
+                        })}
                     </span>
                     <Button
                       className="shrink-0"
