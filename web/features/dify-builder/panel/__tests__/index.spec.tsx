@@ -211,6 +211,7 @@ describe('DifyBuilderPanel', () => {
     )
 
     expect(screen.queryByText('difyBuilder.interrupted')).not.toBeInTheDocument()
+    expect(screen.queryByText('How should Builder continue?')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
 
     act(() => store.set(difyBuilderSessionBusyAtom, false))

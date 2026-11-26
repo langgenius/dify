@@ -104,6 +104,16 @@ export const difyBuilderHasSessionAtom = atom(
     get(difyBuilderActiveCommandAtom) !== null ||
     get(difyBuilderLocalUserMessageAtom) !== null,
 )
+const difyBuilderOpeningRecoveryDeferredAtom = atom((get) => {
+  const view = get(difyBuilderSessionViewAtom)
+  // The initial stream can observe the new session before the opening command acquires its lock.
+  return (
+    !!view?.interrupted &&
+    view.version === 1 &&
+    !view.last_command_id &&
+    get(difyBuilderSessionBusyAtom)
+  )
+})
 export const difyBuilderInteractionRefAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   return view?.pending_fix_context ? null : (view?.active_interaction ?? null)
@@ -137,7 +147,7 @@ export const difyBuilderPendingFixAtom = atom((get) => {
 export const difyBuilderDecisionAtom = atom((get) => {
   const view = get(difyBuilderSessionViewAtom)
   const decision = view?.decision ?? null
-  if (!decision) return null
+  if (!decision || get(difyBuilderOpeningRecoveryDeferredAtom)) return null
   if (view?.pending_fix_context)
     return {
       ...decision,
@@ -145,12 +155,10 @@ export const difyBuilderDecisionAtom = atom((get) => {
     }
   return decision
 })
-export const difyBuilderInterruptedAtom = atom((get) => {
-  const view = get(difyBuilderSessionViewAtom)
-  if (!view?.interrupted) return false
-  // The initial stream can observe the new session before the opening command acquires its lock.
-  return view.version > 1 || !!view.last_command_id || !get(difyBuilderSessionBusyAtom)
-})
+export const difyBuilderInterruptedAtom = atom(
+  (get) =>
+    !!get(difyBuilderSessionViewAtom)?.interrupted && !get(difyBuilderOpeningRecoveryDeferredAtom),
+)
 export const difyBuilderViewVersionAtom = atom(
   (get) => get(difyBuilderSessionViewAtom)?.version ?? 0,
 )
