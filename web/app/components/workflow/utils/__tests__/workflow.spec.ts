@@ -242,6 +242,49 @@ describe('removing connection handles', () => {
 })
 
 describe('getValidTreeNodes', () => {
+  it.each([false, true])(
+    'counts the longest path after branches merge (reverse node order: %s)',
+    (reverse) => {
+      const start = createNode({ id: 'start', data: { type: BlockEnum.Start } })
+      const branchNodes = ['join', 'tail', 'first', 'second'].map((id) => createNode({ id }))
+      const nodes = [start, ...(reverse ? branchNodes.toReversed() : branchNodes)]
+      const edges = [
+        createEdge({ source: 'start', target: 'join' }),
+        createEdge({ source: 'start', target: 'first' }),
+        createEdge({ source: 'first', target: 'second' }),
+        createEdge({ source: 'second', target: 'join' }),
+        createEdge({ source: 'join', target: 'tail' }),
+      ]
+
+      const result = getValidTreeNodes(nodes, edges)
+
+      expect(result.maxDepth).toBe(5)
+      expect(result.validNodes.map((node) => node.id).sort()).toEqual(
+        ['start', 'first', 'second', 'join', 'tail'].sort(),
+      )
+    },
+  )
+
+  it('counts a longer trigger path through nodes already reached from Start', () => {
+    const nodes = [
+      createNode({ id: 'start', data: { type: BlockEnum.Start } }),
+      createNode({ id: 'trigger', data: { type: BlockEnum.TriggerWebhook } }),
+      ...['join', 'tail', 'first', 'second'].map((id) => createNode({ id })),
+    ]
+    const edges = [
+      createEdge({ source: 'start', target: 'join' }),
+      createEdge({ source: 'trigger', target: 'first' }),
+      createEdge({ source: 'first', target: 'second' }),
+      createEdge({ source: 'second', target: 'join' }),
+      createEdge({ source: 'join', target: 'tail' }),
+    ]
+
+    const result = getValidTreeNodes(nodes, edges)
+
+    expect(result.maxDepth).toBe(5)
+    expect(result.validNodes).toHaveLength(6)
+  })
+
   it('should return empty when there are no start/trigger nodes', () => {
     const nodes = [createNode({ id: 'n1', data: { type: BlockEnum.Code, title: '', desc: '' } })]
     const result = getValidTreeNodes(nodes, [])

@@ -130,8 +130,16 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
 
   const list: Node[] = []
   let maxDepth = 0
+  const visitedDepths = new Map<string, number>()
+  const currentPath = new Set<string>()
 
   const traverse = (root: Node, depth: number) => {
+    // A shared node can be reached later through a longer branch. Revisit its
+    // descendants in that case, but never follow an edge back into this path.
+    if (currentPath.has(root.id) || depth <= (visitedDepths.get(root.id) ?? 0)) return
+    visitedDepths.set(root.id, depth)
+    currentPath.add(root.id)
+
     // Add the current node to the list
     list.push(root)
 
@@ -141,15 +149,14 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
 
     if (outgoers.length) {
       outgoers.forEach((outgoer) => {
-        // Only traverse if we haven't processed this node yet (avoid cycles)
+        // Nested children need to be included only on the first visit.
         if (!list.find((n) => n.id === outgoer.id)) {
           if (outgoer.data.type === BlockEnum.Iteration)
             list.push(...nodes.filter((node) => node.parentId === outgoer.id))
           if (outgoer.data.type === BlockEnum.Loop)
             list.push(...nodes.filter((node) => node.parentId === outgoer.id))
-
-          traverse(outgoer, depth + 1)
         }
+        traverse(outgoer, depth + 1)
       })
     } else {
       // Leaf node - add iteration/loop children if any
@@ -158,6 +165,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
       if (root.data.type === BlockEnum.Loop)
         list.push(...nodes.filter((node) => node.parentId === root.id))
     }
+    currentPath.delete(root.id)
   }
 
   // Start traversal from all start nodes
