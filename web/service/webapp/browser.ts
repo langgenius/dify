@@ -1,27 +1,29 @@
 import type { WebAppClientContext } from './index'
 import { contract } from '@dify/contracts/api/web/orpc.gen'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
-import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports -- The generated Web client preserves the existing public auth and access guard transport.
 import { request } from '../base'
 import { validateDefinedErrors } from '../console/defined-errors'
 import { isUnauthorizedError } from '../http-error'
 import {
-  getWebAppPublicApiPath,
   getWebAppScopeKey,
   removeWebAppBasePath,
   resolveWebAppAddress,
   WEBAPP_PORTAL_LOGIN_CODE,
 } from '../webapp-address'
 import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
+import {
+  getWebAppApiBaseURL,
+  getWebAppApiRoute,
+  scopeWebAppRequestURL,
+  withWebAppRequestURL,
+} from '../webapp-request'
 
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
-  url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
+  url: getWebAppApiBaseURL,
   fetch: async (input, init, options) => {
-    const baseURL = new URL(PUBLIC_API_PREFIX, window.location.origin)
-    const url = new URL(input.url)
-    const basePath = baseURL.pathname.replace(/\/$/, '')
-    const path = url.pathname.slice(basePath.length)
+    const route = getWebAppApiRoute(input.url)
+    const { url, path } = route
     if (path === '/system-features') {
       // oxlint-disable-next-line typescript/no-deprecated -- Public bootstrap must use the existing transport without requiring an App Code or Passport.
       return request<Response>(url.href, init, {
@@ -101,29 +103,14 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
     }
 
     assertCurrentApp()
-    url.pathname = basePath + getWebAppPublicApiPath(address, path)
+    const scopedURL = scopeWebAppRequestURL(route, address)
     let scopedRequest = input
-    if (url.href !== input.url) {
-      // Passing input.body directly turns buffered JSON or files into streaming uploads.
-      const body = input.body ? await input.blob() : undefined
+    if (scopedURL.href !== input.url) {
+      scopedRequest = await withWebAppRequestURL(input, scopedURL, Boolean(input.body))
       assertCurrentApp()
-      scopedRequest = new Request(url, {
-        body,
-        method: input.method,
-        headers: input.headers,
-        signal: input.signal,
-        credentials: input.credentials,
-        mode: input.mode,
-        cache: input.cache,
-        redirect: input.redirect,
-        referrer: input.referrer,
-        referrerPolicy: input.referrerPolicy,
-        integrity: input.integrity,
-        keepalive: input.keepalive,
-      })
     }
     // oxlint-disable-next-line typescript/no-deprecated -- Generated Web calls must retain public passport, auth recovery, and access guard handling.
-    const response = await request<Response>(url.href, init, {
+    const response = await request<Response>(scopedURL.href, init, {
       isPublicAPI: true,
       fetchCompat: true,
       request: scopedRequest,
