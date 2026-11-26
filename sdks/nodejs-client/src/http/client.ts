@@ -492,7 +492,14 @@ export class HttpClient {
       validateParams(query)
     }
 
-    if (isRecord(data) && !Array.isArray(data) && !isFormData(data) && !isPipeableStream(data)) {
+    if (
+      isRecord(data)
+      && !Array.isArray(data)
+      && !isFormData(data)
+      && !isPipeableStream(data)
+      && !isBinaryBody(data)
+      && !(data instanceof URLSearchParams)
+    ) {
       validateParams(data, options.unboundedBodyStringFields)
     }
 
