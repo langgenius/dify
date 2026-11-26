@@ -130,7 +130,7 @@ describe('Cloud plan payment flow', () => {
     renderPlan({ currentPlan, plan })
     expect(
       screen.queryByRole('button', {
-        name: /billing\.plansCommon\.(startForFree|startBuilding|getStarted|upgradeToProfessional|upgradeToTeam|manageSubscription)$/,
+        name: /billing\.plansCommon\.(upgradeToProfessional|upgradeToTeam|manageSubscription)$/,
       }),
     ).not.toBeInTheDocument()
   })
@@ -176,19 +176,38 @@ describe('Cloud plan payment flow', () => {
   })
 
   it.each([
-    { currentPlan: 'sandbox', label: 'startBuilding' },
-    { currentPlan: 'professional', label: 'startBuilding' },
+    { currentPlan: 'sandbox', plan: 'professional', label: 'upgradeToProfessional' },
+    { currentPlan: 'professional', plan: 'team', label: 'upgradeToTeam' },
   ] as const)(
-    'blocks the $label action without billing permission',
-    async ({ currentPlan, label }) => {
+    'asks a member without billing permission to contact the owner from $label',
+    async ({ currentPlan, plan, label }) => {
       const user = userEvent.setup()
       canManageBilling = false
-      renderPlan({ currentPlan })
+      renderPlan({ currentPlan, plan })
       await user.click(screen.getByRole('button', { name: `billing.plansCommon.${label}` }))
       expect(await screen.findByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(mockGetInvoices).not.toHaveBeenCalled()
       expect(window.open).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['sandbox', 'sandbox'],
+    ['professional', 'sandbox'],
+    ['professional', 'professional'],
+    ['team', 'professional'],
+    ['team', 'team'],
+  ] as const)(
+    'shows no action to a member without billing permission for %s viewing %s',
+    (currentPlan, plan) => {
+      canManageBilling = false
+      renderPlan({ currentPlan, plan })
+      expect(
+        screen.queryByRole('button', {
+          name: /billing\.plansCommon\.(upgradeToProfessional|upgradeToTeam|manageSubscription)$/,
+        }),
+      ).not.toBeInTheDocument()
     },
   )
 })

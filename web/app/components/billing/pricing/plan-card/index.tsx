@@ -78,22 +78,18 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
   const [confirmationOpen, setConfirmationOpen] = React.useState(false)
 
   const showPlanButton =
-    !canManageBilling ||
-    (!isFreePlan &&
-      (!billing || isCurrentPaidPlan || planInfo.level > ALL_PLANS[billing.currentPlan].level))
-  const buttonLabel = !canManageBilling
-    ? {
-        sandbox: t(($) => $['plansCommon.startForFree'], { ns: 'billing' }),
-        professional: t(($) => $['plansCommon.startBuilding'], { ns: 'billing' }),
-        team: t(($) => $['plansCommon.getStarted'], { ns: 'billing' }),
-      }[plan]
-    : educationOffer
-      ? t(($) => $.useEducationDiscount, { ns: 'education' })
-      : isCurrentPaidPlan
-        ? t(($) => $['plansCommon.manageSubscription'], { ns: 'billing' })
-        : plan === 'team'
-          ? t(($) => $['plansCommon.upgradeToTeam'], { ns: 'billing' })
-          : t(($) => $['plansCommon.upgradeToProfessional'], { ns: 'billing' })
+    !isFreePlan &&
+    (!billing ||
+      (isCurrentPaidPlan
+        ? canManageBilling
+        : planInfo.level > ALL_PLANS[billing.currentPlan].level))
+  const buttonLabel = educationOffer
+    ? t(($) => $.useEducationDiscount, { ns: 'education' })
+    : isCurrentPaidPlan
+      ? t(($) => $['plansCommon.manageSubscription'], { ns: 'billing' })
+      : plan === 'team'
+        ? t(($) => $['plansCommon.upgradeToTeam'], { ns: 'billing' })
+        : t(($) => $['plansCommon.upgradeToProfessional'], { ns: 'billing' })
 
   const runPlanAction = async (action: 'plan' | 'education' = 'plan') => {
     if (pendingAction || isPlanDisabled) return
@@ -141,9 +137,7 @@ export function CloudPlanCard({ plan, billingInterval, billing }: CloudPlanCardP
         'h-auto min-h-15 w-full gap-2 rounded-lg border p-3 text-2xl leading-[30px] font-medium whitespace-normal shadow-none disabled:cursor-default *:aria-hidden:size-5',
         isPrimaryAction
           ? 'border-saas-dify-blue-static bg-saas-dify-blue-static text-white not-data-disabled:hover:bg-saas-dify-blue-static-hover'
-          : canManageBilling
-            ? 'border-text-accent bg-transparent text-text-accent not-data-disabled:hover:bg-state-accent-hover-alt'
-            : 'border-(--pricing-button-border) bg-(--pricing-button-bg) text-(--pricing-muted) not-data-disabled:hover:bg-components-button-secondary-bg-hover',
+          : 'border-text-accent bg-transparent text-text-accent not-data-disabled:hover:bg-state-accent-hover-alt',
         isPlanDisabled &&
           'data-disabled:bg-components-button-tertiary-bg-disabled data-disabled:text-components-button-tertiary-text-disabled',
       )}

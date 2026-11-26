@@ -219,7 +219,9 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       await render(<Pricing />)
 
-      await user.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
+      await user.click(
+        screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' }),
+      )
 
       expect(mockGetSubscription).not.toHaveBeenCalled()
       expect(window.open).not.toHaveBeenCalled()
@@ -229,9 +231,6 @@ describe('Pricing Modal Flow', () => {
       setupContexts({ type: 'sandbox' })
       await render(<Pricing />)
 
-      expect(
-        screen.queryByRole('button', { name: 'billing.plansCommon.startForFree' }),
-      ).not.toBeInTheDocument()
       expect(screen.queryByText('billing.plansCommon.currentPlan')).not.toBeInTheDocument()
       expect(screen.getByText('billing.plansCommon.mostPopular')).toBeVisible()
     })

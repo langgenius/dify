@@ -35,8 +35,6 @@
   --pricing-switch-border: #d8dadd;
   --pricing-subdued: #959eab;
   --pricing-card-border: #cec2b6;
-  --pricing-button-bg: #f8f7f7;
-  --pricing-button-border: var(--pricing-muted);
   --pricing-feature-border: #f2f3f8;
   --pricing-info: #b9bece;
   font-family: PricingSohne, Arial, sans-serif;
@@ -50,8 +48,6 @@
   --pricing-switch-border: var(--color-divider-regular);
   --pricing-subdued: var(--color-text-tertiary);
   --pricing-card-border: var(--color-divider-regular);
-  --pricing-button-bg: var(--color-components-button-secondary-bg);
-  --pricing-button-border: var(--color-divider-regular);
   --pricing-feature-border: var(--color-divider-subtle);
   --pricing-info: var(--color-text-quaternary);
 }
