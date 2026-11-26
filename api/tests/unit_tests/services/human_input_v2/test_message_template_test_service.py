@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 
 import pytest
 from pydantic import JsonValue
+from resend.exceptions import ResendError
 from sqlalchemy import delete, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
@@ -26,6 +27,8 @@ from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdap
 from core.human_input_v2.resolved_form import ParagraphInput, SelectInput
 from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from enums import DeploymentEdition
+from extensions.ext_mail import mail
 from graphon.variables.segments import ArrayStringSegment, StringSegment
 from graphon.variables.variables import StringVariable
 from libs.datetime_utils import naive_utc_now
@@ -129,9 +132,13 @@ class _Context:
             if channel is DebugChannel.EMAIL
             else self.adapter.messaging.send_text.call_args.args[1]
         )
-        match = re.search(r"https://console\.example\.com/human-input/[A-Za-z0-9_-]+", message)
-        assert match is not None, message
-        return match.group()
+        return _request_url(message)
+
+
+def _request_url(message: str) -> str:
+    match = re.search(r"https://console\.example\.com/human-input/[A-Za-z0-9_-]+", message)
+    assert match is not None, message
+    return match.group()
 
 
 @pytest.fixture
@@ -139,6 +146,8 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
     engine = sqlite_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
     gateway = create_autospec(ResendProviderGateway, instance=True)
+    monkeypatch.setattr(ResendProviderGateway, "send_message", gateway.send_message)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     adapter = create_autospec(IMProviderAdapter, instance=True)
     adapter_errors: list[Exception] = []
     requested_channels: list[IMChannel] = []
@@ -155,7 +164,6 @@ def context(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> _Context:
         account_id=_ACCOUNT,
         account_email="editor@example.com",
         email_repository_factory=SQLAlchemyEmailChannelRepository,
-        email_gateway=gateway,
         im_adapter_factory=adapter_factory,
         form_service=HumanInputDeliveryTestFormService(
             session_factory=sessions,
@@ -271,6 +279,62 @@ def test_email_renders_and_sends_only_to_editor_with_a_real_test_form(
         recipient = session.query(HumanInputRecipient).one()
         assert recipient.subject_value == _CONTACT
     assert not context.requested_channels
+
+
+@pytest.fixture
+def global_mail_send(monkeypatch: pytest.MonkeyPatch) -> Mock:
+    send = Mock(spec=mail.send)
+    monkeypatch.setattr(mail, "is_inited", lambda: True)
+    monkeypatch.setattr(mail, "send", send)
+    return send
+
+
+def test_enterprise_sends_editor_form_link_with_global_mail_without_workspace_provider(
+    context: _Context, global_mail_send: Mock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    with context.sessions.begin() as session:
+        session.execute(delete(HumanInputEmailProvider))
+
+    assert DebugChannel.EMAIL in context.service.list_channels()
+    context.send(**{"#start.name#": "Alice"})
+
+    global_mail_send.assert_called_once()
+    sent = global_mail_send.call_args.kwargs
+    assert sent["to"] == "editor@example.com"
+    assert sent["subject"] == "Review Alice"
+    token = urlsplit(_request_url(sent["html"])).path.rsplit("/", 1)[1]
+    form = HumanInputSubmissionService(session_factory=context.sessions).get_console_form(
+        account_id=_ACCOUNT, form_token=token
+    )
+    assert form.form_kind is HumanInputFormKind.DELIVERY_TEST
+
+
+def test_cloud_without_workspace_provider_rejects_before_creating_form_even_with_global_mail(
+    context: _Context, global_mail_send: Mock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    with context.sessions.begin() as session:
+        session.execute(delete(HumanInputEmailProvider))
+
+    with pytest.raises(MessageTemplateTestError, match="configured"):
+        context.send(**{"#start.name#": "Alice"})
+
+    global_mail_send.assert_not_called()
+    with context.sessions() as session:
+        assert session.query(HumanInputForm).count() == 0
+
+
+def test_enterprise_global_provider_rejection_is_reported_as_a_send_failure(
+    context: _Context, global_mail_send: Mock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
+    global_mail_send.side_effect = ResendError(403, "forbidden", "private-provider-detail", "")
+
+    with pytest.raises(MessageTemplateSendError) as raised:
+        context.send(**{"#start.name#": "Alice"})
+
+    assert "private-provider-detail" not in str(raised.value)
 
 
 def test_email_template_test_uses_complete_encrypted_credentials(
