@@ -77,12 +77,11 @@ describe('uploadKnowledgeFsDocuments', () => {
 
     expect(serviceMock.stageUpload).toHaveBeenCalledWith(
       { body: { file } },
-      { context: { silent: true }, signal: controller.signal },
+      { signal: controller.signal },
     )
-    expect(serviceMock.discardUpload).toHaveBeenCalledWith(
-      { params: { upload_id: 'staged-upload-1' } },
-      { context: { silent: true } },
-    )
+    expect(serviceMock.discardUpload).toHaveBeenCalledWith({
+      params: { upload_id: 'staged-upload-1' },
+    })
   })
 
   it('claims every staged file through the generated Dify API contract', async () => {
@@ -110,14 +109,12 @@ describe('uploadKnowledgeFsDocuments', () => {
           body: { upload_id: 'staged-upload-0' },
           params: { control_space_id: 'control-space-1' },
         },
-        { context: { silent: true } },
       ],
       [
         {
           body: { upload_id: 'staged-upload-1' },
           params: { control_space_id: 'control-space-1' },
         },
-        { context: { silent: true } },
       ],
     ])
     expect(onProgress.mock.calls).toEqual([

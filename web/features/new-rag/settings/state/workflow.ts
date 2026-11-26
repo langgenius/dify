@@ -68,28 +68,24 @@ const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
 const saveSpaceMutationAtom = atomWithMutation(() =>
   spaceApi.patch.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveMembersMutationAtom = atomWithMutation(() =>
   spaceApi.members.put.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveExternalMutationAtom = atomWithMutation(() =>
   spaceApi.externalAccess.put.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveSettingsMutationAtom = atomWithMutation(() =>
   spaceApi.settings.patch.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
@@ -99,7 +95,6 @@ function snapshotQueries(control_space_id: string) {
     input: { params: { control_space_id } },
     staleTime: 0,
     retry: false as const,
-    context: { silent: true },
     // The save flow reports its own failure and deliberately ignores failed recovery reads.
     meta: { errorToast: false as const },
   }
@@ -173,7 +168,6 @@ export const saveKnowledgeSettingsAtom = atom(
           spaceApi.settings.migrations.byMigrationId.get.queryOptions({
             input: { params: { ...params, migration_id: progress.id } },
             retry: false,
-            context: { silent: true },
             meta: { errorToast: false },
           }),
         )

@@ -30,7 +30,6 @@ const InitPasswordPopup = () => {
   const isInitFinished = initStatus.data?.status === 'finished'
   const validatePassword = useMutation(
     consoleQuery.init.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

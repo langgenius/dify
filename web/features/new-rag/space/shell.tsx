@@ -87,7 +87,6 @@ export function KnowledgeSpaceShell({
   const knowledgeSpaceQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.get.queryOptions({
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
     }),
     // Any failure replaces the space with its own error page, even over cached data.
     meta: { errorToast: false },

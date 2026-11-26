@@ -73,7 +73,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
 
   const backToHome = useCallback(async () => {
     try {
-      await webAppLogout(resolveWebAppAddress(), { silent: true })
+      await webAppLogout(resolveWebAppAddress())
     } catch (error) {
       toastRequestError(error)
       return

@@ -551,17 +551,14 @@ describe('ToolPicker', () => {
     await waitFor(() => expect(api.parseSchema).toHaveBeenCalledWith({ body: { schema } }))
     await user.click(within(drawer).getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() =>
-      expect(api.createCustom).toHaveBeenCalledWith(
-        {
-          body: expect.objectContaining({
-            provider: 'New Collection',
-            schema,
-            schema_type: 'openapi',
-            credentials: { auth_type: 'none' },
-          }),
-        },
-        { context: { silent: true } },
-      ),
+      expect(api.createCustom).toHaveBeenCalledWith({
+        body: expect.objectContaining({
+          provider: 'New Collection',
+          schema,
+          schema_type: 'openapi',
+          credentials: { auth_type: 'none' },
+        }),
+      }),
     )
     expect(await screen.findByText('New Collection')).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'tools.createTool.title' })).not.toBeInTheDocument()

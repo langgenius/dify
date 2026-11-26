@@ -62,13 +62,10 @@ const Features = () => {
         file_upload: currentFeatures.file,
       }
 
-      await updateFeatures(
-        {
-          appId,
-          features: transformedFeatures,
-        },
-        { silent: true },
-      )
+      await updateFeatures({
+        appId,
+        features: transformedFeatures,
+      })
 
       // Emit update event to other connected clients
       const socket = webSocketClient.getSocket(appId)

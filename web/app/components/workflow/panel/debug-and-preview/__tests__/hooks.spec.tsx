@@ -372,7 +372,6 @@ describe('useChat', () => {
         action: 'approve',
       },
       undefined,
-      { silent: true },
     )
   })
 

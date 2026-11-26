@@ -36,7 +36,7 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await verifyWebAppResetPasswordCode({ email, code, token }, { silent: true })
+      const ret = await verifyWebAppResetPasswordCode({ email, code, token })
       if (ret.is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.token))
@@ -51,7 +51,7 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await sendWebAppResetPasswordCode(email, locale, { silent: true })
+      const res = await sendWebAppResetPasswordCode(email, locale)
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))

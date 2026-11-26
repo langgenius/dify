@@ -33,7 +33,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -89,7 +88,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
 
   const { mutateAsync: exportPipelineConfig } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.exports.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -42,7 +42,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
-      getUserSAMLSSOUrl(invite_token, { silent: true })
+      getUserSAMLSSOUrl(invite_token)
         .then((res) => {
           router.push(res.url)
         })
@@ -51,7 +51,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oidc) {
-      getUserOIDCSSOUrl(invite_token, { silent: true })
+      getUserOIDCSSOUrl(invite_token)
         .then((res) => {
           document.cookie = `user-oidc-state=${res.state};Path=/`
           router.push(res.url)
@@ -61,7 +61,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oauth2) {
-      getUserOAuth2SSOUrl(invite_token, { silent: true })
+      getUserOAuth2SSOUrl(invite_token)
         .then((res) => {
           document.cookie = `user-oauth2-state=${res.state};Path=/`
           router.push(res.url)

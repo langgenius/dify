@@ -279,9 +279,6 @@ function AgentWorkingDirectoryContent({
               path: toSandboxApiPath(path),
             },
           },
-          context: {
-            silent: true,
-          },
           // `no_active_binding` renders as an empty directory, not a failure.
           meta: { errorToast: false },
         })
@@ -297,9 +294,6 @@ function AgentWorkingDirectoryContent({
                 node_execution_id: source.nodeExecutionId,
                 path: toSandboxApiPath(path),
               },
-            },
-            context: {
-              silent: true,
             },
             meta: { errorToast: false },
           },
@@ -362,9 +356,7 @@ function AgentWorkingDirectoryContent({
                 },
               }
             : skipToken,
-          context: {
-            silent: true,
-          },
+          meta: { errorToast: false },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
@@ -381,9 +373,7 @@ function AgentWorkingDirectoryContent({
                   },
                 }
               : skipToken,
-            context: {
-              silent: true,
-            },
+            meta: { errorToast: false },
           },
         )
   const isFileDataPreview = hasFileDataPreview(selectedWorkingDirectoryFile?.icon)

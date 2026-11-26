@@ -74,10 +74,7 @@ describe('WebSSOForm redirect security', () => {
 
     await user.click(await screen.findByRole('button', { name: 'share.login.backToHome' }))
 
-    expect(webAppLogout).toHaveBeenCalledWith(
-      { kind: 'default', code: 'share-app' },
-      { silent: true },
-    )
+    expect(webAppLogout).toHaveBeenCalledWith({ kind: 'default', code: 'share-app' })
     expect(navigationMocks.replace).toHaveBeenCalledWith(
       '/webapp-signin?redirect_url=%2Fchatbot%2Fshare-app',
     )
@@ -110,7 +107,6 @@ describe('WebSSOForm environment access modes', () => {
       expect(serviceMocks.fetchWebSAMLSSOUrl).toHaveBeenCalledWith(
         'workflow-app',
         '/environment/workflow/workflow-app',
-        { silent: true },
       )
     })
     expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')

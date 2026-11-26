@@ -42,9 +42,7 @@ describe('MailAndCodeAuth', () => {
     await waitFor(() => {
       expect(sendWebAppEMailLoginCodeMock).toHaveBeenCalledTimes(1)
     })
-    expect(sendWebAppEMailLoginCodeMock).toHaveBeenCalledWith('user@example.com', 'en-US', {
-      silent: true,
-    })
+    expect(sendWebAppEMailLoginCodeMock).toHaveBeenCalledWith('user@example.com', 'en-US')
     expect(setCountdownLeftTimeMock).toHaveBeenCalledWith('60000')
     const destination = new URL(pushMock.mock.calls[0]![0], window.location.origin)
     expect(destination.pathname).toBe('/webapp-signin/check-code')

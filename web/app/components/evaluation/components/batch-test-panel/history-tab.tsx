@@ -69,9 +69,7 @@ const HistoryTab = ({ resourceType, resourceId }: EvaluationResourceProps) => {
   const fileDownloadMutation = useMutation({
     meta: { errorToast: false },
     mutationFn: async (fileId: string) => {
-      const fileInfo = await getEvaluationFile({ resourceType, resourceId }, fileId, {
-        silent: true,
-      })
+      const fileInfo = await getEvaluationFile({ resourceType, resourceId }, fileId)
       downloadUrl({ url: fileInfo.download_url, fileName: fileInfo.name })
     },
     onError: (error) =>

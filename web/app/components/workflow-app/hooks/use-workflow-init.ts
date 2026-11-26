@@ -158,20 +158,17 @@ export const useWorkflowInit = () => {
           }
 
           consoleClient.apps.byAppId.workflows.draft
-            .post(
-              {
-                params: { app_id: appDetail.id },
-                body: {
-                  graph: initialGraph,
-                  force: true,
-                  features: {
-                    retriever_resource: { enabled: true },
-                  },
-                  conversation_variables: [],
+            .post({
+              params: { app_id: appDetail.id },
+              body: {
+                graph: initialGraph,
+                force: true,
+                features: {
+                  retriever_resource: { enabled: true },
                 },
+                conversation_variables: [],
               },
-              { context: { silent: true } },
-            )
+            })
             .then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)
               setSyncWorkflowDraftHash(res.hash, initialGraph)

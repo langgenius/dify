@@ -209,7 +209,6 @@ function ConnectedSourceEditDialogContent({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: Boolean(source.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },
@@ -511,7 +510,6 @@ function WebsiteSourceEditDialogContent({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: initialSource.type === 'web' && Boolean(initialSource.connectionId),
       input: (pageParam) => ({
         params: { control_space_id: controlSpaceId },

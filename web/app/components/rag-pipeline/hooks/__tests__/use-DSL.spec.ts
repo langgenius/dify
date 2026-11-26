@@ -114,13 +114,10 @@ describe('useDSLByCanEdit', () => {
           expect(await result.current.handleExportDSL(include)).toBe(true)
         })
 
-        expect(mockExportPipelineConfig).toHaveBeenCalledExactlyOnceWith(
-          {
-            params: { pipeline_id: 'test-pipeline-id' },
-            query: { include_secret: String(include) },
-          },
-          { context: { silent: true } },
-        )
+        expect(mockExportPipelineConfig).toHaveBeenCalledExactlyOnceWith({
+          params: { pipeline_id: 'test-pipeline-id' },
+          query: { include_secret: String(include) },
+        })
         expect(mockDownloadBlob).toHaveBeenCalledExactlyOnceWith({
           fileName: 'Test Knowledge Base.pipeline',
           data: expect.any(Blob),
@@ -160,10 +157,9 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
-          { params: { pipeline_id: 'test-pipeline-id' } },
-          { context: { silent: true } },
-        )
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith({
+          params: { pipeline_id: 'test-pipeline-id' },
+        })
         expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       })
       expect(mockDownloadBlob).toHaveBeenCalledOnce()

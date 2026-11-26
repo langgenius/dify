@@ -67,7 +67,6 @@ export default function SystemModelSession() {
   const updateModelList = useUpdateModelList()
   const saveMutation = useMutation(
     consoleQuery.workspaces.current.defaultModel.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       onSuccess: (res) => {
         if (res.result !== 'success') return
@@ -98,7 +97,7 @@ export default function SystemModelSession() {
     queries: systemModelTypes.map((modelType) =>
       consoleQuery.workspaces.current.defaultModel.get.queryOptions({
         input: { query: { model_type: modelType } },
-        context: { silent: true },
+        meta: { errorToast: false },
         refetchOnMount: 'always',
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,

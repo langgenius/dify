@@ -73,7 +73,6 @@ describe('embedded user id propagation in authentication flows', () => {
       expect(fetchAccessTokenMock).toHaveBeenCalledWith({
         appCode: 'test-app',
         userId: 'embedded-user-99',
-        silent: true,
       })
     })
     expect(setWebAppAccessTokenMock).toHaveBeenCalledWith('login-token')
@@ -146,7 +145,6 @@ describe('embedded user id propagation in authentication flows', () => {
       expect(fetchAccessTokenMock).toHaveBeenCalledWith({
         appCode: 'test-app',
         userId: 'embedded-user-99',
-        silent: true,
       })
     })
     expect(setWebAppAccessTokenMock).toHaveBeenCalledWith('code-token')

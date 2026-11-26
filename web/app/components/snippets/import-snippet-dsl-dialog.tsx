@@ -118,12 +118,11 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
   const { mutateAsync: importSnippet, isPending: isImporting } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const { mutateAsync: confirmSnippetImport, isPending: isConfirmingImport } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.imports.byImportId.confirm.post.mutationOptions(
-      { meta: { errorToast: false }, context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(

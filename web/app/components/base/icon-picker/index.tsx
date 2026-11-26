@@ -189,7 +189,6 @@ function IconPickerSession({
 
   const upload = useMutation(
     consoleQuery.files.upload.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

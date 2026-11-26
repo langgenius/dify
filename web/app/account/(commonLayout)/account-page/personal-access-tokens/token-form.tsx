@@ -82,14 +82,12 @@ export default function TokenForm({
   const attemptRef = useRef<{ fingerprint: string; key: string } | null>(null)
   const create = useMutation(
     consoleQuery.account.personalAccessTokens.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const created = create.data
   const update = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

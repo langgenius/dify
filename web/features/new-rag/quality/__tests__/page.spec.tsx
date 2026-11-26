@@ -842,12 +842,9 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
-        {
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-        },
-        { context: expect.objectContaining({ silent: true }) },
-      ),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -1076,7 +1073,7 @@ describe('QualityPage', () => {
           },
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() =>
@@ -1177,12 +1174,11 @@ describe('QualityPage', () => {
     await user.click(promote)
     await screen.findByText('dismiss failed')
     expect(toast.error).not.toHaveBeenCalled()
-    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
-      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith({
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
     expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: expect.objectContaining({ silent: true }),
+      context: expect.any(Object),
     })
     await user.click(promote)
 

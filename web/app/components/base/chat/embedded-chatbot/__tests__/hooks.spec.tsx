@@ -912,7 +912,6 @@ describe('useEmbeddedChatbot', () => {
         },
         AppSourceType.webApp,
         'app-1',
-        { silent: true },
       )
     })
   })

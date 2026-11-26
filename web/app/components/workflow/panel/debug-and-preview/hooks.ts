@@ -733,7 +733,7 @@ export const useChat = (
       .flatMap((item) => item.humanInputFormDataList ?? [])
       .find((item) => item.form_token === formToken)
     try {
-      await submitHumanInputForm(formToken, formData, form?.form_version, { silent: true })
+      await submitHumanInputForm(formToken, formData, form?.form_version)
     } catch (error) {
       toastRequestError(error)
       throw error

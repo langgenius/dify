@@ -36,7 +36,6 @@ export function SkillDisplayNameEditor({
   const [draftName, setDraftName] = useState(detail.display_name)
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

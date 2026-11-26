@@ -112,7 +112,6 @@ export const TagSelector = ({
   const { isPending: isApplyingBindings, mutateAsync: saveBindings } = useApplyTagBindingsMutation()
   const { isPending: isCreatingTag, mutateAsync: createTag } = useMutation(
     consoleQuery.tags.post.mutationOptions({
-      context: { silent: true },
       meta: {
         errorToast: false,
         deferAgentTagCatalogRefresh: type === 'agent' && !onApplyTags,

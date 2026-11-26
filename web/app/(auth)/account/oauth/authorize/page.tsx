@@ -86,12 +86,11 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
     consoleQuery.oauth.provider.authorize.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -478,7 +478,6 @@ export function AgentSkills() {
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(
       consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions({
-        context: { silent: true },
         meta: { errorToast: false },
       }),
     )

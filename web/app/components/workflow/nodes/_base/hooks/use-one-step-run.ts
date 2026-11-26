@@ -522,12 +522,9 @@ const useOneStepRun = <T>({
 
     try {
       const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
-          {
-            params: { app_id: resource.appId, node_id: id },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
+          params: { app_id: resource.appId, node_id: id },
+        })
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
@@ -585,7 +582,7 @@ const useOneStepRun = <T>({
         const response: any =
           await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
             { params: { app_id: resource.appId, node_id: id } },
-            { context: { silent: true }, signal: controller.signal },
+            { signal: controller.signal },
           )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
@@ -677,10 +674,7 @@ const useOneStepRun = <T>({
       let requestError: unknown
       const response: any =
         await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
-          .post(
-            { params: { app_id: resource.appId, node_id: id } },
-            { signal: controller.signal, context: { silent: true } },
-          )
+          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
           .catch((error: unknown) => {
             requestError = error
             return null

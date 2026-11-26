@@ -13,7 +13,6 @@ import type {
   TriggerSubscriptionBuilder,
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
-import type { ConsoleClientContext } from '@/service/console'
 import { mutationOptions } from '@tanstack/react-query'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
@@ -602,20 +601,17 @@ export function triggerSubscriptionsQueryOptions(provider: string, enabled = tru
   )
 }
 
-export function createTriggerSubscriptionBuilderMutationOptions(context?: ConsoleClientContext) {
+export function createTriggerSubscriptionBuilderMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post.mutationKey(),
     mutationFn: (payload: { provider: string; credential_type?: string }) => {
       const { provider, ...body } = payload
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create
-        .post(
-          {
-            params: { provider },
-            body,
-          },
-          { context },
-        )
+        .post({
+          params: { provider },
+          body,
+        })
         .then((response) => ({
           subscription_builder: normalizeTriggerSubscriptionBuilder(response.subscription_builder),
         }))
@@ -623,7 +619,7 @@ export function createTriggerSubscriptionBuilderMutationOptions(context?: Consol
   })
 }
 
-export function updateTriggerSubscriptionBuilderMutationOptions(context?: ConsoleClientContext) {
+export function updateTriggerSubscriptionBuilderMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
@@ -637,13 +633,10 @@ export function updateTriggerSubscriptionBuilderMutationOptions(context?: Consol
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId
-        .post(
-          {
-            params: { provider, subscription_builder_id: subscriptionBuilderId },
-            body,
-          },
-          { context },
-        )
+        .post({
+          params: { provider, subscription_builder_id: subscriptionBuilderId },
+          body,
+        })
         .then(normalizeTriggerSubscriptionBuilder)
     },
   })
@@ -664,9 +657,6 @@ export function verifyAndUpdateTriggerSubscriptionBuilderMutationOptions() {
         {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
           body: credentials === undefined ? {} : { credentials },
-        },
-        {
-          context: { silent: true },
         },
       )
     },
@@ -689,9 +679,6 @@ export function verifyTriggerSubscriptionMutationOptions() {
           params: { provider, subscription_id: subscriptionId },
           body: { credentials: credentials ?? {} },
         },
-        {
-          context: { silent: true },
-        },
       )
     },
   })
@@ -704,7 +691,7 @@ export type BuildTriggerSubscriptionPayload = {
   parameters?: Record<string, unknown>
 }
 
-export function buildTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+export function buildTriggerSubscriptionMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
@@ -715,13 +702,12 @@ export function buildTriggerSubscriptionMutationOptions(context?: ConsoleClientC
           params: { provider, subscription_builder_id: subscriptionBuilderId },
           body,
         },
-        { context },
       )
     },
   })
 }
 
-export function deleteTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+export function deleteTriggerSubscriptionMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
@@ -730,7 +716,6 @@ export function deleteTriggerSubscriptionMutationOptions(context?: ConsoleClient
         {
           params: { subscription_id: subscriptionId },
         },
-        { context },
       )
     },
   })
@@ -744,7 +729,7 @@ type UpdateTriggerSubscriptionPayload = {
   credentials?: Record<string, unknown>
 }
 
-export function updateTriggerSubscriptionMutationOptions(context?: ConsoleClientContext) {
+export function updateTriggerSubscriptionMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
@@ -755,7 +740,6 @@ export function updateTriggerSubscriptionMutationOptions(context?: ConsoleClient
           params: { subscription_id: subscriptionId },
           body,
         },
-        { context },
       )
     },
   })
@@ -804,17 +788,14 @@ export function configureTriggerOAuthMutationOptions() {
   })
 }
 
-export function deleteTriggerOAuthMutationOptions(context?: ConsoleClientContext) {
+export function deleteTriggerOAuthMutationOptions() {
   return mutationOptions({
     mutationKey:
       consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
     mutationFn: (provider: string) => {
-      return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.delete(
-        {
-          params: { provider },
-        },
-        { context },
-      )
+      return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.delete({
+        params: { provider },
+      })
     },
   })
 }
@@ -829,9 +810,6 @@ export function initiateTriggerOAuthMutationOptions() {
         await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get(
           {
             params: { provider },
-          },
-          {
-            context: { silent: true },
           },
         )
       return {
@@ -878,7 +856,7 @@ export function triggerPluginDynamicOptionsQueryOptions(
             provider: payload.provider,
           },
         },
-        context: { silent: true },
+        meta: { errorToast: false },
         select: normalizeDynamicOptionsResponse,
         enabled: isEnabled,
         retry: 0,
@@ -897,7 +875,7 @@ export function triggerPluginDynamicOptionsQueryOptions(
         provider_type: 'trigger',
       },
     },
-    context: { silent: true },
+    meta: { errorToast: false },
     select: normalizeDynamicOptionsResponse,
     enabled: isEnabled,
     retry: 0,

@@ -30,7 +30,6 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const apiAccess = apiAccessQuery.data
   const toggleServiceApiMutation = useMutation(
     consoleQuery.agent.byAgentId.apiEnable.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       scope: {
         id: `agent-service-api-toggle:${agentId}`,

@@ -51,13 +51,11 @@ export function AppListDialogs({ handles }: { handles: AppListDialogHandles }) {
   const edit = useMutation(
     consoleQuery.apps.byAppId.put.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const copy = useMutation(
     consoleQuery.apps.byAppId.copy.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const switching = useSwitchAppMutation()

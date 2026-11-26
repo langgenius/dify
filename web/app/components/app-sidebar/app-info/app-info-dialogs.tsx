@@ -41,19 +41,16 @@ export function AppInfoDialogs({ appDetail, handles }: AppInfoDialogsProps) {
   const edit = useMutation(
     consoleQuery.apps.byAppId.put.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const copy = useMutation(
     consoleQuery.apps.byAppId.copy.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const deletion = useMutation(
     consoleQuery.apps.byAppId.delete.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const switching = useSwitchAppMutation()

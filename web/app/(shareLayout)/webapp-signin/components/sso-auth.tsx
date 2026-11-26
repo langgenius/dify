@@ -43,7 +43,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
     }
     setIsLoading(true)
     if (protocol === zSsoProtocol.enum.saml) {
-      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
+      fetchMembersSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })
@@ -52,7 +52,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oidc) {
-      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
+      fetchMembersOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })
@@ -61,7 +61,7 @@ function SSOAuth({ protocol }: SSOAuthProps) {
           setIsLoading(false)
         })
     } else if (protocol === zSsoProtocol.enum.oauth2) {
-      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href, { silent: true })
+      fetchMembersOAuth2SSOUrl(loginRedirect.appCode, loginRedirect.target.href)
         .then((res) => {
           router.push(res.url)
         })

@@ -831,7 +831,6 @@ function AddSourcePageContent({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
       select: sourceProviderListFromApi,
@@ -841,7 +840,6 @@ function AddSourcePageContent({
     consoleQuery.auth.plugin.datasource.defaultList.get.queryOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       retry: false,
     }),
@@ -855,7 +853,6 @@ function AddSourcePageContent({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
       meta: { errorToast: false },
-      context: { silent: true },
       enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },

@@ -78,7 +78,6 @@ const OneMoreStep = () => {
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useMutation(
     consoleQuery.account.init.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

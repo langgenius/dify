@@ -32,7 +32,7 @@ export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
   const { mutate: deleteSubscription, isPending: isDeleting } = useMutation({
-    ...deleteTriggerSubscriptionMutationOptions({ silent: true }),
+    ...deleteTriggerSubscriptionMutationOptions(),
     meta: { errorToast: false },
   })
   const { t } = useTranslation(['common', 'pluginTrigger'])

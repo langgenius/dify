@@ -74,9 +74,7 @@ describe('ExternalMemberSSOAuth redirect security', () => {
     })
 
     await waitFor(() => {
-      expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar', {
-        silent: true,
-      })
+      expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar')
       expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')
     })
   })

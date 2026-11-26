@@ -151,18 +151,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     if (isLoading) return
     setLoadingTrue()
     try {
-      const { error, ...res } = await generateRule(
-        {
-          flow_id: flowId,
-          node_id: nodeId,
-          current: currentCode,
-          instruction,
-          model_config: model,
-          ideal_output: ideaOutput,
-          language: languageMap[codeLanguages] || 'javascript',
-        },
-        { silent: true },
-      )
+      const { error, ...res } = await generateRule({
+        flow_id: flowId,
+        node_id: nodeId,
+        current: currentCode,
+        instruction,
+        model_config: model,
+        ideal_output: ideaOutput,
+        language: languageMap[codeLanguages] || 'javascript',
+      })
       if ('code' in res && typeof res.code === 'string')
         // not current or current is the same as the template would return a code field
         res.modified = res.code

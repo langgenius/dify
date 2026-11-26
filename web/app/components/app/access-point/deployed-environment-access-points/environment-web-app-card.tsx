@@ -102,7 +102,6 @@ export function EnvironmentWebAppCard({
   const siteMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentSite.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       scope: {
         id: `environment-web-app-toggle:${appId}:${environmentId}`,
       },
@@ -118,7 +117,6 @@ export function EnvironmentWebAppCard({
     consoleQuery.enterprise.appDeploy.accessService.resetEnvironmentSiteAccessToken.mutationOptions(
       {
         meta: { errorToast: false },
-        context: { silent: true },
         onSuccess: () => {
           setShowRegenerate(false)
           toast.success(t(($) => $['actionMsg.generatedSuccessfully'], { ns: 'common' }))

@@ -28,13 +28,11 @@ export const TagItemEditor = ({ tag, tags, onTagsChange }: TagItemEditorProps) =
   const { t } = useTranslation(['common'])
   const updateTagMutation = useMutation(
     consoleQuery.tags.byTagId.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const deleteTagMutation = useMutation(
     consoleQuery.tags.byTagId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

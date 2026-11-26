@@ -3,7 +3,6 @@ import type {
   WorkflowToolProviderParameter,
   WorkflowToolProviderRequest,
 } from '@/app/components/tools/types'
-import type { ConsoleClientContext } from '@/service/console'
 import {
   selectApiSchemaParameters,
   selectBuiltinProviderTools,
@@ -56,47 +55,33 @@ export const fetchCustomCollection = (collectionName: string) => {
     .then(selectCustomCollection)
 }
 
-export const createCustomCollection = (
-  collection: CustomCollectionBackend,
-  context?: ConsoleClientContext,
-) => {
-  return toolProvider.api.add.post(
-    { body: { ...collection, schema_type: toSchemaType(collection.schema_type) } },
-    { context },
-  )
+export const createCustomCollection = (collection: CustomCollectionBackend) => {
+  return toolProvider.api.add.post({
+    body: { ...collection, schema_type: toSchemaType(collection.schema_type) },
+  })
 }
 
-export const updateCustomCollection = (
-  collection: CustomCollectionBackend,
-  context?: ConsoleClientContext,
-) => {
-  return toolProvider.api.update.post(
-    {
-      body: {
-        ...collection,
-        // A collection that was not renamed keeps its current name as the original one.
-        original_provider: collection.original_provider ?? collection.provider,
-        schema_type: toSchemaType(collection.schema_type),
-      },
+export const updateCustomCollection = (collection: CustomCollectionBackend) => {
+  return toolProvider.api.update.post({
+    body: {
+      ...collection,
+      // A collection that was not renamed keeps its current name as the original one.
+      original_provider: collection.original_provider ?? collection.provider,
+      schema_type: toSchemaType(collection.schema_type),
     },
-    { context },
-  )
+  })
 }
 
-export const importSchemaFromURL = (url: string, context?: ConsoleClientContext) => {
-  return toolProvider.api.remote.get({ query: { url } }, { context })
+export const importSchemaFromURL = (url: string) => {
+  return toolProvider.api.remote.get({ query: { url } })
 }
 
 export const createWorkflowToolProvider = (
   payload: WorkflowToolProviderRequest & { workflow_app_id: string },
-  context?: ConsoleClientContext,
 ) => {
-  return toolProvider.workflow.create.post(
-    {
-      body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
-    },
-    { context },
-  )
+  return toolProvider.workflow.create.post({
+    body: { ...payload, parameters: toWorkflowToolParameters(payload.parameters) },
+  })
 }
 
 export const saveWorkflowToolProvider = (
@@ -105,20 +90,16 @@ export const saveWorkflowToolProvider = (
       workflow_app_id: string
       workflow_tool_id: string
     }>,
-  context?: ConsoleClientContext,
 ) => {
   const { workflow_tool_id } = payload
   if (!workflow_tool_id) throw new Error('workflow_tool_id is required to update a workflow tool')
-  return toolProvider.workflow.update.post(
-    {
-      body: {
-        ...payload,
-        workflow_tool_id,
-        parameters: toWorkflowToolParameters(payload.parameters),
-      },
+  return toolProvider.workflow.update.post({
+    body: {
+      ...payload,
+      workflow_tool_id,
+      parameters: toWorkflowToolParameters(payload.parameters),
     },
-    { context },
-  )
+  })
 }
 
 export const fetchWorkflowToolDetail = (toolID: string) => {

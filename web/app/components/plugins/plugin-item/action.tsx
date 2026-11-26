@@ -83,7 +83,7 @@ const Action: FC<Props> = ({
   const handleDelete = useCallback(async () => {
     showDeleting()
     try {
-      const res = await uninstallPlugin(installationId, { silent: true })
+      const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
         invalidateInstalledPluginList(category)

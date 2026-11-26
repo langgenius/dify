@@ -87,7 +87,6 @@ export function Popup({
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

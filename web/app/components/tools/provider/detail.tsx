@@ -143,7 +143,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     try {
-      await updateCustomCollection(data, { silent: true })
+      await updateCustomCollection(data)
     } catch (error) {
       toastRequestError(error)
       return
@@ -195,7 +195,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     try {
-      await saveWorkflowToolProvider(data, { silent: true })
+      await saveWorkflowToolProvider(data)
     } catch (error) {
       toastRequestError(error)
       return

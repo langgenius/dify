@@ -169,7 +169,6 @@ export default function AddAnnotationDialog({ appId, onAdded }: AddAnnotationDia
   const creation = useMutation(
     consoleQuery.apps.byAppId.annotations.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       onSuccess: onAdded,
     }),
   )

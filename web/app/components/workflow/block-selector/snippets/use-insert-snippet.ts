@@ -421,7 +421,6 @@ export const useInsertSnippet = () => {
         const workflow = await queryClient.query(
           consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
             meta: { errorToast: false },
-            context: { silent: true },
             input: {
               params: { snippet_id: snippetId },
             },

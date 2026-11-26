@@ -95,13 +95,11 @@ export function FileScanProviderDialog({
   )
   const createMutation = useMutation(
     consoleQuery.fileScan.providers.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const updateMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

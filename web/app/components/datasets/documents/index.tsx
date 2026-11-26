@@ -59,7 +59,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   )
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -35,20 +35,12 @@ const ExternalMemberSSOAuth = () => {
     try {
       switch (protocol) {
         case zSsoProtocol.enum.saml: {
-          const samlRes = await fetchWebSAMLSSOUrl(
-            loginRedirect.appCode,
-            loginRedirect.target.href,
-            { silent: true },
-          )
+          const samlRes = await fetchWebSAMLSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
           router.push(samlRes.url)
           break
         }
         case zSsoProtocol.enum.oidc: {
-          const oidcRes = await fetchWebOIDCSSOUrl(
-            loginRedirect.appCode,
-            loginRedirect.target.href,
-            { silent: true },
-          )
+          const oidcRes = await fetchWebOIDCSSOUrl(loginRedirect.appCode, loginRedirect.target.href)
           router.push(oidcRes.url)
           break
         }
@@ -56,7 +48,6 @@ const ExternalMemberSSOAuth = () => {
           const oauth2Res = await fetchWebOAuth2SSOUrl(
             loginRedirect.appCode,
             loginRedirect.target.href,
-            { silent: true },
           )
           router.push(oauth2Res.url)
           break

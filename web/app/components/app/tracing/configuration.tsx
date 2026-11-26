@@ -81,14 +81,12 @@ export function TracingConfiguration({ resource, readOnly }: TracingConfiguratio
   const updateAppTrace = useMutation(
     consoleQuery.apps.byAppId.trace.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       scope,
     }),
   )
   const updateAgentTrace = useMutation(
     consoleQuery.agent.byAgentId.trace.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       scope,
     }),
   )

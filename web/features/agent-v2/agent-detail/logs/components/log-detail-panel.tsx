@@ -33,7 +33,6 @@ export function AgentLogDetailPanel({
   const queryClient = useQueryClient()
   const feedbackMutation = useMutation(
     consoleQuery.agent.byAgentId.feedbacks.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

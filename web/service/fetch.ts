@@ -15,7 +15,7 @@ import {
 } from '@/config'
 import { MARKETPLACE_API_PREFIX } from '@/features/marketplace/api'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { markErrorHandled, markSilentRequestError } from './handled-error'
+import { markErrorHandled } from './handled-error'
 import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
@@ -48,10 +48,7 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 }
 
 /** Error feedback belongs to the query cache; this hook keeps only the transport's own outcomes. */
-const afterResponseErrorCode = (
-  otherOptions: IOtherOptions,
-  requestGuard: RequestGuard | undefined,
-): AfterResponseHook => {
+const afterResponseErrorCode = (requestGuard: RequestGuard | undefined): AfterResponseHook => {
   return async ({ request, response }) => {
     if (!isHttpErrorStatus(response.status)) return
     const error = await httpErrorFromResponse(response)
@@ -63,8 +60,6 @@ const afterResponseErrorCode = (
       markErrorHandled(error)
       throw error
     }
-    // TODO: remove with the `silent` option once every caller states its feedback through `meta`.
-    if (otherOptions.silent) markSilentRequestError(error)
     // A late 404 for an app being deleted is expected, so nothing reports it.
     if (shouldSuppressAppDeletionErrorToast(request.url, response.status)) markErrorHandled(error)
 
@@ -167,10 +162,7 @@ async function base<T>(
         ...(baseHooks.beforeRequest || []),
         isPublicAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
-      afterResponse: [
-        ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, requestGuard),
-      ],
+      afterResponse: [...(baseHooks.afterResponse || []), afterResponseErrorCode(requestGuard)],
     },
   })
 

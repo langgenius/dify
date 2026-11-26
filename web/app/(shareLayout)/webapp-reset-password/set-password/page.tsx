@@ -71,14 +71,11 @@ const ChangePasswordForm = () => {
   const handleChangePassword = useCallback(async () => {
     if (!valid()) return
     try {
-      await changeWebAppPasswordWithToken(
-        {
-          token,
-          new_password: password,
-          password_confirm: confirmPassword,
-        },
-        { silent: true },
-      )
+      await changeWebAppPasswordWithToken({
+        token,
+        new_password: password,
+        password_confirm: confirmPassword,
+      })
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
     } catch (error) {

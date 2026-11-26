@@ -38,7 +38,6 @@ function DeleteExternalApiConfirmation({
   const usage = useQuery(
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
-      context: { silent: true },
       // A failed check is shown inline with a retry button.
       meta: { errorToast: false },
       networkMode: 'always',
@@ -114,7 +113,6 @@ export default function DeleteExternalApiDialog({
   const filter = { mutationKey: operation.mutationKey(), exact: true }
   const deletion = useMutation(
     operation.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       networkMode: 'always',
       onSuccess: () => {

@@ -10,7 +10,7 @@ import {
 import { request } from './base'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
-import { isErrorHandled, isSilentRequestError } from './handled-error'
+import { isErrorHandled } from './handled-error'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -240,23 +240,6 @@ describe('base', () => {
       expect(error).toBeInstanceOf(ORPCError)
       expect(isErrorHandled(error)).toBe(false)
       expect(toast.error).not.toHaveBeenCalled()
-    })
-
-    it('should mark errors from silent requests for the caches to skip', async () => {
-      vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-        Response.json({ message: 'Invalid DSL kind' }, { status: 400 }),
-      )
-
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the transport's silent marking directly.
-      const silentError = await base('/imports', {}, { silent: true }).catch(
-        (reason: unknown) => reason,
-      )
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the transport's silent marking directly.
-      const reportedError = await base('/imports').catch((reason: unknown) => reason)
-
-      expect(isSilentRequestError(silentError)).toBe(true)
-      expect(isErrorHandled(silentError)).toBe(false)
-      expect(isSilentRequestError(reportedError)).toBe(false)
     })
 
     it('should not display an empty error toast when message and error are absent', async () => {

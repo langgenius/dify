@@ -38,34 +38,28 @@ describe('uninstallPlugin', () => {
   it('should delete credentials for an ordinary uninstall by default', async () => {
     await uninstallPlugin('installation-id')
 
-    expect(mockUninstallPost).toHaveBeenCalledWith(
-      {
-        body: {
-          plugin_installation_id: 'installation-id',
-          preserve_credentials: false,
-        },
+    expect(mockUninstallPost).toHaveBeenCalledWith({
+      body: {
+        plugin_installation_id: 'installation-id',
+        preserve_credentials: false,
       },
-      { context: { silent: undefined } },
-    )
+    })
   })
 
   it('should preserve credentials when requested for a replacement', async () => {
     await uninstallPlugin('installation-id', { preserveCredentials: true })
 
-    expect(mockUninstallPost).toHaveBeenCalledWith(
-      {
-        body: {
-          plugin_installation_id: 'installation-id',
-          preserve_credentials: true,
-        },
+    expect(mockUninstallPost).toHaveBeenCalledWith({
+      body: {
+        plugin_installation_id: 'installation-id',
+        preserve_credentials: true,
       },
-      { context: { silent: undefined } },
-    )
+    })
   })
 })
 
 describe('uploadFile', () => {
-  const options = { context: { silent: true, onUploadProgress: expect.any(Function) } }
+  const options = { context: { onUploadProgress: expect.any(Function) } }
 
   it('uploads a plugin package as the pkg field', async () => {
     const file = new File(['pkg'], 'tool.difypkg')

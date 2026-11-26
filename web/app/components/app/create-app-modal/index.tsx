@@ -87,7 +87,6 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const { mutateAsync: createApp } = useMutation(
     consoleQuery.apps.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const creatingRef = useRef(false)

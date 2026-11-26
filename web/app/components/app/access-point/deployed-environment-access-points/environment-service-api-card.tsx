@@ -41,7 +41,6 @@ export function EnvironmentServiceApiCard({
   const apiMutation = useMutation(
     consoleQuery.enterprise.appDeploy.accessService.updateEnvironmentApi.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       scope: {
         id: `environment-service-api-toggle:${appId}:${environmentId}`,
       },

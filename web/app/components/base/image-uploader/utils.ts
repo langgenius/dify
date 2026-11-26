@@ -46,7 +46,7 @@ export const imageUpload: ImageUpload = (
   } else {
     uploading = consoleClient.files.upload.post(
       { body: { file } },
-      { context: { silent: true, onUploadProgress } },
+      { context: { onUploadProgress } },
     )
   }
 

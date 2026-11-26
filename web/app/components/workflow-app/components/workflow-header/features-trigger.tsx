@@ -160,7 +160,6 @@ const FeaturesTrigger = () => {
   } = useMutation(
     consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const triggerNodeLimitExceeded = isTriggerNodeLimitError(publishError)

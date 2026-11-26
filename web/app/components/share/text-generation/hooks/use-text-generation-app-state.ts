@@ -112,7 +112,7 @@ export const useTextGenerationAppState = ({
     async (messageId: string) => {
       if (!appId) return
       try {
-        await saveMessage(messageId, appSourceType, appId, { silent: true })
+        await saveMessage(messageId, appSourceType, appId)
       } catch (error) {
         toastRequestError(error)
         return
@@ -126,7 +126,7 @@ export const useTextGenerationAppState = ({
     async (messageId: string) => {
       if (!appId) return
       try {
-        await removeMessage(messageId, appSourceType, appId, { silent: true })
+        await removeMessage(messageId, appSourceType, appId)
       } catch (error) {
         toastRequestError(error)
         return

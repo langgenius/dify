@@ -45,7 +45,6 @@ function PlatformContactPickerContent({
   const error = candidates.error
   const add = useMutation(
     api.contacts.platform.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

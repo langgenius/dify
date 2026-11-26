@@ -30,9 +30,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const silentRequest = expect.objectContaining({
-  context: expect.objectContaining({ silent: true }),
-})
+const requestOptions = expect.anything()
 
 vi.mock('@/service/common-queries', () => ({
   logoutMutationOptions: () => ({ mutationFn: () => mockLogout() }),
@@ -74,7 +72,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      silentRequest,
+      requestOptions,
     )
 
     const email = await screen.findByRole('textbox', {
@@ -95,7 +93,7 @@ describe('EmailChangeModal', () => {
           token: 'verified-token',
         },
       },
-      silentRequest,
+      requestOptions,
     )
 
     const newCode = await screen.findByRole('textbox', {
@@ -111,7 +109,7 @@ describe('EmailChangeModal', () => {
             token: 'verified-token',
           },
         },
-        silentRequest,
+        requestOptions,
       ),
     )
     expect(mockLogout).toHaveBeenCalledOnce()
@@ -213,7 +211,7 @@ describe('EmailChangeModal', () => {
           token: 'email-token',
         },
       },
-      silentRequest,
+      requestOptions,
     )
   })
 })

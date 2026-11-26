@@ -98,7 +98,6 @@ it.each([false, true])('refreshes the pin action after saving pinned=%s', async 
     AppSourceType.webApp,
     'app-1',
     'conversation-1',
-    { silent: true },
   )
 })
 
@@ -117,7 +116,6 @@ it('saves the edited conversation name and closes the dialog through the real ow
     'app-1',
     'conversation-1',
     'Renamed conversation',
-    { silent: true },
   )
 })
 
@@ -153,7 +151,6 @@ it('deletes the selected conversation, refreshes the list and returns to New Cha
     AppSourceType.webApp,
     'app-1',
     'conversation-1',
-    { silent: true },
   )
   expect(JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO)!)).toEqual({
     'app-1': { 'user-1': '' },
