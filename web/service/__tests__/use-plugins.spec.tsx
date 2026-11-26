@@ -80,6 +80,10 @@ beforeEach(() => {
 })
 
 const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+const providerToolsKey =
+  consoleQuery.workspaces.current.toolProvider.builtin.byProvider.tools.get.queryKey({
+    input: { params: { provider: 'langgenius/google/google' } },
+  })
 const pluginTaskListKey = consoleQuery.workspaces.current.plugin.tasks.get.queryKey({
   input: { query: { page: 1, page_size: 100 } },
 })
@@ -1021,6 +1025,7 @@ describe('useInvalidateInstalledPluginList', () => {
     queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
     queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
     queryClient.setQueryData(builtInToolsKey, [])
+    queryClient.setQueryData(providerToolsKey, [])
 
     const { result: listResult, unmount } = renderHook(
       () => ({
@@ -1064,11 +1069,13 @@ describe('useInvalidateInstalledPluginList', () => {
     expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
     expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(providerToolsKey)?.isInvalidated).toBe(false)
   })
 
-  it('also invalidates built-in tools for the tool category', async () => {
+  it('also invalidates built-in tools and provider actions for the tool category', async () => {
     const queryClient = createQueryClient()
     queryClient.setQueryData(builtInToolsKey, [])
+    queryClient.setQueryData(providerToolsKey, [])
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
     const { result } = renderHook(
@@ -1090,6 +1097,22 @@ describe('useInvalidateInstalledPluginList', () => {
     })
 
     expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(providerToolsKey)?.isInvalidated).toBe(true)
+  })
+
+  it('invalidates provider actions when every category is refreshed', async () => {
+    const queryClient = createQueryClient()
+    queryClient.setQueryData(providerToolsKey, [])
+
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current()
+    })
+
+    expect(queryClient.getQueryState(providerToolsKey)?.isInvalidated).toBe(true)
   })
 })
 

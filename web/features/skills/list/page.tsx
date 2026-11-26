@@ -45,12 +45,12 @@ export default function SkillsPage() {
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
   const createMutation = useMutation(
     consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const skillsQuery = useInfiniteQuery({
@@ -82,7 +82,6 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {
@@ -108,7 +107,6 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           setImportOpen(false)
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {

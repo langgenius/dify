@@ -98,6 +98,8 @@ const ActiveHumanInputMigrationProvider = ({
   )
 
   const migration = useMutation({
+    // The dialog shows migration failures.
+    meta: { errorToast: false },
     onMutate: () => legacyNodeCount,
     mutationFn: () =>
       executeHumanInputV2Migration({

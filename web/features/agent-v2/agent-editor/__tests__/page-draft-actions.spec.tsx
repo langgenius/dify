@@ -144,6 +144,8 @@ describe('Version restoration', () => {
     await waitFor(() => expect(promptEditor()).toHaveTextContent('Restored instructions'))
     expect(promptEditor()).toHaveAttribute('contenteditable', 'true')
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    // The restore mutation refreshes the composer once; the editor does not fetch it again.
+    expect(api.getComposer).toHaveBeenCalledTimes(1)
   })
 
   it('shows the selected version read-only and restores it through the composer action', async () => {

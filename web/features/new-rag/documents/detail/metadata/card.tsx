@@ -142,31 +142,26 @@ function DocumentMetadataCardContent() {
   }
 
   const createFieldMutation = useMutation({
+    meta: { errorToast: false },
     mutationFn: async ({ name, type }: { name: string; type: DocumentMetadataType }) => {
       if (!editBaseline) throw new Error('Missing metadata edit baseline')
       const defaultValue = documentMetadataDefaultValue(type)
       if (retryableCreateName !== name) {
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post(
-          {
-            body: { name, type },
-            params: { control_space_id: controlSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.metadata.post({
+          body: { name, type },
+          params: { control_space_id: controlSpaceId },
+        })
         // Only a confirmed field lets a retry skip creation and go straight to the document update.
         markCreateRetryable(name)
       }
       const response =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-          {
-            body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
-            params: {
-              control_space_id: controlSpaceId,
-              document_id: document.id,
-            },
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch({
+          body: { expectedRowVersion: editBaseline.rowVersion, patch: { [name]: defaultValue } },
+          params: {
+            control_space_id: controlSpaceId,
+            document_id: document.id,
           },
-          { context: { silent: true } },
-        )
+        })
       return { document: logicalDocumentFromApi(response), name, type, value: defaultValue }
     },
     onError: (error) => {
@@ -186,35 +181,23 @@ function DocumentMetadataCardContent() {
     },
   })
 
-  const saveMutation = useMutation({
-    mutationFn: async ({
-      patch,
-      rowVersion,
-    }: {
-      patch: Record<string, unknown>
-      rowVersion: number
-    }) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: { expectedRowVersion: rowVersion, patch },
-          params: {
-            control_space_id: controlSpaceId,
-            document_id: document.id,
-          },
-        },
-        { context: { silent: true } },
-      ),
-    onError: (error) => {
-      toast.error(
-        getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
-      )
-    },
-    onSuccess: async () => {
-      await invalidateMetadataQueries()
-      cancelEditing()
-      toast.success(tCommon(($) => $['api.actionSuccess']))
-    },
-  })
+  // The call site awaits a wider refresh (including the metadata catalog) before leaving edit
+  // mode, so it owns onSuccess instead of the shared document patch policy.
+  const saveMutation = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
+      meta: { errorToast: false },
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ?? t(($) => $['settings.saveFailed'], { ns: 'knowledgeSpace' }),
+        )
+      },
+      onSuccess: async () => {
+        await invalidateMetadataQueries()
+        cancelEditing()
+        toast.success(tCommon(($) => $['api.actionSuccess']))
+      },
+    }),
+  )
 
   const startEditing = () => {
     if (canEdit) beginEditing({ document, fields })
@@ -251,7 +234,10 @@ function DocumentMetadataCardContent() {
       cancelEditing()
       return
     }
-    saveMutation.mutate({ patch, rowVersion: editBaseline.rowVersion })
+    saveMutation.mutate({
+      body: { expectedRowVersion: editBaseline.rowVersion, patch },
+      params: { control_space_id: controlSpaceId, document_id: document.id },
+    })
   }
 
   const creating = createFieldMutation.isPending

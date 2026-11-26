@@ -39,7 +39,6 @@ export function pluginCredentialInfoQueryOptions(
                 : {}),
             }
           : skipToken,
-      staleTime: 0,
       select: selectPluginCredentialInfo,
     },
   )
@@ -80,7 +79,6 @@ export function pluginOAuthClientSchemaQueryOptions(
           ? { params: { provider } }
           : skipToken,
       select: selectOAuthClientSchema,
-      staleTime: 0,
     },
   )
 }

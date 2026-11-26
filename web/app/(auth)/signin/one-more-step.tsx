@@ -77,7 +77,9 @@ const OneMoreStep = () => {
     timezone: 'Asia/Shanghai',
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useMutation(
-    consoleQuery.account.init.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.init.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
   const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)

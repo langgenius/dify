@@ -77,8 +77,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     () => ({
       getState: () => ({
         getNodes: () => reactFlow.getNodes(),
+        // oxlint-disable-next-line dify/no-raw-reactflow-graph-write -- The collaboration manager applies CRDT imports to the canvas through this adapter.
         setNodes: (nodesToSet: Node[]) => reactFlow.setNodes(nodesToSet),
         getEdges: () => reactFlow.getEdges(),
+        // oxlint-disable-next-line dify/no-raw-reactflow-graph-write -- The collaboration manager applies CRDT imports to the canvas through this adapter.
         setEdges: (edgesToSet: Edge[]) => reactFlow.setEdges(edgesToSet),
       }),
     }),

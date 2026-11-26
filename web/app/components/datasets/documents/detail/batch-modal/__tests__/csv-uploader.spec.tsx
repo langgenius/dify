@@ -113,7 +113,7 @@ it('reports computable upload progress and the returned file identity', async ()
   await user.upload(input, file)
   expect(mockUpload).toHaveBeenCalledExactlyOnceWith(
     { body: { file, source: 'datasets' } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   const onUploadProgress = mockUpload.mock.calls[0]![1]!.context!.onUploadProgress!
   act(() => onUploadProgress({ loaded: 53, total: 100 }))

@@ -183,7 +183,7 @@ function ImBindingEditor({
       }),
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const options = [
@@ -463,17 +463,25 @@ function ContactIMChannels({
   const [open, setOpen] = useState(false)
   const api = consoleQuery.workspaces.current.humanInput.v2
   const defaultSave = useMutation(
-    api.contacts.byContactId.imBindings.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const overrideSave = useMutation(
-    api.contacts.byContactId.imOverride.put.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.put.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const save = context.imCentrallyManaged ? overrideSave : defaultSave
   const remove = useMutation(
-    api.contacts.byContactId.imOverride.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imOverride.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const unbind = useMutation(
-    api.contacts.byContactId.imBindings.delete.mutationOptions({ context: { silent: true } }),
+    api.contacts.byContactId.imBindings.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const canBind =
     canManage && context.imCentrallyManaged !== undefined && contact.type !== 'external'
@@ -482,7 +490,7 @@ function ContactIMChannels({
       input: canBind && context.imCentrallyManaged === false ? undefined : skipToken,
       select: (response) => response.channels.filter((channel) => channel.kind === 'im'),
       retry: false,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const busy = save.isPending || remove.isPending || unbind.isPending || removing

@@ -20,9 +20,8 @@ export default function SavedTokenForm({
   const [sessionVersion, setSessionVersion] = useState<number | null>(null)
   const query = useQuery(
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       input: { params: { token_id: tokenId } },
-      staleTime: 0,
     }),
   )
   if (query.data)

@@ -7,7 +7,6 @@ import { AlertDialog, createAlertDialogHandle } from '@langgenius/dify-ui/alert-
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
 import { memo, useCallback, useState } from 'react'
-import { useStoreApi } from 'reactflow'
 import { ExportSecretsDialogContent } from '@/app/components/app/export-secrets-dialog'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
@@ -17,6 +16,7 @@ import {
 import { isExportSecretEnvironmentEvent } from '@/app/components/workflow/export-secret-env-event'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useAutoGenerateWebhookUrl } from '@/app/components/workflow/hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useDSL } from '@/app/components/workflow/hooks/use-DSL'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { usePanelInteractions } from '@/app/components/workflow/hooks/use-panel-interactions'
@@ -80,7 +80,7 @@ const WorkflowChildren = () => {
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore((s) => s.setShouldAutoOpenStartNodeSelector)
-  const reactFlowStore = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const availableNodesMetaData = useWorkflowNodeCatalog()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleOnboardingClose } = useAutoOnboarding()
@@ -101,6 +101,12 @@ const WorkflowChildren = () => {
   const handleSelectStartNode = useCallback(
     (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
       if (!canEdit) return
+
+      const { nodes, setNodes, setEdges } = collaborativeWorkflow.getState()
+      if (nodes.some((node) => node.data.type !== BlockEnum.StartPlaceholder)) {
+        handleOnboardingClose()
+        return
+      }
 
       const nodeDefault = availableNodesMetaData.nodesMap?.[nodeType]
       if (!nodeDefault?.defaultValue) return
@@ -138,8 +144,7 @@ const WorkflowChildren = () => {
         position: START_INITIAL_POSITION,
       })
 
-      const { setNodes, setEdges } = reactFlowStore.getState()
-      setNodes([newNode])
+      if (!setNodes([newNode])) return
       setEdges([])
 
       setShowOnboarding?.(false)
@@ -159,8 +164,9 @@ const WorkflowChildren = () => {
       availableNodesMetaData,
       autoGenerateWebhookUrl,
       canEdit,
+      collaborativeWorkflow,
+      handleOnboardingClose,
       handleSyncWorkflowDraft,
-      reactFlowStore,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,
       setShowOnboarding,

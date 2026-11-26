@@ -2,12 +2,12 @@ import type { RequestGuard } from './request-guard'
 import type { OnUploadProgress } from './xhr-fetch'
 import { ORPCError } from '@orpc/client'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { toast } from '@/app/notifications'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base } from './fetch'
+import { markErrorHandled } from './handled-error'
 import { isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { captureRequestGuard } from './request-guard'
@@ -68,7 +68,6 @@ export type IOtherOptions = {
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
-  silent?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -169,7 +168,7 @@ const baseFetch = base
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
-    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const { isPublicAPI = false } = otherOptionsForBaseFetch
     const requestGuard = captureRequestGuard(
       url,
       isPublicAPI,
@@ -202,10 +201,15 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(err)
-      if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
+      // A WebApp sign-in redirect is the feedback for these errors.
+      if (handleWebAppAuthorizationError(errRespData, url)) {
+        markErrorHandled(err)
+        return Promise.reject(err)
+      }
       // special code
-      const { code, message } = errRespData
+      const { code } = errRespData
       if (code === 'web_sso_auth_required') {
+        markErrorHandled(err)
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
@@ -220,10 +224,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed') {
-        if (!silent) toast.error(message, { timeout: 4000 })
-        return Promise.reject(err)
-      }
+      // The init page shows a wrong password at its field.
+      if (code === 'init_validate_failed') return Promise.reject(err)
       if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
@@ -243,15 +245,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
       discardRegistrationStateForConsoleAuthBoundary(otherOptionsForBaseFetch)
-      if (window.location.pathname !== `${basePath}/signin`) {
-        jumpTo(buildSigninUrlWithRedirect())
-        return Promise.reject(err)
-      }
-      if (!silent) {
-        toast.error(message)
-        return Promise.reject(err)
-      }
-      jumpTo(buildSigninUrlWithRedirect())
+      // On the sign-in page itself the sign-in forms own the failure, so there is nowhere to go.
+      if (window.location.pathname !== `${basePath}/signin`) jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
     } else {
       return Promise.reject(err)

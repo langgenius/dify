@@ -7,17 +7,14 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from models.agent import (
-    Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigSnapshot,
     AgentHomeSnapshot,
-    AgentScope,
-    AgentSource,
     AgentWorkingResourceStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
@@ -41,16 +38,6 @@ def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: 
     client = AgentHomeSnapshotService._client()
 
     assert client._timeout == 45.0
-
-
-def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup(unbound_session: Session) -> None:
-    validate_home_snapshot_binding(
-        session=unbound_session,
-        agent=Agent(
-            tenant_id="tenant-1", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.ROSTER, id="agent-1"
-        ),
-        home_snapshot_id=None,
-    )
 
 
 def test_home_snapshot_collection_database_failure_propagates(

@@ -1,7 +1,6 @@
 'use client'
 
 import type {
-  AgentAppDetailWithSite,
   AgentConfigSnapshotSummaryResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
@@ -236,19 +235,7 @@ function WorkflowInlineAgentEditorContent({
         debug_conversation_id,
         debug_conversation_message_count,
       }) => {
-        queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-          (agentDetail) => {
-            if (!agentDetail) return agentDetail
-
-            return {
-              ...agentDetail,
-              debug_conversation_has_messages,
-              debug_conversation_id,
-              debug_conversation_message_count,
-            }
-          },
-        )
+        // The policy updates the agent detail; the node's composer belongs to this editor.
         if (!resource) return
 
         if (resource.kind === 'snippet') {
@@ -362,7 +349,9 @@ function WorkflowInlineAgentEditorContent({
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
   const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
-    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({ context: { silent: true } }),
+    consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const getInlineAgentSoulDraft = useCallback(
     () =>
@@ -390,16 +379,13 @@ function WorkflowInlineAgentEditorContent({
       },
     })
     const savedBuildAgentSoulConfig = buildDraftState.agent_soul ?? preparedAgentSoulConfig
-    queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
     rebaseComposerDraftFromSoulConfig(savedBuildAgentSoulConfig)
     setBuildDraftSoulSourceOverride('build-draft')
     return savedBuildAgentSoulConfig
   }, [
     agentId,
-    buildDraftQueryOptions.queryKey,
     cancelBuildDraftRefresh,
     getInlineAgentSoulDraft,
-    queryClient,
     rebaseComposerDraftFromSoulConfig,
     saveBuildDraft,
     saveDraft,

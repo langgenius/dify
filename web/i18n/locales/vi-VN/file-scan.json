@@ -50,7 +50,7 @@
   "scanner.lastTested": "Kiểm tra lần cuối {{time}}",
   "scanner.loadFailed": "Không thể tải danh sách trình quét.",
   "scanner.neverTested": "Chưa kiểm tra",
-  "scanner.readOnly": "Chỉ chủ sở hữu và quản trị viên không gian làm việc mới có thể quản lý trình quét.",
+  "scanner.readOnly": "Bạn không có quyền quản lý trình quét.",
   "scanner.status.active": "Hoạt động",
   "scanner.status.error": "Lỗi",
   "scanner.test": "Kiểm tra",

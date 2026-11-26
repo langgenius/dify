@@ -35,6 +35,24 @@ class HostingProvider(BaseModel):
     quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 
+    def select_quota_type(
+        self, credit_pool_type: ProviderQuotaType | None, *, has_free_quota: bool
+    ) -> ProviderQuotaType | None:
+        """Select an offered bucket for a Cloud workspace, or None if hosting is unavailable.
+
+        The workspace plan supplies its trial or paid pool (None outside Cloud). Only a valid
+        workspace provider row grants third-party free quota. Selection does not check balances:
+        an exhausted pool is configured and must still report its own exhaustion.
+        """
+        if not self.enabled or credit_pool_type not in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
+            return None
+        offered = {quota.quota_type for quota in self.quotas}
+        if credit_pool_type in offered:
+            return credit_pool_type
+        if has_free_quota and ProviderQuotaType.FREE in offered:
+            return ProviderQuotaType.FREE
+        return None
+
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider]

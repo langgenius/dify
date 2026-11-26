@@ -28,11 +28,11 @@ function knowledgeFsMetadataFieldFromApi(
 export function knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId: string) {
   return {
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata.get.queryOptions({
-      context: { silent: true },
       input: {
         params: { control_space_id: knowledgeSpaceId },
         query: { limit: 100 },
       },
+      meta: { errorToast: false },
       retry: false,
     }),
     queryFn: async () => {
@@ -54,6 +54,5 @@ export function knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId: string) 
     },
     select: (response: { data: KnowledgeFsMetadataFieldResponse[] }) =>
       response.data.map(knowledgeFsMetadataFieldFromApi),
-    staleTime: 30_000,
   }
 }

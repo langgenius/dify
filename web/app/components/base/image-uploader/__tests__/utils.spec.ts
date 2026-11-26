@@ -62,7 +62,7 @@ it('uploads console images through the files contract and reports the server res
   imageUpload({ file: selected, ...events })
   expect(consoleUpload).toHaveBeenCalledExactlyOnceWith(
     { body: { file: selected } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   expect(upload).not.toHaveBeenCalled()
   await waitFor(() =>
@@ -91,7 +91,7 @@ it('uploads public web app images through the WebApp files contract', async () =
   )
   expect(upload).toHaveBeenCalledExactlyOnceWith(
     { body: { file: selected } },
-    { context: { silent: true, onUploadProgress: expect.any(Function) } },
+    { context: { onUploadProgress: expect.any(Function) } },
   )
   expect(consoleUpload).not.toHaveBeenCalled()
 })
