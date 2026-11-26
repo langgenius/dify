@@ -24,3 +24,13 @@ it('ranks id tokens first, reaches schema text, takes compounds and typos, keeps
   expect(search(DOCS, 'app', { limit: 1 })).toMatchObject({ total: 4 })
   expect(ids('the zebra')).toEqual([])
 })
+
+it.each([
+  ['知识库 搜索', '知识库'],
+  ['Поиск документов', 'поиск'],
+  ['البحث مستندات', 'البحث'],
+  ['Export résumé', 're\u0301sume\u0301'],
+])('finds commands described as %s using %s', (summary, query) => {
+  const docs = [doc('find.resource', { summary }), doc('get.config', { summary: 'Configuration' })]
+  expect(search(docs, query, { limit: 20 }).hits.map((hit) => hit.id)).toEqual(['find.resource'])
+})

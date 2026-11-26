@@ -33,7 +33,7 @@ export type SearchDoc = Readonly<{
 export type SearchHit = Readonly<{ id: string; score: number }>
 export type SearchResult = Readonly<{ hits: readonly SearchHit[]; total: number }>
 
-const TOKEN_BREAK = /[^a-z0-9]+/
+const TOKEN_BREAK = /[^\p{L}\p{N}\p{M}]+/u
 const STOPWORDS: ReadonlySet<string> = new Set([
   'a',
   'an',
@@ -89,6 +89,7 @@ function undouble(token: string): string {
 
 export function tokenize(text: string): string[] {
   return text
+    .normalize('NFC')
     .toLowerCase()
     .split(TOKEN_BREAK)
     .filter((token) => token !== '' && !STOPWORDS.has(token))
