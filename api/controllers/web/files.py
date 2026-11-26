@@ -34,6 +34,10 @@ class FileApi(WebApiResource):
     @web_ns.doc("upload_file")
     @web_ns.doc(description="Upload a file for use in web applications")
     @web_ns.doc(
+        consumes=["multipart/form-data"],
+        params={"file": {"description": "File to upload", "in": "formData", "type": "file", "required": True}},
+    )
+    @web_ns.doc(
         responses={
             201: "File uploaded successfully",
             400: (

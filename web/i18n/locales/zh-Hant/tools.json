@@ -20,8 +20,6 @@
   "allWorkflowAsTool": "所有工作流作為工具",
   "auth.authorized": "已授權",
   "auth.setup": "要使用請先授權",
-  "auth.setupModalTitle": "設定授權",
-  "auth.setupModalTitleDescription": "配置憑據後，工作區中的所有成員都可以在編排應用程式時使用此工具。",
   "auth.unauthorized": "未經授權",
   "author": "作者",
   "builtInPromptTitle": "提示詞",

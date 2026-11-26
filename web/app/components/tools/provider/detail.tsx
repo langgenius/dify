@@ -45,8 +45,8 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Title from '@/app/components/plugins/card/base/title'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
-import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
+import { toastRequestError } from '@/app/query-error-toast'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -55,9 +55,7 @@ import {
   fetchCustomCollection,
   fetchCustomToolList,
   fetchWorkflowToolDetail,
-  removeBuiltInToolCredential,
   saveWorkflowToolProvider,
-  updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
 import { basePath } from '@/utils/var'
@@ -75,18 +73,16 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const locale = useLocale()
   const language = getPluginLanguage(locale)
 
-  const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
-  const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
-  // built in provider
-  const [showSettingAuth, setShowSettingAuth] = useState(false)
+  // Built-in providers without a plugin never require credentials, so only model providers
+  // open a credential dialog here. Plugin providers use the plugin detail panel instead.
   const { data: modelProvider } = useQuery(
     consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
       select: (response) => response.data.find((provider) => provider.provider === collection?.id),
@@ -94,27 +90,24 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   )
   const queryClient = useQueryClient()
   const showSettingAuthModal = async () => {
-    if (!canOpenCredentialSettings) return
+    if (!canOpenCredentialSettings || !isModel || !modelProvider) return
 
-    if (isModel) {
-      if (!modelProvider) return
-      try {
-        const response = await queryClient.query({
-          ...modelProviderDetailsQueryOptions(),
-          staleTime: 'static',
-        })
-        const provider = response.data.find((item) => item.provider === modelProvider.provider)
-        if (!provider) return
-        modelCredentialDialog.openWithPayload({
-          provider,
-          configurateMethod: ConfigurationMethodEnum.predefinedModel,
-          onSave: () => {
-            onRefreshData()
-          },
-        })
-      } catch {}
-    } else {
-      setShowSettingAuth(true)
+    try {
+      const response = await queryClient.query({
+        ...modelProviderDetailsQueryOptions(),
+        staleTime: 'static',
+      })
+      const provider = response.data.find((item) => item.provider === modelProvider.provider)
+      if (!provider) return
+      modelCredentialDialog.openWithPayload({
+        provider,
+        configurateMethod: ConfigurationMethodEnum.predefinedModel,
+        onSave: () => {
+          onRefreshData()
+        },
+      })
+    } catch {
+      // The query cache reports the failed provider lookup.
     }
   }
   // custom provider
@@ -128,23 +121,37 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
-      if (res.credentials.api_key_value)
-        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    try {
+      const res = await fetchCustomCollection(collection.name)
+      if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+        if (res.credentials.api_key_value)
+          res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+      }
+      setCustomCollection({
+        ...res,
+        labels: collection.labels,
+        provider: collection.name,
+      })
+      // A failed load keeps the editor hidden, so it never opens with an empty payload to save.
+      setIsDetailLoading(false)
+    } catch (error) {
+      toastRequestError(error)
     }
-    setCustomCollection({
-      ...res,
-      labels: collection.labels,
-      provider: collection.name,
-    })
-    setIsDetailLoading(false)
   }, [canManageTools, collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
-    await updateCustomCollection(data)
+    try {
+      await updateCustomCollection(data)
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
+    // Schema edits change the actions the settings drawer reads from this query.
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.api.tools.get.key(),
+    })
     onRefreshData()
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
@@ -155,23 +162,28 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
-    const res = await fetchWorkflowToolDetail(collection.id)
-    const payload = {
-      ...res,
-      parameters:
-        res.tool?.parameters.map((item) => {
-          return {
-            name: item.name,
-            description: item.llm_description,
-            form: item.form,
-            required: item.required,
-            type: item.type,
-          }
-        }) || [],
-      labels: res.tool?.labels || [],
+    try {
+      const res = await fetchWorkflowToolDetail(collection.id)
+      const payload = {
+        ...res,
+        parameters:
+          res.tool?.parameters.map((item) => {
+            return {
+              name: item.name,
+              description: item.llm_description,
+              form: item.form,
+              required: item.required,
+              type: item.type,
+            }
+          }) || [],
+        labels: res.tool?.labels || [],
+      }
+      setCustomCollection(payload)
+      // A failed load keeps the drawer hidden, so it never opens with an empty payload to save.
+      setIsDetailLoading(false)
+    } catch (error) {
+      toastRequestError(error)
     }
-    setCustomCollection(payload)
-    setIsDetailLoading(false)
   }, [collection.id])
   const updateWorkflowToolProvider = async (
     data: WorkflowToolProviderRequest &
@@ -182,9 +194,17 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   ) => {
     if (!canManageTools) return
 
-    await saveWorkflowToolProvider(data)
+    try {
+      await saveWorkflowToolProvider(data)
+    } catch (error) {
+      toastRequestError(error)
+      return
+    }
     queryClient.invalidateQueries({
       queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.toolProvider.workflow.tools.get.key(),
     })
     onRefreshData()
     getWorkflowToolProvider()
@@ -231,7 +251,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 
@@ -307,21 +329,24 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                   ></Description>
                 )}
                 <div className="-mx-4 flex gap-1 border-b-[0.5px] border-divider-subtle px-4">
-                  {collection.type === CollectionType.custom && !isDetailLoading && (
-                    <Button
-                      className={cn('my-3 w-full shrink-0')}
-                      onClick={() => setIsShowEditCustomCollectionModal(true)}
-                      disabled={!canManageTools}
-                    >
-                      <span
-                        aria-hidden
-                        className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
-                      />
-                      <div className="system-sm-medium text-text-secondary">
-                        {t(($) => $['createTool.editAction'], { ns: 'tools' })}
-                      </div>
-                    </Button>
-                  )}
+                  {/* An editor without the loaded provider would save an empty collection over it. */}
+                  {collection.type === CollectionType.custom &&
+                    !isDetailLoading &&
+                    (customCollection || !canManageTools) && (
+                      <Button
+                        className={cn('my-3 w-full shrink-0')}
+                        onClick={() => setIsShowEditCustomCollectionModal(true)}
+                        disabled={!canManageTools}
+                      >
+                        <span
+                          aria-hidden
+                          className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
+                        />
+                        <div className="system-sm-medium text-text-secondary">
+                          {t(($) => $['createTool.editAction'], { ns: 'tools' })}
+                        </div>
+                      </Button>
+                    )}
                   {collection.type === CollectionType.workflow &&
                     !isDetailLoading &&
                     customCollection && (
@@ -378,17 +403,11 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                                 num: toolList.length,
                                 action: toolList.length > 1 ? 'actions' : 'action',
                               })}
-                              {needAuth && (
+                              {isModel && (
                                 <Button
                                   variant="secondary"
                                   size="small"
-                                  onClick={() => {
-                                    if (
-                                      collection.type === CollectionType.builtIn ||
-                                      collection.type === CollectionType.model
-                                    )
-                                      showSettingAuthModal()
-                                  }}
+                                  onClick={showSettingAuthModal}
                                   disabled={!canOpenCredentialSettings}
                                 >
                                   <StatusDot status="success" />
@@ -397,40 +416,31 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                               )}
                             </div>
                           )}
-                        {(collection.type === CollectionType.builtIn ||
-                          collection.type === CollectionType.model) &&
-                          needAuth &&
-                          !isAuthed && (
-                            <>
-                              <div className="system-sm-semibold-uppercase text-text-secondary">
-                                <span className="">
-                                  {t(($) => $.includeToolNum, {
-                                    ns: 'tools',
-                                    num: toolList.length,
-                                    action: toolList.length > 1 ? 'actions' : 'action',
-                                  }).toLocaleUpperCase()}
-                                </span>
-                                <span className="px-1">·</span>
-                                <span className="text-util-colors-orange-orange-600">
-                                  {t(($) => $['auth.setup'], { ns: 'tools' }).toLocaleUpperCase()}
-                                </span>
-                              </div>
-                              <Button
-                                variant="primary"
-                                className={cn('my-3 w-full shrink-0')}
-                                onClick={() => {
-                                  if (
-                                    collection.type === CollectionType.builtIn ||
-                                    collection.type === CollectionType.model
-                                  )
-                                    showSettingAuthModal()
-                                }}
-                                disabled={!canOpenCredentialSettings}
-                              >
-                                {t(($) => $['auth.unauthorized'], { ns: 'tools' })}
-                              </Button>
-                            </>
-                          )}
+                        {isModel && !isAuthed && (
+                          <>
+                            <div className="system-sm-semibold-uppercase text-text-secondary">
+                              <span className="">
+                                {t(($) => $.includeToolNum, {
+                                  ns: 'tools',
+                                  num: toolList.length,
+                                  action: toolList.length > 1 ? 'actions' : 'action',
+                                }).toLocaleUpperCase()}
+                              </span>
+                              <span className="px-1">·</span>
+                              <span className="text-util-colors-orange-orange-600">
+                                {t(($) => $['auth.setup'], { ns: 'tools' }).toLocaleUpperCase()}
+                              </span>
+                            </div>
+                            <Button
+                              variant="primary"
+                              className={cn('my-3 w-full shrink-0')}
+                              onClick={showSettingAuthModal}
+                              disabled={!canOpenCredentialSettings}
+                            >
+                              {t(($) => $['auth.unauthorized'], { ns: 'tools' })}
+                            </Button>
+                          </>
+                        )}
                         {collection.type === CollectionType.custom && (
                           <div className="system-sm-semibold-uppercase text-text-secondary">
                             <span className="">
@@ -492,27 +502,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                     </>
                   )}
                 </div>
-                {showSettingAuth && (
-                  <ConfigCredential
-                    collection={collection}
-                    onCancel={() => setShowSettingAuth(false)}
-                    onSaved={async (value) => {
-                      if (!canSaveCredentialSettings) return
-
-                      await updateBuiltInToolCredential(collection.name, value)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
-                    }}
-                    onRemove={async () => {
-                      if (!canManageCredential) return
-
-                      await removeBuiltInToolCredential(collection.name)
-                      await onRefreshData()
-                      setShowSettingAuth(false)
-                    }}
-                    readonly={!canSaveCredentialSettings}
-                  />
-                )}
                 {isShowEditCollectionToolModal && canManageTools && (
                   <EditCustomToolModal
                     payload={customCollection}

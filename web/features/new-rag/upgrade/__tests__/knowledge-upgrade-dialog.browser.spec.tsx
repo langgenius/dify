@@ -2,7 +2,9 @@ import type { KnowledgeFsUpgradePreparationResponse } from '@dify/contracts/api/
 import { useRef } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { AppToaster } from '@/app/notifications/app-toaster'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, setupFakeApi } from '@/test/fake-api'
 import {
   expectedUpgradeModels as expectedPayload,
@@ -79,7 +81,10 @@ function UpgradeOwner() {
   )
 }
 async function renderDialog() {
-  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper()
+  // The app's cache-level error toasts, so a failure's messages can be counted.
+  const { queryClient, wrapper: QueryProvider } = createConsoleQueryWrapper({
+    queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }),
+  })
   seedUpgradeModels(queryClient)
   await render(
     <QueryProvider>
@@ -88,6 +93,7 @@ async function renderDialog() {
           <UpgradeOwner />
         </KnowledgeUpgradeProvider>
       </QueryTestingAdapter>
+      <AppToaster />
     </QueryProvider>,
   )
   await page.getByRole('button', { name: 'Upgrade support knowledge' }).click()
@@ -227,6 +233,16 @@ describe('KnowledgeUpgradeDialog', () => {
     await expectStarted()
   })
 
+  it('shows a failed upgrade check once, with the server reason in the dialog', async () => {
+    fake.console.datasets.byDatasetId.knowledgeFsUpgrades.get.mockRejectedValue(
+      apiError({ status: 500, code: 'INTERNAL', message: 'Upgrade check is unavailable' }),
+    )
+    await renderDialog()
+
+    await expect.element(page.getByRole('alert')).toHaveTextContent('Upgrade check is unavailable')
+    expect(page.getByText('Upgrade check is unavailable').elements()).toHaveLength(1)
+  })
+
   it('reuses the idempotency key for retries and rotates it when the model choice changes', async () => {
     fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post
       .mockRejectedValueOnce(
@@ -240,9 +256,9 @@ describe('KnowledgeUpgradeDialog', () => {
 
     await waitForRecommendedModels()
     await startButton().click()
-    await expect
-      .element(page.getByRole('alert'))
-      .toHaveTextContent('knowledgeUpgrade.upgrade.startFailed')
+    // The dialog shows the server's reason once; the cache adds no toast for it.
+    await expect.element(page.getByRole('alert')).toHaveTextContent('response lost')
+    expect(page.getByText('response lost').elements()).toHaveLength(1)
     await startButton().click()
     await expect
       .poll(() => fake.console.datasets.byDatasetId.knowledgeFsUpgrades.post.mock.calls.length)

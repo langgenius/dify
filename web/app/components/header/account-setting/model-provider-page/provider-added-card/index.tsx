@@ -9,14 +9,16 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { hasPermission } from '@/utils/permission'
-import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
+import {
+  canConfigureModelsAtom,
+  useModelProviderListExpanded,
+  useSetModelProviderListExpanded,
+} from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
@@ -67,11 +69,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     (method) => method === ConfigurationMethodEnum.customizableModel,
   )
   const systemConfig = provider.system_configuration
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canSetPluginPreferences = hasPermission(
-    workspacePermissionKeys,
-    'plugin.plugin_preferences',
-  )
+  const canConfigureModels = useAtomValue(canConfigureModelsAtom)
   const {
     data: modelList = [],
     isFetching: loading,
@@ -80,13 +78,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   } = useQuery(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: currentProviderName } },
-      enabled: expanded && canSetPluginPreferences,
+      enabled: expanded && canConfigureModels,
       refetchOnWindowFocus: false,
       select: normalizeModelProviderModelsResponse,
     }),
   )
   const hasModelList = hasFetchedModelList && !!modelList.length
-  const showCollapsedSection = !canSetPluginPreferences || !expanded || !hasFetchedModelList
+  const showCollapsedSection = !canConfigureModels || !expanded || !hasFetchedModelList
   const cardRef = useRef<HTMLDivElement>(null)
   const collapsedButtonRef = useRef<HTMLButtonElement>(null)
   const restoreFocusAfterCollapseRef = useRef(false)
@@ -103,7 +101,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     systemConfig.enabled &&
     MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) &&
     deploymentEdition === 'CLOUD'
-  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canAccessCredentials = rbacEnabled
     ? canUseCredential || canCreateCredential || canManageCredential
@@ -210,7 +207,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           </div>
         </div>
         <div className="absolute inset-x-0 bottom-0 hidden min-h-20 flex-wrap items-end gap-2 rounded-xl bg-linear-to-t from-components-panel-on-panel-item-bg via-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-focus-within:flex group-hover:flex">
-          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
+          {canConfigureModels && (showModelProvider || !notConfigured) && (
             <button
               ref={collapsedButtonRef}
               type="button"
@@ -300,7 +297,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {showCollapsedSection && (
         <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 ps-2 pe-2.75 system-xs-medium text-text-tertiary">
-          {canSetPluginPreferences && (showModelProvider || !notConfigured) && (
+          {canConfigureModels && (showModelProvider || !notConfigured) && (
             <button
               ref={collapsedButtonRef}
               type="button"

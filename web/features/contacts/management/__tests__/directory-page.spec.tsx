@@ -8,6 +8,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { createHttpError } from '@/service/http-error'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
 import { ContactsManagementProvider } from '../composition'
@@ -214,4 +215,35 @@ it('mounts a separate alert when contact details fail', async () => {
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   await act(async () => request.reject(new Error('Unavailable')))
   expect(await screen.findByRole('alert')).toHaveTextContent('contacts.details.error')
+})
+
+it('shows the server message when removal fails', async () => {
+  const user = userEvent.setup()
+  api.remove.mockRejectedValueOnce(
+    createHttpError(new Response(null, { status: 400 }), {
+      code: 'removal_failed',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  const selection = await screen.findByRole('checkbox', { name: 'contacts.directory.selectAll' })
+  await user.click(selection)
+  await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+  const dialog = await screen.findByRole('alertdialog')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'contacts.directory.removeSelected' }),
+  )
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+})
+
+it('shows the server message when the directory fails to load', async () => {
+  api.list.mockRejectedValue(
+    createHttpError(new Response(null, { status: 503 }), {
+      code: 'service_unavailable',
+      message: 'Server says why',
+    }),
+  )
+  setup()
+  expect(await screen.findByText('Server says why')).toBeVisible()
+  expect(screen.getByText('contacts.directory.errorTitle')).toBeVisible()
 })

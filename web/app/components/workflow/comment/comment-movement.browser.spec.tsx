@@ -37,6 +37,7 @@ function Fixture({ draft = false }: { draft?: boolean }) {
         aria-label="Canvas"
         style={{ position: 'relative', width: 800, height: 600 }}
       >
+        <ReactFlow nodes={[]} />
         {draft ? (
           <CommentInput
             position={position}
@@ -53,7 +54,6 @@ function Fixture({ draft = false }: { draft?: boolean }) {
             }
           />
         )}
-        <ReactFlow nodes={[]} />
         {opened && <p role="status">Comment opened</p>}
       </div>
     </>
@@ -76,7 +76,7 @@ it('keeps an authored comment focusable and draggable after adding keyboard move
   const screen = await renderFixture()
   const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
   await expect.element(marker).toBeVisible()
-  await screen.getByRole('button', { name: 'Before canvas' }).click()
+  screen.getByRole('link', { name: 'React Flow attribution' }).element().focus()
   await userEvent.tab()
   await expect.element(marker).toHaveFocus()
   const initial = marker.element().getBoundingClientRect()
@@ -111,7 +111,7 @@ it('preserves draft mouse dragging and lets keyboard users move the same handle'
     targetPosition: { x: 300, y: 250 },
   })
   expect(handle.element().getBoundingClientRect().x).toBeGreaterThan(initial.x)
-  await screen.getByRole('button', { name: 'Before canvas' }).click()
+  screen.getByRole('link', { name: 'React Flow attribution' }).element().focus()
   await userEvent.tab()
   await expect.element(handle).toHaveFocus()
   const dragged = handle.element().getBoundingClientRect()
@@ -133,8 +133,8 @@ function SelectableMarker() {
         Toggle selection
       </button>
       <div id="workflow-container" style={{ position: 'relative', width: 800, height: 600 }}>
-        <CommentMarkerFixture comment={comment} isActive={active} />
         <ReactFlow nodes={[]} />
+        <CommentMarkerFixture comment={comment} isActive={active} />
       </div>
     </>
   )

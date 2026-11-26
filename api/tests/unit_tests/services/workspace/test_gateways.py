@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from unittest.mock import MagicMock, Mock, create_autospec
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from redis import RedisError
@@ -10,6 +10,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.billing_client import billing
 from services.credit_pool_service import CreditPoolBalance
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import WorkspacePermission
@@ -360,20 +361,18 @@ class TestWorkspaceCreditPoolCases:
             (CloudPlan.TEAM, 500, 120, 100, "paid", 380),
             (CloudPlan.TEAM, -1, 999, 100, "paid", -1),
             (CloudPlan.TEAM, 500, 500, 100, "paid", 0),
-            (CloudPlan.TEAM, None, 0, 100, None, None),
             (CloudPlan.SANDBOX, 500, 0, 100, "trial", 60),
-            (CloudPlan.SANDBOX, None, 0, None, None, None),
         ],
     )
     def test_effective_credit_pool(
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
         plan: CloudPlan,
-        paid_quota: int | None,
+        paid_quota: int,
         paid_used: int,
-        trial_quota: int | None,
-        expected_type: str | None,
-        remaining: int | None,
+        trial_quota: int,
+        expected_type: str,
+        remaining: int,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
@@ -381,11 +380,11 @@ class TestWorkspaceCreditPoolCases:
             "get_info",
             lambda *_a, **_k: builders.subscription_info(plan, next_credit_reset_date=1775001600),
         )
-        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used) if paid_quota is not None else None
-        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40) if trial_quota is not None else None
+        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used)
+        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40)
         calls = []
 
-        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance | None:
+        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance:
             calls.append((tenant_id, pool_type))
             return paid if pool_type == "paid" else trial
 
@@ -398,6 +397,31 @@ class TestWorkspaceCreditPoolCases:
             assert calls == [("tenant", "trial")]
         else:
             assert calls == [("tenant", "paid")]
+
+    @staticmethod
+    @pytest.mark.parametrize("subscription_available", [False, True])
+    def test_credit_display_preserves_known_facts_during_billing_outage(
+        config_overrides: Callable[..., None], subscription_available: bool
+    ) -> None:
+        """The provider settings page can show custom keys without inventing a balance."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        with (
+            patch.object(
+                billing,
+                "subscription_get_subscription_info",
+                return_value=builders.subscription_info("team", next_credit_reset_date=1775001600),
+                side_effect=None if subscription_available else billing.BillingSubscriptionUpstreamUnavailableError(),
+            ),
+            patch.object(billing, "quota_get_balance", side_effect=billing.BillingQuotaUpstreamUnavailableError()),
+        ):
+            result = DeploymentWorkspaceFeatureGateway().get_effective_credit_pool("tenant")
+
+        assert result.plan == (CloudPlan.TEAM if subscription_available else None)
+        assert result.pool_type == ("paid" if subscription_available else None)
+        assert result.next_credit_reset_date == (1775001600 if subscription_available else None)
+        assert result.remaining_credits is None
+        assert result.is_exhausted
+        assert not result.is_unlimited
 
     @staticmethod
     @pytest.mark.parametrize(

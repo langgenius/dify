@@ -309,6 +309,9 @@ describe('KnowledgeOverviewPage metrics and readiness', () => {
   })
 
   it('shows an activity error with a retry action instead of an empty state', async () => {
+    // A completed task makes the page invalidate activity once React commits the task list, which
+    // can land after the error is shown and replace it before the retry click.
+    queryData.tasks = []
     server.failing.add('activity')
     await renderOverview()
     await expect.element(page.getByText('knowledgeSpace.tasksErrorDescription')).toBeInTheDocument()

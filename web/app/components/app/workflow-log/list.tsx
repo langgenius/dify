@@ -20,7 +20,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -42,21 +42,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
   const [showDrawer, setShowDrawer] = useState<boolean>(false)
   const [currentLog, setCurrentLog] = useState<WorkflowAppLogPartialResponse | undefined>()
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [localLogs, setLocalLogs] = useState<WorkflowAppLogPartialResponse[]>(logs?.data || [])
-
-  useEffect(() => {
-    if (!logs?.data) {
-      setLocalLogs([])
-      return
-    }
-
-    const sortedLogs = [...logs.data].sort((a, b) => {
-      const result = (a.created_at ?? 0) - (b.created_at ?? 0)
-      return sortOrder === 'asc' ? result : -result
-    })
-
-    setLocalLogs(sortedLogs)
-  }, [logs?.data, sortOrder])
+  const sortedLogs = useMemo(
+    () =>
+      [...(logs?.data ?? [])].sort((a, b) => {
+        const result = (a.created_at ?? 0) - (b.created_at ?? 0)
+        return sortOrder === 'asc' ? result : -result
+      }),
+    [logs?.data, sortOrder],
+  )
 
   const handleSort = () => {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
@@ -204,7 +197,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             </tr>
           </thead>
           <tbody className="system-sm-regular text-text-secondary">
-            {localLogs.map((log: WorkflowAppLogPartialResponse) => {
+            {sortedLogs.map((log: WorkflowAppLogPartialResponse) => {
               const endUser = log.created_by_end_user
                 ? log.created_by_end_user.session_id
                 : log.created_by_account

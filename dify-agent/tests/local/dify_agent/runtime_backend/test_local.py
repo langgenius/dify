@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
+from pathlib import Path
 import shlex
 from typing import Mapping
 
+import anyio
 import pytest
 from shellctl.shared import DeleteJobResponse, JobMode, JobResult, JobStatusName, JobStatusView
 
@@ -33,6 +36,7 @@ class _Client:
     output: str = ""
     close_error: Exception | None = None
     exit_codes: list[int] = field(default_factory=list)
+    execute_script: bool = False
 
     async def run(
         self,
@@ -43,18 +47,29 @@ class _Client:
         timeout: float = 10.0,
         mode: JobMode = JobMode.PTY,
     ) -> JobResult:
-        del timeout
-        commands = tuple(
-            tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
-        )
+        if not self.execute_script:
+            commands = tuple(
+                tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
+            )
+        else:
+            commands = ()
         self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env, mode=mode))
+        exit_code = self.exit_codes.pop(0) if self.exit_codes else self.exit_code
+        output = self.output
+        if self.execute_script:
+            with anyio.fail_after(timeout):
+                completed = await anyio.run_process(
+                    ["/bin/sh", "-c", script], cwd=cwd, env={**os.environ, **(env or {})}, check=False
+                )
+            exit_code = completed.returncode
+            output = completed.stdout.decode()
         return JobResult(
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,
             done=True,
-            exit_code=self.exit_codes.pop(0) if self.exit_codes else self.exit_code,
+            exit_code=exit_code,
             output_path="/tmp/output.log",
-            output=self.output,
+            output=output,
             offset=0,
             truncated=False,
         )
@@ -91,9 +106,10 @@ class _Client:
 class _Factory:
     clients: list[_Client] = field(default_factory=list)
     runs: list[_RunCall] = field(default_factory=list)
+    execute_script: bool = False
 
     def __call__(self) -> _Client:
-        client = _Client(runs=self.runs)
+        client = _Client(runs=self.runs, execute_script=self.execute_script)
         self.clients.append(client)
         return client
 
@@ -138,36 +154,60 @@ class _FailThenSucceedFactory:
 
 
 @pytest.mark.anyio
-async def test_local_binding_create_materializes_home_and_new_workspace() -> None:
-    factory = _Factory()
+@pytest.mark.parametrize("source", ["present", "missing-root", "missing-snapshot", "invalid", "dangling"])
+async def test_local_binding_create_restores_only_existing_snapshot(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, source: str
+) -> None:
+    factory = _Factory(execute_script=True)
+    homes = tmp_path / "homes"
+    workspaces = tmp_path / "workspaces"
+    snapshots = tmp_path / "snapshots"
+    snapshot = snapshots / "home-home-1"
+    home = homes / "binding-1"
+    workspace = workspaces / "workspace-1"
+    if source == "present":
+        snapshot.mkdir(parents=True)
+        (snapshot / "fixture.txt").write_text("restored", encoding="utf-8")
+    elif source != "missing-root":
+        snapshots.mkdir()
+        if source == "invalid":
+            snapshot.write_text("not a directory", encoding="utf-8")
+        elif source == "dangling":
+            snapshot.symlink_to(snapshots / "absent")
+
     backend = LocalExecutionBindingBackend(
         endpoint="http://shellctl",
         auth_token="",
-        materialized_home_root="/homes",
-        workspace_root="/workspaces",
-        snapshot_root="/snapshots",
+        materialized_home_root=str(homes),
+        workspace_root=str(workspaces),
+        snapshot_root=str(snapshots),
         client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
-
-    allocation = await backend.create_binding(
-        ExecutionBindingCreateSpec(
-            tenant_id="tenant-1",
-            agent_id="agent-1",
-            binding_id="binding-1",
-            workspace_id="workspace-1",
-            existing_workspace_ref=None,
-            home_snapshot_ref="home-home-1",
-        )
+    spec = ExecutionBindingCreateSpec(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        binding_id="binding-1",
+        workspace_id="workspace-1",
+        existing_workspace_ref=None,
+        home_snapshot_ref="home-home-1",
     )
 
-    assert allocation.binding_ref == "binding-1:workspace-1"
-    assert allocation.workspace_ref == "workspace-1"
-    assert factory.commands[0] == ("exec", "2>&1")
-    assert factory.commands[1] == ("test", "-d", "/snapshots/home-home-1")
-    assert ("mkdir", "-p", "/workspaces/workspace-1") in factory.commands
-    assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
-    assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
-    assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+    if source in {"invalid", "dangling"}:
+        with pytest.raises(BindingCreateError):
+            await backend.create_binding(spec)
+        assert not home.exists()
+        assert not workspace.exists()
+    else:
+        allocation = await backend.create_binding(spec)
+        assert allocation.binding_ref == "binding-1:workspace-1"
+        assert allocation.workspace_ref == "workspace-1"
+        assert home.is_dir() and workspace.is_dir()
+        if source == "present":
+            assert (home / "fixture.txt").read_text(encoding="utf-8") == "restored"
+        else:
+            assert not list(home.iterdir())
+
+    assert ("starting with an empty Home" in caplog.text) == (source in {"missing-root", "missing-snapshot"})
     assert all(run.mode is JobMode.STDIO for run in factory.runs)
 
 
@@ -270,7 +310,7 @@ async def test_local_binding_create_failure_removes_partial_home_and_workspace()
                 binding_id="binding-1",
                 workspace_id="workspace-1",
                 existing_workspace_ref=None,
-                home_snapshot_ref="home-home-1",
+                home_snapshot_ref=None,
             )
         )
 

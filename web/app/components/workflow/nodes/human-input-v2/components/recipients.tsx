@@ -42,6 +42,7 @@ import {
 } from '@/context/workspace-state'
 import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getContactRecipientQueryOptions } from '../contact-queries'
 import {
   addRecipient,
@@ -120,7 +121,7 @@ const RecipientsContent = ({
       initialPageParam: 1,
       getNextPageParam: (page) => (page.page * page.limit < page.total ? page.page + 1 : undefined),
       enabled: open,
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
     }),
   )
@@ -774,7 +775,8 @@ const RecipientsContent = ({
                 {isDebouncing || search.isPending
                   ? t(($) => $['nodes.humanInputV2.recipients.loading'], { ns: 'workflow' })
                   : search.isError
-                    ? t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' })
+                    ? (getRequestErrorMessage(search.error) ??
+                      t(($) => $['nodes.humanInputV2.recipients.loadError'], { ns: 'workflow' }))
                     : t(($) => $['nodes.humanInputV2.recipients.resultCount'], {
                         ns: 'workflow',
                         count: results.length,
@@ -904,7 +906,8 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
-      context: { silent: true },
+      // Optional count badge; it is hidden when the count cannot load.
+      meta: { errorToast: false },
       retry: false,
     }),
   )

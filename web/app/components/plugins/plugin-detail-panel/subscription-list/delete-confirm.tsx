@@ -11,10 +11,11 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
+import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useDeleteTriggerSubscription } from '@/service/use-triggers'
+import { deleteTriggerSubscriptionMutationOptions } from '@/service/trigger-queries'
 import { useSubscriptionList } from './use-subscription-list'
 
 type Props = Readonly<{
@@ -30,8 +31,9 @@ const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
   const { refetch } = useSubscriptionList()
-  const { mutate: deleteSubscription, isPending: isDeleting } = useDeleteTriggerSubscription({
-    silent: true,
+  const { mutate: deleteSubscription, isPending: isDeleting } = useMutation({
+    ...deleteTriggerSubscriptionMutationOptions(),
+    meta: { errorToast: false },
   })
   const { t } = useTranslation(['common', 'pluginTrigger'])
   const [inputName, setInputName] = useState('')

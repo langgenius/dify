@@ -1,6 +1,7 @@
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vitest/browser'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { Pricing } from '@/app/components/billing/pricing'
 import { createConsoleQueryWrapper, seedFeatures } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -8,6 +9,12 @@ import { renderWorkflowBrowserComponent } from '../../__tests__/workflow-browser
 import OnlineUsers from '../../header/online-users'
 import Control from '../../operator/control'
 import { CollaborationUpgradeModal } from '../upgrade-modal'
+
+// boundary: collaboration analytics stop at the telemetry adapter.
+vi.mock('@/app/components/base/amplitude', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/app/components/base/amplitude')>()),
+  trackEvent: vi.fn(),
+}))
 
 const avatarLabel = 'billing.upgrade.workflowCollaboration.label'
 const commentLabel = 'workflow.common.commentMode'
@@ -38,6 +45,7 @@ async function renderEditorControls({ upgradeAvailable = true, showPricing = fal
 }
 
 beforeEach(() => {
+  vi.clearAllMocks()
   onTestFinished(guardUnexpectedFetch())
 })
 
@@ -75,6 +83,30 @@ it('opens Cloud pricing from the collaboration upgrade dialog', async () => {
   await expect
     .element(screen.getByRole('dialog').getByRole('button', { name: 'common.operation.close' }))
     .toBeVisible()
+})
+
+it('counts each dialog opening and the upgrade click under the control that opened it', async () => {
+  const { screen } = await renderEditorControls()
+  const dialog = screen.getByRole('dialog', { name: upgradeTitle })
+  await screen.getByRole('button', { name: avatarLabel }).click()
+  await dialog.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  await screen.getByRole('button', { name: upgradeTitle }).click()
+  await dialog.getByRole('button', { name: 'billing.triggerLimitModal.upgrade' }).click()
+
+  const prompts = vi
+    .mocked(trackEvent)
+    .mock.calls.filter(([event]) => event === 'collab_upgrade_prompt')
+    .map(([, properties]) => properties)
+  expect(prompts).toEqual([
+    { action: 'shown', entry_point: 'canvas_avatar', workspace_id: expect.any(String) },
+    { action: 'shown', entry_point: 'canvas_comment_tool', workspace_id: expect.any(String) },
+    {
+      action: 'upgrade_clicked',
+      entry_point: 'canvas_comment_tool',
+      workspace_id: expect.any(String),
+    },
+  ])
 })
 
 it('hides both upgrade controls when a Sandbox workspace cannot unlock collaboration', async () => {

@@ -11,17 +11,19 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import { getRequestErrorMessage } from '@/service/http-error'
 import {
-  useInitiateTriggerOAuth,
-  useTriggerOAuthConfig,
-  useTriggerProviderInfo,
-} from '@/service/use-triggers'
+  initiateTriggerOAuthMutationOptions,
+  triggerOAuthConfigQueryOptions,
+  triggerProviderInfoQueryOptions,
+} from '@/service/trigger-queries'
 import { SupportedCreationMethods } from '../../../types'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
@@ -62,16 +64,18 @@ export const CreateSubscriptionButton = ({
   const detail = usePluginStore((state) => state.detail)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
-  const { data: providerInfo } = useTriggerProviderInfo(detail?.provider || '')
+  const { data: providerInfo } = useQuery(triggerProviderInfoQueryOptions(detail?.provider || ''))
   const supportedMethods = useMemo(
     () => providerInfo?.supported_creation_methods || [],
     [providerInfo?.supported_creation_methods],
   )
-  const { data: oauthConfig, refetch: refetchOAuthConfig } = useTriggerOAuthConfig(
-    detail?.provider || '',
-    supportedMethods.includes(SupportedCreationMethods.OAUTH),
+  const { data: oauthConfig, refetch: refetchOAuthConfig } = useQuery(
+    triggerOAuthConfigQueryOptions(
+      detail?.provider || '',
+      supportedMethods.includes(SupportedCreationMethods.OAUTH),
+    ),
   )
-  const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
+  const { mutate: initiateOAuth } = useMutation(initiateTriggerOAuthMutationOptions())
 
   const methodType = supportedMethods.length === 1 ? supportedMethods[0] : DEFAULT_METHOD
 
@@ -239,9 +243,10 @@ export const CreateSubscriptionButton = ({
               }
             })
           },
-          onError: () => {
+          onError: (error) => {
             toast.error(
-              t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+              getRequestErrorMessage(error) ??
+                t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
             )
           },
         })

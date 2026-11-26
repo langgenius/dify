@@ -1,8 +1,8 @@
 import type { TFunction } from 'i18next'
 import type { FileEntity } from '../types'
+import type { ConsoleClient } from '@/service/console'
 import type { FileResponse } from '@/types/workflow'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { upload } from '@/service/base'
 import { createHttpError } from '@/service/http-error'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { TransferMethod } from '@/types/app'
@@ -21,9 +21,27 @@ import {
   isAllowedFileExtension,
 } from '../utils'
 
-vi.mock('@/service/base', () => ({
-  upload: vi.fn(),
+const publicUpload = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/webapp-client').webAppClient.files.upload.post>(),
+)
+vi.mock('@/service/webapp-client', () => ({
+  webAppClient: { files: { upload: { post: publicUpload } } },
 }))
+const consoleUpload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
+const trialUpload = vi.hoisted(() =>
+  vi.fn<ConsoleClient['trialApps']['byAppId']['files']['upload']['post']>(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': consoleUpload,
+      'trialApps.byAppId.files.upload.post': trialUpload,
+    }),
+  }
+})
 
 describe('file-uploader utils', () => {
   beforeEach(() => {
@@ -53,9 +71,25 @@ describe('file-uploader utils', () => {
       )
     })
 
-    it('should return default message for other errors', () => {
+    it('should return the server message for other errors', () => {
+      const error = createHttpError(new Response(null, { status: 413 }), {
+        code: 'file_too_large',
+        message: 'File size exceeded. 15 MB maximum.',
+      })
+      expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe(
+        'File size exceeded. 15 MB maximum.',
+      )
+    })
+
+    it('should return default message when the server returned no message', () => {
       const error = createHttpError(new Response(null, { status: 400 }), { code: 'unknown_error' })
       expect(getFileUploadErrorMessage(error, 'Upload failed', createMockT())).toBe('Upload failed')
+    })
+
+    it('should return default message for client-side failures', () => {
+      expect(
+        getFileUploadErrorMessage(new TypeError('Failed to fetch'), 'Upload failed', createMockT()),
+      ).toBe('Upload failed')
     })
 
     it('should return default message when error has no response', () => {
@@ -64,47 +98,73 @@ describe('file-uploader utils', () => {
   })
 
   describe('fileUpload', () => {
-    it('should handle successful file upload', async () => {
+    const callbacks = () => ({
+      onProgressCallback: vi.fn(),
+      onSuccessCallback: vi.fn(),
+      onErrorCallback: vi.fn(),
+    })
+    const uploaded = { id: '123', name: 'test.txt', size: 4 }
+
+    it('uploads console files through the files contract', async () => {
       const mockFile = new File(['test'], 'test.txt')
-      const mockCallbacks = {
-        onProgressCallback: vi.fn(),
-        onSuccessCallback: vi.fn(),
-        onErrorCallback: vi.fn(),
-      }
+      const mockCallbacks = callbacks()
+      consoleUpload.mockResolvedValue(uploaded)
 
-      vi.mocked(upload).mockResolvedValue({ id: '123' })
+      fileUpload({ file: mockFile, ...mockCallbacks })
 
-      fileUpload({
-        file: mockFile,
-        ...mockCallbacks,
-      })
-
-      expect(upload).toHaveBeenCalledTimes(1)
-      const request = vi.mocked(upload).mock.calls[0]![0]
-      expect(request.data.get('file')).toBe(mockFile)
-
-      // Wait for the promise to resolve and call onSuccessCallback
+      expect(consoleUpload).toHaveBeenCalledExactlyOnceWith(
+        { body: { file: mockFile } },
+        { context: { onUploadProgress: expect.any(Function) } },
+      )
+      expect(publicUpload).not.toHaveBeenCalled()
       await vi.waitFor(() => {
-        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledExactlyOnceWith({ id: '123' })
+        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledExactlyOnceWith(uploaded)
         expect(mockCallbacks.onErrorCallback).not.toHaveBeenCalled()
       })
     })
 
-    it('should call onErrorCallback when upload fails', async () => {
+    it('uploads trial app files into the trial app tenant', async () => {
       const mockFile = new File(['test'], 'test.txt')
-      const mockCallbacks = {
-        onProgressCallback: vi.fn(),
-        onSuccessCallback: vi.fn(),
-        onErrorCallback: vi.fn(),
-      }
+      const mockCallbacks = callbacks()
+      trialUpload.mockResolvedValue(uploaded)
 
+      fileUpload({ file: mockFile, ...mockCallbacks }, false, 'trial-1')
+
+      expect(trialUpload).toHaveBeenCalledExactlyOnceWith(
+        { params: { app_id: 'trial-1' }, body: { file: mockFile } },
+        { context: { onUploadProgress: expect.any(Function) } },
+      )
+      expect(consoleUpload).not.toHaveBeenCalled()
+      await vi.waitFor(() =>
+        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledExactlyOnceWith(uploaded),
+      )
+    })
+
+    it('uploads public web app files through the WebApp files contract', async () => {
+      const mockFile = new File(['test'], 'test.txt')
+      const mockCallbacks = callbacks()
+      publicUpload.mockResolvedValue(uploaded)
+
+      fileUpload({ file: mockFile, ...mockCallbacks }, true)
+
+      await vi.waitFor(() =>
+        expect(mockCallbacks.onSuccessCallback).toHaveBeenCalledExactlyOnceWith(uploaded),
+      )
+      expect(publicUpload).toHaveBeenCalledExactlyOnceWith(
+        { body: { file: mockFile } },
+        { context: { onUploadProgress: expect.any(Function) } },
+      )
+      expect(consoleUpload).not.toHaveBeenCalled()
+      publicUpload.mock.calls[0]![1]!.context!.onUploadProgress!({ loaded: 1, total: 4 })
+      expect(mockCallbacks.onProgressCallback).toHaveBeenCalledWith(25)
+    })
+
+    it('should call onErrorCallback when upload fails', async () => {
+      const mockCallbacks = callbacks()
       const uploadError = new Error('Upload failed')
-      vi.mocked(upload).mockRejectedValue(uploadError)
+      consoleUpload.mockRejectedValue(uploadError)
 
-      fileUpload({
-        file: mockFile,
-        ...mockCallbacks,
-      })
+      fileUpload({ file: new File(['test'], 'test.txt'), ...mockCallbacks })
 
       await vi.waitFor(() => {
         expect(mockCallbacks.onErrorCallback).toHaveBeenCalledExactlyOnceWith(uploadError)
@@ -112,57 +172,14 @@ describe('file-uploader utils', () => {
       })
     })
 
-    it('should call onProgressCallback when progress event is computable', () => {
-      const mockFile = new File(['test'], 'test.txt')
-      const mockCallbacks = {
-        onProgressCallback: vi.fn(),
-        onSuccessCallback: vi.fn(),
-        onErrorCallback: vi.fn(),
-      }
+    it('reports console upload progress as a percentage', () => {
+      const mockCallbacks = callbacks()
+      consoleUpload.mockResolvedValue(uploaded)
 
-      vi.mocked(upload).mockImplementation(({ onprogress }) => {
-        // Simulate a progress event
-        if (onprogress)
-          onprogress.call(
-            {} as XMLHttpRequest,
-            { lengthComputable: true, loaded: 50, total: 100 } as ProgressEvent,
-          )
-
-        return Promise.resolve({ id: '123' })
-      })
-
-      fileUpload({
-        file: mockFile,
-        ...mockCallbacks,
-      })
+      fileUpload({ file: new File(['test'], 'test.txt'), ...mockCallbacks })
+      consoleUpload.mock.calls[0]![1]!.context!.onUploadProgress!({ loaded: 50, total: 100 })
 
       expect(mockCallbacks.onProgressCallback).toHaveBeenCalledWith(50)
-    })
-
-    it('should not call onProgressCallback when progress event is not computable', () => {
-      const mockFile = new File(['test'], 'test.txt')
-      const mockCallbacks = {
-        onProgressCallback: vi.fn(),
-        onSuccessCallback: vi.fn(),
-        onErrorCallback: vi.fn(),
-      }
-
-      vi.mocked(upload).mockImplementation(({ onprogress }) => {
-        if (onprogress)
-          onprogress.call(
-            {} as XMLHttpRequest,
-            { lengthComputable: false, loaded: 0, total: 0 } as ProgressEvent,
-          )
-
-        return Promise.resolve({ id: '123' })
-      })
-
-      fileUpload({
-        file: mockFile,
-        ...mockCallbacks,
-      })
-
-      expect(mockCallbacks.onProgressCallback).not.toHaveBeenCalled()
     })
   })
 
