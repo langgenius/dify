@@ -1,19 +1,18 @@
-import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { emulateReducedMotion } from '@/test/browser-media-emulation'
+import { hold, route, setupFakeApi } from '@/test/fake-api'
+import { basePath } from '@/utils/var'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
-const { uploadImage } = vi.hoisted(() => ({
-  uploadImage: vi.fn<(request: { body: { file: File } }) => Promise<PostFilesUploadResponse>>(),
-}))
-
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
-  },
-}))
+// The contract requires UUID file ids; derive a stable one from each readable key.
+const fileId = (key: string) =>
+  `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
+    .join('')
+    .slice(0, 12)
+    .padStart(12, '0')}`
 
 async function createImageFile() {
   const canvas = document.createElement('canvas')
@@ -90,6 +89,29 @@ function deferNextCanvasBlob() {
   }
 }
 
+// Reopening the picker refetches the static emojibase catalog from the app origin.
+const emojiCatalog = `${basePath}/emoji/emojibase-17.0.0/en`
+const fake = setupFakeApi(() => ({
+  routes: [
+    route('GET', 'origin', `${emojiCatalog}/data.json`, () => []),
+    route('GET', 'origin', `${emojiCatalog}/messages.json`, () => ({
+      groups: [],
+      subgroups: [],
+      skinTones: [],
+    })),
+  ],
+  console: {
+    files: {
+      upload: {
+        post: ({ body }) => ({
+          id: fileId('uploaded'),
+          name: 'uploaded-image',
+          size: body.file.size,
+        }),
+      },
+    },
+  },
+}))
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
@@ -100,6 +122,8 @@ afterEach(() => {
 })
 
 it('ignores crop completion during the closing animation while Cancel remains available', async () => {
+  // The closing animation is the window this race needs.
+  await emulateReducedMotion(false)
   const { client, trigger, dialog, save, onConfirm } = await openImageSession()
   const crop = deferNextCanvasBlob()
   const popup = dialog.element()
@@ -123,7 +147,7 @@ it('ignores crop completion during the closing animation while Cancel remains av
   await cancel.click()
   expect(await exitFrame).toBeGreaterThan(0)
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
   expect(onConfirm).not.toHaveBeenCalled()
   await expect.element(trigger).toHaveFocus()
   await userEvent.keyboard('{Enter}')
@@ -137,15 +161,11 @@ it('ignores crop completion during the closing animation while Cancel remains av
 })
 
 it('ignores an old upload when reopened as soon as keyboard focus returns', async () => {
-  let finishUpload!: (response: PostFilesUploadResponse) => void
-  const pendingUpload = new Promise<PostFilesUploadResponse>((resolve) => {
-    finishUpload = resolve
-  })
-  uploadImage.mockReturnValueOnce(pendingUpload)
+  const upload = hold(fake.console.files.upload.post)
   const { client, trigger, dialog, save, file, onConfirm } = await openImageSession()
   await save.click()
-  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
-  const uploadedFile = uploadImage.mock.calls[0]![0].body.file
+  // Cropping and encoding take a while on a slow runner; wait for the request itself.
+  const uploadedFile = (await upload.arrived).body.file
   const bitmap = await createImageBitmap(uploadedFile)
   expect({ width: bitmap.width, height: bitmap.height }).toEqual({ width: 80, height: 80 })
   bitmap.close()
@@ -156,11 +176,10 @@ it('ignores an old upload when reopened as soon as keyboard focus returns', asyn
   const search = dialog.getByRole('combobox', { name: 'app.iconPicker.search' })
   await expect.element(search).toHaveFocus()
   await dialog.getByRole('radio', { name: 'app.iconPicker.color.green' }).click()
-  finishUpload({ id: 'old-upload', name: 'icon.png', size: file.size })
-  await pendingUpload
+  upload.resolve({ id: fileId('old-upload'), name: 'icon.png', size: file.size })
   await search.fill('new session')
   expect(onConfirm).not.toHaveBeenCalled()
-  expect(uploadImage).toHaveBeenCalledTimes(1)
+  expect(fake.console.files.upload.post).toHaveBeenCalledTimes(1)
   await expect.element(dialog).toBeVisible()
   await expect.element(search).toHaveValue('new session')
   await expect

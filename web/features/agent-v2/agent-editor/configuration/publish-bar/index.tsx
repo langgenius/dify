@@ -138,9 +138,7 @@ export function AgentConfigurePublishBar({
           agent_id: agentId,
         },
       },
-      context: {
-        silent: true,
-      },
+      meta: { errorToast: false },
       enabled: publishIsAvailable && !isPublishing && !selectedVersionSnapshot,
     })
   useQuery(workflowReferencesQueryOptions)

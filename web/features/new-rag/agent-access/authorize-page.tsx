@@ -62,26 +62,26 @@ export function KnowledgeAgentAuthorizePage() {
   const request = useQuery({
     ...consoleQuery.knowledgeFs.agentAccess.authorize.get.queryOptions({
       input: { query: params },
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
     enabled: isLoggedIn,
     retry: false,
   })
   const workspaces = useQuery({
-    ...consoleQuery.workspaces.get.queryOptions({ context: { silent: true } }),
+    ...consoleQuery.workspaces.get.queryOptions({ meta: { errorToast: false } }),
     enabled: isLoggedIn,
   })
   const knowledgeBases = useKnowledgeBaseOptions(request.isSuccess)
   const [selected, setSelected] = useState<string[]>([])
   const switchWorkspace = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: () => window.location.reload(),
     }),
   )
   const decide = useMutation(
     consoleQuery.knowledgeFs.agentAccess.authorize.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: ({ redirect_to }) => window.location.assign(redirect_to),
     }),
   )

@@ -67,7 +67,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: vi.fn().mockResolvedValue({
+  fetchPipelineWorkflowDraft: vi.fn().mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
     hash: 'test-hash',
     rag_pipeline_variables: [],

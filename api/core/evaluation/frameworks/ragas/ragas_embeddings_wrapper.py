@@ -1,20 +1,27 @@
 import asyncio
 from typing import Any, override
 
-from langchain_core.embeddings import Embeddings
+from ragas.embeddings.base import BaseRagasEmbedding
+
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 
 
-class DifyEmbeddingsWrapper(Embeddings):
-    """Bridge RAGAS embedding metrics to the tenant's default embedding model."""
+class DifyEmbeddingsWrapper(BaseRagasEmbedding):
+    """Bridge modern Ragas metrics to the tenant's default embedding model."""
 
-    def __init__(self, tenant_id: str, user_id: str | None = None):
+    def __init__(self, tenant_id: str, user_id: str | None = None, *, single_text_is_query: bool = False):
         super().__init__()
         self.tenant_id = tenant_id
         self.user_id = user_id
+        self.single_text_is_query = single_text_is_query
         self._model_instance: Any | None = None
-        self.run_config: Any | None = None
+
+    def for_answer_relevancy(self) -> "DifyEmbeddingsWrapper":
+        """Use query embeddings for the question and document embeddings for generated questions."""
+        return DifyEmbeddingsWrapper(self.tenant_id, self.user_id, single_text_is_query=True)
 
     def _get_model_instance(self) -> Any:
+        """Resolve and cache the tenant's default embedding model with Evaluation attribution."""
         from core.model_manager import ModelManager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -22,6 +29,7 @@ class DifyEmbeddingsWrapper(Embeddings):
             self._model_instance = ModelManager.for_tenant(
                 tenant_id=self.tenant_id,
                 user_id=self.user_id,
+                request_metadata=get_evaluation_credit_usage_metadata(),
             ).get_default_model_instance(
                 tenant_id=self.tenant_id,
                 model_type=ModelType.TEXT_EMBEDDING,
@@ -57,32 +65,18 @@ class DifyEmbeddingsWrapper(Embeddings):
             embeddings.extend([[float(value) for value in vector] for vector in result.embeddings])
         return embeddings
 
-    def embed_query(self, text: str) -> list[float]:
-        return self._embed([text], is_query=True)[0]
+    @override
+    def embed_text(self, text: str, **kwargs: Any) -> list[float]:
+        return self._embed([text], is_query=self.single_text_is_query)[0]
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+    @override
+    async def aembed_text(self, text: str, **kwargs: Any) -> list[float]:
+        return await asyncio.to_thread(self.embed_text, text, **kwargs)
+
+    @override
+    def embed_texts(self, texts: list[str], **kwargs: Any) -> list[list[float]]:
         return self._embed(texts, is_query=False)
 
-    def set_run_config(self, run_config: Any) -> None:
-        """Implement the configuration hook expected by RAGAS embedding metrics."""
-        self.run_config = run_config
-
-    async def embed_text(self, text: str, is_async: bool = True) -> list[float]:
-        """Implement the RAGAS single-text helper without importing optional HF backends."""
-        if is_async:
-            return (await self.aembed_documents([text]))[0]
-        return self.embed_documents([text])[0]
-
-    async def embed_texts(self, texts: list[str], is_async: bool = True) -> list[list[float]]:
-        """Implement the RAGAS multi-text helper without importing optional HF backends."""
-        if is_async:
-            return await self.aembed_documents(texts)
-        return self.embed_documents(texts)
-
     @override
-    async def aembed_query(self, text: str) -> list[float]:
-        return await asyncio.to_thread(self.embed_query, text)
-
-    @override
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        return await asyncio.to_thread(self.embed_documents, texts)
+    async def aembed_texts(self, texts: list[str], **kwargs: Any) -> list[list[float]]:
+        return await asyncio.to_thread(self.embed_texts, texts, **kwargs)

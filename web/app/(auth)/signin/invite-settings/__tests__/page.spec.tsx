@@ -141,7 +141,7 @@ describe('Invitation activation', () => {
             timezone: 'Asia/Shanghai',
           },
         },
-        { context: { silent: true } },
+        undefined,
       )
       expect(mocks.profile).toHaveBeenCalled()
       expect(setLocaleOnClient).toHaveBeenCalledExactlyOnceWith(expected)
@@ -159,7 +159,7 @@ describe('Invitation activation', () => {
       await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
       expect(mocks.activate).toHaveBeenCalledExactlyOnceWith(
         { body: { token: 'invite-token' } },
-        { context: { silent: true } },
+        undefined,
       )
       expect(setLocaleOnClient).not.toHaveBeenCalled()
     },

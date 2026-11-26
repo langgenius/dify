@@ -168,7 +168,7 @@ function CreateTokenForm({
   const [customDays, setCustomDays] = useState<number | null>(DEFAULT_PERSONAL_TOKEN_EXPIRY_DAYS)
   const create = useMutation(
     consoleQuery.knowledgeFs.agentAccess.tokens.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async (result) => {
         onCreated(result)
         await invalidate()
@@ -475,7 +475,7 @@ function EditGrantForm({
   const [selected, setSelected] = useState<string[]>(() => grant.knowledge_base_ids)
   const save = useMutation(
     consoleQuery.knowledgeFs.agentAccess.grants.byGrantId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async () => {
         onClose()
         await invalidate()
@@ -543,7 +543,7 @@ export function RevokeGrantDialog({
   const invalidate = useInvalidateAgentAccess()
   const revoke = useMutation(
     consoleQuery.knowledgeFs.agentAccess.grants.byGrantId.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: async () => {
         onClose()
         await invalidate()

@@ -46,7 +46,7 @@ export function KnowledgeFsApiAccessDialog({
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const apiKeyMutations = useDatasetApiKeyMutations()
   const { data: apiBaseInfo } = useQuery(
-    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ context: { silent: true } }),
+    consoleQuery.datasets.apiBaseInfo.get.queryOptions({ meta: { errorToast: false } }),
   )
   // The shared prefix of every KnowledgeFS service API route for this space; the operation
   // path (queries/admission, documents, sources, …) is appended by the caller.

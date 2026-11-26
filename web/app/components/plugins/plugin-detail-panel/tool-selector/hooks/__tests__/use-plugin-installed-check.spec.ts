@@ -9,10 +9,10 @@ import { createPluginEntity } from '@/test/fixtures/plugin'
 import { usePluginInstalledCheck } from '../use-plugin-installed-check'
 
 const requests = vi.hoisted(() => ({ installed: vi.fn(), marketplace: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  getMarketplace: requests.marketplace,
-}))
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const { withMarketplaceResponses } = await import('@/test/marketplace-service')
+  return withMarketplaceResponses(await importOriginal(), { pluginDetail: requests.marketplace })
+})
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -38,7 +38,10 @@ it('finds marketplace metadata for the requested plugin', async () => {
   expect(result.current.pluginID).toBe('org/plugin')
   expect(result.current.manifest).toMatchObject({ name: 'Test plugin' })
   expect(requests.installed).toHaveBeenCalledWith({ body: { plugin_ids: ['org/plugin'] } })
-  expect(requests.marketplace).toHaveBeenCalledWith('/plugins/org/plugin')
+  expect(requests.marketplace).toHaveBeenCalledWith(
+    { params: { organization: 'org', pluginName: 'plugin' } },
+    expect.anything(),
+  )
 })
 
 it.each([undefined, null, ''])(

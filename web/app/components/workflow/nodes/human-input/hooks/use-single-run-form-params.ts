@@ -38,12 +38,12 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { mutateAsync: submitWorkflowForm } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const { mutateAsync: submitChatflowForm } = useMutation(
     consoleQuery.apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.form.run.post.mutationOptions(
-      { context: { silent: true } },
+      { meta: { errorToast: false } },
     ),
   )
   const { t } = useTranslation(['workflow', 'workflowHumanInput', 'common'])

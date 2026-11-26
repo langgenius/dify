@@ -1,8 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useConversationVarValues, useSysVarValues } from '@/service/use-workflow'
+import {
+  conversationVarValuesQueryOptions,
+  sysVarValuesQueryOptions,
+} from '@/service/workflow-queries'
 import { useStore } from '../store'
 import { BlockEnum } from '../types'
 
@@ -11,8 +15,8 @@ const useInspectVarsCrud = () => {
   const partOfNodesWithInspectVars = useStore((s) => s.nodesWithInspectVars)
   const resource = useAtomValue(editorResourceAtom)
   const appResource = resource.kind === 'app' ? resource : undefined
-  const { data: conversationVars } = useConversationVarValues(appResource)
-  const { data: allSystemVars } = useSysVarValues(appResource)
+  const { data: conversationVars } = useQuery(conversationVarValuesQueryOptions(appResource))
+  const { data: allSystemVars } = useQuery(sysVarValuesQueryOptions(appResource))
   const { varsAppendStartNode, systemVars } = (() => {
     if (allSystemVars?.length === 0) return { varsAppendStartNode: [], systemVars: [] }
     const varsAppendStartNode =

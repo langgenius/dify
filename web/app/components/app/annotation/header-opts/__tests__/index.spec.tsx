@@ -7,6 +7,7 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import HeaderOptions from '../index'
 
@@ -32,14 +33,11 @@ const { mockedFetchAnnotations, addAnnotation } = vi.hoisted(() => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'apps.byAppId.annotations.post': (input) => addAnnotation(input),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.annotations.export.get': (input) => mockedFetchAnnotations(input),
     }),
   }
@@ -75,7 +73,6 @@ const renderComponent = (
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
     onAdded: vi.fn(),
-    controlUpdateList: 0,
     ...props,
   }
 
@@ -227,7 +224,7 @@ describe('HeaderOptions', () => {
     expect(mockJsonToCSV).not.toHaveBeenCalled()
   })
 
-  it('creates an annotation through the dialog and refreshes the parent and export data', async () => {
+  it('creates an annotation through the dialog and refreshes the export data from the cache', async () => {
     mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
     const user = userEvent.setup()
     const onAdded = vi.fn()
@@ -253,9 +250,9 @@ describe('HeaderOptions', () => {
         params: { app_id: 'test-app-id' },
         body: { question: 'Integration question', answer: 'Integration answer' },
       })
-      expect(onAdded).toHaveBeenCalledOnce()
       expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2)
     })
+    expect(onAdded).not.toHaveBeenCalled()
   })
 
   it('should allow bulk import through the batch modal', async () => {
@@ -377,13 +374,40 @@ describe('HeaderOptions', () => {
     consoleSpy.mockRestore()
   })
 
-  it('should refetch annotations when controlUpdateList changes', async () => {
-    const view = renderComponent({ controlUpdateList: 0 })
-
+  it('reloads export data changed elsewhere when the page is opened again', async () => {
+    const user = userEvent.setup()
+    const first = renderComponent()
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
+    first.unmount()
 
-    view.rerender(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} controlUpdateList={1} />)
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    ;(useLocale as Mock).mockReturnValue(LanguagesSupported[0])
+    render(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} />, {
+      queryClient: first.queryClient,
+    })
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
+    await expandExportMenu(user)
+    const { csvItem } = await getExportItems()
+    expect(csvItem).not.toHaveAttribute('data-disabled')
+  })
+
+  it('enables export once an invalidated annotations key brings back data', async () => {
+    const user = userEvent.setup()
+    const view = renderComponent()
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
+
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    await view.queryClient.invalidateQueries({
+      queryKey: consoleQuery.apps.byAppId.annotations.key({
+        input: { params: { app_id: 'test-app-id' } },
+      }),
+    })
+
+    expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2)
+    await expandExportMenu(user)
+    const { csvItem, jsonItem } = await getExportItems()
+    expect(csvItem).not.toHaveAttribute('data-disabled')
+    expect(jsonItem).not.toHaveAttribute('data-disabled')
   })
 })

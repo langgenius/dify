@@ -50,7 +50,7 @@
   "scanner.lastTested": "آخرین آزمایش: {{time}}",
   "scanner.loadFailed": "اسکنرها بارگیری نشدند.",
   "scanner.neverTested": "هنوز آزمایش نشده",
-  "scanner.readOnly": "فقط مالکان و مدیران فضای کاری می‌توانند اسکنرها را مدیریت کنند.",
+  "scanner.readOnly": "شما اجازهٔ مدیریت اسکنرها را ندارید.",
   "scanner.status.active": "فعال",
   "scanner.status.error": "خطا",
   "scanner.test": "آزمایش",

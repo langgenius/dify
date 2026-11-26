@@ -78,7 +78,7 @@ export function McpConnectorPanel({
   const [editing, setEditing] = useState<KnowledgeAgentGrantResponse | null>(null)
   const [revoking, setRevoking] = useState<KnowledgeAgentGrantResponse | null>(null)
   const mine = useQuery({
-    ...consoleQuery.knowledgeFs.agentAccess.get.queryOptions({ context: { silent: true } }),
+    ...consoleQuery.knowledgeFs.agentAccess.get.queryOptions({ meta: { errorToast: false } }),
     enabled: open,
   })
   const knowledgeBases = useKnowledgeBaseOptions(open && mine.data?.available === true)
@@ -369,13 +369,13 @@ function WorkspaceSection({
   const invalidate = useInvalidateAgentAccess()
   const workspace = useQuery({
     ...consoleQuery.knowledgeFs.agentAccess.workspace.get.queryOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
     enabled: isManager,
   })
   const toggle = useMutation(
     consoleQuery.knowledgeFs.agentAccess.workspace.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSettled: () => invalidate(),
     }),
   )

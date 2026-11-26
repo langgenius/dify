@@ -18,7 +18,7 @@ import {
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,8 +31,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useThemePreference } from '@/features/theme/hooks'
 import { themeOptions } from '@/features/theme/theme'
 import Link from '@/next/link'
+import { logoutMutationOptions } from '@/service/common-queries'
 import { consoleQuery } from '@/service/console'
-import { useLogout } from '@/service/use-common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
@@ -199,7 +199,7 @@ export default function AccountMenu({ trigger }: AccountMenuProps) {
   )
   const { t } = useTranslation(['accountSettings'])
 
-  const { mutate: logout } = useLogout()
+  const { mutate: logout } = useMutation(logoutMutationOptions())
 
   return (
     <div>

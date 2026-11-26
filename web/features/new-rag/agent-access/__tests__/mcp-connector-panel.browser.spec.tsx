@@ -39,6 +39,14 @@ const renderPanel = async (onOpenChange = vi.fn()) => {
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
   queryClient.setQueryData(consoleQuery.knowledgeFs.agentAccess.get.queryKey(), mine)
+  // The panel names each connection's knowledge bases; none are loaded, so it shows counts.
+  queryClient.setQueryData(
+    consoleQuery.knowledgeFs.spaces.get.infiniteKey({
+      input: (page: number) => ({ query: { limit: 100, page } }),
+      initialPageParam: 1,
+    }),
+    { pages: [{ data: [], has_more: false, limit: 100, page: 1 }], pageParams: [1] },
+  )
   await render(
     <QueryClientProvider client={queryClient}>
       <McpConnectorPanel open onOpenChange={onOpenChange} />

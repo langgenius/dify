@@ -1519,7 +1519,9 @@ export type WebMessageListItemWritable = {
 }
 
 export type PostAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/audio-to-text'
@@ -1857,7 +1859,9 @@ export type PostEmailCodeLoginValidityResponse =
   PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/files/upload'
@@ -2204,7 +2208,10 @@ export type PostFormHumanInputByFormTokenUploadTokenResponse =
   PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostHumanInputFormsFilesData = {
-  body?: never
+  body?: {
+    file?: Blob | File
+    url?: string
+  }
   path?: never
   query?: never
   url: '/human-input-forms/files'
@@ -2683,9 +2690,7 @@ export type GetSavedMessagesResponse = GetSavedMessagesResponses[keyof GetSavedM
 export type PostSavedMessagesData = {
   body: SavedMessageCreatePayload
   path?: never
-  query: {
-    message_id: string
-  }
+  query?: never
   url: '/saved-messages'
 }
 

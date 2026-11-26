@@ -35,7 +35,7 @@ const EvaluationLayout = ({ resourceType, resourceId }: EvaluationResourceProps)
                 {t(($) => $.description)}{' '}
                 <a
                   className="text-text-accent"
-                  href={docLink()}
+                  href={docLink('/use-dify/evaluate/run-evaluations')}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

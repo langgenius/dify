@@ -2,13 +2,12 @@
 
 import type { SkillDetailResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SkillDraftMutationCoordinator } from './mutations'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
-import { invalidateSkillDetail, setSkillDetailCache } from './cache'
 import { runSkillDraftMutation } from './mutations'
 
 export function SkillDisplayNameEditor({
@@ -28,7 +27,6 @@ export function SkillDisplayNameEditor({
 }) {
   const { t } = useTranslation(['skill'])
   const { t: tCommon } = useTranslation(['common'])
-  const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const submittingRef = useRef(false)
   const [displayNameOverride, setDisplayNameOverride] = useState<{
@@ -38,7 +36,7 @@ export function SkillDisplayNameEditor({
   const [draftName, setDraftName] = useState(detail.display_name)
   const metadataMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const saving = metadataMutation.isPending
@@ -70,26 +68,18 @@ export function SkillDisplayNameEditor({
 
     submittingRef.current = true
     try {
-      const nextDetail = await runSkillDraftMutation(
-        draftMutationCoordinator,
-        async (expectedUpdatedAt) => {
-          return metadataMutation.mutateAsync({
-            params: {
-              skill_id: skillId,
-            },
-            body: {
-              display_name: nextDisplayName,
-              expected_updated_at: expectedUpdatedAt,
-            },
-          })
-        },
-      )
-
-      setSkillDetailCache(queryClient, skillId, nextDetail)
-      invalidateSkillDetail(queryClient, skillId)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.workspaces.current.skills.get.key({ type: 'query' }),
+      await runSkillDraftMutation(draftMutationCoordinator, async (expectedUpdatedAt) => {
+        return metadataMutation.mutateAsync({
+          params: {
+            skill_id: skillId,
+          },
+          body: {
+            display_name: nextDisplayName,
+            expected_updated_at: expectedUpdatedAt,
+          },
+        })
       })
+
       setDisplayNameOverride({
         base: detail.display_name,
         next: nextDisplayName,

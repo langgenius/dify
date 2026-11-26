@@ -111,14 +111,14 @@ export function TidyPage() {
   const settings = useQuery(
     api.settings.get.queryOptions({
       input: { params },
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchInterval: 15000,
     }),
   )
   const summary = useQuery(
     api.summary.get.queryOptions({
       input: { params },
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchInterval: 15000,
     }),
   )
@@ -132,7 +132,7 @@ export function TidyPage() {
           ...(cursor ? { cursor } : {}),
         },
       },
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchInterval: 15000,
       enabled: cursor !== END,
     }),
@@ -148,7 +148,7 @@ export function TidyPage() {
           ...(similarCursor ? { cursor: similarCursor } : {}),
         },
       },
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchInterval: 15000,
       enabled: kind === 'overlap' && similarCursor !== END,
     }),
@@ -156,15 +156,15 @@ export function TidyPage() {
   const scans = useQuery(
     api.scans.get.queryOptions({
       input: { params, query: scanCursor ? { cursor: scanCursor } : {} },
-      context: { silent: true },
+      meta: { errorToast: false },
       refetchInterval: 15000,
     }),
   )
-  const configure = useMutation(api.settings.patch.mutationOptions({ context: { silent: true } }))
+  const configure = useMutation(api.settings.patch.mutationOptions({ meta: { errorToast: false } }))
   const act = useMutation(
-    api.findings.byFindingId.actions.post.mutationOptions({ context: { silent: true } }),
+    api.findings.byFindingId.actions.post.mutationOptions({ meta: { errorToast: false } }),
   )
-  const retry = useMutation(api.retry.post.mutationOptions({ context: { silent: true } }))
+  const retry = useMutation(api.retry.post.mutationOptions({ meta: { errorToast: false } }))
   const pending = configure.isPending || act.isPending || retry.isPending
   const progress = progressOf(summary.data)
   const lastError = settings.data?.enabled ? settings.data.lastError : null

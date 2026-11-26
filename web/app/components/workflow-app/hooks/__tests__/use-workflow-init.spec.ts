@@ -88,7 +88,7 @@ vi.mock('@/service/workflow-queries', async (importOriginal) => {
 const mockFetchWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
+  fetchAppWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
 }))
 
 const notExistError = () =>
@@ -253,6 +253,23 @@ describe('useWorkflowInit', () => {
       syncWorkflowDraftIsEmpty: true,
     })
     expect(result.current.data?.graph.viewport).toBeUndefined()
+  })
+
+  it('should load the draft created by another editor during initialization', async () => {
+    mockFetchWorkflowDraft.mockResolvedValueOnce(draftResponse)
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), {
+        code: 'draft_workflow_not_sync',
+        message: 'Draft already saved.',
+        status: 409,
+      }),
+    )
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.data?.hash).toBe(draftResponse.hash)
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledTimes(1)
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {
