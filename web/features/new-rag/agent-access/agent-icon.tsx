@@ -1,12 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { recogniseAgent } from './agents'
 
-const CLAUDE = /claude|anthropic/i
-const CODEX = /codex|openai|chatgpt/i
-
-/**
- * A small mark for an agent or token, so rows of connections are not text only.
- * Clients name themselves, so the match is a hint for the eye, never an identity check.
- */
+/** A small mark for an agent or token, so rows of connections are not text only. */
 export function AgentIcon({
   className,
   name,
@@ -18,11 +13,7 @@ export function AgentIcon({
 }) {
   const icon = personal
     ? 'i-ri-key-2-line text-text-tertiary'
-    : name && CLAUDE.test(name)
-      ? 'i-ri-claude-fill text-[#D97757]'
-      : name && CODEX.test(name)
-        ? 'i-ri-openai-fill text-text-primary'
-        : 'i-custom-vender-other-mcp text-text-tertiary'
+    : (recogniseAgent(name)?.icon ?? 'i-custom-vender-other-mcp text-text-tertiary')
   return (
     <span
       aria-hidden

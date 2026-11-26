@@ -2,24 +2,19 @@
 
 from __future__ import annotations
 
-import base64
-import hashlib
-import json
 import secrets
-from collections.abc import Iterable, Iterator
-from dataclasses import dataclass
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from typing import cast
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from constants.oauth_bearer import TokenType
-from enums.account import TenantAccountRole
 from libs.oauth_bearer import InvalidBearerError, build_authenticator, sha256_hex
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin
+from models.account import TenantAccountJoin
 from models.knowledge_agent import KnowledgeAgentGrant, KnowledgeAgentWorkspaceSetting
 from models.oauth import OAuthAccessToken
 from repositories.oauth_access_token_repository import SQLAlchemyOAuthAccessTokenRepository
@@ -28,61 +23,13 @@ from services.knowledge_agent.access_service import (
     KnowledgeAgentAccessService,
     KnowledgeAgentAuthFailure,
     KnowledgeAgentPrincipal,
-    KnowledgeAgentUrls,
 )
 from services.knowledge_agent.oauth import KnowledgeAgentOAuthError
-
-URLS = KnowledgeAgentUrls(
-    issuer="https://dify.test",
-    resource="https://dify.test/mcp/knowledge",
-    authorize="https://cloud.dify.test/account/knowledge-agent/authorize",
-    token="https://dify.test/mcp/knowledge/oauth/token",
-    register="https://dify.test/mcp/knowledge/oauth/register",
-    revocation="https://dify.test/mcp/knowledge/oauth/revoke",
-)
-CALLBACK = "http://127.0.0.1:33418/callback"
-
-
-class FakeRedis:
-    def __init__(self) -> None:
-        self.values: dict[str, str | int] = {}
-
-    def get(self, name: str) -> str | int | None:
-        return self.values.get(name)
-
-    def setex(self, name: str, _time: int, value: str) -> None:
-        self.values[name] = value
-
-    def delete(self, *names: str | bytes) -> int:
-        keys = [name.decode() if isinstance(name, bytes) else name for name in names]
-        return sum(1 for key in keys if self.values.pop(key, None) is not None)
-
-    def incr(self, name: str) -> int:
-        value = int(self.values.get(name, 0)) + 1
-        self.values[name] = value
-        return value
-
-    def expire(self, _name: str, _time: int) -> None:
-        return None
-
-
-class FakeSpaces:
-    """Sharing and per-base switches by base id; records which workspace and member each check ran for."""
-
-    def __init__(self, readable: Iterable[str], blocked: Iterable[str] = ()) -> None:
-        self.readable_ids = set(readable)
-        self.blocked_ids = set(blocked)
-        self.checks: set[tuple[str, str | None]] = set()
-
-    def readable(self, *, tenant_id: str, account_id: str, control_space_ids: Iterable[str]) -> set[str]:
-        self.checks.add((tenant_id, account_id))
-        return {space_id for space_id in control_space_ids if space_id in self.readable_ids}
-
-    def blocked(self, *, tenant_id: str, control_space_ids: Iterable[str] | None = None) -> set[str]:
-        self.checks.add((tenant_id, None))
-        if control_space_ids is None:
-            return set(self.blocked_ids)
-        return {space_id for space_id in control_space_ids if space_id in self.blocked_ids}
+from tests.helpers.unit.knowledge_agent import CALLBACK, URLS, World, knowledge_agent_world
+from tests.helpers.unit.knowledge_agent import authorize as _authorize
+from tests.helpers.unit.knowledge_agent import exchange as _exchange
+from tests.helpers.unit.knowledge_agent import pkce as _pkce
+from tests.helpers.unit.knowledge_agent import register as _register
 
 
 @pytest.fixture(autouse=True)
@@ -90,114 +37,10 @@ def _no_bearer_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("libs.oauth_bearer.enforce_bearer_rate_limit", lambda _hash: None)
 
 
-@dataclass
-class World:
-    tenant: str
-    member: str
-    admin: str
-    member_account: Account
-    admin_account: Account
-    service: KnowledgeAgentAccessService
-    sessions: sessionmaker[Session]
-    redis: FakeRedis
-    spaces: FakeSpaces
-    documents: dict[str, dict[str, object]]
-
-
 @pytest.fixture
 def world(sqlite_session_factory: sessionmaker[Session]) -> Iterator[World]:
-    with sqlite_session_factory.begin() as session:
-        tenant = Tenant(name="Acme")
-        member = Account(name="Mia", email="mia@example.com", status=AccountStatus.ACTIVE)
-        admin = Account(name="Olivia", email="olivia@example.com", status=AccountStatus.ACTIVE)
-        session.add_all([tenant, member, admin])
-        session.flush()
-        session.add_all(
-            [
-                TenantAccountJoin(tenant_id=tenant.id, account_id=member.id, role=TenantAccountRole.NORMAL),
-                TenantAccountJoin(tenant_id=tenant.id, account_id=admin.id, role=TenantAccountRole.OWNER),
-            ]
-        )
-        session.flush()
-        session.expunge_all()
-    redis = FakeRedis()
-    spaces = FakeSpaces(readable={"kb-handbook", "kb-finance", "kb-board"}, blocked={"kb-board"})
-    documents: dict[str, dict[str, object]] = {}
-    # Stands in for Flask-SQLAlchemy's request-scoped session, which request teardown closes.
-    bearer_session = scoped_session(sqlite_session_factory)
-    service = KnowledgeAgentAccessService(
-        session_maker=sqlite_session_factory,
-        bearer_session=bearer_session,
-        redis_client=redis,
-        spaces=spaces,
-        fetch_client_metadata=lambda url: (
-            (200, json.dumps(documents[url]).encode()) if url in documents else (404, b"")
-        ),
-        enabled=lambda: True,
-    )
-    yield World(
-        tenant=tenant.id,
-        member=member.id,
-        admin=admin.id,
-        member_account=member,
-        admin_account=admin,
-        service=service,
-        sessions=sqlite_session_factory,
-        redis=redis,
-        spaces=spaces,
-        documents=documents,
-    )
-    bearer_session.remove()
-
-
-def _pkce() -> tuple[str, str]:
-    verifier = secrets.token_urlsafe(48)
-    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-    return verifier, challenge
-
-
-def _authorize(world: World, *, client_id: str, spaces: list[str], redirect_uri: str = CALLBACK) -> dict[str, str]:
-    verifier, challenge = _pkce()
-    params = {
-        "response_type": "code",
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
-        "state": "s-1",
-        "resource": URLS.resource,
-    }
-    decided = world.service.decide_authorization(
-        account=world.member_account,
-        tenant_id=world.tenant,
-        body={**params, "approve": True, "knowledge_base_ids": spaces},
-        urls=URLS,
-    )
-    query = parse_qs(urlsplit(decided["redirect_to"]).query)
-    assert query["state"] == ["s-1"]
-    assert query["iss"] == [URLS.issuer]
-    return {"code": query["code"][0], "verifier": verifier, "client_id": client_id}
-
-
-def _register(world: World, name: str = "Claude Code") -> str:
-    registered = world.service.register_client(
-        {"client_name": name, "redirect_uris": ["http://127.0.0.1/callback"]}, ip_address="10.0.0.1"
-    )
-    assert registered["token_endpoint_auth_method"] == "none"
-    return registered["client_id"]
-
-
-def _exchange(world: World, flow: dict[str, str]) -> dict[str, str]:
-    return world.service.exchange_token(
-        {
-            "grant_type": "authorization_code",
-            "code": flow["code"],
-            "client_id": flow["client_id"],
-            "code_verifier": flow["verifier"],
-            "resource": URLS.resource,
-        },
-        URLS,
-    )
+    with knowledge_agent_world(sqlite_session_factory) as built:
+        yield built
 
 
 def test_discovery_documents_advertise_pkce_metadata_documents_and_the_resource() -> None:
@@ -271,7 +114,6 @@ def test_pkce_resource_and_redirect_are_enforced(world: World) -> None:
     _, challenge = _pkce()
     with pytest.raises(KnowledgeAgentAccessError) as plain:
         world.service.describe_authorization(
-            account=world.member_account,
             tenant_id=world.tenant,
             params={
                 "response_type": "code",
@@ -285,7 +127,6 @@ def test_pkce_resource_and_redirect_are_enforced(world: World) -> None:
     assert plain.value.code == "invalid_request"
     with pytest.raises(KnowledgeAgentAccessError) as target:
         world.service.describe_authorization(
-            account=world.member_account,
             tenant_id=world.tenant,
             params={
                 "response_type": "code",
@@ -364,17 +205,13 @@ def test_client_metadata_documents_are_fetched_and_validated(world: World) -> No
         "code_challenge": challenge,
         "code_challenge_method": "S256",
     }
-    described = world.service.describe_authorization(
-        account=world.member_account, tenant_id=world.tenant, params=base, urls=URLS
-    )
+    described = world.service.describe_authorization(tenant_id=world.tenant, params=base, urls=URLS)
     assert described["client"] == {"kind": "cimd", "name": "Example Agent", "redirect_host": "localhost:61000"}
     assert described["blocked_knowledge_base_ids"] == ["kb-board"]
     liar = "https://agent.example/liar.json"
     world.documents[liar] = {"client_id": "https://agent.example/other.json", "redirect_uris": [CALLBACK]}
     with pytest.raises(KnowledgeAgentAccessError) as error:
-        world.service.describe_authorization(
-            account=world.member_account, tenant_id=world.tenant, params={**base, "client_id": liar}, urls=URLS
-        )
+        world.service.describe_authorization(tenant_id=world.tenant, params={**base, "client_id": liar}, urls=URLS)
     assert error.value.code == "invalid_client"
     with pytest.raises(KnowledgeAgentOAuthError) as bad:
         world.service.register_client({"redirect_uris": ["http://evil.example/cb"]}, ip_address="10.0.0.9")

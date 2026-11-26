@@ -306,6 +306,62 @@ describe('Tidy', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(service.configure).toHaveBeenCalledTimes(2)
   })
+  it('leaves a failure of a cancelled confirmation in the dialog, not on the page', async () => {
+    service.configure.mockRejectedValueOnce(new Error('unavailable'))
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('switch'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(
+      'knowledgeSpace.tidy.error',
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // Nothing failed on the page itself, and the next opening starts clean.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+    expect(within(screen.getByRole('dialog')).queryByRole('alert')).not.toBeInTheDocument()
+  })
+  it('names each switch through ids of its own, so two pages in one document do not collide', async () => {
+    service.settings.mockResolvedValue({
+      enabled: true,
+      conflicts: false,
+      revision: 1,
+      lastError: null,
+      updatedAt: '2026-11-04',
+    })
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter>
+        <KnowledgeSpaceTestProvider space={createKnowledgeSpaceFixture()}>
+          <TidyPage />
+          <TidyPage />
+        </KnowledgeSpaceTestProvider>
+      </NuqsTestingAdapter>,
+    )
+    const switches = [
+      ...(await screen.findAllByRole('switch', { name: 'knowledgeSpace.tidy.enabled' })),
+      ...(await screen.findAllByRole('switch', { name: 'knowledgeSpace.tidy.conflicts' })),
+    ]
+    expect(switches).toHaveLength(4)
+    expect(new Set(switches.map((node) => node.getAttribute('aria-labelledby'))).size).toBe(4)
+  })
+  it('lists findings whose decision is outdated when that status is asked for', async () => {
+    renderWithConsoleQuery(
+      <NuqsTestingAdapter searchParams="?tidyStatus=outdated">
+        <KnowledgeSpaceTestProvider space={createKnowledgeSpaceFixture()}>
+          <TidyPage />
+        </KnowledgeSpaceTestProvider>
+      </NuqsTestingAdapter>,
+    )
+    expect(
+      await screen.findByRole('combobox', { name: 'knowledgeSpace.tidy.statusFilter' }),
+    ).toHaveTextContent('knowledgeSpace.tidy.outdated')
+    await waitFor(() =>
+      expect(service.findings).toHaveBeenCalledWith(
+        expect.objectContaining({ query: { status: 'outdated' } }),
+      ),
+    )
+  })
   it('sends the saved review revision for undo and explains a stale-document refusal', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 3, text: '原文' }
     service.findings.mockResolvedValue({
@@ -385,12 +441,21 @@ describe('Tidy', () => {
     expect(service.act).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog')).toHaveTextContent('Handbook v3')
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    // Each step waits for the previous one (and its cache refresh) before the next disable.
-    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(2), { timeout: 3000 })
+    // One request carries the whole merge, so every other copy is disabled or none is.
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(1))
     // Walking outward from the kept copy: one disable per other copy, through the finding that reaches it.
     expect(service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body])).toEqual([
-      ['d1', { action: 'disable_document', expectedRevision: 1, documentId: 'c' }],
-      ['d2', { action: 'disable_document', expectedRevision: 1, documentId: 'e' }],
+      [
+        'd1',
+        {
+          action: 'disable_document',
+          expectedRevision: 1,
+          documentId: 'c',
+          also: [
+            { findingId: 'd2', action: 'disable_document', expectedRevision: 1, documentId: 'e' },
+          ],
+        },
+      ],
     ])
   })
   it('lets an editor choose another copy to keep', async () => {
@@ -534,10 +599,15 @@ describe('Tidy', () => {
     await user.click(within(card).getByRole('button', { name: /tidy\.disableOne.*Policy B/ }))
     expect(screen.getByRole('dialog').textContent).toMatch(/disableAlsoResolves.*"count":2/)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(3))
-    expect(
-      service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body.action]),
-    ).toEqual([
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(1))
+    const [disableRequest] = service.act.mock.calls[0] ?? []
+    expect([
+      [disableRequest.params.finding_id, disableRequest.body.action],
+      ...disableRequest.body.also.map((step: { findingId: string; action: string }) => [
+        step.findingId,
+        step.action,
+      ]),
+    ]).toEqual([
       ['overlap', 'disable_document'],
       ['amount', 'review'],
       ['duration', 'review'],
@@ -552,10 +622,15 @@ describe('Tidy', () => {
     )
     expect(screen.getByRole('dialog').textContent).toMatch(/disableAlsoResolves.*"count":2/)
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(3))
-    expect(
-      service.act.mock.calls.map(([input]) => [input.params.finding_id, input.body.action]),
-    ).toEqual([
+    await waitFor(() => expect(service.act).toHaveBeenCalledTimes(1))
+    const [request] = service.act.mock.calls[0] ?? []
+    expect([
+      [request.params.finding_id, request.body.action],
+      ...request.body.also.map((step: { findingId: string; action: string }) => [
+        step.findingId,
+        step.action,
+      ]),
+    ]).toEqual([
       ['overlap', 'disable_document'],
       ['amount', 'review'],
       ['duration', 'review'],
@@ -636,6 +711,43 @@ describe('Tidy', () => {
       }),
     )
     expect(service.act).toHaveBeenCalledTimes(2)
+  })
+  it('accepts a replacement as long as the API does and refuses a blank one', async () => {
+    const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }
+    service.findings.mockResolvedValue({
+      items: [
+        {
+          id: 'amount',
+          kind: 'conflict',
+          left: { ...evidence, documentId: 'a', title: 'Notes A', text: '报销15000元' },
+          right: { ...evidence, documentId: 'b', title: 'Notes B', text: '报销5000元' },
+          reason: 'amount',
+          similarity: null,
+          status: 'open',
+          revision: 4,
+          actionId: null,
+          createdAt: '2026-11-03',
+          stale: false,
+        },
+      ],
+      nextCursor: null,
+    })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'knowledgeSpace.tidy.adopt' }))[0]!,
+    )
+    const dialog = within(screen.getByRole('dialog'))
+    const replacement = dialog.getByRole('textbox')
+    expect(replacement).toHaveAttribute('maxlength', '20000')
+    await user.clear(replacement)
+    await user.type(replacement, '   ')
+    expect(
+      dialog.getByRole('button', { name: 'knowledgeSpace.tidy.rewriteConfirm' }),
+    ).toBeDisabled()
+    // A disabled default button also stops Enter in the form from sending it.
+    await user.type(replacement, '{Enter}')
+    expect(service.act).not.toHaveBeenCalled()
   })
   it('offers keeping both overlapping documents on equal footing with disabling one', async () => {
     const evidence = { revision: 1, chunkId: 'chunk', start: 0, end: 5 }

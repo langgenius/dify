@@ -91,6 +91,21 @@ describe('Tidy confirmation focus', () => {
     await expect.element(toggle).toHaveFocus()
     expect(service.configure).not.toHaveBeenCalled()
   })
+  it('keeps showing what was asked while the dialog animates out', async () => {
+    const screen = await setup(true)
+    await screen.getByRole('button', { name: /knowledgeSpace\.tidy\.disableOne.*Policy B/ }).click()
+    const dialog = screen.getByRole('dialog')
+    await expect.element(dialog).toBeVisible()
+    // Every text the closing dialog shows, from the moment it is dismissed until it is gone.
+    const shown: string[] = []
+    const element = dialog.element()
+    const observer = new MutationObserver(() => shown.push(element.textContent))
+    observer.observe(element, { childList: true, characterData: true, subtree: true })
+    await userEvent.keyboard('{Escape}')
+    await expect.element(dialog).not.toBeInTheDocument()
+    observer.disconnect()
+    for (const text of shown) expect(text).toContain('Policy B')
+  })
   it('keeps focus on the review queue after processing removes the evidence button', async () => {
     const screen = await setup(true)
     await screen.getByRole('button', { name: /knowledgeSpace\.tidy\.disableOne.*Policy B/ }).click()

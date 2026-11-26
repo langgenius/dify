@@ -291,6 +291,54 @@ describe('McpConnectorPanel', () => {
     )
   })
 
+  it('drops knowledge bases a connection can no longer have, says so, and saves the rest', async () => {
+    api.mine.mockResolvedValue(
+      mine({ grants: [token({ knowledge_base_ids: ['kb-handbook', 'kb-board', 'kb-gone'] })] }),
+    )
+    api.update.mockResolvedValue(token())
+    const { user, panel } = await openPanel({ currentWorkspace: { role: 'normal' } })
+
+    await user.click(await within(panel).findByRole('button', { name: /agents\.editAccess/ }))
+    const dialog = await screen.findByRole('dialog', {
+      name: 'knowledgeSpace.agents.editTokenTitle',
+    })
+    // Board turned personal agents off since; kb-gone is no longer among the member's bases.
+    expect(await within(dialog).findByRole('checkbox', { name: /Handbook/ })).toBeChecked()
+    expect(within(dialog).getByRole('checkbox', { name: /Board/ })).not.toBeChecked()
+    expect(within(dialog).getByText(/agents\.errorBlocked.*Board/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/agents\.errorKnowledgeBases.*kb-gone/)).toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeSpace.agents.saveChanges' }),
+    )
+
+    await waitFor(() =>
+      expect(api.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: { grant_id: 'grant-token' },
+          body: { knowledge_base_ids: ['kb-handbook'] },
+        }),
+      ),
+    )
+  })
+
+  it('does not create a never-expiring token from an empty custom lifetime', async () => {
+    const { user, panel } = await openPanel({ currentWorkspace: { role: 'normal' } })
+    const dialog = await openCreateDialog(user, panel)
+
+    await user.type(within(dialog).getByRole('textbox'), 'CI')
+    await user.click(within(dialog).getByRole('checkbox', { name: /Finance/ }))
+    await user.click(within(dialog).getByRole('combobox'))
+    await user.click(await screen.findByRole('option', { name: 'knowledgeSpace.agents.custom' }))
+    await user.clear(
+      within(dialog).getByRole('textbox', { name: 'knowledgeSpace.agents.customDays' }),
+    )
+
+    expect(
+      within(dialog).getByRole('button', { name: 'knowledgeSpace.agents.create' }),
+    ).toBeDisabled()
+    expect(api.createToken).not.toHaveBeenCalled()
+  })
+
   it('deletes a personal token after confirmation', async () => {
     api.revoke.mockResolvedValue(undefined)
     const { user, panel } = await openPanel({ currentWorkspace: { role: 'normal' } })
@@ -319,7 +367,9 @@ describe('McpConnectorPanel', () => {
     const member = (await within(panel).findByText('Bob')).closest('tr')!
     // Their own connection is listed above, not among the members'.
     expect(member).toHaveTextContent('Codex')
-    expect(member).toHaveTextContent('knowledgeSpace.agents.statusConnected')
+    // Nothing the server reports says whether an agent is connected right now.
+    expect(member).not.toHaveTextContent('knowledgeSpace.agents.statusConnected')
+    expect(within(panel).queryByText('knowledgeSpace.agents.columnStatus')).not.toBeInTheDocument()
     expect(member).toHaveTextContent('knowledgeSpace.agents.neverUsed')
     expect(member.parentElement?.children).toHaveLength(1)
 

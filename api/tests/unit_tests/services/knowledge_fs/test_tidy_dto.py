@@ -72,3 +72,26 @@ def test_finding_pages_carry_document_cards_and_tolerate_older_knowledge_fs() ->
     assert page.documents["doc-1"].model_dump() == card
     older = KnowledgeFSTidyFindingListResponse.model_validate({"items": [], "nextCursor": None})
     assert older.documents == {}
+
+
+def test_further_actions_settle_other_findings_but_never_undo_or_adopt() -> None:
+    further = {"findingId": "e" * 64, "expectedRevision": 1, "action": "disable_document", "documentId": "doc"}
+    payload = KnowledgeFSTidyActionPayload.model_validate(
+        {"action": "review", "expectedRevision": 1, "also": [further]}
+    )
+    assert payload.model_dump(exclude_none=True)["also"] == [further]
+    for invalid in (
+        {**further, "documentId": None},
+        {**further, "action": "undo"},
+        {**further, "findingId": "not-a-finding"},
+    ):
+        with pytest.raises(ValidationError):
+            KnowledgeFSTidyActionPayload.model_validate({"action": "review", "expectedRevision": 1, "also": [invalid]})
+    for single in (
+        {"action": "undo"},
+        {"action": "adopt", "documentId": "doc", "replacement": "x"},
+    ):
+        with pytest.raises(ValidationError, match="one finding at a time"):
+            KnowledgeFSTidyActionPayload.model_validate({**single, "expectedRevision": 1, "also": [further]})
+    with pytest.raises(ValidationError):
+        KnowledgeFSTidyActionPayload.model_validate({"action": "review", "expectedRevision": 1, "also": []})

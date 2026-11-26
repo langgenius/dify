@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from types import SimpleNamespace
 
 import pytest
 from flask import Flask, Response
+from sqlalchemy.orm import Session, sessionmaker
 
 import controllers.mcp.knowledge_agent as module
 from controllers import well_known
@@ -16,6 +18,7 @@ from services.knowledge_agent.access_service import (
     KnowledgeAgentUrls,
 )
 from services.knowledge_agent.oauth import KnowledgeAgentOAuthError
+from tests.helpers.unit.knowledge_agent import World, authorize, code_form, knowledge_agent_world, register
 
 PRINCIPAL = KnowledgeAgentPrincipal(
     account_id="acct",
@@ -179,3 +182,150 @@ def test_revocation_always_answers_200(app: Flask, service: StubService) -> None
         response = module.KnowledgeAgentRevokeApi().post()
     assert response.status_code == 200
     assert service.revoked == [{"token": "dfokr_unknown"}]
+
+
+# -- End to end: the real service behind the routes ------------------------------------------------
+
+
+class DocumentFacade:
+    """The one facade operation these tests reach, recording who it ran as."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def list_logical_documents(self, **kwargs: object) -> SimpleNamespace:
+        self.calls.append(kwargs)
+        document = SimpleNamespace(
+            id="doc-1", title="Handbook", status="ready", enabled=True, active=None, updated_at="2026-11-01"
+        )
+        return SimpleNamespace(data=[document], next_cursor=None)
+
+
+@pytest.fixture
+def world(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[World, DocumentFacade]]:
+    """The routes wired to the real access service over the service tests' doubles."""
+    facade = DocumentFacade()
+    monkeypatch.setattr("libs.oauth_bearer.enforce_bearer_rate_limit", lambda _hash: None)
+    monkeypatch.setattr(module.dify_config, "KNOWLEDGE_AGENT_ACCESS_ENABLED", True)
+    monkeypatch.setattr(module.dify_config, "SERVICE_API_URL", "https://dify.test")
+    monkeypatch.setattr(module.dify_config, "CONSOLE_WEB_URL", "https://cloud.dify.test")
+    monkeypatch.setattr(module, "get_knowledge_fs_features", lambda: SimpleNamespace(enabled=True))
+    monkeypatch.setattr(
+        module, "get_knowledge_fs_runtime", lambda _maker: SimpleNamespace(facade=facade, application=object())
+    )
+    with knowledge_agent_world(sqlite_session_factory) as built:
+        monkeypatch.setattr(module, "knowledge_agent_access_service", lambda: built.service)
+        yield built, facade
+
+
+def _call_tool(app: Flask, token: str, name: str, arguments: dict[str, object]) -> Response:
+    return _post(
+        app,
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments}},
+        {"Authorization": f"Bearer {token}"},
+    )
+
+
+def _token_request(app: Flask, form: dict[str, str]) -> Response:
+    with app.test_request_context("/mcp/knowledge/oauth/token", method="POST", data=form, base_url="https://dify.test"):
+        return module.KnowledgeAgentTokenApi().post()
+
+
+def test_a_personal_token_reads_its_bases_and_nothing_else_until_it_is_revoked(
+    app: Flask, world: tuple[World, DocumentFacade]
+) -> None:
+    built, facade = world
+    created = built.service.create_personal_token(
+        account=built.member_account, tenant_id=built.tenant, body={"name": "CI", "knowledge_base_ids": ["kb-handbook"]}
+    )
+    token = created["token"]
+
+    listed = _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"})
+    assert listed.status_code == 200
+    result = json.loads(listed.get_data())["result"]
+    assert result["structuredContent"]["documents"][0]["id"] == "doc-1"
+    assert facade.calls == [
+        {
+            "tenant_id": built.tenant,
+            "account_id": built.member,
+            "control_space_id": "kb-handbook",
+            "cursor": None,
+            "limit": 50,
+        }
+    ]
+
+    # A base the member can read but did not choose for this token, under either spelling.
+    spellings: list[dict[str, object]] = [{"knowledgeBaseId": "kb-finance"}, {"knowledge_base_id": "kb-finance"}]
+    for arguments in spellings:
+        refused = json.loads(_call_tool(app, token, "list_documents", arguments).get_data())["result"]
+        assert refused["isError"] is True
+    assert len(facade.calls) == 1
+
+    built.service.revoke_grant(
+        account=built.member_account, tenant_id=built.tenant, role="normal", grant_id=created["grant"]["id"]
+    )
+    revoked = _call_tool(app, token, "list_documents", {"knowledgeBaseId": "kb-handbook"})
+    assert revoked.status_code == 401
+    assert 'error="invalid_token"' in revoked.headers["WWW-Authenticate"]
+    assert json.loads(revoked.get_data())["error"] == "invalid_token"
+    assert len(facade.calls) == 1
+
+
+def test_the_token_endpoint_redeems_a_code_once_and_a_replay_ends_the_connection(
+    app: Flask, world: tuple[World, DocumentFacade]
+) -> None:
+    built, _ = world
+    flow = authorize(built, client_id=register(built), spaces=["kb-handbook"])
+
+    issued = _token_request(app, code_form(flow))
+    assert issued.status_code == 200
+    assert issued.headers["Cache-Control"] == "no-store"
+    assert issued.headers["Pragma"] == "no-cache"
+    tokens = json.loads(issued.get_data())
+    assert tokens["token_type"] == "Bearer"
+    assert tokens["scope"] == "knowledge:read"
+    assert (
+        _call_tool(app, tokens["access_token"], "list_documents", {"knowledgeBaseId": "kb-handbook"}).status_code == 200
+    )
+
+    replay = _token_request(app, code_form(flow))
+    assert replay.status_code == 400
+    assert json.loads(replay.get_data()) == {
+        "error": "invalid_grant",
+        "error_description": "The authorization code was already used",
+    }
+    after = _call_tool(app, tokens["access_token"], "list_documents", {"knowledgeBaseId": "kb-handbook"})
+    assert after.status_code == 401
+
+
+@pytest.mark.usefixtures("world")
+def test_registration_answers_201_and_reports_bad_metadata_and_the_rate_limit(app: Flask) -> None:
+    def post(body: object) -> Response:
+        with app.test_request_context(
+            "/mcp/knowledge/oauth/register",
+            method="POST",
+            json=body,
+            environ_base={"REMOTE_ADDR": "10.1.1.1"},
+        ):
+            return module.KnowledgeAgentRegisterApi().post()
+
+    created = post({"client_name": "Codex", "redirect_uris": ["http://localhost/callback"]})
+    assert created.status_code == 201
+    registered = json.loads(created.get_data())
+    assert registered["client_id"].startswith("dfokc_")
+    assert registered["client_name"] == "Codex"
+
+    bad = post({"redirect_uris": ["http://evil.example/cb"]})
+    assert bad.status_code == 400
+    assert json.loads(bad.get_data())["error"] == "invalid_redirect_uri"
+
+    limited = None
+    for _ in range(25):
+        limited = post({"redirect_uris": ["http://localhost/callback"]})
+        if limited.status_code != 201:
+            break
+    assert limited is not None
+    assert limited.status_code == 429
+    assert json.loads(limited.get_data())["error"] == "slow_down"

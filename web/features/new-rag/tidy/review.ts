@@ -3,13 +3,15 @@
  * planning the actions a choice implies, and the labels shown on document tiles.
  */
 import type {
+  KnowledgeFsTidyActionPayload,
   KnowledgeFsTidyDocumentCardResponse,
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 
 type TidyFinding = KnowledgeFsTidyFindingResponse
 type TidyDocumentCard = KnowledgeFsTidyDocumentCardResponse
-export type TidyAction = 'dismiss' | 'review' | 'disable_document' | 'undo'
+/** Actions that need no text; `adopt` carries a replacement and is requested on its own. */
+export type TidyAction = Exclude<KnowledgeFsTidyActionPayload['action'], 'adopt'>
 
 /** Identical documents linked by open duplicate findings (connected components). */
 export type DuplicateGroup = {
@@ -54,6 +56,28 @@ export type PlannedAction = {
   finding: TidyFinding
   action: TidyAction
   documentId?: string
+}
+
+/** One request settles the finding it addresses plus 63 others (the API's limit). */
+export const PLAN_REQUEST_SIZE = 64
+
+type JoinableAction = PlannedAction & { action: Exclude<TidyAction, 'undo'> }
+
+const isJoinable = (step: PlannedAction): step is JoinableAction => step.action !== 'undo'
+
+/**
+ * Splits a plan into requests the API applies all or nothing: the first step addresses the
+ * request, the rest ride along. An undo is only ever sent on its own.
+ */
+export function planRequests(plan: readonly PlannedAction[]) {
+  const requests: [PlannedAction, ...JoinableAction[]][] = []
+  for (const step of plan) {
+    const open = requests.at(-1)
+    if (open && isJoinable(step) && isJoinable(open[0]) && open.length < PLAN_REQUEST_SIZE)
+      open.push(step)
+    else requests.push([step])
+  }
+  return requests
 }
 
 /**
@@ -215,6 +239,14 @@ export type RewriteRequest = {
   targetTitle: string
   passage: string
   replacement: string
+}
+
+/** The longest replacement the API accepts (`replacement` of the action payload). */
+export const REWRITE_MAX_LENGTH = 20_000
+
+/** Whether `text` may be sent as a replacement: the API refuses blank and over-long text. */
+export function isRewriteText(text: string) {
+  return text.trim().length > 0 && text.length <= REWRITE_MAX_LENGTH
 }
 
 /** Why the server would not edit a passage in place (`details.parameters.status` of a conflict). */

@@ -7,9 +7,9 @@ from core.db.session_factory import session_factory
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from services.knowledge_agent.access_service import (
+from services.knowledge_agent.access_service import KnowledgeAgentAccessService
+from services.knowledge_agent.contracts import (
     KnowledgeAgentAccessError,
-    KnowledgeAgentAccessService,
     KnowledgeAgentAuthFailure,
     KnowledgeAgentPrincipal,
     KnowledgeAgentUrls,
@@ -31,6 +31,7 @@ def _fetch_client_metadata(url: str) -> tuple[int, bytes]:
 
 
 def knowledge_agent_access_service() -> KnowledgeAgentAccessService:
+    """The service wired to this process: database sessions, Redis, the SSRF-safe metadata fetcher."""
     session_maker = session_factory.get_session_maker()
     return KnowledgeAgentAccessService(
         session_maker=session_maker,

@@ -5,9 +5,13 @@ import {
   fileTypeLabel,
   groupDuplicates,
   groupPairs,
+  isRewriteText,
   mergePlan,
   newestDocument,
+  PLAN_REQUEST_SIZE,
+  planRequests,
   relativeTime,
+  REWRITE_MAX_LENGTH,
 } from '../review'
 
 const evidence = (documentId: string) => ({
@@ -132,5 +136,40 @@ describe('Tidy review helpers', () => {
     expect(relativeTime('2026-05-09T00:00:00Z', 'en-US', now)).toBe('6 months ago')
     expect(relativeTime('2026-11-08T00:00:00Z', 'zh-Hans', now)).toBe('昨天')
     expect(relativeTime(undefined, 'en-US', now)).toBe('')
+  })
+})
+
+describe('isRewriteText', () => {
+  it('accepts what the API accepts: some text, up to its length limit', () => {
+    expect(REWRITE_MAX_LENGTH).toBe(20_000)
+    expect(isRewriteText('x'.repeat(REWRITE_MAX_LENGTH))).toBe(true)
+    expect(isRewriteText('x'.repeat(REWRITE_MAX_LENGTH + 1))).toBe(false)
+    expect(isRewriteText(' \n\t')).toBe(false)
+  })
+})
+
+describe('planRequests', () => {
+  const review = (id: string) => ({ finding: duplicate(id, 'a', 'b'), action: 'review' as const })
+  const ids = (plan: Parameters<typeof planRequests>[0]) =>
+    planRequests(plan).map((request) => request.map((step) => step.finding.id))
+
+  it('sends a merge as one request so it applies to every finding or none', () => {
+    expect(ids([review('1'), review('2'), review('3')])).toEqual([['1', '2', '3']])
+    expect(ids([])).toEqual([])
+  })
+
+  it('starts another request once one is full', () => {
+    const plan = Array.from({ length: PLAN_REQUEST_SIZE + 1 }, (_, index) => review(`${index}`))
+    expect(planRequests(plan).map((request) => request.length)).toEqual([PLAN_REQUEST_SIZE, 1])
+  })
+
+  it('never lets an undo share a request', () => {
+    const undo = (id: string) => ({ finding: duplicate(id, 'a', 'b'), action: 'undo' as const })
+    expect(ids([review('1'), undo('2'), undo('3'), review('4'), review('5')])).toEqual([
+      ['1'],
+      ['2'],
+      ['3'],
+      ['4', '5'],
+    ])
   })
 })

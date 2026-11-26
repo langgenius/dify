@@ -31965,6 +31965,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "adopt", "disable_document", "dismiss", "review", "undo" | *Enum:* `"adopt"`, `"disable_document"`, `"dismiss"`, `"review"`, `"undo"` | Yes |
+| also | [ [KnowledgeFSTidyFurtherAction](#knowledgefstidyfurtheraction) ] |  | No |
 | documentId | string |  | No |
 | expectedRevision | integer |  | Yes |
 | replacement | string |  | No |
@@ -32052,6 +32053,17 @@ What the review page shows about a document a finding quotes.
 | similarity | number |  | Yes |
 | stale | boolean |  | No |
 | status | string, <br>**Available values:** "disabled", "dismissed", "open", "outdated", "reviewed" | *Enum:* `"disabled"`, `"dismissed"`, `"open"`, `"outdated"`, `"reviewed"` | Yes |
+
+#### KnowledgeFSTidyFurtherAction
+
+Another finding settled in the same transaction as the one the request addresses.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "disable_document", "dismiss", "review" | *Enum:* `"disable_document"`, `"dismiss"`, `"review"` | Yes |
+| documentId | string |  | No |
+| expectedRevision | integer |  | Yes |
+| findingId | string |  | Yes |
 
 #### KnowledgeFSTidyRetryResponse
 

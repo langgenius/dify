@@ -1402,6 +1402,7 @@ export type KnowledgeFsTidyFindingListResponse = {
 
 export type KnowledgeFsTidyActionPayload = {
   action: 'adopt' | 'disable_document' | 'dismiss' | 'review' | 'undo'
+  also?: Array<KnowledgeFsTidyFurtherAction> | null
   documentId?: string | null
   expectedRevision: number
   replacement?: string | null
@@ -2546,6 +2547,13 @@ export type KnowledgeFsTidyDocumentCardResponse = {
   publishedAt: string
   sizeBytes: number
   title: string
+}
+
+export type KnowledgeFsTidyFurtherAction = {
+  action: 'disable_document' | 'dismiss' | 'review'
+  documentId?: string | null
+  expectedRevision: number
+  findingId: string
 }
 
 export type KnowledgeFsTidyEvidenceResponse = {

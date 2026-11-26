@@ -17422,6 +17422,41 @@
                     "type": "string",
                     "format": "uuid"
                   },
+                  "also": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "findingId": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$/u"
+                        },
+                        "expectedRevision": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "dismiss",
+                            "review",
+                            "disable_document"
+                          ]
+                        },
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "findingId",
+                        "expectedRevision",
+                        "action"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 63
+                  },
                   "replacement": {
                     "type": "string",
                     "minLength": 1,

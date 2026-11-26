@@ -6,6 +6,7 @@ import type {
   KnowledgeFsTidyFindingResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
+import type { FindingKind, FindingSection } from './kinds'
 import type { DuplicateGroup, PairGroup, PlannedAction, RewriteRequest } from './review'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,6 +16,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { newKnowledgeDocumentDetailPath } from '../routes'
+import { FINDING_KINDS, FINDING_SECTIONS, FINDING_STATUSES } from './kinds'
 import {
   disablePlan,
   evidenceOf,
@@ -26,7 +28,6 @@ import {
 
 type Finding = KnowledgeFsTidyFindingResponse
 type Evidence = KnowledgeFsTidyEvidenceResponse
-export type Kind = Finding['kind']
 export type Cards = Readonly<Record<string, KnowledgeFsTidyDocumentCardResponse>>
 
 /** A destructive plan the reviewer confirms in the page's dialog first. */
@@ -47,43 +48,18 @@ export type CardProps = {
   onRun: (plan: PlannedAction[]) => void
 }
 
-// Tinted backgrounds (`state-*-hover`) stay readable in both themes; the status-dot colors do not.
-const BADGES: Record<Kind, { icon: string; tone: string }> = {
-  conflict: {
-    icon: 'i-ri-error-warning-line',
-    tone: 'bg-state-destructive-hover text-text-destructive',
-  },
-  duplicate: { icon: 'i-ri-file-copy-line', tone: 'bg-state-warning-hover text-text-warning' },
-  similar: { icon: 'i-ri-file-copy-2-line', tone: 'bg-state-accent-hover text-text-accent' },
-}
-
-function useKindLabel() {
-  const { t } = useTranslation(['knowledgeSpace'])
-  return (kind: Kind) =>
-    kind === 'conflict'
-      ? t(($) => $['tidy.conflict'])
-      : kind === 'duplicate'
-        ? t(($) => $['tidy.duplicate'])
-        : t(($) => $['tidy.similar'])
-}
-
 export function KindSection({
   children,
-  kind,
   meta,
+  section,
 }: {
   children: ReactNode
-  /** Conflicts need a judgement; copies and overlapping documents a choice of which to keep. */
-  kind: 'conflict' | 'overlap'
   meta: string
+  section: FindingSection
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const heading =
-    kind === 'conflict' ? t(($) => $['tidy.sectionConflict']) : t(($) => $['tidy.sectionOverlap'])
-  const hint =
-    kind === 'conflict'
-      ? t(($) => $['tidy.sectionConflictHint'])
-      : t(($) => $['tidy.sectionOverlapHint'])
+  const heading = t(($) => $[FINDING_SECTIONS[section].heading])
+  const hint = t(($) => $[FINDING_SECTIONS[section].hint])
   return (
     <section aria-label={heading} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-1">
@@ -111,15 +87,14 @@ function FindingShell({
 }: {
   aside: ReactNode
   children: ReactNode
-  kind: Kind
+  kind: FindingKind
   meter?: ReactNode
   onDismiss?: (() => void) | undefined
   stale?: boolean | undefined
   title: string
 }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const kindLabel = useKindLabel()
-  const badge = BADGES[kind]
+  const badge = FINDING_KINDS[kind]
   return (
     <article
       aria-label={title}
@@ -133,7 +108,7 @@ function FindingShell({
           )}
         >
           <span aria-hidden className={cn(badge.icon, 'size-3.5')} />
-          {kindLabel(kind)}
+          {t(($) => $[badge.label])}
         </span>
         {/* Narrow screens: badge, match and close on one row, the title on its own row below. */}
         <h3 className="order-last w-full system-md-semibold wrap-break-word text-text-primary sm:order-0 sm:w-auto sm:min-w-0 sm:flex-1">
@@ -347,16 +322,11 @@ function StatusAside({
   onRun,
 }: Pick<CardProps, 'busy' | 'canManage' | 'onRun'> & { finding: Finding }) {
   const { t } = useTranslation(['knowledgeSpace'])
-  const labels: Record<Finding['status'], string> = {
-    open: t(($) => $['tidy.open']),
-    dismissed: t(($) => $['tidy.dismissed']),
-    reviewed: t(($) => $['tidy.reviewed']),
-    disabled: t(($) => $['documentStatus.disabled']),
-    outdated: t(($) => $['tidy.outdated']),
-  }
   return (
     <>
-      <p className="system-sm-medium text-text-secondary">{labels[finding.status]}</p>
+      <p className="system-sm-medium text-text-secondary">
+        {t(($) => $[FINDING_STATUSES[finding.status].label])}
+      </p>
       {/* A decision carried over from an earlier revision has no action of its own to undo. */}
       {canManage &&
         finding.actionId &&
@@ -386,7 +356,10 @@ export function DuplicateGroupCard({
 }: CardProps & { group: DuplicateGroup }) {
   const { t, i18n } = useTranslation(['knowledgeSpace'])
   const newest = newestDocument(group.documentIds, cards)
-  const [keep, setKeep] = useState(newest)
+  const [chosen, setChosen] = useState(newest)
+  // The group is rebuilt on every refresh: a copy handled elsewhere leaves it, and a choice that
+  // left with it must not survive as a plan that keeps (and so disables) nothing.
+  const keep = group.documentIds.includes(chosen) ? chosen : newest
   const evidenceOf = (id: string) =>
     group.findings
       .flatMap((finding) => [finding.left, finding.right])
@@ -459,7 +432,7 @@ export function DuplicateGroupCard({
             latest={id === newest}
             title={titleOf(id)}
             selected={editable && id === keep}
-            onSelect={editable ? () => setKeep(id) : undefined}
+            onSelect={editable ? () => setChosen(id) : undefined}
             note={
               editable && id === keep ? t(($) => $['tidy.keepThis']) : t(($) => $['tidy.exactCopy'])
             }

@@ -9,12 +9,12 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.oauth import OAuthAccessToken
+from repositories.knowledge_agent_grant_repository import revoke_knowledge_agent_grant
 from services.account_ports import AccountSessionRepository
 from services.entities.account_access_entities import (
     AccountSessionRevocation,
     AccountSessionSnapshot,
 )
-from services.knowledge_agent.access_service import revoke_grant_of_token_row
 
 
 class SQLAlchemyOAuthAccessTokenRepository(AccountSessionRepository):
@@ -69,8 +69,9 @@ class SQLAlchemyOAuthAccessTokenRepository(AccountSessionRepository):
                 return AccountSessionRevocation(owned=False)
             if row.knowledge_agent_grant_id is not None:
                 # A knowledge-agent bearer stands for its whole connection: revoking it here (the
-                # account's single token list) also ends the connection's refresh tokens.
-                revoke_grant_of_token_row(session, row.knowledge_agent_grant_id, now=revoked_at)
+                # account's single token list) ends the connection and its refresh tokens too. The
+                # caller drops the returned hash from the token cache, as for any other row.
+                revoke_knowledge_agent_grant(session, row.knowledge_agent_grant_id, revoked_at=revoked_at)
 
             token_hash = row.token_hash
             if token_hash is not None:

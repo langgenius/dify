@@ -117,6 +117,24 @@ class KnowledgeFSTidyScanQuery(BaseModel):
     state: TidyScanState | None = None
 
 
+class KnowledgeFSTidyFurtherAction(BaseModel):
+    """Another finding settled in the same transaction as the one the request addresses."""
+
+    findingId: str = Field(pattern=r"^[a-f0-9]{64}$")  # noqa: N815  # Public field name.
+    expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
+    action: Literal["dismiss", "review", "disable_document"]
+    documentId: str | None = None  # noqa: N815  # Public field name.
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def require_document(self) -> "KnowledgeFSTidyFurtherAction":
+        """A document disable must explicitly identify the selected evidence side."""
+        if self.action == "disable_document" and not self.documentId:
+            raise ValueError("Choose the document to disable")
+        return self
+
+
 class KnowledgeFSTidyActionPayload(BaseModel):
     expectedRevision: int = Field(gt=0)  # noqa: N815  # Public field name.
     action: Literal["dismiss", "review", "disable_document", "undo", "adopt"]
@@ -124,6 +142,8 @@ class KnowledgeFSTidyActionPayload(BaseModel):
     # ``adopt`` only: ``documentId`` is the side that is right, and this text replaces the
     # conflicting passage of the other document. Only the knowledge base's indexed copy changes.
     replacement: str | None = Field(default=None, min_length=1, max_length=20_000)
+    # Applied with this action, all or none: a keep-one merge disables every other copy at once.
+    also: list[KnowledgeFSTidyFurtherAction] | None = Field(default=None, min_length=1, max_length=63)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -136,6 +156,8 @@ class KnowledgeFSTidyActionPayload(BaseModel):
             raise ValueError("Choose the document to keep and the new wording")
         if self.action != "adopt" and self.replacement is not None:
             raise ValueError("Only adopting a side rewrites a passage")
+        if self.also and self.action in ("undo", "adopt"):
+            raise ValueError("Undo or adopt one finding at a time")
         return self
 
 
