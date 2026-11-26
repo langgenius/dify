@@ -11,7 +11,7 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -67,10 +67,14 @@ export function DocumentTaskRow({
   currentLifecycleRef.current = currentLifecycle
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
+    message?: string
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
   const cancelTask = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+    // Cancel and retry failures are shown next to the task's action button.
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
@@ -173,7 +177,11 @@ export function DocumentTaskRow({
       else {
         const messageKey = await knowledgeFsRequestFailureMessageKey(error)
         if (currentLifecycleRef.current === actionLifecycle)
-          setActionFailure({ lifecycle: actionLifecycle, messageKey })
+          setActionFailure({
+            lifecycle: actionLifecycle,
+            message: getRequestErrorMessage(error),
+            messageKey,
+          })
       }
     } finally {
       void onSettled()
@@ -216,7 +224,7 @@ export function DocumentTaskRow({
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
             {actionFailureMessageKey
               ? tError(($) => $[actionFailureMessageKey])
-              : t(($) => $.taskActionFailed)}
+              : (actionFailure.message ?? t(($) => $.taskActionFailed))}
           </p>
         )}
       </div>

@@ -656,11 +656,18 @@ function ResourceConfiguration({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  // A failed submission is reconciled first and then shown next to the submit button.
   const { mutateAsync: updateSource } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: importSourceItems } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(
+      {
+        meta: { errorToast: false },
+      },
+    ),
   )
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
@@ -1560,7 +1567,7 @@ function ResourceConfiguration({
       session.committed = true
       if (session.active) setPreviewSource(committedSource)
       await completeSubmission()
-    } catch {
+    } catch (submissionError) {
       let reconcileErrorMessage: string | undefined
       try {
         if (session.source) {
@@ -1588,7 +1595,10 @@ function ResourceConfiguration({
         // Keep the last known source so the visible retry path remains available.
         reconcileErrorMessage = getRequestErrorMessage(error)
       }
-      if (session.active) setSubmitError({ message: reconcileErrorMessage })
+      if (session.active)
+        setSubmitError({
+          message: getRequestErrorMessage(submissionError) ?? reconcileErrorMessage,
+        })
     }
   }
 
@@ -1884,7 +1894,10 @@ function ConnectedSourceWorkflowSession({
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
   const { mutateAsync: createConnection } = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
+      // A failed provision is reconciled first and then shown inline with a retry.
+      meta: { errorToast: false },
+    }),
   )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
@@ -1968,7 +1981,7 @@ function ConnectedSourceWorkflowSession({
   )
   const [connectionOverride, setConnectionOverride] = useState<SourceConnection>()
   const [provisioningConnection, setProvisioningConnection] = useState(false)
-  const [provisionError, setProvisionError] = useState(false)
+  const [provisionError, setProvisionError] = useState<{ message?: string } | false>(false)
   const provisioningAttemptsRef = useRef(new Set<string>())
   const connection =
     connectionOverride &&
@@ -2055,7 +2068,7 @@ function ConnectedSourceWorkflowSession({
             }),
           ),
         )
-      } catch {
+      } catch (error) {
         const refreshed = await refetchConnections()
         const refreshedConnections =
           refreshed.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
@@ -2066,7 +2079,7 @@ function ConnectedSourceWorkflowSession({
         )
         if (reconciled && ['active', 'provisioning'].includes(reconciled.status))
           rememberConnection(reconciled)
-        else setProvisionError(true)
+        else setProvisionError({ message: getRequestErrorMessage(error) })
       } finally {
         setProvisioningConnection(false)
       }
@@ -2236,6 +2249,9 @@ function ConnectedSourceWorkflowSession({
               provider: providerDraft.provider,
             })}
           </p>
+          {provisionError.message && (
+            <p className="mt-1 system-xs-regular text-text-tertiary">{provisionError.message}</p>
+          )}
           <Button
             className="mt-3"
             onClick={() => {

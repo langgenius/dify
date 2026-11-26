@@ -3,8 +3,9 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QualityPage } from '../page'
 
@@ -104,7 +105,7 @@ function delayedCsvFile(name: string, content: string) {
   return { file, finishReading: () => gate.resolve() }
 }
 
-function renderPage() {
+function renderPage({ errorToasts = false }: { errorToasts?: boolean } = {}) {
   const onUrlUpdate = vi.fn()
   const searchParams = new URLSearchParams({
     ...(navigationMock.run ? { run: navigationMock.run } : {}),
@@ -118,6 +119,10 @@ function renderPage() {
         <QualityPage />
       </KnowledgeSpaceTestProvider>
     </NuqsTestingAdapter>,
+    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
+    errorToasts
+      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
+      : undefined,
   )
   return { ...rendered, onUrlUpdate }
 }
@@ -554,6 +559,31 @@ describe('QualityPage', () => {
     )
   })
 
+  it('shows a failed CSV import once, with the server reason in the dialog', async () => {
+    const message = 'This workspace cannot import more golden questions'
+    serviceMock.bulkImport.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 422 }), { message }),
+    )
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['question,evidence,tags\nWhat is the refund window?,30 days,billing'], 'q.csv', {
+        type: 'text/csv',
+      }),
+    )
+    await screen.findByText('What is the refund window?')
+    await user.click(
+      screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
+    )
+
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(message)
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
   it('requires only the question and allows an empty annotation', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -612,6 +642,28 @@ describe('QualityPage', () => {
       await screen.findByText('knowledgeQuality.qualityPage.noEvidenceMatch'),
     ).toBeInTheDocument()
     expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed evidence search once, with the server reason at the search field', async () => {
+    const message = 'Evidence search timed out'
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message }),
+    )
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+
+    expect(await within(screen.getByRole('dialog')).findByText(message)).toBeVisible()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it.each(['create', 'edit'] as const)(

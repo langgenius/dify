@@ -7,9 +7,10 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createQueryTestWrapper } from '@/test/query-state-testing'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
@@ -257,7 +258,10 @@ async function refetchQueries() {
   })
 }
 
-async function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
+async function renderPage({
+  errorToasts = false,
+  searchParams = '',
+}: { errorToasts?: boolean; searchParams?: string } = {}) {
   const { onUrlUpdate, wrapper: QueryWrapper } = createQueryTestWrapper({ searchParams })
   const view = renderWithConsoleQuery(
     <QueryWrapper>
@@ -267,6 +271,10 @@ async function renderPage({ searchParams = '' }: { searchParams?: string } = {})
         <RetrievalTestPage knowledgeSpaceId="space-1" />
       </KnowledgeSpaceTestProvider>
     </QueryWrapper>,
+    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
+    errorToasts
+      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
+      : undefined,
   )
   currentQueryClient = view.queryClient
   await settle()
@@ -2209,6 +2217,55 @@ describe('RetrievalTestPage', () => {
     expect(
       screen.getByRole('link', { name: 'knowledgeRetrieval.retrievalTest.viewInQuality' }),
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
+  })
+
+  it('shows a failed golden promotion once, with the server reason in the dialog', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const message = 'This workspace cannot save more golden questions'
+    apiMock.createGolden.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), { message }),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is useEffect?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: { score: 0.9, text: 'useEffect synchronizes a component.' },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    await renderPage({ errorToasts: true, searchParams: '?trace=trace-1' })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.promoteTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
+    )
+
+    expect(await within(dialog).findByText(message)).toBeVisible()
+    expect(errorToast).not.toHaveBeenCalled()
   })
 
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
