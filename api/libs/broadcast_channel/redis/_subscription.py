@@ -64,7 +64,12 @@ class RedisSubscriptionBase(Subscription):
             self._started = True
 
     def _listen(self) -> None:
-        """Main listener loop for processing messages."""
+        """Process an initialized subscription until closure or a transport error.
+
+        Once the listener stops, receivers are released and the subscription
+        remains closed. PubSub cleanup stays on this thread even if unsubscribing
+        fails after a disconnect.
+        """
         pubsub = self._pubsub
         assert pubsub is not None, "PubSub should not be None while starting listening."
         while not self._closed.is_set():
@@ -126,10 +131,10 @@ class RedisSubscriptionBase(Subscription):
             self._enqueue_message(payload_bytes)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
+        self._closed.set()
+        self._unblock_message_iterator()
         try:
             self._unsubscribe()
-            pubsub.close()
-            _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
         except Exception as e:
             _logger.error(
                 "Error during cleanup of Redis %s subscription, topic=%s: %s",
@@ -139,7 +144,13 @@ class RedisSubscriptionBase(Subscription):
                 exc_info=True,
             )
         finally:
-            self._pubsub = None
+            try:
+                pubsub.close()
+                _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
+            except Exception:
+                _logger.exception("Failed to close Redis PubSub for topic %s", self._topic)
+            finally:
+                self._pubsub = None
 
     def _enqueue_message(self, payload: bytes) -> None:
         """Enqueue a message to the internal queue with dropping behavior."""
