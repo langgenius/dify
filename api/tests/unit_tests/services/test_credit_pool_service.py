@@ -355,6 +355,16 @@ def test_reserve_credits_releases_billing_reservation() -> None:
     )
 
 
+def test_billing_outage_does_not_permit_an_unreserved_hosted_call(config_overrides: Callable[..., None]) -> None:
+    """Only catalog reads may degrade; a live charge still requires a successful reservation."""
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    with (
+        patch.object(billing, "quota_reserve", side_effect=billing.BillingQuotaUpstreamUnavailableError()),
+        pytest.raises(billing.BillingQuotaUpstreamUnavailableError),
+    ):
+        CreditPoolService.reserve_credits("tenant-1", 1, "paid", request_id="request-1")
+
+
 def test_reserve_credits_database_fallback_restores_released_amount(sqlite_session: Session) -> None:
     pool = _create_pool(sqlite_session, quota_limit=10, quota_used=2)
     redis_lock = _make_redis_lock()
