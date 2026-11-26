@@ -56,7 +56,7 @@ RUN apt-get update \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
     && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/${node_dist}.tar.xz" \
     && grep " ${node_dist}.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 \
+    && tar --no-same-owner -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1 \
     && rm -f SHASUMS256.txt "${node_dist}.tar.xz" \
     && npm install --global "pnpm@${PNPM_VERSION}" \
     && npm cache clean --force \
