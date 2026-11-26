@@ -1,6 +1,7 @@
 import type { ChatItemInTree } from '../../types'
 import type { ChatWithHistoryContextValue } from '../context'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InstalledAppConnectionsState } from '@/app/components/explore/installed-app/connections/provider'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
@@ -9,6 +10,7 @@ import type { WorkflowFinishedResponse, WorkflowPausedResponse } from '@/types/w
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { registerWebAppEventTracker } from '@/app/components/base/amplitude/web-app-event'
+import { InstalledAppConnectionsContext } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import {
   fetchChatList,
@@ -138,28 +140,85 @@ const createHistoryContextValue = (
   ...overrides,
 })
 
+function createInstalledChatConnections(conversationId: string): InstalledAppConnectionsState {
+  if (!('parameters' in chatConnectionEntry)) throw new Error('Connection entry required')
+  const selections = { 'github-node': selectedConnectionId }
+  return {
+    installedAppId: 'installed-app-1',
+    isCurrentSession: () => true,
+    status: 'ready',
+    error: null,
+    canRun: true,
+    canConfirm: true,
+    confirmSelection: vi.fn().mockResolvedValue(true),
+    runConfiguration: {
+      connection_revision: checkedRevision,
+      connections: selections,
+      conversation_id: conversationId,
+    },
+    requirements: chatConnectionEntry.parameters.connection_requirements ?? [],
+    credentials: [
+      {
+        id: selectedConnectionId,
+        name: 'Workspace GitHub account',
+        provider: 'langgenius/github/github',
+        credential_type: 'oauth2',
+        credential_status: 'connected',
+        account_label: null,
+        created_at: 1,
+        updated_at: 1,
+        expires_at: null,
+        last_active_at: null,
+        manual_revocation_required_on_expiry: false,
+      },
+    ],
+    preflight: {
+      connection_revision: checkedRevision,
+      ready: true,
+      connections: [
+        {
+          node_id: 'github-node',
+          connection_id: selectedConnectionId,
+          status: 'connected',
+          check: null,
+        },
+      ],
+    },
+    selections,
+    isMutating: false,
+    checking: false,
+    warningCount: 0,
+    onSelect: vi.fn(),
+    retry: vi.fn(),
+  }
+}
+
 function renderChat(
   overrides: Partial<ChatWithHistoryContextValue> = {},
-  initialConnections?: ConnectionsState,
+  initialConnections?: ConnectionsState | InstalledAppConnectionsState,
   entry?: WebAppEntryState,
 ) {
   let connections = initialConnections
   let context = createHistoryContextValue(overrides)
-  const tree = () =>
-    withChatConnections({
-      state: connections,
-      entry,
-      children: (
-        <ChatWithHistoryContext.Provider value={context}>
-          <ChatWrapper />
-        </ChatWithHistoryContext.Provider>
-      ),
-    })
+  const tree = () => {
+    const chat = (
+      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider component.
+      <ChatWithHistoryContext.Provider value={context}>
+        <ChatWrapper />
+      </ChatWithHistoryContext.Provider>
+    )
+    if (connections && 'installedAppId' in connections)
+      return (
+        <InstalledAppConnectionsContext value={connections}>{chat}</InstalledAppConnectionsContext>
+      )
+
+    return withChatConnections({ state: connections, entry, children: chat })
+  }
   const view = renderWithConsoleQuery(tree())
   return {
     ...view,
     context,
-    updateConnections: (next: ConnectionsState) => {
+    updateConnections: (next: ConnectionsState | InstalledAppConnectionsState) => {
       connections = next
       view.rerender(tree())
     },
@@ -839,34 +898,64 @@ it('retains a paused form and prevents resuming while required connections are u
   )
 })
 
-it('rechecks connections after waiting for a paused workflow subscription before submitting', async () => {
-  const user = userEvent.setup()
-  const ready = createChatConnections()
-  const { updateConnections } = renderChat(
-    {
-      appPrevChatTree: [
-        { id: 'q1', isAnswer: false, content: 'Question', children: [pausedAnswer()] },
-      ],
-    },
-    ready,
-  )
-  await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Keep this review')
-  await user.click(screen.getByRole('button', { name: 'Approve' }))
-  updateConnections({ ...ready, canRun: false, runConfiguration: null })
-  await act(async () => events().onWorkflowPaused?.(pausedEvent()))
-  expect(submitHumanInputForm).not.toHaveBeenCalled()
-  expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this review')
-  updateConnections(ready)
-  await user.click(screen.getByRole('button', { name: 'Approve' }))
-  expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
-    'token-1',
-    {
-      inputs: { review: 'Keep this review' },
-      action: 'approve',
-    },
-    undefined,
-  )
-})
+it.each(['Web App', 'installed app'])(
+  'rechecks %s connections after waiting for a paused workflow subscription before submitting',
+  async (source) => {
+    const user = userEvent.setup()
+    const isInstalledApp = source === 'installed app'
+    const conversationId = '1'
+    const ready = isInstalledApp
+      ? createInstalledChatConnections(conversationId)
+      : createChatConnections()
+    const { updateConnections } = renderChat(
+      {
+        isInstalledApp,
+        currentConversationId: conversationId,
+        appPrevChatTree: [
+          { id: 'q1', isAnswer: false, content: 'Question', children: [pausedAnswer()] },
+        ],
+      },
+      ready,
+    )
+    const submit = isInstalledApp ? submitInstalledForm : submitHumanInputForm
+    const otherSubmit = isInstalledApp ? submitHumanInputForm : submitInstalledForm
+    await user.type(await screen.findByRole('textbox', { name: 'review' }), 'Keep this review')
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    expect(submit).not.toHaveBeenCalled()
+    updateConnections(
+      'installedAppId' in ready
+        ? {
+            ...ready,
+            canRun: false,
+            canConfirm: false,
+            runConfiguration: null,
+            preflight: null,
+            checking: true,
+          }
+        : {
+            ...ready,
+            canRun: false,
+            runConfiguration: null,
+            preflight: { ...ready.preflight, status: 'checking', response: null },
+          },
+    )
+    await act(async () => events().onWorkflowPaused?.(pausedEvent()))
+    expect(submit).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+    expect(screen.getByRole('textbox', { name: 'review' })).toHaveValue('Keep this review')
+
+    updateConnections(ready)
+    await user.click(screen.getByRole('button', { name: 'Approve' }))
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledExactlyOnceWith(
+        'token-1',
+        { inputs: { review: 'Keep this review' }, action: 'approve' },
+        undefined,
+      ),
+    )
+    expect(otherSubmit).not.toHaveBeenCalled()
+  },
+)
 
 it.each([false, true])(
   'shows inputs before the welcome and reveals it after starting chat (mobile=%s)',

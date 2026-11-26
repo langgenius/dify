@@ -286,30 +286,23 @@ describe('Embedded chatbot orchestration', () => {
     expect(await screen.findByRole('button', { name: 'Tell me more' })).toBeInTheDocument()
   })
 
-  it.each([true, false])(
-    'waits for workflow readiness before human input submission (installed=%s)',
-    async (installed) => {
-      const { user } = renderSubject({
-        isInstalledApp: installed,
-        currentConversationId: 'conversation-1',
-        appPrevChatList: [question('paused-question', 'Question', pausedAnswer())],
-      })
-      await user.click(await screen.findByRole('button', { name: 'Approve' }))
-      expect(submitHumanInputForm).not.toHaveBeenCalled()
-      expect(submitInstalledHumanInput).not.toHaveBeenCalled()
-      confirmPaused()
-      await waitFor(() =>
-        expect(
-          installed ? submitInstalledHumanInput : submitHumanInputForm,
-        ).toHaveBeenCalledExactlyOnceWith(
-          'form-token',
-          { inputs: {}, action: 'approve' },
-          undefined,
-        ),
-      )
-      expect(installed ? submitHumanInputForm : submitInstalledHumanInput).not.toHaveBeenCalled()
-    },
-  )
+  it('waits for workflow readiness before submitting Web App human input', async () => {
+    const { user } = renderSubject({
+      currentConversationId: 'conversation-1',
+      appPrevChatList: [question('paused-question', 'Question', pausedAnswer())],
+    })
+    await user.click(await screen.findByRole('button', { name: 'Approve' }))
+    expect(submitHumanInputForm).not.toHaveBeenCalled()
+    confirmPaused()
+    await waitFor(() =>
+      expect(submitHumanInputForm).toHaveBeenCalledExactlyOnceWith(
+        'form-token',
+        { inputs: {}, action: 'approve' },
+        undefined,
+      ),
+    )
+    expect(submitInstalledHumanInput).not.toHaveBeenCalled()
+  })
 
   it('does not submit human input when the workflow subscription fails', async () => {
     const { user } = renderSubject({

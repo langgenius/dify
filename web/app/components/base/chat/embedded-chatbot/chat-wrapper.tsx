@@ -1,5 +1,4 @@
 import type { FileEntity } from '../../file-uploader/types'
-import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,20 +15,17 @@ import { Markdown } from '@/app/components/base/markdown'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
-import { toastRequestError } from '@/app/query-error-toast'
-import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
   AppSourceType,
   chatMessagesSender,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
-import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { getAvatarInitial } from '@/utils/avatar'
 import Chat from '../chat'
 import { useChat } from '../chat/hooks'
+import { getChatRunConnectionFields, useChatHumanInputSubmission } from '../submission'
 import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
 import { isDify } from './utils'
@@ -66,10 +62,6 @@ const ChatWrapper = () => {
   } = useEmbeddedChatbotContext()
 
   const connectionsReady = isInstalledApp || (connections?.canRun ?? true)
-  const connectionsReadyRef = useRef(connectionsReady)
-  useEffect(() => {
-    connectionsReadyRef.current = connectionsReady
-  }, [connectionsReady])
 
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {
@@ -229,12 +221,12 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
-      if (
-        connections &&
-        (!connections.canRun ||
-          (!currentConversationId && !connectionSetupComplete && connections.status !== 'inactive'))
+      const connectionFields = getChatRunConnectionFields(
+        connections,
+        currentConversationId,
+        connectionSetupComplete,
       )
-        return false
+      if (connectionFields === null) return false
       if (!currentConversationId) setHasSent(true)
       const data: any = {
         query: message,
@@ -242,10 +234,7 @@ const ChatWrapper = () => {
         inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-        ...(connections?.runConfiguration && {
-          connection_revision: connections.runConfiguration.connection_revision,
-          connections: { ...connections.runConfiguration.connections },
-        }),
+        ...connectionFields,
       }
       const accepted = handleSend(chatMessagesSender(appSourceType, appId || ''), data, {
         onGetSuggestedQuestions: (responseItemId) =>
@@ -390,23 +379,11 @@ const ChatWrapper = () => {
     }
   }, [inputsForms.length, isBelowSm, currentConversationId, collapsed, allInputsHidden])
 
-  const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: HumanInputFormSubmitData) => {
-      if (!connectionsReadyRef.current) return
-      const { form_version: formVersion, ...submission } = formData
-      await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
-      if (!connectionsReadyRef.current) return
-
-      try {
-        if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
-        else await submitHumanInputForm(formToken, submission, formVersion)
-      } catch (error) {
-        toastRequestError(error)
-        throw error
-      }
-    },
-    [isInstalledApp, prepareHumanInputSubmission],
-  )
+  const handleSubmitHumanInputForm = useChatHumanInputSubmission({
+    connectionsReady,
+    isInstalledApp,
+    prepare: prepareHumanInputSubmission,
+  })
 
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
