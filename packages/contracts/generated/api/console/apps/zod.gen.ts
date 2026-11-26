@@ -6128,6 +6128,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   credential_type: z.enum(['api-key', 'oauth2', 'unauthorized']).optional().default('api-key'),
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
+  last_max_calls_per_run: z.int().gt(0).nullish(),
   max_calls_per_run: z.int().gt(0).nullish(),
   name: z.string().max(255).nullish(),
   plugin_id: z.string().max(255).nullish(),

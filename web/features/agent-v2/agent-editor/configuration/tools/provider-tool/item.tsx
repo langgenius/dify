@@ -236,9 +236,9 @@ const ProviderToolActionItem = memo(
     }, [action.id, onRemoveAction])
 
     return (
-      <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px ps-1 pe-0 hover:bg-state-base-hover">
+      <div className="group relative flex min-h-6.5 items-center gap-1 rounded-md py-px ps-1 pe-0 hover:bg-state-base-hover">
         <div className="absolute inset-s-[13.5px] top-0 bottom-0 w-px bg-divider-regular" />
-        <div className="flex min-w-0 flex-1 items-center gap-1 py-1 ps-7">
+        <div className="flex h-6 min-w-0 flex-1 items-center gap-1 ps-7">
           <span className="min-w-0 truncate system-sm-regular text-text-secondary">
             {action.name}
           </span>

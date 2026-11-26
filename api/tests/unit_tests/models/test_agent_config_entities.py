@@ -50,6 +50,24 @@ def test_dify_tool_call_limit_rejects_non_positive_or_non_integer_values(limit: 
         AgentSoulDifyToolConfig.model_validate(_dify_tool_config(max_calls_per_run=limit))
 
 
+@pytest.mark.parametrize("last_limit", [5, 7])
+def test_disabled_tool_preserves_last_limit_without_enabling_quota(last_limit: int) -> None:
+    soul = AgentSoulConfig.model_validate(
+        {"tools": {"dify_tools": [_dify_tool_config(max_calls_per_run=None, last_max_calls_per_run=last_limit)]}}
+    )
+
+    restored = AgentSoulConfig.model_validate_json(soul.model_dump_json())
+
+    assert restored.tools.dify_tools[0].max_calls_per_run is None
+    assert restored.tools.dify_tools[0].last_max_calls_per_run == last_limit
+
+
+@pytest.mark.parametrize("last_limit", [0, True])
+def test_last_tool_limit_requires_a_positive_integer(last_limit: object) -> None:
+    with pytest.raises(ValidationError, match="last_max_calls_per_run"):
+        AgentSoulDifyToolConfig.model_validate(_dify_tool_config(last_max_calls_per_run=last_limit))
+
+
 def test_provider_level_tool_entry_cannot_set_a_call_limit() -> None:
     with pytest.raises(ValidationError, match="requires a concrete tool_name"):
         AgentSoulDifyToolConfig.model_validate(_dify_tool_config(tool_name=None, max_calls_per_run=3))
