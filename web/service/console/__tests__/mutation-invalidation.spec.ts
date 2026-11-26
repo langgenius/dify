@@ -519,4 +519,29 @@ describe('mutation invalidation fallback', () => {
     await pending
     await vi.waitFor(() => expect(client.getQueryState(appDetailKey())?.isInvalidated).toBe(true))
   })
+
+  it('refreshes a deferred read after the write it was handed to fails', async () => {
+    const client = createClient()
+    const firstLoad = createDeferred<string>()
+    const queryFn = vi.fn().mockReturnValueOnce(firstLoad.promise).mockResolvedValue('server')
+    const observer = new QueryObserver(client, { queryKey: appDetailKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    tick()
+    // Write A succeeds while the first load runs.
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+
+    // Write B is pending when the pre-A response lands, so it takes the refresh over.
+    const second = createDeferred<string>()
+    const pending = mutate(client, { mutationKey: renameApp(), mutationFn: () => second.promise })
+    firstLoad.resolve('before A')
+    await settle()
+    expect(queryFn).toHaveBeenCalledTimes(1)
+
+    // B fails: it refreshes nothing of its own, but the handed-over read is still read again.
+    second.reject(new Error('no'))
+    await expect(pending).rejects.toThrow('no')
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('server'))
+    expect(queryFn).toHaveBeenCalledTimes(2)
+  })
 })

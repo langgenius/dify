@@ -63,7 +63,11 @@ function participantOf(mutation: AnyMutation): Participant | undefined {
   return { domain, targets: [domain, ...(meta?.alsoInvalidate ?? [])] }
 }
 
-type Deferred = { targets: Set<string>; succeededAt: number }
+// What a domain refreshes once its last pending mutation settles: the domains of the writes
+// that succeeded, and reads handed over because they landed while it was pending.
+type Deferred = { targets: Set<string>; succeededAt: number; queries: Set<Query> }
+
+const emptyDeferred = (): Deferred => ({ targets: new Set(), succeededAt: 0, queries: new Set() })
 
 /**
  * When the read behind a query's current data started, in the order events happened. Response
@@ -108,6 +112,34 @@ export function createMutationInvalidation() {
     return !origin || origin.dataFrom < time
   }
 
+  let attached: QueryClient | undefined
+
+  /**
+   * Hands a read to a pending mutation that would refresh it, so it is refreshed when that
+   * mutation settles, whether it succeeds or fails. Returns false when none is pending.
+   */
+  const handOff = (query: Query) => {
+    const pending = attached
+      ?.getMutationCache()
+      .findAll({ status: 'pending' })
+      .map(participantOf)
+      .find((participant) =>
+        participant?.targets.some((target) =>
+          partialMatchKey(query.queryKey, consolePathKey(target)),
+        ),
+      )
+    if (!pending) return false
+    const entry = deferred.get(pending.domain) ?? emptyDeferred()
+    entry.queries.add(query)
+    deferred.set(pending.domain, entry)
+    return true
+  }
+
+  // Marks a read stale (refetching it if observed), unless a pending write takes it over.
+  const markStale = (query: Query) => {
+    if (!handOff(query)) void attached?.invalidateQueries({ queryKey: query.queryKey, exact: true })
+  }
+
   return {
     /** For `MutationCache.onSuccess`: the request succeeded, before any callback runs. */
     onMutationSuccess(mutation: AnyMutation) {
@@ -116,6 +148,7 @@ export function createMutationInvalidation() {
 
     /** Starts refreshing on the mutation cache's settle events; returns the unsubscribe. */
     attach(client: QueryClient, mutationCache: MutationCache = client.getMutationCache()) {
+      attached = client
       const unsubscribeQueries = client.getQueryCache().subscribe((event) => {
         if (event.type !== 'updated') return
         const { action, query } = event
@@ -137,7 +170,7 @@ export function createMutationInvalidation() {
         const { domain, targets } = participant
         const successTime = succeededAt.get(mutation)
         if (successTime !== undefined) {
-          const entry = deferred.get(domain) ?? { targets: new Set(), succeededAt: 0 }
+          const entry = deferred.get(domain) ?? emptyDeferred()
           for (const target of targets) entry.targets.add(target)
           entry.succeededAt = Math.max(entry.succeededAt, successTime)
           deferred.set(domain, entry)
@@ -150,7 +183,9 @@ export function createMutationInvalidation() {
 
         const entry = deferred.get(domain)
         deferred.delete(domain)
-        if (entry) refresh(client, [...entry.targets], needsRefresh(entry.succeededAt))
+        if (!entry) return
+        refresh(client, [...entry.targets], needsRefresh(entry.succeededAt), markStale)
+        for (const query of entry.queries) markStale(query)
       })
       return () => {
         unsubscribeQueries()
@@ -164,35 +199,25 @@ export function createMutationInvalidation() {
 const isUnrestartedFetch = (query: Query) =>
   query.state.fetchStatus === 'fetching' && (query.state.data === undefined || !query.isActive())
 
-// Whether a pending console mutation will refresh this query when it settles.
-function isRefreshPending(client: QueryClient, query: Query) {
-  return client
-    .getMutationCache()
-    .findAll({ status: 'pending' })
-    .some((mutation) =>
-      participantOf(mutation)?.targets.some((target) =>
-        partialMatchKey(query.queryKey, consolePathKey(target)),
-      ),
-    )
-}
-
-function refresh(client: QueryClient, targets: string[], needsRefresh: (query: Query) => boolean) {
+function refresh(
+  client: QueryClient,
+  targets: string[],
+  needsRefresh: (query: Query) => boolean,
+  markStale: (query: Query) => void,
+) {
   const cache = client.getQueryCache()
   for (const target of targets) {
     const queryKey = consolePathKey(target)
     for (const query of cache.findAll({ queryKey, predicate: isUnrestartedFetch })) {
       if (!needsRefresh(query)) continue
-      // Its response predates the write: once it lands, mark it stale (and refetch if observed).
-      // A read cancelled meanwhile belongs to whoever cancelled it (a newer write's `onMutate`),
-      // and a pending write that refreshes this query will do so when it settles; starting a
-      // read now could land over its optimistic value.
-      const markStale = () => {
-        if (!isRefreshPending(client, query))
-          void client.invalidateQueries({ queryKey: query.queryKey, exact: true })
-      }
-      void query.promise?.then(markStale, (error: unknown) => {
-        if (!(error instanceof CancelledError)) markStale()
-      })
+      // Its response predates the write: mark it stale once it lands. A read cancelled meanwhile
+      // belongs to whoever cancelled it (a newer write's `onMutate`), which refreshes it.
+      void query.promise?.then(
+        () => markStale(query),
+        (error: unknown) => {
+          if (!(error instanceof CancelledError)) markStale(query)
+        },
+      )
     }
     void client.invalidateQueries({
       queryKey,
