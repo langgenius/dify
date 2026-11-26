@@ -44,6 +44,7 @@ import { DifyBuilderPanelBackground } from './background'
 import { DifyBuilderPanelEmptyState } from './empty-state'
 import { DifyBuilderPanelFooter } from './footer'
 import { DifyBuilderPanelHeader } from './header'
+import { ResizableBuilderPanel } from './resizable-panel'
 
 const AUTO_SCROLL_BOTTOM_THRESHOLD = 24
 const DifyBuilderPanelContent = () => {
@@ -115,10 +116,7 @@ const DifyBuilderPanelContent = () => {
   }
 
   return (
-    <aside
-      aria-label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}
-      className="flex h-full w-100 shrink-0 bg-background-body py-1 pe-1"
-    >
+    <ResizableBuilderPanel label={t(($) => $.panelTitle, { ns: 'difyBuilder' })}>
       <div className="relative flex min-w-0 grow flex-col overflow-hidden rounded-xl shadow-xl inset-ring-[0.5px] inset-ring-components-panel-border">
         <DifyBuilderPanelBackground />
 
@@ -221,7 +219,7 @@ const DifyBuilderPanelContent = () => {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-    </aside>
+    </ResizableBuilderPanel>
   )
 }
 
