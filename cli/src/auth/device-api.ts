@@ -182,7 +182,10 @@ export function deviceApi(server: string, opts: DeviceApiOptions): DeviceApi {
         device_code: req.device_code,
       })
       if (res.status === HttpStatus.NotFound) throw unsupportedDeviceFlow('POST', url)
-      if (res.status >= HttpStatus.ServerErrorFloor) return { status: 'retry_5xx' }
+      if (res.status >= HttpStatus.ServerErrorFloor) {
+        await res.body?.cancel()
+        return { status: 'retry_5xx' }
+      }
 
       const payload = parsePollPayload(await res.text())
       if (typeof payload.error === 'string' && payload.error !== '') {

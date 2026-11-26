@@ -119,3 +119,29 @@ it('rejects a non-JSON code response without leaking a raw SyntaxError', async (
     },
   )
 })
+
+it.each([500, 503])('releases an unfinished HTTP %i poll body before retrying', async (status) => {
+  let response: ServerResponse | undefined
+  let onClose: () => void = () => {}
+  const closed = new Promise<void>((resolve) => {
+    onClose = resolve
+  })
+  await withServer(
+    (res) => {
+      response = res
+      res.once('close', onClose)
+      res.writeHead(status, { 'content-type': 'text/plain' })
+      res.write('temporarily unavailable')
+    },
+    async (baseUrl) => {
+      const api = deviceApi(baseUrl, { insecure: true })
+      await expect(api.pollOnce({ device_code: 'dc' })).resolves.toEqual({ status: 'retry_5xx' })
+      const released = await Promise.race([
+        closed.then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), 100)),
+      ])
+      response?.end()
+      expect(released).toBe(true)
+    },
+  )
+})
