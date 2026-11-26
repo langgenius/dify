@@ -245,12 +245,6 @@ export const Workflow: FC<WorkflowProps> = memo(
     }, [setEdges, setNodes, store])
 
     useEffect(() => {
-      return collaborationManager.onHistoryAction(() => {
-        toast.info(t(($) => $['collaboration.historyAction.generic'], { ns: 'workflow' }))
-      })
-    }, [t])
-
-    useEffect(() => {
       return collaborationManager.onRestoreIntent((data) => {
         toast.info(
           t(($) => $['versionHistory.action.restoreInProgress'], {

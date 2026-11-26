@@ -295,9 +295,9 @@ it('executes the host action after confirmation', async () => {
   expect(onConfirm).toHaveBeenCalledTimes(1)
 })
 
-it('applies the latest collaboration graph to the canvas', () => {
-  renderSubject()
-  act(() => {
+it('updates the canvas silently after a collaborator undoes a change', async () => {
+  renderSubject({ collaborationEnabled: true, isCollaborationEnabled: true })
+  await act(async () => {
     for (const handler of [...events.graph])
       handler({
         nodes: [
@@ -308,9 +308,12 @@ it('applies the latest collaboration graph to the canvas', () => {
         ],
         edges: [],
       })
+    for (const handler of [...events.history]) handler({ action: 'undo', userId: 'collaborator' })
   })
-  expect(screen.getByText('Remote graph')).toBeInTheDocument()
-  expect(screen.queryByText('Transform documents')).not.toBeInTheDocument()
+  const canvas = within(screen.getByRole('region', { name: 'app.types.workflow' }))
+  expect(canvas.getByText('Remote graph')).toBeInTheDocument()
+  expect(canvas.queryByText('Transform documents')).not.toBeInTheDocument()
+  expect(toast.info).not.toHaveBeenCalled()
 })
 
 function comment(id: string, name: string, resolved = false): WorkflowCommentDetail {
