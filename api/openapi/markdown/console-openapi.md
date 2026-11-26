@@ -7448,6 +7448,7 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7518,7 +7519,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
@@ -7570,7 +7573,9 @@ Get dataset error documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/evaluation/template/download
@@ -19664,6 +19669,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19702,6 +19708,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -19815,7 +19822,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
@@ -19870,7 +19879,9 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationConfigInvalidError](#evaluationconfiginvaliderror)<br>[EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[EvaluationFrameworkNotConfiguredError](#evaluationframeworknotconfigurederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EvaluationMaxConcurrentRunsError](#evaluationmaxconcurrentrunserror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
@@ -19892,6 +19903,7 @@ Invalid path arguments fail before provider discovery or asset access.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 400 | Bad Request | **application/json**: [EvaluationDatasetInvalidError](#evaluationdatasetinvaliderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -27273,6 +27285,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | metrics | [ string ] |  | Yes |
 
+#### EvaluationConfigInvalidError
+
+Evaluation configuration is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationConfigInvalidError |  | Evaluation configuration is invalid. |  |
+
 #### EvaluationConfigPayload
 
 | Name | Type | Description | Required |
@@ -27295,6 +27315,14 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | evaluation_model_provider | string |  | No |
 | judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
 
+#### EvaluationDatasetInvalidError
+
+Evaluation dataset is invalid.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationDatasetInvalidError |  | Evaluation dataset is invalid. |  |
+
 #### EvaluationDefaultMetricsResponse
 
 | Name | Type | Description | Required |
@@ -27313,11 +27341,33 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | name | string |  | Yes |
 | size | integer |  | Yes |
 
+#### EvaluationFrameworkNotConfiguredError
+
+Selected evaluation framework is unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationFrameworkNotConfiguredError |  | Selected evaluation framework is unavailable. |  |
+
 #### EvaluationFrameworkQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+
+#### EvaluationMaxConcurrentRunsDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer |  | Yes |
+
+#### EvaluationMaxConcurrentRunsError
+
+Maximum number of concurrent evaluation runs reached.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationMaxConcurrentRunsError |  | Maximum number of concurrent evaluation runs reached. |  |
 
 #### EvaluationMetric
 

@@ -646,7 +646,7 @@ describe('InviteModal', () => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 400 }), {
-        code: 'invalid_param',
+        code: 'bad_request',
         message: 'Server says why',
       }),
     )
