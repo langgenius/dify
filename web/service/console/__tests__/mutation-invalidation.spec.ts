@@ -567,3 +567,28 @@ describe('mutation invalidation fallback', () => {
     await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe('server'))
   })
 })
+
+describe('mutation invalidation with console policies', () => {
+  it('refreshes roster agents and evaluation workflow pickers after a workflow publish', async () => {
+    const client = createClient()
+    const agents = await mountQuery(client, consoleQuery.agent.get.queryKey({ input: {} }))
+    const evaluationWorkflows = await mountQuery(
+      client,
+      consoleQuery.workspaces.current.availableEvaluationWorkflows.get.queryKey({ input: {} }),
+    )
+    const datasets = await mountQuery(client, datasetsListKey())
+
+    const observer = new MutationObserver(
+      client,
+      consoleQuery.apps.byAppId.workflows.publish.post.mutationOptions({
+        mutationFn: async () => ({ result: 'success', created_at: 1 }) as never,
+      }),
+    )
+    await observer.mutate({ params: { app_id: 'app-1' }, body: {} } as never)
+    await settle()
+
+    expect(agents).toHaveBeenCalledTimes(2)
+    expect(evaluationWorkflows).toHaveBeenCalledTimes(2)
+    expect(datasets).toHaveBeenCalledTimes(1)
+  })
+})

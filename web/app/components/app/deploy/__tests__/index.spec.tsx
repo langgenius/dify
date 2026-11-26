@@ -25,6 +25,7 @@ import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { createErrorToastCaches } from '@/app/query-error-toast'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import {
   appWorkflowQueryOptions,
   appWorkflowVersionsInfiniteQueryOptions,
@@ -720,8 +721,13 @@ function render(
     errorToasts?: boolean
   } = {},
 ) {
+  // Like the app's client: a deploy write refreshes the deployment reads in the background.
+  const invalidation = createMutationInvalidation()
   const queryClient = createConsoleQueryClient({
-    caches: errorToasts ? createErrorToastCaches() : undefined,
+    caches: errorToasts
+      ? createErrorToastCaches({ onMutationSuccess: invalidation.onMutationSuccess })
+      : undefined,
+    invalidation,
   })
   queryClient.setQueryDefaults(appEnvironmentsQueryOptions.queryKey, {
     staleTime: Infinity,

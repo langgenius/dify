@@ -13,10 +13,7 @@ import { createWorkflowStore } from '@/app/components/workflow/store'
 import { toast } from '@/app/notifications'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/console'
-import {
-  appWorkflowQueryOptions,
-  appWorkflowVersionsInfiniteQueryOptions,
-} from '@/service/workflow-queries'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
@@ -198,29 +195,6 @@ it('publishes once per open session and permits another update after reopening',
   await user.click(trigger())
   await user.click(publishUpdate())
   await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(2))
-})
-
-it('refreshes workflow and deployment caches after publishing with deployment access', async () => {
-  const user = userEvent.setup()
-  const { queryClient } = renderPublisher({
-    app: { mode: 'workflow', permission_keys: [AppACLPermission.Deploy] },
-    props: { onPublish: vi.fn().mockResolvedValue(undefined) },
-  })
-  const versionsKey = appWorkflowVersionsInfiniteQueryOptions('app-1').queryKey
-  const deploymentsKey =
-    consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
-      input: { params: { app_id: 'app-1' } },
-    }).queryKey
-  queryClient.setQueryData(versionsKey, { pages: [], pageParams: [] })
-  queryClient.setQueryData(deploymentsKey, { environment_deployments: [] })
-  await user.click(trigger())
-  expect(await screen.findByText('Release 5')).toBeInTheDocument()
-  const updated = createWorkflowResponseFixture({ marked_name: 'Release 6' })
-  api.published.mockResolvedValue(updated)
-  await user.click(publishUpdate())
-  expect(await screen.findByText('Release 6')).toBeInTheDocument()
-  expect(queryClient.getQueryState(versionsKey)?.isInvalidated).toBe(true)
-  expect(queryClient.getQueryState(deploymentsKey)?.isInvalidated).toBe(true)
 })
 
 it('edits a published workflow version and shows the saved title and notes when reopened', async () => {

@@ -36,7 +36,7 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                   (snippet) => (snippet ? { ...snippet, is_published: true } : snippet),
                 )
                 // Waits for the version list (reloaded from its first page) and the published
-                // workflow the new version is read from; the draft and runs refresh in the background.
+                // workflow the new version is read from.
                 const versions = context.client.resetQueries({
                   queryKey: consoleQuery.snippets.bySnippetId.workflows.get.key({
                     type: 'infinite',
@@ -44,16 +44,6 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                   }),
                 })
                 const input = { params: { snippet_id: variables.params.snippet_id } }
-                void invalidateQueryKeys(context.client, [
-                  consoleQuery.snippets.bySnippetId.workflows.draft.get.key({
-                    type: 'query',
-                    input,
-                  }),
-                  consoleQuery.snippets.bySnippetId.workflowRuns.get.key({ type: 'query' }),
-                  consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.lastRun.get.key({
-                    type: 'query',
-                  }),
-                ])
                 return Promise.all([
                   versions,
                   invalidateQueryKeys(context.client, [
@@ -138,8 +128,9 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                 saveToRoster: {
                   post: {
                     mutationOptions: {
+                      meta: { alsoInvalidate: ['agent'] },
                       // The composer is written from the response; waits for the roster agent
-                      // list and the saved agent's detail, invite options refresh in the background.
+                      // list and the saved agent's detail.
                       onSuccess: (composerState, variables, _onMutateResult, context) => {
                         context.client.setQueryData(
                           consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
@@ -151,10 +142,6 @@ export function snippetPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['sn
                           ),
                           composerState,
                         )
-                        void invalidateQueryKeys(context.client, [
-                          consoleQuery.agent.inviteOptions.get.key(),
-                        ])
-
                         const agentId =
                           composerState.binding?.binding_type === 'roster_agent'
                             ? composerState.binding.agent_id

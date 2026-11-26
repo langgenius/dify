@@ -1,8 +1,9 @@
 import type { TagResponse } from '@dify/contracts/api/console/tags/types.gen'
-import { MutationObserver, QueryObserver } from '@tanstack/react-query'
+import { MutationCache, MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import { createTestQueryClient } from '@/test/query-client'
+import { createMutationInvalidation } from '../mutation-invalidation'
 
 const { call } = vi.hoisted(() => ({ call: vi.fn() }))
 // boundary: supply the Console API response while the generated mutation executes its cache policy.
@@ -11,7 +12,8 @@ vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: { call } }))
 it.each(['rename', 'delete'] as const)(
   'syncs Agent tags, roster, detail and Workflow options after %s',
   async (operation) => {
-    const client = createTestQueryClient()
+    // The tag's own catalogs are written from the response; the fallback refreshes the rest.
+    const client = createTestQueryClient(undefined, { invalidation: createMutationInvalidation() })
     const agentTag = { id: 'agent-tag', name: 'Research', type: 'agent' }
     const appTag = { id: 'app-tag', name: 'Research', type: 'app' }
     const agentCatalog = consoleQuery.tags.get.queryKey({ input: { query: { type: 'agent' } } })
@@ -59,13 +61,16 @@ it.each(['rename', 'delete'] as const)(
       )
     }
 
+    // The fallback cancels the pre-write read before it refreshes the domains.
+    await vi.waitFor(() => expect(client.getQueryState(agentResults[0]!)?.isInvalidated).toBe(true))
     staleRead.resolve([agentTag])
-    await pendingRead
+    await pendingRead.catch(() => undefined)
     expect(client.getQueryData(agentCatalog)).toEqual(operation === 'rename' ? [updatedTag] : [])
     for (const key of agentResults) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
     expect(client.getQueryData(appCatalog)).toEqual([appTag])
     expect(client.getQueryState(appCatalog)?.isInvalidated).toBe(true)
-    expect(client.getQueryState(appResults)?.isInvalidated).toBe(false)
+    // A renamed or deleted tag may be on any tagged resource, so app lists refresh too.
+    expect(client.getQueryState(appResults)?.isInvalidated).toBe(true)
   },
 )
 
@@ -91,8 +96,16 @@ it('includes a newly created Agent tag when the first catalog read is still pend
   expect(observer.getCurrentResult().data).toEqual([createdTag, existingTag])
 })
 
-it('refreshes binding counts in Agent tag catalogs after deleting an Agent', async () => {
-  const client = createTestQueryClient()
+it('refreshes binding counts in Agent tag catalogs through the fallback after deleting an Agent', async () => {
+  const invalidation = createMutationInvalidation()
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
+    mutationCache: new MutationCache({
+      onSuccess: (_data, _variables, _result, mutation) => invalidation.onMutationSuccess(mutation),
+    }),
+  })
+  onTestFinished(invalidation.attach(client))
+  onTestFinished(() => client.clear())
   const tag = { id: 'research', name: 'Research', type: 'agent', binding_count: '1' }
   const unboundTag = { ...tag, binding_count: '0' }
   const catalog = consoleQuery.tags.get.queryOptions({ input: { query: { type: 'agent' } } })
@@ -103,12 +116,14 @@ it('refreshes binding counts in Agent tag catalogs after deleting an Agent', asy
   client.setQueryData(search, [tag])
   const observer = new QueryObserver(client, { ...catalog, queryFn: async () => [unboundTag] })
   onTestFinished(observer.subscribe(() => {}))
+  // The fallback skips data written after the request succeeded.
+  await new Promise((resolve) => setTimeout(resolve, 2))
 
   call.mockResolvedValueOnce(undefined)
   await new MutationObserver(client, consoleQuery.agent.byAgentId.delete.mutationOptions()).mutate({
     params: { agent_id: 'agent-1' },
   })
 
-  expect(observer.getCurrentResult().data).toEqual([unboundTag])
+  await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual([unboundTag]))
   expect(client.getQueryState(search)?.isInvalidated).toBe(true)
 })

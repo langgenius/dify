@@ -1,4 +1,3 @@
-import type { QueryClient } from '@tanstack/react-query'
 import type { ConsolePolicies, ConsoleQuery } from './types'
 import { addCreatedKeyToLists, invalidateQueryKeys } from './shared'
 
@@ -152,29 +151,28 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
             },
           },
         },
-        // API key writes wait for the key list; the environment API settings refresh in the
-        // background.
         createEnvironmentApiKey: {
           mutationOptions: {
             // Writes the new key into its list, so the one-time secret shows at once.
-            onSuccess: (created, variables, _result, context) => {
-              const input = { params: variables.params }
-              const access = consoleQuery.enterprise.appDeploy.accessService
-              void invalidateQueryKeys(context.client, [
-                access.getEnvironmentApi.queryKey({ input }),
-              ])
+            onSuccess: (created, variables, _result, context) =>
               addCreatedKeyToLists(
                 context.client,
-                access.listEnvironmentApiKeys.queryKey({ input }),
+                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
+                  input: { params: variables.params },
+                }),
                 created,
-              )
-            },
+              ),
           },
         },
         deleteEnvironmentApiKey: {
           mutationOptions: {
+            // Waits for the key list it deletes from.
             onSuccess: (_data, variables, _result, context) =>
-              invalidateEnvironmentApiKeyQueries(consoleQuery, context.client, variables.params),
+              invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryKey({
+                  input: { params: variables.params },
+                }),
+              ]),
           },
         },
       },
@@ -197,15 +195,9 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
         },
         undeployWorkflow: {
           mutationOptions: {
-            // Waits for the environment's deployment list and detail; the app's environments
-            // refresh in the background.
+            // Waits for the environment's deployment list and detail.
             onSuccess: (_data, variables, _result, context) => {
               const { app_id, environment_id } = variables.params
-              void invalidateQueryKeys(context.client, [
-                consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryKey({
-                  input: { params: { app_id } },
-                }),
-              ])
               return invalidateQueryKeys(context.client, [
                 consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryKey(
                   { input: { params: { app_id } } },
@@ -222,33 +214,18 @@ export function enterprisePolicies(consoleQuery: ConsoleQuery): ConsolePolicies[
     webAppAuth: {
       updateWebAppWhitelistSubjects: {
         mutationOptions: {
-          onSuccess: (_data, _variables, _result, context) => {
-            void invalidateQueryKeys(context.client, [
-              consoleQuery.apps.get.key(),
-              consoleQuery.apps.starred.get.key(),
-              consoleQuery.apps.recent.get.key(),
-            ])
-            // The access dialog reopens with the access mode and subjects from these
-            // queries (the agent detail on the agent page), so the save waits for them.
-            return invalidateQueryKeys(context.client, [
+          meta: { alsoInvalidate: ['apps'] },
+          // The access dialog reopens with the access mode and subjects from these queries
+          // (the app or agent detail shows the mode), so the save waits for them.
+          onSuccess: (_data, _variables, _result, context) =>
+            invalidateQueryKeys(context.client, [
               consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
               consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+              consoleQuery.apps.byAppId.get.key(),
               consoleQuery.agent.byAgentId.get.key(),
-            ])
-          },
+            ]),
         },
       },
     },
   }
-}
-
-function invalidateEnvironmentApiKeyQueries(
-  query: ConsoleQuery,
-  client: QueryClient,
-  { app_id, environment_id }: { app_id: string; environment_id: string },
-) {
-  const input = { params: { app_id, environment_id } }
-  const access = query.enterprise.appDeploy.accessService
-  void invalidateQueryKeys(client, [access.getEnvironmentApi.queryKey({ input })])
-  return invalidateQueryKeys(client, [access.listEnvironmentApiKeys.queryKey({ input })])
 }

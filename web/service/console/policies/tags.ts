@@ -3,12 +3,17 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { QueryClient } from '@tanstack/react-query'
 import type { ConsoleClient } from '../index'
 import type { ConsolePolicies, ConsoleQuery } from './types'
-import { invalidateQueryKeys, refreshAgentTagCatalogs } from './shared'
+import { invalidateQueryKeys } from './shared'
+
+// A renamed or deleted tag changes the tag chips on every resource that carries it.
+const taggedResources = ['apps', 'agent', 'datasets', 'knowledgeFs', 'workspaces.current.skills']
 
 export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags'] {
   return {
     post: {
       mutationOptions: {
+        // Skills read their tag catalog from their own endpoint.
+        meta: { alsoInvalidate: ['workspaces.current.skills'] },
         onSuccess: async (tag, { body: { type } }, _result, { client, meta }) => {
           const queryKey = consoleQuery.tags.get.queryKey({ input: { query: { type } } })
           if (type === 'agent') await client.cancelQueries({ queryKey })
@@ -30,6 +35,7 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
     byTagId: {
       patch: {
         mutationOptions: {
+          meta: { alsoInvalidate: taggedResources },
           onSuccess: (updatedTag, variables, _onMutateResult, context) => {
             context.client.setQueriesData(
               {
@@ -40,23 +46,13 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
                 return oldTags.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag))
               },
             )
-
-            if (updatedTag.type === 'agent')
-              void refreshAgentTagCatalogs(consoleQuery, context.client)
-            void invalidateTaggedResources(consoleQuery, context.client, updatedTag.type)
           },
         },
       },
       delete: {
         mutationOptions: {
+          meta: { alsoInvalidate: taggedResources },
           onSuccess: (_data, variables, _onMutateResult, context) => {
-            const deletedTag = context.client
-              .getQueriesData<Tag[]>({
-                queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-              })
-              .flatMap(([, tags]) => tags ?? [])
-              .find((tag) => tag.id === variables.params.tag_id)
-
             context.client.setQueriesData(
               {
                 queryKey: consoleQuery.tags.get.key({ type: 'query' }),
@@ -66,10 +62,6 @@ export function tagPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['tags']
                 return oldTags.filter((tag) => tag.id !== variables.params.tag_id)
               },
             )
-
-            if (deletedTag?.type === 'agent')
-              void refreshAgentTagCatalogs(consoleQuery, context.client)
-            void invalidateTaggedResources(consoleQuery, context.client, deletedTag?.type)
           },
         },
       },

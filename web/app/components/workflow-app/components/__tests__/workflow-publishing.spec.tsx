@@ -1,9 +1,7 @@
-import type { WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Features } from '@/app/components/base/features/types'
 import type { InjectWorkflowStoreSliceFn, Shape } from '@/app/components/workflow/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
 import { ORPCError } from '@orpc/client'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -22,8 +20,10 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import {
+  createConsoleQueryClient,
   createConsoleQueryWrapper,
   seedAppDetail,
   seedAppDslVersion,
@@ -64,6 +64,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
+  const { createAgentFixture } = await import('@/test/fixtures/agent')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -78,6 +79,9 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.byAppId.triggers.get': async () => ({ data: [] }),
       'enterprise.appDeploy.deploymentService.listAppEnvironments': async () => ({ data: [] }),
       'codeBasedExtension.get': async () => undefined,
+      // Refetched by the invalidation fallback after a publish.
+      'agent.byAgentId.get': async () => createAgentFixture(),
+      'agent.byAgentId.referencingWorkflows.get': async () => ({ data: [] }),
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': api.save,
@@ -182,6 +186,7 @@ function renderEditor({
   permissions = Object.values(AppACLPermission),
   seedQueries,
   workflowKind = 'standard',
+  withInvalidation = false,
 }: {
   mode?: 'workflow' | 'advanced-chat'
   graph?: { nodes: Node[]; edges: Edge[] }
@@ -190,8 +195,13 @@ function renderEditor({
   seedQueries?: (queryClient: QueryClient) => void
   permissions?: NonNullable<ReturnType<typeof createAppDetailFixture>['permission_keys']>
   workflowKind?: ReturnType<typeof createAppDetailFixture>['workflow_kind']
+  /** Runs the app's mutation invalidation fallback on the test client. */
+  withInvalidation?: boolean
 } = {}) {
   const { queryClient } = createConsoleQueryWrapper({
+    ...(withInvalidation && {
+      queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+    }),
     systemFeatures: {
       deployment_edition: 'CLOUD',
       enable_marketplace: false,
@@ -487,116 +497,69 @@ it('publishes the workflow with legacy image input as a tool and reports one suc
   expect(await screen.findByText('workflow.common.workflowAsToolReady')).toBeInTheDocument()
 })
 
-it.each(['roster_agent', 'inline_agent'] as const)(
-  'refreshes roster caches only when the published workflow references a roster agent: %s',
-  async (bindingType) => {
-    const user = userEvent.setup()
-    const graph = validGraph()
-    graph.nodes.push(
-      createNode({
-        id: 'agent-node',
-        position: { x: 150, y: 200 },
-        data: {
-          ...agentDefault.defaultValue,
-          type: BlockEnum.Agent,
-          title: 'Agent step',
-          agent_binding:
-            bindingType === 'roster_agent'
-              ? { binding_type: bindingType, agent_id: 'agent-1' }
-              : {
-                  binding_type: bindingType,
-                  agent_id: 'agent-1',
-                  current_snapshot_id: 'snapshot-1',
-                },
-        },
-      }),
-    )
-    graph.edges.splice(
-      0,
-      1,
-      createEdge({
-        source: 'start',
-        target: 'agent-node',
-        sourceHandle: 'source',
-        targetHandle: 'target',
-        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
-      }),
-      createEdge({
-        source: 'agent-node',
-        target: 'code',
-        sourceHandle: 'source',
-        targetHandle: 'target',
-        data: { sourceType: BlockEnum.Agent, targetType: BlockEnum.Code },
-      }),
-    )
-    const listKey = consoleQuery.agent.get.queryKey({ input: {} })
-    const referencesKey = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryKey({
-      input: { params: { agent_id: 'agent-1' } },
-    })
-    const { queryClient } = renderEditor({
-      graph,
-      seedQueries(client) {
-        client.setQueryData(listKey, {
-          data: [],
-          total: 0,
-          page: 1,
-          limit: 20,
-          has_more: false,
-          publication_counts: { drafts: 0, published: 0 },
-        })
-        client.setQueryData(referencesKey, { data: [] })
-        client.setQueryData(
-          consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
-          createAgentFixture(),
-        )
-        if (bindingType === 'inline_agent') {
-          client.setQueryData(
-            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-              input: { params: { app_id: 'app-1', node_id: 'agent-node' } },
-            }),
-            zWorkflowAgentComposerResponse.parse({
-              variant: 'workflow',
-              agent_soul: {
-                schema_version: 1,
-                prompt: { system_prompt: 'Follow the request' },
-                model: {
-                  model_provider: 'langgenius/openai/openai',
-                  model: 'gpt-4o-mini',
-                  plugin_id: 'langgenius/openai',
-                },
-              },
-              node_job: {},
-              save_options: [],
-              soul_lock: { locked: false },
-              agent: {
-                id: 'agent-1',
-                name: 'Inline agent',
-                description: '',
-                scope: 'workflow_only',
-                status: 'active',
-              },
-              binding: {
-                binding_type: 'inline_agent',
-                agent_id: 'agent-1',
-                current_snapshot_id: 'snapshot-1',
-                id: 'binding-1',
-                node_id: 'agent-node',
-                workflow_id: 'workflow-1',
-              },
-            } satisfies WorkflowAgentComposerResponse),
-          )
-        }
+it('refreshes roster caches after publishing a workflow with a roster agent node', async () => {
+  const user = userEvent.setup()
+  const graph = validGraph()
+  graph.nodes.push(
+    createNode({
+      id: 'agent-node',
+      position: { x: 150, y: 200 },
+      data: {
+        ...agentDefault.defaultValue,
+        type: BlockEnum.Agent,
+        title: 'Agent step',
+        agent_binding: { binding_type: 'roster_agent', agent_id: 'agent-1' },
       },
-    })
-    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false)
-    expect(queryClient.getQueryState(referencesKey)?.isInvalidated).toBe(false)
-    await user.click(await openPublisher(user))
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'workflow.common.published' })).toBeDisabled(),
-    )
-    expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(bindingType === 'roster_agent')
-    expect(queryClient.getQueryState(referencesKey)?.isInvalidated).toBe(
-      bindingType === 'roster_agent',
-    )
-  },
-)
+    }),
+  )
+  graph.edges.splice(
+    0,
+    1,
+    createEdge({
+      source: 'start',
+      target: 'agent-node',
+      sourceHandle: 'source',
+      targetHandle: 'target',
+      data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+    }),
+    createEdge({
+      source: 'agent-node',
+      target: 'code',
+      sourceHandle: 'source',
+      targetHandle: 'target',
+      data: { sourceType: BlockEnum.Agent, targetType: BlockEnum.Code },
+    }),
+  )
+  const listKey = consoleQuery.agent.get.queryKey({ input: {} })
+  const referencesKey = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryKey({
+    input: { params: { agent_id: 'agent-1' } },
+  })
+  const { queryClient } = renderEditor({
+    graph,
+    withInvalidation: true,
+    seedQueries(client) {
+      client.setQueryData(listKey, {
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        has_more: false,
+        publication_counts: { drafts: 0, published: 0 },
+      })
+      client.setQueryData(referencesKey, { data: [] })
+      client.setQueryData(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+        createAgentFixture(),
+      )
+    },
+  })
+  expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false)
+  expect(queryClient.getQueryState(referencesKey)?.isInvalidated).toBe(false)
+  await user.click(await openPublisher(user))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'workflow.common.published' })).toBeDisabled(),
+  )
+  // The publish refreshes the agent domain, which reads the workflow's agent references.
+  await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
+  expect(queryClient.getQueryState(referencesKey)?.isInvalidated).toBe(true)
+})
