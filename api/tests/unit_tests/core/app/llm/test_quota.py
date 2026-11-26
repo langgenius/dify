@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 from uuid import UUID
@@ -16,6 +17,7 @@ from core.app.llm.quota import (
     ensure_llm_quota_available,
     ensure_llm_quota_available_for_model,
     reserve_llm_quota_for_model,
+    reserve_model_quota_for_configuration,
     reserve_model_quota_for_model,
 )
 from core.credit_usage import CreditUsageAppType
@@ -228,6 +230,46 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
         meta={"request_id": "11111111-1111-5111-8111-111111111111"},
     )
     assert credit_reservation.state == CreditPoolReservationState.COMMITTED
+
+
+@pytest.mark.parametrize("quota_type", [ProviderQuotaType.TRIAL, ProviderQuotaType.PAID])
+def test_reserve_model_quota_skips_zero_credit_charge(
+    config_overrides: Callable[..., None], quota_type: ProviderQuotaType
+) -> None:
+    """An available hosted model priced at zero needs no billing or terminal usage to settle."""
+    config_overrides(HOSTED_MODEL_CREDIT_CONFIG="gpt-4o:0")
+    configuration = _provider_configuration(
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(
+            enabled=True,
+            current_quota_type=quota_type,
+            quota_configurations=[
+                QuotaConfiguration(
+                    quota_type=quota_type,
+                    quota_unit=QuotaUnit.CREDITS,
+                    quota_limit=100,
+                    quota_used=1,
+                    is_valid=True,
+                    restrict_models=[RestrictModel(model="gpt-4o", model_type=ModelType.LLM)],
+                )
+            ],
+        ),
+    )
+
+    reservation = reserve_model_quota_for_configuration(
+        configuration,
+        model_type=ModelType.LLM,
+        model="gpt-4o",
+        request_id=None,
+        app_type=None,
+        created_by=None,
+    )
+
+    assert reservation.credit_pool_reservation is None
+    assert not reservation.requires_settlement
+    assert reservation.commit_before_delivery
+    reservation.commit()
+    assert reservation.state == LLMQuotaReservationState.COMMITTED
 
 
 def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:

@@ -70,7 +70,10 @@ class ModelQuotaReservation:
 
     @property
     def commit_before_delivery(self) -> bool:
-        return self.credit_pool_reservation is not None
+        """Fixed credit charges, including zero, can settle before terminal usage arrives."""
+        return self.credit_pool_reservation is not None or (
+            self.quota_unit == QuotaUnit.CREDITS and not self.requires_settlement
+        )
 
     def commit(self, usage: LLMUsage | None = None) -> None:
         if self._state == ModelQuotaReservationState.COMMITTED:
@@ -168,8 +171,9 @@ def reserve_model_quota_for_configuration(
     """Reserve quota for the supplied, tenant-bound route without reselecting credentials.
 
     Custom routes incur no hosted charge. A System route must offer its selected quota
-    or raise QuotaExceededError without reserving credits. Billing evaluates the live
-    balance for metered hosted credits; a missing bucket is not an unlimited quota.
+    or raise QuotaExceededError without reserving credits. After the quota checks pass,
+    a zero-credit model needs no reservation or settlement. Billing evaluates the live
+    balance for positive credit charges; a missing bucket is not an unlimited quota.
     """
     tenant_id = provider_configuration.tenant_id
     provider = provider_configuration.provider.provider
@@ -204,6 +208,8 @@ def reserve_model_quota_for_configuration(
         match quota_configuration.quota_unit:
             case QuotaUnit.CREDITS:
                 amount = dify_config.get_model_credits(model)
+                if amount == 0:
+                    return reservation
             case QuotaUnit.TIMES:
                 amount = 1
             case QuotaUnit.TOKENS:
