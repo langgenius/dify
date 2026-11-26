@@ -30,6 +30,7 @@ const Publisher = () => {
   const { mutateAsync: publishAsCustomizedPipeline } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.customized.publish.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const [showPublishAsKnowledgePipelineModal, setShowPublishAsKnowledgePipelineModal] =

@@ -79,7 +79,7 @@ export function SourceActions({
   const syncAction = displayStatus === 'error' ? 'retry' : 'sync'
   const sourceUri = getOpenableSourceUri(source.uri)
   const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
-  const silentRequest = { context: { silent: true } }
+  const silentRequest = { context: { silent: true }, meta: { errorToast: false as const } }
   const { mutateAsync: requestSync } = useMutation(
     spaceApi.sources.bySourceId.sync.post.mutationOptions(silentRequest),
   )

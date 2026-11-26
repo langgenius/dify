@@ -54,7 +54,7 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true } }
+const silentRequest = { context: { silent: true }, meta: { errorToast: false as const } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)

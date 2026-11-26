@@ -542,6 +542,7 @@ function RunEvaluationForm({
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

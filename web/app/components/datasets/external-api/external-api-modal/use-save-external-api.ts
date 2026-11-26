@@ -9,6 +9,7 @@ export function useSaveExternalApi() {
   const { t } = useTranslation(['common'])
   return useMutation({
     networkMode: 'always',
+    meta: { errorToast: false },
     mutationFn: ({ id, body }: { id?: string; body: CreateExternalAPIReq }) =>
       id
         ? consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch(

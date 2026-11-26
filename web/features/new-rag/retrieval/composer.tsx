@@ -41,7 +41,10 @@ export function RetrievalComposer() {
   const run = useSetAtom(runRetrievalAtom)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const upload = useMutation(
-    consoleQuery.files.upload.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.files.upload.post.mutationOptions({
+      context: { silent: true },
+      meta: { errorToast: false },
+    }),
   )
 
   const selectImages = async (files: FileList | null) => {

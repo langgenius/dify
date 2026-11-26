@@ -66,16 +66,32 @@ const setKnowledgeSettingsSavePendingAtom = atom(
 
 const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
 const saveSpaceMutationAtom = atomWithMutation(() =>
-  spaceApi.patch.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.patch.mutationOptions({
+    retry: false,
+    context: { silent: true },
+    meta: { errorToast: false },
+  }),
 )
 const saveMembersMutationAtom = atomWithMutation(() =>
-  spaceApi.members.put.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.members.put.mutationOptions({
+    retry: false,
+    context: { silent: true },
+    meta: { errorToast: false },
+  }),
 )
 const saveExternalMutationAtom = atomWithMutation(() =>
-  spaceApi.externalAccess.put.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.externalAccess.put.mutationOptions({
+    retry: false,
+    context: { silent: true },
+    meta: { errorToast: false },
+  }),
 )
 const saveSettingsMutationAtom = atomWithMutation(() =>
-  spaceApi.settings.patch.mutationOptions({ retry: false, context: { silent: true } }),
+  spaceApi.settings.patch.mutationOptions({
+    retry: false,
+    context: { silent: true },
+    meta: { errorToast: false },
+  }),
 )
 
 function snapshotQueries(control_space_id: string) {
@@ -84,6 +100,8 @@ function snapshotQueries(control_space_id: string) {
     staleTime: 0,
     retry: false as const,
     context: { silent: true },
+    // The save flow reports its own failure and deliberately ignores failed recovery reads.
+    meta: { errorToast: false as const },
   }
   return {
     space: spaceApi.get.queryOptions(options),
@@ -156,6 +174,7 @@ export const saveKnowledgeSettingsAtom = atom(
             input: { params: { ...params, migration_id: progress.id } },
             retry: false,
             context: { silent: true },
+            meta: { errorToast: false },
           }),
         )
         if (migration.run_state === 'succeeded') {

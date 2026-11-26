@@ -1883,6 +1883,8 @@ function ConnectedSourceWorkflowSession({
   )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
       context: { silent: true },
       retry: false,
@@ -1897,6 +1899,8 @@ function ConnectedSourceWorkflowSession({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       context: { silent: true },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },

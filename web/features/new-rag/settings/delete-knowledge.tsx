@@ -28,6 +28,7 @@ export function DeleteKnowledgeAction() {
   const mutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.delete.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 

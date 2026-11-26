@@ -118,11 +118,13 @@ export function RetrievalRuntimeController() {
   const { mutateAsync: createResearchTask } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.post.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const { mutateAsync: deleteResearchTask } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.researchTasks.byTaskId.delete.mutationOptions({
       context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const setComposerDraft = useSetAtom(retrievalComposerDraftAtom)
