@@ -591,4 +591,32 @@ describe('mutation invalidation with console policies', () => {
     expect(evaluationWorkflows).toHaveBeenCalledTimes(2)
     expect(datasets).toHaveBeenCalledTimes(1)
   })
+
+  it('reads a skill search again after a rename the policy patched into it', async () => {
+    const client = createClient()
+    const skill = { id: 'skill-1', display_name: 'Before', updated_at: 1 }
+    const detailKey = consoleQuery.workspaces.current.skills.bySkillId.get.queryKey({
+      input: { params: { skill_id: 'skill-1' } },
+    })
+    // A search the renamed skill may stop matching: only the server knows its rows.
+    const searchKey = consoleQuery.workspaces.current.skills.get.queryKey({
+      input: { query: { keyword: 'Before' } },
+    })
+    client.setQueryData(detailKey, skill as never)
+    const search = vi.fn(async () => ({ data: search.mock.calls.length === 1 ? [skill] : [] }))
+    const observer = new QueryObserver(client, { queryKey: searchKey, queryFn: search as never })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+    tick()
+
+    await new MutationObserver(
+      client,
+      consoleQuery.workspaces.current.skills.bySkillId.patch.mutationOptions({
+        mutationFn: async () => ({ ...skill, display_name: 'Renamed' }) as never,
+      }),
+    ).mutate({ params: { skill_id: 'skill-1' }, body: { display_name: 'Renamed' } } as never)
+
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual({ data: [] }))
+    expect(search).toHaveBeenCalledTimes(2)
+  })
 })
