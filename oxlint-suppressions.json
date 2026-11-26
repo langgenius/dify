@@ -1181,14 +1181,6 @@
       "count": 1
     }
   },
-  "web/app/components/explore/item-operation/__tests__/index.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/app/text-generation.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -1321,7 +1313,7 @@
   },
   "web/app/components/plugins/plugin-auth/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 12
+      "count": 11
     },
     "react/only-export-components": {
       "count": 3

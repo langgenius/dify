@@ -124,7 +124,7 @@ export function getEndUserSignInUrl(searchParams: LoginSearchParams) {
 }
 
 /** Move the Account API's validated handoff directly onto its requested Web App page. */
-export function getAccountLoginCallbackUrl(
+function getAccountLoginCallbackUrl(
   raw: string | null | undefined,
   expectedReturnUrl: string | null | undefined,
 ) {

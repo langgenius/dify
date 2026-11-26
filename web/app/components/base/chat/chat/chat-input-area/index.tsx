@@ -390,9 +390,9 @@ const ChatInputArea = ({
           </div>
         )}
         {isMultipleLine && <div className="px-2.25">{operation}</div>}
-        {disabled && disabledInputAction && (
+        {disabled && disabledInputAction ? (
           <div className="pointer-events-auto absolute inset-0">{disabledInputAction}</div>
-        )}
+        ) : null}
       </div>
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-s border-e border-b border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">

@@ -56,7 +56,7 @@ type ApiKeyModalCommonProps = {
   formSchemas?: FormSchema[]
 }
 
-export type ApiKeyModalProps = ApiKeyModalCommonProps &
+type ApiKeyModalProps = ApiKeyModalCommonProps &
   (
     | { pluginPayload: PluginPayload; dataSource?: undefined }
     | { pluginPayload?: PluginPayload; dataSource: ApiKeyModalDataSource }

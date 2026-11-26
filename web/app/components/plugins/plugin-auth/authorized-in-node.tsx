@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Authorized from './authorized'
 import { usePluginAuth } from './hooks/use-plugin-auth'
 
-export type AuthorizedInNodeProps = {
+type AuthorizedInNodeProps = {
   pluginPayload: PluginPayload
   onAuthorizationItemClick: (id: string) => void
   credentialId?: string

@@ -400,7 +400,7 @@ describe('Webapp connection actions', () => {
     expect(available()).toContainEqual(expect.objectContaining({ id: createdId, name: draft.name }))
   })
 
-  it('reports API key creation failures while preserving form error handling', async () => {
+  it('returns API key creation failures to the form without a duplicate toast', async () => {
     const user = userEvent.setup()
     const { backend } = installBackend()
     backend.write = () => Response.json({ message: 'Invalid credentials' }, { status: 400 })
@@ -412,7 +412,7 @@ describe('Webapp connection actions', () => {
     await waitFor(() => expect(screen.getByLabelText('Action result')).toHaveTextContent('failed'))
     expect(selections()).toEqual({ 'source-a': existingId, 'source-b': existingId })
     expect(screen.getByLabelText('Mutation pending')).toHaveTextContent('false')
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('persists a manual choice with all independent sources and the active conversation before enabling runs', async () => {
@@ -751,7 +751,7 @@ describe('Webapp connection actions', () => {
       requests.filter((request) => new URL(request.url).pathname.endsWith('/parameters')),
     ).toHaveLength(1)
     expect(selections()).toEqual({ 'source-a': createdId, 'source-b': existingId })
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith('common.api.actionFailed')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('keeps a newly created connection selected when it belongs to a later list page', async () => {

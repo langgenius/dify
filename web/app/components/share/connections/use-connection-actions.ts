@@ -285,9 +285,6 @@ export default function useConnectionActions({
           },
         })
         await saveResult(source, connection, assertCurrent)
-      }).catch((error) => {
-        reportActionFailure(error)
-        throw error
       })
       return
     }

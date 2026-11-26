@@ -70,11 +70,11 @@ export default function ConnectionServiceItem({
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {description}
         </span>
-        {warning && (
+        {warning ? (
           <span id={warningId} className="system-xs-regular wrap-anywhere text-text-warning">
             {warning}
           </span>
-        )}
+        ) : null}
       </div>
       <div className="col-start-2 flex max-w-full flex-wrap items-center gap-2 sm:col-start-auto">
         {renderControls({

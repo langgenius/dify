@@ -21,7 +21,7 @@ export type ConnectionPickerOption = {
   reauthorizationRequired?: boolean
 }
 
-export type ConnectionPickerGroup = {
+type ConnectionPickerGroup = {
   label: string
   items: ConnectionPickerOption[]
 }
@@ -36,7 +36,7 @@ type ConnectionPickerAction = {
   disabled?: boolean
 }
 
-export type ConnectionPickerProps = {
+type ConnectionPickerProps = {
   variant?: 'card' | 'inline'
   warning?: boolean
   groups: ConnectionPickerGroup[]

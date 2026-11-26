@@ -1,6 +1,6 @@
 export type AuthorizationTab = 'workspace-auth' | 'app-user-auth' | 'reuse-from-node'
 
-export type OAuthClientDraft = { type: 'default' | 'custom' }
+type OAuthClientDraft = { type: 'default' | 'custom' }
 
 export type AppUserAuthDraft = {
   oauthEnabled: boolean

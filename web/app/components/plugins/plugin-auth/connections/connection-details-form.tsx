@@ -24,7 +24,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PermissionLevel } from '@/models/permission'
 
-export type ConnectionDetailsValues = {
+type ConnectionDetailsValues = {
   name: string
   visibility: string
   setDefault: boolean

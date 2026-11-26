@@ -12,7 +12,7 @@ export type ToolCredentialSource = (typeof ToolCredentialSource)[keyof typeof To
 
 // The workflow graph is an open schema in the generated API contract.
 // These fields describe the Tool node's persisted authorization configuration.
-export type EndUserAuthConfig = {
+type EndUserAuthConfig = {
   allowed_credential_types?: ('api-key' | 'oauth2')[] | null
   oauth_client_type?: 'default' | 'custom' | null
   purpose?: string | null

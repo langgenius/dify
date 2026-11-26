@@ -1,28 +1,37 @@
-import type { ComponentProps } from 'react'
+import type { Credential } from '../../types'
+import type { EditConnectionDataSource } from '../edit-connection-modal'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { PermissionLevel } from '@/models/permission'
 import { createDeferred } from '@/test/deferred'
-import SaveConnectionModal from '../save-connection-modal'
+import { CredentialTypeEnum } from '../../types'
+import EditConnectionModal from '../edit-connection-modal'
 
-type Props = ComponentProps<typeof SaveConnectionModal>
+const credential: Credential = {
+  id: 'gmail-connection',
+  provider: 'langgenius/gmail/gmail',
+  name: 'Workspace Gmail',
+  credential_type: CredentialTypeEnum.OAUTH2,
+  is_default: false,
+  visibility: PermissionLevel.allTeamMembers,
+}
 
-const renderModal = (overrides: Partial<Props> = {}) => {
-  const save = vi.fn().mockResolvedValue(undefined)
+const renderModal = (
+  save: EditConnectionDataSource['save'] = vi.fn().mockResolvedValue(undefined),
+) => {
   const onOpenChange = vi.fn()
   const Example = () => {
     const [open, setOpen] = useState(true)
     return (
       <>
-        <button onClick={() => setOpen(true)}>Open save dialog</button>
-        <SaveConnectionModal
+        <button onClick={() => setOpen(true)}>Open edit dialog</button>
+        <EditConnectionModal
           providerName="Gmail"
-          accountName="demo@gmail.com"
-          defaultName="Workspace Gmail"
-          dataSource={{ save }}
-          {...overrides}
+          credential={credential}
+          dataSource={{ canEdit: true, canUse: true, save }}
+          onCloseComplete={() => {}}
           open={open}
           onOpenChange={(nextOpen) => {
             setOpen(nextOpen)
@@ -37,29 +46,27 @@ const renderModal = (overrides: Partial<Props> = {}) => {
 }
 
 const nameInput = () => screen.getByRole('textbox', { name: 'plugin.auth.connection.name' })
-const saveButton = () => screen.getByRole('button', { name: 'plugin.auth.connection.save' })
+const saveButton = () => screen.getByRole('button', { name: 'common.operation.save' })
 const chooseScope = async (user: ReturnType<typeof userEvent.setup>, option: string) => {
   await user.click(screen.getByRole('combobox', { name: 'plugin.auth.whoCanUse' }))
   await user.click(await screen.findByRole('option', { name: option }))
 }
 
-describe('SaveConnectionModal', () => {
+describe('EditConnectionModal', () => {
   it('saves trimmed metadata with an initially unchecked workspace-default option', async () => {
     const user = userEvent.setup()
-    const onCreated = vi.fn()
-    const { save } = renderModal({ onCreated })
-    expect(screen.getByText('demo@gmail.com')).toBeVisible()
+    const { save } = renderModal()
     expect(screen.getByRole('checkbox')).not.toBeChecked()
     await user.clear(nameInput())
     await user.type(nameInput(), '  Personal Gmail  ')
     await user.click(saveButton())
     expect(save).toHaveBeenCalledExactlyOnceWith({
+      credential,
       name: 'Personal Gmail',
       visibility: PermissionLevel.allTeamMembers,
       setDefault: false,
     })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(onCreated).not.toHaveBeenCalled()
   })
 
   it('shows a required-name error for whitespace and prevents saving', async () => {
@@ -89,6 +96,7 @@ describe('SaveConnectionModal', () => {
     await chooseScope(user, 'datasetSettings.form.permissionsOnlyMe')
     await user.click(saveButton())
     expect(save).toHaveBeenCalledExactlyOnceWith({
+      credential,
       name: 'Workspace Gmail',
       visibility: PermissionLevel.onlyMe,
       setDefault: false,
@@ -101,7 +109,7 @@ describe('SaveConnectionModal', () => {
       .fn()
       .mockRejectedValueOnce(new Error('Save failed'))
       .mockResolvedValueOnce(undefined)
-    renderModal({ dataSource: { save } })
+    renderModal(save)
     await user.clear(nameInput())
     await user.type(nameInput(), 'Retry Gmail')
     await user.click(screen.getByRole('checkbox'))
@@ -113,6 +121,7 @@ describe('SaveConnectionModal', () => {
     await user.click(submit)
     expect(save).toHaveBeenCalledTimes(2)
     expect(save).toHaveBeenLastCalledWith({
+      credential,
       name: 'Retry Gmail',
       visibility: PermissionLevel.allTeamMembers,
       setDefault: true,
@@ -124,7 +133,7 @@ describe('SaveConnectionModal', () => {
     const user = userEvent.setup()
     const request = createDeferred<void>()
     const save = vi.fn(() => request.promise)
-    const { onOpenChange } = renderModal({ dataSource: { save } })
+    const { onOpenChange } = renderModal(save)
     await user.click(saveButton())
     await user.click(saveButton())
     expect(save).toHaveBeenCalledOnce()
@@ -149,7 +158,7 @@ describe('SaveConnectionModal', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(save).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Open save dialog' }))
+    await user.click(screen.getByRole('button', { name: 'Open edit dialog' }))
     expect(await screen.findByRole('textbox', { name: 'plugin.auth.connection.name' })).toHaveValue(
       'Workspace Gmail',
     )
