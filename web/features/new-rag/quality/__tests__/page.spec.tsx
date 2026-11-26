@@ -92,10 +92,12 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((done) => {
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((done, fail) => {
     resolve = done
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 function delayedCsvFile(name: string, content: string) {
@@ -1399,6 +1401,39 @@ describe('QualityPage', () => {
     second.finishReading()
     expect(await screen.findByText('Second file question')).toBeInTheDocument()
     expect(importButton).toBeEnabled()
+  })
+
+  it('stays open while an import is pending, so its failure is still shown', async () => {
+    const message = 'This workspace cannot import more golden questions'
+    const importResult = deferred<{ active_count: number; draft_count: number; items: [] }>()
+    serviceMock.bulkImport.mockReturnValue(importResult.promise)
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['question,evidence,tags\nWhat is the refund window?,30 days,billing'], 'q.csv', {
+        type: 'text/csv',
+      }),
+    )
+    await screen.findByText('What is the refund window?')
+    await user.click(
+      screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
+    )
+    await waitFor(() => expect(serviceMock.bulkImport).toHaveBeenCalledOnce())
+
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    importResult.reject(createHttpError(new Response(null, { status: 422 }), { message }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(message)
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('locks the CSV selection during import and starts fresh after closing the result', async () => {

@@ -2268,6 +2268,67 @@ describe('RetrievalTestPage', () => {
     expect(errorToast).not.toHaveBeenCalled()
   })
 
+  it('keeps the promotion dialog open while its save is pending, so its failure is still shown', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const message = 'This workspace cannot save more golden questions'
+    let rejectCreate!: (reason: unknown) => void
+    apiMock.createGolden.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectCreate = reject
+      }),
+    )
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'What is useEffect?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: { score: 0.9, text: 'useEffect synchronizes a component.' },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+    await renderPage({ errorToasts: true, searchParams: '?trace=trace-1' })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'knowledgeRetrieval.retrievalTest.keepGoldenQuestion',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'knowledgeQuality.qualityPage.promoteTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.promote' }),
+    )
+    await waitFor(() => expect(apiMock.createGolden).toHaveBeenCalledOnce())
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    await act(async () =>
+      rejectCreate(createHttpError(new Response(null, { status: 403 }), { message })),
+    )
+    expect(await within(dialog).findByText(message)).toBeVisible()
+    expect(errorToast).not.toHaveBeenCalled()
+  })
+
   it('loads a deep-linked trace detail when it is not present in the first list page', async () => {
     apiMock.traceDetail = {
       completed: true,

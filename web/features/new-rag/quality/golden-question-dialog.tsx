@@ -63,7 +63,15 @@ export function GoldenQuestionDialog({
   sessionKey,
 }: GoldenQuestionDialogProps) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      // A pending save keeps the dialog open, so its failure has somewhere to show.
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && pending) return
+        onOpenChange(nextOpen)
+      }}
+      disablePointerDismissal
+    >
       <DialogPortal>
         <DialogBackdrop className="bg-[rgba(16,24,40,0.2)]" />
         <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
@@ -186,6 +194,7 @@ function GoldenQuestionDialogSession({
       <div className="relative z-1 flex shrink-0 items-center justify-between bg-components-panel-bg px-6 pt-6 pb-5">
         <DialogTitle>{title}</DialogTitle>
         <DialogClose
+          disabled={pending}
           render={
             <IconButton
               size="lg"

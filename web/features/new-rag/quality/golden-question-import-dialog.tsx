@@ -14,13 +14,16 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useMutation } from '@tanstack/react-query'
+import { useIsMutating, useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 import { getRequestErrorMessage } from '@/service/http-error'
 import { useKnowledgeSpace } from '../space/context'
 import { maxGoldenQuestionCsvBytes, maxGoldenQuestionCsvRows } from './golden-question-csv-limits'
+
+const goldenQuestionBulkImport =
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.bulkImport.post
 
 export function GoldenQuestionImportDialog({
   onOpenChange,
@@ -29,8 +32,16 @@ export function GoldenQuestionImportDialog({
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {
+  // A pending import keeps the dialog open, so its failure has somewhere to show.
+  const importing = useIsMutating({ mutationKey: goldenQuestionBulkImport.mutationKey() }) > 0
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && importing) return
+        onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent className="w-180">
         <GoldenQuestionImportSession onOpenChange={onOpenChange} />
       </DialogContent>
@@ -50,12 +61,10 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
   // Only the latest file selection may publish rows; earlier reads can resolve later.
   const readGenerationRef = useRef(0)
   const mutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.bulkImport.post.mutationOptions(
-      {
-        // The dialog shows the failure next to its submit button.
-        meta: { errorToast: false },
-      },
-    ),
+    goldenQuestionBulkImport.mutationOptions({
+      // The dialog shows the failure next to its submit button.
+      meta: { errorToast: false },
+    }),
   )
   const previewRows = (() => {
     const occurrences = new Map<string, number>()
@@ -127,6 +136,7 @@ function GoldenQuestionImportSession({ onOpenChange }: { onOpenChange: (open: bo
           </DialogDescription>
         )}
         <DialogHeaderCloseButton
+          disabled={mutation.isPending}
           aria-label={t(($) => $['qualityPage.closeDialog'], { ns: 'knowledgeQuality' })}
         />
       </DialogHeader>
