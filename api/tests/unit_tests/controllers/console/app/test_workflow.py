@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Final, NoReturn, Protocol, TypeIs, override
+from typing import Final, NoReturn, Protocol, override
 from unittest.mock import Mock
 
 import pytest
@@ -79,23 +79,12 @@ def _workflow_app(*, app_id: str = "app", tenant_id: str = "t1") -> _workflow_Ap
 _DEFAULT_CREATED_AT: Final = datetime(2024, 1, 1, 12, 0, 0)
 _DEFAULT_UPDATED_AT: Final = datetime(2024, 1, 1, 12, 1, 0)
 
-# Environment variables reach the model either as validated variable objects or, in tests that
-# exercise raw persisted payloads, as the still-undecoded mappings stored in `_environment_variables`.
-# The raw shape is defined in product code (`EnvironmentVariableMappingDict`) so tests share the
-# boundary contract instead of re-checking ad hoc dict keys.
-EnvironmentVariables = Sequence[VariableBase] | Sequence[EnvironmentVariableMappingDict]
-
-
-def _is_raw(value: EnvironmentVariables) -> TypeIs[Sequence[EnvironmentVariableMappingDict]]:
-    """Report whether stored environment variables are undecoded mappings rather than variable objects."""
-    return bool(value) and isinstance(value[0], Mapping)
-
 
 def _make_workflow(
     *,
     graph_dict: dict[str, object] | None = None,
     features_dict: dict[str, object] | None = None,
-    environment_variables: EnvironmentVariables | None = None,
+    environment_variables: Sequence[VariableBase] | None = None,
     conversation_variables: Sequence[VariableBase] | None = None,
     rag_pipeline_variables: Sequence[Mapping[str, object] | RAGPipelineVariable] | None = None,
     created_at: datetime = _DEFAULT_CREATED_AT,
@@ -103,9 +92,7 @@ def _make_workflow(
 ) -> Workflow:
     """Build a persisted-looking workflow with the values the console controller tests expect.
 
-    Every keyword is optional; omitting one keeps the historical default. `environment_variables`
-    accepts either validated variable objects or raw mappings, which are stored verbatim so tests can
-    assert on deserialization failures.
+    Every keyword is optional; omitting one keeps the historical default.
     """
     graph: dict[str, object] = {"nodes": [], "edges": []} if graph_dict is None else graph_dict
     features: dict[str, object] = {"file_upload": {"enabled": False}} if features_dict is None else features_dict
@@ -171,12 +158,7 @@ def _make_workflow(
         del workflow.updated_at
     else:
         workflow.updated_at = updated_at
-    if _is_raw(environment_variables):
-        workflow._environment_variables = json.dumps(
-            {str(index): value for index, value in enumerate(environment_variables)}
-        )
-    else:
-        workflow.environment_variables = environment_variables
+    workflow.environment_variables = environment_variables
     workflow.conversation_variables = conversation_variables
     workflow.rag_pipeline_variables = rag_pipeline_variables
     return workflow
@@ -1172,15 +1154,21 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_workflow_response_rejects_invalid_environment_variable_dict(sqlite_session: Session) -> None:
-        workflow = _make_workflow(environment_variables=[{"value_type": "not-a-segment-type"}])
+        workflow = _make_workflow(environment_variables=[])
+        invalid_variable: EnvironmentVariableMappingDict = {"value_type": "not-a-segment-type"}
+        # Store an undecoded payload to exercise the response's read-time validation.
+        workflow._environment_variables = json.dumps({"0": invalid_variable})
         sqlite_session.add_all([_account(), workflow])
         sqlite_session.commit()
+        sqlite_session.refresh(workflow, ["_environment_variables"])
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValidationError) as exc:
             workflow_module.WorkflowResponse.model_validate(
                 workflow_module.WorkflowResponseSource(workflow, session=sqlite_session),
                 from_attributes=True,
             )
+
+        assert [error["loc"] for error in exc.value.errors()] == [("environment_variables",)]
 
     @staticmethod
     def test_draft_workflow_get_not_found(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
