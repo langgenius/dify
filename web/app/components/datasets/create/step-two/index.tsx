@@ -171,20 +171,21 @@ const StepTwo: FC<StepTwoProps> = ({
   })
 
   // Fetch default process rule
-  const fetchDefaultProcessRuleMutation = useMutation({
-    ...consoleQuery.datasets.processRule.get.mutationOptions(),
-    onSuccess(data) {
-      const defaultRules = data.rules ? toSegmentationRules(data.rules) : undefined
-      if (defaultRules) {
-        segmentation.setSegmentIdentifier(defaultRules.segmentation.separator)
-        segmentation.setMaxChunkLength(defaultRules.segmentation.max_tokens)
-        segmentation.setOverlap(defaultRules.segmentation.chunk_overlap!)
-        segmentation.setRules(defaultRules.pre_processing_rules)
-        segmentation.setDefaultConfig(defaultRules)
-      }
-      segmentation.setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
-    },
-  })
+  const fetchDefaultProcessRuleMutation = useMutation(
+    consoleQuery.datasets.processRule.get.mutationOptions({
+      onSuccess(data) {
+        const defaultRules = data.rules ? toSegmentationRules(data.rules) : undefined
+        if (defaultRules) {
+          segmentation.setSegmentIdentifier(defaultRules.segmentation.separator)
+          segmentation.setMaxChunkLength(defaultRules.segmentation.max_tokens)
+          segmentation.setOverlap(defaultRules.segmentation.chunk_overlap!)
+          segmentation.setRules(defaultRules.pre_processing_rules)
+          segmentation.setDefaultConfig(defaultRules)
+        }
+        segmentation.setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
+      },
+    }),
+  )
 
   // Event handlers
   const handleDocFormChange = useCallback(

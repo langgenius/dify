@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     CustomizedMetricOutputField,
@@ -32,10 +33,15 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentCondition, JudgmentConfig, JudgmentResult
-from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.exceptions import (
+    EvaluationErrorCode,
+    EvaluationWorkflowVersionNotFoundError,
+    safe_evaluation_error_text,
+)
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from core.model_context import get_credit_usage_metadata
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -59,6 +65,7 @@ from tasks.evaluation_task import (
     _apply_judgment,
     _build_missing_result_errors,
     _collect_retrieval_contexts,
+    _collect_selected_contexts,
     _compute_metrics_summary,
     _create_runner,
     _delete_stored_result_file,
@@ -103,6 +110,98 @@ def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() ->
 
     assert _collect_retrieval_contexts(node_results, []) is None
     assert _collect_retrieval_contexts(node_results, ["missing", "first", "second", "third"]) == ["alpha", "3"]
+    assert _collect_selected_contexts(node_results, ["first", "result"]) == ["alpha"]
+
+
+def test_collect_selected_contexts_accepts_text_arrays_without_stringifying_other_values() -> None:
+    """Selected text arrays preserve evidence order; unrelated values stay unusable."""
+    node_results = {
+        "start": NodeRunResult(
+            outputs={
+                "texts": ["first", "", "   ", "second"],
+                "nested": {"texts": ["nested"]},
+                "files": [{"name": "document.txt"}],
+                "number": 42,
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["start", "texts"]) == ["first", "second"]
+    assert _collect_selected_contexts(node_results, ["start", "nested", "texts"]) == ["nested"]
+    assert _collect_selected_contexts(node_results, ["start", "files"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "number"]) == []
+    assert _collect_selected_contexts(node_results, ["sys", "user_id"]) == []
+    assert _collect_selected_contexts(node_results, ["start"]) == []
+    assert _collect_selected_contexts(node_results, ["start", "texts", "content"]) == []
+
+
+def test_collect_selected_contexts_preserves_retrieval_summary_before_content() -> None:
+    """Selected retrieval chunks contain the same ordered text as the LLM context."""
+    node_results = {
+        "retrieval": NodeRunResult(
+            outputs={
+                "result": [
+                    {"summary": "short summary", "content": "source text"},
+                    {"summary": "summary only", "content": ""},
+                    {"content": "second source"},
+                    {"summary": "not a retrieval chunk"},
+                ]
+            }
+        )
+    }
+
+    assert _collect_selected_contexts(node_results, ["retrieval", "result"]) == [
+        "short summary\nsource text",
+        "summary only",
+        "second source",
+    ]
+
+
+def test_workflow_faithfulness_receives_selected_llm_text_as_context(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A selected LLM output reaches the judge even without a context placeholder in the prompt."""
+    monkeypatch.setattr("tasks.evaluation_task._cooperative_checkpoint", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._update_run_progress", lambda *_args: None)
+    monkeypatch.setattr("tasks.evaluation_task._persist_results", lambda *_args: None)
+    evaluator = CapturingEvaluationInstance(
+        llm_result_factory=lambda items: [
+            EvaluationItemResult(index=item.index, metrics=[EvaluationMetric(name="faithfulness", value=1.0)])
+            for item in items
+        ]
+    )
+    run_data = EvaluationRunData(
+        evaluation_run_id="run-1",
+        tenant_id="tenant-1",
+        target_type="apps",
+        target_id="app-1",
+        evaluation_model_provider="provider",
+        evaluation_model="model",
+        default_metrics=[
+            DefaultMetric(metric="faithfulness", node_info_list=[NodeInfo(node_id="llm-2", title="LLM 2", type="llm")])
+        ],
+        llm_context_selector_mapping={"llm-2": ["llm-1", "text"]},
+        input_list=[EvaluationDatasetInput(index=0, inputs={"query": "question"})],
+    )
+
+    results = _execute_evaluation_runner(
+        sqlite_session,
+        EvaluationRunData.model_validate(run_data.model_dump(mode="json")),
+        evaluator,
+        [
+            {
+                "llm-1": NodeRunResult(outputs={"text": "Source answer"}),
+                "llm-2": NodeRunResult(
+                    process_data={"prompts": [{"role": "system", "text": "Refine Source answer"}]},
+                    outputs={"text": "Refined answer"},
+                ),
+            }
+        ],
+        _lease(run_data.evaluation_run_id),
+    )
+
+    assert evaluator.llm_items[0].context == ["Source answer"]
+    assert results[0].metrics[0].value == 1.0
 
 
 def test_store_result_file_persists_upload_matching_saved_bytes(
@@ -221,16 +320,16 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     assert generated[1]["args"] == {"inputs": {"prompt": "second"}}
     assert results[0].metrics[0].name == "score"
     assert results[0].metrics[0].value == 0.8
-    assert results[1].error == (
-        "Customized evaluation failed: Evaluation workflow returned none of the configured metric outputs"
-    )
+    _assert_public_error(results[1].error, EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
     assert len(cancellation_checks) == 4
 
 
+@pytest.mark.parametrize("target_type", [EvaluationTargetType.APPS, EvaluationTargetType.SNIPPETS])
 def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, target_type: EvaluationTargetType
 ) -> None:
     def evaluate(items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "workflow", "created_by": "evaluation"}
         return [
             EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="answer_relevancy", value=0.9)])
             for _item in items
@@ -250,7 +349,7 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
     run_data = EvaluationRunData(
         evaluation_run_id="run-1",
         tenant_id="tenant-1",
-        target_type="apps",
+        target_type=target_type.value,
         target_id="app-1",
         evaluation_model_provider="provider",
         evaluation_model="model",
@@ -282,10 +381,13 @@ def test_workflow_metric_runner_scores_only_rows_with_a_matching_node(
 def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fails(
     sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    customized_inherited_metadata: list[bool] = []
+
     def fail_metric(_items: list[EvaluationItemInput]) -> list[EvaluationItemResult]:
         raise RuntimeError("judge unavailable")
 
     def fail_customized(**_kwargs: object) -> list[EvaluationItemResult]:
+        customized_inherited_metadata.append(get_credit_usage_metadata() is not None)
         raise RuntimeError("evaluator unavailable")
 
     persisted: list[list[EvaluationItemResult]] = []
@@ -320,8 +422,13 @@ def test_workflow_metric_failures_remain_row_local_when_customized_evaluator_fai
         _lease("run-1"),
     )
 
-    assert "judge unavailable" in (results[0].error or "")
-    assert "evaluator unavailable" in (results[0].error or "")
+    assert results[0].error is not None
+    assert EvaluationErrorCode.METRIC_FAILED.value in results[0].error
+    assert EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED.value in results[0].error
+    assert "judge unavailable" not in results[0].error
+    assert "evaluator unavailable" not in results[0].error
+    assert safe_evaluation_error_text(results[0].error) == results[0].error
+    assert customized_inherited_metadata == [False]
     assert persisted == [results]
 
 
@@ -339,7 +446,10 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
         lambda _session, _lease, results, *_args: persisted.append(results),
     )
 
+    scoring_metadata: list[dict[str, object]] = []
+
     def fail_scoring(*_args: object, **_kwargs: object) -> list[EvaluationItemResult]:
+        scoring_metadata.append(get_evaluation_credit_usage_metadata())
         raise RuntimeError("provider unavailable")
 
     monkeypatch.setattr("tasks.evaluation_task.RetrievalEvaluationRunner.evaluate_metrics", fail_scoring)
@@ -366,8 +476,9 @@ def test_retrieval_metric_runner_preserves_row_errors_when_scoring_fails(
         _lease(run_data.evaluation_run_id),
     )
 
-    assert results[0].error == "Retrieval metric 'context_precision' failed: provider unavailable"
-    assert results[1].error == "Retrieval failed: retrieval timeout"
+    _assert_public_error(results[0].error, EvaluationErrorCode.METRIC_FAILED)
+    assert results[1].error == "Evaluation failed. Please retry or contact support."
+    assert scoring_metadata == [{"app_type": "unknown", "created_by": "evaluation"}]
     assert progress == [0.85]
     assert persisted == [results]
 
@@ -435,6 +546,12 @@ _EXECUTION_TOKEN = "40000000-0000-0000-0000-000000000001"
 
 def _lease(run_id: str, token: str = _EXECUTION_TOKEN) -> EvaluationRunLease:
     return EvaluationRunLease(run_id=run_id, token=token)
+
+
+def _assert_public_error(error: str | None, code: EvaluationErrorCode) -> None:
+    assert error is not None
+    assert error.startswith(f"{code.value}: ")
+    assert safe_evaluation_error_text(error) == error
 
 
 class _RecordingCeleryControl:
@@ -631,7 +748,7 @@ def test_missing_target_rows_preserve_execution_error() -> None:
 
     missing_errors = _build_missing_result_errors(input_list, [{}], ["provider timed out"])
 
-    assert missing_errors == {7: "Target execution failed: provider timed out"}
+    assert missing_errors == {7: "Evaluation failed. Please retry or contact support."}
 
 
 def test_workflow_task_ids_are_deterministic_per_run_phase_and_position() -> None:
@@ -912,19 +1029,19 @@ def test_execute_evaluation_rejects_invalid_or_terminal_task_deliveries(
 
 
 @pytest.mark.parametrize(
-    ("failure", "expected_failure"),
+    ("failure", "expected_code"),
     [
         (EvaluationRunCancelledError(), None),
         (EvaluationRunOwnershipLostError("stale task"), None),
-        (ValueError("invalid payload"), "invalid payload"),
-        (RuntimeError("backend unavailable"), "Evaluation failed after 1 attempts: backend unavailable"),
+        (ValueError("invalid payload"), EvaluationErrorCode.INVALID_CONFIG),
+        (RuntimeError("backend unavailable"), EvaluationErrorCode.RUN_FAILED),
     ],
 )
 def test_run_evaluation_classifies_terminal_and_nonretryable_failures(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
     failure: Exception,
-    expected_failure: str | None,
+    expected_code: EvaluationErrorCode | None,
 ) -> None:
     @contextmanager
     def create_session() -> Generator[Session]:
@@ -957,7 +1074,12 @@ def test_run_evaluation_classifies_terminal_and_nonretryable_failures(
     finally:
         run_evaluation.pop_request()
 
-    assert failures == ([expected_failure] if expected_failure else [])
+    if expected_code is None:
+        assert failures == []
+    else:
+        assert len(failures) == 1
+        _assert_public_error(failures[0], expected_code)
+        assert str(failure) not in failures[0]
 
 
 @pytest.mark.parametrize("persist_raises", [False, True])
@@ -1095,7 +1217,8 @@ def test_run_evaluation_retries_transient_failure_and_keeps_checkpoints(
         assert run.status == EvaluationRunStatus.PENDING
         assert run.execution_token is None
         assert run.heartbeat_at is None
-        assert run.error == "Retry 1/3 scheduled after: temporary database outage"
+        _assert_public_error(run.error, EvaluationErrorCode.RUN_RETRYING)
+        assert "temporary database outage" not in (run.error or "")
         assert run.completed_at is None
 
 
@@ -1164,7 +1287,7 @@ def test_run_evaluation_does_not_retry_missing_pinned_workflow(
         assert run.status == EvaluationRunStatus.FAILED
         assert run.execution_token is None
         assert run.heartbeat_at is None
-        assert run.error == "Pinned workflow version was deleted."
+        _assert_public_error(run.error, EvaluationErrorCode.INVALID_CONFIG)
 
 
 def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
@@ -1212,6 +1335,40 @@ def test_target_checkpoint_is_idempotent_and_becomes_completed_result(
         assert run is not None
         assert run.completed_items == 1
         assert run.failed_items == 0
+
+
+def test_target_and_result_checkpoints_mask_raw_provider_errors(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    run_id = "30000000-0000-0000-0000-000000000082"
+    lease = _lease(run_id)
+    item = EvaluationDatasetInput(index=7, inputs={"query": "hello"})
+    raw_error = "PluginInvokeError: {'args': 'provider-response-secret'}"
+    with sqlite_session_factory() as session:
+        session.add(
+            EvaluationRun(
+                id=run_id,
+                tenant_id="30000000-0000-0000-0000-000000000002",
+                target_type=EvaluationTargetType.APPS,
+                target_id="30000000-0000-0000-0000-000000000003",
+                evaluation_config_id="30000000-0000-0000-0000-000000000005",
+                config_snapshot="{}",
+                status=EvaluationRunStatus.RUNNING,
+                execution_token=lease.token,
+                total_items=1,
+                created_by="30000000-0000-0000-0000-000000000006",
+            )
+        )
+        session.commit()
+        _persist_target_checkpoint(session, lease, item, "workflow-run-7", raw_error)
+        checkpoint = session.scalar(select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_id))
+        assert checkpoint is not None
+        assert checkpoint.error == "Evaluation failed. Please retry or contact support."
+
+        _persist_results(session, lease, [EvaluationItemResult(index=7, error=raw_error)], [item])
+        session.refresh(checkpoint)
+        assert checkpoint.status == EvaluationRunItemStatus.COMPLETED
+        assert checkpoint.error == "Evaluation failed. Please retry or contact support."
 
 
 def test_completed_checkpoints_publish_result_file_and_finish_run(
@@ -1547,7 +1704,7 @@ def test_resume_workflow_rows_checkpoints_new_targets_and_persists_row_errors(
         ]
         assert checkpoints[0].workflow_run_id == "workflow-run-7"
         assert checkpoints[0].metrics_list[0]["value"] == 0.8
-        assert checkpoints[1].error == "Target execution failed: provider unavailable"
+        assert checkpoints[1].error == "Evaluation failed. Please retry or contact support."
     assert cleared_task_ids == [
         _workflow_task_id(run_id, "target", 0),
         _workflow_task_id(run_id, "target", 1),
@@ -1686,7 +1843,8 @@ def test_execute_agent_target_persists_backend_checkpoint_and_terminal_result(
                 assert agent_item.output == "hello agent"
             else:
                 assert agent_item is None
-                assert target_error == "Agent execution failed: fake failure"
+                _assert_public_error(target_error, EvaluationErrorCode.TARGET_FAILED)
+                assert "fake failure" not in (target_error or "")
 
     assert client.request is runtime_request.request
     with sqlite_session_factory() as session:
@@ -1992,11 +2150,12 @@ def test_evaluate_agent_row_uses_native_agent_evaluator(
 ) -> None:
     node_info = NodeInfo(node_id="agent-1", type="agent", title="Research Agent")
     agent_item = AgentEvaluationItem(index=7, inputs={"task": "hello"}, output="done")
-    evaluation_instance = CapturingEvaluationInstance(
-        agent_result_factory=lambda _items: [
-            EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])
-        ]
-    )
+
+    def evaluate_agent(_items: list[AgentEvaluationItem]) -> list[EvaluationItemResult]:
+        assert get_evaluation_credit_usage_metadata() == {"app_type": "agent_v2", "created_by": "evaluation"}
+        return [EvaluationItemResult(index=0, metrics=[EvaluationMetric(name="task_completion", value=0.9)])]
+
+    evaluation_instance = CapturingEvaluationInstance(agent_result_factory=evaluate_agent)
     persisted_results: list[list[EvaluationItemResult]] = []
 
     def persist_results(
@@ -2179,8 +2338,11 @@ def test_evaluate_agent_row_keeps_native_and_customized_failures_on_the_row(
 
     assert len(persisted) == 1
     assert persisted[0][0].actual_output == "done"
-    assert "Agent evaluator returned no result" in (persisted[0][0].error or "")
-    assert "evaluator unavailable" in (persisted[0][0].error or "")
+    assert persisted[0][0].error is not None
+    assert EvaluationErrorCode.METRIC_FAILED.value in persisted[0][0].error
+    assert EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED.value in persisted[0][0].error
+    assert "Agent evaluator returned no result" not in persisted[0][0].error
+    assert "evaluator unavailable" not in persisted[0][0].error
 
 
 def test_resume_retrieval_rows_skips_completed_checkpoint(
@@ -2492,6 +2654,37 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
     ]
 
 
+def test_result_xlsx_prefixes_custom_evaluator_metrics() -> None:
+    default_node = NodeInfo(node_id="llm-1", type="llm", title="Answer")
+    custom_evaluator = NodeInfo(node_id="evaluator-app", type="customized", title="customized")
+    results = [
+        EvaluationItemResult(
+            index=1,
+            metrics=[
+                EvaluationMetric(name="score", value=0.2, node_info=default_node),
+                EvaluationMetric(name="score", value=0.8, node_info=custom_evaluator),
+            ],
+        )
+    ]
+
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx([EvaluationDatasetInput(index=1, inputs={})], results)))
+    worksheet = workbook.active
+
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == [
+        "index",
+        "actual_output",
+        "Answer : score",
+        "Custom Evaluator : score",
+        "error",
+    ]
+    assert [cell.value for cell in worksheet[2][2:4]] == [0.2, 0.8]
+    assert set(_compute_metrics_summary(results, None)["metrics"]) == {
+        "Answer : score",
+        "Custom Evaluator : score",
+    }
+
+
 def test_summaries_and_xlsx_keep_same_title_nodes_separate() -> None:
     first_node = NodeInfo(node_id="llm-1", type="llm", title="Answer")
     second_node = NodeInfo(node_id="llm-2", type="llm", title="Answer")
@@ -2599,7 +2792,7 @@ def test_result_xlsx_preserves_formula_like_text_as_literal_cells() -> None:
         "D2": "=3+3",
         "E1": "=metric",
         "E2": "=4+4",
-        "G2": "=5+5",
+        "G2": "Evaluation failed. Please retry or contact support.",
     }
     for coordinate, expected_value in formula_like_cells.items():
         cell = worksheet[coordinate]

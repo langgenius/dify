@@ -5,7 +5,7 @@ const SyncingDataModal = () => {
 
   if (!isSyncingWorkflowDraft) return null
 
-  return <div className="absolute inset-0 z-50"></div>
+  return <div className="absolute inset-0"></div>
 }
 
 export default SyncingDataModal

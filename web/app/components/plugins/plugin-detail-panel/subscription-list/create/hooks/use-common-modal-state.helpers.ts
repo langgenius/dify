@@ -3,10 +3,11 @@ import type { TFunction } from 'i18next'
 import type { Dispatch, SetStateAction } from 'react'
 import type { FormRefObject } from '@/app/components/base/form/types'
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
+import type { BuildTriggerSubscriptionPayload } from '@/service/trigger-queries'
 import { useEffect, useRef } from 'react'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
 type FormValuesResult = {
@@ -145,7 +146,10 @@ export const useInitializeSubscriptionBuilder = ({
         setSubscriptionBuilder(response.subscription_builder)
       } catch (error) {
         console.error('createBuilder error:', error)
-        toast.error(t(($) => $['modal.errors.createFailed'], { ns: 'pluginTrigger' }))
+        toast.error(
+          getRequestErrorMessage(error) ??
+            t(($) => $['modal.errors.createFailed'], { ns: 'pluginTrigger' }),
+        )
       }
     }
 

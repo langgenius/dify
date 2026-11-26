@@ -1,7 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from functools import cached_property
 from typing import Any, ClassVar
 
 from configs import dify_config
@@ -39,10 +38,6 @@ class DocumentTaskProxyBase(ABC):
         """
         self._tenant_id = tenant_id
         self._dataset_id = dataset_id
-
-    @cached_property
-    def features(self):
-        return FeatureService.get_features(self._tenant_id, exclude_vector_space=True)
 
     @abstractmethod
     def _send_to_direct_queue(self, task_func: Callable[..., Any]):
@@ -93,7 +88,7 @@ class DocumentTaskProxyBase(ABC):
 
         # Cloud queues isolate tenants and prioritize paid plans.
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
+            if FeatureService.get_workspace_plan(self._tenant_id) == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant self sub queue for sandbox plan
                 self._send_to_default_tenant_queue()
             else:

@@ -15,6 +15,7 @@ import { createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createCatalogModelFixture,
   createModelCatalogFixture,
@@ -155,7 +156,7 @@ describe('knowledge-retrieval path', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
 
-      render(<AddDataset selectedIds={['dataset-1']} onChange={onChange} />)
+      render(<AddDataset selectedIds={[TEST_DATASET_ID]} onChange={onChange} />)
 
       await user.click(
         screen.getByRole('button', {
@@ -166,7 +167,7 @@ describe('knowledge-retrieval path', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
 
       expect(onChange).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 'dataset-1' }),
+        expect.objectContaining({ id: TEST_DATASET_ID }),
         expect.objectContaining({
           id: 'dataset-2',
           name: 'Selected Dataset',
@@ -199,10 +200,9 @@ describe('knowledge-retrieval path', () => {
       })
       expect(updateDatasetSetting).toHaveBeenCalledWith(
         expect.objectContaining({
-          datasetId: 'dataset-1',
+          datasetId: TEST_DATASET_ID,
           body: expect.objectContaining({ name: 'Updated Dataset' }),
         }),
-        { silent: true },
       )
     })
 
@@ -618,7 +618,7 @@ describe('knowledge-retrieval path', () => {
           </DatasetsDetailContext>,
         )
 
-      const { rerender, container } = renderNode(['dataset-1'])
+      const { rerender, container } = renderNode([TEST_DATASET_ID])
 
       expect(screen.getByText('Dataset Name')).toBeInTheDocument()
 

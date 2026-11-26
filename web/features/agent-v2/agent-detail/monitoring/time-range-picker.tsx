@@ -120,7 +120,7 @@ export function AgentMonitoringTimeRangePicker({
       >
         <SelectTrigger
           aria-label={t(($) => $['agentDetail.monitoring.timeRangeLabel'])}
-          className="w-fit shrink-0 cursor-pointer gap-1.5 pr-2 pl-3"
+          className="w-fit shrink-0 cursor-pointer gap-1.5 ps-3 pe-2"
         >
           {selectedRange === 'custom'
             ? t(($) => $['agentDetail.monitoring.timeRanges.custom'])

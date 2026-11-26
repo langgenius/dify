@@ -4,6 +4,7 @@ import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { selectAtom } from 'jotai/utils'
+import { v4 as uuid4 } from 'uuid'
 import { consoleQuery } from '@/service/console'
 import { knowledgeFsTaskFailureMessageKey } from '../../knowledge-fs-task-error'
 import { timeValue } from '../history-utils'
@@ -613,7 +614,7 @@ export const startRetrievalComposerUploadsAtom = atom(null, (get, set, files: Fi
   if (!files.length) return []
   set(freezeFallbackSelectionAtom)
   const uploads: RetrievalImageUpload[] = files.map((file) => ({
-    id: crypto.randomUUID(),
+    id: uuid4(),
     file,
     previewUrl: URL.createObjectURL(file),
     progress: 0,

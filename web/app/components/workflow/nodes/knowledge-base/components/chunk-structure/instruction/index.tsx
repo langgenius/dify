@@ -24,10 +24,10 @@ const Instruction = ({ className }: InstructionProps) => {
           aria-hidden
           className="i-custom-vender-knowledge-add-chunks size-5 text-text-accent"
         />
-        <Line className="absolute -bottom-19 -left-px" type="vertical" />
-        <Line className="absolute -right-px -bottom-19" type="vertical" />
-        <Line className="absolute -top-px -right-46" type="horizontal" />
-        <Line className="absolute -right-46 -bottom-px" type="horizontal" />
+        <Line className="absolute -inset-s-px -bottom-19" type="vertical" />
+        <Line className="absolute -inset-e-px -bottom-19" type="vertical" />
+        <Line className="absolute -inset-e-46 -top-px" type="horizontal" />
+        <Line className="absolute -inset-e-46 -bottom-px" type="horizontal" />
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="system-sm-medium text-text-secondary">

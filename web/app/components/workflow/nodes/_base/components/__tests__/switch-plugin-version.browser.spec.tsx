@@ -1,69 +1,62 @@
-import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
-import type { consoleClient } from '@/service/console'
+import type {
+  PluginInstallTaskStartResponse,
+  PluginTaskResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { act } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { createDeferred } from '@/test/deferred'
+import { apiError, hold, installFakeApi } from '@/test/fake-api'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { SwitchPluginVersion } from '../switch-plugin-version'
 
-const api = vi.hoisted(() => ({
-  detail: vi.fn<typeof consoleClient.workspaces.current.plugin.list.installations.ids.post>(),
-  task: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.byTaskId.get>(),
-  upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
-  versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
-}))
-// boundary: Control installed versions and the external marketplace upgrade request.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
-  return {
-    ...actual,
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'workspaces.current.plugin.list.installations.ids.post': api.detail,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
-      'workspaces.current.plugin.tasks.byTaskId.get': api.task,
-    }),
-  }
-})
-// boundary: Supply available versions from the marketplace API.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  const { createTanstackQueryUtils } = await import('@orpc/tanstack-query')
-  return {
-    ...actual,
-    marketplaceQuery: createTanstackQueryUtils(
-      { ...actual.marketplaceClient, pluginVersions: api.versions },
-      { path: ['marketplace'] },
-    ),
-  }
-})
 const installed = createPluginEntity()
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
-beforeEach(() => {
-  api.detail.mockReset().mockResolvedValue({ plugins: [installed] })
-  api.task.mockReset()
-  api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
-  api.versions.mockReset().mockResolvedValue({
-    data: {
-      versions: ['2.0.0', '1.0.0', '0.5.0'].map((version) => ({
-        plugin_org: 'langgenius',
-        plugin_name: 'plugin-entity',
-        version,
-        file_name: 'plugin.difypkg',
-        checksum: version,
-        created_at: '2026-06-01T00:00:00Z',
-        unique_identifier: identifier(version),
-      })),
+async function setup({ enableMarketplace = true } = {}) {
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          plugin: {
+            list: { installations: { ids: { post: () => ({ plugins: [installed] }) } } },
+            upgrade: {
+              marketplace: {
+                post: async (): Promise<PluginInstallTaskStartResponse> => ({
+                  all_installed: true,
+                  task_id: '',
+                }),
+              },
+            },
+            tasks: {
+              byTaskId: {
+                get: async ({ params }): Promise<PluginTaskResponse> => {
+                  throw apiError({ status: 404, message: `Task ${params.task_id} not found` })
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    marketplace: {
+      pluginVersions: () => ({
+        data: {
+          versions: ['2.0.0', '1.0.0', '0.5.0'].map((version) => ({
+            plugin_org: 'langgenius',
+            plugin_name: 'plugin-entity',
+            version,
+            file_name: 'plugin.difypkg',
+            checksum: version,
+            created_at: '2026-06-01T00:00:00Z',
+            unique_identifier: identifier(version),
+          })),
+        },
+      }),
     },
   })
-})
-async function setup({ enableMarketplace = true } = {}) {
+  onTestFinished(fake)
+  const { plugin } = fake.console.workspaces.current
   const { queryClient, wrapper } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: enableMarketplace },
     workspacePermissionKeys: ['plugin.install'],
@@ -75,7 +68,13 @@ async function setup({ enableMarketplace = true } = {}) {
     />,
     { wrapper },
   )
-  return { queryClient, trigger: page.getByRole('button', { name: /switchVersion 1\.0\.0/ }) }
+  return {
+    queryClient,
+    trigger: page.getByRole('button', { name: /switchVersion 1\.0\.0/ }),
+    detail: plugin.list.installations.ids.post,
+    upgrade: plugin.upgrade.marketplace.post,
+    task: plugin.tasks.byTaskId.get,
+  }
 }
 
 it('keeps the version badge but cannot switch versions when Marketplace is disabled', async () => {
@@ -84,9 +83,8 @@ it('keeps the version badge but cannot switch versions when Marketplace is disab
 })
 
 it('restores focus to the version menu after cancelling and after installing a version', async () => {
-  const result = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
-  api.upgrade.mockReturnValueOnce(result.promise)
-  const { trigger } = await setup()
+  const { trigger, detail, upgrade } = await setup()
+  const result = hold(upgrade)
   const dialog = page.getByRole('dialog')
   const openInstall = async () => {
     await trigger.click()
@@ -110,28 +108,28 @@ it('restores focus to the version menu after cancelling and after installing a v
   await expect
     .element(dialog.getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.cancel' }))
     .toBeDisabled()
-  await userEvent.click(document.body, { position: { x: 4, y: 4 }, force: true })
+  // Click whatever the user would hit outside the dialog, so the backdrop receives the press.
+  await userEvent.click(document.elementFromPoint(4, 4)!, { position: { x: 4, y: 4 } })
   await expect.element(dialog).toBeVisible()
-  expect(api.upgrade).toHaveBeenCalledExactlyOnceWith({
+  expect(upgrade).toHaveBeenCalledExactlyOnceWith({
     body: {
       original_plugin_unique_identifier: installed.plugin_unique_identifier,
       new_plugin_unique_identifier: identifier('2.0.0'),
     },
   })
-  const detailRequests = api.detail.mock.calls.length
+  const detailRequests = detail.mock.calls.length
   await act(async () => result.resolve({ all_installed: true, task_id: '' }))
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  expect(api.detail).toHaveBeenCalledTimes(detailRequests + 1)
+  expect(detail).toHaveBeenCalledTimes(detailRequests + 1)
 })
 
 it.each(['success', 'failed'] as const)(
   'waits for the queued upgrade to reach %s before refreshing installed tools',
   async (status) => {
-    const task = createDeferred<Awaited<ReturnType<typeof api.task>>>()
-    api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'upgrade-job' })
-    api.task.mockReturnValueOnce(task.promise)
-    const { queryClient, trigger } = await setup()
+    const { queryClient, trigger, detail, upgrade, task } = await setup()
+    upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'upgrade-job' })
+    const taskResult = hold(task)
     const toolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
     queryClient.setQueryData(toolsKey, [])
     await trigger.click()
@@ -142,17 +140,17 @@ it.each(['success', 'failed'] as const)(
     })
     await confirm.click()
     await vi.waitFor(() =>
-      expect(api.task).toHaveBeenCalledExactlyOnceWith({ params: { task_id: 'upgrade-job' } }),
+      expect(task).toHaveBeenCalledExactlyOnceWith({ params: { task_id: 'upgrade-job' } }),
     )
-    const detailRequests = api.detail.mock.calls.length
+    const detailRequests = detail.mock.calls.length
     await userEvent.keyboard('{Escape}')
     await expect.element(dialog).toBeVisible()
     await act(async () =>
-      task.resolve({
+      taskResult.resolve({
         task: {
           id: 'upgrade-job',
-          created_at: '',
-          updated_at: '',
+          created_at: '2026-06-01T00:00:00Z',
+          updated_at: '2026-06-01T00:00:00Z',
           status,
           total_plugins: 1,
           completed_plugins: status === 'success' ? 1 : 0,
@@ -169,25 +167,28 @@ it.each(['success', 'failed'] as const)(
         },
       }),
     )
-    expect(queryClient.getQueryState(toolsKey)?.isInvalidated).toBe(status === 'success')
+    await expect
+      .poll(() => queryClient.getQueryState(toolsKey)?.isInvalidated)
+      .toBe(status === 'success')
     if (status === 'failed') {
       await expect
         .element(dialog.getByRole('alert'))
         .toHaveTextContent('Package installation failed')
-      expect(api.detail).toHaveBeenCalledTimes(detailRequests)
+      expect(detail).toHaveBeenCalledTimes(detailRequests)
       await confirm.click()
-      expect(api.upgrade).toHaveBeenCalledTimes(2)
+      await expect.poll(() => upgrade.mock.calls.length).toBe(2)
     }
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
-    expect(api.detail).toHaveBeenCalledTimes(detailRequests + 1)
+    await expect.poll(() => detail.mock.calls.length).toBe(detailRequests + 1)
   },
 )
 
 it.each(['failed task', 'missing task ID'] as const)(
   'shows a retryable error for a %s in the start response',
   async (failure) => {
-    api.upgrade.mockResolvedValueOnce({
+    const { trigger, upgrade, task } = await setup()
+    upgrade.mockResolvedValueOnce({
       all_installed: false,
       task_id: '',
       task:
@@ -195,8 +196,8 @@ it.each(['failed task', 'missing task ID'] as const)(
           ? {
               id: 'failed-job',
               status: 'failed',
-              created_at: '',
-              updated_at: '',
+              created_at: '2026-06-01T00:00:00Z',
+              updated_at: '2026-06-01T00:00:00Z',
               total_plugins: 1,
               completed_plugins: 0,
               plugins: [
@@ -212,7 +213,6 @@ it.each(['failed task', 'missing task ID'] as const)(
             }
           : null,
     })
-    const { trigger } = await setup()
     await trigger.click()
     await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
     const dialog = page.getByRole('dialog')
@@ -222,16 +222,20 @@ it.each(['failed task', 'missing task ID'] as const)(
     await expect
       .element(dialog.getByRole('alert'))
       .toHaveTextContent(failure === 'failed task' ? 'Package rejected' : 'common.error')
-    expect(api.task).not.toHaveBeenCalled()
+    expect(task).not.toHaveBeenCalled()
   },
 )
 
 it('retries the status of the accepted upgrade inside the same dialog', async () => {
-  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'accepted' })
-  api.task
-    .mockRejectedValueOnce(new Error('Connection lost'))
-    .mockRejectedValueOnce(new Error('Still offline'))
-  const { trigger } = await setup()
+  const { trigger, upgrade, task } = await setup()
+  upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'accepted' })
+  task
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Connection lost' }),
+    )
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Still offline' }),
+    )
   await trigger.click()
   await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
   const dialog = page.getByRole('dialog')
@@ -241,11 +245,8 @@ it('retries the status of the accepted upgrade inside the same dialog', async ()
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Connection lost')
   await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Still offline')
-  expect(api.upgrade).toHaveBeenCalledOnce()
-  expect(api.task.mock.calls.map(([input]) => input.params.task_id)).toEqual([
-    'accepted',
-    'accepted',
-  ])
+  expect(upgrade).toHaveBeenCalledOnce()
+  expect(task.mock.calls.map(([input]) => input.params.task_id)).toEqual(['accepted', 'accepted'])
 
   await userEvent.keyboard('{Escape}')
   await trigger.click()
@@ -254,6 +255,8 @@ it('retries the status of the accepted upgrade inside the same dialog', async ()
     .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
     .click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.upgrade).toHaveBeenCalledTimes(2)
-  expect(api.upgrade.mock.calls[1]?.[0].body.new_plugin_unique_identifier).toBe(identifier('0.5.0'))
+  expect(upgrade).toHaveBeenCalledTimes(2)
+  expect(upgrade).toHaveBeenLastCalledWith({
+    body: expect.objectContaining({ new_plugin_unique_identifier: identifier('0.5.0') }),
+  })
 })

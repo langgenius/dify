@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.19.0"
+version = "1.20.0"
 requires-python = "~=3.13.0"
 
 dependencies = [
@@ -45,7 +45,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.45.2,<2.0.0",
-    "pydantic-settings>=2.16.2,<3.0.0",
+    "pydantic-settings>=2.16.3,<3.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "sentry-sdk>=2.57.0,<3.0.0",
@@ -125,6 +125,8 @@ dify-trace-weave = { workspace = true }
 [tool.uv]
 default-groups = ["kms", "storage", "tools", "vdb-all", "trace-all"]
 package = false
+# Dify does not use Ragas' disk cache backend; omit its vulnerable dependency.
+exclude-dependencies = ["diskcache"]
 override-dependencies = [
     "litellm>=1.100.4,<2.0.0",
     "pyarrow>=23.0.1,<24.0.0",
@@ -201,7 +203,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "pyrefly>=1.5.0-dev1",
+    "pyrefly>=1.5.0",
     "xinference-client>=2.7.0",
     "types-bleach>=6.4.0.20260728",
     "types-croniter>=6.2.4.20261006",
@@ -244,12 +246,13 @@ tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.10.4,<4.0.0"]
 ############################################################
 evaluation = [
     "deepeval==4.2.0",
-    "ragas==0.3.2",
-    # RAGAS 0.3.2 still imports integrations removed by LangChain 1.x.
-    "langchain>=0.3.27,<0.4.0",
-    "langchain-community>=0.3.27,<0.4.0",
-    "langchain-core>=0.3.79,<0.4.0",
-    "langchain-openai>=0.3.35,<0.4.0",
+    "ragas==0.4.4",
+    # RAGAS still depends on LangChain; keep its packages on compatible patched releases.
+    "langchain>=1.3.9,<2.0.0",
+    "langchain-community>=0.4.2,<0.5.0",
+    "langchain-core>=1.8.4,<2.0.0",
+    "langchain-openai>=1.1.10,<2.0.0",
+    "langchain-text-splitters>=1.1.2,<2.0.0",
     # Keep the API SDK aligned with the version already locked by the main runtime.
     "openai==2.24.0",
 ]

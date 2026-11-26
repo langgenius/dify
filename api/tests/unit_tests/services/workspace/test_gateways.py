@@ -1,16 +1,20 @@
 from collections.abc import Callable
-from unittest.mock import Mock, create_autospec
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from redis import RedisError
 
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.billing_client import billing
 from services.credit_pool_service import CreditPoolBalance
 from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import WorkspacePermission
+from services.entities.account_activation_entities import InvitationToken
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel, LimitationModel
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceInvitationQuotaError, WorkspaceMemberLicenseQuotaError
@@ -36,6 +40,25 @@ class TestGatewaysCases:
     def invitations() -> gateways.WorkspaceInvitationGateway:
         redis = create_autospec(RedisClientWrapper, instance=True)
         return gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+    @staticmethod
+    def test_invitation_index_failure_reports_the_link_as_not_issued(
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+    ) -> None:
+        redis, commands = redis_transport
+
+        def execute(command: str, *_args: object, **_kwargs: object) -> object:
+            if command == "ZADD":
+                raise RedisError("index unavailable")
+            return b"OK"
+
+        commands.side_effect = execute
+        invitations = gateways.WorkspaceInvitationGateway(tokens=RedisInvitationTokenStore(redis=redis), redis=redis)
+
+        with pytest.raises(RedisError):
+            invitations.create(InvitationToken("account", "invitee@example.com", "workspace", "normal", True))
+
+        assert [c.args[0] for c in commands.call_args_list if c.args[0] in {"SETEX", "DEL"}] == ["SETEX", "DEL"]
 
     @staticmethod
     @pytest.mark.parametrize("allowed", [True, False])
@@ -78,10 +101,14 @@ class TestGatewaysCases:
 
         assert invitations.requires_capacity_check
         if allowed:
-            invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1
+            )
         else:
             with pytest.raises(WorkspaceInvitationQuotaError) as error:
-                invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+                invitations.check_capacity(
+                    "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1
+                )
             assert error.value.seats is False
         features.assert_called_once_with(tenant_id="workspace", exclude_vector_space=True)
         license_query.assert_not_called()
@@ -148,12 +175,91 @@ class TestGatewaysCases:
 
         assert invitations.requires_capacity_check
         if failure is None:
-            invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=new_accounts)
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=new_accounts
+            )
         else:
             with pytest.raises(WorkspaceInvitationQuotaError) as error:
-                invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=new_accounts)
+                invitations.check_capacity(
+                    "workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=new_accounts
+                )
             assert error.value.seats is (failure == "seats")
         assert license_query.call_count == int(new_accounts > 0 and failure != "members")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("edition", "pending", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, 0, True),
+            (DeploymentEdition.CLOUD, 1, False),
+            (DeploymentEdition.ENTERPRISE, 0, True),
+            (DeploymentEdition.ENTERPRISE, 1, False),
+        ],
+    )
+    def test_live_invitations_reserve_member_seats(
+        invitations: gateways.WorkspaceInvitationGateway,
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+        pending: int,
+        allowed: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+        features = FeatureModel(
+            members=LimitationModel(size=0, limit=4),
+            workspace_members=LicenseLimitationModel(enabled=True, size=2, limit=4),
+        )
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert (tenant_id, exclude_vector_space) == ("workspace", True)
+            return features
+
+        monkeypatch.setattr(gateways.FeatureService, "get_features", get_features)
+
+        def check() -> None:
+            invitations.check_capacity(
+                "workspace", current_members=2, pending_invitations=pending, new_members=2, new_accounts=0
+            )
+
+        if allowed:
+            check()
+        else:
+            with pytest.raises(WorkspaceInvitationQuotaError):
+                check()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("edition", "is_member", "members", "allowed"),
+        [
+            (DeploymentEdition.CLOUD, False, 2, True),
+            (DeploymentEdition.CLOUD, False, 3, False),
+            (DeploymentEdition.CLOUD, True, 3, True),
+            (DeploymentEdition.COMMUNITY, False, 3, True),
+        ],
+    )
+    def test_acceptance_capacity_counts_joined_members(
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+        edition: DeploymentEdition,
+        is_member: bool,
+        members: int,
+        allowed: bool,
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=edition)
+        workspaces = create_autospec(WorkspaceRepository, instance=True)
+        workspaces.member_role.return_value = "normal" if is_member else None
+        workspaces.count_members.return_value = members
+
+        def get_features(*, tenant_id: str, exclude_vector_space: bool) -> FeatureModel:
+            assert (tenant_id, exclude_vector_space) == ("workspace", True)
+            return FeatureModel(members=LimitationModel(size=0, limit=3))
+
+        monkeypatch.setattr(gateways.FeatureService, "get_features", get_features)
+        capacity = gateways.WorkspaceMemberCapacityGateway(
+            workspaces=workspaces, redis=create_autospec(RedisClientWrapper, instance=True)
+        )
+
+        assert capacity.can_join("workspace", "account") is allowed
 
     @staticmethod
     def test_community_invitation_does_not_query_quotas(
@@ -168,7 +274,7 @@ class TestGatewaysCases:
         monkeypatch.setattr(gateways.SystemFeatureService, "get_license", license_query)
 
         assert not invitations.requires_capacity_check
-        invitations.check_capacity("workspace", current_members=2, new_members=2, new_accounts=1)
+        invitations.check_capacity("workspace", current_members=2, pending_invitations=0, new_members=2, new_accounts=1)
         features.assert_not_called()
         license_query.assert_not_called()
 
@@ -255,20 +361,18 @@ class TestWorkspaceCreditPoolCases:
             (CloudPlan.TEAM, 500, 120, 100, "paid", 380),
             (CloudPlan.TEAM, -1, 999, 100, "paid", -1),
             (CloudPlan.TEAM, 500, 500, 100, "paid", 0),
-            (CloudPlan.TEAM, None, 0, 100, None, None),
             (CloudPlan.SANDBOX, 500, 0, 100, "trial", 60),
-            (CloudPlan.SANDBOX, None, 0, None, None, None),
         ],
     )
     def test_effective_credit_pool(
         monkeypatch: pytest.MonkeyPatch,
         config_overrides: Callable[..., None],
         plan: CloudPlan,
-        paid_quota: int | None,
+        paid_quota: int,
         paid_used: int,
-        trial_quota: int | None,
-        expected_type: str | None,
-        remaining: int | None,
+        trial_quota: int,
+        expected_type: str,
+        remaining: int,
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         monkeypatch.setattr(
@@ -276,11 +380,11 @@ class TestWorkspaceCreditPoolCases:
             "get_info",
             lambda *_a, **_k: builders.subscription_info(plan, next_credit_reset_date=1775001600),
         )
-        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used) if paid_quota is not None else None
-        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40) if trial_quota is not None else None
+        paid = CreditPoolBalance("tenant", "paid", paid_quota, paid_used)
+        trial = CreditPoolBalance("tenant", "trial", trial_quota, 40)
         calls = []
 
-        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance | None:
+        def get_pool(*, tenant_id: str, pool_type: str) -> CreditPoolBalance:
             calls.append((tenant_id, pool_type))
             return paid if pool_type == "paid" else trial
 
@@ -293,6 +397,31 @@ class TestWorkspaceCreditPoolCases:
             assert calls == [("tenant", "trial")]
         else:
             assert calls == [("tenant", "paid")]
+
+    @staticmethod
+    @pytest.mark.parametrize("subscription_available", [False, True])
+    def test_credit_display_preserves_known_facts_during_billing_outage(
+        config_overrides: Callable[..., None], subscription_available: bool
+    ) -> None:
+        """The provider settings page can show custom keys without inventing a balance."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        with (
+            patch.object(
+                billing,
+                "subscription_get_subscription_info",
+                return_value=builders.subscription_info("team", next_credit_reset_date=1775001600),
+                side_effect=None if subscription_available else billing.BillingSubscriptionUpstreamUnavailableError(),
+            ),
+            patch.object(billing, "quota_get_balance", side_effect=billing.BillingQuotaUpstreamUnavailableError()),
+        ):
+            result = DeploymentWorkspaceFeatureGateway().get_effective_credit_pool("tenant")
+
+        assert result.plan == (CloudPlan.TEAM if subscription_available else None)
+        assert result.pool_type == ("paid" if subscription_available else None)
+        assert result.next_credit_reset_date == (1775001600 if subscription_available else None)
+        assert result.remaining_credits is None
+        assert result.is_exhausted
+        assert not result.is_unlimited
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -338,7 +467,7 @@ class TestWorkspaceCreditPoolCases:
         [
             (DeploymentEdition.CLOUD, {"w1": builders.plan_item("team")}, {"w1": "team", "w2": "professional"}, ["w2"]),
             (DeploymentEdition.CLOUD, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
-            (DeploymentEdition.COMMUNITY, {}, {"w1": "professional", "w2": "professional"}, ["w1", "w2"]),
+            (DeploymentEdition.COMMUNITY, {}, {"w1": "sandbox", "w2": "sandbox"}, ["w1", "w2"]),
             (DeploymentEdition.ENTERPRISE, {}, {"w1": "sandbox", "w2": "sandbox"}, []),
         ],
     )
@@ -352,13 +481,16 @@ class TestWorkspaceCreditPoolCases:
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=edition)
         bulk_query = Mock(return_value=bulk)
-        features = FeatureModel()
-        features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-        feature_query = Mock(return_value=features)
+        plan_lookups: list[str] = []
+
+        def get_workspace_plan(workspace_id: str) -> CloudPlan | None:
+            plan_lookups.append(workspace_id)
+            return CloudPlan.PROFESSIONAL if edition == DeploymentEdition.CLOUD else None
+
         monkeypatch.setattr(gateways.BillingService, "get_plan_bulk", bulk_query)
-        monkeypatch.setattr(gateways.FeatureService, "get_features", feature_query)
+        monkeypatch.setattr(gateways.FeatureService, "get_workspace_plan", get_workspace_plan)
         assert DeploymentWorkspacePlanGateway().resolve_many(["w1", "w2"]) == expected
-        assert [call.args[0] for call in feature_query.call_args_list] == fallback_ids
+        assert plan_lookups == fallback_ids
         assert bulk_query.call_count == int(edition == DeploymentEdition.CLOUD)
 
 

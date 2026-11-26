@@ -1,20 +1,15 @@
-import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
-import type { Dependency, PluginManifestInMarket } from '@/app/components/plugins/types'
-import type { ConsoleClientContext } from '@/service/console'
 import { consoleClient } from '@/service/console'
-import { getMarketplace, upload } from './base'
+import { marketplaceClient } from '@/service/marketplace'
 
-export const uploadFile = async (file: File, isBundle: boolean) => {
-  const formData = new FormData()
-  formData.append(isBundle ? 'bundle' : 'pkg', file)
-  return upload(
-    {
-      xhr: new XMLHttpRequest(),
-      data: formData,
-    },
-    false,
-    `/workspaces/current/plugin/upload/${isBundle ? 'bundle' : 'pkg'}`,
-  )
+export const uploadFile = async (file: File, isBundle: boolean): Promise<unknown> => {
+  // Packages can be large: the upload transport keeps the legacy XHR behavior of no client timeout.
+  const options = { context: { onUploadProgress: () => {} } }
+  return isBundle
+    ? consoleClient.workspaces.current.plugin.upload.bundle.post(
+        { body: { bundle: file } },
+        options,
+      )
+    : consoleClient.workspaces.current.plugin.upload.pkg.post({ body: { pkg: file } }, options)
 }
 
 export const updateFromGitHub = async (
@@ -39,24 +34,20 @@ export const uploadGitHub = async (
   repoUrl: string,
   selectedVersion: string,
   selectedPackage: string,
-  context?: ConsoleClientContext,
 ) => {
-  return consoleClient.workspaces.current.plugin.upload.github.post(
-    {
-      body: {
-        repo: repoUrl,
-        version: selectedVersion,
-        package: selectedPackage,
-      },
+  return consoleClient.workspaces.current.plugin.upload.github.post({
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
     },
-    { context },
-  )
+  })
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
-  return getMarketplace<{ data: { plugin: PluginManifestInMarket; version: { version: string } } }>(
-    `/plugins/identifier?unique_identifier=${uniqueIdentifier}`,
-  )
+  return marketplaceClient.pluginByIdentifier({
+    query: { unique_identifier: uniqueIdentifier },
+  })
 }
 
 export const fetchBundleInfoFromMarketPlace = async ({
@@ -64,15 +55,15 @@ export const fetchBundleInfoFromMarketPlace = async ({
   name,
   version,
 }: Record<string, string>) => {
-  return getMarketplace<{ data: { version: { dependencies: Dependency[] } } }>(
-    `/bundles/${org}/${name}/${version}`,
-  )
+  return marketplaceClient.bundleDetail({
+    params: { organization: org!, bundleName: name!, version: version! },
+  })
 }
 
 export const fetchPluginInfoFromMarketPlace = async ({ org, name }: Record<string, string>) => {
-  return getMarketplace<{
-    data: { plugin: PluginInfoFromMarketPlace; version: { version: string } }
-  }>(`/plugins/${org}/${name}`)
+  return marketplaceClient.pluginDetail({
+    params: { organization: org!, pluginName: name! },
+  })
 }
 
 export const checkTaskStatus = async (taskId: string) => {

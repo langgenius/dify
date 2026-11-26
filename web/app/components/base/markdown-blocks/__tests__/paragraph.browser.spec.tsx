@@ -18,18 +18,6 @@ const renderParagraph = (
   return render(<Paragraph node={node}>{children}</Paragraph>)
 }
 
-it('keeps ordinary Markdown text in paragraph semantics', async () => {
-  const screen = await renderParagraph(
-    [
-      { type: 'comment', value: 'A comment' },
-      { type: 'text', value: 'Hello world' },
-    ],
-    'Hello world',
-  )
-
-  await expect.element(screen.getByText('Hello world')).toHaveRole('paragraph')
-})
-
 it('decodes a leading image, preserves its caption and restores focus after preview', async () => {
   const screen = await renderParagraph(
     [{ type: 'element', tagName: 'img', properties: { src: previewImage }, children: [] }],

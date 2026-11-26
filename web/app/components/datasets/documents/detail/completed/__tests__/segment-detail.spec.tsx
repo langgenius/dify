@@ -13,12 +13,19 @@ import {
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { SegmentDetail } from '../segment-detail'
 
-type Upload = (options: { data: FormData }) => Promise<{ id: string; [key: string]: unknown }>
-const upload = vi.hoisted(() => vi.fn<Upload>())
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
-}))
+const upload = vi.hoisted(() =>
+  vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
+)
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': upload,
+    }),
+  }
+})
 
 // Mock dataset detail context
 let mockIndexingTechnique: IndexingType = IndexingType.QUALIFIED
@@ -159,8 +166,8 @@ it('saves QA edits and updated economy keywords together', async () => {
 
 it('preserves loaded attachments and forwards uploaded attachment changes on save', async () => {
   const user = userEvent.setup()
-  upload.mockImplementation(({ data }) => {
-    const file = data.get('file') as File
+  upload.mockImplementation(({ body }) => {
+    const file = body.file as File
     return Promise.resolve({
       id: 'att-2',
       name: file.name,

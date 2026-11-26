@@ -1,5 +1,5 @@
 import type { NetworkAccessGroupResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
+import type { AccessPoint } from '@/models/app-access-point'
 
 export type AccessControlPolicy = Pick<NetworkAccessGroupResponse, 'id' | 'name' | 'allowed_cidrs'>
 

@@ -1,15 +1,22 @@
 import json
 from abc import ABC, abstractmethod
-from json import JSONDecodeError
 from typing import Any, override
 
-from extensions.ext_redis import redis_client
+from pydantic import JsonValue, TypeAdapter, ValidationError
+
+from extensions.ext_redis import RedisClientWrapper, redis_client
+
+# Plugins define their own keys; the cache owns only the JSON object shape.
+type CachedProviderCredentials = dict[str, JsonValue]
+_credentials_adapter = TypeAdapter(CachedProviderCredentials)
 
 
 class ProviderCredentialsCache(ABC):
     """Base class for provider credentials cache"""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, *, redis: RedisClientWrapper | None = None, **kwargs: Any) -> None:
+        """Use the supplied Redis wrapper, or the application wrapper if omitted."""
+        self._redis = redis_client if redis is None else redis
         self.cache_key = self._generate_cache_key(**kwargs)
 
     @abstractmethod
@@ -18,23 +25,27 @@ class ProviderCredentialsCache(ABC):
         pass
 
     def get(self) -> dict[str, Any] | None:
-        """Get cached provider credentials"""
-        cached_credentials = redis_client.get(self.cache_key)
+        """Read provider credentials from the initialized Redis client.
+
+        Return a JSON object with arbitrary values, or None for a missing,
+        malformed, non-UTF-8, or non-object entry. Never mutate cached data;
+        Redis failures propagate so callers can distinguish an outage from a miss.
+        """
+        cached_credentials = self._redis.get(self.cache_key)
         if cached_credentials:
             try:
-                cached_credentials = cached_credentials.decode("utf-8")
-                return dict(json.loads(cached_credentials))
-            except (JSONDecodeError, UnicodeDecodeError):
+                return _credentials_adapter.validate_json(cached_credentials.decode("utf-8"))
+            except (ValidationError, UnicodeDecodeError):
                 return None
         return None
 
     def set(self, config: dict[str, Any]) -> None:
         """Cache provider credentials"""
-        redis_client.setex(self.cache_key, 86400, json.dumps(config))
+        self._redis.setex(self.cache_key, 86400, json.dumps(config))
 
     def delete(self) -> None:
         """Delete cached provider credentials"""
-        redis_client.delete(self.cache_key)
+        self._redis.delete(self.cache_key)
 
 
 class SingletonProviderCredentialsCache(ProviderCredentialsCache):
@@ -59,9 +70,20 @@ class SingletonProviderCredentialsCache(ProviderCredentialsCache):
 class ToolProviderCredentialsCache(ProviderCredentialsCache):
     """Cache for tool provider credentials"""
 
-    def __init__(self, tenant_id: str, provider: str, credential_id: str, *, fingerprint: str | None = None):
-        """A fingerprint selects one snapshot-checked entry; None retains the legacy cache."""
-        super().__init__(tenant_id=tenant_id, provider=provider, credential_id=credential_id)
+    def __init__(
+        self,
+        tenant_id: str,
+        provider: str,
+        credential_id: str,
+        *,
+        fingerprint: str | None = None,
+        redis: RedisClientWrapper | None = None,
+    ) -> None:
+        """Select a snapshot with a fingerprint, or the legacy entry without one.
+
+        When no Redis wrapper is supplied, use the application wrapper.
+        """
+        super().__init__(redis=redis, tenant_id=tenant_id, provider=provider, credential_id=credential_id)
         self._legacy_cache_key = self.cache_key
         self._fingerprint = fingerprint
         if fingerprint is not None:
@@ -86,8 +108,8 @@ class ToolProviderCredentialsCache(ProviderCredentialsCache):
     @override
     def delete(self) -> None:
         # Separate commands also work when Redis Cluster puts the entries in different slots.
-        redis_client.delete(self._legacy_cache_key)
-        redis_client.delete(f"{self._legacy_cache_key}:snapshot")
+        self._redis.delete(self._legacy_cache_key)
+        self._redis.delete(f"{self._legacy_cache_key}:snapshot")
 
     @override
     def _generate_cache_key(self, **kwargs: Any) -> str:

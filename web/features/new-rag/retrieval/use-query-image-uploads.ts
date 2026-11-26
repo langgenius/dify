@@ -53,8 +53,13 @@ export function useQueryImageUploads() {
         {
           signal: controller.signal,
           context: {
-            silent: true,
-            onUploadProgress: (progress) => update({ id: item.id, progress }),
+            onUploadProgress: ({ loaded, total }) => {
+              if (total > 0)
+                update({
+                  id: item.id,
+                  progress: Math.min(100, Math.round((loaded / total) * 100)),
+                })
+            },
           },
         },
       )

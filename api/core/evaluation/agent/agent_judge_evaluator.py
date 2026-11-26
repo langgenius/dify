@@ -13,6 +13,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel, Field, create_model, model_validator
 
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
+from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
     AgentToolDefinition,
@@ -21,6 +22,7 @@ from core.evaluation.entities.evaluation_entity import (
     EvaluationMetric,
     EvaluationMetricName,
 )
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from libs.structured_output_schema import to_strict_json_schema
 
 logger = logging.getLogger(__name__)
@@ -194,10 +196,15 @@ class _NotApplicableError(Exception):
     pass
 
 
+class _AgentRuntimeDataMissingError(ValueError):
+    """The target run omitted information required to score an Agent metric."""
+
+
 class _DifyAgentJudgeModel:
     """Invoke a tenant-scoped Dify model with strict structured output."""
 
     def __init__(self, model_provider: str, model_name: str, tenant_id: str) -> None:
+        """Resolve the configured Agent judge model with Evaluation credit attribution."""
         from core.plugin.impl.model_runtime_factory import create_plugin_model_manager
         from graphon.model_runtime.entities.model_entities import ModelType
 
@@ -207,6 +214,7 @@ class _DifyAgentJudgeModel:
             provider=model_provider,
             model_type=ModelType.LLM,
             model=model_name,
+            request_metadata=get_evaluation_credit_usage_metadata(),
         )
         self.model_identifier = f"{model_provider}/{model_name}"
 
@@ -249,6 +257,12 @@ class AgentLLMJudgeEvaluator:
         model_name: str,
         tenant_id: str,
     ) -> list[EvaluationItemResult]:
+        """Score Agent rows and expose only fixed diagnostics for model failures.
+
+        Precondition: items and metric names have passed evaluation configuration validation.
+        Postcondition: failed model calls are logged with a reference; returned
+        row errors never contain the model provider's exception text.
+        """
         judge_model: _DifyAgentJudgeModel | None = None
         results: list[EvaluationItemResult] = []
         for item in items:
@@ -271,9 +285,24 @@ class AgentLLMJudgeEvaluator:
                             details={"status": "not_applicable", "reason": str(exc)},
                         )
                     )
-                except Exception as exc:
-                    logger.exception("Agent metric %s failed for item %d", metric_name, item.index)
-                    errors.append(f"Metric '{metric_name}' failed: {exc}")
+                except _AgentRuntimeDataMissingError:
+                    failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_DATA_MISSING)
+                    logger.exception(
+                        "Agent metric %s is missing target data for item %d (error_id=%s)",
+                        metric_name,
+                        item.index,
+                        failure.error_id,
+                    )
+                    errors.append(failure.text)
+                except Exception:
+                    failure = new_public_evaluation_error(EvaluationErrorCode.MODEL_REQUEST_FAILED)
+                    logger.exception(
+                        "Agent metric %s failed for item %d (error_id=%s)",
+                        metric_name,
+                        item.index,
+                        failure.error_id,
+                    )
+                    errors.append(failure.text)
 
             results.append(
                 EvaluationItemResult(
@@ -287,18 +316,24 @@ class AgentLLMJudgeEvaluator:
 
     @staticmethod
     def _precomputed_metric(item: AgentEvaluationItem, metric_name: str) -> EvaluationMetric | None:
+        """Check runtime information required for an Agent metric.
+
+        Precondition: ``item`` is a normalized Agent evaluation row.
+        Postcondition: an immediately known metric is returned, or missing
+        runtime information raises a specific local error before model use.
+        """
         if metric_name == EvaluationMetricName.TOOL_SELECTION_CORRECTNESS.value:
             if item.available_tools is None:
-                raise ValueError("The runtime tool snapshot is missing.")
+                raise _AgentRuntimeDataMissingError("The runtime tool snapshot is missing.")
             if not item.available_tools and not item.tool_calls:
                 raise _NotApplicableError("The Agent had no tools available for this dataset row.")
         elif metric_name == EvaluationMetricName.TOOL_ARGUMENT_CORRECTNESS.value:
             if not item.tool_calls:
                 raise _NotApplicableError("The Agent did not call any tools for this dataset row.")
             if item.available_tools is None:
-                raise ValueError("The runtime tool snapshot is missing.")
+                raise _AgentRuntimeDataMissingError("The runtime tool snapshot is missing.")
         elif metric_name == EvaluationMetricName.TRAJECTORY_QUALITY.value and item.trajectory is None:
-            raise ValueError("The normalized Agent trajectory is missing.")
+            raise _AgentRuntimeDataMissingError("The normalized Agent trajectory is missing.")
         return None
 
     def _evaluate_metric(

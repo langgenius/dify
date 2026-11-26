@@ -13,7 +13,6 @@ import Billing from '../billing-page'
 
 vi.mock('@/service/base', () => ({
   request: vi.fn(() => new Promise(() => {})),
-  sseGeneratorPost: vi.fn(),
 }))
 vi.mock('../upgrade-btn', () => ({ default: () => null }))
 vi.mock('../hooks/use-education-discount', () => ({
@@ -64,7 +63,7 @@ it('reveals the plan and all usage together when both billing queries have data'
 
 it('renders annotation usage only from returned data and preserves zero as an unlimited quota', async () => {
   const queryClient = createConsoleQueryClient()
-  const { wrapper } = createConsoleQueryWrapper({ queryClient })
+  const { wrapper } = createConsoleQueryWrapper({ queryClient, features: null })
   render(<AnnotationUsage />, { wrapper })
   expect(
     screen.queryByRole('group', { name: 'billing.annotatedResponse.quotaTitle' }),

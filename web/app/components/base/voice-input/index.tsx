@@ -17,7 +17,7 @@ type VoiceInputProps = {
   onConverted: (text: string) => void
   onCancel: () => void
   onBeforeTranscribe?: () => Promise<unknown>
-  onError?: () => void
+  onError?: (error?: unknown) => void
   onStartError?: (error: unknown) => void
   target: SpeechToTextTarget
 }
@@ -114,8 +114,8 @@ function VoiceInput({
     try {
       const audioResponse = await transcribeAudio(target, file, abortController.signal)
       if (mountedRef.current && !cancelledRef.current) onConverted(audioResponse.text)
-    } catch {
-      if (mountedRef.current && !cancelledRef.current) onError?.()
+    } catch (error) {
+      if (mountedRef.current && !cancelledRef.current) onError?.(error)
     } finally {
       transcriptionAbortControllerRef.current = null
       if (mountedRef.current && !cancelledRef.current) onCancel()
@@ -203,11 +203,11 @@ function VoiceInput({
 
   return (
     <div ref={ref} className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
-      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-3.5 pr-[6.5px] pl-[14.5px]">
-        <canvas ref={canvasRef} className="absolute bottom-0 left-0 h-4 w-full" />
+      <div className="absolute inset-[1.5px] flex items-center overflow-hidden rounded-[10.5px] bg-primary-25 py-3.5 ps-[14.5px] pe-[6.5px]">
+        <canvas ref={canvasRef} className="absolute inset-s-0 bottom-0 h-4 w-full" />
         {(isStarting || isConverting) && (
           <div
-            className="mr-2 i-ri-loader-2-line size-4 animate-spin text-primary-700"
+            className="me-2 i-ri-loader-2-line size-4 animate-spin text-primary-700"
             aria-hidden="true"
           />
         )}
@@ -231,7 +231,7 @@ function VoiceInput({
         {isRecording && (
           <button
             type="button"
-            className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="me-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-primary-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             aria-label={t(($) => $['voiceInput.stop'], { ns: 'common' })}
             onClick={handleStopRecorder}
           >
@@ -241,7 +241,7 @@ function VoiceInput({
         {(isStarting || isConverting) && (
           <button
             type="button"
-            className="mr-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="me-1 flex size-8 items-center justify-center rounded-lg outline-hidden hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
             onClick={handleCancel}
           >
@@ -251,7 +251,7 @@ function VoiceInput({
         <div
           role="timer"
           className={cn(
-            'w-11.25 pl-1 text-xs font-medium',
+            'w-11.25 ps-1 text-xs font-medium',
             duration > 500 ? 'text-text-destructive' : 'text-text-secondary',
           )}
         >

@@ -70,7 +70,7 @@ export function StructureOutput({ className, value, onChange, readOnly }: Props)
         </DialogTrigger>
       )}
       {!readOnly && (
-        <Dialog handle={dialogHandle}>
+        <Dialog handle={dialogHandle} disablePointerDismissal>
           <DialogContent
             className="h-200 w-240 overflow-hidden"
             finalFocus={hasSchema ? configureButtonRef : undefined}

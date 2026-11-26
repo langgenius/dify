@@ -161,13 +161,10 @@ describe('ActionsMenu callback coverage', () => {
     await user.type(name, 'Renamed dataset')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() =>
-      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(
-        {
-          datasetId: 'dataset-1',
-          body: expect.objectContaining({ name: 'Renamed dataset' }),
-        },
-        { silent: true },
-      ),
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith({
+        datasetId: 'dataset-1',
+        body: expect.objectContaining({ name: 'Renamed dataset' }),
+      }),
     )
 
     await waitFor(() => {
@@ -282,8 +279,25 @@ describe('ActionsMenu callback coverage', () => {
     await user.click(screen.getByRole('button'))
     await user.click(screen.getByText('common.operation.delete'))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent('check failed')
     expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
     expect(mockDeleteDataset).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the server message', { message: 'Server says why' }, 'Server says why'],
+    ['the fallback text without one', undefined, 'common.api.actionFailed'],
+  ])('shows %s when deletion fails', async (_, body, expected) => {
+    const user = userEvent.setup()
+    mockDeleteDataset.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), body),
+    )
+    render(<ActionsMenu expand />)
+
+    await user.click(screen.getByRole('button'))
+    await user.click(screen.getByText('common.operation.delete'))
+    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(expected)
   })
 })

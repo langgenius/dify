@@ -42,7 +42,6 @@ project-excludes = [
   "services/test_dataset_service_retrieval.py",
   "services/test_delete_archived_workflow_run.py",
   "services/test_document_service_rename_document.py",
-  "services/test_end_user_service.py",
   "services/test_feature_service.py",
   "services/test_file_service.py",
   "services/test_human_input_delivery_test.py",
@@ -53,7 +52,6 @@ project-excludes = [
   "services/test_model_provider_service.py",
   "services/test_schedule_service.py",
   "services/test_webapp_auth_service.py",
-  "services/test_webhook_service.py",
   "services/test_webhook_service_relationships.py",
   "services/test_workflow_app_service.py",
   "services/test_workflow_draft_variable_service.py",
@@ -85,17 +83,12 @@ project-excludes = [
   "tasks/test_mail_human_input_delivery_task.py",
   "tasks/test_mail_inner_task.py",
   "tasks/test_mail_invite_member_task.py",
-  "tasks/test_mail_owner_transfer_task.py",
   "tasks/test_mail_register_task.py",
   "tasks/test_rag_pipeline_run_tasks.py",
   "tasks/test_remove_app_and_related_data_task.py",
   "test_workflow_pause_integration.py",
   "trigger/conftest.py",
   "trigger/test_trigger_e2e.py",
-  "workflow/nodes/code_executor/test_code_javascript.py",
-  "workflow/nodes/code_executor/test_code_jinja2.py",
-  "workflow/nodes/code_executor/test_code_python3.py",
-  "workflow/nodes/code_executor/test_utils.py",
 ]
 
 [errors]

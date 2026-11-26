@@ -710,10 +710,10 @@ class HttpConfig(BaseSettings):
     OPENAPI_ENABLED: bool = Field(
         description=(
             "Enable the /openapi/v1/* endpoint group used by difyctl and other "
-            "programmatic clients. Set to true to activate; disabled by default."
+            "programmatic clients. Enabled by default; set to false to disable."
         ),
         validation_alias=AliasChoices("OPENAPI_ENABLED"),
-        default=False,
+        default=True,
     )
 
     inner_openapi_cors_allow_origins: str = Field(
@@ -1210,8 +1210,13 @@ class ModerationConfig(BaseSettings):
     """
 
     MODERATION_BUFFER_SIZE: PositiveInt = Field(
-        description="Size of the buffer for content moderation processing",
+        description="Characters buffered before streaming moderation checks",
         default=300,
+    )
+
+    MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
+        description="Maximum characters checked per moderation request for input or non-streaming output",
+        default=2000,
     )
 
 
@@ -1536,15 +1541,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
-        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        description="Enable periodic recovery of conversation cleanup and detached retired Workspaces",
         default=True,
     )
     CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
-        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        description="Conversation cleanup recovery interval in minutes",
         default=5,
     )
     CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        description="Maximum IDs dispatched per cleanup sweep for each of conversations and detached Workspaces",
         default=100,
     )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
@@ -1814,8 +1819,12 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
 
 
 class EvaluationConfig(BaseSettings):
-    """Configuration for the evaluation runtime."""
+    """Deployment availability and runtime settings for Evaluation."""
 
+    ENABLE_EVALUATION: bool = Field(
+        description="Enable Evaluation on deployments and workspaces that support it.",
+        default=False,
+    )
     EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
         description="Maximum active evaluation runs per tenant.",
         default=3,

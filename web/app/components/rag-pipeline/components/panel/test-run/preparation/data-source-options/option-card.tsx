@@ -20,7 +20,7 @@ const OptionCard = ({ label, value, selected, nodeData }: OptionCardProps) => {
     <RadioItem
       value={value}
       className={cn(
-        'flex cursor-pointer flex-col gap-1 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-2.5 text-left shadow-shadow-shadow-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'flex cursor-pointer flex-col gap-1 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-2.5 text-start shadow-shadow-shadow-3 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         selected
           ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs inset-ring-[0.5px] inset-ring-components-option-card-option-selected-border'
           : 'hover:border-components-option-card-option-border-hover hover:shadow-xs',

@@ -582,6 +582,24 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 session.commit()
                 session.refresh(conversation)
 
+            # Single-node debug runs also create throwaway Conversations; only a
+            # Chatflow debug chat supersedes the editor's previous participant.
+            is_debug_chat_run = (
+                invoke_from == InvokeFrom.DEBUGGER
+                and application_generate_entity.single_iteration_run is None
+                and application_generate_entity.single_loop_run is None
+            )
+            if is_first_conversation and is_debug_chat_run:
+                # Debug Conversations are hidden from the Console list and have no
+                # delete affordance, so a new one abandons the previous participant.
+                ConversationService.retire_superseded_debug_conversations(
+                    session=session,
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    account_id=application_generate_entity.user_id,
+                    current_conversation_id=conversation.id,
+                )
+
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
             # because during the first conversation, dialogue_count should be 1.

@@ -197,7 +197,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             {rules.map((rule) => (
               <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
                 <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
-                <span className="ml-2 system-sm-regular text-text-secondary">
+                <span className="ms-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </span>
               </label>

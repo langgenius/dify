@@ -174,8 +174,10 @@ const createWorkflowComposerState = (
     workflow_id: 'workflow-1',
   },
   node_job: {
+    continue_agent_session: true,
     mode: 'tell_agent_what_to_do',
     schema_version: 1,
+    session_generation: '',
     workflow_prompt: '',
   },
   save_options: ['node_job_only', 'save_as_new_agent'],
@@ -268,7 +270,6 @@ describe('consoleQuery transport context', () => {
     const consoleQuery = await loadConsoleQueryWithRequest(request)
     const options = consoleQuery.apps.byAppId.export.get.queryOptions({
       input: { params: { app_id: 'app-1' } },
-      context: { silent: true },
     })
     const result = await options.queryFn({
       signal: new AbortController().signal,
@@ -303,41 +304,6 @@ describe('consoleQuery transport context', () => {
     expect(audio).toBeInstanceOf(Blob)
     expect(audio.type).toBe('audio/wav')
     expect(new Uint8Array(await audio.arrayBuffer())).toEqual(bytes)
-  })
-
-  it('should forward silent context to the base request transport', async () => {
-    const request = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({}), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      }),
-    )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
-    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-      input: {
-        params: {
-          agent_id: 'agent-1',
-        },
-      },
-      context: {
-        silent: true,
-      },
-    })
-
-    await expect(
-      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
-    ).resolves.toEqual({})
-
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/agent/agent-1/build-draft'),
-      expect.any(Object),
-      expect.objectContaining({
-        fetchCompat: true,
-        silent: true,
-      }),
-    )
   })
 
   it('should forward keepalive context to the base request transport', async () => {
@@ -445,6 +411,26 @@ describe('consoleQuery transport context', () => {
     expect(requestURL.searchParams.getAll('ids')).toEqual(['id-1', 'id-2'])
     expect(requestURL.searchParams.has('ids[0]')).toBe(false)
     expect(requestURL.searchParams.has('ids[1]')).toBe(false)
+  })
+
+  it('sends all selected Agent tags as repeated keys when searching workflow invite options', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(Response.json({ data: [], has_more: false, limit: 20, page: 1, total: 0 }))
+    const consoleQuery = await loadConsoleQueryWithFetch()
+    const queryOptions = consoleQuery.agent.inviteOptions.get.queryOptions({
+      input: { query: { app_id: 'workflow-1', keyword: 'Research', tag_ids: ['tag-1', 'tag-2'] } },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    const resource = fetchSpy.mock.calls[0]![0]
+    const url = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(url.searchParams.getAll('tag_ids')).toEqual(['tag-1', 'tag-2'])
+    expect(url.searchParams.has('tag_ids[0]')).toBe(false)
+    expect(url.searchParams.has('tag_ids[1]')).toBe(false)
+    expect(url.searchParams.get('app_id')).toBe('workflow-1')
+    expect(url.searchParams.get('keyword')).toBe('Research')
   })
 
   it('should serialize KnowledgeFS creator ids as repeated query params', async () => {
@@ -895,7 +881,7 @@ describe('consoleQuery app mutation defaults', () => {
   })
 
   it.each([undefined, 'existing-app'])(
-    'should refresh completed import data without blocking (overwrite: %s)',
+    'should refresh completed import data and wait for the app list (overwrite: %s)',
     async (appId) => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
@@ -927,7 +913,7 @@ describe('consoleQuery app mutation defaults', () => {
           queryKey: consoleQuery.features.get.key(),
         })
       }
-      expect(result).toBeUndefined()
+      expect(result).toBeInstanceOf(Promise)
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: consoleQuery.apps.get.key(),
       })
@@ -1123,7 +1109,10 @@ describe('consoleQuery app mutation defaults', () => {
       ),
     ]
 
-    expect(results).toEqual([undefined, undefined, undefined, undefined])
+    // Creates write the new key and refresh in the background (the dialog shows the
+    // one-time secret at once); deletes wait for the list the key leaves.
+    expect(results.slice(0, 2)).toEqual([undefined, undefined])
+    for (const result of results.slice(2)) expect(result).toBeInstanceOf(Promise)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
         input: { params: { resource_id: 'app-1' } },
@@ -2487,6 +2476,49 @@ describe('consoleQuery resourceAccessTokens mutation defaults', () => {
 
     expect(invalidateQueries).toHaveBeenCalledTimes(3)
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: tokens.get.key() })
+  })
+
+  it('removes every relation for a deleted token from matching list caches', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const client = createQueryClient()
+    const tokens = consoleQuery.resourceAccessTokens
+    const key = (keyword?: string) =>
+      tokens.get.queryKey({ input: { query: { keyword, page: 1, limit: 20 } } })
+    const deleted = {
+      token_id: 'token-1',
+      relation_id: 'relation-1',
+      created_at: 1,
+      masked_token: 'masked',
+      name: 'Token',
+      resource_type: 'app' as const,
+      resource_id: 'app-1',
+      resource_name: 'App',
+      track_id: 'track-1',
+    }
+    const remaining = { ...deleted, token_id: 'token-2', relation_id: 'relation-3' }
+    const unaffected = { ...tokenList, data: [remaining], total: 1 }
+    client.setQueryData(key(), {
+      ...tokenList,
+      data: [deleted, { ...deleted, relation_id: 'relation-2' }, remaining],
+      total: 2,
+    })
+    client.setQueryData(key('Token'), { ...tokenList, data: [deleted], total: 1 })
+    client.setQueryData(key('Other'), unaffected)
+
+    const mutation = new MutationObserver(
+      client,
+      tokens.byTokenId.relations.byRelationId.delete.mutationOptions({
+        mutationFn: async () => undefined,
+      }),
+    )
+    await mutation.mutate({
+      params: { token_id: deleted.token_id, relation_id: deleted.relation_id },
+    })
+
+    expect(client.getQueryData(key())).toEqual(unaffected)
+    expect(client.getQueryData(key('Token'))).toEqual(tokenList)
+    expect(client.getQueryData(key('Other'))).toEqual(unaffected)
+    expect(client.getQueryState(key('Other'))?.isInvalidated).toBe(true)
   })
 
   it('should leave the token list alone when the mutation fails', async () => {

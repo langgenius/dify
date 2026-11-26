@@ -32,6 +32,8 @@ const (
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 45.0
 	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
+	defaultWorkspaceDir                  = "/workspace"
+	workspaceDirEnv                      = "SHELLCTL_WORKSPACE_DIR"
 )
 
 // Config holds runtime configuration for the shellctl server.
@@ -61,6 +63,7 @@ type Config struct {
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
 	SnapshotTimeout              time.Duration
+	WorkspaceDir                 string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -72,6 +75,10 @@ func DefaultConfig() (*Config, error) {
 	snapshotTimeout, err := parseSnapshotTimeout(os.Getenv(SnapshotTimeoutEnv))
 	if err != nil {
 		return nil, err
+	}
+	workspaceDir := os.Getenv(workspaceDirEnv)
+	if workspaceDir == "" {
+		workspaceDir = defaultWorkspaceDir
 	}
 
 	cfg := &Config{
@@ -99,6 +106,7 @@ func DefaultConfig() (*Config, error) {
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
 		SnapshotTimeout:              snapshotTimeout,
+		WorkspaceDir:                 workspaceDir,
 	}
 
 	// Auth token from environment if not set explicitly

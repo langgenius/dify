@@ -1,11 +1,20 @@
 """Application boundary for Console tag management."""
 
 from collections.abc import Sequence
-from typing import Literal, NamedTuple, Protocol
+from enum import StrEnum
+from typing import NamedTuple, Protocol
 
 from machinery.context import RequestContext
 
-type TagKind = Literal["knowledge", "app", "snippet", "skill"]
+
+class TagKind(StrEnum):
+    """Application-owned tag pools with the Console's existing wire values."""
+
+    KNOWLEDGE = "knowledge"
+    APP = "app"
+    AGENT = "agent"
+    SNIPPET = "snippet"
+    SKILL = "skill"
 
 
 class TagSummary(NamedTuple):
@@ -16,6 +25,8 @@ class TagSummary(NamedTuple):
 
 
 class CreateTagInput(NamedTuple):
+    """Create a named tag in the application pool admitted by the transport."""
+
     name: str
     type: TagKind
 
@@ -25,6 +36,8 @@ class UpdateTagInput(NamedTuple):
 
 
 class TagBindingInput(NamedTuple):
+    """Bind tags in an admitted application pool; Agent targets use canonical roster ids."""
+
     tag_ids: tuple[str, ...]
     target_id: str
     type: TagKind
@@ -37,6 +50,16 @@ class TagTargetQuery(Protocol):
 
 
 class TagStore(TagTargetQuery, Protocol):
+    """Persist tags within their workspace and resource pool.
+
+    Agent writes serialize on the existing workspace row before checking names,
+    reading targets or changing bindings. That lock lives through the bounded
+    transaction and makes names unique and binding creation idempotent against
+    concurrent Agent-pool mutations; deleting a tag cannot leave new bindings.
+    Callers provide a persisted workspace admitted by the Console boundary.
+    Other pools retain their existing transaction behavior.
+    """
+
     def list_tags(self, workspace_id: str, tag_type: str, keyword: str | None) -> Sequence[TagSummary]: ...
 
     def get_tag_type(self, workspace_id: str, tag_id: str) -> str | None: ...
@@ -68,7 +91,14 @@ class TagNameConflictError(TagApplicationError):
 
 class TagBindingTargetNotFoundError(TagApplicationError):
     def __init__(self, target_type: TagKind) -> None:
-        target_name = {"knowledge": "Dataset", "app": "App", "snippet": "Snippet", "skill": "Skill"}[target_type]
+        """Accept a supported target pool; report its missing resource without leaking other tenants."""
+        target_name = {
+            "knowledge": "Dataset",
+            "app": "App",
+            "agent": "Agent",
+            "snippet": "Snippet",
+            "skill": "Skill",
+        }[target_type]
         super().__init__(f"{target_name} not found")
 
 

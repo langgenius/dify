@@ -35,15 +35,15 @@ const InputFieldEditorPanel = ({ onClose, onSubmit, initialData }: InputFieldEdi
   return (
     <div
       className={cn(
-        'relative mr-1 flex h-fit max-h-full w-100 flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9',
+        'relative me-1 flex h-fit max-h-full w-100 flex-col overflow-y-auto rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9',
         'transition-all duration-300 ease-in-out',
-        floatingRight && 'absolute right-0 z-100',
+        floatingRight && 'absolute inset-e-0 z-100',
       )}
       style={{
         width: `${floatingRightWidth}px`,
       }}
     >
-      <div className="flex items-center pt-3.5 pr-11 pb-1 pl-4 system-xl-semibold text-text-primary">
+      <div className="flex items-center ps-4 pe-11 pt-3.5 pb-1 system-xl-semibold text-text-primary">
         {initialData
           ? t(($) => $['inputFieldPanel.editInputField'], { ns: 'datasetPipeline' })
           : t(($) => $['inputFieldPanel.addInputField'], { ns: 'datasetPipeline' })}
@@ -51,7 +51,7 @@ const InputFieldEditorPanel = ({ onClose, onSubmit, initialData }: InputFieldEdi
       <button
         type="button"
         aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
+        className="absolute inset-e-2.5 top-2.5 flex size-8 items-center justify-center border-none bg-transparent p-0"
         onClick={onClose}
       >
         <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />

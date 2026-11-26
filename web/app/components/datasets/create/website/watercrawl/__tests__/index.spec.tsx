@@ -526,6 +526,30 @@ describe('WaterCrawl', () => {
           screen.getByText('datasetCreation.stepOne.website.exceptionErrorTitle'),
         )!.toBeInTheDocument()
       })
+      expect(screen.getByText('datasetCreation.stepOne.website.unknownError')).toBeInTheDocument()
+
+      consoleSpy.mockRestore()
+    })
+
+    it('shows the server message when task creation fails with an HTTP error', async () => {
+      const user = userEvent.setup()
+      const mockCreateTask = createWatercrawlTask as Mock
+      mockCreateTask.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Crawl quota exceeded' }),
+      )
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(vi.fn())
+
+      render(<WaterCrawl {...createDefaultProps()} />)
+      await user.type(
+        screen.getByPlaceholderText('https://docs.dify.ai/en/'),
+        'https://exception-test.com',
+      )
+      await user.click(screen.getByRole('button', { name: /run/i }))
+
+      expect(await screen.findByText('Crawl quota exceeded')).toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetCreation.stepOne.website.unknownError'),
+      ).not.toBeInTheDocument()
 
       consoleSpy.mockRestore()
     })

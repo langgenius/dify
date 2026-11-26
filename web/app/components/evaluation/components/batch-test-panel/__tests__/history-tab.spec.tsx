@@ -173,7 +173,12 @@ describe('evaluation history run status', () => {
       { completed_items: 3, failed_items: 0 },
       'evaluation.history.status.completed',
     ],
-  ] as const)('labels a completed run when %s', (_, counts, expectedLabel) => {
+    [
+      'the run stopped before finishing',
+      { status: 'failed', completed_items: 1, failed_items: 0 },
+      'evaluation.history.status.notCompleted',
+    ],
+  ] as const)('labels the run when %s', (_, counts, expectedLabel) => {
     const queryClient = createConsoleQueryClient()
     queryClient.setQueryData(
       consoleQuery.datasets.byDatasetId.evaluation.logs.get.queryKey({
@@ -203,7 +208,7 @@ describe('evaluation history run status', () => {
 })
 
 describe('evaluation history run details', () => {
-  it('shows the time of each run and why a run failed', async () => {
+  it('shows the time of each run and why a run could not be completed', async () => {
     const user = userEvent.setup()
     const queryClient = createConsoleQueryClient()
     queryClient.setQueryData(
@@ -237,11 +242,11 @@ describe('evaluation history run details', () => {
 
     expect(screen.getByRole('row', { name: /2026-11-0\d \d{2}:\d{2}/ })).toBeInTheDocument()
     const status = screen.getByRole('button', {
-      name: 'evaluation.history.status.failed: Judge model quota exceeded',
+      name: 'evaluation.history.status.notCompleted: Judge model quota exceeded',
     })
     await user.hover(status)
     expect(
-      await screen.findByText('evaluation.history.status.failed: Judge model quota exceeded'),
+      await screen.findByText('evaluation.history.status.notCompleted: Judge model quota exceeded'),
     ).toBeInTheDocument()
   })
 })

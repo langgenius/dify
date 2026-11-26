@@ -25,6 +25,7 @@ import {
   IconPickerTrigger,
 } from '@/app/components/base/icon-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
@@ -69,20 +70,13 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   )
 
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const deploymentEdition = systemFeatures.deployment_edition
   const { data: appQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.apps,
+      select: (data) => getCountQuota(data.apps),
     }),
   )
-  const isAppQuotaUnavailable = deploymentEdition === 'CLOUD' && appQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAppsFull =
-    deploymentEdition === 'CLOUD' &&
-    appQuota !== undefined &&
-    appQuota.limit > 0 &&
-    appQuota.size >= appQuota.limit
+  const isAppQuotaUnavailable = appQuota === undefined
+  const isAppsFull = appQuota !== undefined && isQuotaReached(appQuota)
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -91,7 +85,9 @@ function CreateApp({ onClose, onCreateFromTemplate, defaultAppMode }: CreateAppP
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { mutateAsync: createApp } = useMutation(
-    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const creatingRef = useRef(false)
   const [isCreating, setIsCreating] = useState(false)
