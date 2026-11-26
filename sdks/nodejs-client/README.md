@@ -102,6 +102,31 @@ Notes:
 - For streaming responses, iterate the returned AsyncIterable. Use `stream.toText()` to collect text.
 - `stream.toText()` rejects with `APIError` when Dify sends an `error` event, even if the HTTP status is 200. Iterating the stream directly still yields these events for custom handling.
 
+## Human Input and workflow reconnection
+
+`WorkflowClient` and `ChatClient` can fetch and submit paused Human Input forms with WebApp delivery, then reconnect to the workflow's event stream. Use the `form_token` from the `human_input_required` event and the run's `workflow_run_id`. The submitting `user` identifies the person responding; event reconnection requires the same `user` that originally started the run.
+
+```js
+const { data: form } = await workflowClient.getHumanInputForm(formToken)
+console.log(form.form_content, form.inputs, form.user_actions)
+
+await workflowClient.submitHumanInputForm(formToken, {
+  user,
+  action: selectedActionId, // One of form.user_actions[].id
+  inputs: submittedValues, // Keyed by each input's output_variable_name
+})
+
+const resumed = await workflowClient.getWorkflowEvents(workflowRunId, user, {
+  includeStateSnapshot: true,
+  continueOnPause: true,
+})
+for await (const event of resumed) {
+  console.log(event.data)
+}
+```
+
+Forms can be submitted once. Expired or already submitted forms retain the API's error response. `getWorkflowEvents` also reconnects after a dropped connection without submitting a form, and completed runs emit a `workflow_finished` event before closing.
+
 ## Maintainers
 
 This package is published from the repository workspace. Install dependencies from the repository root with `pnpm install`, then run the following commands from the same directory so `catalog:` dependencies are resolved before release:

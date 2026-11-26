@@ -4,6 +4,7 @@ import type {
   BinaryStream,
   DifyClientConfig,
   DifyResponse,
+  DifyStream,
   JsonObject,
   MessageFeedbackRequest,
   QueryParams,
@@ -11,10 +12,11 @@ import type {
   SuccessResponse,
   TextToAudioRequest,
 } from '../types/common'
+import type { HumanInputForm, HumanInputFormSubmission, WorkflowEventsOptions } from '../types/human-input'
 import { FileUploadError, ValidationError } from '../errors/dify-error'
 import { HttpClient } from '../http/client'
 import { isFormData } from '../http/form-data'
-import { ensureNonEmptyString, ensureRating } from './validation'
+import { ensureNonEmptyString, ensureOptionalBoolean, ensureRating } from './validation'
 
 const toConfig = (init: string | DifyClientConfig, baseUrl?: string): DifyClientConfig => {
   if (typeof init === 'string') {
@@ -174,6 +176,49 @@ export class DifyClient {
       method: 'GET',
       path: '/site',
       query: user ? { user } : undefined,
+    })
+  }
+
+  getHumanInputForm(formToken: string): Promise<DifyResponse<HumanInputForm>> {
+    ensureNonEmptyString(formToken, 'formToken')
+    return this.http.request({
+      method: 'GET',
+      path: `/form/human_input/${encodeURIComponent(formToken)}`,
+    })
+  }
+
+  submitHumanInputForm(
+    formToken: string,
+    request: HumanInputFormSubmission,
+  ): Promise<DifyResponse<JsonObject>> {
+    ensureNonEmptyString(formToken, 'formToken')
+    ensureNonEmptyString(request.action, 'action')
+    ensureNonEmptyString(request.user, 'user')
+    return this.http.request({
+      method: 'POST',
+      path: `/form/human_input/${encodeURIComponent(formToken)}`,
+      data: request,
+    })
+  }
+
+  /** Reconnect to a workflow or chatflow after a pause or a dropped event stream. */
+  getWorkflowEvents(
+    workflowRunId: string,
+    user: string,
+    options?: WorkflowEventsOptions,
+  ): Promise<DifyStream<JsonObject>> {
+    ensureNonEmptyString(workflowRunId, 'workflowRunId')
+    ensureNonEmptyString(user, 'user')
+    ensureOptionalBoolean(options?.includeStateSnapshot, 'includeStateSnapshot')
+    ensureOptionalBoolean(options?.continueOnPause, 'continueOnPause')
+    return this.http.requestStream({
+      method: 'GET',
+      path: `/workflow/${encodeURIComponent(workflowRunId)}/events`,
+      query: {
+        user,
+        include_state_snapshot: options?.includeStateSnapshot,
+        continue_on_pause: options?.continueOnPause,
+      },
     })
   }
 
