@@ -16473,6 +16473,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16499,6 +16502,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16525,6 +16531,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16551,6 +16560,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16577,6 +16589,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16603,6 +16618,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16737,6 +16755,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16763,6 +16784,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16789,6 +16813,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16815,6 +16842,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16841,6 +16871,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -16867,6 +16900,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17159,6 +17195,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17185,6 +17224,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17211,6 +17253,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17237,6 +17282,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17263,6 +17311,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17289,6 +17340,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17360,12 +17414,18 @@
                       "dismiss",
                       "review",
                       "disable_document",
-                      "undo"
+                      "undo",
+                      "adopt"
                     ]
                   },
                   "documentId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "replacement": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
                   }
                 },
                 "required": [
@@ -17379,7 +17439,7 @@
         },
         "responses": {
           "200": {
-            "description": "Atomic review action or guarded undo",
+            "description": "Atomic review action or guarded undo; `adopt` also rewrites the other document's indexed passage",
             "content": {
               "application/json": {
                 "schema": {
@@ -17538,6 +17598,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17564,6 +17627,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17590,6 +17656,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17616,6 +17685,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17642,6 +17714,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17668,6 +17743,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17835,6 +17913,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17861,6 +17942,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17887,6 +17971,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17913,6 +18000,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17939,6 +18029,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -17965,6 +18058,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18117,6 +18213,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18143,6 +18242,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18169,6 +18271,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18195,6 +18300,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18221,6 +18329,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18247,6 +18358,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18328,6 +18442,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18354,6 +18471,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18380,6 +18500,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18406,6 +18529,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18432,6 +18558,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
@@ -18458,6 +18587,9 @@
                   "properties": {
                     "error": {
                       "type": "string"
+                    },
+                    "failure": {
+                      "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
                     }
                   },
                   "required": [
