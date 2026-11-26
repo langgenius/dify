@@ -115,6 +115,7 @@ def test_draft_graph_and_native_binding_rollback_together(binding_case: BindingC
             data = service.prepare_node(
                 actor=actor,
                 workflow=workflow,
+                candidate_graph=dict(workflow.graph_dict),
                 node_id="review",
                 selection=selection,
                 node_job=WorkflowNodeJobConfig(declared_outputs=[{"name": "summary", "type": "string"}]),
@@ -167,7 +168,12 @@ def test_publication_pointer_cannot_change_between_prepare_and_native_sync(bindi
         workflow = _require_instance(session.get(Workflow, workflow_id), Workflow)
         service = AgentBindingService(session)
         data = service.prepare_node(
-            actor=actor, workflow=workflow, node_id="review", selection=selection, node_job=WorkflowNodeJobConfig()
+            actor=actor,
+            workflow=workflow,
+            candidate_graph=dict(workflow.graph_dict),
+            node_id="review",
+            selection=selection,
+            node_job=WorkflowNodeJobConfig(),
         )
         with ThreadPoolExecutor(max_workers=1) as pool:
             attempted = pool.submit(publish_while_locked)
