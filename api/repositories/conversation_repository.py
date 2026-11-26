@@ -1,11 +1,11 @@
 """Persist conversations within their end-user, installed-account, or Console app scope."""
 
 import logging
-from collections.abc import Callable, Generator, Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
+from enum import StrEnum
 from functools import partial
 from random import uniform
 from time import sleep
@@ -13,6 +13,8 @@ from typing import cast
 from uuid import UUID
 
 from psycopg2 import Error as PostgreSQLDriverError
+from psycopg2 import OperationalError as PostgreSQLDriverOperationalError
+from psycopg2 import extensions as pg_extensions
 from pydantic import JsonValue
 from sqlalchemy import DateTime, Select, and_, case, exists, func, literal, null, or_, select, tuple_, update
 from sqlalchemy.exc import DBAPIError
@@ -87,35 +89,40 @@ _CONVERSATION_EXPORT_APP_MODES = _CONSOLE_LOG_APP_MODES - {AppMode.AGENT}
 logger = logging.getLogger(__name__)
 
 
-def _log_export_recovery_conflict(error: DBAPIError) -> PostgreSQLDriverError | None:
-    """Return the PostgreSQL driver error for an explicit standby recovery conflict."""
+class _LogExportPageRetryReason(StrEnum):
+    RECOVERY_CONFLICT = "recovery conflict"
+    STANDBY_DISCONNECT = "standby disconnect"
+
+
+def _log_export_requires_standby(session: Session) -> bool:
+    """Inspect the live driver's effective connection policy before the page executes."""
+    connection = session.connection()
+    driver = connection.connection.driver_connection
+    if not isinstance(driver, pg_extensions.connection):
+        return False
+    key = "conversation_log_export_requires_standby"
+    # Connection.info lives with the pooled connection, and libpq resolves the DSN and environment.
+    if key not in connection.info:
+        connection.info[key] = driver.get_dsn_parameters().get("target_session_attrs") == "standby"
+    return connection.info[key] is True and driver.get_parameter_status("in_hot_standby") != "off"
+
+
+def _log_export_retry_reason(error: DBAPIError, *, requires_standby: bool) -> _LogExportPageRetryReason | None:
+    """Recognize explicit recovery conflicts or confirmed disconnects on standby-only connections."""
     cause = error.orig
     if not isinstance(cause, PostgreSQLDriverError) or cause.pgcode not in (None, "40001"):
         return None
     message = (cause.diag.message_primary or str(cause).partition("\n")[0]).lower()
-    return cause if any(marker in message for marker in _LOG_EXPORT_RECOVERY_CONFLICT_MESSAGES) else None
-
-
-def _read_log_export_page[PageT](app_id: str, page_type: str, read: Callable[[], PageT]) -> PageT:
-    """Read a complete page in a fresh session per attempt, retrying only standby recovery conflicts."""
-    for retry, delay in enumerate(_LOG_EXPORT_RECOVERY_RETRY_DELAYS, start=1):
-        try:
-            return read()
-        except DBAPIError as error:
-            cause = _log_export_recovery_conflict(error)
-            if cause is None:
-                raise
-            logger.warning(
-                "Retrying conversation log export page after PostgreSQL recovery conflict: "
-                "app=%s page=%s retry=%s/%s sqlstate=%s",
-                app_id,
-                page_type,
-                retry,
-                len(_LOG_EXPORT_RECOVERY_RETRY_DELAYS),
-                cause.pgcode,
-            )
-            sleep(delay + uniform(0, 0.25))  # noqa: S311
-    return read()
+    if any(marker in message for marker in _LOG_EXPORT_RECOVERY_CONFLICT_MESSAGES):
+        return _LogExportPageRetryReason.RECOVERY_CONFLICT
+    if (
+        requires_standby
+        and error.connection_invalidated
+        and isinstance(cause, PostgreSQLDriverOperationalError)
+        and cause.pgcode is None
+    ):
+        return _LogExportPageRetryReason.STANDBY_DISCONNECT
+    return None
 
 
 class ConversationRepository:
@@ -452,14 +459,14 @@ class ConversationRepository:
 
         Exclude new conversations and messages using the export start time. Release the read
         session before yielding each batch so the caller can write it outside a transaction.
-        Retry standby recovery conflicts at the same page before advancing its cursor.
+        Retry eligible standby failures at the same page before advancing its cursor.
         Use a lookahead row to decide whether to continue after the last emitted message.
         """
         end_before = naive_utc_now()
         conversation_cursor: tuple[datetime, str] | None = None
         has_more_conversations = True
         while has_more_conversations:
-            conversation_ids, statuses, conversation_cursor = _read_log_export_page(
+            conversation_ids, statuses, conversation_cursor = self._read_log_export_page(
                 scope.app_id,
                 "conversation",
                 partial(
@@ -474,7 +481,7 @@ class ConversationRepository:
             message_cursor: tuple[datetime, str] | None = None
             has_more_messages = bool(conversation_ids)
             while has_more_messages:
-                rows = _read_log_export_page(
+                rows = self._read_log_export_page(
                     scope.app_id,
                     "message",
                     partial(
@@ -493,22 +500,57 @@ class ConversationRepository:
                     last = batch[-1]
                     message_cursor = (last.created_at, last.message_id)
 
-    @contextmanager
-    def _log_export_page_session(self) -> Generator[Session]:
-        """Release the read session and discard its connection before retrying a standby conflict."""
-        with self._session_factory() as session:
+    def _read_log_export_page[PageT](self, app_id: str, page_type: str, read: Callable[[Session], PageT]) -> PageT:
+        """Return one complete page with a fresh session per attempt and raise the last failure when done."""
+        retry_delays = _LOG_EXPORT_RECOVERY_RETRY_DELAYS
+        for attempt, delay in enumerate((*retry_delays, None), start=1):
+            requires_standby = False
             try:
-                yield session
-            except DBAPIError as error:
-                if _log_export_recovery_conflict(error) is not None:
+                with self._session_factory() as session:
+                    requires_standby = _log_export_requires_standby(session)
                     try:
-                        session.invalidate()
-                    except DBAPIError:
-                        logger.warning("Failed to clean up a conversation log export session after a recovery conflict")
-                raise
+                        return read(session)
+                    except DBAPIError as error:
+                        if _log_export_retry_reason(error, requires_standby=requires_standby) is not None:
+                            try:
+                                session.invalidate()
+                            except DBAPIError:
+                                logger.warning("Failed to discard a conversation log export page connection")
+                        raise
+            except DBAPIError as error:
+                reason = _log_export_retry_reason(error, requires_standby=requires_standby)
+                sqlstate = error.orig.pgcode if isinstance(error.orig, PostgreSQLDriverError) else None
+                if reason is None or delay is None:
+                    logger.warning(
+                        "Conversation log export page failed: app=%s page=%s attempt=%s/%s "
+                        "reason=%s error=%s sqlstate=%s connection_invalidated=%s",
+                        app_id,
+                        page_type,
+                        attempt,
+                        len(retry_delays) + 1,
+                        reason or "not retryable",
+                        type(error.orig).__name__,
+                        sqlstate,
+                        error.connection_invalidated,
+                    )
+                    raise
+                logger.warning(
+                    "Retrying conversation log export page after PostgreSQL %s: "
+                    "app=%s page=%s retry=%s/%s sqlstate=%s connection_invalidated=%s",
+                    reason,
+                    app_id,
+                    page_type,
+                    attempt,
+                    len(retry_delays),
+                    sqlstate,
+                    error.connection_invalidated,
+                )
+                sleep(delay + uniform(0, 0.25))  # noqa: S311
+        raise AssertionError("Log export page retry loop exhausted without returning or raising")
 
     def _console_log_export_selection(
         self,
+        session: Session,
         *,
         scope: ConsoleConversationScope,
         filters: ConsoleConversationLogFilters,
@@ -520,58 +562,56 @@ class ConversationRepository:
         The next cursor advances over the candidate page even when it yields no matches.
         Return None as the cursor when there are no more candidates to scan.
         """
-        with self._log_export_page_session() as session:
-            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
-            if app is None or app.mode != scope.app_mode:
-                raise ConsoleAppNotFoundError("App not found.")
+        app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+        if app is None or app.mode != scope.app_mode:
+            raise ConsoleAppNotFoundError("App not found.")
 
-            # Page the inexpensive predicates before applying keyword and annotation joins.
-            candidates, _ = self._filter_console_conversations(
-                select(Conversation.created_at, Conversation.id),
+        # Page the inexpensive predicates before applying keyword and annotation joins.
+        candidates, _ = self._filter_console_conversations(
+            select(Conversation.created_at, Conversation.id),
+            app_id=app.id,
+            mode=app.mode,
+            filters=replace(filters, keyword=None, annotation_status="all"),
+        )
+        candidates = candidates.where(Conversation.created_at < end_before)
+        if cursor is not None:
+            cursor_at, cursor_id = cursor
+            # Give the app and time index an explicit bound and use IDs to break ties.
+            candidates = candidates.where(
+                Conversation.created_at >= cursor_at,
+                or_(Conversation.created_at != cursor_at, Conversation.id > cursor_id),
+            )
+        page = (
+            session.execute(candidates.order_by(Conversation.created_at, Conversation.id).limit(_LOG_EXPORT_BATCH_SIZE))
+            .tuples()
+            .all()
+        )
+        if not page:
+            return (), {}, None
+
+        conversation_ids = tuple(conversation_id for _, conversation_id in page)
+        if filters.keyword or filters.annotation_status != "all":
+            matches, _ = self._filter_console_conversations(
+                select(Conversation.id).where(Conversation.id.in_(conversation_ids)),
                 app_id=app.id,
                 mode=app.mode,
-                filters=replace(filters, keyword=None, annotation_status="all"),
+                filters=filters,
             )
-            candidates = candidates.where(Conversation.created_at < end_before)
-            if cursor is not None:
-                cursor_at, cursor_id = cursor
-                # Give the app and time index an explicit bound and use IDs to break ties.
-                candidates = candidates.where(
-                    Conversation.created_at >= cursor_at,
-                    or_(Conversation.created_at != cursor_at, Conversation.id > cursor_id),
-                )
-            page = (
-                session.execute(
-                    candidates.order_by(Conversation.created_at, Conversation.id).limit(_LOG_EXPORT_BATCH_SIZE)
-                )
-                .tuples()
-                .all()
-            )
-            if not page:
-                return (), {}, None
+            if app.mode == AppMode.COMPLETION and filters.keyword:
+                matches = matches.distinct()
+            conversation_ids = tuple(session.scalars(matches))
 
-            conversation_ids = tuple(conversation_id for _, conversation_id in page)
-            if filters.keyword or filters.annotation_status != "all":
-                matches, _ = self._filter_console_conversations(
-                    select(Conversation.id).where(Conversation.id.in_(conversation_ids)),
-                    app_id=app.id,
-                    mode=app.mode,
-                    filters=filters,
-                )
-                if app.mode == AppMode.COMPLETION and filters.keyword:
-                    matches = matches.distinct()
-                conversation_ids = tuple(session.scalars(matches))
-
-            statuses = (
-                self._chatflow_log_export_statuses(session, scope, conversation_ids, end_before)
-                if conversation_ids and app.mode == AppMode.ADVANCED_CHAT
-                else {}
-            )
-            next_cursor = (page[-1][0], page[-1][1]) if len(page) == _LOG_EXPORT_BATCH_SIZE else None
-            return conversation_ids, statuses, next_cursor
+        statuses = (
+            self._chatflow_log_export_statuses(session, scope, conversation_ids, end_before)
+            if conversation_ids and app.mode == AppMode.ADVANCED_CHAT
+            else {}
+        )
+        next_cursor = (page[-1][0], page[-1][1]) if len(page) == _LOG_EXPORT_BATCH_SIZE else None
+        return conversation_ids, statuses, next_cursor
 
     def _console_log_export_message_batch(
         self,
+        session: Session,
         *,
         scope: ConsoleConversationScope,
         conversation_ids: tuple[str, ...],
@@ -580,62 +620,59 @@ class ConversationRepository:
         cursor: tuple[datetime, str] | None,
     ) -> list[ConversationLogExportRow]:
         """Read an ordered message page plus one lookahead row for the admitted app's selected conversations."""
-        with self._log_export_page_session() as session:
-            app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
-            if app is None or app.mode != scope.app_mode:
-                raise ConsoleAppNotFoundError("App not found.")
-            # Select only one user feedback even if old data has more than one per message.
-            feedback_id = (
-                select(MessageFeedback.id)
-                .where(
-                    MessageFeedback.message_id == Message.id,
-                    MessageFeedback.app_id == app.id,
-                    MessageFeedback.from_source == FeedbackFromSource.USER,
-                )
-                .order_by(MessageFeedback.updated_at.desc(), MessageFeedback.id.desc())
-                .limit(1)
-                .correlate(Message)
-                .scalar_subquery()
+        app = find_console_app(session, workspace_id=scope.tenant_id, app_id=scope.app_id)
+        if app is None or app.mode != scope.app_mode:
+            raise ConsoleAppNotFoundError("App not found.")
+        # Select only one user feedback even if old data has more than one per message.
+        feedback_id = (
+            select(MessageFeedback.id)
+            .where(
+                MessageFeedback.message_id == Message.id,
+                MessageFeedback.app_id == app.id,
+                MessageFeedback.from_source == FeedbackFromSource.USER,
             )
-            statement = (
-                select(
-                    Message.conversation_id,
-                    Message.id,
-                    Message.created_at,
-                    EndUser.session_id,
-                    Conversation.from_account_id,
-                    Account.name,
-                    Message.query,
-                    Message.answer,
-                    MessageFeedback.rating,
-                    MessageFeedback.content,
-                    Message._inputs if app.mode == AppMode.COMPLETION else null(),
-                )
-                .select_from(Message)
-                .join(Conversation, Conversation.id == Message.conversation_id)
-                .outerjoin(
-                    EndUser, and_(EndUser.id == Conversation.from_end_user_id, EndUser.tenant_id == scope.tenant_id)
-                )
-                .outerjoin(Account, Account.id == Conversation.from_account_id)
-                .outerjoin(MessageFeedback, MessageFeedback.id == feedback_id)
-                .where(
-                    Message.app_id == app.id,
-                    Conversation.app_id == app.id,
-                    Conversation.is_deleted.is_(False),
-                    Message.conversation_id.in_(conversation_ids),
-                    Message.created_at < end_before,
-                )
-                .order_by(Message.created_at, Message.id)
-                .limit(_LOG_EXPORT_BATCH_SIZE + 1)
+            .order_by(MessageFeedback.updated_at.desc(), MessageFeedback.id.desc())
+            .limit(1)
+            .correlate(Message)
+            .scalar_subquery()
+        )
+        statement = (
+            select(
+                Message.conversation_id,
+                Message.id,
+                Message.created_at,
+                EndUser.session_id,
+                Conversation.from_account_id,
+                Account.name,
+                Message.query,
+                Message.answer,
+                MessageFeedback.rating,
+                MessageFeedback.content,
+                Message._inputs if app.mode == AppMode.COMPLETION else null(),
             )
-            if cursor is not None:
-                statement = statement.where(
-                    tuple_(Message.created_at, Message.id)
-                    > tuple_(literal(cursor[0], type_=DateTime()), literal(cursor[1], type_=Message.id.type))
-                )
+            .select_from(Message)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .outerjoin(EndUser, and_(EndUser.id == Conversation.from_end_user_id, EndUser.tenant_id == scope.tenant_id))
+            .outerjoin(Account, Account.id == Conversation.from_account_id)
+            .outerjoin(MessageFeedback, MessageFeedback.id == feedback_id)
+            .where(
+                Message.app_id == app.id,
+                Conversation.app_id == app.id,
+                Conversation.is_deleted.is_(False),
+                Message.conversation_id.in_(conversation_ids),
+                Message.created_at < end_before,
+            )
+            .order_by(Message.created_at, Message.id)
+            .limit(_LOG_EXPORT_BATCH_SIZE + 1)
+        )
+        if cursor is not None:
+            statement = statement.where(
+                tuple_(Message.created_at, Message.id)
+                > tuple_(literal(cursor[0], type_=DateTime()), literal(cursor[1], type_=Message.id.type))
+            )
 
-            rows = session.execute(statement).tuples().all()
-            return [ConversationLogExportRow(*row, status=statuses.get(row[0])) for row in rows]
+        rows = session.execute(statement).tuples().all()
+        return [ConversationLogExportRow(*row, status=statuses.get(row[0])) for row in rows]
 
     @staticmethod
     def _chatflow_log_export_statuses(
