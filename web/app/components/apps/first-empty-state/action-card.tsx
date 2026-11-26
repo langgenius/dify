@@ -69,9 +69,9 @@ function CompactBadge({
   return (
     <CornerLabel
       label={badge}
-      className="absolute top-0 right-0 z-5"
+      className="absolute inset-e-0 top-0 z-5"
       cornerClassName={compactBadgeClassName[badgeVariant].corner}
-      labelClassName={cn('rounded-tr-xl pr-2', compactBadgeClassName[badgeVariant].label)}
+      labelClassName={cn('rounded-se-xl pe-2', compactBadgeClassName[badgeVariant].label)}
       textClassName={compactBadgeClassName[badgeVariant].text}
     />
   )
@@ -93,7 +93,7 @@ function ActionCardContent({
         {badge && (
           <CornerLabel
             label={badge}
-            className="absolute top-0 right-0 z-5"
+            className="absolute inset-e-0 top-0 z-5"
             cornerClassName="text-util-colors-indigo-indigo-100"
             labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
             textClassName="text-util-colors-indigo-indigo-700"
@@ -128,7 +128,7 @@ function ActionCardContent({
           </span>
         </span>
         {disabledReason && (
-          <span className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+          <span className="ms-3 shrink-0 system-xs-medium text-text-disabled">
             {disabledReason}
           </span>
         )}
@@ -141,7 +141,7 @@ function ActionCardContent({
     isCompact ? (
       <CompactBadge badge={badge} badgeVariant={badgeVariant} />
     ) : (
-      <span className="absolute top-4 right-4 flex min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
+      <span className="absolute inset-e-4 top-4 flex min-w-4.5 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
         {badge}
       </span>
     )

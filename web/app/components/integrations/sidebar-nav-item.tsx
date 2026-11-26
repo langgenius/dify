@@ -38,7 +38,7 @@ const StepByStepTourTargetAnchor = ({ target }: { target?: string }) => {
   return (
     <span
       aria-hidden="true"
-      className="pointer-events-none absolute inset-y-1 right-0 left-0"
+      className="pointer-events-none absolute inset-y-1 inset-s-0 inset-e-0"
       data-step-by-step-tour-target={target}
     />
   )

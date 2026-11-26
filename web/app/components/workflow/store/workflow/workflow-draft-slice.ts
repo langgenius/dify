@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type { StateCreator } from 'zustand'
 import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
 import { debounce } from 'es-toolkit/compat'
 
 type DebouncedFunc = {
@@ -16,6 +17,8 @@ export type WorkflowDraftSliceShape = {
     viewport: Viewport
     features?: Record<string, any>
     environmentVariables: EnvironmentVariable[]
+    // Knowledge pipeline input fields; previewing a version replaces them too.
+    ragPipelineVariables?: RAGPipelineVariables
   }
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void
   debouncedSyncWorkflowDraft: DebouncedFunc

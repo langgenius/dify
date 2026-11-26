@@ -12,7 +12,7 @@ import { toast } from '@/app/notifications'
 import { knowledgeFsUploadEnabledAtom } from '@/features/knowledge-fs-availability/state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { knowledgeFsRequestFailureMessageKey } from '../../knowledge-fs-task-error'
 import { DocumentUploadForm } from '../../upload/form'
 import {
@@ -187,14 +187,13 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
 
   const checkUploadQuota = useCallback(
     async (isActive?: () => boolean) => {
-      if (deploymentEdition !== 'CLOUD') return true
       const failureKey = await getKnowledgeFsUploadQuotaFailure(queryClient)
       if (isActive && !isActive()) return false
       if (!failureKey) return true
       toast.error(tError(($) => $[failureKey]))
       return false
     },
-    [deploymentEdition, queryClient, tError],
+    [queryClient, tError],
   )
 
   const uploadFiles = useCallback(
@@ -264,7 +263,7 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
           const failureKey = await knowledgeFsRequestFailureMessageKey(error)
           const reason = failureKey
             ? tError(($) => $[failureKey])
-            : t(($) => $.documentUploadFailed)
+            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed))
           toast.error(
             completed
               ? t(($) => $.documentUploadIncomplete, {
@@ -300,15 +299,19 @@ export function DocumentUploadSurface({ children }: { children: ReactNode }) {
   const onFilesAdded = useCallback(
     async (files: File[]) => {
       try {
-        await stageFiles(files, deploymentEdition === 'CLOUD' ? checkUploadQuota : undefined)
+        await stageFiles(files, checkUploadQuota)
       } catch (error) {
         if (error instanceof DocumentStagingCanceledError) return
         const failureKey = await knowledgeFsRequestFailureMessageKey(error)
-        toast.error(failureKey ? tError(($) => $[failureKey]) : t(($) => $.documentUploadFailed))
+        toast.error(
+          failureKey
+            ? tError(($) => $[failureKey])
+            : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed)),
+        )
         throw error
       }
     },
-    [checkUploadQuota, deploymentEdition, stageFiles, t, tError],
+    [checkUploadQuota, stageFiles, t, tError],
   )
 
   const onSubmit = useCallback(

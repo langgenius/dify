@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createWavFixture, paintedPixelCount } from '@/test/browser-media'
+import { hold, route, setupFakeApi } from '@/test/fake-api'
+import servedAudioUrl from '@/test/fixtures/media/preview.mp3?url'
 import AudioPlayer from '../AudioPlayer'
 
 const fixtures: Array<ReturnType<typeof createWavFixture>> = []
@@ -10,6 +12,20 @@ const fixture = (options?: Parameters<typeof createWavFixture>[0]) => {
   fixtures.push(result)
   return result
 }
+
+// The audio element loads the served file natively; the waveform request goes through the fake API.
+const servedAudio = () => new URL(servedAudioUrl, window.location.href)
+let servedWaveform: Uint8Array
+const fake = setupFakeApi(() => ({
+  routes: [
+    route('GET', 'origin', servedAudio().pathname, () => new Response(servedWaveform as BlobPart)),
+  ],
+}))
+const waveformRequest = () => fake.route('GET', 'origin', servedAudio().pathname)
+
+beforeEach(() => {
+  servedWaveform = createWavFixture({ frequency: 220 }).bytes
+})
 
 function AudioSourceCaller({
   initial,
@@ -65,33 +81,33 @@ it('plays, pauses and finishes real audio through the keyboard controls', async 
   expect(audio.ended).toBe(true)
 })
 
-it.fails('keeps the available waveform and playback control pointer-reachable', async () => {
-  // TODO(https://github.com/langgenius/dify/issues/45655): the hidden overlay wins hit testing.
+it('keeps the available waveform and playback control pointer-reachable', async () => {
   const { url } = fixture()
   const screen = await render(<AudioPlayer src={url} />)
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   await expect.poll(() => audio.duration).toBeGreaterThan(0)
   const canvas = screen.getByTestId('waveform-canvas').element()
   const { left, top, width, height } = canvas.getBoundingClientRect()
-  expect(document.elementFromPoint(left + width / 2, top + height / 2)).toBe(canvas)
+  // TODO(https://github.com/langgenius/dify/issues/45655): the hidden overlay wins hit testing.
+  // Only this check asserts the known bug, so the rest of the test and the fake API contract still
+  // fail normally; once fixed, expect the hit target `toBe(canvas)` instead.
+  expect(document.elementFromPoint(left + width / 2, top + height / 2)).not.toBe(canvas)
 })
 
 it('decodes the first alternative source into a painted waveform', async () => {
   // boundary: advance only the waveform delay; native decoding and animation frames stay real.
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
-  const first = fixture({ frequency: 220 })
+  const first = servedAudio().href
   const second = fixture({ frequency: 880 })
-  const nativeFetch = window.fetch.bind(window)
-  // boundary: waveform resource request identity is observable at native fetch; canvas and decoder stay real.
-  const waveformFetch = vi.spyOn(window, 'fetch').mockImplementation(nativeFetch)
-  const screen = await render(<AudioPlayer srcs={[first.url, second.url]} />)
+  const screen = await render(<AudioPlayer srcs={[first, second.url]} />)
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   const sources = Array.from(audio.querySelectorAll('source'), (source) => source.src)
-  expect(sources).toEqual([first.url, second.url])
-  await expect.poll(() => audio.currentSrc).toBe(first.url)
-  await expect.poll(() => audio.duration).toBeGreaterThan(1.9)
+  expect(sources).toEqual([first, second.url])
+  await expect.poll(() => audio.currentSrc).toBe(first)
+  await expect.poll(() => audio.duration).toBeGreaterThan(0)
   await vi.advanceTimersByTimeAsync(1_000)
-  await expect.poll(() => waveformFetch.mock.calls[0]?.[0]).toBe(first.url)
+  await expect.poll(() => waveformRequest()).toHaveBeenCalledTimes(1)
+  expect(waveformRequest().mock.calls[0]![0].url.href).toBe(first)
   const canvas = screen.getByTestId('waveform-canvas').element() as HTMLCanvasElement
   await expect.poll(() => paintedPixelCount(canvas)).toBeGreaterThan(100)
 })
@@ -139,32 +155,23 @@ it('recovers from an unavailable source when the caller supplies a valid replace
 it('ignores a failed waveform response from the previous public source', async () => {
   // boundary: advance only the waveform delay while preserving the native response race.
   vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
-  const oldAudio = fixture({ frequency: 220 })
+  const oldAudio = servedAudio().href
   const newAudio = fixture({ frequency: 660 })
-  const nativeFetch = window.fetch.bind(window)
-  let rejectOld!: () => void
-  const oldResponse = new Promise<Response>((resolve) => {
-    rejectOld = () => resolve(new Response(null, { status: 403 }))
-  })
-  // boundary: hold one blob fetch to reproduce an out-of-order browser response.
-  vi.spyOn(window, 'fetch').mockImplementation((input, init) => {
-    if (String(input) === oldAudio.url) return oldResponse
-    return nativeFetch(input, init)
-  })
+  // Hold the old source's waveform response to reproduce an out-of-order server response.
+  const oldResponse = hold(waveformRequest())
 
   const screen = await render(
-    <AudioSourceCaller initial={oldAudio.url} label="Use next audio" next={newAudio.url} />,
+    <AudioSourceCaller initial={oldAudio} label="Use next audio" next={newAudio.url} />,
   )
   await vi.advanceTimersByTimeAsync(1_000)
-  await expect.poll(() => vi.mocked(window.fetch).mock.calls.length).toBe(1)
+  await oldResponse.arrived
   await screen.getByRole('button', { name: 'Use next audio' }).click()
   const audio = screen.getByTestId('audio-player').element() as HTMLAudioElement
   await expect.poll(() => audio.src).toBe(newAudio.url)
   await vi.advanceTimersByTimeAsync(1_000)
   const canvas = screen.getByTestId('waveform-canvas').element() as HTMLCanvasElement
   await expect.poll(() => paintedPixelCount(canvas)).toBeGreaterThan(100)
-  rejectOld()
-  await oldResponse
+  oldResponse.resolve(new Response(null, { status: 403 }))
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
   await expect.element(screen.getByRole('button', { name: 'common.operation.play' })).toBeEnabled()
   expect(audio.src).toBe(newAudio.url)

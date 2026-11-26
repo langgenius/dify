@@ -43,6 +43,18 @@ export type InvalidRequestError = ErrorResponse & {
   status: 400
 }
 
+export type AvailableEvaluationWorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<AvailableEvaluationWorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -173,6 +185,10 @@ export type EndpointUpdatePayload = {
   }
 }
 
+export type EvaluationAssociatedTargetListResponse = {
+  items: Array<EvaluationAssociatedTargetResponse>
+}
+
 export type ListChannelProvidersResponse = {
   email_providers: Array<ChannelProvider>
   im_providers: Array<ChannelProvider>
@@ -192,6 +208,14 @@ export type EmailChannelMutationResponse = {
   summary: ChannelSummary
 }
 
+export type ChannelProviderBadRequestResponse = {
+  code: string
+  message: string
+  provider_error_code?: string | null
+  provider_request_id?: string | null
+  status: number
+}
+
 export type EmailChannelTestPayload = {
   credentials: EmailProviderCredentials
   sender_email: string
@@ -199,6 +223,8 @@ export type EmailChannelTestPayload = {
 }
 
 export type ChannelTestResponse = {
+  provider_error_code?: string | null
+  provider_request_id?: string | null
   status: ChannelStatus
   status_description: string
 }
@@ -389,6 +415,10 @@ export type ListOrganizationCandidatesResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type HumanInputTestChannelsResponse = {
+  channels: Array<DebugChannel>
 }
 
 export type MemberInvitePayload = {
@@ -647,7 +677,7 @@ export type ParserDeleteModels = {
 
 export type LoadBalancingCredentialPayload = {
   credentials: {
-    [key: string]: unknown
+    [key: string]: string | boolean
   }
   model: string
   model_type: ModelType
@@ -714,11 +744,6 @@ export type NetworkAccessGroupMutationResponse = {
 export type NetworkAccessInvalidInputError = ErrorResponse & {
   code: 'network_access_invalid_input'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNameConflictError = ErrorResponse & {
@@ -1184,6 +1209,8 @@ export type SkillAssistMessagePayload = {
   model?: SkillAssistModelPayload | null
   target_path?: string | null
 }
+
+export type BinaryFileResponse = Blob | File
 
 export type SkillDraftFileOperationPayload = {
   content?: string | null
@@ -1765,6 +1792,19 @@ export type AccountNotLinkTenantError = ErrorResponse & {
   status: 403
 }
 
+export type PendingWorkspaceInvitationListResponse = {
+  invitations: Array<PendingWorkspaceInvitationResponse>
+}
+
+export type PendingInvitationRevokePayload = {
+  email: string
+}
+
+export type PendingInvitationNotFoundError = ErrorResponse & {
+  code: 'pending_invitation_not_found'
+  status: 404
+}
+
 export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
@@ -1799,6 +1839,22 @@ export type AgentSkillBindingItemResponse = {
   status: string
   tags?: Array<string>
   updated_at: number
+}
+
+export type AvailableEvaluationWorkflowResponse = {
+  app_id: string
+  app_name: string
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  hash: string
+  id: string
+  kind: string
+  marked_comment: string
+  marked_name: string
+  type: string
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
 }
 
 export type SnippetListItemResponse = {
@@ -1910,6 +1966,12 @@ export type EndpointListItemResponse = {
   tenant_id: string
   updated_at: string
   url: string
+}
+
+export type EvaluationAssociatedTargetResponse = {
+  target_id: string
+  target_name: string
+  target_type: string
 }
 
 export type ChannelProvider = {
@@ -2121,6 +2183,15 @@ export type OrganizationCandidate = {
   id: string
   name: string
 }
+
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type MemberInviteSuccessResponse = {
   email: string
@@ -2782,6 +2853,12 @@ export type TenantInfoResponse = {
   trial_credits_exhausted_at?: number | null
   trial_credits_used?: number | null
   trial_end_reason?: string | null
+}
+
+export type PendingWorkspaceInvitationResponse = {
+  email: string
+  expires_at: string
+  role: TenantAccountRole
 }
 
 export type AgentStrategyProviderIdentity = {
@@ -3976,15 +4053,6 @@ export type FileListInputConfig = {
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type DebugChannel =
-  | 'ding_talk'
-  | 'email'
-  | 'feishu'
-  | 'lark'
-  | 'ms_teams'
-  | 'slack'
-  | 'we_com'
-
 export type FormOption = {
   label: ModelRuntimeI18nObject
   show_on?: Array<FormShowOnObject>
@@ -4408,6 +4476,34 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
 
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponse =
   PutWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsResponses]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    named_only?: boolean
+    page?: number
+    user_id?: string
+  }
+  url: '/workspaces/current/available-evaluation-workflows'
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsError =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses = {
+  200: AvailableEvaluationWorkflowPaginationResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses]
 
 export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
@@ -4948,6 +5044,30 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
 
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsData = {
+  body?: never
+  path: {
+    workflow_id: string
+  }
+  query?: never
+  url: '/workspaces/current/evaluation-workflows/{workflow_id}/associated-targets'
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsError =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses = {
+  200: EvaluationAssociatedTargetListResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses]
+
 export type GetWorkspacesCurrentHumanInputV2ChannelProvidersData = {
   body?: never
   path?: never
@@ -4998,6 +5118,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsEmailData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsEmailErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5091,6 +5212,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5137,6 +5259,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5230,6 +5353,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5254,6 +5378,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementDat
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5278,7 +5403,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestErrors = {
-  400: ErrorResponse
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5752,6 +5877,27 @@ export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses = {
 
 export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
   GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses[keyof GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/v2/test-channels'
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsError =
+  GetWorkspacesCurrentHumanInputV2TestChannelsErrors[keyof GetWorkspacesCurrentHumanInputV2TestChannelsErrors]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponses = {
+  200: HumanInputTestChannelsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponse =
+  GetWorkspacesCurrentHumanInputV2TestChannelsResponses[keyof GetWorkspacesCurrentHumanInputV2TestChannelsResponses]
 
 export type GetWorkspacesCurrentMembersData = {
   body?: never
@@ -7430,7 +7576,9 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponse =
   PostWorkspacesCurrentPluginUpgradeMarketplaceResponses[keyof PostWorkspacesCurrentPluginUpgradeMarketplaceResponses]
 
 export type PostWorkspacesCurrentPluginUploadBundleData = {
-  body?: never
+  body: {
+    bundle: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/bundle'
@@ -9246,9 +9394,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdExportError =
   GetWorkspacesCurrentSkillsBySkillIdExportErrors[keyof GetWorkspacesCurrentSkillsBySkillIdExportErrors]
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportResponse =
@@ -11015,3 +11161,52 @@ export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRespo
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse =
   GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses[keyof GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsData = {
+  body?: never
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations'
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors = {
+  403: ForbiddenError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsError =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsErrors]
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses = {
+  200: PendingWorkspaceInvitationListResponse
+}
+
+export type GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses[keyof GetWorkspacesByWorkspaceIdMembersPendingInvitationsResponses]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeData = {
+  body: PendingInvitationRevokePayload
+  path: {
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/members/pending-invitations/revoke'
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors = {
+  403: ForbiddenError | ErrorResponse
+  404: PendingInvitationNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeError =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeErrors]
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponse =
+  PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses[keyof PostWorkspacesByWorkspaceIdMembersPendingInvitationsRevokeResponses]

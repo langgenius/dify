@@ -22,7 +22,7 @@ retirement and saves snapshots in the owning session.
 
 Registered production names are `agent_soul_prompt`, `workflow_node_job_prompt`,
 `workflow_user_prompt`, `agent_app_user_prompt`, `execution_context`, `runtime`,
-`shell`, `config`, `history`, `llm`, `tools`, `core_tools`, `knowledge`, `output`,
+`shell`, `config`, `history`, `llm`, `tools`, `core_tools`, `knowledge`, `output`, `read_media`,
 plus `prompt` and `user_prompt` convenience names. HTTP input cannot supply an
 import path. Cross-module references live in Config, for example
 `execution_context`, `runtime`, and `shell`; the loader validates their targets
@@ -34,10 +34,27 @@ shellctl. When shellctl path isolation is enabled, Landlock setup errors abort
 the job before its user script executes. Deployment settings may explicitly
 disable path isolation. See the [operations guide](guide/index.md) for setup.
 
+If a referenced Local Home Snapshot is missing from the sandbox filesystem,
+creating a Binding starts with an empty Home and logs a warning. This does not
+restore lost files or change how an existing Binding is acquired.
+
 Model, output type, current user content and initial history use explicit runner
 assembly and native Agent arguments. Knowledge eager results stay in the user
 role through a native model-request hook. Tool dispatch, instructions and
 capability hooks use native Pydantic AI interfaces.
+
+`read_media` attaches image, audio, video or document content only when the model
+explicitly calls it with a Dify `file` mapping or a workspace `path`. Tool media
+outputs expose copyable handles in text. The LLM config's `supported_modalities`
+declares `vision`, `audio`, `video` and/or `document`; an omitted or empty list
+disables attachment. Authoritative download-request metadata controls format,
+access and size checks. Runtime messages contain URLs or managed references;
+managed files are resolved at the API model gateway. Remote URLs pass through
+unchanged. Unsupported/inaccessible files become text observations, and a
+provider content rejection before the first chunk retries once with text.
+Only the latest four attachments remain active within a run; historical
+attachments become locator-bearing text when the next run loads history,
+including when the model or enabled modules change.
 
 The sandbox's installed `dify-agent` CLI can read the saved Agent Soul system
 prompt with `dify-agent config prompt pull [--to PATH]`. It writes UTF-8 text to

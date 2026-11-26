@@ -10,10 +10,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.shared import AccountId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
-from models import TenantCreditPool
 from models.account import (
     Account,
-    AccountStatus,
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
@@ -24,7 +22,6 @@ from models.account import (
     TenantStatus,
 )
 from models.dataset import Dataset
-from models.enums import ProviderQuotaType
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
@@ -136,14 +133,6 @@ class WorkspaceRepository(
                         include_plugins=[],
                     )
                 )
-            session.add(
-                TenantCreditPool(
-                    tenant_id=tenant.id,
-                    quota_limit=creation.trial_credits,
-                    quota_used=0,
-                    pool_type=ProviderQuotaType.TRIAL,
-                )
-            )
             session.flush()
             return CreatedWorkspace(
                 tenant.id,
@@ -450,6 +439,17 @@ class WorkspaceRepository(
                 ) in session.execute(stmt).all()
             )
 
+    def nonmember_emails(self, workspace_id: str, account_ids: Sequence[str]) -> dict[str, str]:
+        """Read current email addresses for candidate accounts without a membership in this workspace."""
+        membership = (
+            select(TenantAccountJoin.account_id)
+            .where(TenantAccountJoin.tenant_id == workspace_id, TenantAccountJoin.account_id == Account.id)
+            .exists()
+        )
+        with self._session_factory() as session:
+            rows = session.execute(select(Account.id, Account.email).where(Account.id.in_(account_ids), ~membership))
+            return dict(rows.tuples().all())
+
     def owner_id(self, workspace_id: str) -> str | None:
         with self._session_factory() as session:
             return session.scalar(
@@ -503,8 +503,14 @@ class WorkspaceRepository(
             return WorkspaceMemberWrite(workspace_id, account_id, role.value, account.status.value, created)
 
     def remove_member(
-        self, *, workspace_id: str, account_id: str, owner_id: str, actor_account_id: str
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        owner_id: str,
+        actor_account_id: str,
     ) -> WorkspaceMemberRemoval:
+        """Remove one membership and hand the member's resources to ``owner_id``; the account itself is kept."""
         with self._session_factory.begin() as session:
             account = session.get(Account, account_id)
             membership = session.scalar(
@@ -539,13 +545,7 @@ class WorkspaceRepository(
                 replacement_owner_account_id=owner_id,
             )
             session.delete(membership)
-            delete_account = account.status == AccountStatus.PENDING and not session.scalar(
-                select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
-            )
-            email = account.email
-            if delete_account:
-                session.delete(account)
-            return WorkspaceMemberRemoval(account_id, email, delete_account)
+            return WorkspaceMemberRemoval(account_id, account.email)
 
     def update_member_role(
         self,

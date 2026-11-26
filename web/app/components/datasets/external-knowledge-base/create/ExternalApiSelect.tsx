@@ -1,11 +1,8 @@
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
-import { useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/console'
 
 type ApiItem = {
   value: string
@@ -28,34 +25,9 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
 }) => {
   const { t } = useTranslation(['dataset'])
   const [isOpen, setIsOpen] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
-    items.find((item) => item.value === value) || null,
-  )
-  const { setShowExternalKnowledgeAPIModal } = useModalContext()
-  const queryClient = useQueryClient()
-  const externalKnowledgeApiQueryKey = consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({
-    input: {},
-  }).queryKey
-  const router = useRouter()
-
-  useEffect(() => {
-    const newSelectedItem = items.find((item) => item.value === value) || null
-    setSelectedItem(newSelectedItem)
-  }, [value, items])
-
-  const handleAddNewAPI = () => {
-    setShowExternalKnowledgeAPIModal({
-      payload: { name: '', settings: { endpoint: '', api_key: '' } },
-      onSaveCallback: async () => {
-        await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
-        router.refresh()
-      },
-      isEditMode: false,
-    })
-  }
+  const selectedItem = items.find((item) => item.value === value)
 
   const handleSelect = (item: ApiItem) => {
-    setSelectedItem(item)
     onSelect(item)
     setIsOpen(false)
   }
@@ -65,7 +37,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
       <button
         type="button"
         aria-labelledby={ariaLabelledBy}
-        className={`flex w-full cursor-pointer appearance-none items-center justify-between gap-0.5 self-stretch rounded-lg border-0 bg-components-input-bg-normal px-2 py-1 text-left hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
+        className={`flex w-full cursor-pointer appearance-none items-center justify-between gap-0.5 self-stretch rounded-lg border-0 bg-components-input-bg-normal px-2 py-1 text-start hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >
         {selectedItem ? (
@@ -95,7 +67,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
             <button
               type="button"
               key={item.value}
-              className="flex w-full cursor-pointer appearance-none items-center border-0 bg-transparent p-1 text-left"
+              className="flex w-full cursor-pointer appearance-none items-center border-0 bg-transparent p-1 text-start"
               onClick={() => handleSelect(item)}
             >
               <span className="flex w-full items-center gap-2 self-stretch rounded-lg p-2 hover:bg-state-base-hover">
@@ -106,23 +78,26 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({
                 <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
                   {item.name}
                 </span>
-                <span className="overflow-hidden text-right system-xs-regular text-ellipsis text-text-tertiary">
+                <span className="overflow-hidden text-end system-xs-regular text-ellipsis text-text-tertiary">
                   {item.url}
                 </span>
               </span>
             </button>
           ))}
           <div className="flex flex-col items-start self-stretch p-1">
-            <button
-              type="button"
-              className="flex w-full cursor-pointer appearance-none items-center gap-2 self-stretch rounded-lg border-0 bg-transparent p-2 text-left hover:bg-state-base-hover"
-              onClick={handleAddNewAPI}
+            <DialogTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer appearance-none items-center gap-2 self-stretch rounded-lg border-0 bg-transparent p-2 text-start hover:bg-state-base-hover"
+                />
+              }
             >
               <RiAddLine className="size-4 text-text-secondary" />
               <span className="grow overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
                 {t(($) => $.createNewExternalAPI, { ns: 'dataset' })}
               </span>
-            </button>
+            </DialogTrigger>
           </div>
         </div>
       )}

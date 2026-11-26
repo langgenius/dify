@@ -141,6 +141,7 @@ class AgentWorkspaceOwnerType(StrEnum):
     WORKFLOW_RUN = "workflow_run"
     CONVERSATION = "conversation"
     BUILD_DRAFT = "build_draft"
+    EVALUATION_RUN_ITEM = "evaluation_run_item"
 
 
 class AgentConfigVersionKind(StrEnum):

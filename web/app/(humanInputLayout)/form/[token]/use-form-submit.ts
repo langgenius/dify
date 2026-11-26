@@ -1,9 +1,12 @@
+import { useMutation } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { useSubmitHumanInputForm } from '@/service/use-share'
+import { submitHumanInputFormMutationOptions } from '@/service/share-queries'
 
 export const useFormSubmit = (token: string) => {
   const [success, setSuccess] = useState(false)
-  const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
+  const { mutate: submitForm, isPending: isSubmitting } = useMutation(
+    submitHumanInputFormMutationOptions(),
+  )
 
   const submit = useCallback(
     (inputs: Record<string, unknown> | undefined, actionID: string) => {

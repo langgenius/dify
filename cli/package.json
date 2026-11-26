@@ -1,6 +1,6 @@
 {
   "name": "@langgenius/difyctl",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "description": "Dify command-line interface",
   "license": "Apache-2.0",
   "files": [
@@ -52,7 +52,6 @@
     "@hono/node-server": "catalog:",
     "@types/lockfile": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "hono": "catalog:",
     "tsrs": "catalog:",

@@ -14,9 +14,9 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
-import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
+import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import FileList from './file-list'
 import { convertOnlineDriveData } from './utils'
@@ -71,29 +71,23 @@ const OnlineDrive = ({
     }),
   )
 
-  const datasourceNodeRunURL = !isInPipeline
-    ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
-    : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
-
   const getOnlineDriveFiles = useCallback(async () => {
     if (isLoadingRef.current) return
     const { nextPageParameters, prefix, bucket, onlineDriveFileList, currentCredentialId } =
       dataSourceStore.getState()
     setIsLoading(true)
     isLoadingRef.current = true
-    ssePost(
-      datasourceNodeRunURL,
+    runDatasourceNode(
+      { pipelineId, nodeId, isInPipeline },
       {
-        body: {
-          inputs: {
-            prefix: prefix[prefix.length - 1],
-            bucket,
-            next_page_parameters: nextPageParameters,
-            max_keys: 30,
-          },
-          datasource_type: DatasourceType.onlineDrive,
-          credential_id: currentCredentialId,
+        inputs: {
+          prefix: prefix[prefix.length - 1],
+          bucket,
+          next_page_parameters: nextPageParameters,
+          max_keys: 30,
         },
+        datasource_type: DatasourceType.onlineDrive,
+        credential_id: currentCredentialId,
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
@@ -123,7 +117,7 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs])
+  }, [dataSourceStore, pipelineId, nodeId, isInPipeline, breadcrumbs])
 
   useEffect(() => {
     if (!currentCredentialId) return

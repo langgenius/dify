@@ -1,6 +1,5 @@
 import type { OperationName } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -9,7 +8,7 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { toast } from '@/app/notifications'
@@ -20,9 +19,9 @@ import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
-import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
+  onRename: () => void
   embeddingAvailable: boolean
   detail: {
     id: string
@@ -45,6 +44,7 @@ type OperationsProps = {
   canViewSettings: boolean
 }
 const Operations = ({
+  onRename,
   embeddingAvailable,
   datasetId,
   detail,
@@ -69,25 +69,39 @@ const Operations = ({
   const router = useRouter()
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
-    documents.status.byAction.batch.patch.mutationOptions({ context: { silent: true } }),
+    documents.status.byAction.batch.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
-    documents.byDocumentId.download.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.download.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: syncNotionDocument } = useMutation(
-    documents.byDocumentId.notion.sync.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.notion.sync.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: syncWebsiteDocument } = useMutation(
-    documents.byDocumentId.websiteSync.get.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.websiteSync.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: generateSummary } = useMutation(
-    documents.generateSummary.post.mutationOptions({ context: { silent: true } }),
+    documents.generateSummary.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: pauseDocument } = useMutation(
-    documents.byDocumentId.processing.pause.patch.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.processing.pause.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { mutateAsync: resumeDocument } = useMutation(
-    documents.byDocumentId.processing.resume.patch.mutationOptions({ context: { silent: true } }),
+    documents.byDocumentId.processing.resume.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
@@ -180,10 +194,6 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const [renameOpen, setRenameOpen] = useState(false)
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
   const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
@@ -204,9 +214,6 @@ const Operations = ({
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
-  const handleShowRename = () => {
-    if (canEdit) setRenameOpen(true)
-  }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
       void onOperate(operationName)
@@ -348,7 +355,7 @@ const Operations = ({
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (
-                    <MenuItem className={menuActionClassName} onClick={handleShowRename}>
+                    <MenuItem className={menuActionClassName} onClick={onRename}>
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
@@ -460,18 +467,6 @@ const Operations = ({
           </Menu>
         </>
       )}
-
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
-          <RenameDocumentForm
-            datasetId={datasetId}
-            documentId={id}
-            name={name ?? ''}
-            onSaved={handleRenamed}
-            onClose={() => setRenameOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -2,12 +2,13 @@
 
 import type { AgentPublicationCountsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentRosterListState } from './components/agent-roster-list'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useQueryState } from 'nuqs'
-import { useId } from 'react'
+import { useQueryState, useQueryStates } from 'nuqs'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { TagManagementDialog } from '@/features/tag-management/tag-management-dialog'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
 import { AgentRosterList } from './components/agent-roster-list'
@@ -18,9 +19,16 @@ import {
   rosterKeywordQueryParser,
   rosterQueryParamNames,
   rosterSortByQueryParser,
+  rosterTagIdsQueryParser,
 } from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
+const rosterFilters = {
+  [rosterQueryParamNames.keyword]: rosterKeywordQueryParser,
+  [rosterQueryParamNames.filter]: rosterFilterQueryParser,
+  [rosterQueryParamNames.createdByMe]: rosterCreatedByMeQueryParser,
+  [rosterQueryParamNames.tagIds]: rosterTagIdsQueryParser,
+}
 const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
   drafts: 0,
   published: 0,
@@ -28,21 +36,52 @@ const EMPTY_PUBLICATION_COUNTS: AgentPublicationCountsResponse = {
 
 export default function RosterPage() {
   const { t } = useTranslation(['agentRoster'])
+  const queryClient = useQueryClient()
   const docLink = useDocLink()
-  const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
-  const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
-  const [createdByMe] = useQueryState(
-    rosterQueryParamNames.createdByMe,
-    rosterCreatedByMeQueryParser,
+  const [filters, setFilters] = useQueryStates(rosterFilters)
+  const { keyword, filter: rosterFilter, created_by_me: createdByMe, tag_ids: urlTagIds } = filters
+  const searchRef = useRef<HTMLInputElement>(null)
+  const tagCatalog = useQuery(
+    consoleQuery.tags.get.queryOptions({
+      input: { query: { type: 'agent' } },
+      enabled: urlTagIds.length > 0,
+      refetchOnMount: 'always',
+    }),
   )
+  const tagIds = useMemo(() => {
+    if (!urlTagIds.length || !tagCatalog.isSuccess || tagCatalog.isFetching) return urlTagIds
+    const availableIds = new Set(tagCatalog.data.map((tag) => tag.id))
+    return urlTagIds.filter((id) => availableIds.has(id))
+  }, [urlTagIds, tagCatalog.data, tagCatalog.isSuccess, tagCatalog.isFetching])
+  useEffect(() => {
+    if (tagIds.length === urlTagIds.length) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Keep the external URL in sync with the loaded tag catalog.
+    void setFilters({ tag_ids: tagIds })
+  }, [tagIds, urlTagIds, setFilters])
+  const scrollViewportRef = useRef<HTMLDivElement>(null)
+  const [tagManagementOpen, setTagManagementOpen] = useState(false)
   const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
-  const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-  const rosterQueryInput = {
-    limit: ROSTER_PAGE_SIZE,
-    sort_by: sortBy,
-    ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
-    ...(createdByMe ? { is_created_by_me: true } : {}),
-    ...(rosterFilter !== 'all' ? { publication_status: rosterFilter } : {}),
+  const trimmedKeyword = keyword.trim()
+  const delayedKeyword = useDebounce(trimmedKeyword, { wait: 300 })
+  const debouncedKeyword = trimmedKeyword ? delayedKeyword : ''
+  const firstUnfilteredPage = { page: 1, limit: ROSTER_PAGE_SIZE, sort_by: sortBy }
+  const rosterQueryInput = (page: number, selectedTagIds: string[]) => ({
+    query: {
+      ...firstUnfilteredPage,
+      page,
+      ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
+      ...(selectedTagIds.length ? { tag_ids: selectedTagIds } : {}),
+      ...(createdByMe ? { is_created_by_me: true } : {}),
+      ...(rosterFilter !== 'all' ? { publication_status: rosterFilter } : {}),
+    },
+  })
+  const resetRosterPagination = (input: ReturnType<typeof rosterQueryInput>) => {
+    queryClient.removeQueries({
+      queryKey: consoleQuery.agent.get.key({ type: 'infinite', input }),
+      exact: true,
+      type: 'inactive',
+    })
+    scrollViewportRef.current?.scrollTo({ top: 0 })
   }
 
   const {
@@ -58,12 +97,7 @@ export default function RosterPage() {
     refetch,
   } = useInfiniteQuery({
     ...consoleQuery.agent.get.infiniteOptions({
-      input: (pageParam) => ({
-        query: {
-          ...rosterQueryInput,
-          page: Number(pageParam),
-        },
-      }),
+      input: (pageParam) => rosterQueryInput(Number(pageParam), tagIds),
       getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
     }),
@@ -82,7 +116,16 @@ export default function RosterPage() {
           status: 'ready',
           agents: rosterItems,
           emptyState:
-            debouncedKeyword || rosterFilter !== 'all' || createdByMe ? 'filtered' : 'roster',
+            debouncedKeyword || rosterFilter !== 'all' || createdByMe || tagIds.length
+              ? {
+                  type: 'filtered',
+                  onClearFilters: () => {
+                    resetRosterPagination({ query: firstUnfilteredPage })
+                    void setFilters(null)
+                    searchRef.current?.focus()
+                  },
+                }
+              : 'roster',
           footer: isFetchNextPageError
             ? { status: 'error', onRetry: () => void fetchNextPage() }
             : isRefetchError
@@ -97,9 +140,13 @@ export default function RosterPage() {
           isFetching,
         }
   useDocumentTitle(pageTitle)
+  const openTagManagement = () => setTagManagementOpen(true)
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-background-body">
+    <div
+      ref={scrollViewportRef}
+      className="flex h-0 min-w-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-background-body"
+    >
       <div className="sticky top-0 z-10 shrink-0 bg-background-body px-2 pt-4 pb-2 sm:px-8">
         <div className="flex h-6 min-w-0 items-center justify-between gap-2 sm:gap-4">
           <h1
@@ -126,11 +173,29 @@ export default function RosterPage() {
           </a>
         </div>
         <div className="mt-3.5">
-          <RosterToolbar publicationCounts={publicationCounts} />
+          <RosterToolbar
+            searchRef={searchRef}
+            publicationCounts={publicationCounts}
+            tagIds={tagIds}
+            onTagIdsChange={(nextIds) => {
+              resetRosterPagination(rosterQueryInput(1, nextIds))
+              void setFilters({ tag_ids: nextIds })
+            }}
+            onOpenTagManagement={openTagManagement}
+          />
         </div>
       </div>
 
-      <AgentRosterList aria-labelledby={pageTitleId} state={listState} />
+      <AgentRosterList
+        aria-labelledby={pageTitleId}
+        state={listState}
+        onOpenTagManagement={openTagManagement}
+      />
+      <TagManagementDialog
+        type="agent"
+        show={tagManagementOpen}
+        onClose={() => setTagManagementOpen(false)}
+      />
     </div>
   )
 }

@@ -7,7 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
+	"syscall"
 
 	"github.com/klauspost/compress/zstd"
 )
@@ -19,11 +20,32 @@ import (
 // An excluded directory is not descended into, so — as in git — a pattern
 // cannot re-include anything beneath a directory that is already excluded.
 //
-// Symlinks are archived as symlinks; irregular files (sockets, fifos,
+// Symlinks and same-root hardlinks retain their link type; irregular files (sockets, fifos,
 // devices) are skipped as runtime artifacts; ownership is not recorded.
 // Callers wrap dst to hash or count the compressed bytes.
 func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []string) error {
 	excluder := NewExcluder(excludes)
+	return saveArchive(dst, func(tw *tar.Writer) error {
+		return writeTree(ctx, tw, homeDir, "", excluder, nil)
+	})
+}
+
+// SaveState archives both writable roots in one stream and skips the runtime's
+// configured state directories and the default Home state directory.
+func SaveState(ctx context.Context, dst io.Writer, homeDir, workspaceDir string, runtimeDirs ...string) error {
+	home, workspace, err := resolveStateLayout(homeDir, workspaceDir, runtimeDirs)
+	if err != nil {
+		return err
+	}
+	return saveArchive(dst, func(tw *tar.Writer) error {
+		if err := writeTree(ctx, tw, home.dir, homePrefix, nil, home.preserved); err != nil {
+			return err
+		}
+		return writeTree(ctx, tw, workspace.dir, workspacePrefix, nil, workspace.preserved)
+	})
+}
+
+func saveArchive(dst io.Writer, write func(*tar.Writer) error) error {
 	zw, err := zstd.NewWriter(dst,
 		zstd.WithEncoderLevel(zstd.SpeedDefault),
 		zstd.WithEncoderConcurrency(1),
@@ -32,23 +54,43 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		return fmt.Errorf("create zstd writer: %w", err)
 	}
 	tw := tar.NewWriter(zw)
+	if err := write(tw); err != nil {
+		_ = zw.Close()
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		_ = zw.Close()
+		return err
+	}
+	return zw.Close()
+}
 
-	walkErr := filepath.WalkDir(homeDir, func(p string, d fs.DirEntry, inErr error) error {
+func writeTree(ctx context.Context, tw *tar.Writer, dir, prefix string, excluder *Excluder, preserved protectedPaths) error {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = root.Close() }()
+	type inode struct{ device, number uint64 }
+	hardlinks := make(map[inode]string)
+	return fs.WalkDir(root.FS(), ".", func(name string, d fs.DirEntry, inErr error) error {
 		if inErr != nil {
 			return inErr
 		}
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		rel, err := filepath.Rel(homeDir, p)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
+		if name == "." && prefix == "" {
 			return nil
 		}
-		relSlash := filepath.ToSlash(rel)
-		if excluder.Excluded(relSlash, d.IsDir()) {
+		reserved, ancestor := preserved.match(name)
+		if (reserved || ancestor) && !d.IsDir() {
+			return fmt.Errorf("runtime state path %q must be a directory", name)
+		}
+		if reserved {
+			return fs.SkipDir
+		}
+		if excluder != nil && excluder.Excluded(name, d.IsDir()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
@@ -61,7 +103,7 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		var linkTarget string
 		switch {
 		case info.Mode()&fs.ModeSymlink != 0:
-			if linkTarget, err = os.Readlink(p); err != nil {
+			if linkTarget, err = root.Readlink(name); err != nil {
 				return err
 			}
 		case !info.Mode().IsRegular() && !info.IsDir():
@@ -71,16 +113,24 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		if err != nil {
 			return err
 		}
-		hdr.Name = relSlash
+		hdr.Name = path.Join(prefix, name)
 		if info.IsDir() {
 			hdr.Name += "/"
+		}
+		if stat, ok := info.Sys().(*syscall.Stat_t); info.Mode().IsRegular() && ok && stat.Nlink > 1 {
+			id := inode{uint64(stat.Dev), stat.Ino}
+			if first, seen := hardlinks[id]; seen {
+				hdr.Typeflag, hdr.Linkname, hdr.Size = tar.TypeLink, first, 0
+			} else {
+				hardlinks[id] = hdr.Name
+			}
 		}
 		hdr.Uid, hdr.Gid, hdr.Uname, hdr.Gname = 0, 0, "", ""
 		if err := tw.WriteHeader(hdr); err != nil {
 			return err
 		}
-		if info.Mode().IsRegular() {
-			f, err := os.Open(p)
+		if hdr.Typeflag == tar.TypeReg {
+			f, err := root.Open(name)
 			if err != nil {
 				return err
 			}
@@ -92,12 +142,4 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		}
 		return nil
 	})
-	if walkErr != nil {
-		_ = zw.Close()
-		return walkErr
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	return zw.Close()
 }

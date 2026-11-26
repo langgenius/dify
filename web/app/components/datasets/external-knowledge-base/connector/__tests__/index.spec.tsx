@@ -38,13 +38,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowExternalKnowledgeAPIModal: vi.fn(),
-  }),
-}))
-
 // Mock API service
 vi.mock('@/service/datasets', () => ({
   createExternalKnowledgeBase: vi.fn(),
@@ -139,22 +132,19 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Verify API was called with form data
       await waitFor(() => {
-        expect(createExternalKnowledgeBase).toHaveBeenCalledWith(
-          {
-            body: expect.objectContaining({
-              name: 'Test Knowledge Base',
-              external_knowledge_id: 'kb-123',
-              external_knowledge_api_id: 'api-1',
-              provider: 'external',
-              external_retrieval_model: {
-                top_k: 4,
-                score_threshold: 0.5,
-                score_threshold_enabled: false,
-              },
-            }),
-          },
-          { silent: true },
-        )
+        expect(createExternalKnowledgeBase).toHaveBeenCalledWith({
+          body: expect.objectContaining({
+            name: 'Test Knowledge Base',
+            external_knowledge_id: 'kb-123',
+            external_knowledge_api_id: 'api-1',
+            provider: 'external',
+            external_retrieval_model: {
+              top_k: 4,
+              score_threshold: 0.5,
+              score_threshold_enabled: false,
+            },
+          }),
+        })
       })
 
       // Verify success notification

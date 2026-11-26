@@ -20,10 +20,10 @@ const meta = {
 | \`Avatar\` | Styles Base UI Root and owns the shared size. Defaults to \`md\` (32px). |
 | \`AvatarImage\` | Uses Base UI image loading, error handling, and source changes. Accepts native image props, \`keepMounted\`, and \`onLoadingStatusChange\`. |
 | \`AvatarFallback\` | Owns the default background and displays caller-provided content while the image is unavailable. Inherits size from Avatar and supports Base UI \`delay\`. |
-| \`AvatarGroup\` | Dify visual extension for overlapping children by 4px. Avatars and counts use a 1px panel ring, including inside wrappers. Supplies their default size; explicit child sizes win. Callers control stacking with \`z-index\`. |
+| \`AvatarGroup\` | Dify visual extension for overlapping children by 4px. Avatars and counts draw a 1px panel border inside their size, including inside wrappers. Supplies their default size; explicit child sizes win. Earlier direct DOM children overlap later ones, including when an item is a button or tooltip trigger. Place the count last so it sits behind the avatars. |
 | \`AvatarGroupCount\` | Dify visual extension for caller-provided overflow text such as \`+2\`. Inherits Group size, or defaults to \`md\` (32px) outside a group, matching Avatar. |
 
-Without an explicit size, children inherit the enclosing group's size or fall back to \`md\`. Override a grouped ring with \`group-[&]/avatar-group:ring-0\`; ring colors use ordinary \`ring-*\` classes.
+Without an explicit size, children inherit the enclosing group's size or fall back to \`md\`. Override a grouped border with \`group-[&]/avatar-group:border-0\`; border colors use ordinary \`border-*\` classes.
 
 The first three parts preserve Base UI \`render\`, refs, and state-aware \`className\` / \`style\` props. See the [Base UI Avatar documentation](https://base-ui.com/react/components/avatar) for their underlying API. Group and GroupCount accept native span props; they do not expose Base UI render or state callbacks.
 
@@ -176,20 +176,20 @@ export const Group: Story = {
     docs: {
       description: {
         story:
-          'Dify adds Group and GroupCount; they are not Base UI Avatar parts. This Design Kit example uses sm (24px): three avatars and one count overlap by 4px for a total width of 84px. Group supplies the shared sm size; the caller supplies the stacking order, +2, and its accessible label; the group does not slice a member list or calculate the count.',
+          'Dify adds Group and GroupCount; they are not Base UI Avatar parts. This Design Kit example uses sm (24px): three avatars and one count overlap by 4px for a total width of 84px. Group supplies the shared sm size; the caller supplies +2 and its accessible label; the group does not slice a member list or calculate the count.',
       },
     },
   },
   render: () => (
     <AvatarGroup size="sm">
-      <Avatar role="img" aria-label="Alex Doe" className="z-30">
+      <Avatar role="img" aria-label="Alex Doe">
         <AvatarFallback>A</AvatarFallback>
         <AvatarImage src={avatarUrl} alt="" />
       </Avatar>
-      <Avatar role="img" aria-label="Emma" className="z-20">
+      <Avatar role="img" aria-label="Emma">
         <AvatarFallback className="bg-components-icon-bg-blue-solid">E</AvatarFallback>
       </Avatar>
-      <Avatar role="img" aria-label="Sam" className="z-10">
+      <Avatar role="img" aria-label="Sam">
         <AvatarFallback className="bg-components-icon-bg-orange-dark-solid">S</AvatarFallback>
       </Avatar>
       <AvatarGroupCount role="img" aria-label="2 more people">
@@ -228,8 +228,8 @@ export const Collaborators: Story = {
             >
               <span aria-hidden="true" className="inline-flex items-center gap-px">
                 <AvatarGroup size="sm">
-                  {collaborators.slice(0, 2).map((person, index) => (
-                    <Avatar key={person.name} style={{ zIndex: 2 - index }}>
+                  {collaborators.slice(0, 2).map((person) => (
+                    <Avatar key={person.name}>
                       <AvatarFallback className={`${person.color} text-[13px] font-semibold`}>
                         <span className="bg-linear-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-transparent opacity-90">
                           {person.initial}

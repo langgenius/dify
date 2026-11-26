@@ -8,8 +8,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { KnowledgeModelSetupDialog } from '../../components/knowledge-model-setup-dialog'
 import { createRequestId } from '../../request-id'
 import { newKnowledgeDetailPath } from '../../routes'
@@ -123,39 +123,20 @@ function ReadyCrawlSelectionForm({
   })
   const syncPolicy = showSyncPolicyField ? localSyncPolicy : (syncPolicyValue ?? localSyncPolicy)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState(false)
+  const [submitError, setSubmitError] = useState<{ message?: string } | false>(false)
   const [selectionUncertain, setSelectionUncertain] = useState(false)
   const submissionPendingRef = useRef(false)
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
     undefined,
   )
-  const importPages = useMutation({
-    mutationFn: async ({
-      idempotencyKey,
-      pageIds,
-      previewWorkflowId,
-      syncPolicy,
-    }: {
-      idempotencyKey: string
-      pageIds: string[]
-      previewWorkflowId: string
-      syncPolicy: ReturnType<typeof policyConfiguration>
-    }) =>
-      sourceWorkflowFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post(
-          {
-            body: {
-              kind: 'crawl-preview-selection',
-              pageIds,
-              previewWorkflowId,
-              syncPolicy,
-            },
-            headers: { 'Idempotency-Key': idempotencyKey },
-            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
-          },
-        ),
-      ),
-  })
+  const importPages = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(
+      {
+        // The form shows the failure next to its submit button.
+        meta: { errorToast: false },
+      },
+    ),
+  )
   const canSubmit = selectedPageIds.size > 0
   const formBusy = busy || submitting
   const submissionLocked = formBusy || selectionUncertain
@@ -201,7 +182,7 @@ function ReadyCrawlSelectionForm({
     if (selectionUncertain && selectionRequestRef.current?.fingerprint !== fingerprint) {
       submissionPendingRef.current = false
       setSubmitting(false)
-      setSubmitError(true)
+      setSubmitError({})
       return
     }
     if (selectionRequestRef.current?.fingerprint !== fingerprint) {
@@ -222,13 +203,18 @@ function ReadyCrawlSelectionForm({
       if (discardRequested()) return
 
       try {
-        const selectionRequest = importPages.mutateAsync({
-          idempotencyKey: selectionRequestRef.current.requestId,
-          pageIds: sortedPageIds,
-          previewWorkflowId: run.id,
-          syncPolicy: desiredPolicy,
-        })
-        const selectionRun = await selectionRequest
+        const selectionRun = sourceWorkflowFromApi(
+          await importPages.mutateAsync({
+            body: {
+              kind: 'crawl-preview-selection',
+              pageIds: sortedPageIds,
+              previewWorkflowId: run.id,
+              syncPolicy: desiredPolicy,
+            },
+            headers: { 'Idempotency-Key': selectionRequestRef.current.requestId },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
+          }),
+        )
         transactionRun = selectionRun
         onWorkflowRun(selectionRun)
       } catch (error) {
@@ -244,8 +230,8 @@ function ReadyCrawlSelectionForm({
       if (discardRequested()) return
       await onSubmitted()
       router.push(newKnowledgeDetailPath(knowledgeSpaceId))
-    } catch {
-      setSubmitError(true)
+    } catch (error) {
+      setSubmitError({ message: getRequestErrorMessage(error) })
     } finally {
       resolveTransaction(transactionRun)
       submissionPendingRef.current = false
@@ -281,7 +267,7 @@ function ReadyCrawlSelectionForm({
 
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
+          {submitError.message ?? t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-3 border-t border-divider-subtle pt-5">

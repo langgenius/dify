@@ -3,36 +3,37 @@ import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { seedWorkspacePermissionsQuery } from '@/test/console/workspace-permissions'
 import { createAppDetailFixture } from '@/test/fixtures/app'
+import { createTestNavigation } from '@/test/next-navigation'
 import { createTestQueryClient } from '@/test/query-client'
 import { AppACLPermission } from '@/utils/permission'
 import AppDetailSection from '../app-detail-section'
-
-// boundary: Next.js pathname/router context is not mounted in a focused Browser Mode render.
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/logs',
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
-  useSelectedLayoutSegment: () => 'logs',
-}))
 
 async function renderSection({
   mode = 'chat',
   permissions = [],
   rbacEnabled = true,
+  evaluation = 'unavailable',
+  publishedWorkflow = false,
 }: {
   mode?: AppDetailWithSite['mode']
   permissions?: string[]
   rbacEnabled?: boolean
+  evaluation?: 'enabled' | 'upgrade' | 'unavailable'
+  publishedWorkflow?: boolean
 } = {}) {
   const queryClient = createTestQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, {
     rbac_enabled: rbacEnabled,
     enable_app_deploy: false,
+  })
+  seedFeatures(queryClient, {
+    evaluation_enabled: evaluation === 'enabled',
+    evaluation_upgrade_available: evaluation === 'upgrade',
   })
   seedWorkspacePermissionsQuery(queryClient)
   queryClient.setQueryData(
@@ -42,12 +43,19 @@ async function renderSection({
       name: 'Test App',
       mode,
       permission_keys: permissions,
+      workflow: publishedWorkflow ? { id: 'workflow-1', type: 'workflow' } : null,
     }),
   )
+  const { NavigationProvider } = createTestNavigation({
+    url: '/app/app-1/logs',
+    segments: ['logs'],
+  })
   return render(
-    <QueryClientTestProvider queryClient={queryClient}>
-      <AppDetailSection />
-    </QueryClientTestProvider>,
+    <NavigationProvider>
+      <QueryClientTestProvider queryClient={queryClient}>
+        <AppDetailSection />
+      </QueryClientTestProvider>
+    </NavigationProvider>,
   )
 }
 
@@ -136,5 +144,68 @@ describe('AppDetailSection', () => {
     await expect
       .element(screen.getByRole('link', { name: 'navigation.settings.resourceAccess' }))
       .not.toBeInTheDocument()
+  })
+
+  it('links to evaluation for a published workflow with layout view permission', async () => {
+    const screen = await renderSection({
+      mode: 'workflow',
+      permissions: [AppACLPermission.ViewLayout],
+      evaluation: 'enabled',
+      publishedWorkflow: true,
+    })
+
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .toHaveAttribute('href', '/app/app-1/evaluation')
+  })
+
+  it('explains why evaluation is disabled before the workflow is published', async () => {
+    const screen = await renderSection({
+      mode: 'workflow',
+      permissions: [AppACLPermission.ViewLayout],
+      evaluation: 'enabled',
+    })
+
+    const evaluation = screen.getByRole('button', { name: 'evaluation.title' })
+    await expect.element(evaluation).toHaveAttribute('aria-disabled', 'true')
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .not.toBeInTheDocument()
+    await userEvent.hover(evaluation)
+    await expect.element(screen.getByText('evaluation.unavailableUntilPublished')).toBeVisible()
+  })
+
+  it('links evaluation when the workspace can upgrade into it so it can preview the page', async () => {
+    const screen = await renderSection({
+      mode: 'workflow',
+      permissions: [AppACLPermission.ViewLayout],
+      evaluation: 'upgrade',
+      publishedWorkflow: true,
+    })
+
+    await expect
+      .element(screen.getByRole('link', { name: 'evaluation.title' }))
+      .toHaveAttribute('href', '/app/app-1/evaluation')
+  })
+
+  it('omits evaluation for non-workflow apps', async () => {
+    const screen = await renderSection({
+      mode: 'advanced-chat',
+      permissions: [AppACLPermission.ViewLayout],
+      evaluation: 'enabled',
+      publishedWorkflow: true,
+    })
+
+    await expect.element(screen.getByText('evaluation.title')).not.toBeInTheDocument()
+  })
+
+  it('omits evaluation when the workspace cannot use or upgrade into it', async () => {
+    const screen = await renderSection({
+      mode: 'workflow',
+      permissions: [AppACLPermission.ViewLayout],
+      publishedWorkflow: true,
+    })
+
+    await expect.element(screen.getByText('evaluation.title')).not.toBeInTheDocument()
   })
 })

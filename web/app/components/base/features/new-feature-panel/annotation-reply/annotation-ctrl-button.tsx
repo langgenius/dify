@@ -1,14 +1,13 @@
 'use client'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiFileEditLine } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import AnnotationFullContent from '@/app/components/billing/annotation-full/modal'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { useModalContext } from '@/context/modal-context'
-import { deploymentEditionAtom } from '@/features/system-features/state'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 
 type AnnotationCtrlButtonProps = {
   appId: string
@@ -25,56 +24,54 @@ export default function AnnotationCtrlButton({
   onAdded,
 }: AnnotationCtrlButtonProps) {
   const { t } = useTranslation(['appDebug', 'common'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
-  const { setShowAnnotationFullModal } = useModalContext()
-  const handleAdd = async () => {
-    if (isAnnotationQuotaUnavailable) return
-    if (isAnnotationFull) {
-      setShowAnnotationFullModal()
-      return
-    }
-    const res = await consoleClient.apps.byAppId.annotations.post({
-      params: { app_id: appId },
-      body: { message_id: messageId, question: query, answer },
-    })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    // The create response does not include the author.
-    onAdded(res.id, '')
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
+  // The mutation's cache policy refreshes the annotation list, its export and the quota.
+  const creation = useMutation(consoleQuery.apps.byAppId.annotations.post.mutationOptions())
+  if (!answer) return null
+
+  const handleAdd = () => {
+    creation.mutate(
+      {
+        params: { app_id: appId },
+        body: { message_id: messageId, question: query, answer },
+      },
+      {
+        onSuccess: (res) => {
+          toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
+          // The create response does not include the author.
+          onAdded(res.id, '')
+        },
+      },
+    )
   }
-  return (
-    <>
-      {answer && (
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <IconButton
-                aria-label={t(($) => $['feature.annotation.add'], { ns: 'appDebug' })}
-                disabled={isAnnotationQuotaUnavailable}
-                onClick={handleAdd}
-              >
-                <RiFileEditLine aria-hidden className="size-4" />
-              </IconButton>
-            }
-          />
-          <TooltipContent>
-            {t(($) => $['feature.annotation.add'], { ns: 'appDebug' })}
-          </TooltipContent>
-        </Tooltip>
-      )}
-    </>
+  const label = t(($) => $['feature.annotation.add'], { ns: 'appDebug' })
+  const button = (
+    <IconButton
+      aria-label={label}
+      disabled={isAnnotationQuotaUnavailable}
+      onClick={isAnnotationFull ? undefined : handleAdd}
+    >
+      <span aria-hidden className="i-ri-file-edit-line size-4" />
+    </IconButton>
+  )
+  const action = (
+    <Tooltip>
+      <TooltipTrigger render={isAnnotationFull ? <DialogTrigger render={button} /> : button} />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+  return isAnnotationFull ? (
+    <Dialog>
+      {action}
+      <AnnotationFullContent />
+    </Dialog>
+  ) : (
+    action
   )
 }

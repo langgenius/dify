@@ -3,10 +3,7 @@ import type {
   PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestData,
   PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdMessageTemplateTestData,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type {
-  ChannelSummary,
-  ListChannelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { HumanInputTestChannelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ComponentProps } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape } from '@/app/components/workflow/hooks-store/store'
@@ -22,12 +19,14 @@ import { EditorResourceScope } from '@/app/components/workflow/editor-resource/p
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store/provider'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createDeferred } from '@/test/deferred'
 import MessageTemplate from '../components/message-template'
 import { createChannelsQueryClient } from './channel-fixtures'
 
 const mocks = vi.hoisted(() => ({
+  channels: vi.fn<() => Promise<HumanInputTestChannelsResponse>>(),
   syncDraft: vi.fn<Shape['doSyncWorkflowDraft']>(),
   workflowTest:
     vi.fn<
@@ -71,6 +70,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         (input) => mocks.chatflowTest(input),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.humanInput.v2.testChannels.get': mocks.channels,
       'apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post':
         mocks.workflowTest,
       'apps.byAppId.advancedChat.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test.post':
@@ -118,7 +118,7 @@ const TemplateEnvironment = ({ props, hooksStoreProps, resource }: TemplateEnvir
 const renderTemplate = (
   overrides: Partial<ComponentProps<typeof MessageTemplate>> = {},
   storeOverrides: Partial<Shape> = {},
-  configuredProviders?: ChannelSummary['provider'][],
+  configuredProviders?: HumanInputTestChannelsResponse['channels'],
   resource: EditorResource = {
     kind: 'app',
     collaborationEnabled: false,
@@ -200,6 +200,7 @@ const expectNoTemplateTest = () => {
 
 describe('Human Input v2 Message Template', () => {
   beforeEach(() => {
+    mocks.channels.mockResolvedValue({ channels: ['email', 'slack'] })
     mocks.workflowTest.mockResolvedValue({})
     mocks.chatflowTest.mockResolvedValue({})
     mocks.syncDraft.mockImplementation(async (_notRefresh, callbacks) => {
@@ -497,24 +498,39 @@ describe('Human Input v2 Message Template', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('defaults to the configured IM channel when Email is not configured', async () => {
-    const user = userEvent.setup()
-    renderTemplate({}, {}, ['slack'])
-    await openTest(user)
+  it.each(['workflow', 'advanced-chat'] as const)(
+    'loads test channels and sends the configured IM test in %s',
+    async (mode) => {
+      const user = userEvent.setup()
+      mocks.channels.mockResolvedValue({ channels: ['slack'] })
+      const { queryClient } = renderTemplate({}, {}, undefined, {
+        kind: 'app',
+        appId: 'app-template-test',
+        mode,
+        collaborationEnabled: false,
+      })
+      queryClient.removeQueries({
+        queryKey: consoleQuery.workspaces.current.humanInput.v2.testChannels.get.key(),
+      })
+      await openTest(user)
 
-    expect(
-      screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
-    ).toHaveTextContent('workflow.nodes.humanInputV2.debug.channel.slack')
-    await sendTest(user)
+      expect(mocks.channels).toHaveBeenCalledTimes(1)
 
-    expect(
-      await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
-    ).toBeInTheDocument()
-    expect(mocks.workflowTest).toHaveBeenCalledWith({
-      params: { app_id: 'app-template-test', node_id: 'human-input-v2' },
-      body: { channel: 'slack', inputs: {} },
-    })
-  })
+      expect(
+        screen.getByRole('combobox', { name: 'workflow.nodes.humanInputV2.template.testChannel' }),
+      ).toHaveTextContent('workflow.nodes.humanInputV2.debug.channel.slack')
+      await sendTest(user)
+
+      expect(
+        await screen.findByText('workflow.nodes.humanInputV2.template.testCompleted'),
+      ).toBeInTheDocument()
+      const send = mode === 'workflow' ? mocks.workflowTest : mocks.chatflowTest
+      expect(send).toHaveBeenCalledWith({
+        params: { app_id: 'app-template-test', node_id: 'human-input-v2' },
+        body: { channel: 'slack', inputs: {} },
+      })
+    },
+  )
 
   it('does not save or send a test when the workspace has no configured channels', async () => {
     const user = userEvent.setup()
@@ -536,13 +552,13 @@ describe('Human Input v2 Message Template', () => {
     const { queryClient } = renderTemplate()
     await openTest(user)
     const channelQueryKey =
-      consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey
-    const configured = queryClient.getQueryData<ListChannelsResponse>(channelQueryKey)
+      consoleQuery.workspaces.current.humanInput.v2.testChannels.get.queryKey()
+    const configured = queryClient.getQueryData<HumanInputTestChannelsResponse>(channelQueryKey)
 
     await act(async () => {
       queryClient.setQueryData(channelQueryKey, {
-        channels: configured?.channels.filter((channel) => channel.kind === 'im') ?? [],
-      } satisfies ListChannelsResponse)
+        channels: configured?.channels.filter((channel) => channel !== 'email') ?? [],
+      } satisfies HumanInputTestChannelsResponse)
     })
 
     await waitFor(() =>
@@ -577,13 +593,12 @@ describe('Human Input v2 Message Template', () => {
     await sendTest(user)
     expect(mocks.syncDraft).toHaveBeenCalledTimes(1)
 
-    const queryKey =
-      consoleQuery.workspaces.current.humanInput.v2.channels.get.queryOptions().queryKey
-    const configured = queryClient.getQueryData<ListChannelsResponse>(queryKey)
+    const queryKey = consoleQuery.workspaces.current.humanInput.v2.testChannels.get.queryKey()
+    const configured = queryClient.getQueryData<HumanInputTestChannelsResponse>(queryKey)
     await act(async () => {
       queryClient.setQueryData(queryKey, {
-        channels: configured?.channels.filter((channel) => channel.kind === 'im') ?? [],
-      } satisfies ListChannelsResponse)
+        channels: configured?.channels.filter((channel) => channel !== 'email') ?? [],
+      } satisfies HumanInputTestChannelsResponse)
     })
     await waitFor(() =>
       expect(screen.getByRole('combobox')).toHaveTextContent(
@@ -623,7 +638,7 @@ describe('Human Input v2 Message Template', () => {
           }
         }),
     )
-    const { props } = renderTemplate({}, {}, ['resend', 'lark'], {
+    const { props } = renderTemplate({}, {}, ['email', 'lark'], {
       kind: 'app',
       collaborationEnabled: false,
       appId: 'app-template-test',
@@ -763,6 +778,21 @@ describe('Human Input v2 Message Template', () => {
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.template.saveAndTest' }),
     ).toBeEnabled()
+  })
+
+  it('reports the server message when the test request fails', async () => {
+    const user = userEvent.setup()
+    mocks.workflowTest.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_param',
+        message: 'Server says why',
+      }),
+    )
+    renderTemplate()
+    await openTest(user)
+    await sendTest(user)
+
+    expect(await screen.findByText('Server says why')).toBeInTheDocument()
   })
 
   it('deduplicates subject and body variables, preserving zero and string-array input types', async () => {

@@ -71,11 +71,9 @@ const UsageInfo: FC<Props> = ({
       : undefined)
 
   const rightInfo: ReactNode = resetText ? (
-    <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
-      {resetText}
-    </div>
+    <div className="ms-auto flex-1 text-end system-xs-regular text-text-tertiary">{resetText}</div>
   ) : showUnit ? (
-    <div className="ml-auto system-xs-medium text-text-tertiary">{unit}</div>
+    <div className="ms-auto system-xs-medium text-text-tertiary">{unit}</div>
   ) : null
 
   const usageDisplay: ReactNode = (() => {

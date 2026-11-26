@@ -3,9 +3,13 @@ import { chmodSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync }
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 const SCRIPT = fileURLToPath(new URL('./install-cli.sh', import.meta.url))
+
+// Every case spawns `sh`. On the Windows runner (Git Bash) one spawn can take seconds,
+// so the 5s default times out cases whose logic is fine.
+if (process.platform === 'win32') vi.setConfig({ testTimeout: 30_000 })
 
 function pickAsset(target: string, releaseJson: string): string {
   return execFileSync('sh', ['-c', `. "${SCRIPT}"; pick_asset "$1"`, 'sh', target], {

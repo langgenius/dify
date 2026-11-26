@@ -7,9 +7,14 @@ from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import event, inspect
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql import ClauseElement
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
-from core.workflow.nodes.agent_v2.session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
+from core.workflow.nodes.agent_v2.session_store import (
+    WorkflowAgentSessionScope,
+    WorkflowAgentWorkspaceStore,
+    resolve_workflow_agent_workspace_owner_scope,
+)
 from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
     Agent,
@@ -33,6 +38,26 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.agent.workspace_service import AgentWorkspaceService
 
+
+class _ResolverIds(TypedDict, closed=True):
+    """Exact owner identifiers accepted by the resolver's keyword boundary."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+
+
+class _ChatflowResolverIds(TypedDict, closed=True):
+    """Resolver owner identifiers with an explicit Chatflow conversation."""
+
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    node_id: str
+    conversation_id: str
+
+
 RESOLVER_MODELS = (WorkflowAgentNodeBinding, Agent, AgentConfigSnapshot, AgentConfigRevision)
 CHATFLOW_MODELS = (
     *RESOLVER_MODELS,
@@ -46,16 +71,28 @@ CHATFLOW_MODELS = (
 def _conversation_participant(
     session: Session,
     *,
-    ids: dict[str, str],
+    ids: _ChatflowResolverIds,
     binding: WorkflowAgentNodeBinding,
     snapshot: AgentConfigSnapshot,
+    session_generation: str = "",
+    session_branch: str = "",
 ) -> AgentWorkspaceBinding:
+    """Given owned config rows, persist one participant in the specified conversation generation."""
     workspace = AgentWorkspace(
         tenant_id=ids["tenant_id"],
         app_id=ids["app_id"],
         owner_type=AgentWorkspaceOwnerType.CONVERSATION,
         owner_id=ids["conversation_id"],
-        owner_scope_key=f"{ids['node_id']}:{binding.id}",
+        owner_scope_key=resolve_workflow_agent_workspace_owner_scope(
+            tenant_id=ids["tenant_id"],
+            app_id=ids["app_id"],
+            conversation_id=ids["conversation_id"],
+            workflow_run_id=None,
+            node_id=ids["node_id"],
+            workflow_agent_binding_id=binding.id,
+            session_generation=session_generation,
+            session_branch=session_branch,
+        ).owner_scope_key,
         backend_workspace_ref="workspace-ref",
         status=AgentWorkingResourceStatus.ACTIVE,
         active_guard=1,
@@ -86,7 +123,7 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     monkeypatch: pytest.MonkeyPatch,
     binding_type: WorkflowAgentBindingType,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     is_roster = binding_type == WorkflowAgentBindingType.ROSTER_AGENT
     agent = _agent(
         tenant_id=ids["tenant_id"],
@@ -121,7 +158,8 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
     continuing = resolver.resolve(**ids)
     assert continuing.snapshot.id == original.id
     assert continuing.snapshot.home_snapshot_id == original.home_snapshot_id
-    assert resolver.resolve(**{**ids, "conversation_id": str(uuid4())}).snapshot.id == published.id
+    another_chat: _ChatflowResolverIds = {**ids, "conversation_id": str(uuid4())}
+    assert resolver.resolve(**another_chat).snapshot.id == published.id
     assert (
         resolver.resolve(
             tenant_id=ids["tenant_id"],
@@ -174,13 +212,188 @@ def test_chatflow_keeps_participant_config_and_home_after_agent_update(
         resolver.resolve(**ids)
 
 
+@pytest.mark.parametrize("binding_type", [WorkflowAgentBindingType.ROSTER_AGENT, WorkflowAgentBindingType.INLINE_AGENT])
+def test_chatflow_disable_and_reenable_only_pin_the_requested_session_generation(
+    sqlite_session: Session, binding_type: WorkflowAgentBindingType
+) -> None:
+    """Given an old participant, fresh modes use current config while explicit resumes retain their pin."""
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    is_roster = binding_type is WorkflowAgentBindingType.ROSTER_AGENT
+    agent = _agent(
+        tenant_id=ids["tenant_id"],
+        scope=AgentScope.ROSTER if is_roster else AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.ROSTER if is_roster else AgentSource.WORKFLOW,
+    )
+    sqlite_session.add(agent)
+    sqlite_session.flush()
+    original = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    current = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    current.version = 2
+    sqlite_session.add_all([original, current])
+    sqlite_session.flush()
+    agent.active_config_snapshot_id = current.id
+    binding = _binding(ids=ids, agent_id=agent.id, snapshot_id=current.id, binding_type=binding_type)
+    sqlite_session.add(binding)
+    sqlite_session.flush()
+    _conversation_participant(sqlite_session, ids=ids, binding=binding, snapshot=original)
+    sqlite_session.commit()
+    resolver = WorkflowAgentBindingResolver()
+    new_generation = str(uuid4())
+
+    assert resolver.resolve(**ids).snapshot.id == original.id
+    assert resolver.resolve(**ids, continue_agent_session=False).snapshot.id == current.id
+    assert resolver.resolve(**ids, session_generation=new_generation).snapshot.id == current.id
+    assert (
+        resolver.resolve(
+            **ids,
+            binding_id=binding.id,
+            snapshot_id=original.id,
+            continue_agent_session=False,
+            session_generation=new_generation,
+        ).snapshot.id
+        == original.id
+    )
+
+    _conversation_participant(
+        sqlite_session, ids=ids, binding=binding, snapshot=current, session_generation=new_generation
+    )
+    latest = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    latest.version = 3
+    sqlite_session.add(latest)
+    sqlite_session.flush()
+    agent.active_config_snapshot_id = latest.id
+    if not is_roster:
+        binding.current_snapshot_id = latest.id
+    sqlite_session.commit()
+
+    assert resolver.resolve(**ids, session_generation=new_generation).snapshot.id == current.id
+    assert resolver.resolve(**ids, session_generation=str(uuid4())).snapshot.id == latest.id
+    assert (
+        resolver.resolve(**ids, continue_agent_session=False, session_generation=new_generation).snapshot.id
+        == latest.id
+    )
+
+
+def test_disabled_chatflow_repeated_execution_pins_only_its_current_run_generation(sqlite_session: Session) -> None:
+    """Given a participant from this run, repeat visits keep its config without leaking it to other runs."""
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
+    sqlite_session.add(agent)
+    sqlite_session.flush()
+    original = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    original.home_snapshot_id = str(uuid4())
+    current = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    current.version = 2
+    current.home_snapshot_id = str(uuid4())
+    sqlite_session.add_all([original, current])
+    sqlite_session.flush()
+    agent.active_config_snapshot_id = current.id
+    binding = _binding(
+        ids=ids, agent_id=agent.id, snapshot_id=current.id, binding_type=WorkflowAgentBindingType.ROSTER_AGENT
+    )
+    sqlite_session.add(binding)
+    sqlite_session.flush()
+    generation = str(uuid4())
+    run_id = str(uuid4())
+    participant = _conversation_participant(
+        sqlite_session, ids=ids, binding=binding, snapshot=original, session_generation=generation
+    )
+    workspace = sqlite_session.get(AgentWorkspace, participant.workspace_id)
+    assert workspace is not None
+    workspace.owner_type = AgentWorkspaceOwnerType.WORKFLOW_RUN
+    workspace.owner_id = run_id
+    sqlite_session.commit()
+    resolver = WorkflowAgentBindingResolver()
+
+    repeated = resolver.resolve(
+        **ids, workflow_run_id=run_id, continue_agent_session=False, session_generation=generation
+    )
+
+    assert repeated.snapshot.id == original.id
+    assert repeated.snapshot.home_snapshot_id == original.home_snapshot_id
+    assert (
+        resolver.resolve(
+            **ids, workflow_run_id=str(uuid4()), continue_agent_session=False, session_generation=generation
+        ).snapshot.id
+        == current.id
+    )
+    assert (
+        resolver.resolve(
+            **ids, workflow_run_id=run_id, continue_agent_session=False, session_generation=str(uuid4())
+        ).snapshot.id
+        == current.id
+    )
+
+
+@pytest.mark.parametrize("continue_agent_session", [True, False])
+def test_chatflow_config_pin_is_isolated_to_its_parallel_branch(
+    sqlite_session: Session, continue_agent_session: bool
+) -> None:
+    """Given an active branch participant, only that branch can inherit its config and Home generation."""
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
+    sqlite_session.add(agent)
+    sqlite_session.flush()
+    original = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    original.home_snapshot_id = str(uuid4())
+    current = _snapshot(tenant_id=ids["tenant_id"], agent_id=agent.id)
+    current.version = 2
+    current.home_snapshot_id = str(uuid4())
+    sqlite_session.add_all([original, current])
+    sqlite_session.flush()
+    agent.active_config_snapshot_id = current.id
+    binding = _binding(
+        ids=ids, agent_id=agent.id, snapshot_id=current.id, binding_type=WorkflowAgentBindingType.ROSTER_AGENT
+    )
+    sqlite_session.add(binding)
+    sqlite_session.flush()
+    generation = str(uuid4())
+    run_id = str(uuid4())
+    participant = _conversation_participant(
+        sqlite_session,
+        ids=ids,
+        binding=binding,
+        snapshot=original,
+        session_generation=generation,
+        session_branch="a" * 64,
+    )
+    if not continue_agent_session:
+        workspace = sqlite_session.get(AgentWorkspace, participant.workspace_id)
+        assert workspace is not None
+        workspace.owner_type = AgentWorkspaceOwnerType.WORKFLOW_RUN
+        workspace.owner_id = run_id
+    sqlite_session.commit()
+    resolver = WorkflowAgentBindingResolver()
+
+    same_branch = resolver.resolve(
+        **ids,
+        workflow_run_id=run_id,
+        continue_agent_session=continue_agent_session,
+        session_generation=generation,
+        session_branch="a" * 64,
+    )
+
+    assert same_branch.snapshot.id == original.id
+    assert same_branch.snapshot.home_snapshot_id == original.home_snapshot_id
+    for branch in ("", "b" * 64):
+        other_branch = resolver.resolve(
+            **ids,
+            workflow_run_id=run_id,
+            continue_agent_session=continue_agent_session,
+            session_generation=generation,
+            session_branch=branch,
+        )
+        assert other_branch.snapshot.id == current.id
+        assert other_branch.snapshot.home_snapshot_id == current.home_snapshot_id
+
+
 @pytest.mark.parametrize("mismatch", ["tenant", "app", "conversation", "node", "agent", "retired"])
 @pytest.mark.parametrize("sqlite_session", [CHATFLOW_MODELS], indirect=True)
 def test_chatflow_pin_is_scoped_to_active_conversation_node_participant(
     sqlite_session: Session,
     mismatch: str,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -221,7 +434,7 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     sqlite_session: Session,
     version_kind: AgentConfigVersionKind,
 ) -> None:
-    ids = {**_resolve_ids(), "conversation_id": str(uuid4())}
+    ids: _ChatflowResolverIds = {**_resolve_ids(), "conversation_id": str(uuid4())}
     agent = _agent(tenant_id=ids["tenant_id"], scope=AgentScope.ROSTER, source=AgentSource.ROSTER)
     sqlite_session.add(agent)
     sqlite_session.flush()
@@ -249,7 +462,8 @@ def test_chatflow_never_falls_back_from_invalid_pinned_generation(
     assert exc_info.value.error_code == expected
 
 
-def _resolve_ids() -> dict[str, str]:
+def _resolve_ids() -> _ResolverIds:
+    """Return valid owner IDs without admitting unrelated resolver keyword arguments."""
     return {
         "tenant_id": str(uuid4()),
         "app_id": str(uuid4()),
@@ -312,7 +526,7 @@ def _snapshot(*, tenant_id: str, agent_id: str) -> AgentConfigSnapshot:
 
 
 def _binding(
-    *, ids: dict[str, str], agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
+    *, ids: _ResolverIds | _ChatflowResolverIds, agent_id: str, snapshot_id: str, binding_type: WorkflowAgentBindingType
 ) -> WorkflowAgentNodeBinding:
     return WorkflowAgentNodeBinding(
         tenant_id=ids["tenant_id"],

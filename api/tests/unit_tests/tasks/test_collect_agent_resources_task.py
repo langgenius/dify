@@ -1,4 +1,4 @@
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 
 import pytest
 
@@ -11,13 +11,14 @@ from tasks.collect_agent_resources_task import (
 )
 
 
+@runtime_checkable
 class _TaskWithQueue(Protocol):
     queue: str
 
 
 def test_collection_task_uses_retention_queue() -> None:
-    task = cast(_TaskWithQueue, collect_agent_resources)
-    assert task.queue == "retention"
+    assert isinstance(collect_agent_resources, _TaskWithQueue)
+    assert collect_agent_resources.queue == "retention"
 
 
 def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -165,6 +166,38 @@ def test_collection_failure_propagates_after_attempting_remaining_resources(monk
             ("home_snapshot", "home-2"),
         )
     ]
+
+
+def test_collection_retries_transient_workspace_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    collected: list[str] = []
+    purged: list[str] = []
+
+    def collect_workspace(*, tenant_id: str, workspace_id: str) -> None:
+        assert tenant_id == "tenant-1"
+        collected.append(workspace_id)
+        if len(collected) < 3:
+            raise RuntimeError("sandbox gateway unavailable")
+
+    def purge(*, tenant_id: str, agent_ids: list[str]) -> None:
+        assert tenant_id == "tenant-1"
+        purged.extend(agent_ids)
+
+    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect_workspace)
+    monkeypatch.setattr(AgentDeletionService, "purge_archived_agents", purge)
+    result = collect_agent_resources.apply(
+        kwargs={
+            "tenant_id": "tenant-1",
+            "workspace_ids": ["workspace-1"],
+            "binding_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": ["agent-1"],
+        },
+        throw=False,
+    )
+
+    assert result.successful()
+    assert collected == ["workspace-1"] * 3
+    assert purged == ["agent-1"]
 
 
 def test_enqueue_failure_propagates(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -35,6 +35,7 @@ import { API_PREFIX } from '@/config'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -349,7 +350,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const archiveMonth = formatMonth(archive.year, archive.month)
   const deleteArchiveMutation = useMutation(
     consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const isDeletionActive = isDeletingStatus(archive.deletion_status)
@@ -379,7 +380,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }),
   )
   const createDownloadMutation = useMutation(
-    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workflowRunArchives.downloads.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const currentTask = latestDownloadTask(cachedTask, taskQuery.data)
   const isTaskPreparing = isPreparingStatus(currentTask?.status)
@@ -573,7 +576,8 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                   {deleteArchiveMutation.isError && (
                     <AlertDialogBody>
                       <div role="alert" className="system-sm-regular text-text-destructive">
-                        {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
+                        {getRequestErrorMessage(deleteArchiveMutation.error) ??
+                          t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
                       </div>
                     </AlertDialogBody>
                   )}

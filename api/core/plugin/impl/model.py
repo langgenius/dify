@@ -730,3 +730,52 @@ class PluginModelClient(BasePluginClient):
             return resp.result
 
         raise ValueError("Failed to invoke moderation")
+
+    def invoke_moderation_direct(
+        self,
+        tenant_id: str,
+        user_id: str | None,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict[str, Any],
+        text: str,
+        *,
+        plugin_unique_identifier: str,
+    ) -> bool:
+        """Invoke a server-selected package without requiring a tenant installation.
+
+        Preconditions: The caller admits the tenant and selects a trusted pinned
+        package whose runtime is already available. The daemon server key remains
+        mandatory. Postconditions: The JSON payload retains tenant/user context;
+        the identifier is mandatory and must match plugin_id. Daemon and empty
+        response failures propagate without installation or credential fallback.
+        """
+        if not tenant_id.strip():
+            raise ValueError("A tenant is required for direct moderation dispatch")
+        if not plugin_unique_identifier.strip():
+            raise ValueError("A plugin unique identifier is required for direct moderation dispatch")
+        response = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path="v2/invoke/dispatch/moderation/invoke",
+            type_=PluginBasicBooleanResponse,
+            data=jsonable_encoder(
+                {
+                    "tenant_id": tenant_id,
+                    **self._dispatch_payload(
+                        user_id=user_id,
+                        data={
+                            "provider": provider,
+                            "model_type": "moderation",
+                            "model": model,
+                            "credentials": credentials,
+                            "text": text,
+                        },
+                    ),
+                }
+            ),
+            headers=plugin_dispatch_headers(plugin_id, plugin_unique_identifier),
+        )
+        for result in response:
+            return result.result
+        raise ValueError("Failed to invoke moderation")

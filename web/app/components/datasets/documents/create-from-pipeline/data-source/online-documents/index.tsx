@@ -15,9 +15,9 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import { DatasourceType } from '@/models/pipeline'
-import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import Header from '../base/header'
+import { runDatasourceNode } from '../run-datasource-node'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 import PageSelector from './page-selector'
 import Title from './title'
@@ -75,10 +75,6 @@ const OnlineDocuments = ({
     return pagesMap
   }, [documentsData])
 
-  const datasourceNodeRunURL = !isInPipeline
-    ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
-    : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
-
   const getOnlineDocuments = useCallback(async () => {
     const { currentCredentialId } = dataSourceStore.getState()
     // Convert datasource_parameters to inputs format for the API
@@ -91,14 +87,12 @@ const OnlineDocuments = ({
       {} as Record<string, any>,
     )
 
-    ssePost(
-      datasourceNodeRunURL,
+    runDatasourceNode(
+      { pipelineId, nodeId, isInPipeline },
       {
-        body: {
-          inputs,
-          credential_id: currentCredentialId,
-          datasource_type: DatasourceType.onlineDocument,
-        },
+        inputs,
+        credential_id: currentCredentialId,
+        datasource_type: DatasourceType.onlineDocument,
       },
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
@@ -110,7 +104,7 @@ const OnlineDocuments = ({
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
+  }, [dataSourceStore, pipelineId, nodeId, isInPipeline, nodeData.datasource_parameters])
 
   useEffect(() => {
     if (!currentCredentialId) return
@@ -161,7 +155,7 @@ const OnlineDocuments = ({
         credentials={dataSourceAuth?.result || []}
       />
       <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
-        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3">
+        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 ps-3">
           <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>

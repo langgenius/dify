@@ -1,6 +1,6 @@
+import type { TriggerProviderApiEntity } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { RefObject } from 'react'
 import type { ReactFlowInstance } from 'reactflow'
-import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store'
 import type { Shape } from '@/app/components/workflow/store'
@@ -19,7 +19,6 @@ import { fullWorkflowAccessControl } from '@/app/components/workflow/hooks-store
 import codeNodeDefault from '@/app/components/workflow/nodes/code/default'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
-import { convertToTriggerWithProvider } from '@/service/use-triggers'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper, seedAppDslVersion } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -28,32 +27,6 @@ import { createDeferred } from '@/test/deferred'
 import BasePanel from '../index'
 
 const api = vi.hoisted(() => ({ run: vi.fn(), lastRun: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/base')>()
-  return {
-    ...actual,
-    get: <T,>(...args: Parameters<typeof actual.get>): Promise<T> => {
-      if (args[0].startsWith('/workspaces/current/tool-provider/builtin/Tool/credential/info')) {
-        return Promise.resolve({
-          supported_credential_types: ['api-key'],
-          allow_custom_token: true,
-          is_oauth_custom_client_enabled: false,
-          credentials: [
-            {
-              id: 'credential-1',
-              name: 'Production key',
-              provider: 'Tool',
-              credential_type: 'api-key',
-              is_default: true,
-              credentials: {},
-            },
-          ],
-        } as T)
-      }
-      return actual.get<T>(...args)
-    },
-  }
-})
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ appId: 'app-1' }),
@@ -68,6 +41,29 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': async ({
+        params,
+      }: {
+        params: { provider: string }
+      }) => {
+        if (params.provider !== 'Tool')
+          throw new Error(`Unexpected credential provider: ${params.provider}`)
+        return {
+          supported_credential_types: ['api-key'],
+          allow_custom_token: true,
+          is_oauth_custom_client_enabled: false,
+          credentials: [
+            {
+              id: 'credential-1',
+              name: 'Production key',
+              provider: 'Tool',
+              credential_type: 'api-key',
+              is_default: true,
+              credentials: {},
+            },
+          ],
+        }
+      },
       'apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get': api.lastRun,
       'apps.byAppId.workflows.draft.systemVariables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.conversationVariables.get': async () => ({ items: [] }),
@@ -77,9 +73,6 @@ vi.mock('@/service/console', async (importOriginal) => {
         file_upload_limit: 5,
       }),
       'files.supportType.get': async () => ({ allowed_extensions: ['txt'] }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': api.run,
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': async () => [
         {
           id: 'subscription-1',
@@ -93,6 +86,9 @@ vi.mock('@/service/console', async (importOriginal) => {
           workflows_in_use: 0,
         },
       ],
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': api.run,
       'apps.byAppId.workflows.draft.nodes.byNodeId.variables.get': async () => ({ items: [] }),
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
       'rag.pipelines.byPipelineId.workflows.draft.variables.get': async () => ({
@@ -163,7 +159,7 @@ function renderPanel({
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(
     [...consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} })],
-    triggers.map(convertToTriggerWithProvider),
+    triggers,
   )
   for (const trigger of triggers) {
     queryClient.setQueryData(

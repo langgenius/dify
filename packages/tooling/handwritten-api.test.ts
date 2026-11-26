@@ -18,11 +18,8 @@ function fixture() {
   const require = createRequire(import.meta.url)
   const viteRequire = createRequire(require.resolve('vite-plus/package.json'))
   const oxlintBin = join(dirname(dirname(viteRequire.resolve('oxlint'))), 'bin', 'oxlint')
-  const oxlintRequire = createRequire(oxlintBin)
-  const tsgolintRequire = createRequire(oxlintRequire.resolve('oxlint-tsgolint/package.json'))
-  const tsgolint = tsgolintRequire.resolve(
-    `@oxlint-tsgolint/${process.platform}-${process.arch}/tsgolint${process.platform === 'win32' ? '.exe' : ''}`,
-  )
+  // Match `vp lint`, which runs type-aware rules through the bundled tsrs-lint backend.
+  const tsrsLint = join(dirname(viteRequire.resolve('tsrs/package.json')), 'bin', 'tsrs-lint')
   const directory = mkdtempSync(join(tmpdir(), 'dify-native-http-'))
   writeFileSync(
     join(directory, 'tsconfig.json'),
@@ -61,7 +58,7 @@ function fixture() {
         {
           cwd: directory,
           encoding: 'utf8',
-          env: { ...process.env, OXLINT_TSGOLINT_PATH: tsgolint },
+          env: { ...process.env, OXLINT_TSGOLINT_PATH: tsrsLint },
         },
       )
       expect(result.error).toBeUndefined()
@@ -116,6 +113,26 @@ it('blocks native requests and client imports without blocking type-only imports
     expect(result.diagnostics.map((d) => d.labels[0]!.span.line).sort((a, b) => a - b)).toEqual([
       1, 3, 4, 5, 6, 7, 8,
     ])
+  } finally {
+    test.close()
+  }
+})
+
+it('rejects crypto.randomUUID in production Web code but allows it in tests', () => {
+  const test = fixture()
+  try {
+    const source = [
+      'crypto.randomUUID()',
+      'globalThis.crypto.randomUUID()',
+      'window.crypto?.randomUUID?.()',
+      "typeof crypto.randomUUID === 'function'",
+    ].join('\n')
+    for (const file of ['web/feature.ts', 'web/feature.tsx']) {
+      expect(test.lint(source, file).diagnostics.map((d) => d.labels[0]!.span.line)).toEqual([
+        1, 2, 3, 4,
+      ])
+    }
+    expect(test.lint(source, 'web/feature.spec.ts').diagnostics).toEqual([])
   } finally {
     test.close()
   }
