@@ -149,6 +149,19 @@ describe('mutation invalidation fallback', () => {
     expect(client.getQueryData(appDetailKey())).not.toBe('stale')
   })
 
+  it('refreshes data from the same millisecond as the success', async () => {
+    const client = createClient()
+    const queryFn = vi.fn(async () => queryFn.mock.calls.length)
+    const observer = new QueryObserver(client, { queryKey: appsListKey(), queryFn })
+    cleanups.push(observer.subscribe(() => undefined))
+    await vi.waitFor(() => expect(observer.getCurrentResult().isSuccess).toBe(true))
+
+    await mutate(client, { mutationKey: renameApp() })
+    await settle()
+
+    expect(queryFn).toHaveBeenCalledTimes(2)
+  })
+
   it('refreshes the domains a policy declares in alsoInvalidate', async () => {
     const client = createClient()
     const features = await mountQuery(client, featuresKey())

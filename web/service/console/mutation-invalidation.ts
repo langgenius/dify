@@ -114,9 +114,10 @@ export function createMutationInvalidation() {
 }
 
 // Data read or written after the request succeeded already reflects it, unless a read that
-// may have started before the write is still in flight.
+// may have started before the write is still in flight. Timestamps have millisecond
+// resolution, so data from the same millisecond as the success is refreshed too.
 const needsRefresh = (time: number) => (query: Query) =>
-  query.state.dataUpdatedAt < time || query.state.fetchStatus === 'fetching'
+  query.state.dataUpdatedAt <= time || query.state.fetchStatus === 'fetching'
 
 function refreshAfter(client: QueryClient, targets: string[], time: number) {
   return invalidateQueryKeys(client, targets.map(consolePathKey), needsRefresh(time))
