@@ -61,10 +61,9 @@ export type PopupProps = {
   onOpenProviderSettings?: () => void
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
-  onConfigureEmptyState?: () => void
+  onConfigureEmptyState: () => void
   onInputValueChange: (value: string) => void
   onSelect: (provider: string, model: ModelSelectorModel) => void
-  onOpenMarketplace?: () => void
   onHide: () => void
 }
 function Popup({
@@ -78,7 +77,6 @@ function Popup({
   onConfigureEmptyState,
   onInputValueChange,
   onSelect,
-  onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation(['common', 'modelProvider'])
@@ -286,7 +284,7 @@ function Popup({
           </div>
           <div className="pb-1">
             {!filteredModelList.length && !installedModelList.length && (
-              <ModelSelectorEmptyState onConfigure={onConfigureEmptyState ?? onHide} />
+              <ModelSelectorEmptyState onConfigure={onConfigureEmptyState} />
             )}
             <div
               role="status"
@@ -316,7 +314,6 @@ function Popup({
                 canInstallPlugin={canInstallPlugin}
                 onMarketplaceCollapsedChange={setMarketplaceCollapsed}
                 onInstallPlugin={handleInstallPlugin}
-                onOpenMarketplace={onOpenMarketplace}
               />
             )}
           </div>
