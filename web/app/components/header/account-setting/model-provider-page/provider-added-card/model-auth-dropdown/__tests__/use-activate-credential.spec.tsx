@@ -3,18 +3,20 @@ import { act, waitFor } from '@testing-library/react'
 import { createProviderMeta } from '@/app/components/workflow/__tests__/model-provider-fixtures'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery as renderHook,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { CustomConfigurationStatusEnum, ModelTypeEnum } from '../../../declarations'
 import { useActivateCredential } from '../use-activate-credential'
 
 const switchCredential = vi.fn()
-const mockUpdateModelList = vi.fn()
 const summaryKey = consoleQuery.workspaces.current.modelProviders.summary.get.queryKey()
-
-vi.mock('../../../hooks', () => ({
-  useUpdateModelList: () => mockUpdateModelList,
-}))
+const modelListKey = consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+  input: { params: { model_type: ModelTypeEnum.textGeneration } },
+})
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
   createProviderMeta({
@@ -59,8 +61,12 @@ describe('useActivateCredential', () => {
   it('optimistically selects the credential and refreshes provider data after success', async () => {
     const request = createDeferred<unknown>()
     switchCredential.mockReturnValue(request.promise)
-    const { result, queryClient } = renderHook(() => useActivateCredential(createProvider()))
+    // Summaries and model lists refresh through the invalidation fallback, as in the app.
+    const { result, queryClient } = renderHook(() => useActivateCredential(createProvider()), {
+      queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+    })
     queryClient.setQueryData(summaryKey, { data: [] } as never)
+    queryClient.setQueryData(modelListKey, { data: [] } as never)
     act(() => result.current.activate(createCredential()))
     expect(result.current.selectedCredentialId).toBe('cred-2')
     await waitFor(() => expect(result.current.isActivating).toBe(true))
@@ -73,8 +79,7 @@ describe('useActivateCredential', () => {
     expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(false)
     await act(async () => request.resolve({ result: 'success' }))
     await waitFor(() => expect(queryClient.getQueryState(summaryKey)?.isInvalidated).toBe(true))
-    expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, 'llm')
-    expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')
+    expect(queryClient.getQueryState(modelListKey)?.isInvalidated).toBe(true)
     expect(result.current.isActivating).toBe(false)
     expect(result.current.selectedCredentialId).toBe('cred-2')
   })

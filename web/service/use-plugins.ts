@@ -7,7 +7,7 @@ import type {
   PluginInstallTaskStartResponse,
   PluginListResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { InfiniteData } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { AutoUpdateConfig } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import type {
   Dependency,
@@ -38,6 +38,7 @@ import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/p
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { pluginTaskListInput, upsertStartedPluginTask } from '@/service/console/plugin-task-cache'
+import { invalidateQueryKeys } from '@/service/console/policies/shared'
 import { pluginTaskListQueryOptions } from '@/service/plugin-install-queries'
 import { uninstallPlugin } from '@/service/plugins'
 import { hasPermission } from '@/utils/permission'
@@ -876,6 +877,37 @@ const areAutoUpgradeSettingsEqual = (
 //   return isAdmin
 // }
 
+type OptimisticWrite = { queryKey: QueryKey; previous: unknown }
+
+async function writeOptimistically(
+  queryClient: QueryClient,
+  queryKey: QueryKey,
+  value: unknown,
+): Promise<OptimisticWrite> {
+  await queryClient.cancelQueries({ queryKey })
+  const previous = queryClient.getQueryData(queryKey)
+  queryClient.setQueryData(queryKey, value)
+  return { queryKey, previous }
+}
+
+// Only the last pending save of a setting settles it (see README "Optimistic updates"); after
+// a success the invalidation fallback refreshes the plugin settings.
+function rollBackIfLast(queryClient: QueryClient, mutationKey: QueryKey, write?: OptimisticWrite) {
+  if (!write || queryClient.isMutating({ mutationKey }) !== 1) return
+  if (write.previous === undefined) queryClient.removeQueries({ queryKey: write.queryKey })
+  else queryClient.setQueryData(write.queryKey, write.previous)
+  // An earlier overlapping save may have failed too, so the snapshot can be its value.
+  void invalidateQueryKeys(queryClient, [write.queryKey])
+}
+
+const permissionChangeKey = () =>
+  consoleQuery.workspaces.current.plugin.permission.change.post.mutationKey()
+// Categories are separate settings, so each has its own pending count.
+const autoUpgradeChangeKey = (category: PluginCategoryEnum) => [
+  ...consoleQuery.workspaces.current.plugin.autoUpgrade.change.post.mutationKey(),
+  category,
+]
+
 export const useMutationPluginPermissionSettings = ({
   onSuccess,
 }: {
@@ -884,23 +916,13 @@ export const useMutationPluginPermissionSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: permissionChangeKey(),
     mutationFn: (payload: Permissions) => {
       return consoleClient.workspaces.current.plugin.permission.change.post({ body: payload })
     },
-    onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
-      const hadPreviousPermission = previousPermission !== undefined
-
-      queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload)
-
-      return { previousPermission, hadPreviousPermission }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
-      else queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-    },
+    onMutate: (payload) =>
+      writeOptimistically(queryClient, pluginPermissionSettingsQueryKey(), payload),
+    onError: (_error, _payload, write) => rollBackIfLast(queryClient, permissionChangeKey(), write),
     onSuccess: () => {
       onSuccess?.()
     },
@@ -917,6 +939,7 @@ export const useMutationPluginAutoUpgradeSettings = ({
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: autoUpgradeChangeKey(category),
     mutationFn: (payload: AutoUpdateConfig) => {
       return consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
         body: {
@@ -925,32 +948,24 @@ export const useMutationPluginAutoUpgradeSettings = ({
         },
       })
     },
-    onMutate: async (payload) => {
-      const queryKey = pluginAutoUpgradeSettingsQueryKey(category)
-      await queryClient.cancelQueries({ queryKey })
-      const previousAutoUpgrade = queryClient.getQueryData(queryKey)
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      queryClient.setQueryData(queryKey, {
+    onMutate: (payload) =>
+      writeOptimistically(queryClient, pluginAutoUpgradeSettingsQueryKey(category), {
         category,
         auto_upgrade: payload,
-      })
-
-      return { queryKey, previousAutoUpgrade, hadPreviousAutoUpgrade }
-    },
-    onError: (_error, _payload, context) => {
-      // Roll back the category this save started for; the caller may have moved to another one.
-      if (!context) return
-      if (context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(context.queryKey, context.previousAutoUpgrade)
-      else queryClient.removeQueries({ queryKey: context.queryKey })
-    },
+      }),
+    // Rolls back the category this save started for; the caller may have moved to another one.
+    onError: (_error, _payload, write) =>
+      rollBackIfLast(queryClient, autoUpgradeChangeKey(category), write),
     onSuccess: () => {
       onSuccess?.()
     },
   })
 }
 
+/**
+ * Saves the changed parts of the reference settings as separate writes, so a failed part rolls
+ * back alone and overlaps with the single-setting saves are counted per setting.
+ */
 export const useMutationReferenceSettings = ({
   category,
   currentReferenceSetting,
@@ -960,94 +975,23 @@ export const useMutationReferenceSettings = ({
   currentReferenceSetting?: ReferenceSetting
   onSuccess?: () => void
 }) => {
-  const queryClient = useQueryClient()
+  const permission = useMutationPluginPermissionSettings()
+  const autoUpgrade = useMutationPluginAutoUpgradeSettings({ category })
 
-  return useMutation({
-    mutationFn: (payload: ReferenceSetting) => {
-      const mutations: Array<Promise<unknown>> = []
+  const mutate = (payload: ReferenceSetting) => {
+    const saves: Array<Promise<unknown>> = []
+    if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
+      saves.push(permission.mutateAsync(payload.permission))
+    if (!areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade))
+      saves.push(autoUpgrade.mutateAsync(payload.auto_upgrade))
+    // Failures are reported by the mutation cache.
+    Promise.all(saves).then(
+      () => onSuccess?.(),
+      () => {},
+    )
+  }
 
-      if (!arePermissionsEqual(payload.permission, currentReferenceSetting?.permission))
-        mutations.push(
-          consoleClient.workspaces.current.plugin.permission.change.post({
-            body: payload.permission,
-          }),
-        )
-
-      if (
-        !areAutoUpgradeSettingsEqual(payload.auto_upgrade, currentReferenceSetting?.auto_upgrade)
-      ) {
-        mutations.push(
-          consoleClient.workspaces.current.plugin.autoUpgrade.change.post({
-            body: {
-              category,
-              auto_upgrade: payload.auto_upgrade,
-            },
-          }),
-        )
-      }
-
-      return Promise.all(mutations)
-    },
-    onMutate: async (payload) => {
-      const shouldUpdatePermission = !arePermissionsEqual(
-        payload.permission,
-        currentReferenceSetting?.permission,
-      )
-      const shouldUpdateAutoUpgrade = !areAutoUpgradeSettingsEqual(
-        payload.auto_upgrade,
-        currentReferenceSetting?.auto_upgrade,
-      )
-      const autoUpgradeQueryKey = pluginAutoUpgradeSettingsQueryKey(category)
-
-      await Promise.all([
-        shouldUpdatePermission
-          ? queryClient.cancelQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-          : Promise.resolve(),
-        shouldUpdateAutoUpgrade
-          ? queryClient.cancelQueries({ queryKey: autoUpgradeQueryKey })
-          : Promise.resolve(),
-      ])
-
-      const previousPermission = queryClient.getQueryData(pluginPermissionSettingsQueryKey())
-      const previousAutoUpgrade = queryClient.getQueryData(autoUpgradeQueryKey)
-      const hadPreviousPermission = previousPermission !== undefined
-      const hadPreviousAutoUpgrade = previousAutoUpgrade !== undefined
-
-      if (shouldUpdatePermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), payload.permission)
-
-      if (shouldUpdateAutoUpgrade) {
-        queryClient.setQueryData(autoUpgradeQueryKey, {
-          category,
-          auto_upgrade: payload.auto_upgrade,
-        })
-      }
-
-      return {
-        previousPermission,
-        previousAutoUpgrade,
-        hadPreviousPermission,
-        hadPreviousAutoUpgrade,
-        shouldUpdatePermission,
-        shouldUpdateAutoUpgrade,
-      }
-    },
-    onError: (_error, _payload, context) => {
-      if (context?.shouldUpdatePermission && context.hadPreviousPermission)
-        queryClient.setQueryData(pluginPermissionSettingsQueryKey(), context.previousPermission)
-      else if (context?.shouldUpdatePermission)
-        queryClient.removeQueries({ queryKey: pluginPermissionSettingsQueryKey() })
-
-      if (context?.shouldUpdateAutoUpgrade && context.hadPreviousAutoUpgrade)
-        queryClient.setQueryData(
-          pluginAutoUpgradeSettingsQueryKey(category),
-          context.previousAutoUpgrade,
-        )
-      else if (context?.shouldUpdateAutoUpgrade)
-        queryClient.removeQueries({ queryKey: pluginAutoUpgradeSettingsQueryKey(category) })
-    },
-    onSuccess,
-  })
+  return { mutate, isPending: permission.isPending || autoUpgrade.isPending }
 }
 
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {

@@ -17,7 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useRef, useState } from 'react'
@@ -115,7 +115,6 @@ function AccessControlSession({
   isPublished,
 }: AccessControlEntryProps) {
   const { t } = useTranslation(['common', 'deployments'])
-  const queryClient = useQueryClient()
   const canRead = useAtomValue(canReadNetworkAccessAtom)
   const canManagePolicies = useAtomValue(canManageNetworkAccessPoliciesAtom)
   const [_pricing, setPricing] = useQueryState(pricingQueryParamName, pricingQueryParser)
@@ -415,10 +414,6 @@ function AccessControlSession({
       {
         onSuccess: (check) => {
           if (saveAttemptRef.current !== attempt) return
-          queryClient.setQueryData(
-            checkCurrentIp.queryKey({ input: { params: { group_id: groupId } } }),
-            check,
-          )
           if (isPublished && !check.allowed && acceptedVersion !== check.policy_version) {
             setConfirmation({
               draft: nextDraft,

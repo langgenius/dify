@@ -41,17 +41,6 @@ export async function refreshAgentTagCatalogs(
   ])
 }
 
-export function invalidateNetworkAccessGroupQueries(
-  query: RouterUtils<ConsoleClient>,
-  client: QueryClient,
-) {
-  return invalidateQueryKeys(client, [
-    query.workspaces.current.networkAccessGroups.get.key(),
-    query.workspaces.current.networkAccessGroups.byGroupId.key(),
-    query.apps.byAppId.networkAccessGroup.key(),
-  ])
-}
-
 export function invalidateHumanInputContactQueries(
   query: RouterUtils<ConsoleClient>,
   client: QueryClient,

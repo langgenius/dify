@@ -23,6 +23,7 @@ import {
 } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
 import { renderHook } from '@/test/console/render'
+import { createDeferred } from '@/test/deferred'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
@@ -676,6 +677,101 @@ describe('use-plugins mutations', () => {
       expect(queryClient.getQueryData(queryKey)).toEqual(previousPermission)
     })
     await mutation
+  })
+})
+
+// Two quick saves of one setting: the earlier one settling must not overwrite the later one's
+// optimistic value.
+describe('overlapping plugin setting saves', () => {
+  const permissionKey = consoleQuery.workspaces.current.plugin.permission.fetch.get.queryKey()
+  const autoUpgradeKey = consoleQuery.workspaces.current.plugin.autoUpgrade.fetch.get.queryKey({
+    input: { query: { category: PluginCategoryEnum.model } },
+  })
+  const admins: Permissions = {
+    install_permission: PermissionType.admin,
+    debug_permission: PermissionType.admin,
+  }
+  const autoUpgrade = {
+    strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+    upgrade_time_of_day: 0,
+    upgrade_mode: AUTO_UPDATE_MODE.exclude,
+    exclude_plugins: [],
+    include_plugins: [],
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('keeps the later permission when the earlier save fails', async () => {
+    const queryClient = createQueryClient()
+    const first = createDeferred<unknown>()
+    const second = createDeferred<unknown>()
+    mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    queryClient.setQueryData(permissionKey, admins)
+    const everyone = { ...admins, install_permission: PermissionType.everyone }
+    const noOne = { ...admins, install_permission: PermissionType.noOne }
+    const { result } = renderHook(() => useMutationPluginPermissionSettings(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    const firstSave = result.current.mutateAsync(everyone).catch(() => undefined)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
+    const secondSave = result.current.mutateAsync(noOne)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
+
+    await act(async () => {
+      first.reject(new Error('permission update failed'))
+      await firstSave
+    })
+    expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
+
+    await act(async () => {
+      second.resolve({})
+      await secondSave
+    })
+    expect(queryClient.getQueryData(permissionKey)).toEqual(noOne)
+  })
+
+  it('keeps the later auto-upgrade setting when the earlier save fails', async () => {
+    const queryClient = createQueryClient()
+    const first = createDeferred<unknown>()
+    const second = createDeferred<unknown>()
+    mockPost.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    queryClient.setQueryData(autoUpgradeKey, {
+      category: PluginCategoryEnum.model,
+      auto_upgrade: autoUpgrade,
+    })
+    const { result } = renderHook(
+      () => useMutationPluginAutoUpgradeSettings({ category: PluginCategoryEnum.model }),
+      { wrapper: createWrapper(queryClient) },
+    )
+    const later = { ...autoUpgrade, upgrade_time_of_day: 7200 }
+
+    const firstSave = result.current
+      .mutateAsync({ ...autoUpgrade, upgrade_time_of_day: 3600 })
+      .catch(() => undefined)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(1))
+    const secondSave = result.current.mutateAsync(later)
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2))
+
+    await act(async () => {
+      first.reject(new Error('auto-upgrade update failed'))
+      await firstSave
+    })
+    expect(queryClient.getQueryData(autoUpgradeKey)).toEqual({
+      category: PluginCategoryEnum.model,
+      auto_upgrade: later,
+    })
+
+    await act(async () => {
+      second.resolve({})
+      await secondSave
+    })
+    expect(queryClient.getQueryData(autoUpgradeKey)).toEqual({
+      category: PluginCategoryEnum.model,
+      auto_upgrade: later,
+    })
   })
 })
 

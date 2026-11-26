@@ -2,7 +2,11 @@ import type { ModelProvider } from '../../declarations'
 import { act, waitFor } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createMutationInvalidation } from '@/service/console/mutation-invalidation'
+import {
+  createConsoleQueryClient,
+  renderHookWithConsoleQuery as renderHook,
+} from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import {
   ConfigurationMethodEnum,
@@ -46,7 +50,10 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
   }) as ModelProvider
 
 function setup() {
-  const view = renderHook(() => useChangeProviderPriority(createProvider()))
+  // Model lists refresh through the invalidation fallback, as in the app.
+  const view = renderHook(() => useChangeProviderPriority(createProvider()), {
+    queryClient: createConsoleQueryClient({ invalidation: createMutationInvalidation() }),
+  })
   const keys = [
     consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
       input: { params: { provider: 'langgenius/openai/openai' } },
@@ -60,10 +67,8 @@ function setup() {
     ),
   ]
   keys.forEach((key) => view.queryClient.setQueryData(key, { data: [] }))
-  const unrelated = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
-    input: { params: { provider: 'other' } },
-  })
-  view.queryClient.setQueryData(unrelated, { data: [] })
+  const unrelated = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+  view.queryClient.setQueryData(unrelated, [])
   return { ...view, keys, unrelated }
 }
 beforeEach(() => {
@@ -74,7 +79,7 @@ beforeEach(() => {
 it('submits provider preference and invalidates its models and supported model lists', async () => {
   const { result, queryClient, keys, unrelated } = setup()
   act(() => result.current.handleChangePriority(PreferredProviderTypeEnum.custom))
-  await waitFor(() => expect(queryClient.getQueryState(keys[0]!)?.isInvalidated).toBe(true))
+  await waitFor(() => expect(queryClient.getQueryState(keys.at(-1)!)?.isInvalidated).toBe(true))
   expect(changePriority).toHaveBeenCalledWith({
     params: { provider: 'langgenius/openai/openai' },
     body: { preferred_provider_type: PreferredProviderTypeEnum.custom },
