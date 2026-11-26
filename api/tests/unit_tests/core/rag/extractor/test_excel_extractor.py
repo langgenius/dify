@@ -1,9 +1,13 @@
-from collections.abc import Iterator, Sequence
-from types import SimpleNamespace
+from io import BytesIO
+from pathlib import Path
 
 import pandas as pd
 import pytest
-from openpyxl.worksheet.hyperlink import Hyperlink
+from openpyxl import Workbook, load_workbook
+from openpyxl.drawing.image import Image as WorksheetImage
+from openpyxl.worksheet.worksheet import Worksheet
+from PIL import Image
+from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,67 +17,27 @@ from models.model import UploadFile
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
-class _FakeCell:
-    def __init__(self, value: str | int | None, hyperlink: Hyperlink | None = None) -> None:
-        self.value = value
-        self.hyperlink = hyperlink
-        self.row = 0
-        self.column = 0
+def _workbook_with_rows(*rows: tuple[str | int | None, ...]) -> tuple[Workbook, Worksheet]:
+    """Create an in-memory workbook with the supplied rows on its first sheet."""
+    workbook = Workbook()
+    sheet = workbook.active
+    assert isinstance(sheet, Worksheet)
+    sheet.title = "Data"
+    for row in rows:
+        sheet.append(row)
+    return workbook, sheet
 
 
-class _FakeSheet:
-    def __init__(
-        self,
-        header_rows: Sequence[Sequence[object]],
-        data_rows: Sequence[Sequence[object]],
-        images: Sequence[object] | None = None,
-    ) -> None:
-        self._header_rows = header_rows
-        self._data_rows = data_rows
-        self._images: list[object] = list(images or [])
-
-    def iter_rows(
-        self,
-        min_row: int = 1,
-        max_row: int | None = None,
-        max_col: int | None = None,
-        values_only: bool = False,
-    ) -> Iterator[tuple[object, ...]]:
-        if values_only:
-            for row in self._header_rows:
-                yield tuple(row)
-            return
-
-        for row_idx, row in enumerate(self._data_rows, start=min_row):
-            materialized_row = tuple(row[:max_col] if max_col is not None else row)
-            for col_idx, cell in enumerate(materialized_row, start=1):
-                if isinstance(cell, _FakeCell):
-                    cell.row = row_idx
-                    cell.column = col_idx
-            yield materialized_row
+def _png_bytes() -> bytes:
+    """Generate a valid small PNG for embedding in the workbook."""
+    with BytesIO() as buffer, Image.new("RGB", (2, 2), color="blue") as image:
+        image.save(buffer, format="PNG")
+        return buffer.getvalue()
 
 
-class _FakeWorkbook:
-    def __init__(self, sheets: dict[str, _FakeSheet]) -> None:
-        self._sheets = sheets
-        self.sheetnames = list(sheets.keys())
-        self.closed = False
-
-    def __getitem__(self, key: str) -> _FakeSheet:
-        return self._sheets[key]
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class _FakeImage:
-    def __init__(self, data: bytes, row: int, col: int, image_format: str = "png") -> None:
-        self._raw_data = data
-        self.anchor = SimpleNamespace(_from=SimpleNamespace(row=row, col=col))
-        self.format = image_format
-
-    def _data(self) -> bytes:
-        return self._raw_data
+def _add_png(sheet: Worksheet, data: bytes, anchor: str) -> None:
+    """Attach a fresh image at the supplied cell; saving consumes its byte stream."""
+    sheet.add_image(WorksheetImage(BytesIO(data)), anchor)
 
 
 def _patch_image_persistence(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, bytes]]:
@@ -95,52 +59,41 @@ def _get_upload_files(session: Session) -> list[UploadFile]:
 
 
 class TestExcelExtractor:
-    def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        sheet_with_data = _FakeSheet(
-            header_rows=[("Name", "Link")],
-            data_rows=[
-                (_FakeCell("Alice"), _FakeCell("Doc", hyperlink=Hyperlink(ref="B2", target="https://example.com/doc"))),
-                (_FakeCell(None), _FakeCell(123)),
-                (_FakeCell(None), _FakeCell(None)),
-            ],
-        )
-        empty_sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
+    def test_extract_xlsx_with_hyperlinks_and_sheet_skip(self, tmp_path: Path, mocker: MockerFixture) -> None:
+        workbook, sheet = _workbook_with_rows(("Name", "Link"), ("Alice", "Doc"), (None, 123))
+        sheet["B2"].hyperlink = "https://example.com/doc"
+        sheet["A4"].number_format = "@"
+        workbook.create_sheet("Empty")
+        path = tmp_path / "sample.xlsx"
+        workbook.save(path)
+        close = mocker.spy(Workbook, "close")
 
-        workbook = _FakeWorkbook({"Data": sheet_with_data, "Empty": empty_sheet})
-        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+        docs = ExcelExtractor(str(path)).extract()
 
-        extractor = ExcelExtractor("/tmp/sample.xlsx")
-        docs = extractor.extract()
-
-        assert workbook.closed is True
+        close.assert_called_once()
         assert len(docs) == 2
         assert docs[0].page_content == '"Name":"Alice";"Link":"[Doc](https://example.com/doc)"'
         assert docs[1].page_content == '"Name":"";"Link":"123"'
-        assert all(doc.metadata["source"] == "/tmp/sample.xlsx" for doc in docs)
+        assert all(doc.metadata["source"] == str(path) for doc in docs)
 
     def test_extract_xlsx_turns_embedded_images_into_markdown_links(
         self,
+        tmp_path: Path,
+        mocker: MockerFixture,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ) -> None:
-        image_bytes = b"\x89PNG\r\n\x1a\nexcel-image"
-        sheet = _FakeSheet(
-            header_rows=[("Question", "Answer", "Image")],
-            data_rows=[
-                (_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None)),
-                (_FakeCell("Q2"), _FakeCell("A2"), _FakeCell(None)),
-            ],
-            images=[
-                _FakeImage(image_bytes, row=1, col=2),
-                _FakeImage(image_bytes, row=1, col=2),
-            ],
-        )
-        workbook = _FakeWorkbook({"Data": sheet})
-        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+        image_bytes = _png_bytes()
+        workbook, sheet = _workbook_with_rows(("Question", "Answer", "Image"), ("Q1", "A1"), ("Q2", "A2"))
+        _add_png(sheet, image_bytes, "C2")
+        _add_png(sheet, image_bytes, "C2")
+        path = tmp_path / "sample.xlsx"
+        workbook.save(path)
+        close = mocker.spy(Workbook, "close")
         saves = _patch_image_persistence(monkeypatch)
 
         extractor = ExcelExtractor(
-            "/tmp/sample.xlsx",
+            str(path),
             tenant_id="tenant-1",
             user_id="user-1",
             source_file_id="source-file-1",
@@ -148,7 +101,7 @@ class TestExcelExtractor:
         docs = extractor.extract()
         upload_files = _get_upload_files(sqlite_session)
 
-        assert workbook.closed is True
+        close.assert_called_once()
         assert len(docs) == 2
         assert len(upload_files) == 1
         assert docs[0].page_content == (
@@ -167,24 +120,29 @@ class TestExcelExtractor:
 
     def test_extract_xlsx_keeps_rows_with_only_embedded_images(
         self,
+        tmp_path: Path,
+        mocker: MockerFixture,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ) -> None:
-        image_bytes = b"\x89PNG\r\n\x1a\nimage-only-row"
-        sheet = _FakeSheet(
-            header_rows=[("Question", "Answer", "Image")],
-            data_rows=[
-                (_FakeCell(None), _FakeCell(None), _FakeCell(None)),
-                (_FakeCell(None), _FakeCell(None), _FakeCell(None)),
-            ],
-            images=[_FakeImage(image_bytes, row=1, col=2)],
-        )
-        workbook = _FakeWorkbook({"Data": sheet})
-        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbook)
+        image_bytes = _png_bytes()
+        workbook, sheet = _workbook_with_rows(("Question", "Answer", "Image"))
+        # Drawings alone do not increase the worksheet's cell-based row range.
+        sheet["C2"].number_format = "@"
+        _add_png(sheet, image_bytes, "C2")
+        path = tmp_path / "sample.xlsx"
+        workbook.save(path)
+        readback = load_workbook(path, data_only=True)
+        try:
+            assert readback["Data"].max_row == 2
+            assert readback["Data"]["C2"].value is None
+        finally:
+            readback.close()
+        close = mocker.spy(Workbook, "close")
         saves = _patch_image_persistence(monkeypatch)
 
         extractor = ExcelExtractor(
-            "/tmp/sample.xlsx",
+            str(path),
             tenant_id="tenant-1",
             user_id="user-1",
             source_file_id="source-file-1",
@@ -192,7 +150,7 @@ class TestExcelExtractor:
         docs = extractor.extract()
         upload_files = _get_upload_files(sqlite_session)
 
-        assert workbook.closed is True
+        close.assert_called_once()
         assert len(docs) == 1
         assert len(upload_files) == 1
         assert docs[0].page_content == (
@@ -202,41 +160,28 @@ class TestExcelExtractor:
 
     def test_extract_xlsx_reuses_existing_embedded_image_uploads_on_retry(
         self,
+        tmp_path: Path,
+        mocker: MockerFixture,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
     ) -> None:
-        image_bytes = b"\x89PNG\r\n\x1a\nretry-safe-image"
-        workbooks = [
-            _FakeWorkbook(
-                {
-                    "Data": _FakeSheet(
-                        header_rows=[("Question", "Answer", "Image")],
-                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
-                        images=[_FakeImage(image_bytes, row=1, col=2)],
-                    )
-                }
-            ),
-            _FakeWorkbook(
-                {
-                    "Data": _FakeSheet(
-                        header_rows=[("Question", "Answer", "Image")],
-                        data_rows=[(_FakeCell("Q1"), _FakeCell("A1"), _FakeCell(None))],
-                        images=[_FakeImage(image_bytes, row=1, col=2)],
-                    )
-                }
-            ),
-        ]
-        monkeypatch.setattr(excel_module, "load_workbook", lambda *args, **kwargs: workbooks.pop(0))
+        image_bytes = _png_bytes()
+        workbook, sheet = _workbook_with_rows(("Question", "Answer", "Image"), ("Q1", "A1"))
+        _add_png(sheet, image_bytes, "C2")
+        path = tmp_path / "sample.xlsx"
+        workbook.save(path)
+        close = mocker.spy(Workbook, "close")
         saves = _patch_image_persistence(monkeypatch)
 
         extractor = ExcelExtractor(
-            "/tmp/sample.xlsx",
+            str(path),
             tenant_id="tenant-1",
             user_id="user-1",
             source_file_id="source-file-1",
         )
         first_docs = extractor.extract()
         second_docs = extractor.extract()
+        assert close.call_count == 2
         upload_files = _get_upload_files(sqlite_session)
         assert len(upload_files) == 1
 
@@ -288,10 +233,7 @@ class TestExcelExtractor:
             extractor.extract()
 
     def test_find_header_and_columns_prefers_first_row_with_two_columns(self) -> None:
-        sheet = _FakeSheet(
-            header_rows=[(None, None, None), ("A", "B", None), ("X", None, None)],
-            data_rows=[],
-        )
+        _, sheet = _workbook_with_rows((None, None, None), ("A", "B", None), ("X", None, None))
         extractor = ExcelExtractor("dummy.xlsx")
 
         header_row_idx, column_map, max_col_idx = extractor._find_header_and_columns(sheet)
@@ -303,11 +245,11 @@ class TestExcelExtractor:
     def test_find_header_and_columns_fallback_and_empty_case(self) -> None:
         extractor = ExcelExtractor("dummy.xlsx")
 
-        fallback_sheet = _FakeSheet(header_rows=[("Only", None), (None, "Second")], data_rows=[])
+        _, fallback_sheet = _workbook_with_rows(("Only", None), (None, "Second"))
         row_idx, column_map, max_col_idx = extractor._find_header_and_columns(fallback_sheet)
         assert row_idx == 1
         assert column_map == {0: "Only"}
         assert max_col_idx == 1
 
-        empty_sheet = _FakeSheet(header_rows=[(None, None)], data_rows=[])
+        _, empty_sheet = _workbook_with_rows()
         assert extractor._find_header_and_columns(empty_sheet) == (0, {}, 0)
