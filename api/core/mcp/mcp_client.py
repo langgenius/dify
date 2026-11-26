@@ -28,21 +28,34 @@ class MCPClient:
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
+        header_context: dict[str, str] | None = None,
     ):
         self.server_url = server_url
         self.headers = headers.copy() if headers else {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
 
-        # Substitute placeholders with incoming request headers if in a request context
-        if has_request_context() and self.headers:
+        # Substitute placeholders with incoming request headers.
+        # An explicit header_context (forwarded from the original caller, e.g.
+        # across the Agent inner-API boundary) takes precedence; otherwise fall
+        # back to the live Flask request when one is present.
+        header_lookup: Callable[[str], str | None] | None = None
+        if header_context is not None:
+            normalized = {name.lower(): value for name, value in header_context.items()}
+
+            def header_lookup(name: str) -> str | None:
+                return normalized.get(name.lower())
+        elif has_request_context():
+            header_lookup = request.headers.get
+
+        if header_lookup is not None and self.headers:
             pattern = re.compile(r"\{\{\s*request\.headers?\.(.+?)\s*\}\}", re.IGNORECASE)
             for key, value in list(self.headers.items()):
                 if isinstance(value, str):
 
                     def replace_func(match):
                         header_name = match.group(1)
-                        return request.headers.get(header_name, "")
+                        return header_lookup(header_name) or ""
 
                     self.headers[key] = pattern.sub(replace_func, value)
 
