@@ -25,6 +25,45 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
             },
           },
         },
+        // The card keeps the submitted tags until the knowledge lists and the tag counts reload,
+        // also after a rejected replacement, which may still have been applied.
+        tags: {
+          put: {
+            mutationOptions: {
+              onSettled: (_data, _error, _variables, _result, { client }) =>
+                invalidateQueryKeys(client, [
+                  consoleQuery.knowledgeFs.spaces.get.key(),
+                  consoleQuery.tags.get.key({
+                    type: 'query',
+                    input: { query: { type: 'knowledge' } },
+                  }),
+                ]),
+            },
+          },
+        },
+        // Waits for the field list and the documents that show the fields' values.
+        metadata: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, { params }, _result, { client }) =>
+                invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+            },
+          },
+          byFieldId: {
+            patch: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, { params }, _result, { client }) =>
+                  invalidateMetadataQueries(consoleQuery, client, params.control_space_id),
+              },
+            },
+          },
+        },
         members: {
           put: {
             mutationOptions: {
@@ -98,6 +137,22 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           },
         },
         quality: {
+          badCases: {
+            byBadCaseId: {
+              patch: {
+                mutationOptions: {
+                  // Waits for the bad-case list, so a dismissed case leaves it before the row
+                  // stops pending.
+                  onSuccess: (_data, { params }, _result, { client }) =>
+                    invalidateQueryKeys(client, [
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+                        input: { params: { control_space_id: params.control_space_id } },
+                      }),
+                    ]),
+                },
+              },
+            },
+          },
           replayRuns: {
             post: {
               mutationOptions: {
@@ -113,13 +168,6 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                     // Polling may already hold a newer revision of the run.
                     (current) => (current && current.revision >= run.revision ? current : run),
                   )
-                  void client.invalidateQueries({
-                    queryKey: replayRuns.get.key({
-                      input: { params: { control_space_id: params.control_space_id } },
-                      type: 'infinite',
-                    }),
-                    refetchType: 'none',
-                  })
                 },
               },
             },
@@ -185,14 +233,13 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
         },
         documents: {
           // Waits for the document list (status) and the task list the queued re-index tasks
-          // join; golden questions refresh in the background.
+          // join.
           reindex: {
             post: {
               mutationOptions: {
                 onSuccess: (_data, { params }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
                   return invalidateQueryKeys(client, [
                     space.logicalDocuments.get.key({ input }),
                     space.backgroundTasks.get.key({ input }),
@@ -204,13 +251,10 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           byDocumentId: {
             patch: {
               mutationOptions: {
-                // Waits for the document's detail and the document list; golden questions that
-                // show a renamed document refresh in the background.
-                onSuccess: (_data, { params, body }, _result, { client }) => {
+                // Waits for the document's detail and the document list.
+                onSuccess: (_data, { params }, _result, { client }) => {
                   const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
                   const input = { params: { control_space_id: params.control_space_id } }
-                  if ('displayName' in body.patch)
-                    void invalidateQueryKeys(client, [space.goldenQuestions.get.key({ input })])
                   return invalidateQueryKeys(client, [
                     space.logicalDocuments.byDocumentId.get.key({ input: { params } }),
                     space.logicalDocuments.get.key({ input }),
@@ -223,6 +267,8 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
         fileScanPolicy: {
           put: {
             mutationOptions: {
+              // Each scanner reports how many knowledge bases select it.
+              meta: { alsoInvalidate: ['fileScan'] },
               onSuccess: (policy, variables, _result, context) => {
                 context.client.setQueryData(
                   consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
@@ -230,10 +276,6 @@ export function knowledgeFsPolicies(consoleQuery: ConsoleQuery): ConsolePolicies
                   }),
                   policy,
                 )
-                // Each scanner reports how many knowledge bases select it.
-                void context.client.invalidateQueries({
-                  queryKey: consoleQuery.fileScan.providers.get.key(),
-                })
               },
             },
           },
@@ -329,5 +371,18 @@ function invalidateTidyQueries(query: RouterUtils<ConsoleClient>, client: QueryC
     query.knowledgeFs.spaces.byControlSpaceId.tidy.key(),
     query.knowledgeFs.spaces.byControlSpaceId.documents.key(),
     query.knowledgeFs.spaces.byControlSpaceId.overview.key(),
+  ])
+}
+
+function invalidateMetadataQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  controlSpaceId: string,
+) {
+  const space = query.knowledgeFs.spaces.byControlSpaceId
+  const input = { params: { control_space_id: controlSpaceId } }
+  return invalidateQueryKeys(client, [
+    space.metadata.get.key({ input }),
+    space.logicalDocuments.get.key({ input }),
   ])
 }

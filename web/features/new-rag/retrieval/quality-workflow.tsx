@@ -13,7 +13,6 @@ import { getHttpErrorStatus } from '@/service/http-error'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { getErrorMessage } from '@/utils/error-message'
 import { GoldenQuestionDialog } from '../quality/golden-question-dialog'
-import { goldenQuestionQueriesKey } from '../quality/quality-model'
 import { newKnowledgeQualityBadCasesPath, newKnowledgeQualityPath } from '../routes'
 import { useKnowledgeSpacePermission } from '../space/context'
 import { QualityActions } from './results'
@@ -114,13 +113,14 @@ export function RetrievalQualityWorkflow() {
       } catch (error) {
         // 409: the trace already has an unresolved bad case, so the record is in the wanted state.
         if (getHttpErrorStatus(error) !== 409) throw error
+        // A successful create leaves the list to the invalidation fallback; this one failed.
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
+            input: { params: { control_space_id: knowledgeSpaceId } },
+            type: 'infinite',
+          }),
+        })
       }
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.get.key({
-          input: { params: { control_space_id: knowledgeSpaceId } },
-          type: 'infinite',
-        }),
-      })
       setQualityDecisions((current) => ({ ...current, [resultKey]: 'bad-case' }))
       void refetchTraces()
     } catch (error) {
@@ -145,9 +145,6 @@ export function RetrievalQualityWorkflow() {
           tags: draft.tags,
         },
         params: { control_space_id: knowledgeSpaceId },
-      })
-      await queryClient.invalidateQueries({
-        queryKey: goldenQuestionQueriesKey(knowledgeSpaceId),
       })
       setQualityDecisions((current) => ({ ...current, [promotion.resultKey]: 'golden' }))
       setGoldenPromotion(undefined)

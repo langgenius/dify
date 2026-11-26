@@ -88,11 +88,15 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           queryOptions: { staleTime: 0, retry: false },
         },
       },
-      // DSL import failures are reported by the import flow.
+      // DSL import failures are reported by the import flow; an import creates a dataset.
       imports: {
-        post: { mutationOptions: { meta: { errorToast: false } } },
+        post: { mutationOptions: { meta: { errorToast: false, alsoInvalidate: ['datasets'] } } },
         byImportId: {
-          confirm: { post: { mutationOptions: { meta: { errorToast: false } } } },
+          confirm: {
+            post: {
+              mutationOptions: { meta: { errorToast: false, alsoInvalidate: ['datasets'] } },
+            },
+          },
         },
       },
       byPipelineId: {
@@ -133,10 +137,10 @@ export function ragPipelinePolicies(consoleQuery: ConsoleQuery): ConsolePolicies
           publish: {
             post: {
               mutationOptions: {
-                // Waits for the published workflow and the version list; dataset cards refresh in
-                // the background.
+                // Dataset cards show the pipeline's publish state.
+                meta: { alsoInvalidate: ['datasets'] },
+                // Waits for the published workflow and the version list.
                 onSuccess: (_data, variables, _result, context) => {
-                  void invalidateQueryKeys(context.client, [consoleQuery.datasets.get.key()])
                   return invalidateQueryKeys(context.client, [
                     consoleQuery.rag.pipelines.byPipelineId.workflows.publish.get.key({
                       input: { params: variables.params },

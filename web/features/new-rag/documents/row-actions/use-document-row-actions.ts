@@ -69,6 +69,7 @@ function useDocumentCanEdit(documentId: string) {
   return useAtomValue(canEditAtom)
 }
 
+// A conflicting toggle leaves the row out of date; successful writes refresh with the fallback.
 function useDocumentInvalidation() {
   const queryClient = useQueryClient()
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
@@ -84,24 +85,7 @@ function useDocumentInvalidation() {
       }),
     ])
   }, [knowledgeSpaceId, queryClient])
-  const invalidateDocumentsAndTasks = useCallback(() => {
-    void Promise.allSettled([
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.key(),
-      }),
-      queryClient.invalidateQueries({
-        predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.get.key(),
-      }),
-    ])
-  }, [knowledgeSpaceId, queryClient])
-
-  return { invalidateDocuments, invalidateDocumentsAndTasks, knowledgeSpaceId }
+  return { invalidateDocuments, knowledgeSpaceId }
 }
 
 export function useRenameDocumentAction(document: LogicalDocument) {
@@ -217,7 +201,6 @@ export function useToggleDocumentAvailabilityAction(
         body: { enabled: !document.enabled, expectedRowVersion: document.rowVersion },
         params: { control_space_id: knowledgeSpaceId, document_id: document.id },
       })
-      invalidateDocuments()
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -252,7 +235,7 @@ export function useRemoveDocumentAction() {
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const begin = useSetAtom(beginDocumentRowActionAtom)
   const finish = useSetAtom(finishDocumentRowActionAtom)
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const {
     mutateAsync: removeDocument,
     isPending: pending,
@@ -279,7 +262,6 @@ export function useRemoveDocumentAction() {
         params: { control_space_id: knowledgeSpaceId, document_id: document.id },
       })
       onDocumentRemoved(documentId)
-      invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -304,7 +286,7 @@ export function useRetryDocumentTaskAction(
   const onTaskUpdated = useSetAtom(acceptDocumentTaskSnapshotAtom)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(documentId, 'retry')
-  const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: retryTask } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
       { meta: { errorToast: false } },
@@ -325,7 +307,6 @@ export function useRetryDocumentTaskAction(
       )
       if (updated.documentId && updated.documentRevision)
         onTaskUpdated(updated as DocumentProcessingTask)
-      invalidateDocumentsAndTasks()
       return true
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -349,7 +330,6 @@ export function useRetryDocumentTaskAction(
     canEdit,
     describeRequestError,
     finish,
-    invalidateDocumentsAndTasks,
     knowledgeSpaceId,
     onTaskUpdated,
     onWriteDenied,

@@ -20,13 +20,13 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { useRequestErrorDescriber } from '@/service/use-request-error-message'
 import { newKnowledgeDetailPath } from '../../routes'
 import { useKnowledgeSpacePermission } from '../../space/context'
@@ -441,6 +441,12 @@ function ManagedProviderConnection({
   const describeRequestError = useRequestErrorDescriber()
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState<{ error?: unknown } | false>(false)
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
+      // A failed connection is reconciled first and then shown in this panel.
+      meta: { errorToast: false },
+    }),
+  )
   const requestRef = useRef<
     | {
         key: string
@@ -457,7 +463,7 @@ function ManagedProviderConnection({
         promise: (async () => {
           try {
             return sourceConnectionFromApi(
-              await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+              await createConnection({
                 body: {
                   authKind: 'endpoint',
                   configuration: {
@@ -494,6 +500,7 @@ function ManagedProviderConnection({
       subscribed = false
     }
   }, [
+    createConnection,
     credentialId,
     datasourceProvider,
     knowledgeSpaceId,
@@ -785,7 +792,6 @@ function AddSourcePageContent({
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const initialDraftRef = useRefWithInit<NewKnowledgeSourceDraft>(
     () =>
       initialSourceDraft ??
@@ -1010,15 +1016,9 @@ function AddSourcePageContent({
     websiteSourceSelected,
   ])
 
-  const rememberConnection = useCallback(
-    (updatedConnection: Connection) => {
-      setConnectionOverride(updatedConnection)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key(),
-      })
-    },
-    [queryClient],
-  )
+  const rememberConnection = useCallback((updatedConnection: Connection) => {
+    setConnectionOverride(updatedConnection)
+  }, [])
 
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)

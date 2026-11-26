@@ -4,7 +4,7 @@ import type { SyncPolicyValue } from '../setup/sync-policy-field'
 import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from '../source-models'
 import { Button } from '@langgenius/dify-ui/button'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -83,7 +83,6 @@ function ReadyCrawlSelectionForm({
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const describeRequestError = useRequestErrorDescriber()
   const router = useRouter()
-  const queryClient = useQueryClient()
   const {
     configureModelSetup,
     ensureModelReady,
@@ -224,11 +223,6 @@ function ReadyCrawlSelectionForm({
         throw error
       }
       updateSelectionUncertain(false)
-      if (discardRequested()) return
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-        refetchType: 'none',
-      })
       if (discardRequested()) return
       await onSubmitted()
       router.push(newKnowledgeDetailPath(knowledgeSpaceId))

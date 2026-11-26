@@ -44,7 +44,7 @@ const seed = (...keys: QueryKey[]) => keys.forEach((key) => queryClient.setQuery
 const isInvalidated = (key: QueryKey) => queryClient.getQueryState(key)?.isInvalidated ?? false
 
 describe('dataset mutation policies', () => {
-  it('refreshes the dataset list and running upgrades after an upgrade starts', async () => {
+  it('refreshes the running upgrades after an upgrade starts', async () => {
     const datasets = consoleQuery.datasets.get.queryKey({ input: { query: {} } })
     const jobs = consoleQuery.datasets.knowledgeFsUpgradeJobs.get.queryKey({ input: {} })
     seed(datasets, jobs)
@@ -55,11 +55,12 @@ describe('dataset mutation policies', () => {
       { params: { dataset_id: 'dataset-1' }, body: {}, headers: { 'Idempotency-Key': 'key-1' } },
     )
 
-    expect(isInvalidated(datasets)).toBe(true)
+    // Dataset cards refresh with the invalidation fallback.
+    expect(isInvalidated(datasets)).toBe(false)
     expect(isInvalidated(jobs)).toBe(true)
   })
 
-  it('refreshes the retried upgrade job and the lists that show it', async () => {
+  it('refreshes the retried upgrade job and the running upgrades', async () => {
     const job = (job_id: string) =>
       consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.queryKey({
         input: { params: { dataset_id: 'dataset-1', job_id } },
@@ -76,7 +77,7 @@ describe('dataset mutation policies', () => {
 
     expect(isInvalidated(job('job-1'))).toBe(true)
     expect(isInvalidated(job('job-2'))).toBe(false)
-    expect(isInvalidated(datasets)).toBe(true)
+    expect(isInvalidated(datasets)).toBe(false)
     expect(isInvalidated(jobs)).toBe(true)
   })
 
@@ -89,7 +90,7 @@ describe('dataset mutation policies', () => {
     expect(isInvalidated(datasets)).toBe(true)
   })
 
-  it('refreshes the dataset card and its documents after a document is saved', async () => {
+  it('refreshes the documents of the dataset a document is saved to', async () => {
     const datasets = consoleQuery.datasets.get.queryKey({ input: { query: {} } })
     const documents = (dataset_id: string) =>
       consoleQuery.datasets.byDatasetId.documents.get.queryKey({
@@ -113,29 +114,11 @@ describe('dataset mutation policies', () => {
       { params: { dataset_id: 'dataset-1' }, body: {} as never },
     )
 
-    expect(isInvalidated(datasets)).toBe(true)
+    expect(isInvalidated(datasets)).toBe(false)
     expect(isInvalidated(documents('dataset-1'))).toBe(true)
     expect(isInvalidated(detail('dataset-1'))).toBe(true)
     expect(isInvalidated(documents('dataset-2'))).toBe(false)
     expect(isInvalidated(detail('dataset-2'))).toBe(false)
-  })
-
-  it.each([
-    ['enable', true],
-    ['disable', false],
-  ] as const)('refreshes the auto-disabled notice after %s: %s', async (action, refreshed) => {
-    const logs = consoleQuery.datasets.byDatasetId.autoDisableLogs.get.queryKey({
-      input: { params: { dataset_id: 'dataset-1' } },
-    })
-    seed(logs)
-
-    await succeed(
-      consoleQuery.datasets.byDatasetId.documents.status.byAction.batch.patch.mutationOptions(),
-      {},
-      { params: { dataset_id: 'dataset-1', action }, query: { document_id: ['document-1'] } },
-    )
-
-    expect(isInvalidated(logs)).toBe(refreshed)
   })
 
   it('removes a deleted external knowledge API from the list and refreshes it', async () => {
@@ -219,6 +202,20 @@ describe('pipeline mutation policies', () => {
     expect(isInvalidated(customized)).toBe(true)
   })
 
+  it.each([
+    ['a DSL import', () => consoleQuery.rag.pipelines.imports.post.mutationOptions()],
+    [
+      'a confirmed DSL import',
+      () => consoleQuery.rag.pipelines.imports.byImportId.confirm.post.mutationOptions(),
+    ],
+    [
+      'a published pipeline',
+      () => consoleQuery.rag.pipelines.byPipelineId.workflows.publish.post.mutationOptions(),
+    ],
+  ])('declares the dataset lists for the invalidation fallback after %s', (_, options) => {
+    expect(options().meta?.alsoInvalidate).toEqual(['datasets'])
+  })
+
   it('removes a deleted customized template from the list and refreshes it', async () => {
     const customized = consoleQuery.rag.pipeline.templates.get.queryKey({
       input: { query: { type: 'customized' } },
@@ -284,16 +281,11 @@ describe('knowledge space mutation policies', () => {
     const detail = replayRuns.byRunId.get.queryKey({
       input: { params: { ...params, run_id: 'run-1' } },
     })
-    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const post = replayRuns.post.mutationOptions()
     const variables = { params, body: {} as never, headers: {} as never }
 
     await succeed(post, { id: 'run-1', revision: 2 }, variables)
     expect(queryClient.getQueryData(detail)).toEqual({ id: 'run-1', revision: 2 })
-    expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: replayRuns.get.key({ ...input(), type: 'infinite' }),
-      refetchType: 'none',
-    })
 
     await succeed(post, { id: 'run-1', revision: 1 }, variables)
     expect(queryClient.getQueryData(detail)).toEqual({ id: 'run-1', revision: 2 })
@@ -348,20 +340,106 @@ describe('knowledge space mutation policies', () => {
     expect(queryFn).toHaveBeenCalledTimes(2)
   })
 
-  it('refreshes documents, tasks and golden questions of the re-indexed space', async () => {
+  it('refreshes the documents and tasks of the re-indexed space', async () => {
     const keys = (control_space_id: string) => [
       space().logicalDocuments.get.queryKey({ input: { params: { control_space_id }, query: {} } }),
       space().backgroundTasks.get.queryKey({ input: { params: { control_space_id }, query: {} } }),
-      space().goldenQuestions.get.queryKey({ input: { params: { control_space_id }, query: {} } }),
     ]
-    seed(...keys('space-1'), ...keys('space-2'))
+    const golden = space().goldenQuestions.get.queryKey({
+      input: { params: { control_space_id: 'space-1' }, query: {} },
+    })
+    seed(...keys('space-1'), ...keys('space-2'), golden)
 
     await succeed(
       space().documents.reindex.post.mutationOptions(),
       { items: [] },
       { params, body: { documentIds: ['document-1'] } },
     )
-    await vi.waitFor(() => expect(keys('space-1').map(isInvalidated)).toEqual([true, true, true]))
-    expect(keys('space-2').map(isInvalidated)).toEqual([false, false, false])
+    expect(keys('space-1').map(isInvalidated)).toEqual([true, true])
+    expect(keys('space-2').map(isInvalidated)).toEqual([false, false])
+    // Golden questions refresh with the invalidation fallback.
+    expect(isInvalidated(golden)).toBe(false)
+  })
+
+  it('declares the scanner list for the invalidation fallback after a file scan policy is saved', () => {
+    expect(space().fileScanPolicy.put.mutationOptions().meta?.alsoInvalidate).toEqual(['fileScan'])
+    expect(
+      consoleQuery.datasets.byDatasetId.fileScanPolicy.put.mutationOptions().meta?.alsoInvalidate,
+    ).toEqual(['fileScan'])
+  })
+
+  it.each([
+    ['created', () => space().metadata.post.mutationOptions(), { body: {} }],
+    [
+      'renamed',
+      () => space().metadata.byFieldId.patch.mutationOptions(),
+      { params: { ...params, field_id: 'field-1' }, body: {} },
+    ],
+    [
+      'deleted',
+      () => space().metadata.byFieldId.delete.mutationOptions(),
+      { params: { ...params, field_id: 'field-1' } },
+    ],
+  ])(
+    'waits for the field list and the documents after a field is %s',
+    async (_, options, extra) => {
+      const keys = (control_space_id: string) => [
+        space().metadata.get.queryKey({ input: { params: { control_space_id }, query: {} } }),
+        space().logicalDocuments.get.queryKey({
+          input: { params: { control_space_id }, query: {} },
+        }),
+      ]
+      seed(...keys('space-1'), ...keys('space-2'))
+
+      await succeed(options() as MutationPolicy<unknown>, {}, { params, ...extra })
+
+      expect(keys('space-1').map(isInvalidated)).toEqual([true, true])
+      expect(keys('space-2').map(isInvalidated)).toEqual([false, false])
+    },
+  )
+
+  it('waits for the bad-case list after a bad case is updated', async () => {
+    const list = (control_space_id: string) =>
+      space().quality.badCases.get.key({
+        input: { params: { control_space_id }, query: {} },
+        type: 'infinite',
+      })
+    seed(list('space-1'), list('space-2'))
+
+    await succeed(
+      space().quality.badCases.byBadCaseId.patch.mutationOptions(),
+      {},
+      {
+        params: { ...params, bad_case_id: 'case-1' },
+        body: {} as never,
+      },
+    )
+
+    expect(isInvalidated(list('space-1'))).toBe(true)
+    expect(isInvalidated(list('space-2'))).toBe(false)
+  })
+
+  it.each([
+    ['succeeds', null],
+    ['fails', new Error('failed')],
+  ])('waits for the space lists and tag counts when a tag replacement %s', async (_, error) => {
+    const spaces = consoleQuery.knowledgeFs.spaces.get.queryKey({ input: { query: {} } })
+    const knowledgeTags = consoleQuery.tags.get.queryKey({
+      input: { query: { type: 'knowledge' } },
+    })
+    const appTags = consoleQuery.tags.get.queryKey({ input: { query: { type: 'app' } } })
+    seed(spaces, knowledgeTags, appTags)
+
+    await space().tags.put.mutationOptions().onSettled!(
+      undefined as never,
+      error,
+      { params, body: { tag_ids: [] } },
+      undefined as never,
+      { client: queryClient, meta: undefined },
+    )
+
+    expect(isInvalidated(spaces)).toBe(true)
+    expect(isInvalidated(knowledgeTags)).toBe(true)
+    expect(isInvalidated(appTags)).toBe(false)
   })
 })

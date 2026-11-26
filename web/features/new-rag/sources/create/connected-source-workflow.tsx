@@ -1453,18 +1453,8 @@ function ResourceConfiguration({
   const submitInSession = async (session: PreviewSourceSession) => {
     setSubmitting(true)
     setSubmitError(false)
-    const completeSubmission = async () => {
+    const completeSubmission = () => {
       session.committed = true
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-          refetchType: 'none',
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
-          refetchType: 'none',
-        }),
-      ])
       if (session.active) onCompleted()
     }
     try {
@@ -1571,7 +1561,7 @@ function ResourceConfiguration({
       session.source = committedSource
       session.committed = true
       if (session.active) setPreviewSource(committedSource)
-      await completeSubmission()
+      completeSubmission()
     } catch (submissionError) {
       let reconcileFailure: { error: unknown } | undefined
       try {
@@ -1590,7 +1580,19 @@ function ResourceConfiguration({
             (reconciledSource.status !== 'disabled' ||
               sourceHasPendingAsyncImport(reconciledSource))
           ) {
-            await completeSubmission()
+            // The import went through although its request failed, so the fallback did not
+            // refresh the source and document lists.
+            await Promise.all([
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+                refetchType: 'none',
+              }),
+              queryClient.invalidateQueries({
+                queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
+                refetchType: 'none',
+              }),
+            ])
+            completeSubmission()
             return
           }
           if (!session.active) return
@@ -1905,7 +1907,6 @@ function ConnectedSourceWorkflowSession({
 }: ConnectedSourceWorkflowProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const describeRequestError = useRequestErrorDescriber()
-  const queryClient = useQueryClient()
   const { mutateAsync: createConnection } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
       // A failed provision is reconciled first and then shown inline with a retry.
@@ -2043,15 +2044,9 @@ function ConnectedSourceWorkflowSession({
     return () => globalThis.removeEventListener('focus', refetch)
   }, [refetchConnections, refetchDatasourceAuth, refetchDatasourcePlugins])
 
-  const rememberConnection = useCallback(
-    (next: SourceConnection) => {
-      setConnectionOverride(next)
-      void queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.key(),
-      })
-    },
-    [queryClient],
-  )
+  const rememberConnection = useCallback((next: SourceConnection) => {
+    setConnectionOverride(next)
+  }, [])
   const provisionConnection = useCallback(
     async (force = false) => {
       if (!provider || !datasourceProvider || !credential || provisioningConnection) return

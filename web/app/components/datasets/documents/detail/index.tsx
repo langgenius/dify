@@ -220,7 +220,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
-      invalidDocumentList()
+      // Syncs run through read endpoints, which the invalidation fallback skips.
+      if (operateName === 'sync') invalidDocumentList()
       if (operateName === 'delete') {
         backToPrev()
       } else {
