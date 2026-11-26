@@ -313,6 +313,7 @@ def _prepare_native_agent_graph(
 
     from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
     from models.agent import WorkflowAgentNodeBinding
+    from models.agent_config_entities import WorkflowNodeJobConfig
     from services.agent.workflow_publish_service import WorkflowAgentPublishService
     from services.dify_builder.agent_binding import AgentBindingService, has_native_roster_binding
 
@@ -354,9 +355,14 @@ def _prepare_native_agent_graph(
             selection.snapshot_id,
         ):
             raise BuilderExecutionPolicyError("agent_binding_not_prepared")
-        job = WorkflowAgentPublishService._node_job_config_from_node_data(
+        existing_binding = existing.get(node_id)
+        job = WorkflowAgentPublishService.parse_draft_node_job_config(
             node_data=data,
-            existing_binding=existing.get(node_id),
+            previous=(
+                WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+                if existing_binding is not None
+                else None
+            ),
         )
         prepared = service.prepare_node(
             actor=actor,
