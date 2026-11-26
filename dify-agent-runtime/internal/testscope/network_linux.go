@@ -31,15 +31,6 @@ func AllowedAddress(ip netip.Addr, mediators []netip.Addr) bool {
 	return ip.IsValid() && ip.IsGlobalUnicast() && !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() && !ip.IsUnspecified()
 }
 
-type PinnedTarget struct {
-	Addresses      []string `json:"addresses"`
-	MaxBytes       int64    `json:"max_bytes"`
-	TimeoutSeconds int64    `json:"timeout_seconds"`
-}
-type PinnedNetwork struct {
-	Targets map[string]PinnedTarget `json:"targets"`
-}
-
 func (p PinnedNetwork) Resolve(authority string) (string, error) {
 	target, ok := p.Targets[authority]
 	if !ok || len(target.Addresses) == 0 {

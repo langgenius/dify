@@ -33,7 +33,6 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/testscope"
-	"golang.org/x/sys/unix"
 )
 
 // startGatePollInterval is how often the parent runner checks for the
@@ -123,8 +122,7 @@ func parentMode() {
 	}
 	cmd := exec.Command(self, childArgs...)
 	if nativeConfig != "" {
-		runtime.LockOSThread()
-		cmd.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWNS | unix.CLONE_NEWPID, Pdeathsig: syscall.SIGKILL}
+		cmdutil.HandleError(configureNativeJobProcess(cmd), 125, "native job setup")
 	}
 	cmd.Env = env
 	cmd.Dir = cwd
@@ -339,11 +337,8 @@ func childMode() {
 	cwd := args[1]
 
 	if nativeConfig != "" {
-		data, err := os.ReadFile(nativeConfig)
-		cmdutil.HandleError(err, 125, "native scope configuration")
-		var cfg testscope.WorkerConfig
-		cmdutil.HandleError(json.Unmarshal(data, &cfg), 125, "native scope configuration")
-		scriptPath, err = testscope.PrepareJob(cfg, scriptPath)
+		var err error
+		scriptPath, err = prepareNativeJob(nativeConfig, scriptPath)
 		cmdutil.HandleError(err, 125, "native scope isolation")
 		cwd = "/workspace"
 	}

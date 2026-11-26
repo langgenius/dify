@@ -5,8 +5,14 @@ import (
 	"database/sql"
 	_ "modernc.org/sqlite"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
+
+func validSpec() NativeScopeSpec {
+	return NativeScopeSpec{ScopeID: "scope-1", Generation: 1, BindingRef: "binding-1", BaseSnapshotRef: "snapshot-1", CapabilityDigest: strings.Repeat("a", 64), Deadline: time.Now().Add(time.Minute), Limits: Limits{CPUQuota: 100000, MemoryBytes: 256 << 20, PIDs: 64, FDs: 128, WallSeconds: 60, InputBytes: 1 << 20, OutputBytes: 1 << 20, DiskBytes: 32 << 20}}
+}
 
 func TestScopeCatalogImmutableAndSurvivesReopen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state.db")

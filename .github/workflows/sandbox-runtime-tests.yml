@@ -52,6 +52,9 @@ jobs:
       - name: Run unit tests
         run: go test -race -count=1 ./...
 
+      - name: Check macOS build
+        run: GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build ./...
+
   sandbox-runtime-lint:
     name: Sandbox Runtime Lint
     runs-on: depot-ubuntu-24.04

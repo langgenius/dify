@@ -91,6 +91,24 @@ func (s NativeScopeSpec) Validate() error {
 	return nil
 }
 
+type Config struct {
+	AuthToken    string
+	StateDir     string
+	CgroupRoot   string
+	SnapshotRoot string
+	InputRoot    string
+	Mediators    []string
+}
+
+type PinnedTarget struct {
+	Addresses      []string `json:"addresses"`
+	MaxBytes       int64    `json:"max_bytes"`
+	TimeoutSeconds int64    `json:"timeout_seconds"`
+}
+type PinnedNetwork struct {
+	Targets map[string]PinnedTarget `json:"targets"`
+}
+
 type Scope struct {
 	Spec      NativeScopeSpec `json:"spec"`
 	TokenHash string          `json:"-"`

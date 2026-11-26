@@ -28,14 +28,6 @@ import (
 	"time"
 )
 
-type Config struct {
-	AuthToken    string
-	StateDir     string
-	CgroupRoot   string
-	SnapshotRoot string
-	InputRoot    string
-	Mediators    []string
-}
 type Manager struct {
 	config  Config
 	store   Store
