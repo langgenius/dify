@@ -2,8 +2,9 @@ import type { consoleClient } from '@/service/console'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { toast } from '@/app/notifications'
 import { createDeferred } from '@/test/deferred'
-import { ConfigurationMethodEnum } from '../../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum } from '../../declarations'
 import {
+  createModel,
   credentials,
   dialogName,
   provider,
@@ -14,6 +15,8 @@ import {
 
 const api = vi.hoisted(() => ({
   detail: vi.fn<typeof consoleClient.workspaces.current.modelProviders.get>(),
+  enable:
+    vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.enable.patch>(),
   save: vi.fn<typeof consoleClient.workspaces.current.modelProviders.byProvider.models.post>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -26,6 +29,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.modelProviders.byProvider.models.credentials.get': async () =>
         structuredClone(credentials),
       'workspaces.current.modelProviders.byProvider.models.post': api.save,
+      'workspaces.current.modelProviders.byProvider.models.enable.patch': api.enable,
     }),
   }
 })
@@ -33,6 +37,7 @@ const configureButtons = () => screen.getAllByRole('button', { name: 'common.ope
 beforeEach(() => {
   api.detail.mockReset().mockResolvedValue({ data: [providerResponse] })
   api.save.mockReset().mockResolvedValue({ result: 'success' })
+  api.enable.mockReset().mockResolvedValue({ result: 'success' })
 })
 afterEach(() => toast.dismiss())
 
@@ -110,6 +115,33 @@ it('offers Add Model without credential management when no custom models exist',
   expect(screen.getByRole('button', { name: 'modelProvider.modelProvider.addModel' })).toBeEnabled()
   expect(
     screen.queryByRole('button', { name: 'modelProvider.modelProvider.auth.manageCredentials' }),
+  ).not.toBeInTheDocument()
+})
+
+it('enables only the disabled, non-deprecated models with Enable all', async () => {
+  const { user, onChange } = renderModelList({
+    models: [
+      createModel('active-model'),
+      createModel('disabled-1', ModelStatusEnum.disabled),
+      createModel('disabled-2', ModelStatusEnum.disabled),
+      { ...createModel('old-model', ModelStatusEnum.disabled), deprecated: true },
+    ],
+  })
+  await user.click(
+    screen.getByRole('button', { name: 'modelProvider.modelProvider.enableAllModels' }),
+  )
+  await waitFor(() => expect(api.enable).toHaveBeenCalledTimes(2))
+  expect(api.enable.mock.calls.map(([input]) => input?.body.model)).toEqual([
+    'disabled-1',
+    'disabled-2',
+  ])
+  await waitFor(() => expect(onChange).toHaveBeenCalledExactlyOnceWith(provider.provider))
+})
+
+it('hides Enable all when no model is disabled', () => {
+  renderModelList()
+  expect(
+    screen.queryByRole('button', { name: 'modelProvider.modelProvider.enableAllModels' }),
   ).not.toBeInTheDocument()
 })
 
