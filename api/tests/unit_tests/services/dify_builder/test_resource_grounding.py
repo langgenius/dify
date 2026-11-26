@@ -86,10 +86,11 @@ def test_changed_model_requires_exact_catalogue_identity_and_confirmed_choice() 
     before = model_graph()
     after = model_graph("langgenius/anthropic/anthropic", "claude-fable-5-1")
     validate_changed_resources(before, after, directory, confirmed_ids=["model:" + ref.id])
+    validate_changed_resources(before, after, directory, confirmed_ids=[ref.id, "agent:confirmed"])
     with pytest.raises(ResourceBindingError, match="resource_not_in_catalogue"):
         validate_changed_resources(before, model_graph("anthropic", "claude-5.1-fable"), directory)
     with pytest.raises(ResourceBindingError, match="resource_selection_required"):
-        validate_changed_resources(before, after, directory, confirmed_ids=[])
+        validate_changed_resources(before, after, directory, confirmed_ids=["agent:confirmed"])
 
 
 def test_missing_candidate_from_failed_source_is_not_reported_as_absent() -> None:
