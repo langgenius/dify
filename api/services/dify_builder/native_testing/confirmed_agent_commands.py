@@ -8,8 +8,6 @@ never admits another parent or child execution.
 import logging
 from collections.abc import Callable
 
-from celery.exceptions import SoftTimeLimitExceeded
-from dify_agent.protocol.execution_binding import KeepAliveExecutionBindingRequest, KeepAliveExecutionBindingResponse
 from dify_agent.protocol.native_continuation import RedisStreamID
 from dify_agent.protocol.native_testing import AgentNativeTestRef, ContinuationClaim, ContinueRunRequest
 from dify_agent.protocol.schemas import RunStatusResponse
@@ -97,17 +95,11 @@ class _ResumeDispatch(FrozenDTO):
     actor: _ActorHint
 
 
-def _publish_resume(*, workflow_run_id: str, dispatch: dict) -> None:
-    from tasks.app_generate.workflow_execute_task import resume_app_execution
-
-    resume_app_execution.delay({"workflow_run_id": workflow_run_id, "builder_agent_dispatch": dispatch})
-
-
 class ConfirmedAgentCommands:
     def __init__(self, *, api, continuation, backend, publish):
         self.api, self.continuation, self.backend = api, continuation, backend
         self.actor = api.actor
-        self.publish = publish or _publish_resume
+        self.publish = publish
 
     @property
     def loader(self):
@@ -671,84 +663,6 @@ class ConfirmedAgentCommands:
         owned, scope = self.loader._load(session, ref=ref, lock=False)
         return waiting_confirmed_checkpoint(session=session, ref=ref, request=request, owned=owned, scope=scope)
 
-    def keep_alive_waiting_binding(self, *, actor, session_id, request_id) -> bool:
-        """Health-only retention; never renew authority, recover, or replace a binding.
-
-        SQL closes before storage/SDK I/O. The independent absolute backend
-        lifetime is unchanged. Uncertain or missing resources stop this pass.
-        """
-        try:
-            request = self._request(actor=actor, session_id=session_id, request_id=request_id)
-            ref = self._root_ref(actor=actor, request_id=request_id)
-            with self.loader.session_factory() as session:
-                checkpoint, generation = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
-            paused = self.continuation.read_parent_pause(ref=ref)
-            reasons = {
-                reason.message if isinstance(reason, SchedulingPause) else None
-                for reason in paused.runtime.graph_execution.pause_reasons
-            }
-            if reasons != {"agent_tool_approval"}:
-                return False
-            payload = self.api.store.read_checkpoint(ref=ref, checkpoint=checkpoint)
-            if payload.generation != generation or not 0 < len(payload.agent_associations) <= 100:
-                return False
-            retained = False
-            executions = {node.execution_id for node in paused.runtime.graph_execution.node_executions.values()}
-            for wait in payload.agent_associations:
-                parent = wait.parent_node
-                if parent.execution_id not in executions:
-                    return False
-                protected = self.api.store.load_agent_association(ref=ref, parent_node=parent, wait=wait)
-                if protected.terminal_result_ref is not None:
-                    continue
-                prepared = self.api.store._agent_prepare(
-                    ref=ref, parent_node=parent, writing=False, expected_generation=generation
-                )
-                if prepared.workspace != protected.association.workspace:
-                    return False
-                status = RunStatusResponse.model_validate(
-                    self.backend.client.get_run_sync(protected.association.agent_run_id).model_dump(mode="json")
-                )
-                if status.run_id != protected.association.agent_run_id or status.status != "waiting":
-                    return False
-                selected = self.continuation._selected(
-                    ref=ref,
-                    association=protected.association,
-                    generation=wait.agent_generation,
-                    event_id=wait.backend_wait_event_id,
-                )
-                if canonical_digest(selected.checkpoint.model_dump(mode="json")) != wait.checkpoint_digest:
-                    return False
-                self.api.store._agent_refresh_access(prepared)
-                with self.loader.session_factory() as session:
-                    current = self._waiting_binding_checkpoint(session=session, ref=ref, request=request)
-                    if current != (checkpoint, generation):
-                        return False
-                    owned, scope = self.loader._load(session, ref=ref, lock=False)
-                    self.api.store._agent_recheck(session, owned, scope, prepared, writing=False)
-                    run, pause = self.continuation._parent_rows(session, ref=ref)
-                    if (run.id, pause.id, pause.state_object_key) != (
-                        paused.native_run_id,
-                        paused.pause_id,
-                        paused.state_object_key,
-                    ):
-                        return False
-                response = self.backend.client.keep_alive_execution_binding_sync(
-                    KeepAliveExecutionBindingRequest(binding_ref=prepared.workspace.backend_binding_ref)
-                )
-                retained = (
-                    KeepAliveExecutionBindingResponse.model_validate(response.model_dump(mode="json")).supported
-                    or retained
-                )
-            return retained
-        except SoftTimeLimitExceeded:
-            raise
-        except BuilderExecutionPolicyError:
-            return False
-        except Exception:
-            logger.warning("Dify Builder waiting binding retention unavailable (request=%s)", request_id)
-            return False
-
     def peek(self, *, actor, session_id, request_id):
         """Read public facts without enqueue, ACK recovery, or settlement.
 
@@ -1011,7 +925,6 @@ class ConfirmedAgentCommands:
         return True
 
     def _terminal_recovery_proof(self, *, ref, protected):
-        from dify_agent.protocol.schemas import RunStatusResponse
 
         paused = self.continuation.read_parent_pause(ref=ref)
         if protected.wait is None:
@@ -1175,6 +1088,9 @@ class ConfirmedAgentCommands:
         return self.get(actor=actor, session_id=session_id, request_id=request_id)
 
     def _publish_one(self, *, ref, generation, dispatch_id) -> bool:
+        """Publish only when an explicit transport is provided."""
+        if self.publish is None:
+            return False
         context = self.api.store.load_context(ref=ref)
         with self.loader.session_factory() as session:
             row = session.scalar(
@@ -1326,7 +1242,6 @@ class ConfirmedAgentCommands:
             RunEventsResponse,
             RunFailedEvent,
             RunResumedEvent,
-            RunStatusResponse,
             RunSucceededEvent,
         )
 
@@ -2054,26 +1969,14 @@ class ProfiledNativeTestCommands:
                         return 0
         reconciled = lifecycle.reconcile(limit=limit, request_id=request_id)
         if isinstance(service, ConfirmedAgentCommands):
-            return reconciled + service.publish_pending(limit=limit, request_id=request_id)
+            return reconciled
         return reconciled + lifecycle.publish_pending(publish=publish, limit=limit, request_id=request_id)
-
-    def keep_alive_waiting_binding(self, *, actor, session_id, request_id) -> bool:
-        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
-        if isinstance(service, ConfirmedAgentCommands):
-            return service.keep_alive_waiting_binding(actor=actor, session_id=session_id, request_id=request_id)
-        return False
 
     def recover_observation(self, *, actor, session_id, request_id):
         """Worker-only ACK observation, separate from outbox publication and GET."""
         service = self._service(actor=actor, session_id=session_id, request_id=request_id)
         if isinstance(service, ConfirmedAgentCommands):
             service.get(actor=actor, session_id=session_id, request_id=request_id)
-
-    def settle_builder(self, *, actor, session_id, request_id):
-        """POST-only result projection; never publish or launch work."""
-        service = self._service(actor=actor, session_id=session_id, request_id=request_id)
-        if isinstance(service, ConfirmedAgentCommands):
-            service._complete_builder(ref=service._root_ref(actor=actor, request_id=request_id))
 
     def start(self, **values):
         return self.legacy_factory().start(**values)

@@ -71,7 +71,6 @@ def test_session_view_to_dict_projects_only_browser_fields() -> None:
         "pending_fix_context": None,
         "phase": "understand",
         "actions": [],
-        "test_execution": None,
     }
 
 

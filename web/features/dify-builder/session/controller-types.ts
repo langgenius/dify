@@ -24,8 +24,6 @@ export type SessionControllerContext = {
   lifecycleAbortRef: RefObject<AbortController | null>
   materialAbortRef: RefObject<AbortController | null>
   pendingTaskControlRef: RefObject<PendingTaskControl | null>
-  nativeObservationRef: RefObject<number>
-  pendingActionRef: RefObject<{ signature: string; id: string } | null>
   pendingMessageRef: RefObject<{ sessionId: string; text: string; turnId: string } | null>
   pendingRetestRef: RefObject<PendingRetest | null>
   traceRef: RefObject<TraceBuffer>
@@ -48,11 +46,7 @@ export type SessionControllerContext = {
     targetLastSeq: number,
     controller: AbortController,
   ) => Promise<boolean>
-  applySessionView: (
-    view: SessionView,
-    observedAtStart?: number | 'stream',
-    reading?: AbortController,
-  ) => boolean
+  applySessionView: (view: SessionView, reading?: AbortController) => boolean
   reconcileSession: (
     sessionId: string,
     controller: AbortController,

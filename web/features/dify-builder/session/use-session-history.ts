@@ -109,7 +109,7 @@ export function useDifyBuilderSessionHistory({
       }
       const view = store.get(difyBuilderSessionViewAtom)
       if (lastSeq >= targetLastSeq && view?.session_id === sessionId)
-        runEvents?.restoreRun(sessionId, items, view)
+        runEvents?.restoreRun(sessionId, items)
       return lastSeq >= targetLastSeq
     },
     [confirmLocalUserMessage, runEvents, setConversation, setConversationHasMore, store],
@@ -155,7 +155,7 @@ export function useDifyBuilderSessionHistory({
 
       const complete = hasConversationRange(items, afterSequence, targetLastSeq)
       const view = store.get(difyBuilderSessionViewAtom)
-      if (complete && view?.session_id === sessionId) runEvents?.restoreRun(sessionId, items, view)
+      if (complete && view?.session_id === sessionId) runEvents?.restoreRun(sessionId, items)
       return complete
     },
     [confirmLocalUserMessage, runEvents, setConversation, store],
@@ -191,11 +191,7 @@ export function useDifyBuilderSessionHistory({
       const merged = mergeConversation(page.data, store.get(difyBuilderConversationAtom))
       setConversation(merged)
       confirmLocalUserMessage(view.session_id, page.data)
-      runEvents?.restoreRun(
-        view.session_id,
-        merged,
-        store.get(difyBuilderSessionViewAtom) ?? undefined,
-      )
+      runEvents?.restoreRun(view.session_id, merged)
       setConversationHasMore(page.has_more)
       return page.data.length > 0
     } catch (error) {

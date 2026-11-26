@@ -35,16 +35,12 @@ from fields.workflow_stream_fields import WorkflowStreamPayload
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
-from runtime_contracts.builder.execution import canonical_digest
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.application.cognition_policy import CognitionPolicyDeniedError
 from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
 from services.dify_builder.attachment_extraction import AttachmentExtractionStatus
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.execution_policy_service import check_app_permissions
-from services.dify_builder.native_testing.public_contracts import (
-    NativeTestPublicReceipt,
-)
 from services.dify_builder.progress_snapshot import ProgressSnapshot
 from services.dify_builder.real_call_consent_service import (
     BuilderRealCallConsentService,
@@ -302,10 +298,6 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
         projected["attachments"] = view["attachments"]
     if view.get("decision") is not None:
         projected["decision"] = view["decision"]
-    if view.get("test_execution") is not None:
-        projected["test_execution"] = NativeTestPublicReceipt.model_validate(view["test_execution"]).model_dump(
-            mode="json"
-        )
     active_interaction = _public_active_interaction(view.get("active_interaction"))
     if active_interaction is not None:
         projected["active_interaction"] = active_interaction
@@ -322,9 +314,7 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
 
 def session_view_to_dict(view: SessionView) -> dict[str, object]:
     """Serialize only the session fields consumed by the browser."""
-    projected = _public_session_view(dataclasses.asdict(view), include_last_command_id=True)
-    projected.setdefault("test_execution", None)
-    return projected
+    return _public_session_view(dataclasses.asdict(view), include_last_command_id=True)
 
 
 def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
@@ -735,11 +725,9 @@ def stream_session_frames(
                 raw = subscription.receive(timeout=_HEARTBEAT_SECONDS)
                 cleared = conversation_cleared()
                 event = _progress_event(raw) if raw is not None and not cleared else None
-                receipt = current.get("test_execution")
-                native_pending = isinstance(receipt, dict) and receipt.get("status") != "terminal"
                 if (
                     cleared
-                    or (raw is None and (refresh_on_idle or native_pending))
+                    or (raw is None and refresh_on_idle)
                     or (event and event[0] in {"native_state_changed", "session_state_changed"})
                 ):
                     latest = read_session_view()
@@ -778,8 +766,6 @@ def stream_advance_frames(
     initial_items: Sequence[ConversationItem] = (),
     read_session_view: Callable[[], dict[str, object] | None] | None = None,
     initial_progress: ProgressSnapshot | None = None,
-    native_receipts: Callable[[], tuple[NativeTestPublicReceipt, ...]] | None = None,
-    native_cursor: str = "",
     conversation_cleared: Callable[[], bool] | None = None,
 ) -> Iterator[str]:
     """Emit a bounded command handshake, then relay incremental progress.
@@ -801,26 +787,6 @@ def stream_advance_frames(
     Returns a ``_ClosingFrameStream`` (not a bare generator) so the eagerly
     activated ``subscription`` is closed even when the WSGI server closes the
     response body without ever iterating it -- see _ClosingFrameStream."""
-
-    native_seen: set[str] = {native_cursor} if native_cursor else set()
-
-    def native_frames() -> Iterator[str]:
-        if native_receipts is None:
-            return
-        receipts = native_receipts()
-        for receipt in receipts:
-            public = NativeTestPublicReceipt.model_validate(receipt.model_dump(mode="json")).model_dump(mode="json")
-            cursor = canonical_digest(public)
-            if cursor not in native_seen:
-                native_seen.add(cursor)
-                yield f"id: {cursor}\n" + _event_frame(
-                    "native_execution",
-                    {
-                        "session_id": view_dict.get("session_id", ""),
-                        "cursor": cursor,
-                        "receipt": public,
-                    },
-                )
 
     def cleared_frame() -> str | None:
         if not view_dict.get("conversation_cleared") and not (conversation_cleared and conversation_cleared()):
@@ -845,7 +811,6 @@ def stream_advance_frames(
             if cleared := cleared_frame():
                 yield cleared
                 return
-            yield from native_frames()
 
             if emit_command_started:
                 yield _event_frame(
@@ -881,8 +846,7 @@ def stream_advance_frames(
                             "command_id": command_id,
                         },
                     )
-                if native_receipts is None or subscription is None:
-                    return
+                return
             if subscription is None:
                 return
             if initial_progress is not None and initial_progress.at_version > view_dict["version"]:
@@ -907,9 +871,7 @@ def stream_advance_frames(
                     yield cleared
                     return
                 if raw is None:
-                    # Native changes arrive on the existing bus. Idle
-                    # heartbeats must not become receipt polling in disguise.
-                    if native_receipts is None and read_session_view is not None:
+                    if read_session_view is not None:
                         latest = read_session_view()
                         if latest is None:
                             yield ": keep-alive\n\n"
@@ -934,49 +896,26 @@ def stream_advance_frames(
                 if kind == "native_state_changed":
                     if not isinstance(data, dict) or data.get("session_id") != view_dict.get("session_id"):
                         continue
-                    if native_receipts is None:
-                        if read_session_view is not None:
-                            latest = read_session_view()
-                            if latest is None:
-                                yield ": keep-alive\n\n"
-                                continue
-                            if (
-                                latest.get("_task_paused")
-                                or latest["run_status"] != "processing"
-                                or latest["interrupted"]
-                            ):
-                                yield _event_frame(
-                                    "command_finished",
-                                    {
-                                        **_public_session_view(latest, include_last_command_id=False),
-                                        "command_id": command_id
-                                        if latest.get("_task_paused") and command_id
-                                        else latest.get("last_command_id", ""),
-                                    },
-                                )
-                                return
-                        continue
-                    yield from native_frames()
                     if read_session_view is not None:
                         latest = read_session_view()
                         if latest is None:
                             yield ": keep-alive\n\n"
                             continue
-                        yield _event_frame(
-                            "command_finished",
-                            {
-                                **_public_session_view(latest, include_last_command_id=False),
-                                "command_id": latest.get("last_command_id", ""),
-                            },
-                        )
+                        if latest.get("_task_paused") or latest["run_status"] != "processing" or latest["interrupted"]:
+                            yield _event_frame(
+                                "command_finished",
+                                {
+                                    **_public_session_view(latest, include_last_command_id=False),
+                                    "command_id": command_id
+                                    if latest.get("_task_paused") and command_id
+                                    else latest.get("last_command_id", ""),
+                                },
+                            )
+                            return
                     continue
                 yield _event_frame(kind, data)
-                if kind in _TERMINAL_KINDS and not (kind == "command_finished" and native_receipts is not None):
+                if kind in _TERMINAL_KINDS:
                     return
-            if native_receipts is not None:
-                # End only the observation transport. The browser reconnects
-                # without replay; a stream lifetime is not an execution timeout.
-                return
             yield _event_frame(
                 "error",
                 {
@@ -1013,14 +952,6 @@ def native_runtime_owner():
     if type(owner) is not DifyNativeRuntimeOwner:
         raise BuilderExecutionPolicyError("native_runtime_composition_mismatch")
     return owner
-
-
-def build_native_test_input_binding_service(*, actor: Actor):
-    from services.dify_builder.native_testing.input_binding import NativeTestInputBindingService
-
-    return NativeTestInputBindingService(
-        session_factory=sessionmaker(bind=db.engine, expire_on_commit=False), actor=actor
-    )
 
 
 def build_native_test_api_service(*, actor: Actor):
@@ -1159,15 +1090,4 @@ def build_confirmed_agent_command_service(*, actor: Actor, backend=None):
         actor=actor,
         operations=build_native_agent_operation_service(actor=actor),
         backend=backend,
-    )
-
-
-def build_confirmed_agent_node_owners(*, actor: Actor, backend):
-    from services.agent.workflow_run_recovery import WorkflowAgentRunRecovery
-    from services.dify_builder.native_testing.agent_confirmed_workspace import build_confirmed_agent_preparation
-
-    return (
-        build_confirmed_agent_preparation(actor=actor, backend=_NativeAgentIdentityReader()),
-        build_confirmed_agent_command_service(actor=actor, backend=backend),
-        WorkflowAgentRunRecovery(sessionmaker(bind=db.engine, expire_on_commit=False)),
     )

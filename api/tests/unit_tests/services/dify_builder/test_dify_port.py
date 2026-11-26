@@ -24,7 +24,7 @@ is Task 5's runbook, not this suite.
 """
 
 import json
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from types import TracebackType
@@ -38,8 +38,7 @@ from sqlalchemy import Engine, update
 from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.dify_builder.models import Actor, Graph, MutationIntent, NodeEvent, Run
+from core.dify_builder.models import Actor, Graph, MutationIntent, Run
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -51,17 +50,12 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from runtime_contracts.builder.execution import BuilderExecutionContext
 from services.dify_builder import run_mapping
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError, WorkflowNotInitializedError
 from services.dify_builder.revision import execution_revision
 from services.errors.app import WorkflowHashNotEqualError
 from tests.unit_tests.installed_spies import installed_mock
-from tests.unit_tests.services.dify_builder.workflow_stream_fixtures import (
-    native_chatflow_payloads,
-    native_workflow_payloads,
-)
 
 
 def _workflow(
@@ -253,44 +247,6 @@ def _default_draft_for_native_runs(mock_session: TrackedPortSession) -> Iterator
     with patch("services.dify_builder.dify_port.WorkflowService") as service:
         service.return_value.get_draft_workflow.return_value = _workflow(
             session=mock_session,
-        )
-        yield
-
-
-@pytest.fixture(autouse=True)
-def _mock_execution_preparation() -> Iterator[None]:
-    """Stream mapping tests isolate admission; real rows/normalization live in test_native_execution_admission."""
-    from services.dify_builder.revision import executable_graph_revision
-    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context
-
-    def prepare(*, app_id: str, actor: Actor, workflow: Workflow, **_kwargs: object) -> BuilderExecutionContext:
-        return context().model_copy(
-            update={
-                "app_id": app_id,
-                "tenant_id": actor.tenant_id,
-                "execution_revision": execution_revision(workflow),
-                "graph_revision": executable_graph_revision(dict(workflow.graph_dict)),
-            }
-        )
-
-    with (
-        patch("services.dify_builder.dify_port.BuilderExecutionPolicyService") as policy,
-        patch("services.dify_builder.dify_port.admitted_node_bindings"),
-        patch(
-            "services.dify_builder.dify_port.BaseAppGenerator._prepare_user_inputs",
-            side_effect=lambda **kw: kw["user_inputs"],
-        ),
-    ):
-        policy.return_value.prepare.side_effect = prepare
-        from services.dify_builder.application.execution_policy import ExecutionEvidenceSummary
-
-        policy.return_value.seal.return_value = ExecutionEvidenceSummary(
-            request_id="unit-request",
-            mode="restricted",
-            sealed=True,
-            safety_outcome="execution_evidence_unknown",
-            sandbox_profile="disabled",
-            fixture_digest="a" * 64,
         )
         yield
 
@@ -732,169 +688,6 @@ def _node_exec() -> WorkflowNodeExecutionModel:
     )
 
 
-def test_run_draft_streams_node_events_while_the_run_is_still_going(mock_session: TrackedPortSession) -> None:
-    """In-process streaming emits each event while the workflow is running,
-    without waiting for a second Celery task or replaying completed rows."""
-    account = _account(id="acc-1")
-    app = _app(id="app-1", tenant_id="tenant-1", mode="workflow")
-    _configure_session_get(mock_session, account=account, app=app)
-
-    chunks = [
-        "event: ping\n\n",
-        _sse({"event": "workflow_started", "data": {"id": "run-1"}}),
-        _sse({"event": "node_started", "data": {"node_id": "node-1", "title": "Code"}}),
-        "ping",
-        _sse({"event": "node_finished", "data": {"node_id": "node-1", "title": "Code", "status": "succeeded"}}),
-        _sse(_FINISHED_CHUNK),
-    ]
-
-    events: list[NodeEvent] = []
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = iter(chunks)
-        mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
-
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {"q": "hi"}, events.append, session_id="session-1", test_input_id="test-1"
-        )
-
-    _, kwargs = mock_ags.generate.call_args
-    assert kwargs["app_model"].id == app.id
-    assert kwargs["user"].id == account.id
-    assert kwargs["args"] == {"inputs": {"q": "hi"}}
-    assert kwargs["invoke_from"] == InvokeFrom.DEBUGGER
-    assert kwargs["streaming"] is True
-    assert kwargs["workflow_execution_mode"] == "in_process"
-    assert kwargs["session"] is mock_session
-
-    # Ping frames and workflow-level frames produce no node event.
-    assert events == [
-        NodeEvent(node_id="node-1", title="Code", status="running", error=""),
-        NodeEvent(node_id="node-1", title="Code", status="succeeded", error=""),
-    ]
-
-    # Frame IDs alone are no longer authority for native linkage.
-    mock_node_exec_repo.get_executions_by_workflow_run.assert_not_called()
-    assert run.status == "running"
-    assert run.dify_run_id == ""
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-
-
-def test_run_draft_consumes_the_stream_after_the_session_is_closed(mock_session: TrackedPortSession) -> None:
-    """``generate`` needs the Session eagerly; iterating the stream does not.
-
-    Pulling chunks inside the ``with`` block would pin a DB connection for the
-    whole workflow run, so the loop must sit outside it.
-    """
-    account = _account(id="acc-1")
-    app = _app(id="app-1", tenant_id="tenant-1", mode="workflow")
-    _configure_session_get(mock_session, account=account, app=app)
-
-    session_open_at_pull: list[bool] = []
-
-    def _stream() -> Iterator[str | Graph]:
-        for chunk in (
-            _sse({"event": "node_started", "data": {"node_id": "node-1", "title": "Code"}}),
-            _sse(_FINISHED_CHUNK),
-        ):
-            session_open_at_pull.append(not bool(mock_session.exits))
-            yield chunk
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = _stream()
-        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        repo.get_executions_by_workflow_run.return_value = list[object]()
-
-        WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
-
-    # generate() itself was called while the session was open...
-    assert mock_ags.generate.call_args.kwargs["session"] is mock_session
-    # ...but every chunk was pulled after it closed.
-    assert session_open_at_pull == [False, False]
-
-
-@pytest.mark.parametrize("wire_format", ["mapping", "sse"])
-@pytest.mark.parametrize("payload_factory", [native_workflow_payloads, native_chatflow_payloads])
-def test_run_draft_forwards_full_payloads_synchronously_without_reconstruction(
-    mock_session: TrackedPortSession, wire_format: str, payload_factory: Callable[[], list[Graph]]
-) -> None:
-    _configure_default_identity(mock_session)
-    payloads = payload_factory()
-    received = []
-    summaries = []
-
-    def stream() -> Iterator[str | Graph]:
-        yield "event: ping\n\n"
-        for payload in payloads:
-            yield _sse(payload) if wire_format == "sse" else payload
-            assert received[-1] == payload
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as generate,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as repositories,
-    ):
-        generate.generate.return_value = stream()
-        node_repo = repositories.create_api_workflow_node_execution_repository.return_value
-        node_repo.get_executions_by_workflow_run.return_value = list[object]()
-        WorkflowServiceDifyPort().run_draft(
-            "app-1",
-            _actor(),
-            {},
-            summaries.append,
-            on_workflow_event=received.append,
-            session_id="session-1",
-            test_input_id="test-1",
-        )
-
-    assert received == payloads
-    assert summaries  # Backend progress and diagnosis still receive node summaries.
-
-
-def test_run_draft_maps_a_paused_stream_to_a_failed_run(mock_session: TrackedPortSession) -> None:
-    """``workflow_paused`` carries ``workflow_run_id`` where blocking carried ``id``."""
-    _configure_default_identity(mock_session)
-
-    paused = {
-        "event": "workflow_paused",
-        "workflow_run_id": "run-9",
-        "data": {
-            "workflow_run_id": "run-9",
-            "paused_nodes": ["human-1"],
-            "reasons": [{"node_id": "human-1"}],
-            "status": "paused",
-            "elapsed_time": 2.0,
-            "total_tokens": 3,
-        },
-    }
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = iter([_sse(paused)])
-        repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        repo.get_executions_by_workflow_run.return_value = list[object]()
-
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
-
-    repo.get_executions_by_workflow_run.assert_not_called()
-    assert run.status == "running"
-    assert run.dify_run_id == ""
-
-
 # ---- run_draft: truncated streams must never fabricate a failure -------------
 
 
@@ -972,36 +765,6 @@ def test_a_truncated_stream_over_a_still_running_run_is_unknown_not_failed(mock_
     assert run.dify_run_id == "run-1"
 
 
-def test_run_draft_closes_the_stream_when_the_callback_raises(mock_session: TrackedPortSession) -> None:
-    """Streaming only releases the app's rate-limit slot on close()."""
-    _configure_default_identity(mock_session)
-
-    closed = []
-
-    def response_stream() -> Iterator[str]:
-        try:
-            yield _sse({"event": "node_started", "data": {"node_id": "n1", "title": "S"}})
-        finally:
-            closed.append(True)
-
-    response = response_stream()
-
-    def _boom(_event: NodeEvent) -> None:
-        raise RuntimeError("callback exploded")
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"),
-    ):
-        mock_ags.generate.return_value = response
-        with pytest.raises(RuntimeError, match="callback exploded"):
-            WorkflowServiceDifyPort().run_draft(
-                "app-1", _actor(), {}, _boom, session_id="session-1", test_input_id="test-1"
-            )
-
-    assert closed == [True]
-
-
 # ---- publish --------------------------------------------------------------
 
 
@@ -1067,76 +830,6 @@ def test_publish_publishes_workflow_updates_app_workflow_id_and_commits(mock_ses
 
 
 # ---- Protocol conformance --------------------------------------------------
-
-
-def test_run_draft_reads_a_blocking_dict_response(mock_session: TrackedPortSession) -> None:
-    """AppGenerateService.generate(streaming=False) returns a DICT, not a
-    stream. Iterating it yields its KEYS as strings -- probed live against the
-    real service:
-
-        response type: dict
-        [1] raw=str -> stream_chunk_as_mapping=None  'task_id'
-        [2] raw=str -> stream_chunk_as_mapping=None  'workflow_run_id'
-        [3] raw=str -> stream_chunk_as_mapping=None  'data'
-
-    so no run id and no terminal frame were ever found and every Builder test
-    run was recorded status=running with an empty dify_run_id, bouncing the
-    user back to build.execution forever. The pre-3838db8aa7 code read
-    ``response["data"]`` directly; the streaming rewrite dropped that path.
-    """
-    account = _account(id="acc-1")
-    app = _app(id="app-1", tenant_id="tenant-1", mode="workflow")
-    _configure_session_get(mock_session, account=account, app=app)
-
-    blocking_response = {
-        "task_id": "task-1",
-        "workflow_run_id": "run-1",
-        "data": dict(_FINISHED_CHUNK["data"]),
-    }
-
-    events: list[NodeEvent] = []
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = blocking_response
-        mock_node_exec_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        mock_node_exec_repo.get_executions_by_workflow_run.return_value = [_node_exec()]
-
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {"q": "hi"}, events.append, session_id="session-1", test_input_id="test-1"
-        )
-
-    assert run.status == "running"
-    assert run.dify_run_id == ""
-    assert run.per_node == []
-
-
-def test_run_draft_does_not_enqueue_a_second_celery_task(mock_session: TrackedPortSession) -> None:
-    """The Builder owns a Celery slot, so it must request in-process streaming.
-    Default streaming dispatches a child task and deadlocks when all slots are
-    occupied by Builder tasks waiting for their children."""
-    account = _account(id="acc-1")
-    app = _app(id="app-1", tenant_id="tenant-1", mode="workflow")
-    _configure_session_get(mock_session, account=account, app=app)
-
-    with (
-        patch("services.dify_builder.dify_port.AppGenerateService") as mock_ags,
-        patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory") as mock_repo_factory,
-    ):
-        mock_ags.generate.return_value = iter([_sse(_FINISHED_CHUNK)])
-        node_repo = mock_repo_factory.create_api_workflow_node_execution_repository.return_value
-        node_repo.get_executions_by_workflow_run.return_value = list[object]()
-        WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), {}, lambda _e: None, session_id="session-1", test_input_id="test-1"
-        )
-
-    _, kwargs = mock_ags.generate.call_args
-    assert kwargs["streaming"] is True
-    assert kwargs["workflow_execution_mode"] == "in_process", (
-        "Builder streaming must execute in process to avoid waiting for a second Celery worker slot"
-    )
 
 
 # ---- run_draft: an explicit error frame is a FAILED run, not an unknown one ----
@@ -1228,69 +921,6 @@ def test_chatflow_ordering_finished_failed_then_error_prefers_the_terminal_frame
     assert run.error == "node4: timeout"  # from the terminal frame, not the error frame
     assert run.elapsed_ms == 2500
     assert run.tokens == 7
-
-
-@pytest.mark.parametrize("custom", [{}, {"query": "custom Start query", "file": {"id": "file-1"}}])
-def test_chatflow_is_unsupported_even_with_valid_system_message(
-    mock_session: TrackedPortSession, custom: Graph
-) -> None:
-    _configure_session_get(
-        mock_session,
-        account=_account(id="acc-1"),
-        app=_app(id="app-1", tenant_id="tenant-1", mode="advanced-chat"),
-    )
-    inputs = {**custom, "sys.query": "User system message"}
-    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
-        generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
-        with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
-            run = WorkflowServiceDifyPort().run_draft(
-                "app-1", _actor(), inputs, lambda _event: None, session_id="session-1", test_input_id="test-1"
-            )
-    assert run.execution_refusal is not None
-    assert run.execution_refusal.reason_code == "unsupported_workflow"
-    assert run.dify_run_id == ""
-    generate.generate.assert_not_called()
-    assert inputs == {**custom, "sys.query": "User system message"}
-
-
-@pytest.mark.parametrize(
-    "inputs", [{}, {"sys.query": ""}, {"sys.query": "  "}, {"sys.query": 1}, {"query": "only Start query"}]
-)
-def test_chatflow_rejects_invalid_system_query_before_native_launch(
-    mock_session: TrackedPortSession, inputs: Graph
-) -> None:
-    _configure_session_get(
-        mock_session,
-        account=_account(id="acc-1"),
-        app=_app(id="app-1", tenant_id="tenant-1", mode="advanced-chat"),
-    )
-    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
-        run = WorkflowServiceDifyPort().run_draft(
-            "app-1", _actor(), inputs, lambda _event: None, session_id="session-1", test_input_id="test-1"
-        )
-        assert run.execution_refusal is not None
-    assert run.execution_refusal.reason_code == "unsupported_workflow"
-    generate.generate.assert_not_called()
-
-
-def test_workflow_keeps_query_as_an_ordinary_start_input(mock_session: TrackedPortSession) -> None:
-    _configure_session_get(
-        mock_session,
-        account=_account(id="acc-1"),
-        app=_app(id="app-1", tenant_id="tenant-1", mode="workflow"),
-    )
-    with patch("services.dify_builder.dify_port.AppGenerateService") as generate:
-        generate.generate.return_value = {"data": dict(_FINISHED_CHUNK["data"])}
-        with patch("services.dify_builder.dify_port.DifyAPIRepositoryFactory"):
-            WorkflowServiceDifyPort().run_draft(
-                "app-1",
-                _actor(),
-                {"query": "custom"},
-                lambda _event: None,
-                session_id="session-1",
-                test_input_id="test-1",
-            )
-    assert generate.generate.call_args.kwargs["args"] == {"inputs": {"query": "custom"}}
 
 
 @pytest.mark.parametrize(

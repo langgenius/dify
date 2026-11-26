@@ -38,7 +38,6 @@ from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
 from runtime_contracts.builder.presentation import BuilderText
 from runtime_contracts.builder.string_enum import BuilderStringEnum
-from services.dify_builder.native_testing.public_contracts import NativeTestInputBinding, NativeTestPublicReceipt
 
 
 class FixControlOperation(BuilderStringEnum):
@@ -247,14 +246,7 @@ class DifyBuilderSubmitActionPayload(DifyBuilderPayload):
     action_id: NonEmptyString
     client_action_id: ClientTurnId | None = None
     receipt_snapshot: DifyBuilderReceiptSnapshot | None = None
-    payload: dict[str, Any] = Field(
-        default_factory=dict,
-        description=(
-            "Existing action payload. Native controls: confirm_test_operation/deny_test_operation take "
-            "request_id,pending_operation_id,pending_version,scope_digest; resume_test takes request_id,"
-            "expected_generation; cancel_test takes request_id. Copy payload from the current server action."
-        ),
-    )
+    payload: dict[str, Any] = Field(default_factory=dict)
     base_version: StrictInt
     base_app_revision: NonEmptyString
 
@@ -447,7 +439,6 @@ class DifyBuilderMaterialReceiptResponse(ResponseModel):
 
 class DifyBuilderSessionStateResponse(ResponseModel):
     attachments: list[DifyBuilderMaterialReceiptResponse] = Field(default_factory=list, max_length=100)
-    test_execution: NativeTestPublicReceipt | None = None
     diagnostics: list[dict[str, Any]] = Field(default_factory=list, max_length=33)
     session_id: str
     reply_language: str = Field(
@@ -694,17 +685,6 @@ class DifyBuilderErrorEventResponse(ResponseModel):
     data: DifyBuilderErrorEventData
 
 
-class DifyBuilderNativeExecutionEventData(ResponseModel):
-    session_id: str
-    cursor: ScopeDigest
-    receipt: NativeTestPublicReceipt
-
-
-class DifyBuilderNativeExecutionEventResponse(ResponseModel):
-    event: Literal["native_execution"]
-    data: DifyBuilderNativeExecutionEventData
-
-
 class DifyBuilderStreamEventResponse(
     RootModel[
         Annotated[
@@ -719,8 +699,7 @@ class DifyBuilderStreamEventResponse(
             | DifyBuilderCommandFinishedEventResponse
             | DifyBuilderSessionReadyEventResponse
             | DifyBuilderSessionStateEventResponse
-            | DifyBuilderErrorEventResponse
-            | DifyBuilderNativeExecutionEventResponse,
+            | DifyBuilderErrorEventResponse,
             Field(discriminator="event"),
         ]
     ]
@@ -911,13 +890,3 @@ class DifyBuilderRealCallForbiddenResponse(
     ]
 ):
     """Every HTTP 403 body a real-call consent route can return."""
-
-
-class DifyBuilderNativeTestResponse(ResponseModel):
-    """Strict public native receipt; domain DTO also owns generated schemas."""
-
-    data: NativeTestPublicReceipt
-
-
-class DifyBuilderNativeTestInputResponse(ResponseModel):
-    data: NativeTestInputBinding

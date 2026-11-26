@@ -445,7 +445,6 @@ class SessionView:
     # Detected user-input language. Empty until the worker detects one.
     reply_language: str = ""
     # Bounded recent safe observations for debug export after reconnect.
-    test_execution: dict[str, Any] | None = None
     diagnostics: list[dict[str, Any]] = field(default_factory=list)
     # Bounded intake receipts; excerpts and storage keys are never public.
     attachments: list[dict[str, Any]] = field(default_factory=list)

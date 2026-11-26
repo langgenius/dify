@@ -12,7 +12,7 @@ import {
   streamErrorMessage,
   UNEXPECTED_EOF_ERROR,
 } from './errors'
-import { hasUnresolvedNativeTest, isActiveView } from './projection'
+import { isActiveView } from './projection'
 import {
   difyBuilderActiveCommandAtom,
   difyBuilderActiveSessionIdAtom,
@@ -33,7 +33,6 @@ const sessionIdleAtom = atom((get) => {
     view.session_id === get(difyBuilderActiveSessionIdAtom) &&
     !view.conversation_cleared &&
     !isActiveView(view) &&
-    !hasUnresolvedNativeTest(view) &&
     !get(difyBuilderActiveCommandAtom) &&
     !get(difyBuilderSessionBusyAtom) &&
     get(difyBuilderLifecycleControlAtom)?.phase !== 'pending' &&

@@ -29,7 +29,6 @@ import {
   difyBuilderInteractionRefAtom,
   difyBuilderInterruptedAtom,
   difyBuilderLocalInteractionResponseAtom,
-  difyBuilderNativeTestCancellingAtom,
   difyBuilderPendingFixAtom,
   difyBuilderRecheckReadyAtom,
   difyBuilderRetryCanvasRefreshAtom,
@@ -37,7 +36,6 @@ import {
   difyBuilderSessionIdAtom,
   difyBuilderSubmitActionAtom,
   difyBuilderTaskControlOperationAtom,
-  difyBuilderTestExecutionAtom,
   difyBuilderViewVersionAtom,
 } from '../state'
 
@@ -112,11 +110,9 @@ export const DifyBuilderPanelFooter = ({
 }: {
   focusTargetRef: RefObject<HTMLElement | null>
 }) => {
-  const { locale, renderText } = useBuilderText()
+  const { locale } = useBuilderText()
   const { t } = useTranslation(['common', 'difyBuilder'], { lng: locale })
-  const testExecution = useAtomValue(difyBuilderTestExecutionAtom)
   const taskControlOperation = useAtomValue(difyBuilderTaskControlOperationAtom)
-  const testCancelling = useAtomValue(difyBuilderNativeTestCancellingAtom)
   const commandBusy = useAtomValue(difyBuilderSessionBusyAtom)
   const taskControl = useAtomValue(difyBuilderTaskControlAtom)
   const canvasRefreshFailed = useAtomValue(difyBuilderCanvasRefreshFailedAtom)
@@ -147,10 +143,7 @@ export const DifyBuilderPanelFooter = ({
     interactionPending &&
     !interactionSubmitted &&
     (pendingFix ||
-      ((!runActive || interrupted) &&
-        taskControl === null &&
-        taskControlOperation !== 'resume' &&
-        !testCancelling))
+      ((!runActive || interrupted) && taskControl === null && taskControlOperation !== 'resume'))
   const formVisible =
     interactionVisible &&
     (activeInteraction?.card.kind === 'form' ||
@@ -207,22 +200,6 @@ export const DifyBuilderPanelFooter = ({
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>
         </div>
-      )}
-      {testExecution?.outcome === 'unknown' && (
-        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-warning">
-          {renderText({ type: 'copy', id: 'confirmed.unknown' })}
-        </p>
-      )}
-      {(testExecution?.resume_blocked_reason === 'native_resolution_unavailable' ||
-        (testExecution?.status === 'waiting' && testExecution.wait_reason === 'configuration')) && (
-        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
-          {t(($) => $['testResult.configurationRequired'], { ns: 'difyBuilder' })}
-        </p>
-      )}
-      {testCancelling && (
-        <p role="status" className="mx-4 mb-2 system-xs-regular text-text-secondary">
-          {t(($) => $['testResult.cancelling'], { ns: 'difyBuilder' })}
-        </p>
       )}
       {canvasRefreshFailed && (
         <div className="mx-4 mb-2 flex justify-end">

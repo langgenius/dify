@@ -1,8 +1,7 @@
 """Real owner rows, native normalization, and fail-before-effect port admission."""
 
 import json
-from collections.abc import Iterator, Mapping
-from threading import Thread
+from collections.abc import Iterator
 from typing import Never
 
 import pytest
@@ -11,13 +10,9 @@ from models.dify_builder import DifyBuilderTestInput
 from models.model import AppMode
 from models.workflow import Workflow
 from runtime_contracts.builder.execution import (
-    BuilderExecutionContext,
-    ExecutionEvidenceSummary,
-    TrustedExecutionCompletion,
     WorkerExit,
     WorkflowExecutionTransport,
 )
-from services.dify_builder.application.execution_policy import scalar_inputs_digest
 from services.dify_builder.dify_port import _BuilderExecutionLaunch
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from services.workflow_execution_identity import build_workflow_execution_identity
@@ -115,51 +110,6 @@ def test_port_refuses_unsupported_before_native_generation_or_secrets(
     assert calls == []
 
 
-@pytest.mark.parametrize(
-    ("submitted", "expected"), [({"n": "41", "drop": "x"}, {"n": 41, "text": "ab"}), ({}, {"n": 7, "text": "ab"})]
-)
-def test_port_uses_native_defaults_numbers_and_sanitization(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch, submitted: dict[str, object], expected: dict[str, object]
-) -> None:
-    import services.dify_builder.dify_port as module
-
-    factory, actor, app, workflow, sid, tid = owned
-    graph = workflow.graph_dict
-    graph["nodes"][0]["data"]["variables"] = [
-        {"variable": "n", "label": "Number", "type": "number", "required": False, "default": "7"},
-        {"variable": "text", "label": "Text", "type": "text-input", "required": False, "default": "a\u0000b"},
-    ]
-    workflow.graph = json.dumps(graph)
-    with factory.begin() as db:
-        stored_workflow = db.get(Workflow, workflow.id)
-        assert stored_workflow is not None
-        stored_workflow.graph = workflow.graph
-        stored_input = db.get(DifyBuilderTestInput, tid)
-        assert stored_input is not None
-        stored_input.inputs = submitted
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-    calls = []
-
-    def native(**kwargs: object) -> dict[str, object]:
-        calls.append(kwargs)
-        return {}
-
-    monkeypatch.setattr(module.AppGenerateService, "generate", native)
-    result = module.WorkflowServiceDifyPort().run_draft(
-        app.id, actor, submitted, lambda _: None, session_id=sid, test_input_id=tid
-    )
-    assert result.dify_run_id == ""
-    args = calls[0]["args"]
-    assert isinstance(args, dict)
-    assert args["inputs"] == expected
-    marker = calls[0]["builder_execution"]
-    assert isinstance(marker, BuilderExecutionContext)
-    assert marker.effective_inputs_digest == scalar_inputs_digest(expected)
-    assert marker.submitted_inputs_digest == scalar_inputs_digest(submitted)
-
-
 @pytest.mark.parametrize(("inputs", "expected"), [({"n": "41"}, {"n": 41}), ({}, {"n": 7})])
 def test_native_generator_revalidates_its_normalized_effective_inputs(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, inputs: dict[str, object], expected: dict[str, object]
@@ -170,7 +120,6 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
     from core.app.entities.app_invoke_entities import InvokeFrom
     from models.account import Account
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 
     factory, actor, app, workflow, sid, tid = owned
@@ -255,31 +204,6 @@ def test_native_generator_revalidates_its_normalized_effective_inputs(
         )
 
 
-def test_port_preserves_worker_policy_refusal_without_allocating_native_result(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import services.dify_builder.dify_port as module
-    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-
-    factory, actor, app, workflow, sid, tid = owned
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-
-    def generate(*, builder_execution_admit: _BuilderExecutionLaunch, **_kwargs: object) -> Iterator[dict[str, str]]:
-        builder_execution_admit.on_refusal(BuilderExecutionPolicyError("unsupported_node_implementation"))
-        return iter([{"event": "error", "code": "invalid_param", "message": "policy error"}])
-
-    monkeypatch.setattr(module.AppGenerateService, "generate", generate)
-    result = module.WorkflowServiceDifyPort().run_draft(
-        app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
-    )
-    assert result.dify_run_id == ""
-    assert result.execution_refusal is not None
-    assert result.execution_refusal.reason_code == "unsupported_node_implementation"
-    assert result.error == ""
-
-
 @pytest.mark.parametrize("metadata", ["environment", "conversation", "tracing"])
 def test_postflight_rejects_raw_changes_before_secret_revision(
     owned: Owned, monkeypatch: pytest.MonkeyPatch, metadata: str
@@ -331,7 +255,6 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
     from core.app.entities.app_invoke_entities import InvokeFrom
     from models.account import Account
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs
 
@@ -386,7 +309,6 @@ def test_direct_restricted_generator_admits_raw_before_config_and_normalization(
 def test_completion_snapshots_actual_thread_once(owned: Owned, alive_at_snapshot: bool) -> None:
     import threading
 
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
     context = prepare_inputs(owned)
@@ -429,76 +351,9 @@ def test_completion_snapshots_actual_thread_once(owned: Owned, alive_at_snapshot
     assert done.worker_finished is (not alive_at_snapshot)
 
 
-@pytest.mark.parametrize("failure", ["none", "setup", "iterator", "callback", "close"])
-def test_port_always_closes_prepared_request_unknown_without_actual_worker(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch, failure: str
-) -> None:
-    from sqlalchemy import select
-
-    import services.dify_builder.dify_port as module
-    from models.dify_builder import DifyBuilderExecutionRequest
-
-    factory, actor, app, workflow, sid, tid = owned
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-
-    class Response:
-        closed = False
-
-        def __iter__(self) -> Iterator[str]:
-            if failure == "iterator":
-                raise RuntimeError("primary")
-            yield 'data: {"event":"workflow_started"}\n\n'
-
-        def close(self) -> None:
-            self.closed = True
-            if failure == "close":
-                raise RuntimeError("primary")
-
-    response = Response()
-
-    def generate(**_kwargs: object) -> Response:
-        if failure == "setup":
-            raise RuntimeError("primary")
-        return response
-
-    def callback(_: Mapping[str, object]) -> None:
-        if failure == "callback":
-            raise RuntimeError("primary")
-
-    monkeypatch.setattr(module.AppGenerateService, "generate", generate)
-    if failure == "none":
-        result = module.WorkflowServiceDifyPort().run_draft(
-            app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid, on_workflow_event=callback
-        )
-        assert result.verification is not None
-        assert result.verification.execution_evidence is not None
-        assert result.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-    else:
-        with pytest.raises(RuntimeError, match="primary"):
-            module.WorkflowServiceDifyPort().run_draft(
-                app.id,
-                actor,
-                {"n": "41"},
-                lambda _: None,
-                session_id=sid,
-                test_input_id=tid,
-                on_workflow_event=callback,
-            )
-    if failure != "setup":
-        assert response.closed
-    with factory() as db:
-        row = db.scalars(select(DifyBuilderExecutionRequest)).one()
-        assert row.state == "sealed"
-        assert row.completion_summary is not None
-    assert row.completion_summary["safety_outcome"] == "execution_evidence_unknown"
-
-
 @pytest.mark.parametrize("preworker", [False, True])
 def test_refusal_origin_requires_explicit_preworker_fact(owned: Owned, preworker: bool) -> None:
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
     context = prepare_inputs(owned)
@@ -518,7 +373,6 @@ def test_real_service_transport_guard_marks_preworker_origin(owned: Owned) -> No
     from models.account import Account
     from services.app_generate_service import AppGenerateService
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
     factory, actor, app, _, _, _ = owned
@@ -542,53 +396,11 @@ def test_real_service_transport_guard_marks_preworker_origin(owned: Owned) -> No
     assert launch.finish(response_completed=True).preworker_refusal
 
 
-def test_poststart_setup_policy_error_cannot_claim_preworker_origin(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import threading
-
-    import services.dify_builder.dify_port as module
-    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-
-    factory, actor, app, workflow, sid, tid = owned
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_a, **_kw: workflow)
-    entered, release = threading.Event(), threading.Event()
-    threads: list[Thread] = []
-
-    def generate(**_kwargs: object) -> Never:
-        def delayed_worker() -> None:
-            entered.set()
-            release.wait(5)
-
-        thread = threading.Thread(target=delayed_worker)
-        threads.append(thread)
-        thread.start()
-        assert entered.wait(5)
-        raise BuilderExecutionPolicyError("unsupported_execution_transport")
-
-    monkeypatch.setattr(module.AppGenerateService, "generate", generate)
-    try:
-        result = module.WorkflowServiceDifyPort().run_draft(
-            app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
-        )
-        assert result.verification is not None
-        assert result.verification.execution_evidence is not None
-        assert result.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-        assert result.dify_run_id == ""
-    finally:
-        release.set()
-        for thread in threads:
-            thread.join(5)
-
-
 @pytest.mark.parametrize("conflict", ["claimed", "foreign_thread", "different_error"])
 def test_preworker_origin_rejects_conflicts(owned: Owned, conflict: str) -> None:
     import threading
 
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
     marker = prepare_inputs(owned)
@@ -616,42 +428,11 @@ def test_preworker_origin_rejects_conflicts(owned: Owned, conflict: str) -> None
     assert not launch.finish(response_completed=True).preworker_refusal
 
 
-def test_final_seal_failure_returns_unsealed_unknown_without_allocation_identity(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import services.dify_builder.dify_port as module
-    from services.dify_builder.application.verification import is_execution_policy_blocker, publication_decision
-
-    factory, actor, app, workflow, sid, tid = owned
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-    monkeypatch.setattr(module.AppGenerateService, "generate", lambda **_: {})
-
-    def seal(*_args: object, **_kwargs: object) -> Never:
-        raise RuntimeError("storage")
-
-    monkeypatch.setattr(module.BuilderExecutionPolicyService, "seal", seal)
-    run = module.WorkflowServiceDifyPort().run_draft(
-        app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
-    )
-    assert run.dify_run_id == ""
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert not run.verification.execution_evidence.sealed
-    assert run.verification is not None
-    assert run.verification.execution_evidence is not None
-    assert run.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
-    assert is_execution_policy_blocker(run)
-    assert not publication_decision(run, session_id=sid, current_revision="r", current_graph_revision="g").allowed
-
-
 @pytest.mark.parametrize("invalid", ["thread", "context", "recorder", "conflicting_exit"])
 def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) -> None:
     import threading
 
     from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-    from services.dify_builder.dify_port import _BuilderExecutionLaunch
     from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs, service_module
 
     context = prepare_inputs(owned)
@@ -691,64 +472,3 @@ def test_invalid_worker_candidate_latches_unknown(owned: Owned, invalid: str) ->
     assert not frozen.worker_finished
     assert not frozen.recorder_healthy
     assert launch.finish(response_completed=True) is frozen
-
-
-@pytest.mark.parametrize("preworker", [False, True])
-def test_setup_refusal_is_completed_only_with_positive_preworker_origin(
-    owned: Owned, monkeypatch: pytest.MonkeyPatch, preworker: bool
-) -> None:
-    """Lifecycle contract with a real returned thread; not composed native SQL proof."""
-    import threading
-
-    import services.dify_builder.dify_port as module
-    from services.dify_builder.application.execution_policy import BuilderExecutionPolicyError
-
-    factory, actor, app, workflow, sid, tid = owned
-    monkeypatch.setattr(module, "_session_factory", lambda: factory)
-    monkeypatch.setattr(module, "set_login_user", lambda _: None)
-    monkeypatch.setattr(module, "_load_draft_workflow_or_raise", lambda *_, **__: workflow)
-    completions: list[TrustedExecutionCompletion] = []
-    seal = module.BuilderExecutionPolicyService.seal
-
-    def capture(
-        service: BuilderExecutionPolicyService, *, request_id: str, completion: TrustedExecutionCompletion
-    ) -> ExecutionEvidenceSummary:
-        completions.append(completion)
-        return seal(service, request_id=request_id, completion=completion)
-
-    def generate(*, builder_execution_admit: _BuilderExecutionLaunch, **_kwargs: object) -> Never:
-        launch = builder_execution_admit
-        error = BuilderExecutionPolicyError("unsupported_workflow")
-        if preworker:
-            launch.on_refusal(error, preworker=True)
-        else:
-
-            def returned_worker() -> None:
-                launch.on_worker_finished(
-                    context=launch.context,
-                    native_run_id="allocated",
-                    task_id="task",
-                    recorder=None,
-                    worker_thread=threading.current_thread(),
-                    exit_kind=WorkerExit.RETURNED,
-                )
-
-            thread = threading.Thread(target=returned_worker)
-            thread.start()
-            thread.join(5)
-            assert not thread.is_alive()
-        raise error
-
-    monkeypatch.setattr(module.BuilderExecutionPolicyService, "seal", capture)
-    monkeypatch.setattr(module.AppGenerateService, "generate", generate)
-    result = module.WorkflowServiceDifyPort().run_draft(
-        app.id, actor, {"n": "41"}, lambda _: None, session_id=sid, test_input_id=tid
-    )
-    assert len(completions) == 1
-    assert completions[0].response_completed is preworker
-    assert completions[0].worker_finished is (not preworker)
-    assert result.verification is not None
-    assert result.verification.execution_evidence is not None
-    assert result.verification.execution_evidence.safety_outcome == (
-        "unsupported_safe_execution" if preworker else "execution_evidence_unknown"
-    )

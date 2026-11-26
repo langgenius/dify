@@ -7,7 +7,6 @@ import { queryClientAtom } from 'jotai-tanstack-query'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyBuilderPanel from '..'
-import { createNativeReceipt } from '../../session/__tests__/fixtures'
 import {
   difyBuilderConversationAtom,
   difyBuilderConversationHasMoreAtom,
@@ -191,43 +190,6 @@ describe('DifyBuilderPanel', () => {
       name: 'gpt-4o',
       provider: 'openai',
     }
-  })
-
-  it('explains a native configuration wait while allowing Stop and blocking new messages', async () => {
-    const user = userEvent.setup()
-    renderPanel({
-      ...sessionView,
-      phase: 'test',
-      run_status: 'waiting_confirmation',
-      test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
-      actions: [
-        {
-          id: 'cancel_test',
-          label: 'Cancel test',
-          kind: 'destructive',
-          payload: { request_id: 'request-1' },
-        },
-      ],
-      decision: {
-        title: 'Test blocked',
-        description: 'The test is waiting for configuration.',
-        options: [{ id: 'cancel_test', label: 'Cancel test' }],
-        submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
-      },
-    })
-    expect(screen.getByText('difyBuilder.testResult.configurationRequired')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'difyBuilder.reset' })).toBeDisabled()
-    expect(screen.getByRole('region', { name: 'Test blocked' })).toHaveTextContent(
-      'The test is waiting for configuration.',
-    )
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Submit' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Cancel test' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'difyBuilder.taskControl.stop' }))
-    expect(mocks.stopTask).toHaveBeenCalledOnce()
-    expect(mocks.runAction).not.toHaveBeenCalled()
-    expect(mocks.reset).not.toHaveBeenCalled()
-    expect(mocks.sendMessage).not.toHaveBeenCalled()
   })
 
   it('contains malformed conversation content while preserving controls and retries the same session', async () => {

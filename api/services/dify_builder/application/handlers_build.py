@@ -68,20 +68,16 @@ from services.dify_builder.application.handlers_fix import (
     merge_known_keys,
     mint_checkpoint,
     model_config_error_text,
-    needs_effect_confirmation,
     note_repair_error,
     note_unknown_outcome,
     perform_revert,
     publication_denied,
     publication_for_context,
-    record_effect_confirmation,
     repair_is_repeating,
     run_finished_without_output,
-    saved_test_inputs,
     start_schema,
     test_failure_reason,
     testdata_form,
-    wait_for_native_approval,
     without_endpoint_values,
     without_upload_values,
 )
@@ -1234,31 +1230,21 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
         fc.verify_run_id = ""
-        # A new user choice is a new attempt; previous effect approval was
-        # scoped to the preceding saved-input attempt, including unknown ones.
-        fc.effect_confirmation = {}
-        fc.effect_confirmation_form = {}
-        fc.code_risk_assessments = {}
-        # A side effect not yet confirmed for its current target shows the form
-        # again, with the prepared inputs, so it is never mocked unannounced.
-        if fc.test_input_ref == "" or needs_effect_confirmation(env, s, fc, turn.actor):
+        if fc.test_input_ref == "":
             graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
             schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
-            if fc.test_input_ref:
-                prefill = saved_test_inputs(env, fc)
-            else:
-                # Pre-fill the form with mock values instead of asking the user to
-                # invent them: the cost is one click, not N fields. Still SHOW
-                # them -- a green check produced by inputs nobody ever saw is weak
-                # evidence about the workflow. Upload fields stay empty because
-                # nothing can mock a file. Endpoint fields -- a start variable an
-                # http-request node reads its URL from (ESQ1-302's placeholder
-                # grounding) -- stay empty too: a mocked endpoint is just another
-                # invented URL, so the form asks for those alone as well.
-                mocked = without_upload_values(
-                    schema, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
-                )
-                prefill = without_endpoint_values(graph, mocked)
+            # Pre-fill the form with mock values instead of asking the user to
+            # invent them: the cost is one click, not N fields. Still SHOW
+            # them -- a green check produced by inputs nobody ever saw is weak
+            # evidence about the workflow. Upload fields stay empty because
+            # nothing can mock a file. Endpoint fields -- a start variable an
+            # http-request node reads its URL from (ESQ1-302's placeholder
+            # grounding) -- stay empty too: a mocked endpoint is just another
+            # invented URL, so the form asks for those alone as well.
+            mocked = without_upload_values(
+                schema, env.agent.generate_mock_inputs(schema, {}, business_context=mock_input_business_context(fc))
+            )
+            prefill = without_endpoint_values(graph, mocked)
             card, reply = testdata_form(
                 env,
                 s,
@@ -1314,18 +1300,6 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
         validate_supplied_values(schema, inputs, require_all=False)
     except (ValueError, TypeError) as exc:
         return input_gate_result(env, s, fc, schema, inputs, PcState.BUILD_AWAIT_TESTDATA, str(exc), actor=turn.actor)
-    inputs, stale_effects = record_effect_confirmation(env, s, fc, turn.actor, inputs)
-    if stale_effects:
-        return input_gate_result(
-            env,
-            s,
-            fc,
-            schema,
-            inputs,
-            PcState.BUILD_AWAIT_TESTDATA,
-            copy_text(stale_effects),
-            actor=turn.actor,
-        )
     confirm_testdata_contract(s, fc, turn.action.payload if turn.action else {}, inputs)
     ti = TestInput(
         session_id=s.id,
@@ -1380,8 +1354,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     raw = None
     try:
         validate_runtime_inputs(schema, inputs, ti)
-        confirmation = fc.effect_confirmation
-        fc.effect_confirmation = {}
         raw = env.dify.run_draft(
             s.app_id,
             turn.actor,
@@ -1390,7 +1362,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
             session_id=s.id,
             test_input_id=fc.test_input_ref,
             on_workflow_event=env.emit_workflow,
-            effect_confirmation=confirmation,
         )
         status, per_node, dify_run_id, run_error = raw.status, raw.per_node, raw.dify_run_id, raw.error
     except Exception as exc:
@@ -1398,22 +1369,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         # of swallowing it, so diagnose/routing have something to act on.
         logger.exception("dify_builder verify run failed to launch (session=%s, app=%s)", s.id, s.app_id)
         status, per_node, dify_run_id, run_error = "failed", [], "", launch_error_text(exc)
-
-    if (
-        raw is not None
-        and raw.execution_refusal is not None
-        and raw.execution_refusal.reason_code == "code_risk_assessment_stale"
-    ):
-        return input_gate_result(
-            env,
-            s,
-            fc,
-            schema,
-            dict(inputs),
-            PcState.BUILD_AWAIT_TESTDATA,
-            copy_text(BuilderCopyId.TEST_POLICY_REVIEW),
-            actor=turn.actor,
-        )
 
     run = Run(
         execution_refusal=raw.execution_refusal if raw else None,
@@ -1428,9 +1383,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         inputs_ref=fc.test_input_ref,
         immutable=True,
     )
-
-    if raw is not None and raw.awaiting_native_approval:
-        return wait_for_native_approval(env, s, fc, progress, run, PcState.BUILD_AWAIT_REPAIR)
 
     if status == "running":
         progress.finish(status=ExecutionProgressStatus.STOPPED)

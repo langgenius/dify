@@ -36,10 +36,9 @@ export const ChoiceInteraction = ({
   const { renderText } = useBuilderText()
   const title = renderText(decision.title)
   const description = renderText(decision.description)
-  const requiresConsent = options.some((option) => option.id === 'confirm_test_operation')
   const defaultOptionId = decision.default_option_id || options[0]?.id || ''
   const requiresExplicitChoice =
-    requiresConsent || defaultOptionId === 'publish' || defaultOptionId === 'publish_workflow'
+    defaultOptionId === 'publish' || defaultOptionId === 'publish_workflow'
   const [selectedId, setSelectedId] = useState(requiresExplicitChoice ? '' : defaultOptionId)
   const [freeText, setFreeText] = useState('')
   const [pending, setPending] = useState(false)

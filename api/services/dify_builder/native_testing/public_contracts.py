@@ -1,21 +1,4 @@
-"""Versioned Console protocol. No request carries execution authority or inputs.
-
-GET /dify-builder/sessions/{session_id}/native-test-input returns the current
-saved-input binding, not plaintext inputs or a permit. Prefer existing Builder
-test actions: current test_execution is included in session/ordinary SSE
-projections. The old opt-in native stream remains compatible. Standalone
-POST /native-tests remains a separately qualified legacy runtime capability;
-obtaining a binding does not establish equivalent confirmed-run support.
-
-Saved pending decisions freeze the corresponding card across refresh. Order
-those facts by (generation, decision_public_revision); ``version`` retains its
-execution-state meaning. Expiry/exhaustion can change readiness without a new
-decision. ``can_resume`` is an advisory read-only policy check; resume repeats
-those checks under its existing request lock. Configuration/form references
-currently have no qualified public navigation/resolution binding and explicitly
-report native_resolution_unavailable. No history of retired pending cards is
-implied by this current-state projection.
-"""
+"""Types used to read and settle historical Builder native runs."""
 
 from typing import Literal, Self
 
@@ -32,7 +15,6 @@ from runtime_contracts.builder.native.contracts import (
     FrozenDTO,
     WaitReason,
 )
-from runtime_contracts.builder.native.runtime_contracts import NativeTestMode
 from runtime_contracts.builder.string_enum import BuilderStringEnum
 
 
@@ -80,34 +62,6 @@ class NativeTestInputBinding(FrozenDTO):
     graph_revision: Digest
     preferred_start: Literal["builder_action"] = "builder_action"
     direct_start_capability: Literal["requires_runtime_qualification"] = "requires_runtime_qualification"
-
-
-class NativeTestStartPayload(FrozenDTO):
-    schema_version: Literal["builder-native-test-v1"]
-    test_input_id: ID
-    expected_version: Counter
-    mode: NativeTestMode
-    idempotency_key: ID
-
-
-class NativeTestDecisionPayload(FrozenDTO):
-    schema_version: Literal["builder-native-test-v1"]
-    pending_operation_id: ID
-    decision: NativeTestDecision
-    scope_digest: Digest
-    expected_version: Counter
-    idempotency_key: ID
-
-
-class NativeTestResumePayload(FrozenDTO):
-    schema_version: Literal["builder-native-test-v1"]
-    expected_generation: Counter
-    idempotency_key: ID
-
-
-class NativeTestCancelPayload(FrozenDTO):
-    schema_version: Literal["builder-native-test-v1"]
-    idempotency_key: ID
 
 
 class PendingActionDisclosure(FrozenDTO):

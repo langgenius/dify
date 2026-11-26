@@ -430,46 +430,4 @@ describe('Builder draft preparation', () => {
     expect(clientMocks.action).not.toHaveBeenCalled()
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(newer)
   })
-
-  it.each(['confirm_test_operation', 'deny_test_operation', 'resume_test', 'cancel_test'])(
-    'preserves immutable %s targets without autosave or a preparation GET',
-    async (selectedId) => {
-      const prepare = vi.fn().mockResolvedValue(undefined)
-      const waiting = createSessionView({
-        run_status: 'waiting_confirmation',
-        actions: [
-          {
-            id: selectedId,
-            kind: 'primary',
-            label: 'Control',
-            payload: { request_id: 'current-request' },
-          },
-        ],
-      })
-      const { result, store } = renderSessionHook(prepare)
-      act(() => {
-        store.set(difyBuilderSessionViewAtom, waiting)
-        store.set(difyBuilderActiveSessionIdAtom, waiting.session_id)
-      })
-      clientMocks.action.mockResolvedValue(
-        streamOf(commandStartedEvent(waiting), stateEvent(waiting)),
-      )
-      await act(async () => {
-        expect(
-          await result.current.runAction('confirm', {
-            option_id: selectedId,
-            request_id: 'original-card-request',
-          }),
-        ).toBe(true)
-      })
-      expect(prepare).not.toHaveBeenCalled()
-      expect(clientMocks.get).not.toHaveBeenCalled()
-      expect(clientMocks.action.mock.calls[0]?.[0].body).toMatchObject({
-        action_id: 'confirm',
-        base_version: 1,
-        base_app_revision: 'revision-1',
-        payload: { option_id: selectedId, request_id: 'original-card-request' },
-      })
-    },
-  )
 })

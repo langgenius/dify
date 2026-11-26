@@ -152,6 +152,7 @@ class RunVerification:
     executed_node_ids: list[str]
     no_output_dead_branch: bool
     execution_evidence: ExecutionEvidenceSummary | None = None
+    ordinary_draft_run: bool = False
     # Content-free deterministic findings; empty means no explicit business contract.
     business_acceptance: dict[str, Any] = field(default_factory=dict)
 

@@ -72,20 +72,13 @@ from services.dify_builder.application.ports import Repository
 from services.dify_builder.business_acceptance import context_publication_decision
 from services.dify_builder.receipt_snapshot import apply_receipt_snapshot
 from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
-from services.dify_builder.test_actions import (
-    TEST_ACTIONS,
-    TestActionPort,
-    control_actions,
-    control_label,
-    control_title,
-    parse_test_action,
-)
 
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
     from services.dify_builder.attachment_intake import BuilderAttachmentIntake
     from services.dify_builder.fix_intents import FixIntentRepository
     from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+    from services.dify_builder.test_actions import TestActionPort
 
 logger = logging.getLogger(__name__)
 
@@ -1012,7 +1005,7 @@ class DifyBuilderService:
         get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
         stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
         real_call_consent: "BuilderRealCallConsentService | None" = None,
-        test_actions: TestActionPort | None = None,
+        test_actions: "TestActionPort | None" = None,
         read_task_dsl_fn: Callable | None = None,
         stream_read_scope_fn: Callable[[], AbstractContextManager] | None = None,
         attachment_intake: "BuilderAttachmentIntake | None" = None,
@@ -1613,17 +1606,6 @@ class DifyBuilderService:
 
     def _read_stream_session_view(self, session_id: str, actor: Actor) -> dict[str, object] | None:
         with self._stream_read_scope_fn():
-            _, context = self._get_authorized_session(session_id, actor)
-            from services.dify_builder.conversation_lifecycle import is_conversation_cleared
-
-            if (
-                not is_conversation_cleared(context)
-                and self._test_actions is not None
-                and self._test_actions.observation_initializing(
-                    actor=actor, session_id=session_id, test_input_id=context.test_input_ref
-                )
-            ):
-                return None
             view = asdict(self.get_session_view(session_id, actor))
             _, context = self._repo.get_session(session_id)
             return {**view, "_task_paused": context.paused}
@@ -1836,31 +1818,7 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
-        test_execution = None
-        receipt = None
-        native_controls = False
-        if self._test_actions is not None:
-            receipt = self._test_actions.current(
-                actor=Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
-                session_id=s.id,
-                test_input_id=fc.test_input_ref,
-            )
-            if receipt is not None:
-                test_execution = receipt.model_dump(mode="json")
-                native_controls = receipt.status != "terminal" or receipt.outcome == "unknown"
-                if native_controls:
-                    actions = control_actions(receipt)
         decision = _decision_for(st, actions)
-        if native_controls and decision is not None:
-            decision.title = control_title(decision.options[0].id)
-            decision.description = (
-                copy_text(BuilderCopyId.DECISION_TEST_OPERATION_APPROVAL_DESCRIPTION)
-                if decision.options[0].id == "confirm_test_operation"
-                else ""
-            )
-            decision.default_option_id = ""
-            for option in decision.options:
-                option.is_default = False
         if decision is not None and fc.recovery_class:
             decision.description = _RECOVERY_DESCRIPTION[fc.recovery_class]
         checkpoint = (
@@ -1874,17 +1832,6 @@ class DifyBuilderService:
         diagnostics = trace_diagnostics.from_history(
             self._repo.list_recent_conversation(s.id, limit=24), session_id=s.id, version=s.version
         )
-        if self._test_actions is not None and receipt is not None:
-            with suppress(Exception):
-                diagnostics = trace_diagnostics.merge_current(
-                    diagnostics,
-                    self._test_actions.current_diagnostics(
-                        actor=Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id),
-                        session_id=s.id,
-                        test_input_id=fc.test_input_ref,
-                        receipt=receipt,
-                    ),
-                )
         if fc.task_status == "abandoned":
             actions = []
             decision = None
@@ -1909,7 +1856,6 @@ class DifyBuilderService:
             else SessionTaskStatus.ACTIVE,
             task_summaries=fc.task_summaries,
             pending_fix_context=pending_context,
-            test_execution=test_execution,
             diagnostics=diagnostics,
             attachments=self._attachment_intake.receipts(s, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id))
             if self._attachment_intake is not None
@@ -1928,12 +1874,6 @@ class DifyBuilderService:
                 if fc.paused and fc.task_control.get("settlement") == "pending"
                 else RunStatus.FAILED
                 if fc.paused and fc.task_control.get("settlement") == "unknown"
-                else RunStatus.WAITING_CONFIRMATION
-                if receipt is not None and receipt.status == "waiting"
-                else RunStatus.PROCESSING
-                if receipt is not None and receipt.status in {"prepared", "running"}
-                else RunStatus.FAILED
-                if receipt is not None and receipt.outcome == "unknown"
                 else RunStatus.PROCESSING
                 if lock_held or continuation_pending
                 else _run_status(st, paused=fc.paused)
@@ -1976,7 +1916,7 @@ class DifyBuilderService:
         ``dispatch``; ``items`` contains rows committed synchronously before a
         worker is needed. This method never dispatches itself, so a streaming
         caller can subscribe before the advance is enqueued."""
-        if not action.command_id and action.kind in TEST_ACTIONS | {"stop", "resume"}:
+        if not action.command_id and action.kind in {"stop", "resume"}:
             action.command_id = str(
                 uuid5(
                     NAMESPACE_URL,
@@ -2068,12 +2008,6 @@ class DifyBuilderService:
             return self._build_session_view(fresh, context), activated, []
         if fc.task_control.get("receipt", {}).get("enqueue") in {"pending", "dispatching", "claimed"}:
             raise BusyError("task continuation is pending")
-        if action.kind in TEST_ACTIONS:
-            return self._prepare_test_action(s, fc, actor, action)
-        if self._test_actions is not None:
-            current_test = self._test_actions.current(actor=actor, session_id=s.id, test_input_id=fc.test_input_ref)
-            if current_test is not None and (current_test.status != "terminal" or current_test.outcome == "unknown"):
-                raise BusyError("observe or finish the current test before starting another action")
         if action.kind == "message":
             client_turn_id = action.payload["client_turn_id"]
             turn_kinds = self._repo.get_conversation_turn_kinds(session_id, client_turn_id)
@@ -2205,85 +2139,6 @@ class DifyBuilderService:
             )
         return self._build_session_view(s, fc), True, []
 
-    def _prepare_test_action(self, s: Session, fc: DifyBuilderContext, actor: Actor, action: Action):
-        """Apply an authorized native control once and commit its choice receipt.
-
-        The command digest and native owner retain retry identity. Public
-        presentation records the chosen action, independently of its scope.
-        """
-        if self._test_actions is None:
-            raise BadRequestError("native test controls unavailable")
-        self._authorize_app(s.app_id, actor, AppAccess.TEST_AND_RUN)
-        command = parse_test_action(action.kind, action.payload)
-        fingerprint = canonical_digest(
-            {
-                "kind": action.kind,
-                "payload": action.payload,
-                "base_version": action.base_version,
-                "base_app_revision": action.base_app_revision,
-            }
-        )
-        prior = self._test_actions.find_command(actor=actor, session_id=s.id, command_id=action.command_id)
-        if prior is not None:
-            if prior.get("test_action_digest") != fingerprint:
-                raise ConflictError("action identity was reused with different content")
-            return self.get_session_view(s.id, actor), False, []
-        token = self._acquire_workflow_writer(s.id)
-        if token is None:
-            raise BusyError("Builder is still preparing the current test")
-        try:
-            s, fc = self._get_authorized_session(s.id, actor)
-            if (fc.paused or fc.recovery_class) and command.method != "cancel":
-                raise ConflictError("resolve Builder recovery before continuing the test")
-            if action.base_version != s.version:
-                raise ConflictError("stale test action session version")
-            if self._get_app_revision(s.app_id, actor) != action.base_app_revision:
-                raise ConflictError("stale test action draft revision")
-            current_request_id = self._test_actions.current_request_id(
-                actor=actor, session_id=s.id, test_input_id=fc.test_input_ref
-            )
-            if current_request_id != command.request_id:
-                raise ConflictError("test request is no longer current")
-            response = InteractionResponseItem(
-                reply_language=fc.reply_language,
-                interaction_kind=InteractionKind.CHOICE,
-                question=control_title(action.kind),
-                answer=control_label(action.kind),
-                submitted_data={"option_id": action.kind},
-            )
-            if action.receipt_snapshot is not None:
-                apply_receipt_snapshot(response, action.receipt_snapshot)
-            self._test_actions.execute(
-                actor=actor,
-                session_id=s.id,
-                test_input_id=fc.test_input_ref,
-                command=command,
-                idempotency_key=action.command_id,
-            )
-            # Native ownership has already committed; a crash here cannot authorize
-            # another dispatch. Repeating the same command reuses its durable key.
-            s, fc = self._get_authorized_session(s.id, actor)
-            fc.last_command_id = action.command_id
-            item = ConversationItem(
-                seq=fc.next_seq,
-                kind="interaction_response",
-                at_version=s.version + 1,
-                payload={
-                    **asdict(response),
-                    "test_action_kind": action.kind,
-                    "test_command_id": action.command_id,
-                    "test_action_digest": fingerprint,
-                    "request_id": command.request_id,
-                },
-            )
-            fc.next_seq += 1
-            self._repo.compare_and_advance(s.id, s.version, s.current_state, fc, [item])
-            self._release_workflow_writer(s.id, token)
-            self._test_actions.settle(actor=actor, session_id=s.id, request_id=command.request_id)
-            return self.get_session_view(s.id, actor), False, [item]
-        finally:
-            self._release_workflow_writer(s.id, token)
-
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
         """Submit an action and return the latest bounded session view."""
         receipt = self.submit_action_command(session_id, actor, action)
@@ -2358,8 +2213,15 @@ class DifyBuilderService:
                 None,
                 expect_advance=False,
                 emit_command_finished_when_settled=action.kind
-                in {"message", "send_edit_goal", "update_model", "stop", "resume", "dismiss_fix", "stop_and_switch_fix"}
-                | TEST_ACTIONS,
+                in {
+                    "message",
+                    "send_edit_goal",
+                    "update_model",
+                    "stop",
+                    "resume",
+                    "dismiss_fix",
+                    "stop_and_switch_fix",
+                },
                 command_id=action.command_id,
                 initial_items=settled_items,
                 conversation_cleared=lambda: self.is_conversation_cleared(session_id, actor),

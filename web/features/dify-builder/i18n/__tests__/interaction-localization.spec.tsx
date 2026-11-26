@@ -14,11 +14,10 @@ import frenchBuilder from '@/i18n/locales/fr-FR/dify-builder.json'
 import chineseCommon from '@/i18n/locales/zh-Hans/common.json'
 import chineseBuilder from '@/i18n/locales/zh-Hans/dify-builder.json'
 import chineseWorkflow from '@/i18n/locales/zh-Hans/workflow.json'
-import { createNativeApproval } from '@/test/fixtures/dify-builder'
 import { ConversationCard } from '../../conversation/conversation-card'
 import { TestResultCard } from '../../conversation/test-result'
 import { DifyBuilderInteractionDock } from '../../interactions/interaction-dock'
-import { createNativeReceipt, createSessionView } from '../../session/__tests__/fixtures'
+import { createSessionView } from '../../session/__tests__/fixtures'
 import { difyBuilderSessionViewAtom } from '../../session/state'
 import { DifyBuilderLocaleProvider } from '../locale-provider'
 
@@ -273,117 +272,6 @@ describe('Builder interaction language', () => {
         renderText: expect.any(Function),
         replyLanguage: 'zh-Hans',
       },
-    )
-  })
-})
-
-describe('native risk choice consent', () => {
-  it('requires explicit selection instead of preselecting approval', async () => {
-    const user = userEvent.setup()
-    const pending = createNativeApproval()
-    renderInteraction({
-      replyLanguage: 'en-US',
-      sessionView: {
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [pending],
-        }),
-        actions: [
-          {
-            id: 'confirm_test_operation',
-            label: 'Approve',
-            kind: 'primary',
-            payload: {
-              request_id: 'request-1',
-              pending_operation_id: pending.pending_operation_id,
-              pending_version: pending.version,
-              scope_digest: pending.scope_digest,
-            },
-          },
-        ],
-      },
-      decision: {
-        title: 'Approve this call?',
-        description: 'Reads one synthetic message',
-        options: [
-          { id: 'confirm_test_operation', label: 'Approve', tone: 'primary' },
-          { id: 'deny_test_operation', label: 'Reject', tone: 'danger' },
-        ],
-        default_option_id: '',
-      },
-    })
-    const submit = await screen.findByRole('button', { name: englishCommon['operation.submit'] })
-    expect(submit).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    expect(submit).toBeEnabled()
-  })
-})
-
-describe('replacement native disclosure', () => {
-  it('clears an approval selection when the pending scope changes at the same Builder version', async () => {
-    const user = userEvent.setup()
-    const { store, view, submitInteraction } = renderInteraction({
-      replyLanguage: 'en-US',
-      decision: {
-        title: 'Approve call',
-        options: [
-          { id: 'confirm_test_operation', label: 'Approve' },
-          { id: 'deny_test_operation', label: 'Reject' },
-        ],
-        default_option_id: '',
-      },
-    })
-    const payload = {
-      request_id: 'request-1',
-      pending_operation_id: 'pending-A',
-      pending_version: 1,
-      scope_digest: 'a'.repeat(64),
-    }
-    act(() =>
-      store.set(difyBuilderSessionViewAtom, {
-        ...view,
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [createNativeApproval({ pending_operation_id: payload.pending_operation_id })],
-        }),
-        actions: [{ id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload }],
-      }),
-    )
-    const submit = await screen.findByRole('button', { name: englishCommon['operation.submit'] })
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    expect(submit).toBeEnabled()
-    const replacement = {
-      ...payload,
-      pending_operation_id: 'pending-B',
-      scope_digest: 'b'.repeat(64),
-    }
-    act(() =>
-      store.set(difyBuilderSessionViewAtom, {
-        ...view,
-        test_execution: createNativeReceipt({
-          status: 'waiting',
-          wait_reason: 'approval',
-          pending: [
-            createNativeApproval({
-              pending_operation_id: replacement.pending_operation_id,
-              scope_digest: replacement.scope_digest,
-            }),
-          ],
-        }),
-        actions: [
-          { id: 'confirm_test_operation', label: 'Approve', kind: 'primary', payload: replacement },
-        ],
-      }),
-    )
-    expect(screen.getByRole('button', { name: englishCommon['operation.submit'] })).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'Approve' }))
-    await user.click(screen.getByRole('button', { name: 'Approve' }))
-    expect(submitInteraction).toHaveBeenCalledWith(
-      'confirm',
-      { option_id: 'confirm_test_operation', ...replacement },
-      expect.any(Object),
     )
   })
 })

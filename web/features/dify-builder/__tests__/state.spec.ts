@@ -4,7 +4,6 @@ import type { SessionView } from '../types'
 import { QueryClient } from '@tanstack/react-query'
 import { createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
-import { createNativeReceipt } from '../session/__tests__/fixtures'
 import {
   difyBuilderConversationAtom,
   difyBuilderLocalUserMessageAtom,
@@ -22,7 +21,6 @@ import {
   difyBuilderCheckMaterialAtom,
   difyBuilderDraftAtom,
   difyBuilderModelReadonlyAtom,
-  difyBuilderNativeCancelAtom,
   difyBuilderResetAtom,
   difyBuilderRuntimeAtom,
   difyBuilderSendDraftAtom,
@@ -88,152 +86,6 @@ const createRuntime = (runAction: DifyBuilderRuntime['session']['runAction']) =>
   }) satisfies DifyBuilderRuntime
 
 describe('Dify Builder store', () => {
-  it.each([
-    ['waiting_confirmation', 'approval'],
-    ['waiting_input', 'interaction'],
-    ['waiting_confirmation', 'configuration'],
-  ] as const)(
-    'keeps advertised cancellation available during %s/%s without releasing the session',
-    async (runStatus, waitReason) => {
-      const store = createStore()
-      const runtime = createRuntime(vi.fn(async () => true))
-      const cancel = {
-        id: 'cancel_test',
-        label: 'Cancel test',
-        kind: 'destructive',
-        payload: { request_id: 'request-1' },
-      } as const
-      const view = createSessionView({
-        run_status: runStatus,
-        phase: 'test',
-        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: waitReason }),
-        actions: [cancel],
-      })
-      store.set(difyBuilderRuntimeAtom, runtime)
-      store.set(difyBuilderSessionViewAtom, view)
-      store.set(difyBuilderCanvasAppliedViewAtom, {
-        sessionId: view.session_id,
-        version: view.version,
-      })
-      store.set(difyBuilderDraftAtom, 'Keep this draft')
-
-      expect(store.get(difyBuilderNativeCancelAtom)).toEqual(cancel)
-      expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
-      expect(await store.set(difyBuilderSendDraftAtom, builderModel)).toBe(false)
-      store.set(difyBuilderResetAtom)
-      expect(runtime.session.reset).not.toHaveBeenCalled()
-      expect(store.get(difyBuilderDraftAtom)).toBe('Keep this draft')
-      expect(
-        await store.set(
-          difyBuilderSubmitActionAtom,
-          'cancel_test',
-          cancel.payload,
-          englishResponseCopy,
-        ),
-      ).toBe(true)
-      expect(runtime.session.runAction).toHaveBeenCalledExactlyOnceWith(
-        'cancel_test',
-        cancel.payload,
-      )
-      expect(runtime.session.startBuild).not.toHaveBeenCalled()
-      expect(runtime.session.sendMessage).not.toHaveBeenCalled()
-    },
-  )
-
-  it('does not invent cancellation or release an unresolved session without a server action', async () => {
-    const store = createStore()
-    const runtime = createRuntime(vi.fn(async () => true))
-    store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        phase: 'test',
-        run_status: 'waiting_confirmation',
-        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'approval' }),
-        actions: [],
-      }),
-    )
-    store.set(difyBuilderCanvasAppliedViewAtom, {
-      sessionId: 'session-1',
-      version: 1,
-    })
-    expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
-    expect(
-      await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
-    ).toBe(false)
-    expect(runtime.session.runAction).not.toHaveBeenCalled()
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        run_status: 'complete',
-        test_execution: createNativeReceipt({ status: 'terminal', outcome: 'unknown' }),
-      }),
-    )
-    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
-    store.set(difyBuilderResetAtom)
-    expect(runtime.session.reset).not.toHaveBeenCalled()
-  })
-
-  it.each(['succeeded', 'failed', 'cancelled'] as const)(
-    'refuses a stale cancel action after terminal %s',
-    async (outcome) => {
-      const store = createStore()
-      const runtime = createRuntime(vi.fn(async () => true))
-      store.set(difyBuilderRuntimeAtom, runtime)
-      store.set(
-        difyBuilderSessionViewAtom,
-        createSessionView({
-          phase: 'test',
-          run_status: 'complete',
-          test_execution: createNativeReceipt({ status: 'terminal', outcome }),
-          actions: [{ id: 'cancel_test', label: 'Cancel test', kind: 'destructive' }],
-        }),
-      )
-      store.set(difyBuilderCanvasAppliedViewAtom, {
-        sessionId: 'session-1',
-        version: 1,
-      })
-      expect(store.get(difyBuilderNativeCancelAtom)).toBeUndefined()
-      expect(
-        await store.set(difyBuilderSubmitActionAtom, 'cancel_test', {}, englishResponseCopy),
-      ).toBe(false)
-      expect(
-        await store.set(
-          difyBuilderSubmitActionAtom,
-          'confirm',
-          { option_id: 'cancel_test' },
-          englishResponseCopy,
-        ),
-      ).toBe(false)
-      expect(runtime.session.runAction).not.toHaveBeenCalled()
-    },
-  )
-
-  it('keeps native configuration waits immutable instead of offering a new conversation action', async () => {
-    const store = createStore()
-    const runtime = createRuntime(vi.fn(async () => true))
-    store.set(difyBuilderRuntimeAtom, runtime)
-    store.set(
-      difyBuilderSessionViewAtom,
-      createSessionView({
-        run_status: 'waiting_confirmation',
-        canvas_read_only: false,
-        test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'configuration' }),
-      }),
-    )
-    store.set(difyBuilderCanvasAppliedViewAtom, {
-      sessionId: 'session-1',
-      version: 1,
-    })
-    expect(store.get(difyBuilderCanComposeAtom)).toBe(false)
-    expect(store.get(difyBuilderModelReadonlyAtom)).toBe(true)
-    expect(store.get(difyBuilderCanStartFixAtom)).toBe(false)
-    expect(
-      await store.set(difyBuilderStartPromptAtom, { text: 'Try again', model: builderModel }),
-    ).toBe(false)
-    expect(runtime.session.sendMessage).not.toHaveBeenCalled()
-  })
-
   it.each(['provide_testdata', 'start_test', 'publish'])(
     'blocks %s until the current canvas version has been applied',
     async (actionId) => {
@@ -461,14 +313,6 @@ it.each([
     scenario: 'pending command',
     view: createSessionView({ run_status: 'waiting_input' }),
     busy: true,
-  },
-  {
-    scenario: 'unresolved native test',
-    view: createSessionView({
-      run_status: 'waiting_confirmation',
-      test_execution: createNativeReceipt({ status: 'waiting', wait_reason: 'approval' }),
-    }),
-    busy: false,
   },
 ])(
   'rejects attachment submission during a $scenario and preserves the draft',

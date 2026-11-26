@@ -4,12 +4,11 @@ import uuid
 from collections.abc import Generator, Mapping
 from enum import StrEnum
 from functools import partial
-from time import perf_counter
 from typing import Annotated, Any
 
 from celery import shared_task
 from flask import current_app, json
-from pydantic import BaseModel, Discriminator, Field, Tag, TypeAdapter
+from pydantic import BaseModel, Discriminator, Field, Tag
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -38,7 +37,7 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
-from runtime_contracts.builder.native.contracts import ID, Counter, NativeTestContextRef
+from runtime_contracts.builder.native.contracts import NativeTestContextRef
 from services.app_task_service import AppTaskService
 from services.dify_builder.application.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from services.dify_builder.native_testing.native_execution import dispatch_native_worker
@@ -49,13 +48,6 @@ from services.workflow_ref_service import WorkflowRef
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_runtime.chatflow_generator import AdvancedChatAppGenerator
 from services.workflow_runtime.workflow_generator import WorkflowAppGenerator
-
-
-class ConfirmedResumePhase(StrEnum):
-    PREFLIGHT = "preflight"
-    ORDINARY_PAUSE_RESTORE = "ordinary_pause_restore"
-    CLAIM = "claim"
-
 
 logger = logging.getLogger(__name__)
 
@@ -544,43 +536,10 @@ def workflow_based_app_execution_task(
     return runner.run()
 
 
-@contextlib.contextmanager
-def _confirmed_resume_phase(payload: dict[str, Any], phase: ConfirmedResumePhase) -> Generator[None]:
-    """Disjoint task setup phases; nested native read timings must not be added again."""
-    try:
-        dispatch = payload["builder_agent_dispatch"]
-        request_id = TypeAdapter(ID).validate_python(dispatch["ref"]["request_id"])
-        generation = TypeAdapter(Counter).validate_python(dispatch["generation"])
-        run_id = str(uuid.UUID(payload["workflow_run_id"]))
-    except Exception:
-        yield
-        return
-    started, error_type = perf_counter(), "none"
-    try:
-        yield
-    except BaseException as error:
-        error_type = type(error).__name__
-        raise
-    finally:
-        with contextlib.suppress(Exception):  # Timing cannot affect task admission or guards.
-            logger.info(
-                "Confirmed resume timing request_id=%s run_id=%s generation=%s phase=%s "
-                "duration_seconds=%.6f error_type=%s",
-                request_id,
-                run_id,
-                generation,
-                phase,
-                perf_counter() - started,
-                error_type,
-            )
-
-
 def _resume_app_execution(payload: dict[str, Any]) -> None:
-    from services.dify_builder.native_testing.confirmed_agent_commands import preflight_confirmed_agent_resume
-
-    with _confirmed_resume_phase(payload, ConfirmedResumePhase.PREFLIGHT):
-        if not preflight_confirmed_agent_resume(payload=payload):
-            return
+    """Resume an owned Workflow pause. Retired Builder dispatches cannot resume it."""
+    if "builder_agent_dispatch" in payload:
+        return
     workflow_run_id = payload["workflow_run_id"]
 
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
@@ -592,18 +551,14 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         return
 
     try:
-        with _confirmed_resume_phase(payload, ConfirmedResumePhase.ORDINARY_PAUSE_RESTORE):
-            resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
     except Exception:
         logger.exception("Failed to load resumption context for workflow run %s", workflow_run_id)
         return
 
     generate_entity = resumption_context.get_generate_entity()
-    from services.dify_builder.native_testing.confirmed_agent_commands import guard_confirmed_agent_resume
-
-    with _confirmed_resume_phase(payload, ConfirmedResumePhase.CLAIM):
-        if not guard_confirmed_agent_resume(payload=payload, generate_entity=generate_entity):
-            return
+    if getattr(generate_entity, "builder_agent_execution", None) is not None:
+        return
     if generate_entity.native_test_required or generate_entity.native_test_ref is not None:
         dispatch_native_worker(ref=generate_entity.native_test_ref, generation=None)
         return
@@ -915,11 +870,5 @@ def _resume_workflow(
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
 def resume_app_execution(payload: dict[str, Any]) -> None:
-    from services.dify_builder.native_testing.confirmed_agent_commands import finish_confirmed_agent_resume
-
-    payload = dict(payload)
-    payload.pop("_builder_agent_claimed", None)
-    try:
-        _resume_app_execution(payload)
-    finally:
-        finish_confirmed_agent_resume(payload=payload)
+    """Run the Workflow or Chatflow pause owner on the execution queue."""
+    _resume_app_execution(payload)

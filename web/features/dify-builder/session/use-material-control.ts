@@ -23,15 +23,9 @@ export function useDifyBuilderMaterialControl({
   traceRef,
   applySessionView,
   waitForSession,
-  nativeObservationRef,
 }: Pick<
   SessionControllerContext,
-  | 'onAttachmentsAccepted'
-  | 'materialAbortRef'
-  | 'traceRef'
-  | 'applySessionView'
-  | 'waitForSession'
-  | 'nativeObservationRef'
+  'onAttachmentsAccepted' | 'materialAbortRef' | 'traceRef' | 'applySessionView' | 'waitForSession'
 >) {
   const store = useStore()
 
@@ -72,7 +66,6 @@ export function useDifyBuilderMaterialControl({
       })
       try {
         await waitForSession(sessionId, controller.signal)
-        const observedAtStart = nativeObservationRef.current
         const receipt = await sendSessionMessage(
           sessionId,
           text,
@@ -84,7 +77,7 @@ export function useDifyBuilderMaterialControl({
         if (controller.signal.aborted || store.get(difyBuilderActiveSessionIdAtom) !== sessionId)
           return false
         traceRef.current.append({ dir: 'in', kind: 'command_ack', payload: receipt })
-        if (receipt.session) applySessionView(receipt.session, observedAtStart)
+        if (receipt.session) applySessionView(receipt.session)
         const admitted = store
           .get(difyBuilderSessionViewAtom)
           ?.attachments?.some((receipt) => receipt.client_turn_id === clientTurnId)
@@ -108,7 +101,6 @@ export function useDifyBuilderMaterialControl({
     [
       applySessionView,
       waitForSession,
-      nativeObservationRef,
       onAttachmentsAccepted,
       setLastError,
       store,

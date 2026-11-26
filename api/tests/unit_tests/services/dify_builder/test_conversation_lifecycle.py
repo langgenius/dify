@@ -152,7 +152,6 @@ def test_clear_reload_projects_durable_settlement_without_reviving_history(
     assert view.lifecycle_settlement == settlement
     assert view.conversation_cleared
     assert view.conversation_last_seq == -1
-    assert view.test_execution is None
     assert view.attachments == []
     assert service.get_conversation_page(session.id, _actor(), limit=20).data == []
     streamed = service._read_stream_session_view(session.id, _actor())
@@ -214,7 +213,6 @@ def test_clear_observes_the_original_native_test_without_replaying_it(
     assert view.conversation_cleared
     assert view.last_command_id == "clear"
     assert view.lifecycle_settlement == "settled"
-    assert view.test_execution is None
     assert repo.list_conversation(session.id) == []
     assert clear()["settlement"] == expected
     assert repo.get_session(session.id)[0].version == receipt["version"]
@@ -297,7 +295,7 @@ def test_abandon_get_observes_current_settlement_without_replaying_cancel_or_old
         return current
 
     actions = BuilderTestActions(repo._session_factory, forbidden)
-    monkeypatch.setattr(actions, "execute", execute)
+    monkeypatch.setattr(actions, "cancel", execute)
     monkeypatch.setattr(actions, "current", lambda **_kwargs: current)
     service._test_actions = actions
     receipt = lifecycle().abandon(service, session.id, _actor(), base_version=1, client_action_id="abandon")
@@ -562,26 +560,6 @@ def test_resume_rechecks_abandon_after_its_dsl_read(
     _, context = repo.get_session(session.id)
     assert context.task_status == "abandoned"
     assert context.paused
-
-
-def test_test_command_history_does_not_bypass_clear_boundary(
-    service: DifyBuilderService, repo: SqlDifyBuilderRepository
-) -> None:
-    from services.dify_builder.test_actions import BuilderTestActions
-
-    session = seed(repo)
-    current, context = repo.get_session(session.id)
-    context.next_seq = 3
-    repo.compare_and_advance(
-        session.id,
-        current.version,
-        current.current_state,
-        context,
-        [ConversationItem(seq=2, kind="decision", payload={"test_command_id": "old-command", "receipt": "private"})],
-    )
-    actions = BuilderTestActions(repo._session_factory, lambda **_: forbidden())
-    lifecycle().clear(service, session.id, _actor(), base_version=1, client_action_id="clear", confirmed=True)
-    assert actions.find_command(actor=_actor(), session_id=session.id, command_id="old-command") is None
 
 
 def test_abandoned_goal_rejects_autosave_after_dsl_capture(

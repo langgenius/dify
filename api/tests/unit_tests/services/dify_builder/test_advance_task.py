@@ -1117,43 +1117,6 @@ def test_advance_builds_the_agent_for_the_acting_account(
     assert seen[0].get("account_id") == ACCOUNT_ID
 
 
-@pytest.mark.usefixtures("admitted_stub_cognition")
-def test_first_test_command_finished_contains_native_receipt_without_opt_in(
-    monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository
-) -> None:
-    from services.dify_builder.native_testing.public_contracts import NativeTestPublicReceipt
-    from services.dify_builder.test_actions import BuilderTestActions
-
-    receipt = NativeTestPublicReceipt(
-        request_id="native-request",
-        generation=0,
-        version=1,
-        status="waiting",
-        wait_reason="approval",
-        native_run_id="native-run",
-        native_status="paused",
-        pending=(),
-        outcome=None,
-        evidence_refs=(),
-    )
-    port = BuilderTestActions(repo._session_factory, lambda **_: pytest.fail("projection must not start a command"))
-    monkeypatch.setattr(port, "current", lambda **_: receipt)
-    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
-    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", FakeDifyPort)
-    monkeypatch.setattr(mod, "BuilderTestActions", lambda *_: port, raising=False)
-    events: list[dict[str, object]] = []
-    monkeypatch.setattr(mod.progress_bus, "publish", lambda _sid, event: events.append(event))
-    session = _seed_fix_session(repo)
-    mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "tok-native-projection")
-    finished = next(event for event in events if event["kind"] == "command_finished")
-    from controllers.console.dify_builder_fields import DifyBuilderCommandFinishedEventData
-
-    projected = DifyBuilderCommandFinishedEventData.model_validate(finished)
-    assert projected.test_execution is not None
-    assert projected.test_execution.request_id == "native-request"
-    assert projected.run_status == "waiting_confirmation"
-
-
 @pytest.mark.usefixtures("wired")
 def test_replaced_same_session_owner_cannot_persist_generic_failure(
     monkeypatch: pytest.MonkeyPatch, repo: SqlDifyBuilderRepository

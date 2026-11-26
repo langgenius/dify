@@ -23,7 +23,6 @@ from services.dify_builder.native_testing.public_contracts import (
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.service import DifyBuilderService
 from services.dify_builder.test_actions import BuilderTestActions
-from services.dify_builder.test_actions import TestCommand as NativeCommand
 from tests.unit_tests.services.dify_builder.test_service import (
     ACCOUNT_ID,
     APP_ID,
@@ -263,9 +262,7 @@ def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
         return receipt
 
     def execute(**kwargs: object) -> NativeTestPublicReceipt:
-        command = kwargs["command"]
-        assert isinstance(command, NativeCommand)
-        assert command.method == "cancel"
+        assert kwargs["request_id"] == request_id
         assert kwargs["idempotency_key"] == "task-stop:stop"
         if receipt.status == "terminal":
             with repo._session_factory() as sql, sql.begin():
@@ -277,7 +274,7 @@ def test_native_stop_settlement_is_truthful_and_unknown_never_resumes(
 
     actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
     monkeypatch.setattr(actions, "current", current)
-    monkeypatch.setattr(actions, "execute", execute)
+    monkeypatch.setattr(actions, "cancel", execute)
     service._test_actions = actions
     view = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")
     assert str(view.run_status) == expected
@@ -386,7 +383,7 @@ def test_pending_stop_get_reconciles_terminal_evidence_without_cancelling_again(
 
     actions = BuilderTestActions(repo._session_factory, lambda *_: pytest.fail("unexpected command factory"))
     monkeypatch.setattr(actions, "current", read_current)
-    monkeypatch.setattr(actions, "execute", execute)
+    monkeypatch.setattr(actions, "cancel", execute)
     service._test_actions = actions
     service._get_app_revision_fn = lambda *_: "original-draft"
     stopped = service.stop_task(s.id, _actor(), base_version=base, client_action_id="stop")

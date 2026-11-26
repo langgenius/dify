@@ -87,9 +87,6 @@ def test_http_rejects_before_scheduler_or_any_execution_boundary():
 
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-            caps = await client.get("/runs/capabilities")
-            assert caps.status_code == 200
-            assert not {"test-scope-v1", "child-continuation-v1"}.intersection(caps.json()["features"])
             response = await client.post(
                 "/runs",
                 json={
@@ -107,45 +104,8 @@ def test_http_rejects_before_scheduler_or_any_execution_boundary():
             )
             assert response.status_code == 409
             assert response.json()["detail"]["code"] == "native_test_protocol_unsupported"
-            response = await client.post(
-                "/runs/run-1/continue", json={"ref": REF, "expected_generation": 0, "idempotency_key": "schedule-1"}
-            )
-            assert response.status_code == 409
 
     asyncio.run(exercise())
-    from dify_agent.runtime.native_continuation import NativePolicyStopped
-
-    class DeniedScheduler:
-        async def create_run(self, request):
-            raise NativePolicyStopped("approval_revoked")
-
-    denied = FastAPI()
-    ready = NativeTestCapabilities(
-        protocol_version=1, features={"pending-call-v1", "policy-gate-v1", "test-scope-v1", "child-continuation-v1"}
-    )
-    denied.include_router(create_runs_router(lambda: None, lambda: DeniedScheduler(), lambda: ready))
-
-    async def exercise_denial():
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=denied), base_url="http://test") as client:
-            response = await client.post(
-                "/runs",
-                json={
-                    "composition": {"layers": []},
-                    "execution_mode": "builder_test",
-                    "native_test_ref": REF,
-                    "native_test_protocol_version": 1,
-                    "native_parent_node": {
-                        "ref": REF,
-                        "execution_id": "4c959aea-9025-4db9-9361-eed1191c11c7",
-                        "input_result_ref": "input",
-                        "input_digest": "b" * 64,
-                    },
-                },
-            )
-            assert response.status_code == 409
-            assert response.json()["detail"] == {"code": "native_policy_stopped", "reason_code": "approval_revoked"}
-
-    asyncio.run(exercise_denial())
     assert counters == dict(model=0, tool=0, eager=0, config=0, bootstrap=0, lease=0)
 
 

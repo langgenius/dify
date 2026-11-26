@@ -12,7 +12,6 @@ import {
   commandStartedEvent,
   conversationPage,
   createControlledEventStream,
-  createNativeReceipt,
   createSessionView,
   renderSessionHook,
   stateEvent,
@@ -122,91 +121,6 @@ it('stops planning through the independent JSON endpoint while the first respons
   expect(store.get(difyBuilderSessionViewAtom)).toEqual(pausedView())
   expect(store.get(difyBuilderSessionBusyAtom)).toBe(false)
   expect(store.get(difyBuilderTaskControlAtom)).toBeNull()
-})
-
-it('stops a native test waiting for approval and waits for confirmed settlement', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-  const { result, store } = renderSessionHook()
-  const testExecution = createNativeReceipt({
-    status: 'waiting',
-    wait_reason: 'approval',
-    native_status: 'paused',
-  })
-  const waiting = createSessionView({
-    version: 4,
-    run_status: 'waiting_confirmation',
-    test_execution: testExecution,
-    actions: [
-      {
-        id: 'cancel_test',
-        label: 'Cancel test',
-        kind: 'destructive',
-        payload: { request_id: testExecution.request_id },
-      },
-    ],
-  })
-  seedSession(store, waiting)
-  const cancellation = {
-    generation: testExecution.generation,
-    request_id: testExecution.request_id,
-    operation_states: {},
-  }
-  const stopped = pausedView()
-  stopped.test_execution = {
-    ...testExecution,
-    cancellation: { ...cancellation, status: 'cancelled' },
-    native_status: 'stopped',
-    outcome: 'cancelled',
-    status: 'terminal',
-    version: testExecution.version + 1,
-    wait_reason: null,
-  }
-  let finishSettlement!: (view: ReturnType<typeof createSessionView>) => void
-  api.stop.mockImplementation(async ({ body }: { body: DifyBuilderTaskControlPayload }) => {
-    const stopping = createSessionView({
-      version: 5,
-      last_command_id: body.client_action_id,
-      task_status: 'paused',
-      test_execution: {
-        ...testExecution,
-        cancellation: { ...cancellation, status: 'cancelling' },
-      },
-    })
-    api.get.mockResolvedValueOnce(stopping).mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finishSettlement = resolve
-        }),
-    )
-    return stopping
-  })
-  let stopping!: Promise<boolean>
-  await act(async () => {
-    stopping = result.current.stopTask()
-  })
-  expect(api.stop).toHaveBeenCalledExactlyOnceWith(
-    {
-      params: { session_id: waiting.session_id },
-      body: { base_version: waiting.version, client_action_id: expect.any(String) },
-    },
-    { context: { silent: true }, signal: expect.any(AbortSignal) },
-  )
-  expect(api.action).not.toHaveBeenCalled()
-  expect(store.get(difyBuilderSessionViewAtom)?.canvas_read_only).toBe(true)
-  expect(store.get(difyBuilderSessionViewAtom)?.run_status).toBe('processing')
-  expect(store.get(difyBuilderTaskControlAtom)?.phase).toBe('pending')
-  expect(await result.current.resumeTask()).toBe(false)
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1000)
-  })
-  expect(api.get).toHaveBeenCalledTimes(2)
-  expect(store.get(difyBuilderTaskControlAtom)?.phase).toBe('pending')
-  await act(async () => {
-    finishSettlement(stopped)
-    expect(await stopping).toBe(true)
-  })
-  expect(store.get(difyBuilderSessionViewAtom)).toEqual(stopped)
 })
 
 it('saves pause-period changes before reading the latest version and resuming the same task', async () => {

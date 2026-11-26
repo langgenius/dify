@@ -18,7 +18,7 @@ from core.dify_builder.models import Actor
 from graphon.runtime import RuntimeState
 from models.dify_builder_native_tests import NativeTestScope
 from models.workflow import WorkflowPause
-from runtime_contracts.builder.execution import BuilderExecutionPolicyError, canonical_digest
+from runtime_contracts.builder.execution import BuilderExecutionPolicyError
 from runtime_contracts.builder.native.agent_context import BuilderAgentExecutionContext
 from runtime_contracts.builder.native.agent_contracts import (
     AgentNodeAssociation,
@@ -204,10 +204,8 @@ def test_ordinary_legacy_resume_keeps_its_existing_path() -> None:
 def test_actual_resume_task_refuses_malformed_marked_envelope_before_unscoped_storage() -> None:
     from tasks.app_generate.workflow_execute_task import _resume_app_execution
 
-    # Without the preflight this would reach the legacy repository/database
-    # before discovering that a confirmed task carries no valid dispatch.
-    with pytest.raises(BuilderExecutionPolicyError, match="native_dispatch_mismatch"):
-        _resume_app_execution({"workflow_run_id": RUN, "builder_agent_dispatch": {"approval": True}})
+    # Even a queued message from the retired path must return before any repository access.
+    _resume_app_execution({"workflow_run_id": RUN, "builder_agent_dispatch": {"approval": True}})
 
 
 @pytest.mark.parametrize("change", ["missing", "run", "ref", "boolean_generation", "extra"])
@@ -449,8 +447,6 @@ def test_completed_child_recovery_requeues_original_claim_only_after_terminal_pr
 ) -> None:
     """Actual SQL source identity; lifecycle's independently tested fencing port is explicit."""
     from contextlib import contextmanager
-
-    from sqlalchemy import select
 
     from models.dify_builder_native_tests import NativeDispatch, NativeEffectOperation, NativeInvocationState
 
@@ -760,8 +756,6 @@ def test_public_pause_read_refreshes_callback_and_preserves_only_live_owned_resu
 ) -> None:
     from datetime import datetime, timedelta
 
-    from sqlalchemy import select
-
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
 
     now = datetime.now(UTC)
@@ -915,19 +909,16 @@ def test_reconcile_pending_routes_current_request_to_its_stored_profile(
         legacy_factory=lambda: legacy,
     )
     published: list[object] = []
-    assert (
-        service.reconcile_pending(
-            actor=actor,
-            session_id=session_id,
-            request_id=request_id,
-            publish=published.append,
-            limit=7,
-        )
-        == 5
-    )
+    assert service.reconcile_pending(
+        actor=actor,
+        session_id=session_id,
+        request_id=request_id,
+        publish=published.append,
+        limit=7,
+    ) == (2 if selected_profile == commands_module.PROFILE else 5)
     reconcile.assert_called_once_with(limit=7, request_id=request_id)
     if selected_profile == commands_module.PROFILE:
-        publish_pending.assert_called_once_with(limit=7, request_id=request_id)
+        publish_pending.assert_not_called()
         generic_selected_publish.assert_not_called()
     else:
         publish_pending.assert_called_once_with(publish=published.append, limit=7, request_id=request_id)
@@ -941,7 +932,8 @@ def test_reconcile_pending_routes_current_request_to_its_stored_profile(
             publish=published.append,
             limit=7,
         )
-    assert reconcile.call_count == publish_pending.call_count == 1
+    assert reconcile.call_count == 1
+    assert publish_pending.call_count == (0 if selected_profile == commands_module.PROFILE else 1)
 
     import schedule.dify_builder_reconcile_task as scheduler
     from models.dify_builder_native_tests import NativeDispatch, NativeInvocationState
@@ -972,10 +964,10 @@ def test_reconcile_pending_routes_current_request_to_its_stored_profile(
     mocker.patch.object(wiring, "native_runtime_owner", return_value=owner)
     reconcile.reset_mock()
     publish_pending.reset_mock()
-    assert scheduler.reconcile_native_tests(limit=7) == 5
+    assert scheduler.reconcile_native_tests(limit=7) == (2 if selected_profile == commands_module.PROFILE else 5)
     reconcile.assert_called_once_with(limit=7, request_id=request_id)
     if selected_profile == commands_module.PROFILE:
-        publish_pending.assert_called_once_with(limit=7, request_id=request_id)
+        publish_pending.assert_not_called()
         generic_selected_publish.assert_not_called()
     else:
         publish_pending.assert_called_once_with(publish=advance_native_test.delay, limit=7, request_id=request_id)
@@ -1075,137 +1067,3 @@ def test_native_reconcile_and_outbox_sql_stay_with_selected_profile_request(
             assert row is not None
             assert row is not None
             assert row.state == ("published" if index == selected_index else "queued")
-
-
-def test_reconcile_confirmed_outbox_retries_original_workflow_resume_queue_after_lost_ack(
-    mocker: pytest_mock.MockerFixture,
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
-    from contextlib import contextmanager
-
-    from models.dify_builder import DifyBuilderExecutionRequest
-    from models.dify_builder_native_tests import NativeDispatch
-    from tasks.app_generate.workflow_execute_task import resume_app_execution
-
-    with sqlite_session_factory.begin() as sql:
-        for table in (DifyBuilderExecutionRequest.__table__, NativeDispatch.__table__):
-            assert isinstance(table, Table)
-            table.create(sql.connection(), checkfirst=True)
-        for request_id, tenant_id, actor_id in (
-            (REF.request_id, ACTOR.tenant_id, ACTOR.account_id),
-            ("other-request", ACTOR.tenant_id, ACTOR.account_id),
-            ("foreign-tenant", "foreign", ACTOR.account_id),
-            ("foreign-actor", ACTOR.tenant_id, "foreign"),
-        ):
-            sql.add(
-                DifyBuilderExecutionRequest(
-                    id=request_id,
-                    tenant_id=tenant_id,
-                    actor_id=actor_id,
-                    app_id="app",
-                    workflow_id="workflow",
-                    session_id="session",
-                    test_input_id="input",
-                    state="running",
-                    context={"profile": {"profile_id": commands_module.PROFILE}},
-                    context_digest=REF.context_digest,
-                    observations=[],
-                )
-            )
-            sql.add(
-                NativeDispatch(
-                    id="dispatch-a" if request_id == REF.request_id else request_id,
-                    tenant_id=tenant_id,
-                    request_id=request_id,
-                    invocation_id=REF.invocation_id,
-                    generation=1,
-                    state="queued",
-                    checkpoint_id="checkpoint",
-                    idempotency_digest=canonical_digest(request_id),
-                )
-            )
-        sql.add(
-            NativeDispatch(
-                id="dispatch-b",
-                tenant_id=ACTOR.tenant_id,
-                request_id=REF.request_id,
-                invocation_id="second-invocation",
-                generation=1,
-                state="queued",
-                checkpoint_id="checkpoint",
-                idempotency_digest=canonical_digest("second"),
-            )
-        )
-
-    api = _api(sqlite_session_factory)
-    owned = _owned()
-
-    @contextmanager
-    def locked(*, ref: NativeTestContextRef) -> Generator[tuple[Session, OwnedNativeTest, None]]:
-        assert ref == REF
-        with sqlite_session_factory.begin() as sql:
-            yield sql, owned, None
-
-    def context(*, ref: NativeTestContextRef) -> ResolvedNativeTestContext:
-        assert ref == REF
-        return _context()
-
-    mocker.patch.object(api.loader, "locked", side_effect=locked)
-    mocker.patch.object(api.loader, "load", return_value=owned)
-    mocker.patch.object(api.store, "load_context", side_effect=context)
-    reconcile = mocker.patch.object(api.lifecycle, "reconcile", return_value=0)
-    queued = mocker.patch.object(resume_app_execution, "delay", side_effect=[TimeoutError("ACK lost"), None])
-    from tasks.dify_builder_advance_task import advance_native_test
-
-    generic_publish = mocker.patch.object(
-        advance_native_test, "delay", side_effect=AssertionError("confirmed outbox reached native-only queue")
-    )
-    confirmed = commands_module.ConfirmedAgentCommands(api=api, continuation=None, backend=None, publish=None)
-    service = commands_module.ProfiledNativeTestCommands(
-        sessions=sqlite_session_factory,
-        actor=ACTOR,
-        confirmed_factory=lambda: confirmed,
-        legacy_factory=lambda: _api(sqlite_session_factory),
-    )
-
-    # The first ordinary resume delivery loses its ACK; recovery must retain its exact envelope and source row.
-    confirmed._publish_one(ref=REF, generation=1, dispatch_id="dispatch-a")
-    with sqlite_session_factory() as sql:
-        retained = sql.get(NativeDispatch, "dispatch-a")
-        assert retained is not None
-        assert retained.state == "queued"
-    assert (
-        service.reconcile_pending(
-            actor=ACTOR,
-            session_id="session",
-            request_id=REF.request_id,
-            publish=generic_publish,
-            limit=1,
-        )
-        == 1
-    )
-    generic_publish.assert_not_called()
-    reconcile.assert_called_once_with(limit=1, request_id=REF.request_id)
-    assert queued.call_count == 2
-    assert queued.call_args_list[0] == queued.call_args_list[1]
-    queued.assert_called_with(
-        {
-            "workflow_run_id": RUN,
-            "builder_agent_dispatch": {
-                "ref": REF.model_dump(mode="json"),
-                "generation": 1,
-                "dispatch_id": "dispatch-a",
-                "actor": {"account_id": ACTOR.account_id, "tenant_id": ACTOR.tenant_id},
-            },
-        }
-    )
-    with sqlite_session_factory() as sql:
-        rows = sql.scalars(select(NativeDispatch)).all()
-        assert len(rows) == 5
-        assert {row.id: row.state for row in rows} == {
-            "dispatch-a": "published",
-            "dispatch-b": "queued",
-            "other-request": "queued",
-            "foreign-tenant": "queued",
-            "foreign-actor": "queued",
-        }

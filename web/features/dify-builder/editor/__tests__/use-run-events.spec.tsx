@@ -21,7 +21,6 @@ import {
   runStarted,
   workflowEvent,
 } from '../../__tests__/workflow-fixtures'
-import { createNativeReceipt } from '../../session/__tests__/fixtures'
 import { difyBuilderErrorAtom } from '../../state'
 import { useDifyBuilderRunEvents } from '../use-run-events'
 
@@ -198,17 +197,6 @@ describe('Builder run event handlers', () => {
         )
       const status = (taken: string) => (topology === 'branch' ? [taken, undefined] : [taken])
 
-      act(() => active.result.current.events.onNativeCanvasPath('session-1', 2, observed))
-      expect(edgeStatuses(active)).toEqual(status('running'))
-      act(() => {
-        active.result.current.events.onNativeCanvasPath('session-1', 2, completed)
-        active.result.current.events.onNativeCanvasPath('session-1', 2, observed)
-        active.result.current.canvas.getState().setEdges(edges)
-        active.result.current.events.onCanvasRefreshed()
-      })
-      expect(edgeStatuses(active)).toEqual(status('succeeded'))
-      active.unmount()
-
       mocks.executions.mockResolvedValue({
         data: [
           { id: 'exec-1', node_id: 'start', status: 'succeeded' },
@@ -228,40 +216,6 @@ describe('Builder run event handlers', () => {
       expect(edgeStatuses(reopened)).toEqual(status('succeeded'))
     },
   )
-
-  it('restores a waiting native Run from the session before it has a result card', async () => {
-    const { result, workflow } = setup()
-    const waiting = createNativeReceipt({
-      native_run_id: 'paused-run',
-      native_status: 'paused',
-      status: 'waiting',
-      wait_reason: 'approval',
-    })
-    mocks.detail.mockResolvedValueOnce({
-      id: 'paused-run',
-      status: 'paused',
-      graph: {},
-      inputs: {},
-      outputs: {},
-    })
-
-    act(() =>
-      result.current.events.restoreRun('session-1', [resultCard], {
-        version: 3,
-        test_execution: waiting,
-      }),
-    )
-
-    await waitFor(() =>
-      expect(workflow.getState().workflowRunningData?.result).toMatchObject({
-        id: 'paused-run',
-        status: 'paused',
-      }),
-    )
-    expect(mocks.detail).toHaveBeenCalledExactlyOnceWith({
-      params: { app_id: 'app-1', run_id: 'paused-run' },
-    })
-  })
 
   it('restores missed node events after reconnect even when the terminal event arrives', async () => {
     const { result, workflow } = setup()
