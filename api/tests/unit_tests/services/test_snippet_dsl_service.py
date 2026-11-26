@@ -115,8 +115,7 @@ def _snippet(
     name: str = "Snippet",
     description: str | None = None,
     snippet_type: SnippetType = SnippetType.NODE,
-    icon_info: dict[str, object] | None = None,
-    input_fields: list[dict[str, object]] | None = None,
+    input_fields: str | None = None,
 ) -> CustomizedSnippet:
     return CustomizedSnippet(
         id=snippet_id,
@@ -124,8 +123,7 @@ def _snippet(
         name=name,
         description=description,
         type=snippet_type.value,
-        icon_info=icon_info,
-        input_fields=json.dumps(input_fields) if input_fields else None,
+        input_fields=input_fields,
         created_by="account-1",
     )
 
@@ -678,7 +676,6 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(
     snippet = _snippet(
         name="Old",
         description="Old",
-        icon_info=None,
     )
     sqlite_session.add(snippet)
     sqlite_session.commit()
@@ -781,8 +778,7 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_sess
     snippet = _snippet(
         name="Exported",
         description=None,
-        icon_info=None,
-        input_fields=[{"variable": "query"}],
+        input_fields=json.dumps([{"variable": "query"}]),
     )
     sqlite_session.add_all([snippet, workflow])
     sqlite_session.commit()
@@ -792,6 +788,7 @@ def test_export_snippet_dsl_returns_yaml(service: SnippetDslService, sqlite_sess
     assert "kind: snippet" in result
     assert "name: Exported" in result
     assert "input_fields:" in result
+    assert yaml.safe_load(result)["snippet"]["input_fields"] == [{"variable": "query"}]
 
 
 @pytest.mark.usefixtures("plugin_catalog")
