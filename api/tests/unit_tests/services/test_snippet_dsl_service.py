@@ -12,10 +12,11 @@ from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from graphon.nodes import BuiltinNodeTypes
+from graphon.variables import StringVariable
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.snippet import CustomizedSnippet, SnippetType
-from models.workflow import Workflow, WorkflowKind
+from models.workflow import Workflow, WorkflowContentDict, WorkflowKind
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.snippet_dsl_service import (
     IMPORT_INFO_REDIS_EXPIRY,
@@ -890,10 +891,13 @@ def test_extract_dependencies_from_workflow_graph_covers_model_variants(service:
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(
     service: SnippetDslService,
 ) -> None:
-    workflow_dict = {
-        "graph": {
+    workflow = make_workflow(
+        workflow_id="workflow-1",
+        app_id="snippet-1",
+        kind=WorkflowKind.SNIPPET,
+        graph={
             "nodes": [
-                {"data": dict[str, object]()},
+                {"data": {}},
                 {
                     "data": {
                         "type": BuiltinNodeTypes.TOOL,
@@ -919,10 +923,17 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
                 },
             ]
         },
-        "environment_variables": [{"name": "SECRET"}],
-        "conversation_variables": [{"name": "memory"}],
-    }
-    workflow = _workflow(graph=workflow_dict["graph"])
+        environment_variables=[
+            StringVariable(id="env-1", name="REGION", value="test-west", selector=["env", "REGION"])
+        ],
+        conversation_variables=[
+            StringVariable(id="conversation-1", name="memory", value="test-topic", selector=["conversation", "memory"])
+        ],
+    )
+    original_workflow = workflow.to_dict(include_secret=False)
+    assert [item["value"] for item in original_workflow["environment_variables"]] == ["test-west"]
+    assert [item["value"] for item in original_workflow["conversation_variables"]] == ["test-topic"]
+
     export_data = {}
 
     service._append_workflow_export_data(
@@ -932,9 +943,10 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
         include_secret=False,
     )
 
-    nodes = export_data["workflow"]["graph"]["nodes"]
-    assert export_data["workflow"]["environment_variables"] == []
-    assert export_data["workflow"]["conversation_variables"] == []
+    exported_workflow: WorkflowContentDict = export_data["workflow"]
+    nodes = exported_workflow["graph"]["nodes"]
+    assert exported_workflow["environment_variables"] == []
+    assert exported_workflow["conversation_variables"] == []
     assert "credential_id" not in nodes[1]["data"]
     assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
 
