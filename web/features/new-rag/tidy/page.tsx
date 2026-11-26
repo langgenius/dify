@@ -329,7 +329,7 @@ export function TidyPage() {
 
   return (
     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-4">
-      <h1 className="title-2xl-semi-bold text-text-primary">Tidy</h1>
+      <h1 className="title-2xl-semi-bold text-text-primary">{t(($) => $['tidy.name'])}</h1>
       <p className="mt-2 body-sm-regular text-text-tertiary">{t(($) => $['tidy.description'])}</p>
       <div className="my-5 rounded-xl border border-divider-regular p-4">
         <div className="flex items-center justify-between gap-4">
@@ -663,7 +663,7 @@ export function TidyPage() {
                     ? t(($) => $['tidy.rewriteTitle'], { title: confirmation.keptTitle })
                     : confirmation?.kind === 'conflicts'
                       ? t(($) => $['tidy.conflicts'])
-                      : 'Tidy'}
+                      : t(($) => $['tidy.name'])}
               </DialogTitle>
               <DialogDescription>
                 {confirmation?.kind === 'plan'

@@ -4547,6 +4547,7 @@ export default interface Resources {
     'tidy.mergeDescription': 'The other documents stop appearing in retrieval, including Deep. Their originals are preserved, and you can undo this as long as they have not changed.'
     'tidy.mergeTitle': 'Keep “{{title}}” and disable the rest?'
     'tidy.modelCalls': '{{count}} model calls'
+    'tidy.name': 'Tidy'
     'tidy.newestIs': 'The newest is “{{title}}”, published {{time}}.'
     'tidy.notConflict': 'Not a conflict'
     'tidy.open': 'To review'
