@@ -39,9 +39,7 @@ function DeleteExternalApiConfirmation({
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
       context: { silent: true },
-      gcTime: 0,
       networkMode: 'always',
-      staleTime: 0,
       retry: false,
       refetchOnReconnect: false,
       refetchOnWindowFocus: false,
@@ -116,17 +114,7 @@ export default function DeleteExternalApiDialog({
     operation.mutationOptions({
       context: { silent: true },
       networkMode: 'always',
-      onSuccess: (_response, { params }) => {
-        const key = endpoints.get.queryKey({ input: {} })
-        client.setQueryData(
-          key,
-          (previous) =>
-            previous && {
-              ...previous,
-              data: previous.data.filter((api) => api.id !== params.external_knowledge_api_id),
-            },
-        )
-        void client.invalidateQueries({ queryKey: key, exact: true })
+      onSuccess: () => {
         finalFocusRef.current = fallbackFocus.current
         handle.close()
       },

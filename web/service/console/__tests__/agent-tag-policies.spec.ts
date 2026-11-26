@@ -50,7 +50,8 @@ it.each(['rename', 'delete'] as const)(
         params,
         body: { name: updatedTag.name },
       })
-      expect(client.getQueryState(financeSearch)?.isInvalidated).toBe(true)
+      // The catalog refresh no longer holds the rename; it lands after the pending read is cancelled.
+      await vi.waitFor(() => expect(client.getQueryState(financeSearch)?.isInvalidated).toBe(true))
     } else {
       call.mockResolvedValueOnce(undefined)
       await new MutationObserver(client, consoleQuery.tags.byTagId.delete.mutationOptions()).mutate(

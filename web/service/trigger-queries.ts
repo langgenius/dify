@@ -879,7 +879,6 @@ export function triggerPluginDynamicOptionsQueryOptions(
         select: normalizeDynamicOptionsResponse,
         enabled: isEnabled,
         retry: 0,
-        staleTime: 0,
       },
     )
   }
@@ -899,6 +898,5 @@ export function triggerPluginDynamicOptionsQueryOptions(
     select: normalizeDynamicOptionsResponse,
     enabled: isEnabled,
     retry: 0,
-    staleTime: 0,
   })
 }

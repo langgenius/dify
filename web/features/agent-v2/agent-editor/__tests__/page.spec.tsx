@@ -209,12 +209,12 @@ describe('Configure chat sessions', () => {
     expect(api.refresh).toHaveBeenLastCalledWith({ params: { agent_id: 'agent-1' } })
   })
 
-  // Skipped: flaky in CI. The earlier Preview answer is sometimes not rendered yet when the test
-  // looks for it after clearing Build. Re-enable once the test waits for that answer.
-  it.skip('clears Build through confirmation and leaves later Preview messages intact', async () => {
+  it('clears Build through confirmation and leaves later Preview messages intact', async () => {
     const user = userEvent.setup()
     createEnvironment().render()
-    expect(await screen.findByText('Earlier answer')).toBeVisible()
+    // The answer renders through the lazily imported Markdown renderer, whose first import can
+    // take longer than the default lookup timeout when this test runs on its own.
+    expect(await screen.findByText('Earlier answer', {}, { timeout: 5000 })).toBeVisible()
     await user.click(restartButton())
     expect(api.refresh).not.toHaveBeenCalled()
     await confirm(user)

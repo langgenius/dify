@@ -154,7 +154,6 @@ export const saveKnowledgeSettingsAtom = atom(
         const migration = await queryClient.query(
           spaceApi.settings.migrations.byMigrationId.get.queryOptions({
             input: { params: { ...params, migration_id: progress.id } },
-            staleTime: 0,
             retry: false,
             context: { silent: true },
           }),
@@ -182,8 +181,6 @@ export const saveKnowledgeSettingsAtom = atom(
         params,
         body: settingsModelsPayload(session.draft, session.baseline, steps),
       })
-      await queryClient.cancelQueries({ queryKey: queries.settings.queryKey })
-      queryClient.setQueryData(queries.settings.queryKey, response.settings)
       if (response.migration) {
         const step = response.migration.changed_kind
         const progress = {
@@ -221,12 +218,6 @@ export const saveKnowledgeSettingsAtom = atom(
           params,
           body: settingsSpacePayload(session.draft, session.baseline),
         })
-        await queryClient.cancelQueries({ queryKey: queries.space.queryKey })
-        queryClient.setQueryData(queries.space.queryKey, space)
-        // List cards render the same name, icon and visibility; refresh every list variant.
-        void queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.get.key(),
-        })
         checkpoint({ ...session.baseline, space }, ['space'])
       }
       if (settingsDraftChanges(session.draft, session.baseline).members) {
@@ -234,8 +225,6 @@ export const saveKnowledgeSettingsAtom = atom(
           params,
           body: settingsMembersPayload(session.draft, session.baseline),
         })
-        await queryClient.cancelQueries({ queryKey: queries.permissions.queryKey })
-        queryClient.setQueryData(queries.permissions.queryKey, permissions)
         checkpoint({ ...session.baseline, permissions: permissions.data }, ['members'])
       }
       if (settingsDraftChanges(session.draft, session.baseline).external) {
@@ -243,8 +232,6 @@ export const saveKnowledgeSettingsAtom = atom(
           params,
           body: settingsExternalPayload(session.draft, session.baseline),
         })
-        await queryClient.cancelQueries({ queryKey: queries.externalAccess.queryKey })
-        queryClient.setQueryData(queries.externalAccess.queryKey, externalAccess)
         checkpoint({ ...session.baseline, externalAccess }, ['external'])
       }
       set(knowledgeSettingsEditSessionAtom, undefined)

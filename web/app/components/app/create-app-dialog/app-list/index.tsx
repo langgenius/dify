@@ -147,7 +147,6 @@ const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
           context: { silent: true },
           input: { params: { app_id: currApp.app_id } },
         }),
-        staleTime: 0,
       })
       if (
         !canCreateTemplate(detail.mode) ||

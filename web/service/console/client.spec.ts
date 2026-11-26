@@ -915,7 +915,7 @@ describe('consoleQuery app mutation defaults', () => {
   })
 
   it.each([undefined, 'existing-app'])(
-    'should refresh completed import data without blocking (overwrite: %s)',
+    'should refresh completed import data and wait for the app list (overwrite: %s)',
     async (appId) => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
@@ -947,7 +947,7 @@ describe('consoleQuery app mutation defaults', () => {
           queryKey: consoleQuery.features.get.key(),
         })
       }
-      expect(result).toBeUndefined()
+      expect(result).toBeInstanceOf(Promise)
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: consoleQuery.apps.get.key(),
       })
@@ -1143,7 +1143,10 @@ describe('consoleQuery app mutation defaults', () => {
       ),
     ]
 
-    expect(results).toEqual([undefined, undefined, undefined, undefined])
+    // Creates write the new key and refresh in the background (the dialog shows the
+    // one-time secret at once); deletes wait for the list the key leaves.
+    expect(results.slice(0, 2)).toEqual([undefined, undefined])
+    for (const result of results.slice(2)) expect(result).toBeInstanceOf(Promise)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
         input: { params: { resource_id: 'app-1' } },

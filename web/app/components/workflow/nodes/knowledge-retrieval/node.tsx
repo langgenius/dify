@@ -3,30 +3,17 @@ import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({ data }) => {
-  const [selectedDatasets, setSelectedDatasets] = useState<
-    DatasetDetailWithPartialMembersResponse[]
-  >([])
   const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
-
-  useEffect(() => {
-    if (data.dataset_ids?.length > 0) {
-      const dataSetsWithDetail = data.dataset_ids.reduce<DatasetDetailWithPartialMembersResponse[]>(
-        (acc, id) => {
-          if (datasetsDetail[id]) acc.push(datasetsDetail[id])
-          return acc
-        },
-        [],
-      )
-      setSelectedDatasets(dataSetsWithDetail)
-    } else {
-      setSelectedDatasets([])
-    }
-  }, [data.dataset_ids, datasetsDetail])
+  const selectedDatasets = (data.dataset_ids ?? []).reduce<
+    DatasetDetailWithPartialMembersResponse[]
+  >((acc, id) => {
+    if (datasetsDetail[id]) acc.push(datasetsDetail[id])
+    return acc
+  }, [])
 
   if (!selectedDatasets.length) return null
 

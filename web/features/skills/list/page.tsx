@@ -82,7 +82,6 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {
@@ -108,7 +107,6 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           setImportOpen(false)
-          invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
         onError: (error) => {

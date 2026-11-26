@@ -436,7 +436,7 @@ jobs:
 
   final:
     name: KnowledgeFS CI
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     needs:
       - check-changes
       - quality

@@ -14,7 +14,6 @@ export default function ScopeDetails({ tokenId }: { tokenId: string }) {
     consoleQuery.account.personalAccessTokens.byTokenId.get.queryOptions({
       context: { silent: true },
       input: { params: { token_id: tokenId } },
-      staleTime: 0,
     }),
   )
   const detail = query.data

@@ -1,7 +1,7 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 //
-// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
+// Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/docs/evaluation/docs.json
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -28,6 +28,9 @@ type UseDifyPath =
   | '/use-dify/debug/history-and-logs'
   | '/use-dify/debug/step-run'
   | '/use-dify/debug/variable-inspect'
+  | '/use-dify/evaluate/custom-evaluators'
+  | '/use-dify/evaluate/metrics'
+  | '/use-dify/evaluate/run-evaluations'
   | '/use-dify/getting-started/introduction'
   | '/use-dify/knowledge-base/create-knowledge-base'
   | '/use-dify/knowledge-base/maintain-knowledge-base'
@@ -444,6 +447,9 @@ export const docPathProductAvailability = {
   '/use-dify/debug/history-and-logs': ['cloud', 'self-host'],
   '/use-dify/debug/step-run': ['cloud', 'self-host'],
   '/use-dify/debug/variable-inspect': ['cloud', 'self-host'],
+  '/use-dify/evaluate/custom-evaluators': ['cloud'],
+  '/use-dify/evaluate/metrics': ['cloud'],
+  '/use-dify/evaluate/run-evaluations': ['cloud'],
   '/use-dify/getting-started/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge-base/create-knowledge-base': ['cloud'],
   '/use-dify/knowledge-base/maintain-knowledge-base': ['cloud'],
@@ -462,8 +468,8 @@ export const docPathProductAvailability = {
   '/use-dify/knowledge/create-knowledge/introduction': ['cloud', 'self-host'],
   '/use-dify/knowledge/create-knowledge/setting-indexing-methods': ['cloud', 'self-host'],
   '/use-dify/knowledge/external-knowledge-api': ['cloud', 'self-host'],
-  '/use-dify/knowledge/file-security-scan': ['self-host'],
-  '/use-dify/knowledge/file-security-scan-custom-endpoint': ['self-host'],
+  '/use-dify/knowledge/file-security-scan': ['cloud', 'self-host'],
+  '/use-dify/knowledge/file-security-scan-custom-endpoint': ['cloud', 'self-host'],
   '/use-dify/knowledge/integrate-knowledge-within-application': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-pipeline/authorize-data-source': ['cloud', 'self-host'],
   '/use-dify/knowledge/knowledge-pipeline/create-knowledge-pipeline': ['cloud', 'self-host'],

@@ -199,7 +199,6 @@ export const useWorkflowInit = () => {
       queryClient.query(
         consoleQuery.apps.byAppId.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
           input: { params: { app_id: appDetail.id } },
-          staleTime: 0,
         }),
       ),
       queryClient.query(appWorkflowQueryOptions(appDetail.id)),

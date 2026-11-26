@@ -64,18 +64,20 @@ vi.mock('@/app/notifications', () => ({
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const space = 'knowledgeFs.spaces.byControlSpaceId'
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
+    [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
+    [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
+    [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.goldenQuestions.evidenceMatches.post`]: serviceMock.matchEvidence,
-      [`${space}.quality.badCases.byBadCaseId.get`]: serviceMock.getBadCase,
-      [`${space}.quality.badCases.byBadCaseId.patch`]: serviceMock.updateBadCase,
-      [`${space}.quality.badCases.byBadCaseId.traceReference.get`]: serviceMock.getTraceReference,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       [`${space}.goldenQuestions.bulkImport.post`]: serviceMock.bulkImport,
       [`${space}.goldenQuestions.byQuestionId.delete`]: serviceMock.deleteGolden,
       [`${space}.goldenQuestions.byQuestionId.patch`]: serviceMock.updateGolden,
@@ -811,7 +813,7 @@ describe('QualityPage', () => {
         {
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
@@ -1041,7 +1043,7 @@ describe('QualityPage', () => {
           },
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: { silent: true } },
+        { context: expect.objectContaining({ silent: true }) },
       ),
     )
     await waitFor(() =>
@@ -1144,10 +1146,10 @@ describe('QualityPage', () => {
     expect(toast.error).not.toHaveBeenCalled()
     expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
       { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: { silent: true } },
+      { context: expect.objectContaining({ silent: true }) },
     )
     expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: { silent: true },
+      context: expect.objectContaining({ silent: true }),
     })
     await user.click(promote)
 

@@ -105,44 +105,39 @@ function AgentFileItem({
   const shouldLoadTextPreview = canLoadPreview && !isFileDataPreview
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: previewFileId ?? '',
-        },
-        query: {
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadTextPreview && !apiContext.workflow && !apiContext.trialAppId && previewFileId
+          ? {
+              params: { agent_id: apiContext.agentId, name: previewFileId },
+              query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
+            }
+          : skipToken,
     }),
-    enabled: shouldLoadTextPreview && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowPreviewQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.files.byName.preview.get.queryOptions({
-      input: {
-        params: {
-          app_id: apiContext.workflow?.appId ?? '',
-          name: previewFileId ?? '',
-        },
-        query: {
-          node_id: apiContext.workflow?.nodeId,
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldLoadTextPreview && apiContext.workflow && previewFileId
+          ? {
+              params: { app_id: apiContext.workflow.appId, name: previewFileId },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    enabled: shouldLoadTextPreview && !!apiContext.workflow,
   })
   const trialPreviewQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.files.byName.preview.get.queryOptions({
-      input: apiContext.trialAppId
-        ? {
-            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-            query: { version_id: apiContext.versionId },
-          }
-        : skipToken,
-      enabled: !!apiContext.trialAppId && shouldLoadTextPreview,
+      input:
+        shouldLoadTextPreview && apiContext.trialAppId && previewFileId
+          ? {
+              params: { app_id: apiContext.trialAppId, name: previewFileId },
+              query: { version_id: apiContext.versionId },
+            }
+          : skipToken,
     }),
   )
   const previewQuery = apiContext.trialAppId
@@ -154,49 +149,41 @@ function AgentFileItem({
     canLoadPreview && (isFileDataPreview || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: previewFileId ?? '',
-        },
-        query: {
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldDownloadPreviewFile && !apiContext.workflow && !apiContext.trialAppId && previewFileId
+          ? {
+              params: { agent_id: apiContext.agentId, name: previewFileId },
+              query: { draft_type: apiContext.draftType, version_id: apiContext.versionId },
+            }
+          : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
-    enabled: shouldDownloadPreviewFile && !apiContext.workflow && !apiContext.trialAppId,
   })
   const workflowDownloadQuery = useQuery({
     ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
-      input: {
-        params: {
-          app_id: apiContext.workflow?.appId ?? '',
-          name: previewFileId ?? '',
-        },
-        query: {
-          node_id: apiContext.workflow?.nodeId,
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
+      input:
+        shouldDownloadPreviewFile && apiContext.workflow && previewFileId
+          ? {
+              params: { app_id: apiContext.workflow.appId, name: previewFileId },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            }
+          : skipToken,
     }),
-    staleTime: 0,
     refetchOnWindowFocus: false,
-    enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const trialDownloadQuery = useQuery(
     consoleQuery.trialApps.byAppId.agent.config.files.byName.download.get.queryOptions({
-      input: apiContext.trialAppId
-        ? {
-            params: { app_id: apiContext.trialAppId, name: previewFileId ?? '' },
-            query: { version_id: apiContext.versionId },
-          }
-        : skipToken,
-      enabled: !!apiContext.trialAppId && shouldDownloadPreviewFile,
-      staleTime: 0,
+      input:
+        shouldDownloadPreviewFile && apiContext.trialAppId && previewFileId
+          ? {
+              params: { app_id: apiContext.trialAppId, name: previewFileId },
+              query: { version_id: apiContext.versionId },
+            }
+          : skipToken,
       refetchOnWindowFocus: false,
     }),
   )

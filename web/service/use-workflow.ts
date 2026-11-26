@@ -5,7 +5,7 @@ import { useCallback } from 'react'
 import { consoleQuery } from '@/service/console'
 
 // These hooks compose the per-resource generated mutations so the cache policies
-// registered in `service/console/query-policies.ts` still run for each resource kind.
+// registered in `service/console/policies/` still run for each resource kind.
 
 type UpdateVersionParams = {
   resource:

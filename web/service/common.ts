@@ -13,13 +13,7 @@ export const changeWebAppPasswordWithToken = (body: {
 }) => webAppClient.forgotPassword.resets.post({ body })
 
 export const uploadPublicRemoteFileInfo = (url: string, options?: { silent?: boolean }) => {
-  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options }) as Promise<{
-    id: string
-    name: string
-    size: number
-    mime_type: string
-    url: string
-  }>
+  return webAppClient.remoteFiles.upload.post({ body: { url } }, { context: options })
 }
 
 export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>

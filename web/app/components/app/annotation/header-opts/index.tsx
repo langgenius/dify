@@ -10,14 +10,14 @@ import {
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
-import { noop, useMutation } from '@tanstack/react-query'
+import { noop, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { consoleClient, consoleQuery } from '@/service/console'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationDialog from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -29,7 +29,6 @@ const CSV_HEADER_QA_CN = ['问题', '答案']
 type Props = Readonly<{
   appId: string
   onAdded: () => void
-  controlUpdateList: number
 }>
 
 type OperationsMenuProps = {
@@ -124,24 +123,19 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   )
 }
 
-const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
+const HeaderOptions: FC<Props> = ({ appId, onAdded }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
   const locale = useLocale()
-  const [list, setList] = useState<Annotation[]>([])
-
-  const fetchList = React.useCallback(async () => {
-    const { data } = await consoleClient.apps.byAppId.annotations.export.get({
-      params: { app_id: appId },
-    })
-    setList(data)
-  }, [appId])
-
-  useEffect(() => {
-    fetchList()
-  }, [fetchList])
-  useEffect(() => {
-    if (controlUpdateList) fetchList()
-  }, [controlUpdateList, fetchList])
+  // The export menu is enabled only when there is something to export, so the full list
+  // stays loaded; annotation changes refresh it through the annotations key.
+  const { data: list = [] } = useQuery(
+    consoleQuery.apps.byAppId.annotations.export.get.queryOptions({
+      input: { params: { app_id: appId } },
+      // Exports must include changes made outside this client, so reload on every visit.
+      staleTime: 0,
+      select: (data) => data.data,
+    }),
+  )
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
@@ -165,13 +159,8 @@ const HeaderOptions: FC<Props> = ({ appId, onAdded, controlUpdateList }) => {
 
   return (
     <div className="flex space-x-2">
-      <AddAnnotationDialog
-        appId={appId}
-        onAdded={() => {
-          onAdded()
-          void fetchList().catch(noop)
-        }}
-      />
+      {/* A new annotation refreshes the list and export through its cache policy. */}
+      <AddAnnotationDialog appId={appId} onAdded={noop} />
       <Menu modal={false}>
         <MenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}

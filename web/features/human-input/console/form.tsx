@@ -57,8 +57,6 @@ export default function ConsoleHumanInputForm({ formToken }: { formToken: string
       context: { silent: true },
       select: normalizeConsoleFormDefinition,
       retry: false,
-      staleTime: 0,
-      gcTime: 0,
       refetchOnWindowFocus: false,
     }),
   )

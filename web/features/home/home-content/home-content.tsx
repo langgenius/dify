@@ -383,7 +383,6 @@ export function HomeContent() {
             context: { silent: true },
             input: { params: { app_id: appId } },
           }),
-          staleTime: 0,
         })
         if (!canCreateTemplate(appDetail.mode))
           throw new Error('Template creation is not permitted')

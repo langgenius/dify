@@ -289,9 +289,6 @@ export function useAgentConfigureBuildDraftActions({
       },
     },
   })
-  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
-    input: { params: { agent_id: agentId } },
-  })
   const finalizeBuildChatMutation = useMutation(
     consoleQuery.agent.byAgentId.buildChat.finalize.post.mutationOptions(),
   )
@@ -392,12 +389,6 @@ export function useAgentConfigureBuildDraftActions({
         params: {
           agent_id: agentId,
         },
-      })
-      await queryClient.invalidateQueries({
-        queryKey: agentDetailQueryKey,
-      })
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.agent.get.key(),
       })
       if (await exitBuildDraftMode(true)) toast.success(tCommon(($) => $['api.actionSuccess']))
     } catch {
