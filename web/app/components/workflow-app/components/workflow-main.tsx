@@ -404,11 +404,16 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       }
 
       const isCurrent = () => !disposed && collaborationManager.isGraphReloadCurrent(request)
+      const previousDraftHash = workflowStore.getState().syncWorkflowDraftHash
       const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply: isCurrent })
       if (!isCurrent()) return
 
       if (refreshed) {
-        collaborationManager.replaceGraphFromReactFlow(request)
+        // A newer draft takes precedence. A known matching hash lets us keep unsaved edits.
+        const preserveRetainedGraph =
+          previousDraftHash !== '' &&
+          previousDraftHash === workflowStore.getState().syncWorkflowDraftHash
+        collaborationManager.replaceGraphFromReactFlow(request, preserveRetainedGraph)
         return
       }
 
@@ -427,7 +432,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       if (retryTimer) clearTimeout(retryTimer)
       unsubscribe()
     }
-  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled])
+  }, [appId, handleRefreshWorkflowDraft, isCollaborationEnabled, workflowStore])
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,

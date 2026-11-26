@@ -11,7 +11,7 @@ type CRDTProviderCallbacks = {
   shouldImportSnapshot?: () => boolean
   /** An update was stored but waits for operations this replica has not received. */
   onMissingDependencies?: () => void
-  /** Loro rejected an update; the document is unchanged and may no longer match its peers. */
+  /** Loro rejected an incoming update, so this replica may no longer match its peers. */
   onImportFailed?: (error: unknown) => void
 }
 
@@ -66,7 +66,7 @@ export class CRDTProvider {
     }
 
     if (status.pending && status.pending.size > 0) this.callbacks.onMissingDependencies?.()
-    if (isSnapshot) this.callbacks.onSnapshotImported?.()
+    else if (isSnapshot) this.callbacks.onSnapshotImported?.()
   }
 
   destroy(): void {

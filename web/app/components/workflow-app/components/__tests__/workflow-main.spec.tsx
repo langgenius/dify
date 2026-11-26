@@ -653,7 +653,7 @@ it('retries an outstanding follower save on the next update after persistence fa
 })
 
 it('reloads the authoritative HTTP graph before replacing the reconnected document', async () => {
-  await renderMain()
+  await renderMain({ initialStoreState: { syncWorkflowDraftHash: 'previous-draft-hash' } })
   const response = createDeferred<FetchWorkflowDraftResponse>()
   api.fetchDraft.mockReturnValueOnce(response.promise)
   let reload: ReturnType<typeof reloadGraph>
@@ -675,8 +675,26 @@ it('reloads the authoritative HTTP graph before replacing the reconnected docume
   expect(await screen.findByText('Reloaded entry')).toBeInTheDocument()
   expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledExactlyOnceWith(
     graphRequest,
+    false,
   )
 })
+
+it.each([
+  ['matching', 'workflow-hash', true],
+  ['unknown', '', false],
+] as const)(
+  'only preserves retained edits when the draft hash is known to match (%s)',
+  async (_, hash, preserve) => {
+    await renderMain({ initialStoreState: { syncWorkflowDraftHash: hash } })
+    await act(async () => {
+      await reloadGraph()
+    })
+    expect(collaborationManager.replaceGraphFromReactFlow).toHaveBeenCalledExactlyOnceWith(
+      graphRequest,
+      preserve,
+    )
+  },
+)
 
 it('rejects a directed save while the collaborative graph is untrusted', async () => {
   vi.mocked(collaborationManager.canPersistLocalGraph).mockReturnValue(false)
