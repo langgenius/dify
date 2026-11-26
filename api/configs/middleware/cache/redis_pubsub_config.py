@@ -1,5 +1,5 @@
 from typing import Literal, Protocol, cast
-from urllib.parse import quote_plus, urlunparse
+from urllib.parse import quote, urlunparse
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
@@ -71,6 +71,12 @@ class RedisPubSubConfig(BaseSettings):
     )
 
     def _build_default_pubsub_url(self) -> str:
+        """Build a URL preserving validated Redis credentials, host and port.
+
+        Requires the Redis defaults supplied by the composite settings model;
+        missing host or port raises ``ValueError`` before a URL is returned.
+        IPv6 hosts are bracketed without adding brackets a second time.
+        """
         defaults = _redis_defaults(self)
         if not defaults.REDIS_HOST or not defaults.REDIS_PORT:
             raise ValueError("PUBSUB_REDIS_URL must be set when default Redis URL cannot be constructed")
@@ -81,16 +87,19 @@ class RedisPubSubConfig(BaseSettings):
 
         userinfo = ""
         if username:
-            userinfo = quote_plus(username)
+            userinfo = quote(username, safe="")
         if password:
-            password_part = quote_plus(password)
+            password_part = quote(password, safe="")
             userinfo = f"{userinfo}:{password_part}" if userinfo else f":{password_part}"
         if userinfo:
             userinfo = f"{userinfo}@"
 
         db = defaults.REDIS_DB
 
-        netloc = f"{userinfo}{defaults.REDIS_HOST}:{defaults.REDIS_PORT}"
+        host = defaults.REDIS_HOST
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        netloc = f"{userinfo}{host}:{defaults.REDIS_PORT}"
         return urlunparse((scheme, netloc, f"/{db}", "", "", ""))
 
     @property

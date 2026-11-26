@@ -1,6 +1,6 @@
 import os
 from typing import Any, Literal, TypedDict, cast
-from urllib.parse import parse_qsl, quote_plus
+from urllib.parse import parse_qsl, quote
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
@@ -197,13 +197,23 @@ class DatabaseConfig(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        """Build a connection URL preserving its configured credentials, host and port.
+
+        Settings are validated strings. Spaces use percent encoding because
+        SQLAlchemy decodes URL userinfo, not form-encoded query parameters.
+        IPv6 hosts are bracketed so their colons cannot become port separators.
+        """
+        host = self.DB_HOST
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
         db_extras = (
             f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else self.DB_EXTRAS
         ).strip("&")
         db_extras = f"?{db_extras}" if db_extras else ""
         return (
             f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
-            f"{quote_plus(self.DB_USERNAME)}:{quote_plus(self.DB_PASSWORD)}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
+            f"{quote(self.DB_USERNAME, safe='')}:{quote(self.DB_PASSWORD, safe='')}"
+            f"@{host}:{self.DB_PORT}/{self.DB_DATABASE}"
             f"{db_extras}"
         )
 
