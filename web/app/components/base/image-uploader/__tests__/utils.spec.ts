@@ -2,6 +2,7 @@ import type { ConsoleClient } from '@/service/console'
 import { ORPCError } from '@orpc/client'
 import { waitFor } from '@testing-library/react'
 import { createInstance } from 'i18next'
+import { createHttpError } from '@/service/http-error'
 import { getImageUploadErrorMessage, imageUpload } from '../utils'
 
 const upload = vi.hoisted(() =>
@@ -37,10 +38,26 @@ beforeEach(() => {
 
 it.each([
   {
-    error: new ORPCError('forbidden', { message: 'Forbidden by policy' }),
+    error: createHttpError(new Response(null, { status: 403 }), {
+      code: 'forbidden',
+      message: 'Forbidden by policy',
+    }),
     expected: 'Forbidden by policy',
   },
-  { error: new ORPCError('file_extension_blocked'), expected: 'This file type is blocked.' },
+  {
+    error: createHttpError(new Response(null, { status: 413 }), {
+      code: 'file_too_large',
+      message: 'File size exceeded. 15 MB maximum.',
+    }),
+    expected: 'File size exceeded. 15 MB maximum.',
+  },
+  {
+    error: createHttpError(new Response(null, { status: 400 }), {
+      code: 'file_extension_blocked',
+      message: 'Blocked',
+    }),
+    expected: 'This file type is blocked.',
+  },
   { error: new ORPCError('unexpected_error'), expected: 'Upload failed' },
   { error: new Error('Network unavailable'), expected: 'Upload failed' },
 ])('returns the user-facing error for $error.code / $error.message', ({ error, expected }) => {

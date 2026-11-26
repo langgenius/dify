@@ -12,7 +12,7 @@ import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
@@ -41,7 +41,7 @@ function educationVerifyErrorMessage(
     case 'education_verify_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+      return getBillingErrorMessage(error, t)
   }
 }
 
@@ -115,9 +115,7 @@ export function EducationVerifyFlow() {
   if (educationStatusQuery.isError)
     return (
       <EducationVerifyError
-        message={t(($) => $[billingErrorMessageKey(educationStatusQuery.error)], {
-          ns: 'billing',
-        })}
+        message={getBillingErrorMessage(educationStatusQuery.error, t)}
         onRetry={() => {
           void educationStatusQuery.refetch()
         }}

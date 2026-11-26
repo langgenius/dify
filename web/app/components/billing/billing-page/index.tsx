@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { billingErrorMessageKey } from '../billing-error'
+import { getBillingErrorMessage } from '../billing-error'
 import PlanComp, { PlanLoading } from '../plan'
 
 const Billing: FC = () => {
@@ -50,7 +50,7 @@ const Billing: FC = () => {
             </div>
             <div className="system-sm-regular text-text-secondary">
               {!billingUrl && billingQuery.isError
-                ? t(($) => $[billingErrorMessageKey(billingQuery.error)], { ns: 'billing' })
+                ? getBillingErrorMessage(billingQuery.error, t)
                 : t(($) => $.viewBillingDescription, { ns: 'billing' })}
             </div>
           </div>
