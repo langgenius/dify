@@ -20,6 +20,8 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
 from .constants import OUTPUT_FIELD_ACTION_ID, OUTPUT_FIELD_ACTION_VALUE, OUTPUT_FIELD_RENDERED_CONTENT, TIMEOUT_HANDLE
 from .entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -256,7 +258,7 @@ class DifyHITLCallback:
                 file_count = len(value)
             return f"[{file_count} files]"
 
-        if isinstance(form_input, ParagraphInputConfig | SelectInputConfig):
+        if isinstance(form_input, ParagraphInputConfig | SelectInputConfig | DateInputConfig | DateTimeInputConfig):
             return str(value)
 
         if isinstance(value, dict | list):

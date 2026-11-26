@@ -5,6 +5,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 import pytest
 
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     FormPart,
@@ -14,7 +16,11 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
 )
 from core.tools.signature import sign_tool_file
-from core.workflow.nodes.human_input.entities import ParagraphInputConfig
+from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
+    ParagraphInputConfig,
+)
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from factories.human_input_v2_form_presentation import (
     build_form_presentation,
@@ -192,3 +198,60 @@ def test_render_uses_file_placeholders_and_list_counts(
     )
 
     assert content == f"[file] / {expected}"
+
+
+def test_date_and_datetime_presentation_preserve_concrete_defaults(form: ResolvedForm) -> None:
+    form = form.model_copy(
+        update={
+            "parts": (
+                DateInput(output_variable_name="due_date", resolved_default_value="2026-11-25"),
+                DateTimeInput(output_variable_name="meeting_at", resolved_default_value="2026-11-25T14:30:00Z"),
+                DateInput(output_variable_name="empty_date", resolved_default_value=None),
+            )
+        }
+    )
+
+    presentation = build_form_presentation(form)
+
+    assert len(presentation.inputs) == 3
+    date_input, datetime_input, empty_date_input = presentation.inputs
+    assert isinstance(date_input, DateInputConfig)
+    assert date_input.default is not None
+    assert date_input.default.type == ValueSourceType.CONSTANT
+    assert date_input.default.value == "2026-11-25"
+    assert isinstance(datetime_input, DateTimeInputConfig)
+    assert datetime_input.default is not None
+    assert datetime_input.default.type == ValueSourceType.CONSTANT
+    assert datetime_input.default.value == "2026-11-25T14:30:00Z"
+    assert isinstance(empty_date_input, DateInputConfig)
+    assert empty_date_input.default is None
+    assert presentation.resolved_default_values == {
+        "due_date": "2026-11-25",
+        "meeting_at": "2026-11-25T14:30:00Z",
+    }
+
+
+def test_render_includes_submitted_date_and_datetime_and_omits_missing(form: ResolvedForm) -> None:
+    form = form.model_copy(
+        update={
+            "parts": (
+                MarkdownFragment(text="Due: "),
+                DateInput(output_variable_name="due_date", resolved_default_value="2026-11-25"),
+                MarkdownFragment(text=" At: "),
+                DateTimeInput(output_variable_name="meeting_at", resolved_default_value=None),
+                MarkdownFragment(text=" Missing: "),
+                DateInput(output_variable_name="missing_date", resolved_default_value=None),
+            )
+        }
+    )
+
+    content = render_filled_content(
+        form,
+        {
+            "due_date": StringSegment(value="2026-12-01"),
+            "meeting_at": StringSegment(value="2026-12-01T09:15:00Z"),
+            "missing_date": NoneSegment(),
+        },
+    )
+
+    assert content == "Due: 2026-12-01 At: 2026-12-01T09:15:00Z Missing: "

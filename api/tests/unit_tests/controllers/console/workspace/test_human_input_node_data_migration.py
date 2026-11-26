@@ -18,6 +18,8 @@ from werkzeug.local import LocalProxy
 
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     ParagraphDefaultConfig,
@@ -159,9 +161,20 @@ def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendere
             "allowed_file_upload_methods": ["remote_url", "local_file"],
             "number_limits": 7,
         },
+        {
+            "type": "date",
+            "output_variable_name": "due_date",
+            "default": {"type": "constant", "selector": [], "value": "2026-11-25"},
+        },
+        {
+            "type": "datetime",
+            "output_variable_name": "meeting_at",
+            "default": {"type": "variable", "selector": ["start", "meeting_at"], "value": ""},
+        },
     ]
     form_content = (
-        "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}{{#$output.attachment#}}{{#$output.images#}}"
+        "{{#$output.reason#}}{{#$output.decision#}}{{#$output.reviewer#}}"
+        "{{#$output.attachment#}}{{#$output.images#}}{{#$output.due_date#}}{{#$output.meeting_at#}}"
     )
     user_actions = [{"id": "approve", "title": "A" * 100, "button_style": "primary"}]
     v1_node = HumanInputNodeDataFull.model_validate(
@@ -229,6 +242,8 @@ def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendere
             allowed_file_upload_methods=(FileTransferMethod.REMOTE_URL, FileTransferMethod.LOCAL_FILE),
             number_limits=7,
         ),
+        DateInput(output_variable_name="due_date", resolved_default_value="2026-11-25"),
+        DateTimeInput(output_variable_name="meeting_at", resolved_default_value=None),
     )
     assert resolved.actions[0].title == "A" * 100
     fixture_path = Path(__file__).resolve().parents[6] / (

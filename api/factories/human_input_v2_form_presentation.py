@@ -5,6 +5,8 @@ from dataclasses import dataclass, replace
 from typing import assert_never
 
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     MarkdownFragment,
@@ -13,6 +15,8 @@ from core.human_input_v2.resolved_form import (
     SelectInput,
 )
 from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -110,6 +114,24 @@ def build_form_presentation(form: ResolvedForm) -> FormPresentation:
                         number_limits=part.number_limits,
                     )
                 )
+            case DateInput():
+                default = (
+                    StringSource(type=ValueSourceType.CONSTANT, value=part.resolved_default_value)
+                    if part.resolved_default_value is not None
+                    else None
+                )
+                if part.resolved_default_value is not None:
+                    defaults[name] = part.resolved_default_value
+                inputs.append(DateInputConfig(output_variable_name=name, default=default))
+            case DateTimeInput():
+                default = (
+                    StringSource(type=ValueSourceType.CONSTANT, value=part.resolved_default_value)
+                    if part.resolved_default_value is not None
+                    else None
+                )
+                if part.resolved_default_value is not None:
+                    defaults[name] = part.resolved_default_value
+                inputs.append(DateTimeInputConfig(output_variable_name=name, default=default))
     return FormPresentation(
         form_content=form.legacy_form_content,
         inputs=inputs,
@@ -171,7 +193,7 @@ def render_filled_content(form: ResolvedForm, inputs: Mapping[str, Segment]) -> 
         if segment is None or segment.to_object() is None:
             continue
         match part:
-            case ParagraphInput():
+            case ParagraphInput() | DateInput() | DateTimeInput():
                 fragments.append(str(segment.to_object()))
             case SelectInput():
                 fragments.append(segment.text)

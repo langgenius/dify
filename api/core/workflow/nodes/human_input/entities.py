@@ -8,7 +8,7 @@ that used to live in graphon.
 import abc
 import re
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
@@ -107,7 +107,48 @@ class BaseInputConfig(BaseModel):
         """
 
 
-class ParagraphInputConfig(BaseInputConfig):
+class _StringDefaultInputConfig(BaseInputConfig, abc.ABC):
+    """Shared default-value behavior for string-valued form inputs."""
+
+    default: StringSource | None = Field(
+        default=None,
+        description="Optional default-value configuration for the input.",
+    )
+
+    @override
+    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
+        """Extract upstream variable selectors referenced by the default value.
+
+        Preconditions: `self.default` is either `None` or a valid `StringSource`.
+        Postconditions: returns a sequence of variable selector paths; returns empty
+        when `default` is `None` or constant.
+        """
+        default = self.default
+        if default is None:
+            return []
+        if default.type == ValueSourceType.CONSTANT:
+            return []
+        return [default.selector]
+
+    @override
+    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
+        """Resolve variable-backed default value from `pool`.
+
+        Preconditions: `pool` is the workflow runtime variable pool.
+        Postconditions: returns the resolved `Segment` if `default` is variable-backed
+        and present in `pool`, otherwise `None`.
+        """
+        default = self.default
+        if default is None:
+            return None
+
+        if default.type == ValueSourceType.CONSTANT:
+            return None
+
+        return pool.get(default.selector)
+
+
+class ParagraphInputConfig(_StringDefaultInputConfig):
     """Form input definition."""
 
     # NOTE: This class is renamed from FormInput.
@@ -120,25 +161,25 @@ class ParagraphInputConfig(BaseInputConfig):
         ),
     )
 
-    @override
-    def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
-        default = self.default
-        if default is None:
-            return []
-        if default.type == ValueSourceType.CONSTANT:
-            return []
-        return [default.selector]
 
-    @override
-    def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
-        default = self.default
-        if default is None:
-            return None
+class DateInputConfig(_StringDefaultInputConfig):
+    """Calendar date picker input definition (YYYY-MM-DD)."""
 
-        if default.type == ValueSourceType.CONSTANT:
-            return None
+    type: Literal[FormInputType.DATE] = FormInputType.DATE
+    default: StringSource | None = Field(
+        default=None,
+        description="Optional default date value configuration. Constant values use YYYY-MM-DD.",
+    )
 
-        return pool.get(default.selector)
+
+class DateTimeInputConfig(_StringDefaultInputConfig):
+    """Calendar date and time picker input definition (ISO 8601)."""
+
+    type: Literal[FormInputType.DATETIME] = FormInputType.DATETIME
+    default: StringSource | None = Field(
+        default=None,
+        description="Optional default datetime value configuration. Constant values use ISO 8601 format.",
+    )
 
 
 class SelectInputConfig(BaseInputConfig):
@@ -220,9 +261,45 @@ class FileListInputConfig(_FileInputCommonConfig, BaseInputConfig):
 
 
 type FormInputConfig = Annotated[
-    ParagraphInputConfig | SelectInputConfig | FileInputConfig | FileListInputConfig,
+    ParagraphInputConfig
+    | SelectInputConfig
+    | FileInputConfig
+    | FileListInputConfig
+    | DateInputConfig
+    | DateTimeInputConfig,
     Field(discriminator="type"),
 ]
+
+
+_ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_ISO_DATETIME_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})?$")
+
+
+def validate_iso_date(value: str) -> str:
+    """Validate an ISO 8601 civil date string (`YYYY-MM-DD`).
+
+    Preconditions: `value` is a `str`.
+    Postconditions: returns `value` unchanged when it is a valid Gregorian
+    `YYYY-MM-DD` date; raises `ValueError` otherwise with no side effects.
+    """
+    if not _ISO_DATE_PATTERN.fullmatch(value):
+        raise ValueError(f"Invalid date format '{value}': expected YYYY-MM-DD")
+    date.fromisoformat(value)
+    return value
+
+
+def validate_iso_datetime(value: str) -> str:
+    """Validate an ISO 8601 date and time string.
+
+    Preconditions: `value` is a `str`.
+    Postconditions: returns `value` unchanged when it contains both date and
+    time components and parses cleanly with `datetime.fromisoformat`; raises
+    `ValueError` otherwise with no side effects.
+    """
+    if not _ISO_DATETIME_PATTERN.fullmatch(value):
+        raise ValueError(f"Invalid datetime format '{value}': expected ISO 8601 datetime")
+    datetime.fromisoformat(value)
+    return value
 
 
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

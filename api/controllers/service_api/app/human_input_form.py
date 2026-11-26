@@ -25,17 +25,22 @@ from core.db.session_factory import session_factory
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
     ParagraphInputConfig,
     SelectInputConfig,
+    StringSource,
 )
 from extensions.ext_database import db
 from factories.human_input_v2_form_presentation import build_service_api_form_presentation
 from fields.base import ResponseModel
 from fields.human_input_v2 import (
     HumanInputActionResponse,
+    HumanInputDateResponse,
+    HumanInputDateTimeResponse,
     HumanInputFileListResponse,
     HumanInputFileResponse,
     HumanInputParagraphResponse,
@@ -113,19 +118,36 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
         raise NotFound("Form not found")
 
 
+def _string_source_response(source: StringSource | None) -> HumanInputStringSourceResponse | None:
+    if source is None:
+        return None
+    return HumanInputStringSourceResponse(
+        type=source.type,
+        selector=list(source.selector),
+        value=source.value,
+    )
+
+
 def _form_input_response(form_input: FormInputConfig) -> HumanInputResponse:
     """Project a trusted input into its response DTO, preserving every wire value."""
     match form_input:
         case ParagraphInputConfig():
-            source = form_input.default
             return HumanInputParagraphResponse(
                 output_variable_name=form_input.output_variable_name,
                 type="paragraph",
-                default=(
-                    HumanInputStringSourceResponse(type=source.type, selector=list(source.selector), value=source.value)
-                    if source is not None
-                    else None
-                ),
+                default=_string_source_response(form_input.default),
+            )
+        case DateInputConfig():
+            return HumanInputDateResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="date",
+                default=_string_source_response(form_input.default),
+            )
+        case DateTimeInputConfig():
+            return HumanInputDateTimeResponse(
+                output_variable_name=form_input.output_variable_name,
+                type="datetime",
+                default=_string_source_response(form_input.default),
             )
         case SelectInputConfig():
             source = form_input.option_source

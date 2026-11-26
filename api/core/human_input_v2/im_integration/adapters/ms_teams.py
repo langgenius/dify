@@ -87,6 +87,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMWebhookHandler,
 )
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     MarkdownFragment,
@@ -448,6 +450,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     continue
                 case FileInput() | FileListInput():
                     return "Microsoft Teams cards cannot represent file inputs."
+                case DateInput() | DateTimeInput():
+                    return "Microsoft Teams cards cannot represent date or datetime inputs."
                 case ParagraphInput(output_variable_name=input_name):
                     pass
                 case SelectInput(
@@ -516,6 +520,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     choice_input["value"] = block.resolved_default_value
                 body.append(choice_input)
                 continue
+            if isinstance(block, DateInput | DateTimeInput):
+                raise DynamicCardMessagingError("Microsoft Teams cards cannot represent date or datetime inputs.")
             raise DynamicCardMessagingError("Microsoft Teams cards cannot represent file inputs.")
 
         actions: list[JsonValue] = []

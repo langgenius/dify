@@ -49,6 +49,8 @@ from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters.entities import IMProviderError
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     MarkdownFragment,
@@ -167,6 +169,10 @@ def _adapter(
 def _intent(*, input_type: str = "paragraph") -> ResolvedForm:
     if input_type == "select":
         input_block = SelectInput(output_variable_name="comment", options=("One", "Two"), resolved_default_value="One")
+    elif input_type == "date":
+        input_block = DateInput(output_variable_name="comment", resolved_default_value="2026-11-25")
+    elif input_type == "datetime":
+        input_block = DateTimeInput(output_variable_name="comment", resolved_default_value="2026-11-25T14:30:00Z")
     elif input_type == "file":
         input_block = FileInput(
             output_variable_name="comment",
@@ -1471,3 +1477,15 @@ def test_stream_wraps_close_exception_as_safe_stop_error(
 
     assert "sensitive close details" not in str(raised.value)
     assert "sensitive close details" not in caplog.text
+
+
+@pytest.mark.parametrize("input_type", ["date", "datetime"])
+def test_card_assessment_rejects_date_and_datetime_without_side_effects(mocker: MockerFixture, input_type: str) -> None:
+    client = FakeWebClient()
+    adapter = _adapter(mocker, client)
+
+    assessment = adapter.dynamic_card_messaging.assess(_intent(input_type=input_type))
+
+    assert assessment.representable is False
+    assert assessment.reason == "Slack cards cannot represent date or datetime inputs."
+    assert client.post_calls == []

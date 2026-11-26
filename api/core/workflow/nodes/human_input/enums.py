@@ -57,6 +57,14 @@ class FormInputType(enum.StrEnum):
     # The corresponding generated variable type is `SegmentType.ARRAY_FILE`.
     FILE_LIST = "file-list"
 
+    # A calendar date input field (no time component, ISO 8601 YYYY-MM-DD).
+    # The corresponding generated variable type is `SegmentType.STRING`.
+    DATE = "date"
+
+    # A calendar date and time input field (ISO 8601 datetime string).
+    # The corresponding generated variable type is `SegmentType.STRING`.
+    DATETIME = "datetime"
+
 
 class ValueSourceType(enum.StrEnum):
     """ValueSourceType records whether the value comes from a static setting

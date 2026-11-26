@@ -19,6 +19,8 @@ class FormPartType(StrEnum):
     SELECT_INPUT = "select_input"
     FILE_INPUT = "file_input"
     FILE_LIST_INPUT = "file_list_input"
+    DATE_INPUT = "date_input"
+    DATETIME_INPUT = "datetime_input"
 
 
 class MarkdownFragment(BaseModel):
@@ -84,6 +86,20 @@ class FileListInput(_BasicInput):
     number_limits: int
 
 
+class DateInput(_BasicInput):
+    """Resolved calendar date picker input (YYYY-MM-DD)."""
+
+    type: Literal[FormPartType.DATE_INPUT] = FormPartType.DATE_INPUT
+    resolved_default_value: str | None
+
+
+class DateTimeInput(_BasicInput):
+    """Resolved calendar date and time picker input (ISO 8601)."""
+
+    type: Literal[FormPartType.DATETIME_INPUT] = FormPartType.DATETIME_INPUT
+    resolved_default_value: str | None
+
+
 class UserAction(BaseModel):
     """Resolved action values required for presentation and submission validation."""
 
@@ -95,7 +111,7 @@ class UserAction(BaseModel):
 
 
 type FormPart = Annotated[
-    MarkdownFragment | ParagraphInput | SelectInput | FileInput | FileListInput,
+    MarkdownFragment | ParagraphInput | SelectInput | FileInput | FileListInput | DateInput | DateTimeInput,
     Field(discriminator="type"),
 ]
 

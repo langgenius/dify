@@ -3090,6 +3090,59 @@ def test_console_approval_uses_frozen_select_options(
         assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
 
 
+@pytest.mark.parametrize(
+    ("submitted_inputs", "should_accept"),
+    [
+        ({"due_date": "2026-11-25", "meeting_at": "2026-11-25T14:30:00.000Z"}, True),
+        ({"due_date": "2026-02-30", "meeting_at": "2026-11-25T14:30:00.000Z"}, False),
+        ({"due_date": "2026-11-25", "meeting_at": "2026-11-25"}, False),
+        ({"due_date": "", "meeting_at": "2026-11-25T14:30:00.000Z"}, False),
+        ({"due_date": 20261125, "meeting_at": "2026-11-25T14:30:00.000Z"}, False),
+    ],
+    ids=("valid-iso", "invalid-calendar-date", "date-only-in-datetime", "empty-date", "non-string-date"),
+)
+def test_console_approval_validates_date_and_datetime_inputs(
+    context: Context,
+    console_approval: tuple[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    submitted_inputs: dict[str, JsonValue],
+    should_accept: bool,
+) -> None:
+    from core.human_input_v2.resolved_form import DateInput, DateTimeInput
+    from services.human_input_v2.submission_service import (
+        HumanInputFormError,
+        HumanInputFormErrorCode,
+        HumanInputSubmissionService,
+    )
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    form_id, token = console_approval
+    with context.sessions.begin() as session:
+        record = session.get_one(HumanInputForm, form_id)
+        record.resolved_form = record.resolved_form.model_copy(
+            update={
+                "parts": (
+                    DateInput(output_variable_name="due_date", resolved_default_value=None),
+                    DateTimeInput(output_variable_name="meeting_at", resolved_default_value=None),
+                )
+            }
+        )
+    monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
+    service = HumanInputSubmissionService(session_factory=context.sessions)
+    if should_accept:
+        service.submit_console_form(account_id=_ACCOUNT, form_token=token, action="approve", inputs=submitted_inputs)
+        with context.sessions() as session:
+            assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.SUBMITTED
+    else:
+        with pytest.raises(HumanInputFormError) as exc:
+            service.submit_console_form(
+                account_id=_ACCOUNT, form_token=token, action="approve", inputs=submitted_inputs
+            )
+        assert exc.value.code == HumanInputFormErrorCode.INVALID_INPUT
+        with context.sessions() as session:
+            assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+
+
 @pytest.mark.parametrize("scenario", ["single", "list", "empty_list", "foreign_file", "over_limit", "invalid_mapping"])
 def test_console_approval_validates_files_and_persists_typed_segments(
     context: Context, console_approval: tuple[str, str], monkeypatch: pytest.MonkeyPatch, scenario: str

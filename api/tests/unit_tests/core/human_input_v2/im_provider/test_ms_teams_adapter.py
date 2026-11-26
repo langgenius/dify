@@ -57,6 +57,8 @@ from core.human_input_v2.im_integration.adapters import (
 )
 from core.human_input_v2.im_integration.adapters.entities import CredentialTestRejectedError
 from core.human_input_v2.resolved_form import (
+    DateInput,
+    DateTimeInput,
     FileInput,
     FileListInput,
     FormPart,
@@ -1073,8 +1075,18 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker: 
             ),
         ),
         _custom_card_intent(blocks=(MarkdownFragment(text=""),)),
+        _custom_card_intent(blocks=(DateInput(output_variable_name="due_date", resolved_default_value=None),)),
+        _custom_card_intent(blocks=(DateTimeInput(output_variable_name="meeting_at", resolved_default_value=None),)),
     ],
-    ids=("empty-options", "empty-option", "duplicate-options", "duplicate-input", "empty-markdown"),
+    ids=(
+        "empty-options",
+        "empty-option",
+        "duplicate-options",
+        "duplicate-input",
+        "empty-markdown",
+        "date-input",
+        "datetime-input",
+    ),
 )
 def test_card_assessment_rejects_unpreservable_resolved_controls_and_presentation(
     mocker: MockerFixture,

@@ -68,6 +68,8 @@ from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
 )
 from core.workflow.nodes.human_input.entities import (
+    DateInputConfig,
+    DateTimeInputConfig,
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -77,6 +79,8 @@ from core.workflow.nodes.human_input.entities import (
     StringListSource,
     StringSource,
     UserActionConfig,
+    validate_iso_date,
+    validate_iso_datetime,
 )
 from core.workflow.nodes.human_input.enums import (
     ButtonStyle,
@@ -241,6 +245,71 @@ def test_custom_file_input_requires_extensions() -> None:
             allowed_file_types=[FileType.CUSTOM],
             allowed_file_extensions=[],
         )
+
+
+def test_date_and_datetime_input_configs_preserve_string_defaults() -> None:
+    date_input = DateInputConfig(
+        output_variable_name="due_date",
+        default=StringSource(type=ValueSourceType.CONSTANT, value="2026-11-25"),
+    )
+    datetime_input = DateTimeInputConfig(
+        output_variable_name="meeting_at",
+        default=StringSource(type=ValueSourceType.VARIABLE, selector=["start", "meeting_at"], value=""),
+    )
+
+    assert date_input.type == FormInputType.DATE
+    assert datetime_input.type == FormInputType.DATETIME
+
+    definition = FormDefinition(
+        form_content="{{#$output.due_date#}} {{#$output.meeting_at#}}",
+        inputs=[date_input, datetime_input],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        rendered_content="rendered",
+        expiration_time=_dify_owned_contracts_datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    restored = TypeAdapter(FormDefinition).validate_json(json.dumps(definition.model_dump(mode="json")))
+    assert isinstance(restored.inputs[0], DateInputConfig)
+    assert restored.inputs[0].default is not None
+    assert restored.inputs[0].default.value == "2026-11-25"
+    assert isinstance(restored.inputs[1], DateTimeInputConfig)
+    assert restored.inputs[1].default is not None
+    assert list(restored.inputs[1].default.selector) == ["start", "meeting_at"]
+
+
+@pytest.mark.parametrize("valid_value", ["2026-11-25", "2024-02-29"])
+def test_validate_iso_date_accepts_valid_dates(valid_value: str) -> None:
+    assert validate_iso_date(valid_value) == valid_value
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    ["", "2026-02-29", "2026-13-01", "2026/11/25", "2026-11-25T10:00:00Z", "11-25-2026"],
+)
+def test_validate_iso_date_rejects_invalid_dates(invalid_value: str) -> None:
+    with pytest.raises(ValueError, match=r"Invalid date format|day is out of range|month must be"):
+        validate_iso_date(invalid_value)
+
+
+@pytest.mark.parametrize(
+    "valid_value",
+    [
+        "2026-11-25T14:30:00Z",
+        "2026-11-25T14:30:00.000Z",
+        "2026-11-25T14:30+05:30",
+        "2026-11-25 14:30",
+    ],
+)
+def test_validate_iso_datetime_accepts_valid_datetimes(valid_value: str) -> None:
+    assert validate_iso_datetime(valid_value) == valid_value
+
+
+@pytest.mark.parametrize(
+    "invalid_value",
+    ["", "2026-11-25", "2026-02-30T10:00:00Z", "not-a-datetime"],
+)
+def test_validate_iso_datetime_rejects_invalid_datetimes(invalid_value: str) -> None:
+    with pytest.raises(ValueError, match=r"Invalid datetime format|day is out of range|month must be"):
+        validate_iso_datetime(invalid_value)
 
 
 """
