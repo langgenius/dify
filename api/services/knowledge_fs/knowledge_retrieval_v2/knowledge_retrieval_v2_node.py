@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, override
 
 from pydantic import ValidationError
 
+from core.app.apps.exc import ModerationInvocationError
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.llm.model_access import build_dify_model_access
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
@@ -204,6 +205,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
 
     @override
     def _run(self) -> NodeRunResult:
+        """Return failed node results for moderation errors without performing unfiltered retrieval."""
         started_at = time.perf_counter()
         usage = LLMUsage.empty_usage()
         try:
@@ -252,7 +254,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 metadata=self._usage_metadata(usage),
                 llm_usage=usage,
             )
-        except KnowledgeFSRetrievalV2NodeError as exc:
+        except (KnowledgeFSRetrievalV2NodeError, ModerationInvocationError) as exc:
             logger.warning("KnowledgeFS v2 retrieval failed: %s", exc)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -508,6 +510,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
         run_context: DifyRunContext,
         query: str,
     ) -> KnowledgeFSAutomaticMetadataFilterOutcome:
+        """Resolve filters without downgrading moderation failure to unfiltered retrieval."""
         model_config = self._node_data.metadata_model_config
         if model_config is None:
             raise KnowledgeFSRetrievalConfigurationError(
@@ -534,7 +537,7 @@ class KnowledgeRetrievalV2Node(Node[KnowledgeRetrievalV2NodeData]):
                 query=query,
                 field_names=field_names,
             )
-        except KnowledgeFSRetrievalV2NodeError:
+        except (KnowledgeFSRetrievalV2NodeError, ModerationInvocationError):
             raise
         except Exception:
             # Match the legacy node: an LLM or parsing failure degrades to unfiltered retrieval

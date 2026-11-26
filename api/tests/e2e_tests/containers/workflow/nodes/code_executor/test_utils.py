@@ -6,7 +6,10 @@ that occur when modules are imported before the dify_sandbox_container fixture
 has set up the proper environment variables and configuration.
 """
 
+from __future__ import annotations
+
 import importlib
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,10 +18,14 @@ from testcontainers.core.container import DockerContainer
 from configs import dify_config
 
 if TYPE_CHECKING:
-    pass
+    from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
+    from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
+    from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
+    from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
+    from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 
 
-def force_reload_code_executor():
+def force_reload_code_executor() -> None:
     """
     Force reload the code_executor module to reinitialize code_execution_endpoint_url.
 
@@ -31,10 +38,10 @@ def force_reload_code_executor():
         importlib.reload(core.helper.code_executor.code_executor)
     except Exception as e:
         # Log the error but don't fail the test
-        print(f"Warning: Failed to reload code_executor module: {e}")
+        logging.getLogger(__name__).warning("Failed to reload code_executor module: %s", e)
 
 
-def get_code_executor_imports():
+def get_code_executor_imports() -> tuple[type[CodeExecutor], type[CodeLanguage]]:
     """
     Lazy import function for core CodeExecutor classes.
 
@@ -46,7 +53,7 @@ def get_code_executor_imports():
     return CodeExecutor, CodeLanguage
 
 
-def get_javascript_imports():
+def get_javascript_imports() -> tuple[type[JavascriptCodeProvider], type[NodeJsTemplateTransformer]]:
     """
     Lazy import function for JavaScript-specific modules.
 
@@ -59,7 +66,7 @@ def get_javascript_imports():
     return JavascriptCodeProvider, NodeJsTemplateTransformer
 
 
-def get_python3_imports():
+def get_python3_imports() -> tuple[type[Python3CodeProvider], type[Python3TemplateTransformer]]:
     """
     Lazy import function for Python3-specific modules.
 
@@ -70,18 +77,6 @@ def get_python3_imports():
     from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 
     return Python3CodeProvider, Python3TemplateTransformer
-
-
-def get_jinja2_imports():
-    """
-    Lazy import function for Jinja2-specific modules.
-
-    Returns:
-        tuple: (None, Jinja2TemplateTransformer) classes
-    """
-    from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
-
-    return None, Jinja2TemplateTransformer
 
 
 class CodeExecutorTestMixin:
@@ -106,21 +101,16 @@ class CodeExecutorTestMixin:
         force_reload_code_executor()
 
     @property
-    def code_executor_imports(self):
+    def code_executor_imports(self) -> tuple[type[CodeExecutor], type[CodeLanguage]]:
         """Property to get CodeExecutor and CodeLanguage classes."""
         return get_code_executor_imports()
 
     @property
-    def javascript_imports(self):
+    def javascript_imports(self) -> tuple[type[JavascriptCodeProvider], type[NodeJsTemplateTransformer]]:
         """Property to get JavaScript-specific classes."""
         return get_javascript_imports()
 
     @property
-    def python3_imports(self):
+    def python3_imports(self) -> tuple[type[Python3CodeProvider], type[Python3TemplateTransformer]]:
         """Property to get Python3-specific classes."""
         return get_python3_imports()
-
-    @property
-    def jinja2_imports(self):
-        """Property to get Jinja2-specific classes."""
-        return get_jinja2_imports()

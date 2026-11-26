@@ -9,6 +9,7 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/list/storage'
+import { TEST_DATASET_ID } from '@/test/console/ids'
 import {
   createConsoleQueryClient,
   createConsoleQueryWrapper,
@@ -119,7 +120,7 @@ it('renders real knowledge cards linking to their documents', async () => {
   setup()
   expect(await screen.findByRole('link', { name: 'Test Dataset' })).toHaveAttribute(
     'href',
-    '/datasets/dataset-1/documents',
+    `/datasets/${TEST_DATASET_ID}/documents`,
   )
   expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
 })

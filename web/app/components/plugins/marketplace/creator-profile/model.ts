@@ -104,6 +104,8 @@ export type CreatorInventory = {
   templateHasMore: boolean
   pluginNextPage: number
   templateNextPage: number
+  /** A first page failed to load; the list offers a retry that starts from that page. */
+  loadFailed?: boolean
 }
 
 export type LoadedCreatorProfile = {

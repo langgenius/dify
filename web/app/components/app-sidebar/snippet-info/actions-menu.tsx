@@ -13,6 +13,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,11 +25,7 @@ import {
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
-import {
-  useDeleteSnippetMutation,
-  useExportSnippetMutation,
-  useUpdateSnippetMutation,
-} from '@/service/use-snippets'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -42,9 +39,21 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
-  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
-  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
+  const { mutate: updateSnippet, isPending: isUpdatingSnippet } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: exportSnippet } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutate: deleteSnippet, isPending: isDeletingSnippet } = useMutation(
+    consoleQuery.workspaces.current.customizedSnippets.bySnippetId.delete.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -65,19 +74,22 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
     if (!canCreateAndModifySnippet) return
 
     try {
-      const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
+      const data = await exportSnippet({
+        params: { snippet_id: snippet.id },
+        query: { include_secret: 'false' },
+      })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
     } catch (error) {
       toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed))
     }
-  }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
+  }, [canCreateAndModifySnippet, exportSnippet, snippet.id, snippet.name, t])
 
   const handleEditSnippet = React.useCallback(
     async ({ name, description }: { name: string; description: string }) => {
-      updateSnippetMutation.mutate(
+      updateSnippet(
         {
-          params: { snippetId: snippet.id },
+          params: { snippet_id: snippet.id },
           body: {
             name,
             description,
@@ -93,13 +105,13 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
         },
       )
     },
-    [snippet.id, t, updateSnippetMutation],
+    [snippet.id, t, updateSnippet],
   )
 
   const handleDeleteSnippet = React.useCallback(() => {
-    deleteSnippetMutation.mutate(
+    deleteSnippet(
       {
-        params: { snippetId: snippet.id },
+        params: { snippet_id: snippet.id },
       },
       {
         onSuccess: () => {
@@ -112,7 +124,7 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
         },
       },
     )
-  }, [deleteSnippetMutation, replace, snippet.id, t])
+  }, [deleteSnippet, replace, snippet.id, t])
 
   if (!canShowOperations) return null
 
@@ -167,7 +179,7 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
           initialValue={initialValue}
           title={t(($) => $.editDialogTitle)}
           confirmText={t(($) => $['operation.save'], { ns: 'common' })}
-          isSubmitting={updateSnippetMutation.isPending}
+          isSubmitting={isUpdatingSnippet}
           onClose={() => setIsEditDialogOpen(false)}
           onConfirm={handleEditSnippet}
         />
@@ -183,10 +195,7 @@ const SnippetInfoMenu = ({ snippet }: SnippetInfoMenuProps) => {
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton
-              loading={deleteSnippetMutation.isPending}
-              onClick={handleDeleteSnippet}
-            >
+            <AlertDialogConfirmButton loading={isDeletingSnippet} onClick={handleDeleteSnippet}>
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

@@ -1,0 +1,12 @@
+@supports not (scrollbar-gutter: stable both-edges) {
+  .session {
+    container-type: inline-size;
+  }
+
+  .transcript {
+    /* Mirror the scrollbar width, which is the difference between the session and scrollport widths. */
+    position: relative;
+    inset-inline-start: calc(50cqi - 50%);
+    width: calc(200% - 100cqi);
+  }
+}

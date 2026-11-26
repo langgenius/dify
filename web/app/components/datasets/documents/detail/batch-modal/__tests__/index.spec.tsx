@@ -1,3 +1,4 @@
+import type { ConsoleClient } from '@/service/console'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChunkingMode } from '@/models/datasets'
@@ -7,11 +8,17 @@ import { createDeferred } from '@/test/deferred'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import BatchModal from '../index'
 
-const { upload } = vi.hoisted(() => ({ upload: vi.fn() }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload,
-}))
+const upload = vi.hoisted(() => vi.fn<ConsoleClient['files']['upload']['post']>())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': upload,
+    }),
+  }
+})
 
 const render = (props: React.ComponentProps<typeof BatchModal>) => {
   const queryClient = createConsoleQueryClient()

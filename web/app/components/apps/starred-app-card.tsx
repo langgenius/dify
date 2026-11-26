@@ -1,6 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { AppListDialogHandles } from './app-list-dialogs'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -20,6 +21,7 @@ import { StudioListLink } from './list-navigation'
 
 type StarredAppCardProps = {
   app: AppPartial
+  dialogs: AppListDialogHandles
   onDelete: (item: HTMLLIElement | null) => void
   stepByStepTourCardTarget?: string
   stepByStepTourCardHighlightPart?: string
@@ -28,6 +30,7 @@ type StarredAppCardProps = {
 export const StarredAppCard = memo(
   ({
     app,
+    dialogs,
     onDelete,
     stepByStepTourCardTarget,
     stepByStepTourCardHighlightPart,
@@ -105,13 +108,17 @@ export const StarredAppCard = memo(
             aria-labelledby={appNameId}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={cn(cardClassName, 'text-left')}
+            className={cn(cardClassName, 'text-start')}
             onClick={showPreviewOnlyAccessWarning}
           >
             {cardContent}
           </button>
         ) : (
-          <AppCardInteractions app={app} onDelete={() => onDelete(itemRef.current)}>
+          <AppCardInteractions
+            app={app}
+            dialogs={dialogs}
+            onDelete={() => onDelete(itemRef.current)}
+          >
             <StudioListLink
               href={href}
               aria-labelledby={appNameId}

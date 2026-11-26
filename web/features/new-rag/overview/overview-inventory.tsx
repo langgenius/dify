@@ -123,7 +123,7 @@ export function InventoryPanel() {
               {visibleCategories.map((category) => (
                 <span
                   key={category.label}
-                  className={cn('border-l-4', category.segment)}
+                  className={cn('border-s-4', category.segment)}
                   style={{
                     width: categoryTotal ? `${(category.value / categoryTotal) * 100}%` : '0%',
                   }}

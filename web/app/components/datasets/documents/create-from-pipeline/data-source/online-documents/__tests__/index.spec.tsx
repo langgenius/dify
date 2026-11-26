@@ -14,12 +14,31 @@ import { createDataSourceStore } from '../../store'
 import { DataSourceContext } from '../../store/provider'
 import OnlineDocuments from '../index'
 
-const { ssePost, toastError } = vi.hoisted(() => ({ ssePost: vi.fn(), toastError: vi.fn() }))
+const streamEvents = vi.hoisted(() => vi.fn<typeof import('@/service/event-stream').streamEvents>())
+const runNode = vi.hoisted(() => vi.fn())
+const toastError = vi.hoisted(() => vi.fn())
 vi.mock('@tanstack/react-virtual')
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost,
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents,
 }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'rag.pipelines.byPipelineId.workflows.draft.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('draft', input, options),
+      'rag.pipelines.byPipelineId.workflows.published.datasource.nodes.byNodeId.run.post': (
+        input: unknown,
+        options?: unknown,
+      ) => runNode('published', input, options),
+    }),
+  }
+})
 vi.mock('@/app/notifications', () => ({ toast: { error: toastError } }))
 vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (
@@ -112,7 +131,15 @@ function callbacks(): {
   onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => void
   onDataSourceNodeError: (data: DataSourceNodeErrorResponse) => void
 } {
-  return ssePost.mock.lastCall![2]
+  return streamEvents.mock.lastCall![1] as ReturnType<typeof callbacks>
+}
+/** Sends the last stream request and returns the stubbed run route and its input. */
+function lastRun() {
+  void streamEvents.mock.lastCall![0]({
+    signal: new AbortController().signal,
+    context: { stream: true },
+  })
+  return runNode.mock.lastCall!.slice(0, 2)
 }
 beforeEach(() => vi.clearAllMocks())
 
@@ -120,18 +147,18 @@ it.each([true, false])(
   'loads documents through the draft=%s route using resolved node parameters',
   async (draft) => {
     const { store } = setup({ cached: false, draft })
-    await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
-    expect(ssePost).toHaveBeenCalledWith(
-      `/rag/pipelines/pipeline-123/workflows/${draft ? 'draft' : 'published'}/datasource/nodes/node-1/run`,
+    await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
+    expect(lastRun()).toEqual([
+      draft ? 'draft' : 'published',
       {
+        params: { pipeline_id: 'pipeline-123', node_id: 'node-1' },
         body: {
           inputs: { workspace: 'workspace-1' },
           credential_id: 'credential-1',
           datasource_type: DatasourceType.onlineDocument,
         },
       },
-      expect.any(Object),
-    )
+    ])
     act(() =>
       callbacks().onDataSourceNodeCompleted({
         event: 'datasource_completed',
@@ -147,7 +174,7 @@ it.each([true, false])(
 
 it('waits for a credential before requesting documents', () => {
   setup({ cached: false, credential: '' })
-  expect(ssePost).not.toHaveBeenCalled()
+  expect(streamEvents).not.toHaveBeenCalled()
 })
 
 it('selects pages with their workspace and removes only the deselected page', async () => {
@@ -202,18 +229,18 @@ it('filters documents without losing selection and previews the chosen page', as
 it('requests documents again with the credential selected in the header', async () => {
   const user = userEvent.setup()
   const { onCredentialChange } = setup()
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   await user.click(screen.getByRole('button', { name: /First credential/ }))
   await user.click(await screen.findByText('Second credential'))
   expect(onCredentialChange).toHaveBeenCalledExactlyOnceWith('credential-2')
-  await waitFor(() => expect(ssePost).toHaveBeenCalledTimes(2))
-  expect(ssePost.mock.lastCall![1].body.credential_id).toBe('credential-2')
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledTimes(2))
+  expect(lastRun()[1]).toMatchObject({ body: { credential_id: 'credential-2' } })
 })
 
 it('reports stream failures and opens data-source configuration', async () => {
   const user = userEvent.setup()
   setup({ cached: false })
-  await waitFor(() => expect(ssePost).toHaveBeenCalledOnce())
+  await waitFor(() => expect(streamEvents).toHaveBeenCalledOnce())
   act(() =>
     callbacks().onDataSourceNodeError({
       event: 'datasource_error',

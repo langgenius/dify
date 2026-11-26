@@ -11,7 +11,7 @@ const PluginCardSkeleton = () => (
     <div className="relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
       <div className="flex">
         <SkeletonRectangle className="size-10 shrink-0 animate-pulse rounded-xl" />
-        <div className="ml-3 w-0 grow">
+        <div className="ms-3 w-0 grow">
           <div className="flex h-5 items-center">
             <SkeletonRectangle className="h-4 w-2/5 animate-pulse" />
           </div>

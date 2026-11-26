@@ -32,7 +32,7 @@ export function SchemaDialog({ schema, rootName, compact = false }: SchemaDialog
     <IconButton
       aria-label={`${label}: ${rootName}`}
       size="xs"
-      className="ml-0.5"
+      className="ms-0.5"
       disabled={!schema}
     >
       <span aria-hidden className="i-ri-braces-line size-3.5" />

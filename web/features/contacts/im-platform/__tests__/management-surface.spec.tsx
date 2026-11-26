@@ -1,10 +1,11 @@
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { channelSummary, emailDetail } from './fixtures/channel-client'
@@ -24,19 +25,15 @@ vi.mock('@/service/base', async () => {
   }
 })
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-vi.mock('@/context/i18n', async (original) => ({
-  ...(await original<typeof import('@/context/i18n')>()),
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
 const clients: QueryClient[] = []
 function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 'CLOUD') {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    defaultOptions: { queries: { retry: false, retryDelay: 0 }, mutations: { retry: false } },
   })
   seedSystemFeatures(client, { deployment_edition: deploymentEdition })
   clients.push(client)
   render(
-    <QueryClientProvider client={client}>
+    <QueryClientTestProvider queryClient={client}>
       <NuqsTestingAdapter>
         <ContactsImPlatformRuntimeProvider
           organization={{ canManage, organizationId: 'workspace-1', workspaceId: 'workspace-1' }}
@@ -44,7 +41,7 @@ function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 
           <ContactsImPlatformManagementSurface />
         </ContactsImPlatformRuntimeProvider>
       </NuqsTestingAdapter>
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
   return client
 }
@@ -655,4 +652,62 @@ it('retains a channel after a conflicted deletion and retries with the automatic
   expect(new URL(deletions[1]!.url).searchParams.get('expected_config_version')).toBe(
     'updated-config-version',
   )
+})
+
+describe('server error messages', () => {
+  const failWith = (matches: (request: Request) => boolean) =>
+    network.handle.mockImplementation((request) =>
+      matches(request)
+        ? json({ code: 'service_unavailable', message: 'Server says why' }, 503)
+        : defaultResponse(request),
+    )
+
+  it('explains why the channel list could not load', async () => {
+    failWith((request) => new URL(request.url).pathname.endsWith('/channels'))
+    renderSurface()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('contacts.imPlatform.loadError.title')
+    expect(alert).toHaveTextContent('Server says why')
+  })
+
+  it('explains why the saved channel details could not load', async () => {
+    failWith((request) => new URL(request.url).pathname.endsWith('/channels/im/channel-1'))
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(
+      await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.configureChannel/ }),
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
+  it('explains why a channel could not be deleted', async () => {
+    failWith((request) => request.method === 'DELETE')
+    const user = userEvent.setup()
+    renderSurface()
+    await user.click(
+      await screen.findByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }),
+    )
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
+  it('explains why a sync could not start', async () => {
+    failWith((request) => request.method === 'POST' && request.url.endsWith('/im-sync-runs'))
+    const user = userEvent.setup()
+    renderSurface()
+    const button = await screen.findByRole('button', { name: 'contacts.imPlatform.action.syncNow' })
+    await waitFor(() => expect(button).toBeEnabled())
+    await user.click(button)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
+  it('explains why the latest sync could not load', async () => {
+    failWith((request) => request.url.endsWith('/latest'))
+    renderSurface()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Server says why')
+  })
 })

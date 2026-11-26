@@ -52,6 +52,8 @@ class DifyHumanInputRuntime(HumanInputRuntime):
         not refresh the form before requesting that pause.
         Partial failure does not discard successful deliveries; total failure
         still fails the node without rolling back external sends.
+        Committed recipients share one current, owner-scoped delivery context
+        read per initialization round; sending never holds that read transaction.
         """
         initialization = self._form_service.prepare_form(
             node_execution_id=node_execution_id,
@@ -62,13 +64,13 @@ class DifyHumanInputRuntime(HumanInputRuntime):
             return initialization
         has_successful_delivery = False
         form_token = None
-        for recipient in initialization.recipients:
-            result = self._delivery_service.deliver(
-                form=initialization.form,
-                recipient=recipient,
-                message_template=initialization.message_template,
-                debug_channels=initialization.debug_channels,
-            )
+        results = self._delivery_service.deliver_many(
+            form=initialization.form,
+            recipients=initialization.recipients,
+            message_template=initialization.message_template,
+            debug_channels=initialization.debug_channels,
+        )
+        for recipient, result in zip(initialization.recipients, results, strict=True):
             if result.form_token is not None:
                 form_token = result.form_token
             for attempt in result.attempts:

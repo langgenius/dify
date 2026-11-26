@@ -37,7 +37,7 @@ export function SelectedGroupsBreadcrumb({ groups, onChange }: SelectedGroupsBre
           {hasBreadcrumb ? (
             <button
               type="button"
-              className="min-w-0 cursor-pointer text-left wrap-anywhere text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="min-w-0 cursor-pointer text-start wrap-anywhere text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleReset}
             >
               {t(($) => $['accessControlDialog.operateGroupAndMember.allMembers'], { ns: 'app' })}
@@ -68,7 +68,7 @@ export function SelectedGroupsBreadcrumb({ groups, onChange }: SelectedGroupsBre
                 ) : (
                   <button
                     type="button"
-                    className="min-w-0 cursor-pointer text-left wrap-anywhere text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                    className="min-w-0 cursor-pointer text-start wrap-anywhere text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={() => handleBreadcrumbClick(index)}
                   >
                     {group.name}

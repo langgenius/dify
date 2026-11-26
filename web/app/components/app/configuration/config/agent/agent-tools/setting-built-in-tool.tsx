@@ -14,8 +14,9 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowLeftLine, RiCloseLine } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,9 +29,10 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
+import { selectBuiltinProviderTools } from '@/app/components/tools/utils/query-select'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { getPluginLanguage } from '@/i18n/metadata'
-import { fetchBuiltInToolList, fetchCustomToolList, fetchWorkflowToolList } from '@/service/tools'
+import { consoleQuery } from '@/service/console'
 
 type Props = Readonly<{
   showBackButton?: boolean
@@ -64,8 +66,48 @@ const SettingBuiltInTool: FC<Props> = ({
   const { t } = useTranslation(['common', 'plugin', 'tools'])
   const passedTools = (collection as ToolWithProvider).tools
   const hasPassedTools = passedTools?.length > 0
-  const [isLoading, setIsLoading] = useState(!hasPassedTools)
-  const [tools, setTools] = useState<Tool[]>(hasPassedTools ? passedTools : [])
+  const toolSource =
+    !collection || hasPassedTools
+      ? undefined
+      : isBuiltIn
+        ? 'builtin'
+        : collection.type === CollectionType.workflow
+          ? 'workflow'
+          : 'api'
+  const toolProvider = consoleQuery.workspaces.current.toolProvider
+  // Failures leave the list empty, as before, so they are not retried.
+  const builtInTools = useQuery(
+    toolProvider.builtin.byProvider.tools.get.queryOptions({
+      input: { params: { provider: collection?.name } },
+      enabled: toolSource === 'builtin',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const workflowTools = useQuery(
+    toolProvider.workflow.tools.get.queryOptions({
+      input: { query: { workflow_tool_id: collection?.id } },
+      enabled: toolSource === 'workflow',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const customTools = useQuery(
+    toolProvider.api.tools.get.queryOptions({
+      input: { query: { provider: collection?.name } },
+      enabled: toolSource === 'api',
+      select: selectBuiltinProviderTools,
+      retry: false,
+    }),
+  )
+  const fetchedTools =
+    toolSource === 'builtin'
+      ? builtInTools
+      : toolSource === 'workflow'
+        ? workflowTools
+        : customTools
+  const isLoading = !!toolSource && fetchedTools.isPending
+  const tools: Tool[] = hasPassedTools ? passedTools : toolSource ? (fetchedTools.data ?? []) : []
   const currTool = tools.find((tool) => tool.name === toolName)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
   const infoSchemas = formSchemas.filter((item) => item.form === 'llm')
@@ -75,27 +117,6 @@ const SettingBuiltInTool: FC<Props> = ({
   const showSettingAsDetails = readonly && showReadOnlySettingDetails
   const [tempSetting, setTempSetting] = useState(setting)
   const [currType, setCurrType] = useState('info')
-  useEffect(() => {
-    if (!collection || hasPassedTools) return
-
-    ;(async () => {
-      setIsLoading(true)
-      try {
-        const list = await new Promise<Tool[]>((resolve) => {
-          ;(async function () {
-            if (isBuiltIn) resolve(await fetchBuiltInToolList(collection.name))
-            else if (collection.type === CollectionType.workflow)
-              resolve(await fetchWorkflowToolList(collection.id))
-            else resolve(await fetchCustomToolList(collection.name))
-          })()
-        })
-        setTools(list)
-      } catch {}
-      setIsLoading(false)
-    })()
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, [collection?.name, collection?.id, collection?.type])
-
   useEffect(() => {
     setCurrType(!readonly && hasSetting ? 'setting' : 'info')
   }, [hasSetting])
@@ -242,6 +263,7 @@ const SettingBuiltInTool: FC<Props> = ({
                         <TabsTab value="setting">
                           {t(($) => $['setBuiltInTools.setting'], { ns: 'tools' })}
                         </TabsTab>
+                        <TabsIndicator />
                       </TabsList>
                     ) : (
                       <div className="p-4 pb-1 system-sm-semibold-uppercase text-text-primary">

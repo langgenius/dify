@@ -10,6 +10,7 @@ import pytest
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import controllers.console.file_scan as module
+from controllers.common.rbac import RBAC_CHECKS_ATTR, RBACCheck, RBACPermission, Workspace
 from controllers.console.file_scan import (
     DatasetFileScanPolicyApi,
     FileScanPolicyPayload,
@@ -135,9 +136,36 @@ def test_every_route_is_hidden_while_the_deployment_switch_is_off(
     providers.assert_not_called()
 
 
+def _declared_rbac_checks(view: object) -> list[RBACCheck]:
+    checks: list[RBACCheck] = []
+    current: object | None = view
+    while current is not None:
+        for check in vars(current).get(RBAC_CHECKS_ATTR) or ():
+            if check not in checks:
+                checks.append(check)
+        current = vars(current).get("__wrapped__")
+    return checks
+
+
+@pytest.mark.parametrize(
+    ("resource", "method"),
+    [
+        (FileScanProvidersApi, "post"),
+        (FileScanProviderApi, "patch"),
+        (FileScanProviderApi, "delete"),
+        (FileScanProviderTestApi, "post"),
+    ],
+)
+def test_managing_a_scanner_requires_the_credential_permission_under_rbac(resource: type, method: str) -> None:
+    # Roles are skipped when RBAC is on, so a route without an RBAC check admits every member.
+    checks = _declared_rbac_checks(vars(resource)[method])
+
+    assert [(check.scene, type(check.locator)) for check in checks] == [(RBACPermission.CREDENTIAL_MANAGE, Workspace)]
+
+
 def test_provider_types_report_availability(request_context: RequestContext, providers: MagicMock) -> None:
     providers.provider_types.return_value = [
-        FileScanProviderTypeView(provider_type="clamav", available=False, credential_fields=()),
+        FileScanProviderTypeView(provider_type="api", available=True, credential_fields=("api_key",)),
         FileScanProviderTypeView(provider_type="scanii", available=True, credential_fields=("api_key", "api_secret")),
     ]
 
@@ -145,7 +173,7 @@ def test_provider_types_report_availability(request_context: RequestContext, pro
 
     assert response == {
         "data": [
-            {"provider_type": "clamav", "available": False, "credential_fields": []},
+            {"provider_type": "api", "available": True, "credential_fields": ["api_key"]},
             {"provider_type": "scanii", "available": True, "credential_fields": ["api_key", "api_secret"]},
         ]
     }

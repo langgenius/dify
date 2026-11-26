@@ -2,8 +2,10 @@ import { act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
+import { fetchPipelineWorkflowDraft } from '@/service/workflow'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
 
 class MockFileReader {
@@ -77,7 +79,7 @@ vi.mock('@/service/console', async (importOriginal) => {
 })
 
 vi.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: vi.fn().mockResolvedValue({
+  fetchPipelineWorkflowDraft: vi.fn().mockResolvedValue({
     graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
     hash: 'test-hash',
     rag_pipeline_variables: [],
@@ -154,6 +156,29 @@ describe('useUpdateDSLModal', () => {
           rag_pipeline_variables: [],
         },
       })
+    })
+
+    it('should notify the server message when the canvas reload after import fails', async () => {
+      vi.mocked(fetchPipelineWorkflowDraft).mockRejectedValueOnce(
+        createHttpError(
+          { status: 500, statusText: '', headers: new Headers() },
+          { message: 'Draft unavailable' },
+        ),
+      )
+      const { result } = renderUpdateDSLModal()
+
+      act(() => {
+        result.current.handleFile(createFile())
+      })
+
+      await act(async () => {
+        await (result.current.handleImport as AsyncFn)()
+      })
+
+      expect(mockOnImport).toHaveBeenCalledOnce()
+      expect(mockEmit).not.toHaveBeenCalled()
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Draft unavailable')
+      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
     })
 
     it('should not call importDSL when no file is selected', async () => {

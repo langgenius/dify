@@ -5,8 +5,13 @@ import { useState } from 'react'
 import { createNodeTracing } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowComponent as render } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { createHttpError } from '@/service/http-error'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedAppDslVersion, seedSystemFeatures } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createTestQueryClient } from '@/test/query-client'
 import LastRun from '../index'
 
 const lastRun = vi.hoisted(() => vi.fn())
@@ -72,14 +77,41 @@ it('shows the actual running status before the single run completes', () => {
   expect(lastRun).not.toHaveBeenCalled()
 })
 
-it('offers single run for a missing last run', async () => {
+const setupWithErrorToasts = () => {
+  const errorToast = vi.spyOn(toast, 'error')
+  const queryClient = createTestQueryClient(undefined, { caches: createErrorToastCaches() })
+  seedSystemFeatures(queryClient)
+  seedAppDslVersion(queryClient)
+  seedAccountProfileQuery(queryClient)
+  render(<LastRun {...props} isRunAfterSingleRun={false} />, {
+    resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+    queryClient,
+  })
+  return { errorToast }
+}
+
+it('offers single run for a missing last run without reporting an error', async () => {
   lastRun.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
   const user = userEvent.setup()
-  setup({ isRunAfterSingleRun: false })
+  const { errorToast } = setupWithErrorToasts()
   await user.click(
     await screen.findByRole('button', { name: 'workflowDebug.debug.noData.runThisNode' }),
   )
   expect(props.onSingleRunClicked).toHaveBeenCalledOnce()
+  expect(errorToast).not.toHaveBeenCalled()
+})
+
+it('reports a last run that fails to load', async () => {
+  lastRun.mockRejectedValue(
+    createHttpError(
+      { status: 500, statusText: '', headers: new Headers() },
+      { message: 'Run history unavailable' },
+    ),
+  )
+  const { errorToast } = setupWithErrorToasts()
+  await vi.waitFor(() =>
+    expect(errorToast).toHaveBeenCalledExactlyOnceWith('Run history unavailable'),
+  )
 })
 
 it('shows saved execution data while paused overrides its completed status', async () => {

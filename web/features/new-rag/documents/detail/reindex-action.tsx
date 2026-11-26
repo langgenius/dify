@@ -60,7 +60,8 @@ export function DocumentReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (result.errorMessage ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     },
@@ -69,14 +70,14 @@ export function DocumentReindexAction() {
 
   const stopReindex = async () => {
     const result = await cancelReindex(refreshWritePermission)
-    if (result === 'failed') toast.error(t(($) => $.taskActionFailed))
+    if (result.status === 'failed') toast.error(result.message ?? t(($) => $.taskActionFailed))
   }
 
   return (
     <>
       <Button
         aria-describedby={disabledReasonId}
-        className="gap-1 pl-3"
+        className="gap-1 ps-3"
         disabled={inProgress ? !canCancel : disabled}
         loading={inProgress ? cancelBusy : guardBusy || reindexing}
         onClick={() => void (inProgress ? stopReindex() : startReindexMutation.mutate())}

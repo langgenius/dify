@@ -450,6 +450,7 @@ class TestPhoenixProvider:
             ({"endpoint": "https://phoenix.example.com/s/../space"}, "invalid_endpoint"),
             ({"endpoint": "https://phoenix.example.com/s%2fspace"}, "invalid_endpoint"),
             ({"endpoint": "https://phoenix.example.com//space"}, "invalid_endpoint"),
+            ({"endpoint": "https://phoenix.example.com/space//"}, "invalid_endpoint"),
             ({"endpoint": "https://phoenix.example.com/s?token=secret"}, "invalid_endpoint"),
             ({"endpoint": "https://phoenix.example.com:0"}, "invalid_endpoint"),
             ({"project": ".."}, "invalid_project"),
