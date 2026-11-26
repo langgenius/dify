@@ -510,6 +510,11 @@ export type LogExportEmailNotificationResponse = {
   email_notification: LogExportEmailState
 }
 
+export type LogExportTaskNotCancelableError = ErrorResponse & {
+  code: 'log_export_task_not_cancelable'
+  status: 409
+}
+
 export type BinaryFileResponse = Blob | File
 
 export type AgentLogExportFileNotFoundError = ErrorResponse & {
@@ -1265,7 +1270,7 @@ export type LogExportProgressResponse = {
   stage: LogExportStage
 }
 
-export type LogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
+export type LogExportStatus = 'canceled' | 'failed' | 'pending' | 'processing' | 'ready'
 
 export type AgentLogSourceResponse = {
   app_icon?: string | null
@@ -4126,6 +4131,33 @@ export type PutAgentByAgentIdLogExportsByTaskIdResponses = {
 
 export type PutAgentByAgentIdLogExportsByTaskIdResponse =
   PutAgentByAgentIdLogExportsByTaskIdResponses[keyof PutAgentByAgentIdLogExportsByTaskIdResponses]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/log-exports/{task_id}/cancel'
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AgentLogExportTaskNotFoundError | AgentNotFoundError | ErrorResponse
+  409: LogExportTaskNotCancelableError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelError =
+  PostAgentByAgentIdLogExportsByTaskIdCancelErrors[keyof PostAgentByAgentIdLogExportsByTaskIdCancelErrors]
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponses = {
+  200: AgentLogExportStatusResponse
+}
+
+export type PostAgentByAgentIdLogExportsByTaskIdCancelResponse =
+  PostAgentByAgentIdLogExportsByTaskIdCancelResponses[keyof PostAgentByAgentIdLogExportsByTaskIdCancelResponses]
 
 export type GetAgentByAgentIdLogExportsByTaskIdFileData = {
   body?: never

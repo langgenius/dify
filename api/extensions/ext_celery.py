@@ -231,6 +231,12 @@ def init_app(app: DifyApp) -> Celery:
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_LOG_EXPORT_QUEUE_RECOVERY_TASK:
+        beat_schedule["log-export-queue-recovery"] = {
+            "task": "tasks.log_export_tasks.recover_log_export_queues",
+            "schedule": timedelta(minutes=5),
+            "options": {"expires": 240},
+        }
     if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
         beat_schedule["evaluation-run-reconciler"] = {
             "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",

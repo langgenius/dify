@@ -22,6 +22,7 @@ from services.retention.log_export_task import (
     LogExportTaskStore,
     OpenLogExportFile,
     StoreLogExportFile,
+    cancel_pending_log_export_task,
     filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
@@ -74,7 +75,7 @@ class ConversationLogExportService:
         *,
         conversations: ConversationLogExportStore,
         tasks: LogExportTaskStore[ConsoleConversationLogFilters],
-        dispatch: Callable[[ConversationLogExportTask], None],
+        dispatch: Callable[[str], None],
         store_csv: StoreLogExportFile,
         open_csv: OpenLogExportFile,
     ) -> None:
@@ -98,10 +99,10 @@ class ConversationLogExportService:
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
         estimated_rows: int | None = None,
     ) -> ConversationLogExportTask:
-        """Save and dispatch a pending task for an admitted app and caller before returning its ID.
+        """Queue a pending task for an admitted app and caller before returning its ID.
 
         Require time filters converted from the caller's timezone to UTC and keep labels for
-        selected identities. Propagate publication failures and mark the task failed if pending.
+        selected identities. The workspace worker runs queued tasks in submission order.
         """
         if scope.app_mode not in _LOG_CSV_LAYOUTS:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -124,6 +125,15 @@ class ConversationLogExportService:
         if task is None:
             raise LogExportTaskNotFoundError()
         return task
+
+    def cancel_task(
+        self, *, scope: ConsoleConversationScope, requested_by: str, task_id: str
+    ) -> ConversationLogExportTask:
+        """Cancel the requester's queued export in the admitted app."""
+        task = self.get_task(scope=scope, task_id=task_id)
+        return cancel_pending_log_export_task(
+            task, requested_by=requested_by, tasks=self._tasks, dispatch=self._dispatch
+        )
 
     def get_latest_task(
         self, *, scope: ConsoleConversationScope, requested_by: str

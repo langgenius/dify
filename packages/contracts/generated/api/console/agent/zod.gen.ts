@@ -502,7 +502,7 @@ export const zPaidPlanRequiredError = zErrorResponse.and(
 /**
  * LogExportLimitReachedError
  *
- * There is already an export for this requester and app, or the workspace export limit was reached.
+ * There is already an active log export for this requester and app.
  */
 export const zLogExportLimitReachedError = zErrorResponse.and(
   z.object({
@@ -531,6 +531,18 @@ export const zAgentLogExportTaskNotFoundError = zErrorResponse.and(
 export const zLogExportEmailNotificationPayload = z.object({
   enabled: z.boolean(),
 })
+
+/**
+ * LogExportTaskNotCancelableError
+ *
+ * Only queued log export tasks can be canceled.
+ */
+export const zLogExportTaskNotCancelableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('log_export_task_not_cancelable'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * BinaryFileResponse
@@ -1345,7 +1357,7 @@ export const zLogExportEmailNotificationResponse = z.object({
 /**
  * LogExportStatus
  */
-export const zLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
+export const zLogExportStatus = z.enum(['canceled', 'failed', 'pending', 'processing', 'ready'])
 
 /**
  * AgentLogSourceResponse
@@ -4759,6 +4771,16 @@ export const zPutAgentByAgentIdLogExportsByTaskIdPath = z.object({
  * Email notification preference
  */
 export const zPutAgentByAgentIdLogExportsByTaskIdResponse = zLogExportEmailNotificationResponse
+
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelPath = z.object({
+  agent_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export canceled
+ */
+export const zPostAgentByAgentIdLogExportsByTaskIdCancelResponse = zAgentLogExportStatusResponse
 
 export const zGetAgentByAgentIdLogExportsByTaskIdFilePath = z.object({
   agent_id: z.uuid(),

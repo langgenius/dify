@@ -13,6 +13,7 @@ from services.retention.log_export_task import (
     OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    cancel_pending_log_export_task,
     filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
@@ -30,7 +31,7 @@ class AgentLogExportService:
         *,
         logs: AgentObservability,
         tasks: LogExportTaskStore[AgentLogExportFilters],
-        dispatch: Callable[[AgentLogExportTask], None],
+        dispatch: Callable[[str], None],
         store_csv: StoreLogExportFile,
         write_csv: WriteLogExportCsv[AgentLogExportFilters],
         open_csv: OpenLogExportFile,
@@ -74,6 +75,13 @@ class AgentLogExportService:
         if task is None:
             raise LogExportTaskNotFoundError()
         return task
+
+    def cancel_task(self, context: RequestContext, agent_id: str, *, task_id: str) -> AgentLogExportTask:
+        """Cancel the requester's queued export in the admitted Agent."""
+        task = self.get_task(context, agent_id, task_id=task_id)
+        return cancel_pending_log_export_task(
+            task, requested_by=context.account_id, tasks=self._tasks, dispatch=self._dispatch
+        )
 
     def get_latest_task(self, context: RequestContext, agent_id: str) -> AgentLogExportTask | None:
         """Return the caller's latest live task in the admitted Agent's scope, if one exists."""

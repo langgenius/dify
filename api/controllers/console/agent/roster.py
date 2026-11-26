@@ -46,7 +46,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
-from controllers.console.app.error import LogExportLimitReachedHTTPError
+from controllers.console.app.error import LogExportLimitReachedHTTPError, LogExportTaskNotCancelableHTTPError
 from controllers.console.app.log_export_response import (
     log_export_file_response,
     log_export_status_email_preference,
@@ -149,6 +149,7 @@ from services.retention.log_export_task import (
     LogExportKind,
     LogExportLimitReachedError,
     LogExportStatus,
+    LogExportTaskNotCancelableError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
@@ -1270,6 +1271,34 @@ class AgentLogExportTaskApi(Resource):
             )
         except LogExportTaskNotFoundError as exc:
             raise AgentLogExportTaskNotFoundHTTPError() from exc
+
+
+@console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/cancel")
+class AgentLogExportCancelApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AgentLogExportTaskNotFoundHTTPError,
+        LogExportTaskNotCancelableHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc("cancel_agent_log_export", description="Cancel a queued Agent CSV export task")
+    @console_ns.response(HTTPStatus.OK, "Export canceled", console_ns.models[AgentLogExportStatusResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def post(
+        self, context: RequestContext, agent_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Cancel the admitted requester's queued Agent task and return its new status."""
+        _require_agent_log_export_access(context)
+        try:
+            task = application_services().agent_log_exports.cancel_task(context, str(agent_id), task_id=str(task_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except LogExportTaskNotFoundError as exc:
+            raise AgentLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotCancelableError as exc:
+            raise LogExportTaskNotCancelableHTTPError() from exc
+        return dump_response(AgentLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/agent/<uuid:agent_id>/log-exports/<uuid:task_id>/file")

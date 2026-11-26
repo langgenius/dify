@@ -1,13 +1,14 @@
 """Deliver CSV export work, files, and completion notifications."""
 
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, tzinfo
 from pathlib import Path
 from string import punctuation
 from tempfile import TemporaryDirectory
-from typing import TextIO
+from typing import TYPE_CHECKING, TextIO
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import select
@@ -30,10 +31,15 @@ from services.retention.log_export_task import (
     LogExportDownload,
     LogExportFileNotFoundError,
     LogExportKind,
-    LogExportTask,
 )
+from services.retention.log_export_task_cache import reserve_log_export_dispatch
 from services.retention.workflow_run.log_export_service import WorkflowLogExportFilters, WorkflowLogExportTask
 from services.system_feature_service import SystemFeatureService
+
+if TYPE_CHECKING:
+    from extensions.ext_redis import RedisClientWrapper
+
+logger = logging.getLogger(__name__)
 
 type LogExportNotificationTask = ConversationLogExportTask | WorkflowLogExportTask | AgentLogExportTask
 
@@ -142,17 +148,20 @@ _MARKDOWN_LITERAL = str.maketrans(
 )
 
 
-def dispatch_log_export[FiltersT](task: LogExportTask[FiltersT], *, export_kind: LogExportKind) -> None:
-    """Send the saved task's scope and log type, with its expiration for delivery."""
+def dispatch_log_export_head(tenant_id: str, *, redis: "RedisClientWrapper") -> None:
+    """Wake the workspace's next export; the persisted queue allows recovery after a failed publish."""
     from tasks.log_export_tasks import prepare_log_export_task
 
-    kwargs = {
-        "tenant_id": task.tenant_id,
-        "app_id": task.app_id,
-        "task_id": task.task_id,
-        "export_kind": export_kind.value,
-    }
-    prepare_log_export_task.apply_async(kwargs=kwargs, task_id=task.task_id, expires=task.expires_at)
+    try:
+        head = reserve_log_export_dispatch(redis, tenant_id)
+        if head is not None:
+            kind, app_id, task_id = head
+            prepare_log_export_task.apply_async(
+                kwargs={"tenant_id": tenant_id, "app_id": app_id, "task_id": task_id, "export_kind": kind.value},
+                task_id=task_id,
+            )
+    except Exception:
+        logger.exception("Could not dispatch the next log export: tenant=%s", tenant_id)
 
 
 def _read_log_export_names(
@@ -245,7 +254,8 @@ def _log_export_notice_markdown(
     lines = [_log_export_notice_line(label, value) for label, value in fields if value.strip()] or [copy.all_logs]
     if task.progress is not None:
         lines.append(_log_export_notice_line(copy.rows, f"{task.progress.rows_written:,}"))
-    lines.append(_log_export_notice_line(copy.expires, _log_export_timestamp(task.expires_at, timezone)))
+    if task.expires_at is not None:
+        lines.append(_log_export_notice_line(copy.expires, _log_export_timestamp(task.expires_at, timezone)))
     return "\n\n".join(lines)
 
 
@@ -275,7 +285,7 @@ def log_export_download_path(*, app_id: str, task_id: str, export_kind: LogExpor
 
 def notify_log_export_ready(task: LogExportNotificationTask, *, export_kind: LogExportKind) -> None:
     """Publish a one-time Cloud notification for the requester of a newly completed export."""
-    if not SystemFeatureService.is_log_export_notification_enabled():
+    if task.expires_at is None or not SystemFeatureService.is_log_export_notification_enabled():
         return
 
     path = log_export_download_path(app_id=task.app_id, task_id=task.task_id, export_kind=export_kind)

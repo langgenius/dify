@@ -36,7 +36,7 @@ from models.model import AppMode, DifySetup
 from models.workflow import WorkflowAppLogCreatedFrom, WorkflowType
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
 from services.retention import log_export_adapters
-from services.retention.log_export_task import LogExportKind, LogExportStatus
+from services.retention.log_export_task import LogExportStatus
 from services.retention.log_export_task_cache import RedisLogExportTasks
 from services.retention.workflow_run.log_export_csv import WorkflowLogCsvWriter
 from services.retention.workflow_run.log_export_service import (
@@ -82,6 +82,10 @@ class _ExportClient:
     def get_latest(self) -> TestResponse:
         """Read this account's last task under the admitted app."""
         return self.client.get(f"{self.path}/latest", headers=self.headers)
+
+    def cancel(self, task_id: str) -> TestResponse:
+        """Cancel a queued task in the admitted app."""
+        return self.client.post(f"{self.path}/{task_id}/cancel", headers=self.headers)
 
     def get_file(self, task_id: str, *, authenticated: bool = True) -> TestResponse:
         """Navigate to the file with only a Console session cookie, like a browser download."""
@@ -182,7 +186,7 @@ def export_client(
             tasks=RedisLogExportTasks(
                 redis=redis.client, task_type=WorkflowLogExportTask, key_prefix="workflow_log_export"
             ),
-            dispatch=partial(log_export_adapters.dispatch_log_export, export_kind=LogExportKind.WORKFLOW),
+            dispatch=partial(log_export_adapters.dispatch_log_export_head, redis=redis.client),
             store_csv=log_export_adapters.store_log_export_csv,
             write_csv=WorkflowLogCsvWriter(logs=logs).write_csv,
             open_csv=log_export_adapters.open_log_export_csv,
@@ -197,6 +201,7 @@ def export_client(
     api.add_resource(workflow_app_log.WorkflowLogExportIdentityOptionsApi, f"{path}/identity-options")
     api.add_resource(workflow_app_log.WorkflowLogExportLatestApi, f"{path}/latest")
     api.add_resource(workflow_app_log.WorkflowLogExportTaskApi, f"{path}/<uuid:task_id>")
+    api.add_resource(workflow_app_log.WorkflowLogExportCancelApi, f"{path}/<uuid:task_id>/cancel")
     api.add_resource(workflow_app_log.WorkflowLogExportFileApi, f"/console/api{path}/<uuid:task_id>/file")
 
     client = app.test_client()
@@ -255,8 +260,8 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
     assert task.filters == WorkflowLogExportFilters(
         status=WorkflowExecutionStatus.FAILED, created_at_after=datetime(2026, 1, 2, 4), end_user_ids=(end_user_id,)
     )
-    assert task.expires_at - task.created_at == timedelta(days=1)
-    assert 0 < ttl <= 86400
+    assert task.expires_at is None
+    assert ttl == -1
     latest_key = (
         f"workflow_log_export_latest:{{{export_client.tenant_id}}}:{export_client.app_id}:{export_client.account_id}"
     )
@@ -273,7 +278,6 @@ def test_create_workflow_log_export_saves_the_admitted_scope_and_filters(export_
             "export_kind": "workflow",
         },
         task_id=task_id,
-        expires=task.expires_at,
     )
 
 
@@ -423,23 +427,25 @@ def test_workflow_export_worker_uploads_once_and_marks_task_ready(export_client:
     latest = export_client.get_latest().get_json()["task"]
     assert latest["status"] == "ready"
     assert latest["estimated_rows"] == 3
-    assert latest["progress"] == ready.json["progress"]
+    assert latest["progress"] == ready.get_json()["progress"]
+    assert task.expires_at is not None
     assert latest["expires_at"] == task.expires_at.isoformat().replace("+00:00", "Z")
 
 
-def test_workflow_export_marks_task_failed_if_publication_fails(export_client: _ExportClient) -> None:
+def test_workflow_export_stays_queued_if_publication_fails(export_client: _ExportClient) -> None:
     export_client.publish.side_effect = RuntimeError("broker unavailable")
 
     response = export_client.client.post(export_client.path, headers=export_client.headers, json={})
 
-    assert response.status_code == 500
+    assert response.status_code == 202
     key = export_client.task_key(export_client.publish.call_args.kwargs["task_id"])
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(key))
-    assert task.status is LogExportStatus.FAILED
+    assert task.status is LogExportStatus.PENDING
+    assert task.expires_at is None
     export_client.storage.save_from_path.assert_not_called()
     assert export_client.get_status(task.task_id).json == {
         "task_id": task.task_id,
-        "status": "failed",
+        "status": "pending",
         "estimated_rows": None,
         "progress": None,
     }
@@ -469,8 +475,6 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
     )
     assert submitted.status_code == 202
     task_id = submitted.get_json()["task_id"]
-    task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(export_client.task_key(task_id)))
-
     latest = export_client.get_latest()
     assert latest.status_code == 200
     assert latest.headers["Cache-Control"] == "no-store"
@@ -481,7 +485,7 @@ def test_latest_workflow_export_returns_saved_filters_in_utc(export_client: _Exp
             "estimated_rows": None,
             "progress": None,
             "identity_labels": labels,
-            "expires_at": task.expires_at.isoformat().replace("+00:00", "Z"),
+            "expires_at": None,
             "filters": {
                 "keyword": "report",
                 "status": "succeeded",
@@ -520,6 +524,21 @@ def test_workflow_export_status_and_latest_respect_their_scope(
     )
     assert email.status_code == 404
     assert email.get_json()["code"] == "workflow_log_export_task_not_found"
+    canceled = export_client.cancel(task.task_id)
+    assert (canceled.status_code, canceled.get_json()["code"]) == (404, "workflow_log_export_task_not_found")
+
+
+def test_cancel_workflow_export_frees_the_app_for_a_new_submission(export_client: _ExportClient) -> None:
+    submitted = export_client.client.post(export_client.path, headers=export_client.headers, json={})
+    assert submitted.status_code == 202
+    task_id = submitted.get_json()["task_id"]
+
+    canceled = export_client.cancel(task_id)
+
+    assert (canceled.status_code, canceled.get_json()["status"]) == (200, "canceled")
+    assert canceled.cache_control.no_store
+    assert export_client.get_latest().get_json()["task"]["status"] == "canceled"
+    assert export_client.client.post(export_client.path, headers=export_client.headers, json={}).status_code == 202
 
 
 @pytest.fixture
@@ -533,6 +552,14 @@ def ready_export(export_client: _ExportClient) -> WorkflowLogExportTask:
     task = WorkflowLogExportTask.model_validate_json(export_client.redis.get(task_key))
     assert task.status is LogExportStatus.READY
     return task
+
+
+def test_cancel_workflow_export_conflicts_after_completion(
+    export_client: _ExportClient, ready_export: WorkflowLogExportTask
+) -> None:
+    canceled = export_client.cancel(ready_export.task_id)
+
+    assert (canceled.status_code, canceled.get_json()["code"]) == (409, "log_export_task_not_cancelable")
 
 
 def test_workflow_export_download_signs_cloud_s3_file(

@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import StrEnum
 from threading import Event, Thread
 from typing import Protocol, Self, TextIO
@@ -16,7 +16,6 @@ from machinery.context import RequestContext
 from services.entities.conversation_entities import ConsoleLogIdentitySource
 from services.retention.log_export_csv import CsvRowProgress
 
-_LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_EXPORT_DOWNLOAD_URL_TTL_SECONDS = 3600
 _LOG_EXPORT_LEASE_RENEW_SECONDS = 30
 logger = logging.getLogger(__name__)
@@ -37,6 +36,7 @@ class LogExportStatus(StrEnum):
     PROCESSING = "processing"
     READY = "ready"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 
 class LogExportStage(StrEnum):
@@ -62,12 +62,16 @@ class LogExportTaskNotReadyError(Exception):
     """The admitted task has no completed CSV."""
 
 
+class LogExportTaskNotCancelableError(Exception):
+    """The task has already started or reached a terminal state."""
+
+
 class LogExportFileNotFoundError(Exception):
     """The completed export's CSV could not be opened."""
 
 
 class LogExportLimitReachedError(Exception):
-    """The requester already has an active export or the workspace is at capacity."""
+    """The requester already has an active export in this app."""
 
 
 class LogExportLeaseBusyError(Exception):
@@ -106,7 +110,7 @@ class LogExportTask[FiltersT](BaseModel):
     requested_by: str
     filters: FiltersT
     created_at: datetime
-    expires_at: datetime
+    expires_at: datetime | None  # Active exports stay live until they reach a terminal state.
     identity_labels: tuple[LogExportIdentityLabel, ...] = ()
     estimated_rows: int | None = Field(default=None, ge=0, exclude_if=lambda value: value is None)
     status: LogExportStatus = LogExportStatus.PENDING
@@ -126,8 +130,7 @@ class LogExportTask[FiltersT](BaseModel):
         identity_labels: tuple[LogExportIdentityLabel, ...] = (),
         estimated_rows: int | None = None,
     ) -> Self:
-        """Build a one-day pending task with normalized filters and optional preview metadata."""
-        created_at = utc_now()
+        """Build a pending task that remains available until execution or cancellation."""
         return cls(
             task_id=str(uuid4()),
             tenant_id=tenant_id,
@@ -136,8 +139,8 @@ class LogExportTask[FiltersT](BaseModel):
             filters=filters,
             identity_labels=identity_labels,
             estimated_rows=estimated_rows,
-            created_at=created_at,
-            expires_at=created_at + _LOG_EXPORT_TASK_TTL,
+            created_at=utc_now(),
+            expires_at=None,
         )
 
 
@@ -145,7 +148,7 @@ def open_ready_log_export_csv[FiltersT](
     task: LogExportTask[FiltersT], *, open_csv: OpenLogExportFile, filename: str
 ) -> LogExportDownload:
     """Open an admitted, unexpired export after verifying its completed file and bounding the URL lifetime."""
-    if task.status is not LogExportStatus.READY or not task.storage_key:
+    if task.status is not LogExportStatus.READY or not task.storage_key or task.expires_at is None:
         raise LogExportTaskNotReadyError()
     remaining_seconds = int((task.expires_at - utc_now()).total_seconds())
     if remaining_seconds < 1:
@@ -155,8 +158,12 @@ def open_ready_log_export_csv[FiltersT](
 
 
 class LogExportTaskStore[FiltersT](Protocol):
-    def save(self, task: LogExportTask[FiltersT]) -> None:
-        """Atomically reserve capacity and save the pending task, accepting a replay for the same ID."""
+    def save(self, task: LogExportTask[FiltersT]) -> bool:
+        """Atomically admit a pending task once and return whether it is at the workspace queue head."""
+        ...
+
+    def cancel(self, task: LogExportTask[FiltersT]) -> LogExportTask[FiltersT]:
+        """Cancel and remove a pending task atomically, rejecting a concurrent worker claim."""
         ...
 
     def get(self, *, tenant_id: str, app_id: str, task_id: str) -> LogExportTask[FiltersT] | None:
@@ -200,23 +207,28 @@ def save_and_dispatch_log_export_task[FiltersT](
     task: LogExportTask[FiltersT],
     *,
     tasks: LogExportTaskStore[FiltersT],
-    dispatch: Callable[[LogExportTask[FiltersT]], None],
+    dispatch: Callable[[str], None],
 ) -> None:
-    """Save the pending task before dispatch and preserve any dispatch error after trying to record it."""
-    tasks.save(task)
-    try:
-        dispatch(task)
-    except Exception:
-        try:
-            tasks.finish(task, status=LogExportStatus.FAILED)
-        except Exception:
-            logger.exception(
-                "Failed to record log export dispatch failure: tenant=%s app=%s task=%s",
-                task.tenant_id,
-                task.app_id,
-                task.task_id,
-            )
-        raise
+    """Save the delivery intent; wake the worker immediately when this task is first in line."""
+    if tasks.save(task):
+        dispatch(task.tenant_id)
+
+
+def cancel_pending_log_export_task[FiltersT](
+    task: LogExportTask[FiltersT],
+    *,
+    requested_by: str,
+    tasks: LogExportTaskStore[FiltersT],
+    dispatch: Callable[[str], None],
+) -> LogExportTask[FiltersT]:
+    """Cancel the requester's pending export and wake the next eligible workspace job."""
+    if task.requested_by != requested_by:
+        raise LogExportTaskNotFoundError()
+    if task.status not in (LogExportStatus.PENDING, LogExportStatus.CANCELED):
+        raise LogExportTaskNotCancelableError()
+    canceled = tasks.cancel(task) if task.status is LogExportStatus.PENDING else task
+    dispatch(task.tenant_id)
+    return canceled
 
 
 def prepare_log_export_task[FiltersT](

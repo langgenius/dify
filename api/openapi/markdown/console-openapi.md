@@ -1390,6 +1390,28 @@ Set the requester's email preference for this Agent CSV export
 | 404 | Not Found | **application/json**: [AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /agent/{agent_id}/log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued Agent task and return its new status**
+
+Cancel a queued Agent CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| task_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [AgentLogExportStatusResponse](#agentlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentLogExportTaskNotFoundError](#agentlogexporttasknotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /agent/{agent_id}/log-exports/{task_id}/file
 **Authorize the Agent and its ready export before redirecting or streaming the CSV**
 
@@ -3590,6 +3612,28 @@ Set the requester's email preference for this CSV export
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/conversation-log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued task and return its new status**
+
+Cancel a queued conversation CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [ConversationLogExportStatusResponse](#conversationlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/conversation-log-exports/{task_id}/file
 **Admit the app and ready task before redirecting or streaming the CSV**
 
@@ -4716,6 +4760,28 @@ Set the requester's email preference for this Workflow CSV export
 | 200 | Email notification preference | **application/json**: [LogExportEmailNotificationResponse](#logexportemailnotificationresponse)<br> |
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflow-log-exports/{task_id}/cancel
+**Cancel the admitted requester's queued Workflow task and return its new status**
+
+Cancel a queued Workflow CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export canceled | **application/json**: [WorkflowLogExportStatusResponse](#workflowlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[WorkflowLogExportTaskNotFoundError](#workflowlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [LogExportTaskNotCancelableError](#logexporttasknotcancelableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-log-exports/{task_id}/file
@@ -32922,11 +32988,11 @@ A display label captured by the requester for an identity in the export filters.
 
 #### LogExportLimitReachedError
 
-There is already an export for this requester and app, or the workspace export limit was reached.
+There is already an active log export for this requester and app.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| LogExportLimitReachedError |  | There is already an export for this requester and app, or the workspace export limit was reached. |  |
+| LogExportLimitReachedError |  | There is already an active log export for this requester and app. |  |
 
 #### LogExportProgressResponse
 
@@ -32948,6 +33014,14 @@ The last reported stage and CSV data-row count for the current attempt.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LogExportStatus | string |  |  |
+
+#### LogExportTaskNotCancelableError
+
+Only queued log export tasks can be canceled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LogExportTaskNotCancelableError |  | Only queued log export tasks can be canceled. |  |
 
 #### LoginPayload
 

@@ -4,6 +4,7 @@ from collections.abc import Callable, Generator, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from functools import partial
 from typing import Literal
 from unittest.mock import Mock
 from uuid import UUID, uuid4
@@ -26,6 +27,7 @@ from controllers.console.app.conversation import (
     ChatConversationIdentityOptionsApi,
     CompletionConversationApi,
     ConversationLogExportApi,
+    ConversationLogExportCancelApi,
     ConversationLogExportFileApi,
     ConversationLogExportLatestApi,
     ConversationLogExportPreviewApi,
@@ -120,6 +122,11 @@ class _Harness:
         """Poll a task through the authenticated Console route."""
         client, headers = self._client(authenticated=True, csrf=True)
         return client.get(f"/apps/{self.target.id}/conversation-log-exports/{task_id}", headers=headers)
+
+    def cancel_export(self, task_id: str) -> TestResponse:
+        """Cancel the caller's queued export through the authenticated Console route."""
+        client, headers = self._client(authenticated=True, csrf=True)
+        return client.post(f"/apps/{self.target.id}/conversation-log-exports/{task_id}/cancel", headers=headers)
 
     def get_export_file(self, task_id: str, *, authenticated: bool = True) -> TestResponse:
         """Navigate to the export download with a session cookie and no CSRF header."""
@@ -232,6 +239,9 @@ def harness(
     api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
     api.add_resource(ConversationLogExportLatestApi, "/apps/<uuid:app_id>/conversation-log-exports/latest")
     api.add_resource(ConversationLogExportTaskApi, "/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
+    api.add_resource(
+        ConversationLogExportCancelApi, "/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/cancel"
+    )
     api.add_resource(
         ConversationLogExportFileApi, "/console/api/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file"
     )
@@ -518,7 +528,8 @@ def test_app_logs_support_identity_search_preview_and_export(
     assert preview.get_json() == {"counts": {"conversation_count": 1, "message_count": 1}}
     result = harness.post_export(filters)
     assert result.status_code == 202
-    task = harness.dispatch.call_args.args[0]
+    key = harness.task_key(result.get_json()["task_id"])
+    task = ConversationLogExportTask.model_validate_json(harness.redis.get(key))
     assert task.filters.end_user_ids == (end_user_id,)
     assert result.get_json() == {"task_id": task.task_id, "status": "pending", "estimated_rows": None}
 
@@ -618,10 +629,12 @@ def test_create_conversation_log_export_persists_normalized_filters(
     harness.mode(AppMode.ADVANCED_CHAT)
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
 
-    def assert_saved_before_publish(task: ConversationLogExportTask) -> None:
-        assert harness.redis.get(harness.task_key(task.task_id)) == task.model_dump_json()
-        latest = f"conversation_log_export_latest:{{{task.tenant_id}}}:{task.app_id}:{task.requested_by}"
-        assert harness.redis.get(latest) == task.task_id
+    def assert_saved_before_publish(tenant_id: str) -> None:
+        latest = f"conversation_log_export_latest:{{{tenant_id}}}:{harness.target.id}:{harness.account.id}"
+        task_id = harness.redis.get(latest)
+        assert task_id
+        task = ConversationLogExportTask.model_validate_json(harness.redis.get(harness.task_key(task_id)))
+        assert task.tenant_id == tenant_id
 
     harness.dispatch.side_effect = assert_saved_before_publish
     end_user_id = str(uuid4())
@@ -642,13 +655,13 @@ def test_create_conversation_log_export_persists_normalized_filters(
     key = harness.task_key(response.get_json()["task_id"])
     ttl, raw = harness.redis.client.ttl(key), harness.redis.get(key)
     task = ConversationLogExportTask.model_validate_json(raw)
-    harness.dispatch.assert_called_once_with(task)
+    harness.dispatch.assert_called_once_with(task.tenant_id)
     assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending", "estimated_rows": 1_200}
     assert task.estimated_rows == 1_200
     assert task.requested_by == harness.account.id
     assert task.status == "pending"
-    assert task.expires_at - task.created_at == timedelta(days=1)
-    assert 0 < ttl <= 24 * 60 * 60
+    assert task.expires_at is None
+    assert ttl == -1
     assert task.filters.keyword == "invoice"
     assert task.filters.start == datetime(2024, 1, 15, 6, 30, tzinfo=UTC)
     assert task.filters.end == datetime(2024, 1, 15, 7, 0, 59, tzinfo=UTC)
@@ -663,19 +676,22 @@ def test_create_conversation_log_export_persists_normalized_filters(
     harness.dispatch.assert_called_once()
 
 
-def test_create_conversation_log_export_records_publish_failure(
-    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+def test_create_conversation_log_export_keeps_queued_task_after_publish_failure(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch, log_export_publish: Mock
 ) -> None:
-    """Keep the failed submission in Redis and return a server error to the caller."""
+    """Preserve the admitted export for a delivery retry after a broker error."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
-    harness.dispatch.side_effect = OSError("broker unavailable")
+    harness.dispatch.side_effect = partial(log_export_adapters.dispatch_log_export_head, redis=harness.redis.client)
+    log_export_publish.side_effect = OSError("broker unavailable")
 
     response = harness.post_export({})
-    assert response.status_code == 500
+    assert response.status_code == 202
 
     latest = harness.get("export-latest").get_json()
-    assert latest["task"]["status"] == "failed"
-    harness.dispatch.side_effect = None
+    assert latest["task"]["status"] == "pending"
+    assert latest["task"]["expires_at"] is None
+    log_export_publish.side_effect = None
+    assert harness.cancel_export(latest["task"]["task_id"]).status_code == 200
     assert harness.post_export({}).status_code == 202
 
 
@@ -719,9 +735,9 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     """Recover the caller's newest live task with its filters and scoped identity labels."""
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
     assert harness.get("export-latest").get_json() == {"task": None}
-    harness.dispatch.side_effect = OSError("broker unavailable")
-    assert harness.post_export({}).status_code == 500
-    harness.dispatch.side_effect = None
+    first = harness.post_export({})
+    assert first.status_code == 202
+    assert harness.cancel_export(first.get_json()["task_id"]).status_code == 200
     end_user_id = str(uuid4())
     labels = [
         {"id": end_user_id, "source": "end-user", "label": "customer-42"},
@@ -747,7 +763,6 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
     assert second.status_code == 202
     submitted = second.get_json()
     assert submitted["estimated_rows"] == 1_200
-    task = ConversationLogExportTask.model_validate_json(harness.redis.get(harness.task_key(submitted["task_id"])))
     latest = harness.get("export-latest")
     assert latest.status_code == 200
     assert latest.get_json() == {
@@ -755,7 +770,7 @@ def test_get_latest_export_is_scoped_to_the_authenticated_account_and_app(
             **submitted,
             "progress": None,
             "identity_labels": labels,
-            "expires_at": task.expires_at.isoformat().replace("+00:00", "Z"),
+            "expires_at": None,
             "filters": {
                 "keyword": "invoice",
                 "start": "2024-01-15T06:30:00Z",
@@ -856,7 +871,11 @@ def test_download_conversation_log_export_redirects_to_storage(
     storage_key = "private/export.csv"
     url = "https://storage.example.test/export.csv?signature=signed"
     harness.redis.get.return_value = task.model_copy(
-        update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
+        update={
+            "status": ConversationLogExportStatus.READY,
+            "storage_key": storage_key,
+            "expires_at": task.created_at + timedelta(days=7),
+        }
     ).model_dump_json()
     log_export_storage.generate_presigned_url.return_value = url
     log_export_storage.exists.return_value = True
@@ -902,7 +921,11 @@ def test_download_conversation_log_export_streams_and_closes_the_csv(
     key, task = created_export
     storage_key = "private/export.csv"
     harness.redis.get.return_value = task.model_copy(
-        update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
+        update={
+            "status": ConversationLogExportStatus.READY,
+            "storage_key": storage_key,
+            "expires_at": task.created_at + timedelta(days=7),
+        }
     ).model_dump_json()
     closed = False
     header = b"\xef\xbb\xbfmessage_id,user_input\r\n"
@@ -963,7 +986,11 @@ def test_download_conversation_log_export_reports_missing_csv(
     """Return a scoped file-not-found error before committing any download headers."""
     _, task = created_export
     harness.redis.get.return_value = task.model_copy(
-        update={"status": ConversationLogExportStatus.READY, "storage_key": "private/export.csv"}
+        update={
+            "status": ConversationLogExportStatus.READY,
+            "storage_key": "private/export.csv",
+            "expires_at": task.created_at + timedelta(days=7),
+        }
     ).model_dump_json()
     if signed:
         config_overrides(STORAGE_TYPE=StorageType.S3)

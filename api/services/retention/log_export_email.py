@@ -45,7 +45,7 @@ local operation = ARGV[1]
 if operation ~= "get" and task.requested_by ~= ARGV[2] then
     return {}
 end
-if task.status == "failed" then
+if task.status == "failed" or task.status == "canceled" then
     return {"off"}
 end
 local state = redis.call("GET", KEYS[2]) or "off"
@@ -68,14 +68,20 @@ if operation == "queue" and state == "off" then
     return {"off"}
 end
 local ttl = redis.call("PTTL", KEYS[1])
-if ttl <= 0 then
-    return {}
-end
 if task.status == "ready" then
+    if ttl <= 0 then
+        return {}
+    end
     redis.call("SET", KEYS[2], reservation, "PX", ttl)
     return {"queued", task.expires_at}
 end
-redis.call("SET", KEYS[2], "waiting", "PX", ttl)
+if ttl == -1 then
+    redis.call("SET", KEYS[2], "waiting")
+elseif ttl > 0 then
+    redis.call("SET", KEYS[2], "waiting", "PX", ttl)
+else
+    return {}
+end
 return {"waiting"}
 """
 

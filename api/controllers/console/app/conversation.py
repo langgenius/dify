@@ -29,6 +29,7 @@ from controllers.console.app.error import (
     ConversationLogExportTaskNotFoundHTTPError,
     ConversationLogExportTaskNotReadyHTTPError,
     LogExportLimitReachedHTTPError,
+    LogExportTaskNotCancelableHTTPError,
 )
 from controllers.console.app.log_export_response import (
     log_export_file_response,
@@ -96,6 +97,7 @@ from services.retention.log_export_task import (
     LogExportIdentityLabel,
     LogExportKind,
     LogExportLimitReachedError,
+    LogExportTaskNotCancelableError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
@@ -621,6 +623,40 @@ class ConversationLogExportTaskApi(Resource):
             )
         except LogExportTaskNotFoundError as exc:
             raise ConversationLogExportTaskNotFoundHTTPError() from exc
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/cancel")
+class ConversationLogExportCancelApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        ConversationLogExportTaskNotFoundHTTPError,
+        LogExportTaskNotCancelableHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc(
+        "cancel_conversation_log_export",
+        description="Cancel a queued conversation CSV export task",
+        params={"app_id": "Application ID", "task_id": "Export task ID"},
+    )
+    @console_ns.response(
+        HTTPStatus.OK, "Export canceled", console_ns.models[ConversationLogExportStatusResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def post(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Cancel the admitted requester's queued task and return its new status."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().conversation_log_exports.cancel_task(
+                scope=scope, task_id=str(task_id), requested_by=request_context.account_id
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotCancelableError as exc:
+            raise LogExportTaskNotCancelableHTTPError() from exc
+        return dump_response(ConversationLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>/file")

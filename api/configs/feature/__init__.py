@@ -1528,6 +1528,10 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_LOG_EXPORT_QUEUE_RECOVERY_TASK: bool = Field(
+        description="Enable periodic recovery of log exports waiting for worker delivery",
+        default=True,
+    )
     ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
         description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
         default=True,

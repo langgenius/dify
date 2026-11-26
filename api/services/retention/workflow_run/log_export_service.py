@@ -14,6 +14,7 @@ from services.retention.log_export_task import (
     OpenLogExportFile,
     StoreLogExportFile,
     WriteLogExportCsv,
+    cancel_pending_log_export_task,
     filter_log_export_identity_labels,
     open_ready_log_export_csv,
     prepare_log_export_task,
@@ -51,7 +52,7 @@ class WorkflowLogExportService:
         self,
         *,
         tasks: LogExportTaskStore[WorkflowLogExportFilters],
-        dispatch: Callable[[WorkflowLogExportTask], None],
+        dispatch: Callable[[str], None],
         store_csv: StoreLogExportFile,
         write_csv: WriteLogExportCsv[WorkflowLogExportFilters],
         open_csv: OpenLogExportFile,
@@ -92,6 +93,13 @@ class WorkflowLogExportService:
         if task is None:
             raise LogExportTaskNotFoundError()
         return task
+
+    def cancel_task(self, *, scope: WorkflowLogExportScope, requested_by: str, task_id: str) -> WorkflowLogExportTask:
+        """Cancel the requester's queued export in the admitted Workflow app."""
+        task = self.get_task(scope=scope, task_id=task_id)
+        return cancel_pending_log_export_task(
+            task, requested_by=requested_by, tasks=self._tasks, dispatch=self._dispatch
+        )
 
     def get_latest_task(self, *, scope: WorkflowLogExportScope, requested_by: str) -> WorkflowLogExportTask | None:
         """Return the admitted caller's latest live export for the app, or None if it is unavailable."""

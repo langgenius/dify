@@ -40,7 +40,11 @@ def log_export_status_email_preference[FiltersT](
     task: LogExportTask[FiltersT], *, account_id: str, export_kind: LogExportKind
 ) -> dict[str, object]:
     """Expose the private preference only to the requester when mail is configured."""
-    if task.requested_by != account_id or task.status is LogExportStatus.FAILED or not _log_export_email_is_available():
+    if (
+        task.requested_by != account_id
+        or task.status in (LogExportStatus.FAILED, LogExportStatus.CANCELED)
+        or not _log_export_email_is_available()
+    ):
         return {}
     state = application_services().log_export_email_notifications.get_state(
         tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id, export_kind=export_kind

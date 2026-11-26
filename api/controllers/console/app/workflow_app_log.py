@@ -21,6 +21,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import (
     AppNotFoundError,
     LogExportLimitReachedHTTPError,
+    LogExportTaskNotCancelableHTTPError,
     WorkflowLogExportFileNotFoundHTTPError,
     WorkflowLogExportTaskNotFoundHTTPError,
     WorkflowLogExportTaskNotReadyHTTPError,
@@ -64,6 +65,7 @@ from services.retention.log_export_task import (
     LogExportKind,
     LogExportLimitReachedError,
     LogExportStatus,
+    LogExportTaskNotCancelableError,
     LogExportTaskNotFoundError,
     LogExportTaskNotReadyError,
 )
@@ -553,6 +555,38 @@ class WorkflowLogExportTaskApi(Resource):
             )
         except LogExportTaskNotFoundError as exc:
             raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>/cancel")
+class WorkflowLogExportCancelApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        WorkflowLogExportTaskNotFoundHTTPError,
+        LogExportTaskNotCancelableHTTPError,
+        ForbiddenError,
+        PaidPlanRequiredError,
+    )
+    @console_ns.doc(
+        "cancel_workflow_log_export",
+        description="Cancel a queued Workflow CSV export task",
+        params={"app_id": "Application ID", "task_id": "Export task ID"},
+    )
+    @console_ns.response(HTTPStatus.OK, "Export canceled", console_ns.models[WorkflowLogExportStatusResponse.__name__])
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def post(
+        self, request_context: RequestContext, app_id: UUID, task_id: UUID
+    ) -> tuple[dict[str, object], HTTPStatus, dict[str, str]]:
+        """Cancel the admitted requester's queued Workflow task and return its new status."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().workflow_log_exports.cancel_task(
+                scope=scope, task_id=str(task_id), requested_by=request_context.account_id
+            )
+        except LogExportTaskNotFoundError as exc:
+            raise WorkflowLogExportTaskNotFoundHTTPError() from exc
+        except LogExportTaskNotCancelableError as exc:
+            raise LogExportTaskNotCancelableHTTPError() from exc
+        return dump_response(WorkflowLogExportStatusResponse, task), HTTPStatus.OK, {"Cache-Control": "no-store"}
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-log-exports/<uuid:task_id>/file")

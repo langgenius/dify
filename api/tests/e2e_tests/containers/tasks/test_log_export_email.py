@@ -78,6 +78,7 @@ def test_email_opt_in_can_be_canceled_while_pending_and_set_after_ready(
 
     assert emails.get_state(**scope) is LogExportEmailState.OFF
     assert emails.set_enabled(**scope, requested_by="owner", enabled=True) is LogExportEmailState.WAITING
+    assert application_redis.pttl(export.keys[1]) == -1
     with pytest.raises(LogExportTaskNotFoundError):
         emails.set_enabled(**scope, requested_by="other", enabled=False)
     assert emails.get_state(**scope) is LogExportEmailState.WAITING
@@ -126,13 +127,20 @@ def test_completion_and_api_opt_in_publish_once(application_redis: RedisClientWr
     assert export.dispatch.calls == [ready.expires_at]
 
 
-def test_export_failure_clears_public_email_state(application_redis: RedisClientWrapper) -> None:
+@pytest.mark.parametrize("status", [LogExportStatus.FAILED, LogExportStatus.CANCELED])
+def test_failed_or_canceled_export_clears_email_preference(
+    application_redis: RedisClientWrapper, status: LogExportStatus
+) -> None:
     export = _Export(application_redis, LogExportKind.CONVERSATION)
     emails, scope = export.emails, export.scope
     assert emails.set_enabled(**scope, requested_by="owner", enabled=True) is LogExportEmailState.WAITING
-    export.finish(LogExportStatus.FAILED)
+    if status is LogExportStatus.CANCELED:
+        export.tasks.cancel(export.task)
+    else:
+        export.finish(status)
 
     assert emails.get_state(**scope) is LogExportEmailState.OFF
+    assert application_redis.pttl(export.keys[1]) == -2
     assert emails.set_enabled(**scope, requested_by="owner", enabled=True) is LogExportEmailState.OFF
     assert emails.queue_if_requested(**scope, requested_by="owner") is LogExportEmailState.OFF
     assert not emails.claim_delivery(**scope, requested_by="owner")

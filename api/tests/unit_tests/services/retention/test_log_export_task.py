@@ -100,6 +100,7 @@ def test_worker_records_total_rows_before_upload(
     current = tasks.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
     assert current is not None
     assert current.status is LogExportStatus.READY
+    assert current.expires_at is not None
     assert current.expires_at > task.created_at + timedelta(days=7)
     assert current.progress == uploading
     assert ready == current
@@ -248,22 +249,36 @@ def test_storage_failure_retries_when_recording_failed_hits_transient_redis_erro
     assert current.storage_key is None
 
 
-def test_dispatch_failure_preserves_publish_error_when_recording_failed_also_raises(
-    log_export_redis: LogExportRedisIo, caplog: pytest.LogCaptureFixture
-) -> None:
-    """Keep the broker error visible when Redis also fails during dispatch cleanup."""
+def test_dispatch_failure_leaves_pending_export_available_for_recovery(log_export_redis: LogExportRedisIo) -> None:
+    """Persist the task before attempting delivery so recovery can republish after a broker error."""
     tasks = RedisLogExportTasks(
         redis=log_export_redis.client, task_type=LogExportTask[str], key_prefix="conversation_log_export"
     )
     task = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="owner", filters="all")
     dispatch_error = RuntimeError("Broker unavailable")
-    log_export_redis.finish_error = ConnectionError("Redis temporarily unavailable")
 
-    def dispatch(_task: LogExportTask[str]) -> None:
+    def dispatch(tenant_id: str) -> None:
+        assert tenant_id == task.tenant_id
+        assert tasks.get_latest(tenant_id=tenant_id, app_id=task.app_id, requested_by=task.requested_by) == task
         raise dispatch_error
 
     with pytest.raises(RuntimeError) as failure:
         log_export_task.save_and_dispatch_log_export_task(task, tasks=tasks, dispatch=dispatch)
 
     assert failure.value is dispatch_error
-    assert "Redis temporarily unavailable" in caplog.text
+    assert tasks.get(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id) == task
+
+
+def test_create_dispatches_only_the_head_export_in_a_workspace(log_export_redis: LogExportRedisIo) -> None:
+    """Put later submissions in the workspace queue without publishing them to the broker."""
+    tasks = RedisLogExportTasks(
+        redis=log_export_redis.client, task_type=LogExportTask[str], key_prefix="conversation_log_export"
+    )
+    first = LogExportTask[str].pending(tenant_id="tenant", app_id="app", requested_by="owner", filters="all")
+    waiting = LogExportTask[str].pending(tenant_id="tenant", app_id="other", requested_by="owner", filters="all")
+    dispatched: list[str] = []
+    log_export_task.save_and_dispatch_log_export_task(first, tasks=tasks, dispatch=dispatched.append)
+    log_export_task.save_and_dispatch_log_export_task(waiting, tasks=tasks, dispatch=dispatched.append)
+
+    assert dispatched == [first.tenant_id]
+    assert tasks.get(tenant_id=waiting.tenant_id, app_id=waiting.app_id, task_id=waiting.task_id) == waiting
