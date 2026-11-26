@@ -52,7 +52,7 @@ it.each(['rename', 'delete'] as const)(
         params,
         body: { name: updatedTag.name },
       })
-      // The catalog refresh no longer holds the rename; it lands after the pending read is cancelled.
+      // The catalog refresh no longer holds the rename.
       await vi.waitFor(() => expect(client.getQueryState(financeSearch)?.isInvalidated).toBe(true))
     } else {
       call.mockResolvedValueOnce(undefined)
@@ -61,11 +61,12 @@ it.each(['rename', 'delete'] as const)(
       )
     }
 
-    // The fallback cancels the pre-write read before it refreshes the domains.
     await vi.waitFor(() => expect(client.getQueryState(agentResults[0]!)?.isInvalidated).toBe(true))
+    // The unobserved pre-write read is not cancelled (someone may await it); once it lands it is
+    // marked stale, so the next reader fetches the catalog again.
     staleRead.resolve([agentTag])
-    await pendingRead.catch(() => undefined)
-    expect(client.getQueryData(agentCatalog)).toEqual(operation === 'rename' ? [updatedTag] : [])
+    await pendingRead
+    await vi.waitFor(() => expect(client.getQueryState(agentCatalog)?.isInvalidated).toBe(true))
     for (const key of agentResults) expect(client.getQueryState(key)?.isInvalidated).toBe(true)
     expect(client.getQueryData(appCatalog)).toEqual([appTag])
     expect(client.getQueryState(appCatalog)?.isInvalidated).toBe(true)

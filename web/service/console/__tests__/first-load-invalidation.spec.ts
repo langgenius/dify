@@ -203,7 +203,8 @@ describe('annotation policies', () => {
     const { client, queryFn, responses } = mountList(annotationListKey(), { withFallback: true })
     responses[0]!.resolve({ data: ['loaded'] })
     await settle()
-    const quotaFn = vi.fn(() => new Promise(() => undefined))
+    const quotaLoad = createDeferred<unknown>()
+    const quotaFn = vi.fn().mockReturnValueOnce(quotaLoad.promise).mockResolvedValue({})
     const quota = new QueryObserver(client, {
       queryKey: consoleQuery.features.get.queryKey(),
       queryFn: quotaFn,
@@ -227,10 +228,14 @@ describe('annotation policies', () => {
     expect(queryFn).toHaveBeenCalledTimes(2)
     expect(added).toBe(false)
 
-    // The list lands; the fallback's quota refetch is still pending and does not hold the add.
+    // The list lands; the quota's first load is still pending and does not hold the add.
     responses[1]!.resolve({ data: ['after write'] })
     await adding
     expect(added).toBe(true)
+    // That load started before the write: the fallback lets it finish, then reads it again.
+    await settle()
+    expect(quotaFn).toHaveBeenCalledTimes(1)
+    quotaLoad.resolve({})
     await vi.waitFor(() => expect(quotaFn).toHaveBeenCalledTimes(2))
   })
 })
