@@ -2624,6 +2624,55 @@ def test_run_single_app_target_loads_pinned_workflow_version(
     assert identity.user_id == account.id
 
 
+def test_run_app_for_evaluation_waits_reserves_quota_and_releases_slot(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = make_app(app_id="app-1")
+    app.tenant_id = "tenant-1"
+    events: list[str] = []
+
+    class RecordingQuotaCharge:
+        def commit(self) -> None:
+            events.append("commit")
+
+        def refund(self) -> None:
+            events.append("refund")
+
+    def enter_with_wait(_self: object, **kwargs: object) -> str:
+        assert kwargs["timeout_seconds"] == 300
+        assert callable(kwargs["cancellation_check"])
+        events.append("enter")
+        return "evaluation-request"
+
+    monkeypatch.setattr("services.evaluation_service.AppGenerateService.get_max_active_requests", lambda _app: 2)
+    monkeypatch.setattr("services.evaluation_service.RateLimit.enter_with_wait", enter_with_wait)
+    monkeypatch.setattr(
+        "services.evaluation_service.RateLimit.exit",
+        lambda _self, request_id: events.append(f"exit:{request_id}"),
+    )
+    monkeypatch.setattr(
+        "services.evaluation_service.QuotaService.reserve",
+        lambda quota_type, tenant_id: (
+            events.append(f"reserve:{quota_type.value}:{tenant_id}") or RecordingQuotaCharge()
+        ),
+    )
+
+    result = EvaluationService.run_app_for_evaluation(
+        app=app,
+        action=lambda: events.append("action") or {"workflow_run_id": "run-1"},
+        cancellation_check=lambda: events.append("cancel-check"),
+    )
+
+    assert result == {"workflow_run_id": "run-1"}
+    assert events == [
+        "enter",
+        "cancel-check",
+        "reserve:workflow:tenant-1",
+        "cancel-check",
+        "commit",
+        "action",
+        "exit:evaluation-request",
+    ]
+
+
 def test_run_single_app_target_fails_when_pinned_workflow_was_deleted(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -2758,6 +2807,7 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     sqlite_session.add_all([account, tenant, membership, dataset])
     sqlite_session.commit()
     retrievals: list[tuple[Session, Account]] = []
+    rate_limit_checks: list[str] = []
 
     def retrieve(**kwargs: object) -> dict[str, list[dict[str, object]]]:
         thread_session = kwargs["session"]
@@ -2769,6 +2819,10 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
         return {"records": [{"segment": {"content": "matched content"}, "score": 0.9}]}
 
     monkeypatch.setattr(HitTestingService, "retrieve", retrieve)
+    monkeypatch.setattr(
+        "services.evaluation_service.enforce_knowledge_rate_limit",
+        rate_limit_checks.append,
+    )
 
     results, errors = EvaluationService.execute_retrieval_test_targets(
         tenant_id="tenant-1",
@@ -2782,5 +2836,6 @@ def test_execute_retrieval_targets_sets_account_tenant_with_worker_session(
     assert results[0] is not None
     assert results[0].outputs == {"result": [{"content": "matched content", "score": 0.9}]}
     assert len(retrievals) == 1
+    assert rate_limit_checks == [tenant.id]
     assert retrievals[0][0] is not sqlite_session
     assert retrievals[0][1].id == account.id

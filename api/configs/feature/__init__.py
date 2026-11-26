@@ -1853,6 +1853,10 @@ class EvaluationConfig(BaseSettings):
         description="Maximum target executions performed in parallel by one evaluation task.",
         default=5,
     )
+    EVALUATION_APP_CONCURRENCY_WAIT_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds an evaluation row waits for an app concurrency slot.",
+        default=300,
+    )
 
     @model_validator(mode="after")
     def validate_heartbeat_lease(self) -> "EvaluationConfig":

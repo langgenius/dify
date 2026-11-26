@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequest
+from core.errors.error import AppInvokeQuotaWaitTimeoutError
 from core.evaluation.base_evaluation_instance import get_evaluation_credit_usage_metadata
 from core.evaluation.entities.evaluation_entity import (
     AgentEvaluationItem,
@@ -57,6 +58,7 @@ from models.evaluation import (
 from models.model import UploadFile
 from models.workflow import WorkflowKind
 from services.agent.evaluation_target_service import ResolvedAgentEvaluationTarget
+from services.errors.app import QuotaExceededError
 from services.evaluation_service import EvaluationService
 from tasks.evaluation_task import (
     EvaluationRunCancelledError,
@@ -321,7 +323,7 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     assert results[0].metrics[0].name == "score"
     assert results[0].metrics[0].value == 0.8
     _assert_public_error(results[1].error, EvaluationErrorCode.CUSTOM_EVALUATOR_FAILED)
-    assert len(cancellation_checks) == 4
+    assert len(cancellation_checks) == 10
 
 
 @pytest.mark.parametrize("target_type", [EvaluationTargetType.APPS, EvaluationTargetType.SNIPPETS])
@@ -1034,6 +1036,11 @@ def test_execute_evaluation_rejects_invalid_or_terminal_task_deliveries(
         (EvaluationRunCancelledError(), None),
         (EvaluationRunOwnershipLostError("stale task"), None),
         (ValueError("invalid payload"), EvaluationErrorCode.INVALID_CONFIG),
+        (
+            QuotaExceededError(feature="workflow", tenant_id="tenant-1", required=1),
+            EvaluationErrorCode.RUN_QUOTA_EXCEEDED,
+        ),
+        (AppInvokeQuotaWaitTimeoutError("wait expired"), EvaluationErrorCode.APP_CONCURRENCY_TIMEOUT),
         (RuntimeError("backend unavailable"), EvaluationErrorCode.RUN_FAILED),
     ],
 )
