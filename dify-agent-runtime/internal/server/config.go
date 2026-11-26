@@ -22,7 +22,7 @@ const (
 	MaxListLimit                         = 200
 	DefaultTerminateGraceSeconds         = 10.0
 	DefaultGCIntervalSeconds             = 60.0
-	DefaultGCFinishedJobRetentionSeconds = 24.0 * 60.0 * 60.0 // Match the shellctl SDK's result retention.
+	DefaultGCFinishedJobRetentionSeconds = 300.0
 	DefaultPollInterval                  = 5 * time.Millisecond
 	DefaultMaxPollInterval               = 50 * time.Millisecond
 	DefaultPipeMonitorInterval           = 1 * time.Second

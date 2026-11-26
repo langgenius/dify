@@ -49,10 +49,6 @@ for the Agent Stub and inner API endpoints.
 The response models are identical in both modes. Use `stdio` for bounded,
 machine-readable control commands and `pty` for interactive jobs.
 
-Completed job results, including output and exit status, are available to
-`shell_wait` for 24 hours after the job ends. The server checks for expired
-jobs every minute and removes their records and files.
-
 ## Building
 
 ```bash
