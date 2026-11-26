@@ -6,7 +6,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, StreamCallbacks, StreamSender } from '@/service/event-stream'
 import type { VisionFile } from '@/types/app'
-import type { ReasoningChunkResponse } from '@/types/workflow'
+import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { findLast, findLastIndex, uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
@@ -156,6 +156,107 @@ function normalizeStreamingFile(file: VisionFile): FileEntity {
 /** Upsert file metadata by ID while retaining the order files first arrived in. */
 function mergeStreamingFiles(files: FileEntity[]): FileEntity[] {
   return Array.from(new Map(files.map((file) => [file.id, file])).values())
+}
+
+const isFallbackStreamingFilename = (name: string | undefined) =>
+  !name || name === 'file' || /^generated_[^/]+\.[a-z0-9]+$/i.test(name)
+
+const isGenericMimeType = (mimeType: string | undefined) =>
+  !mimeType || mimeType === 'application/octet-stream'
+
+/** Preserve richer live metadata while backfilling fallback placeholders from `message_end.files`. */
+function backfillLiveFileMetadata(existing: FileEntity, incoming: FileEntity): FileEntity {
+  const nextName =
+    isFallbackStreamingFilename(existing.name) && !isFallbackStreamingFilename(incoming.name)
+      ? incoming.name
+      : existing.name
+  const nextType =
+    isGenericMimeType(existing.type) && !isGenericMimeType(incoming.type)
+      ? incoming.type
+      : existing.type
+  const nextSize = existing.size > 0 ? existing.size : incoming.size
+  const nextUrl = existing.url || incoming.url
+  const nextSupportFileType =
+    isGenericMimeType(existing.type) &&
+    !isGenericMimeType(incoming.type) &&
+    incoming.supportFileType
+      ? incoming.supportFileType
+      : existing.supportFileType || incoming.supportFileType
+
+  if (
+    nextName === existing.name &&
+    nextType === existing.type &&
+    nextSize === existing.size &&
+    nextUrl === existing.url &&
+    nextSupportFileType === existing.supportFileType
+  )
+    return existing
+
+  return {
+    ...existing,
+    name: nextName,
+    type: nextType,
+    size: nextSize,
+    url: nextUrl,
+    supportFileType: nextSupportFileType,
+  }
+}
+
+/**
+ * Merge `message_end.files` without duplicating attachments already shown via live `message_file` events.
+ * Live attachments stay in `message_files` / `agent_thoughts[i].message_files` (with optional in-place
+ * metadata backfill), while only unseen file IDs are appended to `responseItem.allFiles`.
+ */
+function mergeMessageEndFiles(
+  responseItem: ChatItemInTree,
+  files: FileResponse[] | undefined,
+  isNewAgent: boolean | undefined,
+) {
+  const processedFiles = getProcessedFilesFromResponse(files || [])
+  const liveFileIds = new Set<string>()
+  for (const file of responseItem.message_files ?? []) liveFileIds.add(file.id)
+  for (const thought of responseItem.agent_thoughts ?? []) {
+    for (const file of thought.message_files ?? []) liveFileIds.add(file.id)
+  }
+
+  const incomingById = new Map<string, FileEntity>()
+  const unseenFiles: FileEntity[] = []
+  for (const file of processedFiles) {
+    if (liveFileIds.has(file.id)) incomingById.set(file.id, file)
+    else unseenFiles.push(file)
+  }
+
+  if (incomingById.size > 0) {
+    if (responseItem.message_files?.length) {
+      let changed = false
+      const updatedMessageFiles = responseItem.message_files.map((existing) => {
+        const incoming = incomingById.get(existing.id)
+        if (!incoming) return existing
+        const merged = backfillLiveFileMetadata(existing, incoming)
+        if (merged !== existing) changed = true
+        return merged
+      })
+      if (changed) responseItem.message_files = updatedMessageFiles
+    }
+
+    for (const thought of responseItem.agent_thoughts ?? []) {
+      if (!thought.message_files?.length) continue
+      let changed = false
+      const updatedThoughtFiles = thought.message_files.map((existing) => {
+        const incoming = incomingById.get(existing.id)
+        if (!incoming) return existing
+        const merged = backfillLiveFileMetadata(existing, incoming)
+        if (merged !== existing) changed = true
+        return merged
+      })
+      if (changed) {
+        thought.message_files = updatedThoughtFiles
+        syncAgentResponseThoughtPart(responseItem, thought, isNewAgent)
+      }
+    }
+  }
+
+  responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...unseenFiles], 'id')
 }
 
 /** Normalize SSE file IDs before a thought enters the display state. */
@@ -882,11 +983,7 @@ export const useChat = (
               return
             }
             responseItem.citation = messageEnd.metadata?.retriever_resources || []
-            const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-            responseItem.allFiles = uniqBy(
-              [...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])],
-              'id',
-            )
+            mergeMessageEndFiles(responseItem, messageEnd.files, options.isNewAgent)
           })
         },
         onMessageReplace: (messageReplace) => {
@@ -1508,11 +1605,7 @@ export const useChat = (
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
-          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-          responseItem.allFiles = uniqBy(
-            [...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])],
-            'id',
-          )
+          mergeMessageEndFiles(responseItem, messageEnd.files, options.isNewAgent)
 
           updateCurrentQAOnTree({
             placeholderQuestionId,

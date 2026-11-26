@@ -175,17 +175,26 @@ class DifyPluginToolInvokeMessage(BaseModel):
         handler: ModelWrapValidatorHandler[Self],
         info: ValidationInfo,
     ) -> Self:
+        """Decode BLOB/BLOB_CHUNK payloads with per-file error isolation when enabled.
+
+        Two-stage invariant:
+        - `BLOB` frames with invalid Base64 isolate into `message=None` plus `_chunk_error`,
+          preserving sibling outputs from the same tool call.
+        - `BLOB_CHUNK` frames with invalid Base64 still validate framing via an empty-bytes
+          `BlobChunkMessage` placeholder before attaching `_chunk_error`, so malformed chunk
+          schemas still fail validation while valid frames forward `chunk_id` to lock failure
+          in `merge_blob_chunks`.
+        """
         isolate_blob_errors = isinstance(info.context, Mapping) and bool(info.context.get("isolate_blob_errors"))
         if not isolate_blob_errors or not isinstance(value, Mapping):
             return handler(value)
 
         raw_type = value.get("type")
+        if not isinstance(raw_type, str):
+            return handler(value)
+
         raw_message = value.get("message")
-        if (
-            raw_type in {cls.MessageType.BLOB, cls.MessageType.BLOB.value}
-            and isinstance(raw_message, Mapping)
-            and "blob" in raw_message
-        ):
+        if raw_type == cls.MessageType.BLOB and isinstance(raw_message, Mapping) and "blob" in raw_message:
             try:
                 decoded = _decode_blob_bytes(raw_message["blob"])
             except ValueError as exc:
@@ -194,11 +203,7 @@ class DifyPluginToolInvokeMessage(BaseModel):
                 return item
             return handler({**value, "message": {**raw_message, "blob": decoded}})
 
-        if (
-            raw_type in {cls.MessageType.BLOB_CHUNK, cls.MessageType.BLOB_CHUNK.value}
-            and isinstance(raw_message, Mapping)
-            and "blob" in raw_message
-        ):
+        if raw_type == cls.MessageType.BLOB_CHUNK and isinstance(raw_message, Mapping) and "blob" in raw_message:
             try:
                 decoded = _decode_blob_bytes(raw_message["blob"])
             except ValueError as exc:

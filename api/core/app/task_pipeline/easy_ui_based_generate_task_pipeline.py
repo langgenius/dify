@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
 from typing import Any, cast
+from uuid import UUID
 
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select
@@ -65,8 +66,23 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.tools import ToolFile
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_tool_file_uuid(message_file: MessageFile) -> str | None:
+    candidate = message_file.upload_file_id
+    if not candidate and message_file.url:
+        file_part = message_file.url.split("/")[-1].split("?")[0]
+        candidate = file_part.rsplit(".", 1)[0] if "." in file_part else file_part
+    if not candidate:
+        return None
+    try:
+        return str(UUID(candidate))
+    except ValueError:
+        return None
+
 
 type EasyUIAppGenerateEntity = ChatAppGenerateEntity | CompletionAppGenerateEntity | AgentChatAppGenerateEntity
 
@@ -585,9 +601,32 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
                     upload_files_map = {uf.id: uf for uf in upload_files}
 
+                raw_tenant_id = self._application_generate_entity.app_config.tenant_id
+                tool_file_ids = list(
+                    dict.fromkeys(
+                        tool_file_id
+                        for mf in message_files
+                        if mf.transfer_method == FileTransferMethod.TOOL_FILE
+                        and (tool_file_id := _extract_tool_file_uuid(mf)) is not None
+                    )
+                )
+                tool_files_map: dict[str, ToolFile] = {}
+                if tool_file_ids and isinstance(raw_tenant_id, str) and raw_tenant_id:
+                    tool_files = session.scalars(
+                        select(ToolFile).where(
+                            ToolFile.tenant_id == raw_tenant_id,
+                            ToolFile.id.in_(tool_file_ids),
+                        )
+                    ).all()
+                    tool_files_map = {tf.id: tf for tf in tool_files}
+
                 files_list = []
                 for message_file in message_files:
-                    file_dict = prepare_file_dict(message_file, upload_files_map)
+                    file_dict = prepare_file_dict(
+                        message_file,
+                        upload_files_map,
+                        tool_files_map=tool_files_map,
+                    )
                     files_list.append(file_dict)
 
                 files = cast(Sequence[Mapping[str, Any]], files_list)

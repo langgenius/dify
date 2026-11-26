@@ -14,13 +14,15 @@ shared `agent_files.upload_agent_tool_file` control plane and the current caller
 identity. It allocates a signed `/files/upload/for-plugin?...` URI before sending
 the bytes. Upload failures produce `Tool media unavailable` text hints without
 blob data. `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` limits both Agent Stub
-uploads and plugin `BLOB` / `BLOB_CHUNK` persistence (default: 50 MiB). Oversized
-blobs and chunks produce a single `Tool media unavailable` text hint per failed
-file before requesting an upload URL; chunk streams are also validated for
+uploads and plugin `BLOB` / `BLOB_CHUNK` persistence (default: 50 MiB). String
+`blob` payloads on `BLOB` and `BLOB_CHUNK` messages are decoded with strict
+Base64 validation (`validate=True`); invalid Base64, oversized blobs, and failed
+chunk streams are isolated per file or chunk stream into a single `Tool media
+unavailable` text hint before requesting an upload URL, so corrupted or truncated
+bytes are never uploaded while sibling text and valid attachments from the same
+tool invocation are still preserved. Chunk streams are also validated for
 ordered sequence numbers, consistent declared length, and complete final byte
-count, and chunk failures are isolated per chunk file so truncated files are
-never uploaded while sibling text and valid attachments from the same tool
-invocation are still preserved. In `agent_app` mode, successfully persisted blob
+count. In `agent_app` mode, successfully persisted blob
 observations tell the model that the file has already been delivered to the user
 as an attachment while keeping the copyable handle for
 `read_media(file=<summary object>)` when content inspection is needed. File

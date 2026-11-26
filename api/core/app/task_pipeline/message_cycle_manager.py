@@ -6,7 +6,6 @@ from uuid import UUID
 
 from flask import Flask, current_app
 from sqlalchemy import select
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -247,21 +246,28 @@ class MessageCycleManager:
         tool_file_id: str,
         extension: str,
     ) -> tuple[str | None, str | None, int | None, str | None]:
-        """Resolve filename, MIME type, size, and backing file ID for a streamed attachment."""
+        """Resolve filename, MIME type, size, and backing file ID for a streamed attachment.
+
+        Enforces fail-closed tenant scoping: metadata lookups run only when `app_config.tenant_id`
+        is a non-empty string and the candidate identifier parses as a valid UUID, always filtering
+        by `tenant_id`. Returned filenames are normalized to safe basenames, and `size` is emitted
+        only when it is a non-negative integer.
+        """
         raw_tenant_id = self._application_generate_entity.app_config.tenant_id
-        tenant_id = raw_tenant_id if isinstance(raw_tenant_id, str) and raw_tenant_id else None
+        if not isinstance(raw_tenant_id, str) or not raw_tenant_id:
+            return None, None, None, message_file.upload_file_id
+        tenant_id = raw_tenant_id
 
         if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
             candidate_id = _parse_uuid(message_file.upload_file_id or tool_file_id)
             if candidate_id is None:
                 return None, None, None, message_file.upload_file_id
-            stmt = select(ToolFile).where(ToolFile.id == candidate_id)
-            if tenant_id is not None:
-                stmt = stmt.where(ToolFile.tenant_id == tenant_id)
-            try:
-                tool_file = session.scalar(stmt)
-            except OperationalError:
-                return None, None, None, message_file.upload_file_id
+            tool_file = session.scalar(
+                select(ToolFile).where(
+                    ToolFile.id == candidate_id,
+                    ToolFile.tenant_id == tenant_id,
+                )
+            )
             if tool_file is None:
                 return None, None, None, message_file.upload_file_id
             filename = _normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
@@ -272,13 +278,12 @@ class MessageCycleManager:
             candidate_id = _parse_uuid(message_file.upload_file_id)
             if candidate_id is None:
                 return None, None, None, message_file.upload_file_id
-            upload_stmt = select(UploadFile).where(UploadFile.id == candidate_id)
-            if tenant_id is not None:
-                upload_stmt = upload_stmt.where(UploadFile.tenant_id == tenant_id)
-            try:
-                upload_file = session.scalar(upload_stmt)
-            except OperationalError:
-                return None, None, None, message_file.upload_file_id
+            upload_file = session.scalar(
+                select(UploadFile).where(
+                    UploadFile.id == candidate_id,
+                    UploadFile.tenant_id == tenant_id,
+                )
+            )
             if upload_file is None:
                 return None, None, None, message_file.upload_file_id
             filename = _normalize_basename(upload_file.name)

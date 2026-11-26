@@ -72,6 +72,7 @@ from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMR
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
+from models.tools import ToolFile
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -2268,7 +2269,7 @@ and the fallback used when a local message file references a missing upload.
 """
 
 
-SQLITE_MODELS = (MessageFile, UploadFile)
+SQLITE_MODELS = (MessageFile, UploadFile, ToolFile)
 
 
 class TestEasyUiMessageEndFilesCases:
@@ -2404,7 +2405,7 @@ class TestEasyUiMessageEndFilesCases:
             return upload
 
         @staticmethod
-        def _persist(session: Session, *rows: MessageFile | UploadFile) -> None:
+        def _persist(session: Session, *rows: MessageFile | UploadFile | ToolFile) -> None:
             session.add_all(rows)
             session.commit()
 
@@ -2586,3 +2587,119 @@ class TestEasyUiMessageEndFilesCases:
             assert len(result.files) == 1
             assert result.files[0]["url"].startswith("https://example.com/fallback-url")
             get_signed_url.assert_called_once_with(upload_file_id=str(message_file_local.upload_file_id))
+
+        def test_message_end_with_tool_file_backfills_metadata_for_same_tenant(
+            self,
+            sqlite_session: Session,
+            pipeline: EasyUIBasedGenerateTaskPipeline,
+        ) -> None:
+            """Same-tenant ToolFile rows backfill filename, MIME type, size, and upload_file_id."""
+
+            report_tool = ToolFile(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                conversation_id=None,
+                file_key="generated/report",
+                name="../nested/report.pdf",
+                mimetype="application/pdf",
+                size=4096,
+            )
+            fallback_tool = ToolFile(
+                tenant_id="tenant-id",
+                user_id="user-id",
+                conversation_id=None,
+                file_key="generated/fallback",
+                name="..",
+                mimetype="application/pdf",
+                size=-5,
+            )
+            self._persist(sqlite_session, report_tool, fallback_tool)
+
+            report_message_file = MessageFile(
+                message_id=pipeline._message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                url=f"/files/tools/{report_tool.id}.pdf",
+                upload_file_id=report_tool.id,
+            )
+            fallback_message_file = MessageFile(
+                message_id=pipeline._message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                url=f"/files/tools/{fallback_tool.id}.pdf",
+                upload_file_id=None,
+            )
+            self._persist(sqlite_session, report_message_file, fallback_message_file)
+
+            with patch(
+                "core.app.task_pipeline.message_file_utils.sign_tool_file",
+                side_effect=lambda *, tool_file_id, extension: f"https://example.com/signed/{tool_file_id}{extension}",
+            ):
+                result = pipeline._message_end_to_stream_response()
+
+            assert result.files is not None
+            by_related_id = {file_dict["related_id"]: file_dict for file_dict in result.files}
+
+            report_dict = by_related_id[report_message_file.id]
+            assert report_dict["filename"] == "report.pdf"
+            assert report_dict["mime_type"] == "application/pdf"
+            assert report_dict["size"] == 4096
+            assert report_dict["extension"] == ".pdf"
+            assert report_dict["upload_file_id"] == report_tool.id
+            assert report_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value
+
+            fallback_dict = by_related_id[fallback_message_file.id]
+            assert fallback_dict["filename"] == f"{fallback_tool.id}.pdf"
+            assert fallback_dict["mime_type"] == "application/pdf"
+            assert fallback_dict["size"] == 0
+            assert fallback_dict["extension"] == ".pdf"
+            assert fallback_dict["upload_file_id"] == fallback_tool.id
+
+        def test_message_end_with_tool_file_isolates_cross_tenant_metadata(
+            self,
+            sqlite_session: Session,
+            pipeline: EasyUIBasedGenerateTaskPipeline,
+        ) -> None:
+            """ToolFile rows belonging to another tenant do not leak metadata into message_end."""
+
+            foreign_tool = ToolFile(
+                tenant_id="other-tenant",
+                user_id="user-id",
+                conversation_id=None,
+                file_key="generated/secret",
+                name="secret.pdf",
+                mimetype="application/pdf",
+                size=2048,
+            )
+            self._persist(sqlite_session, foreign_tool)
+
+            foreign_message_file = MessageFile(
+                message_id=pipeline._message_id,
+                type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                created_by_role=CreatorUserRole.ACCOUNT,
+                created_by=str(uuid.uuid4()),
+                url=f"/files/tools/{foreign_tool.id}.pdf",
+                upload_file_id=foreign_tool.id,
+            )
+            self._persist(sqlite_session, foreign_message_file)
+
+            with patch(
+                "core.app.task_pipeline.message_file_utils.sign_tool_file",
+                return_value=f"https://example.com/signed/{foreign_tool.id}.pdf",
+            ):
+                result = pipeline._message_end_to_stream_response()
+
+            assert result.files is not None
+            assert len(result.files) == 1
+            file_dict = result.files[0]
+            assert file_dict["related_id"] == foreign_message_file.id
+            assert file_dict["filename"] == f"{foreign_tool.id}.pdf"
+            assert file_dict["mime_type"] == "application/octet-stream"
+            assert file_dict["size"] == 0
+            assert file_dict["extension"] == ".pdf"
+            assert file_dict["transfer_method"] == FileTransferMethod.TOOL_FILE.value

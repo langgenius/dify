@@ -3159,6 +3159,244 @@ describe('useChat', () => {
       expect(lastResponse!.citation).toEqual([])
     })
 
+    it('should deduplicate message_end files already delivered via live onFile on handleSend without degrading metadata', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(streams.sender('url'), { query: 'generate pdf' }, {})
+      })
+
+      act(() => {
+        callbacks.onFile({
+          id: 'f-msg-legacy',
+          type: 'document',
+          url: '/files/tools/tool-legacy.pdf?sign=live',
+        })
+        callbacks.onThought({
+          id: 'thought-1',
+          message_id: 'm-pdf',
+          position: 1,
+          thought: '',
+          observation: 'created',
+          tool: 'pdf_tool',
+          tool_input: '{}',
+          message_files: ['f-thought-pdf'],
+        })
+        callbacks.onFile({
+          id: 'f-thought-pdf',
+          type: 'document',
+          url: '/files/tools/tool-1.pdf?sign=live',
+          filename: 'report.pdf',
+          mime_type: 'application/pdf',
+          size: 4096,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-1',
+        })
+        callbacks.onMessageEnd({
+          id: 'm-pdf',
+          metadata: {},
+          files: [
+            {
+              related_id: 'f-thought-pdf',
+              filename: 'tool-1.pdf',
+              mime_type: 'application/octet-stream',
+              size: 0,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-1.pdf?sign=end',
+              upload_file_id: 'tool-1',
+            },
+            {
+              related_id: 'f-msg-legacy',
+              filename: 'summary.pdf',
+              mime_type: 'application/pdf',
+              size: 1024,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-legacy.pdf?sign=end',
+              upload_file_id: 'tool-legacy',
+            },
+            {
+              related_id: 'f-end-only',
+              filename: 'extra.pdf',
+              mime_type: 'application/pdf',
+              size: 512,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-extra.pdf?sign=end',
+              upload_file_id: 'tool-extra',
+            },
+          ],
+        })
+      })
+
+      const lastResponse = result.current.chatList[1]!
+      expect(lastResponse.allFiles?.map((file) => file.id)).toEqual(['f-end-only'])
+
+      const thoughtFile = lastResponse.agent_thoughts?.[0]?.message_files?.[0]
+      expect(thoughtFile?.id).toBe('f-thought-pdf')
+      expect(thoughtFile?.name).toBe('report.pdf')
+      expect(thoughtFile?.type).toBe('application/pdf')
+      expect(thoughtFile?.size).toBe(4096)
+      expect(getFilePreviewKind(thoughtFile!)).toBe('pdf')
+
+      const messageFile = lastResponse.message_files?.[0]
+      expect(messageFile?.id).toBe('f-msg-legacy')
+      expect(messageFile?.name).toBe('summary.pdf')
+      expect(messageFile?.type).toBe('application/pdf')
+      expect(messageFile?.size).toBe(1024)
+      expect(getFilePreviewKind(messageFile!)).toBe('pdf')
+    })
+
+    it('should deduplicate message_end files on handleResume and sync thought backfills to agent_response_parts', async () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [
+        {
+          id: 'q-resume',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-resume',
+              content: 'initial',
+              isAnswer: true,
+              message_files: [],
+              siblingIndex: 0,
+            },
+          ],
+        },
+      ]
+
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(
+          undefined,
+          undefined,
+          prevChatTree as ChatItemInTree[],
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { isNewAgent: true },
+        ),
+      )
+
+      await act(async () => {
+        await result.current.handleResume('m-resume', 'wr-resume', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onThought({
+          id: 'thought-r1',
+          message_id: 'm-resume',
+          position: 1,
+          thought: '',
+          observation: 'created',
+          tool: 'pdf_tool',
+          tool_input: '{}',
+          message_files: ['f-r-pdf', 'f-r-legacy'],
+        })
+        callbacks.onFile({
+          id: 'f-r-pdf',
+          type: 'document',
+          url: '/files/tools/tool-r1.pdf?sign=live',
+          filename: 'resumed-report.pdf',
+          mime_type: 'application/pdf',
+          size: 2048,
+          transfer_method: 'tool_file',
+          upload_file_id: 'tool-r1',
+        })
+        callbacks.onFile({
+          id: 'f-r-legacy',
+          type: 'document',
+          url: '/files/tools/tool-r2.pdf?sign=live',
+        })
+        callbacks.onMessageEnd({
+          id: 'm-resume',
+          metadata: {},
+          files: [
+            {
+              related_id: 'f-r-pdf',
+              filename: 'tool-r1.pdf',
+              mime_type: 'application/octet-stream',
+              size: 0,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r1.pdf?sign=end',
+              upload_file_id: 'tool-r1',
+            },
+            {
+              related_id: 'f-r-legacy',
+              filename: 'backfilled.pdf',
+              mime_type: 'application/pdf',
+              size: 1536,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r2.pdf?sign=end',
+              upload_file_id: 'tool-r2',
+            },
+            {
+              related_id: 'f-r-end-only',
+              filename: 'tail.pdf',
+              mime_type: 'application/pdf',
+              size: 256,
+              extension: '.pdf',
+              type: 'document',
+              transfer_method: 'tool_file',
+              url: '/files/tools/tool-r3.pdf?sign=end',
+              upload_file_id: 'tool-r3',
+            },
+          ],
+        })
+      })
+
+      const responseItem = result.current.chatList.find((item) => item.id === 'm-resume')!
+      expect(responseItem.allFiles?.map((file) => file.id)).toEqual(['f-r-end-only'])
+
+      const thoughtFiles = responseItem.agent_thoughts?.[0]?.message_files ?? []
+      expect(thoughtFiles.map((file) => file.id)).toEqual(['f-r-pdf', 'f-r-legacy'])
+      expect(thoughtFiles[0]!.name).toBe('resumed-report.pdf')
+      expect(thoughtFiles[0]!.type).toBe('application/pdf')
+      expect(thoughtFiles[0]!.size).toBe(2048)
+      expect(getFilePreviewKind(thoughtFiles[0]!)).toBe('pdf')
+
+      expect(thoughtFiles[1]!.name).toBe('backfilled.pdf')
+      expect(thoughtFiles[1]!.type).toBe('application/pdf')
+      expect(thoughtFiles[1]!.size).toBe(1536)
+      expect(getFilePreviewKind(thoughtFiles[1]!)).toBe('pdf')
+
+      const thoughtPart = responseItem.agent_response_parts?.find(
+        (part) => part.type === 'thought' && part.thought.id === 'thought-r1',
+      )
+      expect(thoughtPart?.type).toBe('thought')
+      if (thoughtPart?.type === 'thought') {
+        expect(thoughtPart.thought.message_files?.map((file) => file.name)).toEqual([
+          'resumed-report.pdf',
+          'backfilled.pdf',
+        ])
+        expect(thoughtPart.thought.message_files?.map((file) => file.type)).toEqual([
+          'application/pdf',
+          'application/pdf',
+        ])
+      }
+    })
+
     it.each(['onIterationStart', 'onNodeStarted', 'onLoopStart'] as const)(
       'restores tracing from %s when saved history has no trace array',
       async (event) => {

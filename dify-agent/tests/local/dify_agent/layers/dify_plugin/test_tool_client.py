@@ -581,6 +581,8 @@ async def test_daemon_tool_client_uses_configured_max_file_size_for_blob_chunks(
         "data: {not-valid-json\n",
         f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {}}})}\n",
         f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'blob_chunk', 'message': {'id': 'f1', 'blob': 'bad!'}}})}\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': ['blob'], 'message': {'blob': 'bad!'}}})}\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': {'bad': 1}, 'message': {}}})}\n",
     ],
 )
 async def test_daemon_tool_client_wraps_invalid_stream_validation_errors(stream_body: str) -> None:

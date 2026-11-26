@@ -788,6 +788,8 @@ async def test_invalid_base64_blob_and_blob_chunk_are_isolated_without_uploading
     [
         "data: {not-valid-json\n",
         f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': 'text', 'message': {}}})}\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': ['blob'], 'message': {'blob': 'bad!'}}})}\n",
+        f"data: {json.dumps({'code': 0, 'message': '', 'data': {'type': {'bad': 1}, 'message': {}}})}\n",
     ],
 )
 async def test_invalid_daemon_stream_frame_returns_tool_invoke_error_text(stream_body: str):
