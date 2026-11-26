@@ -19,6 +19,7 @@ import { EditorResourceScope } from '@/app/components/workflow/editor-resource/p
 import { HooksStoreContextProvider } from '@/app/components/workflow/hooks-store/provider'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createDeferred } from '@/test/deferred'
 import MessageTemplate from '../components/message-template'
@@ -777,6 +778,21 @@ describe('Human Input v2 Message Template', () => {
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.humanInputV2.template.saveAndTest' }),
     ).toBeEnabled()
+  })
+
+  it('reports the server message when the test request fails', async () => {
+    const user = userEvent.setup()
+    mocks.workflowTest.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_param',
+        message: 'Server says why',
+      }),
+    )
+    renderTemplate()
+    await openTest(user)
+    await sendTest(user)
+
+    expect(await screen.findByText('Server says why')).toBeInTheDocument()
   })
 
   it('deduplicates subject and body variables, preserving zero and string-array input types', async () => {
