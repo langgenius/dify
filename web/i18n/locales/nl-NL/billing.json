@@ -13,7 +13,7 @@
   "errors.requestInProgress": "Je vorige verzoek wordt nog verwerkt. Probeer het zo meteen opnieuw.",
   "errors.unavailable": "Deze dienst is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
   "plans.community.btnText": "Get Started",
-  "plans.community.description": "For open-source enthusiasts, individual developers, and non-commercial projects",
+  "plans.community.description": "Voor open-sourceliefhebbers, individuele ontwikkelaars en niet-commerciële projecten",
   "plans.community.features": [
     "All Core Features Released Under the Public Repository",
     "Single Workspace",
@@ -24,7 +24,7 @@
   "plans.community.price": "Free",
   "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Contact Sales",
-  "plans.enterprise.description": "For enterprise requiring organization-grade security, compliance, scalability, control and custom solutions",
+  "plans.enterprise.description": "Voor ondernemingen die beveiliging, compliance, schaalbaarheid, controle en maatwerkoplossingen op organisatieniveau nodig hebben",
   "plans.enterprise.features": [
     "Enterprise-grade Scalable Deployment Solutions",
     "Commercial License Authorization",
@@ -42,7 +42,7 @@
   "plans.enterprise.priceTip": "Annual Billing Only",
   "plans.premium.btnText": "Get Premium on",
   "plans.premium.comingSoon": "Microsoft Azure & Google Cloud Support Coming Soon",
-  "plans.premium.description": "For Mid-sized organizations needing deployment flexibility and enhanced support",
+  "plans.premium.description": "Voor middelgrote organisaties die flexibiliteit bij de implementatie en uitgebreide ondersteuning nodig hebben",
   "plans.premium.features": [
     "Self-managed Reliability by Various Cloud Providers",
     "Single Workspace",
