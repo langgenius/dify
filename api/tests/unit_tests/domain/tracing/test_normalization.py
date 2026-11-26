@@ -1,6 +1,7 @@
 """Content policy and model-call accounting across all canonical tree layers."""
 
 import json
+import sys
 from datetime import UTC, datetime
 
 import pytest
@@ -254,6 +255,27 @@ def test_order_spans_rejects_orphans_cycles_and_conflicting_ids() -> None:
         order_spans(root.span_id, [span("one", "root", SpanKind.TOOL)])
     with pytest.raises(ValueError, match="Unexpected trace root"):
         order_spans(root.span_id, [root, span("second-root", None, SpanKind.CHAIN)])
+
+
+def test_order_spans_handles_deep_parent_chains_without_recursion() -> None:
+    depth = sys.getrecursionlimit() + 10
+    spans = [span(str(index), str(index - 1) if index else None, SpanKind.CHAIN) for index in range(depth)]
+    unordered = list(reversed(spans))
+
+    ordered = order_spans(spans[0].span_id, unordered)
+
+    assert ordered == tuple(spans)
+    assert unordered == list(reversed(spans))
+    assert trace_of(*ordered).spans == ordered
+
+
+def test_order_spans_diagnoses_a_deep_parent_cycle() -> None:
+    depth = sys.getrecursionlimit() + 10
+    root = span("root", None, SpanKind.CHAIN)
+    cycle = [span(str(index), str((index + 1) % depth), SpanKind.CHAIN) for index in range(depth)]
+
+    with pytest.raises(ValueError, match="Trace parent cycle"):
+        order_spans(root.span_id, [root, *cycle])
 
 
 def test_managed_external_parent_is_preserved_as_explicit_link_when_content_off() -> None:

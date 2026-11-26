@@ -368,6 +368,13 @@ def legacy_outer_trace(data: Mapping[str, Any]) -> Trace:
 
 
 def order_spans(root_id: str, spans: Sequence[Span]) -> tuple[Span, ...]:
+    """Return a parent-first trace without depending on Python's recursion limit.
+
+    Preconditions: spans are validated records and ``root_id`` identifies the
+    intended root. Postconditions: each identity occurs once, after its parent;
+    inputs are unchanged. Conflicting identities, missing parents, cycles and
+    additional roots raise ``ValueError`` without returning a partial trace.
+    """
     by_id: dict[str, Span] = {}
     for span in spans:
         prior = by_id.get(span.span_id)
@@ -378,24 +385,26 @@ def order_spans(root_id: str, spans: Sequence[Span]) -> tuple[Span, ...]:
         raise ValueError("Trace root is missing")
     ordered: list[Span] = []
     complete: set[str] = set()
-    visiting: set[str] = set()
 
     def visit(identifier: str) -> None:
-        if identifier in complete:
-            return
-        if identifier in visiting:
-            raise ValueError("Trace parent cycle")
-        span = by_id.get(identifier)
-        if span is None:
-            raise ValueError("Trace parent is missing")
-        visiting.add(identifier)
-        if span.parent_span_id is not None:
-            visit(span.parent_span_id)
-        elif span.span_id != root_id:
-            raise ValueError("Unexpected trace root")
-        visiting.remove(identifier)
-        complete.add(identifier)
-        ordered.append(span)
+        """Append an unseen ancestry path in parent-first order, or reject it."""
+        ancestry: list[Span] = []
+        visiting: set[str] = set()
+        current: str | None = identifier
+        while current is not None and current not in complete:
+            if current in visiting:
+                raise ValueError("Trace parent cycle")
+            span = by_id.get(current)
+            if span is None:
+                raise ValueError("Trace parent is missing")
+            if span.parent_span_id is None and span.span_id != root_id:
+                raise ValueError("Unexpected trace root")
+            visiting.add(current)
+            ancestry.append(span)
+            current = span.parent_span_id
+        for span in reversed(ancestry):
+            complete.add(span.span_id)
+            ordered.append(span)
 
     visit(root_id)
     for span in spans:
