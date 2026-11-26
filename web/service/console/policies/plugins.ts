@@ -159,6 +159,7 @@ export function workspacePluginPolicies(
       },
       asset: {
         get: {
+          // README images fall back to the URL in the markdown.
           queryOptions: { meta: { errorToast: false } },
         },
       },

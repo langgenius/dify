@@ -906,6 +906,7 @@ const Recipients = (props: RecipientsProps) => {
       input,
       queryKey: [...operation.queryKey({ input }), { workspaceId }],
       select: (response) => response.total,
+      // Optional count badge; it is hidden when the count cannot load.
       meta: { errorToast: false },
       retry: false,
     }),

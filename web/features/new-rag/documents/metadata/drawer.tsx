@@ -62,6 +62,8 @@ function useMetadataFields() {
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   return useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
+    // The drawer renders a failed field list inline.
+    meta: { errorToast: false },
     enabled: metadataRequest === '1' && canRead,
   })
 }
