@@ -13,16 +13,13 @@ const mocks = vi.hoisted(() => ({
   checkAnnotationBatchImportProgress: vi.fn(),
 }))
 
-vi.mock('@/service/annotation', () => ({
-  annotationBatchImport: mocks.annotationBatchImport,
-}))
-
 vi.mock('@/service/console', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/console')>()),
   consoleClient: {
     apps: {
       byAppId: {
         annotations: {
+          batchImport: { post: mocks.annotationBatchImport },
           batchImportStatus: { byJobId: { get: mocks.checkAnnotationBatchImportProgress } },
         },
       },
@@ -106,11 +103,28 @@ describe('BatchModal', () => {
         message: 'appAnnotation.batchModal.runError: CSV contains duplicate questions',
       }),
     )
-    expect(annotationBatchImportMock).toHaveBeenCalledWith('app-id', expect.any(FormData), {
-      silent: true,
+    expect(annotationBatchImportMock).toHaveBeenCalledWith({
+      params: { app_id: 'app-id' },
+      body: { file: lastUploadedFile },
     })
     expect(props.onCancel).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })).toBeEnabled()
+  })
+
+  it('reports a rejected CSV without polling a job', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+    annotationBatchImportMock.mockResolvedValueOnce({ error_msg: 'The CSV file is empty.' })
+    await selectFile(user)
+    await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))
+
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'appAnnotation.batchModal.runError: The CSV file is empty.',
+      }),
+    )
+    expect(checkAnnotationBatchImportProgressMock).not.toHaveBeenCalled()
   })
 
   it('should disable run action and show billing hint when annotation quota is full', () => {
@@ -171,8 +185,7 @@ describe('BatchModal', () => {
       expect(annotationBatchImportMock).toHaveBeenCalledTimes(1)
     })
 
-    const formData = annotationBatchImportMock.mock.calls[0]![1] as FormData
-    expect(formData.get('file')).toBe(lastUploadedFile)
+    expect(annotationBatchImportMock.mock.calls[0]![0].body.file).toBe(lastUploadedFile)
 
     await waitFor(() => {
       expect(checkAnnotationBatchImportProgressMock).toHaveBeenCalledTimes(1)

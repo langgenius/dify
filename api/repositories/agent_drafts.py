@@ -2,11 +2,19 @@
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot, AgentScope
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigRevision,
+    AgentConfigRevisionOperation,
+    AgentConfigSnapshot,
+    AgentScope,
+)
 from models.agent_config_entities import AgentSoulConfig
 from repositories.agent_roster_queries import find_agent_draft
 from services.agent.build_session_store import AgentBuildAgentNotFoundError, AgentBuildBaseUnavailableError
@@ -206,3 +214,64 @@ def agent_soul_matches_active_config(
     return home_snapshot_id == active_version.home_snapshot_id and _agent_soul_config_json(
         agent_soul
     ) == _agent_soul_config_json(active_version.config_snapshot_dict)
+
+
+def create_composer_snapshot(
+    session: Session,
+    *,
+    tenant_id: str,
+    agent_id: str,
+    account_id: str,
+    agent_soul: AgentSoulConfig,
+    operation: AgentConfigRevisionOperation,
+    version_note: str | None,
+    home_snapshot_id: str | None,
+    previous_snapshot_id: str | None = None,
+) -> AgentConfigSnapshot:
+    """Append a snapshot and its audit revision within the locked Agent transaction."""
+    next_version = (
+        session.scalar(
+            select(func.max(AgentConfigSnapshot.version)).where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+            )
+        )
+        or 0
+    ) + 1
+    version = AgentConfigSnapshot(
+        tenant_id=tenant_id,
+        agent_id=agent_id,
+        version=next_version,
+        config_snapshot=agent_soul,
+        home_snapshot_id=home_snapshot_id,
+        version_note=version_note,
+        created_by=account_id,
+    )
+    session.add(version)
+    session.flush()
+    revision = AgentConfigRevision(
+        tenant_id=tenant_id,
+        agent_id=agent_id,
+        previous_snapshot_id=previous_snapshot_id,
+        current_snapshot_id=version.id,
+        revision=next_composer_revision(session=session, tenant_id=tenant_id, agent_id=agent_id),
+        operation=operation,
+        version_note=version_note,
+        created_by=account_id,
+    )
+    session.add(revision)
+    session.flush()
+    return version
+
+
+def next_composer_revision(*, session: Session, tenant_id: str, agent_id: str) -> int:
+    """Return the next revision number for the locked tenant Agent."""
+    return (
+        session.scalar(
+            select(func.max(AgentConfigRevision.revision)).where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                AgentConfigRevision.agent_id == agent_id,
+            )
+        )
+        or 0
+    ) + 1

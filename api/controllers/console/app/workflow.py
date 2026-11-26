@@ -97,8 +97,13 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimitExceededServiceError
-from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
+from services.errors.evaluation import (
+    EvaluationDisabledError,
+    EvaluationEntitlementUnavailableError,
+    EvaluationPlanRequiredError,
+)
 from services.errors.llm import InvokeRateLimitError
+from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
@@ -720,9 +725,12 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                serialize_creation=True,
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
+        except WorkflowDraftInitializationBusyError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         except VariableError as e:
             raise InvalidArgumentError(description=str(e)) from e
 
@@ -1368,6 +1376,8 @@ class PublishedWorkflowApi(Resource):
                     marked_name=args.marked_name or "",
                     marked_comment=args.marked_comment or "",
                 )
+            except EvaluationDisabledError as exc:
+                raise NotFound() from exc
             except EvaluationPlanRequiredError as exc:
                 raise PaidPlanRequiredError() from exc
             except EvaluationEntitlementUnavailableError as exc:
@@ -1427,6 +1437,8 @@ class EvaluationPublishedWorkflowApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:
@@ -1467,6 +1479,8 @@ class WorkflowKindConvertApi(Resource):
             raise NotFound(str(exc)) from exc
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        except EvaluationDisabledError as exc:
+            raise NotFound() from exc
         except EvaluationPlanRequiredError as exc:
             raise PaidPlanRequiredError() from exc
         except EvaluationEntitlementUnavailableError as exc:

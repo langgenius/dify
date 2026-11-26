@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "Không thể xóa liên hệ. Vui lòng thử lại.",
   "directory.removalSingleTitle": "Xóa {{name}}?",
   "directory.resultCount": "Kết quả: {{count}}",
-  "imPlatform.action.configure": "Cấu hình",
   "imPlatform.action.configureChannel": "Định cấu hình {{provider}}",
   "imPlatform.action.connect": "Kết nối",
   "imPlatform.action.copied": "Sao chép",

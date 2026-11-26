@@ -20,6 +20,11 @@ var ErrMalformed = errors.New("archive malformed")
 
 const maxDecoderWindow = 64 << 20
 
+const (
+	homePrefix      = "home"
+	workspacePrefix = "workspace"
+)
+
 var environmentalErrnos = []syscall.Errno{
 	syscall.ENOSPC, syscall.EDQUOT, syscall.EROFS, syscall.EIO,
 	syscall.ENOMEM, syscall.EMFILE, syscall.ENFILE,
@@ -57,9 +62,8 @@ func isPAXSparse(hdr *tar.Header) bool {
 }
 
 // RestoreHome extracts a tar+zstd stream into homeDir in a single pass.
-// Extraction runs under os.Root: escapes via absolute names, "..", or
-// symlinked path components are refused by the kernel (openat2/RESOLVE_BENEATH
-// on Linux). Only regular files, directories, symlinks, and hardlinks are
+// Extraction runs under os.Root, which refuses to resolve paths outside its
+// directory. Only regular files, directories, symlinks, and hardlinks are
 // accepted; hardlink targets must resolve inside the root. The stream is not
 // size-limited here.
 // A mid-stream failure can leave a partially restored Home; callers own
@@ -72,6 +76,21 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 	}
 	defer func() { _ = root.Close() }()
 
+	return restoreArchive(ctx, src, func(name string, _ byte) (*os.Root, string, error) {
+		rel, err := cleanEntryName(name)
+		return root, rel, err
+	})
+}
+
+type archivePath func(name string, kind byte) (*os.Root, string, error)
+
+type dirMode struct {
+	archiveName string
+	mode        fs.FileMode
+}
+
+func restoreArchive(ctx context.Context, src io.Reader, resolve archivePath) (RestoreResult, error) {
+	var res RestoreResult
 	zr, err := zstd.NewReader(src,
 		zstd.WithDecoderConcurrency(1),
 		zstd.WithDecoderMaxWindow(maxDecoderWindow),
@@ -81,10 +100,6 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 	}
 	defer zr.Close()
 
-	type dirMode struct {
-		name string
-		mode fs.FileMode
-	}
 	var dirModes []dirMode
 
 	tr := tar.NewReader(zr)
@@ -94,10 +109,21 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 		}
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
-			// Apply deferred directory modes in reverse order
+			// Read the rest of the compressed stream, including its checksum.
+			if _, err := io.Copy(io.Discard, zr); err != nil {
+				return res, classifyEntryErr(err)
+			}
+			// Apply deferred directory modes in reverse order.
 			for i := len(dirModes) - 1; i >= 0; i-- {
 				d := dirModes[i]
-				if err := classifyEntryErr(root.Chmod(d.name, d.mode)); err != nil {
+				root, name, err := resolve(d.archiveName, tar.TypeDir)
+				if err != nil {
+					return res, err
+				}
+				if name == "" {
+					continue
+				}
+				if err := classifyEntryErr(chmodDir(root, name, d.mode)); err != nil {
 					return res, err
 				}
 			}
@@ -109,61 +135,67 @@ func RestoreHome(ctx context.Context, src io.Reader, homeDir string) (RestoreRes
 			}
 			return res, fmt.Errorf("%w: %v", ErrMalformed, err)
 		}
-		name, err := cleanEntryName(hdr.Name)
+		root, name, err := resolve(hdr.Name, hdr.Typeflag)
 		if err != nil {
 			return res, err
 		}
 		if name == "" {
 			continue // the root entry itself
 		}
-		if hdr.Typeflag == tar.TypeGNUSparse || isPAXSparse(hdr) {
-			return res, fmt.Errorf("%w: sparse entry %q not supported", ErrMalformed, hdr.Name)
+		n, err := extractEntry(root, name, hdr, tr, resolve, &dirModes)
+		if err != nil {
+			return res, err
 		}
-		mode := hdr.FileInfo().Mode().Perm()
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := classifyEntryErr(root.MkdirAll(name, 0o700)); err != nil {
-				return res, err
-			}
-			dirModes = append(dirModes, dirMode{name, mode})
-		case tar.TypeReg:
-			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
-				return res, err
-			}
-			n, err := extractFile(root, name, mode, tr)
-			if err != nil {
-				return res, classifyEntryErr(err)
-			}
-			if err := classifyEntryErr(root.Chmod(name, mode)); err != nil {
-				return res, err
-			}
-			res.BytesWritten += n
-		case tar.TypeSymlink:
-			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
-				return res, err
-			}
-			if err := root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return res, classifyEntryErr(err)
-			}
-			if err := classifyEntryErr(root.Symlink(hdr.Linkname, name)); err != nil {
-				return res, err
-			}
-		case tar.TypeLink:
-			target, err := cleanEntryName(hdr.Linkname)
-			if err != nil || target == "" {
-				return res, fmt.Errorf("%w: hardlink target %q", ErrMalformed, hdr.Linkname)
-			}
-			if err := classifyEntryErr(ensureParent(root, name)); err != nil {
-				return res, err
-			}
-			if err := classifyEntryErr(root.Link(target, name)); err != nil {
-				return res, err
-			}
-		default:
-			return res, fmt.Errorf("%w: unsupported entry type %d for %q", ErrMalformed, hdr.Typeflag, hdr.Name)
-		}
+		res.BytesWritten += n
 		res.Entries++
 	}
+}
+
+func extractEntry(root *os.Root, name string, hdr *tar.Header, src io.Reader, resolve archivePath, dirs *[]dirMode) (int64, error) {
+	if hdr.Typeflag == tar.TypeGNUSparse || isPAXSparse(hdr) {
+		return 0, fmt.Errorf("%w: sparse entry %q not supported", ErrMalformed, hdr.Name)
+	}
+	if name == "." && hdr.Typeflag != tar.TypeDir {
+		return 0, fmt.Errorf("%w: root entry %q is not a directory", ErrMalformed, hdr.Name)
+	}
+	mode := hdr.FileInfo().Mode().Perm()
+	if hdr.Typeflag == tar.TypeDir {
+		*dirs = append(*dirs, dirMode{archiveName: hdr.Name, mode: mode})
+		return 0, classifyEntryErr(root.MkdirAll(name, 0o700))
+	}
+	if err := ensureParent(root, name); err != nil {
+		return 0, classifyEntryErr(err)
+	}
+	switch hdr.Typeflag {
+	case tar.TypeReg:
+		n, err := extractFile(root, name, mode, src)
+		return n, classifyEntryErr(err)
+	case tar.TypeSymlink:
+		if err := root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return 0, classifyEntryErr(err)
+		}
+		return 0, classifyEntryErr(root.Symlink(hdr.Linkname, name))
+	case tar.TypeLink:
+		targetRoot, target, err := resolve(hdr.Linkname, tar.TypeReg)
+		if err != nil || targetRoot != root || target == "" || target == "." || target == name {
+			return 0, fmt.Errorf("%w: hardlink target %q", ErrMalformed, hdr.Linkname)
+		}
+		if err := root.Remove(name); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return 0, classifyEntryErr(err)
+		}
+		return 0, classifyEntryErr(root.Link(target, name))
+	default:
+		return 0, fmt.Errorf("%w: unsupported entry type %d for %q", ErrMalformed, hdr.Typeflag, hdr.Name)
+	}
+}
+
+func chmodDir(root *os.Root, name string, mode fs.FileMode) error {
+	f, err := root.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return f.Chmod(mode)
 }
 
 func cleanEntryName(name string) (string, error) {
@@ -193,6 +225,9 @@ func extractFile(root *os.Root, name string, mode fs.FileMode, r io.Reader) (int
 		return 0, err
 	}
 	n, err := io.Copy(f, r)
+	if err == nil {
+		err = f.Chmod(mode)
+	}
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}

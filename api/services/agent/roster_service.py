@@ -5,7 +5,6 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
     Agent,
@@ -23,7 +22,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from models.agent_soul_state import agent_soul_has_model
 from models.enums import ConversationFromSource
-from models.model import App, Conversation, IconType
+from models.model import App, Conversation
 from repositories.agent_roster_queries import (
     build_roster_agents_stmt,
     load_published_workflows_by_agent_id,
@@ -54,39 +53,14 @@ from services.agent.errors import (
 from services.agent.knowledge_spaces import validate_agent_knowledge_spaces
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app.agent_app_contracts import AgentReferencingWorkflow
-from services.app_service import AppService, CreateAppParams
-from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.rbac_agent_access_service import initialize_agent_rbac_access
-from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
 
 class AgentRosterService:
-    _APP_MODEL_CONFIG_COPY_FIELDS = (
-        "opening_statement",
-        "suggested_questions",
-        "suggested_questions_after_answer",
-        "speech_to_text",
-        "text_to_speech",
-        "more_like_this",
-        "model",
-        "user_input_form",
-        "dataset_query_variable",
-        "pre_prompt",
-        "agent_mode",
-        "sensitive_word_avoidance",
-        "retriever_resource",
-        "prompt_type",
-        "chat_prompt_config",
-        "completion_prompt_config",
-        "dataset_configs",
-        "external_data_tools",
-        "file_upload",
-    )
-
     def __init__(self, session: Any):
         self._session = session
 
@@ -594,160 +568,6 @@ class AgentRosterService:
         if app is None:
             raise AgentNotFoundError()
         return app
-
-    def duplicate_agent_app(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account: Any,
-        name: str | None = None,
-        description: str | None = None,
-        role: str | None = None,
-        icon_type: Any = None,
-        icon: str | None = None,
-        icon_background: str | None = None,
-    ) -> App:
-        source_app = self.get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        source_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=source_app.id)
-        if source_agent is None:
-            raise AgentNotFoundError()
-
-        copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
-        copied_description = description if description is not None else source_app.description
-        copied_role = role if role is not None else source_agent.role or ""
-        copied_icon_type = icon_type if icon_type is not None else source_app.icon_type
-        copied_icon = icon if icon is not None else source_app.icon
-        copied_icon_background = icon_background if icon_background is not None else source_app.icon_background
-
-        target_app = AppService().create_app(
-            tenant_id,
-            CreateAppParams(
-                name=copied_name,
-                description=copied_description,
-                mode="agent",
-                agent_role=copied_role,
-                icon_type=self._normalize_app_icon_type(copied_icon_type),
-                icon=copied_icon,
-                icon_background=copied_icon_background,
-                api_rph=source_app.api_rph or 0,
-                api_rpm=source_app.api_rpm or 0,
-                max_active_requests=source_app.max_active_requests,
-            ),
-            account,
-            session=self._session,
-        )
-
-        # A copy owns a new publication history. It remains private until its
-        # first successful publish even when the source Agent is public.
-        target_app.enable_site = False
-        target_app.enable_api = False
-        target_app.use_icon_as_answer_icon = source_app.use_icon_as_answer_icon
-        target_app.tracing = source_app.tracing
-
-        self._copy_app_model_config(source_app=source_app, target_app=target_app, account_id=account.id)
-        self._copy_agent_active_snapshot(
-            tenant_id=tenant_id,
-            source_agent=source_agent,
-            target_app_id=target_app.id,
-            account_id=account.id,
-        )
-        from services.skill_management_service import SkillManagementService
-
-        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app.id)
-        if target_agent is None:
-            raise AgentNotFoundError()
-        SkillManagementService(session=self._session).copy_agent_bindings(
-            tenant_id=tenant_id,
-            source_agent_id=source_agent.id,
-            source_snapshot_id=source_agent.active_config_snapshot_id or "",
-            target_agent_id=target_agent.id,
-            user_id=account.id,
-            source_include_draft=not source_agent.active_config_is_published,
-        )
-        self._session.commit()
-        if SystemFeatureService.is_webapp_auth_enabled():
-            try:
-                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
-                access_mode = original_settings.access_mode
-            except Exception:
-                access_mode = "public"
-            EnterpriseService.WebAppAuth.update_app_access_mode(target_app.id, access_mode)
-
-        return target_app
-
-    @staticmethod
-    def _normalize_app_icon_type(icon_type: Any | None) -> str | None:
-        if icon_type is None:
-            return None
-        if isinstance(icon_type, IconType) or hasattr(icon_type, "value"):
-            return icon_type.value
-        return icon_type
-
-    def _copy_app_model_config(self, *, source_app: App, target_app: App, account_id: str) -> None:
-        source_config = source_app.app_model_config_with_session(session=self._session)
-        target_config = target_app.app_model_config_with_session(session=self._session)
-        if source_config is None or target_config is None:
-            return
-
-        for field_name in self._APP_MODEL_CONFIG_COPY_FIELDS:
-            setattr(target_config, field_name, getattr(source_config, field_name))
-        target_config.updated_by = account_id
-
-    def _copy_agent_active_snapshot(
-        self,
-        *,
-        tenant_id: str,
-        source_agent: Agent,
-        target_app_id: str,
-        account_id: str,
-    ) -> None:
-        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app_id)
-        if target_agent is None:
-            raise AgentNotFoundError()
-
-        source_version = self._get_version(
-            tenant_id=tenant_id,
-            agent_id=source_agent.id,
-            version_id=source_agent.active_config_snapshot_id,
-        )
-        target_version = self._get_version(
-            tenant_id=tenant_id,
-            agent_id=target_agent.id,
-            version_id=target_agent.active_config_snapshot_id,
-        )
-
-        target_version.config_snapshot = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
-        target_version.summary = source_version.summary
-        target_version.version_note = source_version.version_note
-        target_version.created_by = account_id
-        target_agent.active_config_has_model = agent_soul_has_model(target_version.config_snapshot)
-        target_agent.active_config_is_published = False
-        target_agent.updated_by = account_id
-
-    def _next_duplicate_agent_name(self, *, tenant_id: str, base_name: str) -> str:
-        suffix = " copy"
-        max_base_len = 255 - len(suffix)
-        first_candidate = f"{base_name[:max_base_len]}{suffix}"
-        candidates = [first_candidate]
-        for index in range(2, 100):
-            numbered_suffix = f" copy {index}"
-            candidates.append(f"{base_name[: 255 - len(numbered_suffix)]}{numbered_suffix}")
-
-        existing_names = set(
-            self._session.scalars(
-                select(Agent.name).where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.status == AgentStatus.ACTIVE,
-                    Agent.name.in_(candidates),
-                )
-            ).all()
-        )
-        for candidate in candidates:
-            if candidate not in existing_names:
-                return candidate
-        return f"{base_name[:245]} copy {int(naive_utc_now().timestamp())}"
 
     def list_workflows_referencing_app_agent(self, *, tenant_id: str, app_id: str) -> list[AgentReferencingWorkflow]:
         """List the workflow apps that reference this Agent App's bound Agent.

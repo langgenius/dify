@@ -17,19 +17,19 @@ import { DatasetACLPermission } from '@/utils/permission'
 import CreateFromPipeline from '../index'
 
 const api = vi.hoisted(() => ({
-  upload: vi.fn<typeof import('@/service/base').upload>(),
+  upload: vi.fn<typeof import('@/service/console').consoleClient.files.upload.post>(),
   capacity: vi.fn<typeof import('@/service/console').consoleClient.features.vectorSpace.get>(),
   replace: vi.fn(),
 }))
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  upload: api.upload,
-}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'files.upload.post': api.upload,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.vectorSpace.get': api.capacity,
       'rag.pipelines.datasourcePlugins.get': async () => [],

@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import replace
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -20,6 +20,7 @@ from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
+    AgentConfigRevisionOperation,
     AgentConfigVersionKind,
     AgentDebugConversation,
     AgentHomeSnapshot,
@@ -28,21 +29,39 @@ from models.agent import (
     AgentStatus,
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
+    WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.agent_soul_state import build_initial_agent_soul
+from models.agent_soul_state import agent_soul_has_model, build_initial_agent_soul
 from models.dataset import Dataset
 from models.enums import ApiTokenType, AppStatus
 from models.model import ApiToken, App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
-from repositories.agent_app_composer_queries import read_composer_state, require_composer_agent
-from repositories.agent_drafts import agent_soul_matches_active_config, get_or_create_agent_draft, save_agent_draft
+from models.workflow import Workflow
+from repositories.agent_app_composer_queries import (
+    composer_snapshot,
+    publication_source,
+    read_composer_state,
+    require_composer_agent,
+)
+from repositories.agent_drafts import (
+    agent_soul_matches_active_config,
+    create_composer_snapshot,
+    find_agent_snapshot,
+    get_or_create_agent_draft,
+    save_agent_draft,
+)
 from repositories.agent_roster_queries import (
     find_agent_draft,
     load_reference_counts_by_agent_id,
     project_agent_draft_summary,
 )
 from repositories.agent_roster_repository import load_published_references_by_agent_id
-from repositories.agent_workspace_repository import AgentWorkspaceRepository, validate_binding_generation
+from repositories.agent_skill_bindings import copy_agent_bindings, publish_agent_bindings
+from repositories.agent_workspace_repository import (
+    AgentWorkspaceRepository,
+    has_owned_home_snapshot,
+    validate_binding_generation,
+)
 from repositories.app.agent_app_queries import get_app_backing_agent, get_roster_agent_app
 from repositories.app.agent_debug_conversations import (
     count_agent_debug_conversation_messages,
@@ -54,7 +73,12 @@ from repositories.app.agent_runtime_app import (
     ensure_workflow_agent_backing_app,
     resolve_agent_runtime_app,
 )
-from repositories.app.console_repository import ConsoleAppRepository, StageTargetEvaluationCleanup, console_app_actor
+from repositories.app.console_repository import (
+    ConsoleAppRepository,
+    StageTargetEvaluationCleanup,
+    console_app_actor,
+    find_console_app,
+)
 from repositories.app.response import app_record
 from repositories.resource_access_token_repository import ResourceAccessTokenCleanupRepository
 from repositories.tag_repository import TagRepository
@@ -64,6 +88,11 @@ from services.agent.app_composer_store import (
     AgentComposerDatasetLabel,
     AgentComposerSnapshotMissingError,
     AgentComposerState,
+    AgentPublication,
+    AgentPublicationChangedError,
+    AgentPublicationHomeUnavailableError,
+    AgentPublicationKind,
+    AgentPublicationSource,
 )
 from services.agent.build_session_store import (
     AgentBuildAgentNotFoundError,
@@ -82,10 +111,22 @@ from services.agent.build_session_store import (
 )
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.agent_config_contracts import (
+    AgentConfigNodeUnboundError,
+    AgentConfigRuntimeMissingError,
+    AgentConfigSelection,
+    AgentConfigVersionMissingError,
+    AgentConfigWorkflowMissingError,
+)
+from services.agent_config_contracts import (
+    AgentConfigVersionKind as ConfigSelectionKind,
+)
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
     AgentAppAccessNotReadyError,
+    AgentAppCopied,
+    AgentAppCopy,
     AgentAppDetail,
     AgentAppListItem,
     AgentAppListPage,
@@ -104,13 +145,26 @@ from services.entities.app_entities import (
 )
 
 
+class StageAgentPublicationBindings(Protocol):
+    def __call__(
+        self, session: Session, *, tenant_id: str, account_id: str, app_id: str, control_space_ids: list[str]
+    ) -> None:
+        """Stage previously authorized KnowledgeFS bindings in the same publication transaction."""
+        ...
+
+
 class AgentAppRepository:
     def __init__(
-        self, *, session_factory: sessionmaker[Session], stage_evaluation_cleanup: StageTargetEvaluationCleanup
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        stage_evaluation_cleanup: StageTargetEvaluationCleanup,
+        stage_publication_bindings: StageAgentPublicationBindings | None = None,
     ) -> None:
-        """Use the supplied session factory and preserve evaluation cleanup within App deletion."""
+        """Bind the session factory and the transaction participants for deletion and publication."""
         self._session_factory = session_factory
         self._stage_evaluation_cleanup = stage_evaluation_cleanup
+        self._stage_publication_bindings = stage_publication_bindings
 
     def create_agent_app(
         self,
@@ -150,6 +204,134 @@ class AgentAppRepository:
             except IntegrityError as exc:
                 raise AgentAppNameConflictError from exc
             return app_record(app, session=session, projection="detail-with-site")
+
+    def copy_agent_app(
+        self, context: RequestContext, agent_id: str, overrides: AgentAppCopy, settings: AppCreationSettings
+    ) -> AgentAppCopied:
+        """Commit the new private App, copied Soul, feature config and skill bindings together."""
+        tenant_id = context.active_workspace_id
+        account_id = context.account_id
+        with self._session_factory.begin() as session:
+            account = console_app_actor(session, context)
+            source_app = get_roster_agent_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            if source_app is None:
+                raise AgentAppNotFoundError
+            source_agent = get_app_backing_agent(session, tenant_id=tenant_id, app_id=source_app.id)
+            if source_agent is None:
+                raise AgentAppNotFoundError
+            source = find_agent_snapshot(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=source_agent.id,
+                version_id=source_agent.active_config_snapshot_id,
+            )
+            if source is None:
+                raise AgentComposerSnapshotMissingError
+
+            params = CreateAppParams(
+                name=overrides.name or self._copy_name(session, tenant_id=tenant_id, base_name=source_app.name),
+                description=source_app.description if overrides.description is None else overrides.description,
+                mode="agent",
+                agent_role=(source_agent.role or "") if overrides.role is None else overrides.role,
+                icon_type=source_app.icon_type if overrides.icon_type is None else overrides.icon_type,
+                icon=source_app.icon if overrides.icon is None else overrides.icon,
+                icon_background=source_app.icon_background
+                if overrides.icon_background is None
+                else overrides.icon_background,
+                api_rph=source_app.api_rph or 0,
+                api_rpm=source_app.api_rpm or 0,
+                max_active_requests=source_app.max_active_requests,
+            )
+            target_app = ConsoleAppRepository.insert_app_record(tenant_id, params, account, settings, session=session)
+            target_app.enable_site = False
+            target_app.enable_api = False
+            target_app.use_icon_as_answer_icon = source_app.use_icon_as_answer_icon
+            target_app.tracing = source_app.tracing
+            try:
+                target_agent = create_backing_agent_for_app(
+                    session,
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    app_id=target_app.id,
+                    name=params.name,
+                    description=params.description or "",
+                    role=params.agent_role,
+                    icon_type=AgentIconType(params.icon_type) if params.icon_type else None,
+                    icon=params.icon,
+                    icon_background=params.icon_background,
+                    initial_soul=AgentSoulConfig.model_validate(source.config_snapshot_dict),
+                )
+            except IntegrityError as exc:
+                raise AgentAppNameConflictError from exc
+            target_snapshot = find_agent_snapshot(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=target_agent.id,
+                version_id=target_agent.active_config_snapshot_id,
+            )
+            if target_snapshot is None:
+                raise AgentComposerSnapshotMissingError
+            target_snapshot.summary = source.summary
+            target_snapshot.version_note = source.version_note
+            self._copy_model_config(session, source=source_app, target=target_app, account_id=account_id)
+            copy_agent_bindings(
+                session,
+                tenant_id=tenant_id,
+                source_agent_id=source_agent.id,
+                source_snapshot_id=source.id,
+                target_agent_id=target_agent.id,
+                user_id=account_id,
+                source_include_draft=not source_agent.active_config_is_published,
+            )
+            return AgentAppCopied(app_record(target_app, session=session, projection="detail-with-site"), source_app.id)
+
+    @staticmethod
+    def _copy_name(session: Session, *, tenant_id: str, base_name: str) -> str:
+        """Choose the first unused legacy copy name, within the Agent name limit."""
+        suffixes = [" copy", *(f" copy {index}" for index in range(2, 100))]
+        candidates = [base_name[: 255 - len(suffix)] + suffix for suffix in suffixes]
+        existing = set(
+            session.scalars(
+                select(Agent.name).where(
+                    Agent.tenant_id == tenant_id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.status == AgentStatus.ACTIVE,
+                    Agent.name.in_(candidates),
+                )
+            )
+        )
+        return next(
+            (name for name in candidates if name not in existing),
+            f"{base_name[:245]} copy {int(naive_utc_now().timestamp())}",
+        )
+
+    @staticmethod
+    def _copy_model_config(session: Session, *, source: App, target: App, account_id: str) -> None:
+        """Copy Agent presentation settings while keeping target identity and audit columns."""
+        source_config = source.app_model_config_with_session(session=session)
+        target_config = target.app_model_config_with_session(session=session)
+        if source_config is None or target_config is None:
+            return
+        target_config.opening_statement = source_config.opening_statement
+        target_config.suggested_questions = source_config.suggested_questions
+        target_config.suggested_questions_after_answer = source_config.suggested_questions_after_answer
+        target_config.speech_to_text = source_config.speech_to_text
+        target_config.text_to_speech = source_config.text_to_speech
+        target_config.more_like_this = source_config.more_like_this
+        target_config.model = source_config.model
+        target_config.user_input_form = source_config.user_input_form
+        target_config.dataset_query_variable = source_config.dataset_query_variable
+        target_config.pre_prompt = source_config.pre_prompt
+        target_config.agent_mode = source_config.agent_mode
+        target_config.sensitive_word_avoidance = source_config.sensitive_word_avoidance
+        target_config.retriever_resource = source_config.retriever_resource
+        target_config.prompt_type = source_config.prompt_type
+        target_config.chat_prompt_config = source_config.chat_prompt_config
+        target_config.completion_prompt_config = source_config.completion_prompt_config
+        target_config.dataset_configs = source_config.dataset_configs
+        target_config.external_data_tools = source_config.external_data_tools
+        target_config.file_upload = source_config.file_upload
+        target_config.updated_by = account_id
 
     def list_apps(
         self, context: RequestContext, params: AppListParams, *, accessible_agent_ids: set[str] | None
@@ -418,6 +600,123 @@ class AgentAppRepository:
                 mapping.conversation_id = conversation_id
             return AgentBuildRefresh(conversation_id=conversation_id, retired_binding_id=retired_binding_id)
 
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Select the eligible Agent's config and prepare a normal draft for asset writes.
+
+        Runtime App resolution may also create and commit a missing hidden
+        backing App for a workflow-only Agent, including on reads.
+        """
+        tenant_id = context.active_workspace_id
+        with self._session_factory() as session:
+            if resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id) is None:
+                raise AgentConfigRuntimeMissingError
+            return self._config_selection(
+                session, context, agent_id, version_id=version_id, build=build, for_write=for_write
+            )
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Resolve a draft node's Agent without creating a runtime App or editing its active snapshot."""
+        tenant_id = context.active_workspace_id
+        with self._session_factory() as session:
+            app = find_console_app(session, workspace_id=tenant_id, app_id=app_id)
+            if app is None:
+                raise AgentConfigWorkflowMissingError
+            if AppMode.value_of(app.mode) not in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+                raise AgentConfigWorkflowMissingError(
+                    "App mode is not in the supported list: {'workflow', 'advanced-chat'}"
+                )
+            if node_id:
+                agent_id = session.scalar(
+                    select(WorkflowAgentNodeBinding.agent_id)
+                    .join(Workflow, Workflow.id == WorkflowAgentNodeBinding.workflow_id)
+                    .where(
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.app_id == app_id,
+                        Workflow.version == Workflow.VERSION_DRAFT,
+                        WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                        WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+                        WorkflowAgentNodeBinding.node_id == node_id,
+                    )
+                    .limit(1)
+                )
+            else:
+                agent_id = app.bound_agent_id_with_session(session=session)
+            if not agent_id:
+                raise AgentConfigNodeUnboundError
+            return self._config_selection(
+                session, context, agent_id, version_id=version_id, build=build, for_write=for_write
+            )
+
+    @staticmethod
+    def _config_selection(
+        session: Session,
+        context: RequestContext,
+        agent_id: str,
+        *,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Resolve shared, private Build, or immutable config and commit explicit draft preparation."""
+        tenant_id = context.active_workspace_id
+        account_id = context.account_id
+        if version_id:
+            return AgentConfigSelection(tenant_id, agent_id, account_id, version_id, ConfigSelectionKind.SNAPSHOT)
+        try:
+            if build:
+                draft = find_agent_draft(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                    account_id=account_id,
+                )
+                if draft is None:
+                    raise AgentConfigVersionMissingError
+                return AgentConfigSelection(tenant_id, agent_id, account_id, draft.id, ConfigSelectionKind.BUILD_DRAFT)
+            agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            if for_write:
+                draft = get_or_create_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent=agent,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                    created_by=account_id,
+                )
+                draft_id = draft.id
+                session.commit()
+                return AgentConfigSelection(tenant_id, agent_id, account_id, draft_id, ConfigSelectionKind.DRAFT)
+            state = read_composer_state(session, agent=agent)
+        except (AgentComposerAgentMissingError, AgentBuildAgentNotFoundError) as exc:
+            raise AgentConfigRuntimeMissingError from exc
+        except (AgentComposerSnapshotMissingError, AgentBuildBaseUnavailableError) as exc:
+            raise AgentConfigVersionMissingError from exc
+        snapshot = state.active_config_snapshot
+        draft_summary = state.draft
+        stale_inline = (
+            agent.scope == AgentScope.WORKFLOW_ONLY
+            and snapshot is not None
+            and draft_summary is not None
+            and draft_summary.base_snapshot_id != snapshot.id
+        )
+        if draft_summary is not None and not stale_inline:
+            return AgentConfigSelection(tenant_id, agent_id, account_id, draft_summary.id, ConfigSelectionKind.DRAFT)
+        if snapshot is None:
+            raise AgentConfigVersionMissingError
+        return AgentConfigSelection(tenant_id, agent_id, account_id, snapshot.id, ConfigSelectionKind.SNAPSHOT)
+
     def get_composer(self, *, tenant_id: str, agent_id: str) -> AgentComposerState:
         """Return the tenant's Agent configuration without writing a draft."""
         with self._session_factory() as session:
@@ -475,6 +774,93 @@ class AgentAppRepository:
         with self._session_factory() as session:
             datasets = self._composer_datasets(session, tenant_id=tenant_id, dataset_ids=dataset_ids)
         return [dataset_id for dataset_id in dataset_ids if dataset_id not in datasets]
+
+    def prepare_publication(self, *, tenant_id: str, agent_id: str) -> AgentPublicationSource:
+        """Read the candidate publication without creating a draft."""
+        with self._session_factory() as session:
+            agent = require_composer_agent(session, tenant_id=tenant_id, agent_id=agent_id)
+            return publication_source(session, agent=agent, for_update=False)
+
+    def publish_composer(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        source: AgentPublicationSource,
+        version_note: str | None,
+    ) -> AgentPublication:
+        """Publish only the validated configuration and atomically commit all associated rows."""
+        with self._session_factory.begin() as session:
+            agent = session.scalar(
+                select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).with_for_update()
+            )
+            if agent is None:
+                raise AgentComposerAgentMissingError
+            if publication_source(session, agent=agent, for_update=True) != source:
+                raise AgentPublicationChangedError
+            access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
+            draft = get_or_create_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                created_by=account_id,
+            )
+            soul = AgentSoulConfig.model_validate(source.soul)
+            knowledge_app_id = source.knowledge_app_id
+            if knowledge_app_id is not None:
+                if self._stage_publication_bindings is None:
+                    raise RuntimeError("Agent publication requires a KnowledgeFS binding participant")
+                self._stage_publication_bindings(
+                    session,
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    app_id=knowledge_app_id,
+                    control_space_ids=[binding.control_space_id for binding in soul.knowledge.spaces],
+                )
+            if source.home_snapshot_id is not None and not has_owned_home_snapshot(
+                session, agent=agent, home_snapshot_id=source.home_snapshot_id
+            ):
+                raise AgentPublicationHomeUnavailableError
+
+            version = create_composer_snapshot(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                account_id=account_id,
+                agent_soul=soul,
+                operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                version_note=version_note,
+                previous_snapshot_id=source.active_snapshot_id,
+                home_snapshot_id=source.home_snapshot_id,
+            )
+            agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(soul)
+            agent.active_config_is_published = True
+            agent.updated_by = account_id
+            draft.base_snapshot_id = version.id
+            draft.updated_by = account_id
+            publish_agent_bindings(
+                session, tenant_id=tenant_id, agent_id=agent.id, snapshot_id=version.id, user_id=account_id
+            )
+            if not access_was_ready:
+                app = session.scalar(select(App).where(App.tenant_id == tenant_id, App.id == agent.app_id))
+                if app is None:
+                    raise AgentComposerAgentMissingError
+                app.enable_site = True
+                app.enable_api = True
+                app.updated_by = account_id
+            session.flush()
+            snapshot = composer_snapshot(version)
+            assert snapshot is not None
+            return AgentPublication(
+                publication_kind=AgentPublicationKind.UPDATE if access_was_ready else AgentPublicationKind.FIRST,
+                active_config_snapshot_id=version.id,
+                active_config_snapshot=snapshot,
+                draft=project_agent_draft_summary(draft),
+            )
 
     def get_composer_candidates(self, *, tenant_id: str, agent_id: str) -> AgentComposerCandidateSource:
         """Detach the effective Soul and labels, retaining empty Soul candidates for an unknown Agent."""

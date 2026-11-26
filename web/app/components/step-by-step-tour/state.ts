@@ -327,9 +327,9 @@ const patchStepByStepTourState = async (
     return
   }
 
-  queryClient.setQueryData(stepByStepTourStateQueryKey(), state)
-  // The query atom receives the saved state through a scheduled notification; dropping the
-  // optimistic command before it lands would show the previous state for a render.
+  // The mutation policy writes the saved state, and the query atom receives it through a
+  // scheduled notification; dropping the optimistic command before it lands would show the
+  // previous state for a render.
   await new Promise<void>((resolve) => notifyManager.schedule(resolve))
   const reconciliation = settleStepByStepTourStateCommand(get, set, queryClient, command)
   options?.onSuccess?.(

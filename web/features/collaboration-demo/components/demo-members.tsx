@@ -24,12 +24,8 @@ export function DemoMembers({ listed, pillRef }: DemoMembersProps) {
           names: new Intl.ListFormat(i18n.language).format(members.map(({ name }) => name)),
         })}
       >
-        {members.map((member, index) => (
-          <CollaboratorAvatar
-            key={member.id}
-            collaborator={member}
-            style={{ zIndex: members.length - index }}
-          />
+        {members.map((member) => (
+          <CollaboratorAvatar key={member.id} collaborator={member} />
         ))}
       </CollaboratorPill>
       {listed && (

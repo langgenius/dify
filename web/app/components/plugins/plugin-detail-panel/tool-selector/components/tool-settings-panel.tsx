@@ -8,7 +8,7 @@ import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import { ReasoningConfigForm } from './reasoning-config-form'
@@ -113,6 +113,7 @@ export function ToolSettingsPanel({
             <TabsTab value="params">
               {t(($) => $['detailPanel.toolSelector.params'], { ns: 'plugin' })}
             </TabsTab>
+            <TabsIndicator />
           </TabsList>
           <TabsPanel value="settings">{settingsForm}</TabsPanel>
           <TabsPanel value="params">

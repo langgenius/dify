@@ -1,6 +1,8 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import { contract as webAppContract } from '@dify/contracts/api/web/orpc.gen'
+import type { OnUploadProgress } from './xhr-fetch'
+import { contract as generatedWebAppContract } from '@dify/contracts/api/web/orpc.gen'
+import { webAppSsoContract } from '@dify/contracts/sso'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
@@ -9,8 +11,18 @@ import { request } from './base'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 
 type WebAppClientContext = {
-  silent?: boolean
+  /** The response is an event stream: no time limit on its first frame. */
+  stream?: boolean
+  /** `false` lifts the time limit, e.g. for uploads the server finishes only after fetching a remote file. */
+  timeout?: false
   headers?: Record<string, string>
+  /** Reports request-body upload progress; the call is sent over XHR without the default timeout. */
+  onUploadProgress?: OnUploadProgress
+}
+
+const webAppContract = {
+  ...generatedWebAppContract,
+  enterprise: { sso: webAppSsoContract },
 }
 
 const getPublicApiBaseURL = () => new URL(PUBLIC_API_PREFIX, window.location.origin)
@@ -21,12 +33,13 @@ const getContractPath = (url: URL) => {
 }
 
 // `new Request(url, request)` would carry the body over as a stream, which needs `duplex`.
+// Firefox has no `Request.body`, so read the body for every method that can carry one.
 const withURL = async (input: Request, url: URL) => {
   if (url.href === input.url) return input
   return new Request(url, {
     method: input.method,
     headers: input.headers,
-    body: input.body ? await input.blob() : undefined,
+    body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.blob(),
     signal: input.signal,
     credentials: input.credentials,
     cache: input.cache,
@@ -53,7 +66,8 @@ export const webAppClient: JsonifiedClient<
         isPublicAPI: true,
         fetchCompat: true,
         request: await withURL(input, publicURL),
-        silent: context.silent,
+        onUploadProgress: context.onUploadProgress,
+        timeout: context.stream || context.timeout === false ? false : undefined,
       })
     },
   }),

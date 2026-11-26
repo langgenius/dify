@@ -63,7 +63,7 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof consoleClient.workspaces.current.modelProviders.byProvider.models.parameterRules.get
     >(),
-  stream: vi.fn<typeof import('@/service/base').ssePost>(),
+  stream: vi.fn<import('@/test/stream-recorder').RecordedStreamCall>(),
   marketplace: vi.fn(),
   install: vi.fn<typeof consoleClient.workspaces.current.plugin.install.marketplace.post>(),
   models: vi.fn<typeof consoleClient.workspaces.current.models.modelTypes.byModelType.get>(),
@@ -107,9 +107,25 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/service/base', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/base')>()),
-  ssePost: api.stream,
+const streams = await vi.hoisted(async () => {
+  const { createStreamRecorder } = await import('@/test/stream-recorder')
+  return createStreamRecorder({ post: api.stream, get: vi.fn() })
+})
+vi.mock('@/service/event-stream', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/event-stream')>()),
+  streamEvents: streams.streamEvents,
+}))
+vi.mock('@/service/workflow-events', () => ({
+  workflowRunEventsRequest: streams.workflowRunEventsRequest,
+}))
+vi.mock('@/service/console-chat-messages', () => streams.consoleChatMessages)
+vi.mock('@/service/debug', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/debug')>()),
+  appCompletionMessagesSender: streams.appCompletionMessagesSender,
+}))
+vi.mock('@/service/share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/share')>()),
+  chatMessagesSender: streams.chatMessagesSender,
 }))
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const { withMarketplaceResponses } = await import('@/test/marketplace-service')

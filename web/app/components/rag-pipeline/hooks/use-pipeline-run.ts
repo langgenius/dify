@@ -1,5 +1,5 @@
 import type { useNodesSyncDraft } from './use-nodes-sync-draft'
-import type { IOtherOptions } from '@/service/base'
+import type { StreamCallbacks } from '@/service/event-stream'
 import type { WorkflowVersionListItem } from '@/service/workflow-queries'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -21,8 +21,8 @@ import {
   toGraphNodes,
   toStoredViewport,
 } from '@/app/components/workflow/utils/published-workflow'
-import { ssePost } from '@/service/base'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
+import { streamEvents } from '@/service/event-stream'
 import { lastRunQueryKey, workflowRunHistoryQueryOptions } from '@/service/workflow-queries'
 import { toPipelineVariables } from '../utils/query-select'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
@@ -107,7 +107,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const handleRun = useCallback(
-    async (params: any, callback?: IOtherOptions) => {
+    async (params: any, callback?: StreamCallbacks) => {
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft) => {
         draft.forEach((node) => {
@@ -140,8 +140,6 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       const { clientWidth, clientHeight } = workflowContainer!
 
-      const url = `/rag/pipelines/${pipelineId}/workflows/draft/run`
-
       const { setWorkflowRunningData } = workflowStore.getState()
       setWorkflowRunningData({
         result: {
@@ -157,11 +155,12 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       abortControllerRef.current?.abort()
       abortControllerRef.current = null
 
-      ssePost(
-        url,
-        {
-          body: params,
-        },
+      streamEvents(
+        (options) =>
+          consoleClient.rag.pipelines.byPipelineId.workflows.draft.run.post(
+            { params: { pipeline_id: pipelineId }, body: params },
+            options,
+          ),
         {
           getAbortController: (controller: AbortController) => {
             abortControllerRef.current = controller

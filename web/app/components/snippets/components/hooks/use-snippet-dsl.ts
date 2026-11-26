@@ -15,7 +15,7 @@ export const useSnippetDSL = ({ snippetId, snippetName }: UseSnippetDSLOptions) 
   const { t } = useTranslation(['snippet'])
   const { mutateAsync: exportSnippet } = useMutation(
     consoleQuery.workspaces.current.customizedSnippets.bySnippetId.export.get.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
 
