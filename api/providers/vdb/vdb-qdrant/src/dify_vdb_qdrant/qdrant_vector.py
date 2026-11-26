@@ -544,7 +544,8 @@ class QdrantVector(BaseVector):
                 raise
             return None
         except grpc.RpcError as e:
-            if not isinstance(e, grpc.Call) or e.code() != grpc.StatusCode.INVALID_ARGUMENT:
+            code = getattr(e, "code", None)
+            if not callable(code) or code() != grpc.StatusCode.INVALID_ARGUMENT:
                 raise
             return None
         return [

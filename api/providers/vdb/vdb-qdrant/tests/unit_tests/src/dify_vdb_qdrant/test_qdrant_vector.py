@@ -121,8 +121,6 @@ def _build_fake_qdrant_modules():
     qdrant_http_models.PayloadSchemaType = SimpleNamespace(KEYWORD="KEYWORD")
     qdrant_http_models.TextIndexParams = TextIndexParams
     qdrant_http_models.TextIndexType = SimpleNamespace(TEXT="TEXT")
-    qdrant_http_models.TextScoringParams = TextScoringParams
-    qdrant_http_models.TextScoringType = SimpleNamespace(BM25="bm25")
     qdrant_http_models.TokenizerType = SimpleNamespace(MULTILINGUAL="MULTILINGUAL")
     qdrant_http_models.VectorParams = VectorParams
     qdrant_http_models.Distance = _Distance()
@@ -132,8 +130,13 @@ def _build_fake_qdrant_modules():
     qdrant_http_models.MatchValue = MatchValue
     qdrant_http_models.MatchAny = MatchAny
     qdrant_http_models.MatchText = MatchText
-    qdrant_http_models.TextQuery = TextQuery
     qdrant_http_exceptions.UnexpectedResponse = UnexpectedResponseError
+    # BM25 full-text search (Qdrant 1.20)
+    qdrant_http_models.__dict__.update(
+        TextQuery=TextQuery,
+        TextScoringParams=TextScoringParams,
+        TextScoringType=SimpleNamespace(BM25="bm25"),
+    )
 
     qdrant_http.models = qdrant_http_models
     qdrant_local_mod.QdrantLocal = QdrantLocal
@@ -387,6 +390,12 @@ def test_qdrant_full_text_search_stops_after_exhausting_duplicate_matches(qdrant
     assert scroll.call_count == 2
 
 
+def _scroll_mock(vector) -> MagicMock:
+    scroll = vector._client.scroll
+    assert isinstance(scroll, MagicMock)
+    return scroll
+
+
 def _unscored_text_index(vector) -> None:
     # What Qdrant < 1.20, or a text index created without scoring, answers to a BM25 query.
     vector._client.query_points.side_effect = sys.modules["qdrant_client.http.exceptions"].UnexpectedResponse(400)
@@ -406,7 +415,7 @@ def test_qdrant_full_text_search_ranks_with_bm25(qdrant_module: types.ModuleType
 
     assert [doc.metadata["doc_id"] for doc in docs] == ["2", "1"]
     assert docs[0].vector == [0.2]
-    cast(ScrollMock, vector._client.scroll).assert_not_called()
+    _scroll_mock(vector).assert_not_called()
     kwargs = vector._client.query_points.call_args.kwargs
     assert kwargs["query"].text == "rare common"
     assert kwargs["using"] == "page_content"
@@ -421,7 +430,7 @@ def test_qdrant_full_text_search_falls_back_when_text_index_cannot_score(qdrant_
         id="p1", payload={"page_content": "common", "metadata": {"doc_id": "1"}}, vector=[0.1]
     )
     _unscored_text_index(vector)
-    cast(ScrollMock, vector._client.scroll).side_effect = [([match], None)]
+    _scroll_mock(vector).side_effect = [([match], None)]
 
     docs = vector.search_by_full_text("common", top_k=2)
 
@@ -431,16 +440,17 @@ def test_qdrant_full_text_search_falls_back_when_text_index_cannot_score(qdrant_
 def test_qdrant_full_text_search_falls_back_on_grpc_invalid_argument(qdrant_module: types.ModuleType) -> None:
     import grpc
 
-    class InvalidArgumentError(grpc.RpcError, grpc.Call):
-        def code(self):
+    class InvalidArgumentError(grpc.RpcError):
+        @override
+        def code(self) -> grpc.StatusCode:
             return grpc.StatusCode.INVALID_ARGUMENT
 
     vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
     vector._client.query_points.side_effect = InvalidArgumentError()
-    cast(ScrollMock, vector._client.scroll).side_effect = [([], None)]
+    _scroll_mock(vector).side_effect = [([], None)]
 
     assert vector.search_by_full_text("common", top_k=2) == []
-    assert cast(ScrollMock, vector._client.scroll).call_count == 1
+    assert _scroll_mock(vector).call_count == 1
 
 
 def test_qdrant_full_text_search_raises_other_server_errors(qdrant_module: types.ModuleType) -> None:
@@ -450,13 +460,13 @@ def test_qdrant_full_text_search_raises_other_server_errors(qdrant_module: types
 
     with pytest.raises(unexpected):
         vector.search_by_full_text("common", top_k=2)
-    cast(ScrollMock, vector._client.scroll).assert_not_called()
+    _scroll_mock(vector).assert_not_called()
 
 
 def test_qdrant_full_text_search_skips_ranking_in_local_mode(qdrant_module: types.ModuleType) -> None:
     vector = qdrant_module.QdrantVector("collection_1", "group-1", _config(qdrant_module))
     vector._client = qdrant_module.QdrantLocal()
-    cast(ScrollMock, vector._client.scroll).side_effect = [([], None)]
+    _scroll_mock(vector).side_effect = [([], None)]
 
     assert vector.search_by_full_text("common", top_k=2) == []
     vector._client.query_points.assert_not_called()
