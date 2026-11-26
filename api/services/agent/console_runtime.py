@@ -1,18 +1,19 @@
 """Adapt Console Agent chat to the existing generation engine."""
 
 from collections.abc import Callable, Iterable, Mapping
-from typing import Any
+from typing import Protocol
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from machinery.context import RequestContext
+from models.account import Account
 from models.agent import AgentConfigDraftType
+from models.model import App
 from repositories.app.agent_runtime_app import resolve_agent_runtime_app
 from repositories.app.console_repository import console_app_actor
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.app_generate_service import AppGenerateService
 
 
 class AgentConsoleConversationMissingError(Exception):
@@ -23,24 +24,46 @@ class AgentConsolePreviewDisabledError(Exception):
     """The deployment does not allow Agent preview runs."""
 
 
+class _GenerateAgentChat(Protocol):
+    def __call__(
+        self,
+        *,
+        app_model: App,
+        user: Account,
+        args: Mapping[str, object],
+        invoke_from: InvokeFrom,
+        session: Session,
+        streaming: bool,
+    ) -> Mapping[str, object] | Iterable[str]:
+        """Prepare generation in the caller's session and return its output for consumption."""
+        ...
+
+
 class AgentConsoleRuntime:
     """Own the ORM compatibility boundary for Console Agent chat generation."""
 
-    def __init__(self, *, session_factory: sessionmaker[Session], preview_enabled: Callable[[], bool]) -> None:
-        """Use the supplied sessions and deployment policy to prepare debug runs."""
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session],
+        preview_enabled: Callable[[], bool],
+        generate: _GenerateAgentChat,
+    ) -> None:
+        """Use the supplied sessions, deployment policy, and generation engine for debug runs."""
         self._sessions = session_factory
         self._preview_enabled = preview_enabled
+        self._generate = generate
 
     def generate_chat(
         self,
         context: RequestContext,
         agent_id: str,
         *,
-        args: dict[str, Any],
+        args: Mapping[str, object],
         draft_type: AgentConfigDraftType,
         conversation_id: str | None,
-    ) -> Mapping[str, Any] | Iterable[str]:
-        """Check preview eligibility before selecting the account's debug conversation and generating."""
+    ) -> Mapping[str, object] | Iterable[str]:
+        """Check preview eligibility, select the account's conversation, and commit generation preparation."""
         tenant_id = context.active_workspace_id
         account_id = context.account_id
         with self._sessions(expire_on_commit=False) as session:
@@ -65,7 +88,7 @@ class AgentConsoleRuntime:
             if resolved is None or (conversation_id and conversation_id != resolved):
                 raise AgentConsoleConversationMissingError
             account = console_app_actor(session, context)
-            response = AppGenerateService.generate(
+            response = self._generate(
                 app_model=app,
                 user=account,
                 args={**args, "conversation_id": resolved},

@@ -48,6 +48,7 @@ from services.app.console_gateway import (
     notify_app_created,
     notify_app_deleted,
 )
+from services.app_generate_service import AppGenerateService
 from services.app_service import AppService
 from services.evaluation_service import EvaluationService
 from services.feature_service import FeatureService
@@ -123,7 +124,9 @@ def build_agent_app_services(
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
         runtime=AgentConsoleRuntime(
-            session_factory=database_client, preview_enabled=FeatureService.is_agent_preview_enabled
+            session_factory=database_client,
+            preview_enabled=FeatureService.is_agent_preview_enabled,
+            generate=AppGenerateService.generate,
         ),
         config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
