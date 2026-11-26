@@ -222,7 +222,7 @@ def make_request(
     """Send one SSRF-protected request with optional streaming.
 
     Cookies set by responses are sent only on the redirect hops of the same attempt, never on later requests;
-    callers that need a cookie pass it explicitly.
+    callers that need a cookie pass it explicitly. Retry warnings omit URLs and exception text.
 
     Args:
         method: HTTP method sent through the configured SSRF client.
@@ -334,16 +334,12 @@ def make_request(
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:
                 return response
             else:
-                logger.warning(
-                    "Received status code %s for URL %s which is in the force list",
-                    response.status_code,
-                    url,
-                )
+                logger.warning("HTTP request received retryable status code %s", response.status_code)
                 response.close()
 
         except httpx.RequestError as e:
             last_request_error = e
-            logger.warning("Request to URL %s failed on attempt %s: %s", url, retries + 1, e)
+            logger.warning("HTTP request failed on attempt %s: %s", retries + 1, type(e).__name__)
             if max_retries == 0:
                 raise
 
