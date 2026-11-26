@@ -59,7 +59,7 @@ class WorkflowComposerGateway:
     @staticmethod
     def _require_target(session: Session, *, tenant_id: str, target: WorkflowComposerTarget) -> str:
         """Resolve an eligible tenant App or snippet, preserving each surface's owner gate."""
-        if target.kind is WorkflowComposerTargetKind.SNIPPET:
+        if target.kind == WorkflowComposerTargetKind.SNIPPET:
             snippet_id = find_composer_snippet_id(session, tenant_id=tenant_id, snippet_id=target.id)
             if snippet_id is None:
                 raise WorkflowComposerSnippetMissingError
