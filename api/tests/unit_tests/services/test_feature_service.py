@@ -11,7 +11,7 @@ from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.errors.billing import BillingUpstreamUnavailableError
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, ProviderCatalogBilling
 from services.system_feature_service import SystemFeatureService
 from tests.helpers import billing_builders as builders
 
@@ -510,7 +510,6 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(
     ],
 )
 def test_get_trial_models_filters_providers_by_workspace_plan(
-    monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
     plan: CloudPlan,
     expected: list[str],
@@ -525,13 +524,37 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
         HOSTED_XAI_PAID_ENABLED=True,
     )
     config_overrides(**values)
-    get_workspace_plan = Mock(return_value=plan)
-    monkeypatch.setattr(feature_service_module.FeatureService, "get_workspace_plan", get_workspace_plan)
-
-    result = FeatureService.get_trial_models("tenant_1")
+    with patch.object(
+        billing, "subscription_get_subscription_info", return_value=builders.subscription_info(plan)
+    ) as subscription:
+        result = FeatureService.get_trial_models("tenant_1")
 
     assert result == expected
-    get_workspace_plan.assert_called_once_with("tenant_1")
+    subscription.assert_called_once_with(tenant_id="tenant_1", exclude_vector_space=True)
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_non_cloud_provider_settings_do_not_require_billing(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, MODEL_LB_ENABLED=enabled)
+    with patch.object(
+        billing, "subscription_get_subscription_info", side_effect=AssertionError("unexpected Billing read")
+    ):
+        catalog = ProviderCatalogBilling("workspace")
+        assert catalog.load_balancing_enabled is enabled
+        assert catalog.balance is None
+
+
+def test_trial_models_hide_hosted_credits_when_billing_is_unavailable(config_overrides: Callable[..., None]) -> None:
+    """Unknown eligibility must not expose either of the deployment's enabled credit pools."""
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, HOSTED_OPENAI_TRIAL_ENABLED=True, HOSTED_OPENAI_PAID_ENABLED=True
+    )
+    with patch.object(
+        billing, "subscription_get_subscription_info", side_effect=billing.BillingSubscriptionUpstreamUnavailableError()
+    ):
+        assert FeatureService.get_trial_models("tenant-1") == []
 
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:

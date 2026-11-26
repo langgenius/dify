@@ -59,7 +59,7 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from services.feature_service import FeatureService
+from services.feature_service import ProviderCatalogBilling
 
 if TYPE_CHECKING:
     from core.hosting_configuration import HostingProvider, HostingQuota
@@ -742,9 +742,15 @@ class ProviderManager:
         # Get All provider model settings
         provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
 
-        # Get All load balancing configs
-        provider_name_to_provider_load_balancing_model_configs_dict = self._get_all_provider_load_balancing_configs(
-            tenant_id
+        billing = ProviderCatalogBilling(tenant_id)
+        provider_name_to_provider_load_balancing_model_configs_dict = (
+            self._get_all_provider_load_balancing_configs(billing)
+            if any(
+                setting.load_balancing_enabled
+                for settings in provider_name_to_provider_model_settings_dict.values()
+                for setting in settings
+            )
+            else {}
         )
 
         # Get All provider model credentials
@@ -794,7 +800,7 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self._to_system_configuration(tenant_id, provider_entity, provider_records)
+            system_configuration = self._to_system_configuration(billing, provider_entity, provider_records)
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
@@ -1139,20 +1145,16 @@ class ProviderManager:
 
     @staticmethod
     def _get_all_provider_load_balancing_configs(
-        tenant_id: str,
+        billing: ProviderCatalogBilling,
     ) -> dict[str, list[_LoadBalancingModelConfigCacheEntry]]:
-        """
-        Get All provider load balancing configs of the workspace.
-
-        :param tenant_id: workspace id
-        :return:
-        """
+        """Return entitled load balancing configs; never persist an outage as a negative entitlement."""
+        tenant_id = billing.tenant_id
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
         cache_result = redis_client.get(cache_key)
         if cache_result is None:
-            model_load_balancing_enabled = FeatureService.get_features(
-                tenant_id, exclude_vector_space=True
-            ).model_load_balancing_enabled
+            model_load_balancing_enabled = billing.load_balancing_enabled
+            if model_load_balancing_enabled is None:
+                return {}
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
         else:
             cache_result = cache_result.decode("utf-8")
@@ -1472,7 +1474,7 @@ class ProviderManager:
         return credentials
 
     def _to_system_configuration(
-        self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
+        self, billing: ProviderCatalogBilling, provider_entity: ProviderEntity, provider_records: list[Provider]
     ) -> SystemConfiguration:
         """
         Convert to system configuration.
@@ -1481,14 +1483,15 @@ class ProviderManager:
         free bucket or the billing credit pool selected by the workspace plan. The other
         hosted bucket is never offered. If the provider offers no eligible bucket, return
         a disabled configuration without credentials or a balance lookup. Otherwise, bind
-        credentials to the selected quota. Billing failures propagate.
+        credentials to the selected quota. If its Billing data is unavailable, disable
+        the hosted route without disturbing workspace credentials.
 
-        :param tenant_id: workspace id
+        :param billing: billing reads scoped to this workspace catalog
         :param provider_entity: provider entity
         :param provider_records: provider records
         :return:
         """
-        # Get hosting configuration
+        tenant_id = billing.tenant_id
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
@@ -1504,7 +1507,6 @@ class ProviderManager:
             return SystemConfiguration(enabled=False)
 
         from core.plugin.plugin_service import PluginService
-        from services.credit_pool_service import CreditPoolService
 
         if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
             return SystemConfiguration(enabled=False)
@@ -1519,17 +1521,17 @@ class ProviderManager:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
 
         current_quota_type = provider_hosting_configuration.select_quota_type(
-            FeatureService.get_credit_pool_type(tenant_id),
+            billing.pool_type,
             has_free_quota=ProviderQuotaType.FREE in quota_type_to_provider_records_dict,
         )
         if current_quota_type is None:
             return SystemConfiguration(enabled=False)
 
-        credit_pool = (
-            None
-            if current_quota_type == ProviderQuotaType.FREE
-            else CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=current_quota_type)
-        )
+        credit_pool = None
+        if current_quota_type != ProviderQuotaType.FREE:
+            credit_pool = billing.balance
+            if credit_pool is None:
+                return SystemConfiguration(enabled=False)
         quota_configurations: list[QuotaConfiguration] = []
         for provider_quota in provider_hosting_configuration.quotas:
             quota_configuration = _resolve_quota_configuration(
