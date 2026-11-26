@@ -241,7 +241,7 @@ describe('Logs Container', () => {
         }
         const expectStart = (date: string) =>
           waitFor(() =>
-            expect(getMockCallParams()?.params?.created_at__after).toBe(`${date}T00:00:00+00:00`),
+            expect(getMockCallParams()?.params?.created_at__after).toBe(`${date}T00:00:00Z`),
           )
 
         // The page has been open since earlier days; each request uses the date of the request.
