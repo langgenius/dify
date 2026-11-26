@@ -36,3 +36,36 @@ it('reports missing required, wrong types and bad enums in the 422 detail shape'
 it('lets unknown keys through to the server', () => {
   expect(validateInput(run, { app_id: 'a', inputs: {}, extra: 1 })).toEqual([])
 })
+
+it('reports original property names from escaped JSON Pointer locations', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      'a/b': {
+        type: 'object',
+        properties: { '~key': { type: 'object', properties: { '': { type: 'number' } } } },
+      },
+    },
+  }
+  expect(validateInput(schema, { 'a/b': { '~key': { '': 'wrong' } } })).toContainEqual({
+    type: 'type',
+    loc: ['a/b', '~key', ''],
+    msg: expect.stringContaining('number'),
+  })
+})
+
+it('decodes JSON Pointer escapes once and preserves named-field errors', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      '~1': { type: 'object', required: ['a/b'], additionalProperties: false, properties: {} },
+    },
+  }
+  const details = validateInput(schema, { '~1': { '~extra': true } })
+  expect(details).toContainEqual({ type: 'required', loc: ['~1', 'a/b'], msg: 'required' })
+  expect(details).toContainEqual({
+    type: 'additionalProperties',
+    loc: ['~1', '~extra'],
+    msg: 'unknown field',
+  })
+})
