@@ -1,6 +1,6 @@
 """Configuration for InterSystems IRIS vector database."""
 
-from typing import Any
+from typing import Self
 
 from pydantic import Field, PositiveInt, model_validator
 from pydantic_settings import BaseSettings
@@ -64,30 +64,15 @@ class IrisVectorConfig(BaseSettings):
         default="en",
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_config(cls, values: dict[str, Any]) -> dict[str, Any]:
-        """Validate IRIS configuration values.
+    @model_validator(mode="after")
+    def validate_config(self) -> Self:
+        """Validate pool ordering after settings have been parsed as positive integers.
 
-        Args:
-            values: Configuration dictionary
-
-        Returns:
-            Validated configuration dictionary
-
-        Raises:
-            ValueError: If required fields are missing or pool settings are invalid
+        Environment strings and omitted defaults are resolved by field
+        validation first. Return these settings unchanged when the minimum
+        does not exceed the maximum; otherwise raise ``ValueError``.
         """
-        # Only validate required fields if IRIS is being used as the vector store
-        # This allows the config to be loaded even when IRIS is not in use
-
-        # vector_store = os.environ.get("VECTOR_STORE", "")
-        # We rely on Pydantic defaults for required fields if they are missing from env.
-        # Strict existence check is removed to allow defaults to work.
-
-        min_conn = values.get("IRIS_MIN_CONNECTION", 1)
-        max_conn = values.get("IRIS_MAX_CONNECTION", 3)
-        if min_conn > max_conn:
+        if self.IRIS_MIN_CONNECTION > self.IRIS_MAX_CONNECTION:
             raise ValueError("IRIS_MIN_CONNECTION must be less than or equal to IRIS_MAX_CONNECTION")
 
-        return values
+        return self
