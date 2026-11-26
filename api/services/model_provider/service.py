@@ -2,7 +2,6 @@ import logging
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from functools import cache
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, or_, select
@@ -54,7 +53,7 @@ from services.entities.model_provider_entities import (
     SystemConfigurationResponse,
 )
 from services.errors.app_model_config import ProviderNotFoundError
-from services.feature_service import FeatureService
+from services.feature_service import ProviderCatalogBilling
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +349,7 @@ class ModelProviderService:
         """List workspace providers without reading credit balances or decrypting credentials.
 
         A provider is configured if the workspace has custom configuration or is eligible for
-        hosting. Resolve the workspace pool at most once; subscription lookup failures propagate.
+        hosting. If Billing is unavailable, report only workspace-owned configuration.
         """
         # Read bindings first: remote-debug identity changes invalidate provider metadata
         # before the provider cache is consulted.
@@ -370,7 +369,7 @@ class ModelProviderService:
                 binding,
             )
 
-        get_credit_pool_type = cache(FeatureService.get_credit_pool_type)
+        billing = ProviderCatalogBilling(tenant_id)
         provider_summaries: list[ModelProviderSummaryResponse] = []
         emitted_provider_names: set[str] = set()
         for provider_entity in provider_entities:
@@ -402,8 +401,7 @@ class ModelProviderService:
                 and hosting
                 and hosting.enabled
                 and hosting.quotas
-                and hosting.select_quota_type(get_credit_pool_type(tenant_id), has_free_quota=state.has_free_quota)
-                is not None
+                and hosting.select_quota_type(billing.pool_type, has_free_quota=state.has_free_quota) is not None
             )
             preferred_provider_type = self._get_preferred_provider_type(
                 state,

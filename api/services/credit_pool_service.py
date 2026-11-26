@@ -22,6 +22,7 @@ from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
+from services.errors.billing import BillingUpstreamUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -239,6 +240,15 @@ class CreditPoolService:
             )
             .limit(1)
         )
+
+    @classmethod
+    def get_pool_if_available(cls, *, tenant_id: str, pool_type: str) -> CreditPoolBalance | None:
+        """Read a balance for provider discovery or display; an outage is neither zero nor unlimited."""
+        try:
+            return cls.get_pool(tenant_id=tenant_id, pool_type=pool_type)
+        except BillingUpstreamUnavailableError as exc:
+            logger.warning("Billing balance unavailable for workspace %s, pool %s: %s", tenant_id, pool_type, exc)
+            return None
 
     @classmethod
     def check_credits_available(
