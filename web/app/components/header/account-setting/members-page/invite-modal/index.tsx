@@ -27,6 +27,7 @@ import { getCountQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { InvitationResultsContent } from '../invitation-results-content'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -50,7 +51,7 @@ type InviteFormProps = {
   isEmailSetup: boolean
   isPending: boolean
   errorCode: InviteFieldErrorCode | null
-  hasError: boolean
+  error: unknown
   results: InvitationResults | undefined
   onSubmit: (
     emails: string[],
@@ -65,7 +66,7 @@ function InviteForm({
   isEmailSetup,
   isPending,
   errorCode,
-  hasError,
+  error,
   results,
   onSubmit,
   onDismissError,
@@ -90,8 +91,9 @@ function InviteForm({
         ? { role: t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' }) }
         : undefined
   const formError =
-    hasError && !fieldErrors
-      ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
+    error && !fieldErrors
+      ? (getRequestErrorMessage(error) ??
+        t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' }))
       : null
   const memberLimit = features
     ? getCountQuota(
@@ -325,7 +327,7 @@ export function InviteModal({ onSend }: InviteModalProps) {
                 isPending={isBusy}
                 // The link marks a documented code as defined, so `error.code` narrows to the invite contract.
                 errorCode={isDefinedError(error) ? error.code : null}
-                hasError={!!error}
+                error={error}
                 results={data?.invitation_results}
                 onSubmit={handleSubmit}
                 onDismissError={() => {

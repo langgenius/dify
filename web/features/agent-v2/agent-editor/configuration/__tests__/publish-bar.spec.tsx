@@ -18,6 +18,7 @@ import {
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createAppSiteFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { AgentConfigurePublishBar } from '../publish-bar'
@@ -54,6 +55,7 @@ const workflowReferences = vi.hoisted(() => ({
   fetchCount: 0,
   data: [] as AgentReferencingWorkflowResponse[],
   shouldFail: false,
+  failure: undefined as unknown,
 }))
 const agentDetail = vi.hoisted(() => ({ data: {} as Partial<AgentAppDetailWithSite> }))
 
@@ -92,6 +94,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       },
       'agent.byAgentId.referencingWorkflows.get': async () => {
         workflowReferences.fetchCount++
+        if (workflowReferences.failure) throw workflowReferences.failure
         if (workflowReferences.shouldFail) throw new Error('Workflow references query failed')
         return { data: workflowReferences.data }
       },
@@ -301,6 +304,7 @@ describe('AgentConfigurePublishBar', () => {
     workflowReferences.data = []
     workflowReferences.fetchCount = 0
     workflowReferences.shouldFail = false
+    workflowReferences.failure = undefined
     composerQuery.data = undefined
     composerQuery.pending = undefined
     composerQuery.shouldFail = false
@@ -678,6 +682,31 @@ describe('AgentConfigurePublishBar', () => {
       expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
     })
     expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should show the server message when workflow references cannot be loaded', async () => {
+    const user = userEvent.setup()
+    workflowReferences.failure = createHttpError(new Response(null, { status: 503 }), {
+      code: 'service_unavailable',
+      message: 'Server says why',
+    })
+    renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+    })
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(1)
+    })
+    await user.click(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toastMock.error).toHaveBeenCalledWith('Server says why')
+    })
   })
 
   it('should refresh cached workflow references before publishing', async () => {

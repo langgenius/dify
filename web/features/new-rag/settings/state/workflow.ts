@@ -4,6 +4,7 @@ import type { SettingsMigrationProgress, SettingsSaveStep } from '../save-workfl
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { settingsDraftChanges } from '../draft'
 import { settingsSaveErrorMessageKey } from '../save-error'
 import {
@@ -25,6 +26,7 @@ type SaveErrorKey = Awaited<ReturnType<typeof settingsSaveErrorMessageKey>>
 export type KnowledgeSettingsSaveResult = {
   status: 'saved' | 'failed' | 'skipped' | 'reset'
   errorKey?: SaveErrorKey
+  errorMessage?: string
 }
 
 const pendingSaveOwnersAtom = atom<Set<string>>(new globalThis.Set<string>())
@@ -259,7 +261,7 @@ export const saveKnowledgeSettingsAtom = atom(
         /* Keep the prior baseline and draft if recovery reads fail. */
       }
       set(knowledgeSettingsSaveErrorAtom, errorKey)
-      return { status: 'failed', errorKey }
+      return { status: 'failed', errorKey, errorMessage: getRequestErrorMessage(error) }
     } finally {
       set(setKnowledgeSettingsSavePendingAtom, { owner: 'save', pending: false })
     }
@@ -281,7 +283,7 @@ export const resetKnowledgeSettingsDraftAtom = atom(
     } catch (error) {
       const errorKey = await settingsSaveErrorMessageKey(error)
       set(knowledgeSettingsSaveErrorAtom, errorKey)
-      return { status: 'failed', errorKey }
+      return { status: 'failed', errorKey, errorMessage: getRequestErrorMessage(error) }
     } finally {
       set(setKnowledgeSettingsSavePendingAtom, { owner: 'reset', pending: false })
     }

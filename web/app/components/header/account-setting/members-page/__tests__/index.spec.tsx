@@ -5,6 +5,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { MembersPage } from '../index'
 
@@ -328,9 +329,14 @@ describe('MembersPage', () => {
     expect(dialog).toBeInTheDocument()
     expect(updateRoles).toHaveBeenCalledOnce()
     await act(async () => {
-      rejectSave(new Error('Save failed'))
+      rejectSave(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_role',
+          message: 'Server says why',
+        }),
+      )
     })
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('common.api.actionFailed')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
     expect(within(dialog).getByText('Next role')).toBeInTheDocument()
     await user.click(save)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

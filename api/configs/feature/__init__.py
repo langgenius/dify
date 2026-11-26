@@ -1563,15 +1563,15 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
-        description="Enable periodic recovery of soft-deleted conversation cleanup",
+        description="Enable periodic recovery of conversation cleanup and detached retired Workspaces",
         default=True,
     )
     CONVERSATION_CLEANUP_TASK_INTERVAL: PositiveInt = Field(
-        description="Soft-deleted conversation cleanup recovery interval in minutes",
+        description="Conversation cleanup recovery interval in minutes",
         default=5,
     )
     CONVERSATION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
-        description="Maximum soft-deleted conversations dispatched per cleanup sweep",
+        description="Maximum IDs dispatched per cleanup sweep for each of conversations and detached Workspaces",
         default=100,
     )
     ENABLE_GUEST_CONNECTION_CLEANUP_TASK: bool = Field(

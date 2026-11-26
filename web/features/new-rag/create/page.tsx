@@ -260,7 +260,9 @@ function CreateKnowledgeSession() {
           })
           const messageKey = await knowledgeFsRequestFailureMessageKey(error)
           setUploadError(
-            messageKey ? tError(($) => $[messageKey]) : t(($) => $.documentUploadFailed),
+            messageKey
+              ? tError(($) => $[messageKey])
+              : (getRequestErrorMessage(error) ?? t(($) => $.documentUploadFailed)),
           )
         })
         .finally(() => setStagingCount((count) => Math.max(0, count - 1)))

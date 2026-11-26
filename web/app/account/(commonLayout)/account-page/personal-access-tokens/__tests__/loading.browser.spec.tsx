@@ -245,7 +245,7 @@ it('keeps a checked workspace through search loading, retry, and an empty result
 
   firstSearch.resolve(undefined)
   const error = dialog.getByRole('alert')
-  await expect.element(error.getByText('Loading options failed')).toBeVisible()
+  await expect.element(error.getByText('Workspace search unavailable')).toBeVisible()
   await expect.element(selected).toBeChecked()
   expect(dialog.element().getBoundingClientRect().height).toBe(dialogHeight)
   await error.getByRole('button', { name: 'Retry', exact: true }).click()
@@ -466,4 +466,20 @@ it('returns to the previous page after deleting the last token on a deep-linked 
   await expect
     .element(screen.getByRole('button', { name: 'Previous', exact: true }))
     .not.toBeInTheDocument()
+})
+
+it('reports why the token list could not load', async () => {
+  installAccountApi({
+    personalAccessTokens: {
+      get: () => {
+        throw apiError({
+          status: 503,
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Token list unavailable',
+        })
+      },
+    },
+  })
+  const screen = await renderTokens()
+  await expect.element(screen.getByRole('alert')).toMatchTextContent(/Token list unavailable/)
 })

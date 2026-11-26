@@ -1030,6 +1030,9 @@ export const advancedChat = {
   workflows: workflows2,
 }
 
+/**
+ * Post the selected workflow Agent configuration asset
+ */
 export const post11 = oc
   .route({
     inputStructure: 'detailed',
@@ -1037,6 +1040,7 @@ export const post11 = oc
     operationId: 'postAppsByAppIdAgentConfigFilesBatch',
     path: '/apps/{app_id}/agent/config/files/batch',
     successStatus: 201,
+    summary: 'Post the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1057,12 +1061,16 @@ export const batch = {
   post: post11,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigFilesByNameDownload',
     path: '/apps/{app_id}/agent/config/files/{name}/download',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1082,12 +1090,16 @@ export const download = {
   get: get6,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigFilesByNamePreview',
     path: '/apps/{app_id}/agent/config/files/{name}/preview',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1107,12 +1119,16 @@ export const preview2 = {
   get: get7,
 }
 
+/**
+ * Delete the selected workflow Agent configuration asset
+ */
 export const delete_ = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentConfigFilesByName',
     path: '/apps/{app_id}/agent/config/files/{name}',
+    summary: 'Delete the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1134,12 +1150,16 @@ export const byName = {
   preview: preview2,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigFiles',
     path: '/apps/{app_id}/agent/config/files',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1155,6 +1175,9 @@ export const get8 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
+/**
+ * Post the selected workflow Agent configuration asset
+ */
 export const post12 = oc
   .route({
     inputStructure: 'detailed',
@@ -1162,6 +1185,7 @@ export const post12 = oc
     operationId: 'postAppsByAppIdAgentConfigFiles',
     path: '/apps/{app_id}/agent/config/files',
     successStatus: 201,
+    summary: 'Post the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1185,12 +1209,16 @@ export const files = {
   byName,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get9 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigManifest',
     path: '/apps/{app_id}/agent/config/manifest',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1210,6 +1238,9 @@ export const manifest = {
   get: get9,
 }
 
+/**
+ * Post the selected workflow Agent configuration asset
+ */
 export const post13 = oc
   .route({
     inputStructure: 'detailed',
@@ -1217,6 +1248,7 @@ export const post13 = oc
     operationId: 'postAppsByAppIdAgentConfigSkillsUpload',
     path: '/apps/{app_id}/agent/config/skills/upload',
     successStatus: 201,
+    summary: 'Post the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1237,12 +1269,16 @@ export const upload = {
   post: post13,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkillsByNameDownload',
     path: '/apps/{app_id}/agent/config/skills/{name}/download',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1262,12 +1298,16 @@ export const download2 = {
   get: get10,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkillsByNameFilesContent',
     path: '/apps/{app_id}/agent/config/skills/{name}/files/content',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAppsByAppIdAgentConfigSkillsByNameFilesContentPath }))
@@ -1282,12 +1322,16 @@ export const content = {
   get: get11,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkillsByNameFilesDownload',
     path: '/apps/{app_id}/agent/config/skills/{name}/files/download',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1307,12 +1351,16 @@ export const download3 = {
   get: get12,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkillsByNameFilesPreview',
     path: '/apps/{app_id}/agent/config/skills/{name}/files/preview',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1338,12 +1386,16 @@ export const files2 = {
   preview: preview3,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkillsByNameInspect',
     path: '/apps/{app_id}/agent/config/skills/{name}/inspect',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1363,12 +1415,16 @@ export const inspect = {
   get: get14,
 }
 
+/**
+ * Delete the selected workflow Agent configuration asset
+ */
 export const delete2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentConfigSkillsByName',
     path: '/apps/{app_id}/agent/config/skills/{name}',
+    summary: 'Delete the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -1391,12 +1447,16 @@ export const byName2 = {
   inspect,
 }
 
+/**
+ * Get the selected workflow Agent configuration asset
+ */
 export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentConfigSkills',
     path: '/apps/{app_id}/agent/config/skills',
+    summary: 'Get the selected workflow Agent configuration asset',
     tags: ['console'],
   })
   .input(
@@ -4289,12 +4349,16 @@ export const loop2 = {
   nodes: nodes6,
 }
 
+/**
+ * Return candidates for the admitted workflow or snippet node
+ */
 export const get69 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidates',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates',
+    summary: 'Return candidates for the admitted workflow or snippet node',
     tags: ['console'],
   })
   .input(
@@ -4307,12 +4371,16 @@ export const candidates = {
   get: get69,
 }
 
+/**
+ * Copy the admitted node’s roster Agent into an inline Agent
+ */
 export const post57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoster',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster',
+    summary: 'Copy the admitted node’s roster Agent into an inline Agent',
     tags: ['console'],
   })
   .input(
@@ -4334,12 +4402,16 @@ export const copyFromRoster = {
   post: post57,
 }
 
+/**
+ * Return the number of workflow nodes using the selected snapshot
+ */
 export const post58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpact',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact',
+    summary: 'Return the number of workflow nodes using the selected snapshot',
     tags: ['console'],
   })
   .input(
@@ -4355,12 +4427,16 @@ export const impact = {
   post: post58,
 }
 
+/**
+ * Save the admitted workflow or snippet node’s configuration
+ */
 export const post59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoster',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster',
+    summary: 'Save the admitted workflow or snippet node’s configuration',
     tags: ['console'],
   })
   .input(
@@ -4384,12 +4460,16 @@ export const saveToRoster = {
   post: post59,
 }
 
+/**
+ * Validate the configuration for the admitted workflow or snippet
+ */
 export const post60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidate',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate',
+    summary: 'Validate the configuration for the admitted workflow or snippet',
     tags: ['console'],
   })
   .input(
@@ -4410,12 +4490,16 @@ export const validate = {
   post: post60,
 }
 
+/**
+ * Return the Composer state for the admitted workflow or snippet node
+ */
 export const get70 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposer',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    summary: 'Return the Composer state for the admitted workflow or snippet node',
     tags: ['console'],
   })
   .input(
@@ -4431,12 +4515,16 @@ export const get70 = oc
     app_not_found: { status: 404, data: zAppNotFoundError },
   })
 
+/**
+ * Save the admitted workflow or snippet node’s configuration
+ */
 export const put5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposer',
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    summary: 'Save the admitted workflow or snippet node’s configuration',
     tags: ['console'],
   })
   .input(

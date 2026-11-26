@@ -5,9 +5,11 @@ import type {
   DefaultModel,
   ModelProvider,
 } from './declarations'
+import { ORPCError } from '@orpc/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { useMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/hooks'
 import {
@@ -15,6 +17,7 @@ import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
 import { toastRequestError } from '@/app/query-error-toast'
 import { getModelLanguage } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -174,7 +177,9 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
+/** Loads the provider's details on demand and reports a failed load once, itself. */
 export const useLazyModelProviderDetail = (providerName: string) => {
+  const { t } = useTranslation(['common'])
   const [enabled, setEnabled] = useState(false)
   const queryClient = useQueryClient()
   const { data, isFetching } = useQuery({
@@ -190,12 +195,16 @@ export const useLazyModelProviderDetail = (providerName: string) => {
         ...modelProviderDetailsQueryOptions(),
         meta: { errorToast: false },
       })
-      return response.data.find((provider) => provider.provider === providerName)
+      const detail = response.data.find((provider) => provider.provider === providerName)
+      if (!detail) toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      return detail
     } catch (error) {
-      toastRequestError(error)
+      // An HTTP failure carries the server's reason; a request that got no response does not.
+      if (error instanceof ORPCError) toastRequestError(error)
+      else toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       return undefined
     }
-  }, [providerName, queryClient])
+  }, [providerName, queryClient, t])
 
   return {
     providerDetail,

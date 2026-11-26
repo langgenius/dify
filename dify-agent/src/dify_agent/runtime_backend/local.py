@@ -40,6 +40,20 @@ _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
 _BINDING_REF_SEPARATOR = ":"
 logger = logging.getLogger(__name__)
 
+_RESTORE_HOME_SNAPSHOT_SCRIPT = """\
+import os
+import subprocess
+import sys
+
+snapshot_dir, home_dir = sys.argv[1:]
+try:
+    os.lstat(snapshot_dir)
+except FileNotFoundError:
+    print('home_snapshot_missing')
+else:
+    subprocess.run(['cp', '-a', snapshot_dir + '/.', home_dir + '/'], check=True)
+"""
+
 
 @dataclass(slots=True)
 class LocalHomeSnapshotBackend:
@@ -136,11 +150,12 @@ class LocalExecutionBindingBackend:
             f"mkdir -p {shlex.quote(workspace_dir)}" if creates_workspace else f"test -d {shlex.quote(workspace_dir)}"
         )
         setup = ["set -eu"]
-        if snapshot_dir is not None:
-            setup.append(f"test -d {shlex.quote(snapshot_dir)}")
         setup.extend([workspace_setup, f"mkdir -p {shlex.quote(home_dir)}"])
         if snapshot_dir is not None:
-            setup.append(f"cp -a {shlex.quote(snapshot_dir)}/. {shlex.quote(home_dir)}/")
+            setup.append(
+                f"python3 -c {shlex.quote(_RESTORE_HOME_SNAPSHOT_SCRIPT)} "
+                f"{shlex.quote(snapshot_dir)} {shlex.quote(home_dir)}"
+            )
         setup.append(f"chmod 700 {shlex.quote(home_dir)} {shlex.quote(workspace_dir)}")
         script = "\n".join(setup)
         lease = self._control_lease(binding_ref)
@@ -148,6 +163,8 @@ class LocalExecutionBindingBackend:
             result = await run_shellctl_control_command(lease.commands, script)
             if result.exit_code != 0:
                 raise BindingCreateError(result.output)
+            if snapshot_dir is not None and result.output.strip() == "home_snapshot_missing":
+                logger.warning("Local Home Snapshot %r is missing; starting with an empty Home", spec.home_snapshot_ref)
             return ExecutionBindingAllocation(binding_ref=binding_ref, workspace_ref=workspace_ref)
         except BaseException as exc:
             targets = [home_dir]

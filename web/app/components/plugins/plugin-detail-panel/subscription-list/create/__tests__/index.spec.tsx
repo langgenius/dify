@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   createTriggerOAuthConfigResponseFixture,
@@ -268,6 +269,38 @@ describe('CreateSubscriptionButton', () => {
       }),
     )
     expect(toastMocks.success).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [
+      'the server message',
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_param',
+        message: 'Server says why',
+      }),
+      'Server says why',
+    ],
+    [
+      'the localized fallback',
+      new TypeError('Failed to fetch'),
+      'pluginTrigger.modal.oauth.authorization.authFailed',
+    ],
+  ])('reports %s when OAuth cannot start', async (_case, error, message) => {
+    const user = userEvent.setup()
+    mockProviderInfo = providerInfo([SupportedCreationMethods.OAUTH])
+    mockOAuthConfig = oauthConfig(true)
+    mockInitiateOAuth.mockRejectedValueOnce(error)
+    render(<CreateSubscriptionButton />)
+
+    await user.click(screen.getByRole('button', { name: /subscription\.createButton\.oauth/ }))
+    await user.click(
+      within(await screen.findByRole('listbox')).getByRole('option', {
+        name: /subscription\.addType\.options\.oauth\.title/,
+      }),
+    )
+
+    await waitFor(() => expect(toastMocks.error).toHaveBeenCalledExactlyOnceWith(message))
+    expect(mockOpenOAuthPopup).not.toHaveBeenCalled()
   })
 
   it('does not create more than ten subscriptions', async () => {

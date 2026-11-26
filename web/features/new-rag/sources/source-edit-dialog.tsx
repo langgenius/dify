@@ -199,6 +199,7 @@ function ConnectedSourceEditDialogContent({
   )
   const {
     data: connectionsData,
+    error: connectionsQueryError,
     fetchNextPage,
     hasNextPage,
     isError: connectionsError,
@@ -327,7 +328,8 @@ function ConnectedSourceEditDialogContent({
           <div className="py-8">
             <p role="alert" className="system-sm-regular text-text-destructive">
               {datasourcePluginsQuery.isError || connectionsError
-                ? t(($) => $.providerLoadFailed)
+                ? (getRequestErrorMessage(datasourcePluginsQuery.error ?? connectionsQueryError) ??
+                  t(($) => $.providerLoadFailed))
                 : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
             </p>
             {isFetchNextPageError && !connection && (
@@ -502,6 +504,7 @@ function WebsiteSourceEditDialogContent({
   )
   const {
     data: connectionsData,
+    error: connectionsError,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -798,7 +801,7 @@ function WebsiteSourceEditDialogContent({
           {initialSource.connectionId && !connection && isFetchNextPageError && (
             <div className="mt-4">
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(($) => $.providerLoadFailed)}
+                {getRequestErrorMessage(connectionsError) ?? t(($) => $.providerLoadFailed)}
               </p>
               <Button
                 className="mt-3"

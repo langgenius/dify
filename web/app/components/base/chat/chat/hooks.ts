@@ -35,6 +35,7 @@ import {
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { streamEvents } from '@/service/event-stream'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { workflowRunEventsRequest } from '@/service/workflow-events'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
@@ -574,9 +575,9 @@ export const useChat = (
       stopPendingRef.current = generation
       try {
         await stopChat(taskId)
-      } catch {
+      } catch (error) {
         toast.error(
-          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${t(($) => $['api.actionFailed'], { ns: 'common' })}`,
+          `${t(($) => $['operation.stopResponding'], { ns: 'appDebug' })}: ${getRequestErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' })}`,
         )
         return
       } finally {

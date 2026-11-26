@@ -8,6 +8,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import HitHistoryNoData from './hit-history-no-data'
 
 type AnnotationHitHistoryProps = { appId: string; annotationId: string }
@@ -30,7 +31,10 @@ export function AnnotationHitHistory({ appId, annotationId }: AnnotationHitHisto
     if (history.isError)
       return (
         <div role="alert" className="space-y-2">
-          <p>{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+          <p>
+            {getRequestErrorMessage(history.error) ??
+              t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
           <Button loading={history.isFetching} onClick={() => history.refetch()}>
             {t(($) => $['operation.retry'], { ns: 'common' })}
           </Button>

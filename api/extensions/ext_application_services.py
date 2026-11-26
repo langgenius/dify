@@ -137,6 +137,7 @@ from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.observability_contracts import AgentObservability
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.version_service import AgentVersionService
+from services.agent.workflow_composer_gateway import WorkflowComposerGateway
 from services.agent_tracing_config_service import AgentTracingConfigService
 from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
@@ -356,6 +357,7 @@ class ApplicationServices:
     consumer: ConsumerService
     rbac: RBACServices
     agent_apps: AgentAppServices
+    workflow_composer: WorkflowComposerGateway
     agent_versions: AgentVersionService
     agent_invite_options: AgentInviteOptionsService
     agent_observability: AgentObservability
@@ -819,6 +821,7 @@ def build_application_services(
                 auth=PluginCredentialAuthClient(),
             ),
         ),
+        workflow_composer=WorkflowComposerGateway(session_factory=database_client),
         agent_apps=build_agent_app_services(database_client=database_client, rbac_members=rbac.members),
         agent_versions=build_agent_version_service(database_client=database_client),
         agent_invite_options=build_agent_invite_options_service(

@@ -19,7 +19,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -56,7 +56,7 @@ function educationApplyErrorMessage(
     case 'education_activate_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+      return getBillingErrorMessage(error, t)
   }
 }
 
@@ -138,7 +138,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
         },
         {
           onError: (error) => {
-            toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+            toast.error(getBillingErrorMessage(error, t))
           },
         },
       )

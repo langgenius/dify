@@ -19,7 +19,7 @@ import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/console'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import { createDeferred as createDeferredPromise } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
@@ -997,9 +997,28 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.saveDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    await expect(result.current.saveDraft()).rejects.toThrow('save failed')
     expect(store.get(agentComposerDraftAtom).prompt).toBe('Run prompt')
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+  })
+
+  it('should show the server message when an explicit save fails', async () => {
+    const error = createHttpError(new Response(null, { status: 400 }), {
+      code: 'invalid_param',
+      message: 'Server says why',
+    })
+    composerPutMutationFn.mockRejectedValueOnce(error)
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...store.get(agentComposerDraftAtom),
+        prompt: 'Run prompt',
+      })
+    })
+
+    await expect(result.current.saveDraft()).rejects.toBe(error)
+    expect(toastMock.error).toHaveBeenCalledWith('Server says why')
   })
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {
