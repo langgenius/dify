@@ -118,7 +118,7 @@ const buildRequestUrl = (baseUrl: string, path: string, query?: QueryParams): st
   const url = new URL(`${trimmed}${path}`)
   const queryString = buildQueryString(query)
   if (queryString) {
-    url.search = queryString
+    url.search += `${url.search ? '&' : '?'}${queryString}`
   }
   return url.toString()
 }
