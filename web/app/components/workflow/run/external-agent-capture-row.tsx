@@ -16,7 +16,7 @@ export function ExternalAgentCaptureRow({ source }: { source: ExternalAgentCaptu
     consoleQuery.apps.byAppId.externalAgentInvocations.byInvocationId.traceCapture.get.queryOptions(
       {
         input: { params: { app_id: source.appId, invocation_id: source.invocationId } },
-        context: { silent: true },
+        meta: { errorToast: false },
         retry: false,
         refetchOnWindowFocus: false,
         refetchInterval: (query) => {
