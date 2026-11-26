@@ -7,6 +7,7 @@ const websiteLocalePaths: Partial<Record<Locale, string>> = {
   'zh-Hans': '/zh',
   'ja-JP': '/ja',
   'ko-KR': '/ko',
+  'de-DE': '/de',
 }
 
 export function PricingFooter() {

@@ -20,7 +20,7 @@
     "Respectă Licența Open Source Dify"
   ],
   "plans.community.includesTitle": "Funcții gratuite:",
-  "plans.community.name": "Comunitate",
+  "plans.community.name": "Community",
   "plans.community.price": "Gratuit",
   "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Contactați Vânzări",
@@ -37,7 +37,7 @@
     "Asistență Tehnică Profesională"
   ],
   "plans.enterprise.includesTitle": "Tot ce este în planul <highlight>Echipă</highlight>, plus:",
-  "plans.enterprise.name": "Întreprindere",
+  "plans.enterprise.name": "Enterprise",
   "plans.enterprise.price": "Personalizat",
   "plans.enterprise.priceTip": "Facturare anuală doar",
   "plans.premium.btnText": "Obține Premium în",
@@ -62,7 +62,7 @@
   "plans.sandbox.name": "Sandbox",
   "plans.team.description": "Pentru echipe de dimensiuni medii care au nevoie de colaborare și un debit mai mare.",
   "plans.team.for": "Pentru echipe de dimensiuni medii",
-  "plans.team.name": "Echipă",
+  "plans.team.name": "Team",
   "plansCommon.annotatedResponse.title": "{{count,number}} limite de cotă de anotare",
   "plansCommon.annotatedResponse.tooltip": "Editarea și anotarea manuală a răspunsurilor oferă capacități de întrebări și răspunsuri personalizabile și de înaltă calitate pentru aplicații. (Aplicabil numai în aplicațiile de chat)",
   "plansCommon.annualBilling": "Facturare anuală, economisește {{percent}}%",
