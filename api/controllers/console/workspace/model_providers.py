@@ -20,6 +20,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from enums.model_billing import TokenerPlanKind
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -33,6 +34,7 @@ from services.entities.model_provider_entities import (
     ModelProviderSummaryResponse,
     ProviderResponse,
 )
+from services.entities.tokener_metering import TokenerPlanAmount, TokenerPurchasedAvailable
 from services.model_provider.service import ModelProviderService
 
 
@@ -131,6 +133,14 @@ class TokenerAllowanceMeteringResponse(ResponseModel):
     ends_at: str
 
 
+class TokenerPlanAllowanceMeteringResponse(ResponseModel):
+    plan: TokenerPlanKind
+    amount_usd_micro: TokenerPlanAmount
+    available_usd_micro: TokenerPlanAmount
+    starts_at: str
+    ends_at: str | None = None
+
+
 class TokenerMeteringResponse(ResponseModel):
     tenant_id: str
     currency: Literal["USD"]
@@ -142,6 +152,8 @@ class TokenerMeteringResponse(ResponseModel):
     balance_generated_at: str
     usage_generated_at: str | None = None
     allowance: TokenerAllowanceMeteringResponse | None = None
+    plan_allowance: TokenerPlanAllowanceMeteringResponse | None = None
+    purchased_available_usd_micro: TokenerPurchasedAvailable | None = None
     entitlement_status: Literal["active", "processing", "retrying", "failed"] | None = None
     entitlement_error_code: str | None = Field(default=None, pattern=r"^[a-z0-9_]{1,100}$")
 

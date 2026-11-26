@@ -3640,60 +3640,6 @@ export const zTokenerCurrentMonthUnavailableMeteringResponse = z.object({
 })
 
 /**
- * TokenerMeteringResponse
- */
-export const zTokenerMeteringResponse = z.object({
-  allowance: zTokenerAllowanceMeteringResponse.nullish(),
-  available_usd_micro: z.string().regex(/^-?\d+$/),
-  balance_generated_at: z.string(),
-  currency: z.literal('USD'),
-  current_month: z.discriminatedUnion('status', [
-    zTokenerCurrentMonthAvailableMeteringResponse,
-    zTokenerCurrentMonthUnavailableMeteringResponse,
-  ]),
-  entitlement_error_code: z
-    .string()
-    .regex(/^[a-z0-9_]{1,100}$/)
-    .nullish(),
-  entitlement_status: z.enum(['active', 'failed', 'processing', 'retrying']).nullish(),
-  tenant_id: z.string(),
-  usage_generated_at: z.string().nullish(),
-})
-
-/**
- * ModelProviderCreditsResponse
- */
-export const zModelProviderCreditsResponse = z.object({
-  exhausted_at: z.int().nullable(),
-  is_exhausted: z.boolean(),
-  is_unlimited: z.boolean(),
-  model_billing_migration_status: z
-    .enum(['active', 'none', 'preparing', 'processing'])
-    .optional()
-    .default('none'),
-  model_billing_source: z
-    .enum(['legacy_message_credits', 'tokener'])
-    .optional()
-    .default('legacy_message_credits'),
-  next_credit_reset_date: z.int().nullable(),
-  pool_type: z.enum(['paid', 'trial']).nullable(),
-  quota_limit: z.int().nullable(),
-  quota_used: z.int().nullable(),
-  remaining_credits: z.int().nullable(),
-  tokener_bootstrap_status: z
-    .enum([
-      'configuring_provider',
-      'failed',
-      'installing_plugin',
-      'pending',
-      'provisioning',
-      'ready',
-    ])
-    .nullish(),
-  tokener_metering: zTokenerMeteringResponse.nullish(),
-})
-
-/**
  * ModelProviderSystemConfigurationSummaryResponse
  */
 export const zModelProviderSystemConfigurationSummaryResponse = z.object({
@@ -4892,6 +4838,83 @@ export const zFieldModelSchema = z.object({
  * ProviderQuotaType
  */
 export const zProviderQuotaType = z.enum(['free', 'paid', 'trial'])
+
+/**
+ * TokenerPlanKind
+ *
+ * Tokener's allowance class, independent of the Dify tier.
+ */
+export const zTokenerPlanKind = z.enum(['paid', 'sandbox'])
+
+/**
+ * TokenerPlanAllowanceMeteringResponse
+ */
+export const zTokenerPlanAllowanceMeteringResponse = z.object({
+  amount_usd_micro: z.string().regex(/^(0|[1-9][0-9]*)$/),
+  available_usd_micro: z.string().regex(/^(0|[1-9][0-9]*)$/),
+  ends_at: z.string().nullish(),
+  plan: zTokenerPlanKind,
+  starts_at: z.string(),
+})
+
+/**
+ * TokenerMeteringResponse
+ */
+export const zTokenerMeteringResponse = z.object({
+  allowance: zTokenerAllowanceMeteringResponse.nullish(),
+  available_usd_micro: z.string().regex(/^-?\d+$/),
+  balance_generated_at: z.string(),
+  currency: z.literal('USD'),
+  current_month: z.discriminatedUnion('status', [
+    zTokenerCurrentMonthAvailableMeteringResponse,
+    zTokenerCurrentMonthUnavailableMeteringResponse,
+  ]),
+  entitlement_error_code: z
+    .string()
+    .regex(/^[a-z0-9_]{1,100}$/)
+    .nullish(),
+  entitlement_status: z.enum(['active', 'failed', 'processing', 'retrying']).nullish(),
+  plan_allowance: zTokenerPlanAllowanceMeteringResponse.nullish(),
+  purchased_available_usd_micro: z
+    .string()
+    .regex(/^(0|-?[1-9][0-9]*)$/)
+    .nullish(),
+  tenant_id: z.string(),
+  usage_generated_at: z.string().nullish(),
+})
+
+/**
+ * ModelProviderCreditsResponse
+ */
+export const zModelProviderCreditsResponse = z.object({
+  exhausted_at: z.int().nullable(),
+  is_exhausted: z.boolean(),
+  is_unlimited: z.boolean(),
+  model_billing_migration_status: z
+    .enum(['active', 'none', 'preparing', 'processing'])
+    .optional()
+    .default('none'),
+  model_billing_source: z
+    .enum(['legacy_message_credits', 'tokener'])
+    .optional()
+    .default('legacy_message_credits'),
+  next_credit_reset_date: z.int().nullable(),
+  pool_type: z.enum(['paid', 'trial']).nullable(),
+  quota_limit: z.int().nullable(),
+  quota_used: z.int().nullable(),
+  remaining_credits: z.int().nullable(),
+  tokener_bootstrap_status: z
+    .enum([
+      'configuring_provider',
+      'failed',
+      'installing_plugin',
+      'pending',
+      'provisioning',
+      'ready',
+    ])
+    .nullish(),
+  tokener_metering: zTokenerMeteringResponse.nullish(),
+})
 
 /**
  * DatasourceProviderIdentity

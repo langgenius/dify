@@ -467,6 +467,8 @@ class TestBillingServiceSendRequest:
 
         assert result["available_usd_micro"] == "-12"
         assert "partner_token" not in result
+        assert "plan_allowance" not in result
+        assert "purchased_available_usd_micro" not in result
         current_month = result["current_month"]
         assert current_month["status"] == "available"
         assert current_month["request_count"] == "42"
@@ -525,6 +527,73 @@ class TestBillingServiceSendRequest:
             "starts_at": "2026-09-01T00:00:00Z",
             "ends_at": "2026-10-01T00:00:00Z",
         }
+
+    @pytest.mark.parametrize(
+        ("plan", "ends_at", "purchased_balance"),
+        [("sandbox", None, "0"), ("paid", "2026-10-01T00:00:00Z", "-5")],
+    )
+    def test_tokener_metering_preserves_plan_and_purchased_balance_without_recalculating_total(
+        self, plan: str, ends_at: str | None, purchased_balance: str
+    ) -> None:
+        payload = _tokener_metering_payload()
+        plan_allowance = {
+            "plan": plan,
+            "amount_usd_micro": "200000000",
+            "available_usd_micro": "190000000",
+            "starts_at": "2026-09-01T00:00:00Z",
+            "ends_at": ends_at,
+        }
+        payload.update(
+            plan_allowance={**plan_allowance, "operation_id": "internal-only"},
+            purchased_available_usd_micro=purchased_balance,
+        )
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+        ):
+            result = BillingService.get_tokener_metering(TENANT_ID)
+
+        assert result["available_usd_micro"] == "12500000"
+        assert result["plan_allowance"] == plan_allowance
+        assert result["purchased_available_usd_micro"] == purchased_balance
+        assert "allowance" not in result
+
+    @pytest.mark.parametrize(
+        ("plan_override", "purchased_balance"),
+        [
+            ({"plan": "team"}, "0"),
+            ({"amount_usd_micro": "0200"}, "0"),
+            ({"available_usd_micro": "201"}, "0"),
+            ({"available_usd_micro": "1٢"}, "0"),
+            ({"starts_at": "2026-09-01T00:00:00"}, "0"),
+            ({"ends_at": "2026-08-01T00:00:00Z"}, "0"),
+            ({"ends_at": None}, "0"),
+            ({"plan": "sandbox"}, "0"),
+            ({}, "-0"),
+            ({}, 0),
+        ],
+    )
+    def test_tokener_metering_rejects_malformed_plan_and_purchased_balance(
+        self, plan_override: dict[str, object], purchased_balance: str | int
+    ) -> None:
+        payload = _tokener_metering_payload()
+        payload.update(
+            plan_allowance={
+                "plan": "paid",
+                "amount_usd_micro": "200",
+                "available_usd_micro": "125",
+                "starts_at": "2026-09-01T00:00:00Z",
+                "ends_at": "2026-10-01T00:00:00Z",
+                **plan_override,
+            },
+            purchased_available_usd_micro=purchased_balance,
+        )
+        with (
+            config_overrides_context(TOKENER_BILLING_API_URL="http://dify-saas-billing:8081"),
+            patch.object(BillingService, "_send_request", return_value=payload),
+            pytest.raises(BillingUpstreamInvalidResponseError),
+        ):
+            BillingService.get_tokener_metering(TENANT_ID)
 
     @pytest.mark.parametrize(
         ("allowance_override", "entitlement_override"),

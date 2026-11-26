@@ -41,6 +41,7 @@ from controllers.console.workspace.tool_providers import (
 from core.entities.provider_entities import CredentialConfiguration
 from core.model_billing_profile import ModelBillingSource
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import TokenerPlanKind
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -477,9 +478,54 @@ class TestModelProviderCreditsApi:
                 "starts_at": "2026-09-01T00:00:00Z",
                 "ends_at": "2026-10-01T00:00:00Z",
             },
+            "plan_allowance": None,
+            "purchased_available_usd_micro": None,
             "entitlement_status": "active",
             "entitlement_error_code": None,
         }
+
+    def test_get_tokener_metering_preserves_reported_plan_and_signed_purchases(self) -> None:
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        usage: TokenerTenantMeteringResponse = {
+            "tenant_id": VALID_UUID,
+            "currency": "USD",
+            "available_usd_micro": "12500000",
+            "current_month": {
+                "status": "unavailable",
+                "start_date": "2026-09-01",
+                "end_date": "2026-09-03",
+                "error_code": "metering_unavailable",
+            },
+            "balance_generated_at": "2026-09-03T06:00:00Z",
+            "plan_allowance": {
+                "plan": TokenerPlanKind.SANDBOX,
+                "amount_usd_micro": "200000000",
+                "available_usd_micro": "190000000",
+                "starts_at": "2026-09-01T00:00:00Z",
+            },
+            "purchased_available_usd_micro": "-5",
+        }
+        credit_pool = EffectiveCreditPool(
+            model_billing_source=ModelBillingSource.TOKENER,
+            tokener_bootstrap_status="ready",
+            tokener_metering=usage,
+        )
+        with patch("controllers.console.workspace.model_providers.application_services") as services:
+            services.return_value.workspaces.management.get_model_provider_credits.return_value = credit_pool
+            result = method(api, VALID_UUID)
+
+        metering = result["tokener_metering"]
+        assert metering["available_usd_micro"] == "12500000"
+        assert metering["allowance"] is None
+        assert metering["plan_allowance"] == {
+            "plan": "sandbox",
+            "amount_usd_micro": "200000000",
+            "available_usd_micro": "190000000",
+            "starts_at": "2026-09-01T00:00:00Z",
+            "ends_at": None,
+        }
+        assert metering["purchased_available_usd_micro"] == "-5"
 
 
 class TestModelProviderCredentialApi:

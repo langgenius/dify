@@ -2264,6 +2264,8 @@ export type TokenerMeteringResponse = {
       } & TokenerCurrentMonthUnavailableMeteringResponse)
   entitlement_error_code?: string | null
   entitlement_status?: 'active' | 'failed' | 'processing' | 'retrying' | null
+  plan_allowance?: TokenerPlanAllowanceMeteringResponse | null
+  purchased_available_usd_micro?: string | null
   tenant_id: string
   usage_generated_at?: string | null
 }
@@ -3263,6 +3265,14 @@ export type TokenerCurrentMonthUnavailableMeteringResponse = {
   status: 'unavailable'
 }
 
+export type TokenerPlanAllowanceMeteringResponse = {
+  amount_usd_micro: string
+  available_usd_micro: string
+  ends_at?: string | null
+  plan: TokenerPlanKind
+  starts_at: string
+}
+
 export type ModelProviderCustomConfigurationSummaryResponse = {
   available_credentials: Array<CredentialConfiguration>
   current_credential_id?: string | null
@@ -3888,6 +3898,8 @@ export type QuotaConfiguration = {
   quota_used: number
   restrict_models?: Array<RestrictModel>
 }
+
+export type TokenerPlanKind = 'paid' | 'sandbox'
 
 export type DatasourceProviderIdentity = {
   author: string

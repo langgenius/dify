@@ -16,6 +16,7 @@ from configs import dify_config
 from configs.feature import TokenerSignupBillingCandidate
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import TokenerPlanKind
 from extensions.ext_redis import redis_client
 from services.billing_client import billing
 from services.billing_portal_service import BillingPortalLink
@@ -420,7 +421,11 @@ class BillingService:
 
     @classmethod
     def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
-        """Read secret-free Tokener balance and current-month usage from the internal billing API."""
+        """Read metering for the given tenant without mutating Billing.
+
+        For a valid response, preserve optional balances independently of the
+        authoritative total; absence is not the same as a reported zero.
+        """
         base_url, candidate = cls._tokener_signup_validation_base(tenant_id)
         if not base_url:
             raise BillingUpstreamUnavailableError
@@ -488,6 +493,20 @@ class BillingService:
                     raise ValueError("invalid allowance period")
                 if int(allowance["available_usd_micro"]) > int(allowance["amount_usd_micro"]):
                     raise ValueError("allowance available amount exceeds total")
+
+            plan_allowance = metering.get("plan_allowance")
+            if plan_allowance is not None:
+                plan_start = datetime.fromisoformat(plan_allowance["starts_at"])
+                plan_end_value = plan_allowance.get("ends_at")
+                plan_end = datetime.fromisoformat(plan_end_value) if plan_end_value is not None else None
+                if plan_start.utcoffset() is None or (plan_end is not None and plan_end.utcoffset() is None):
+                    raise ValueError("plan allowance timestamps must include a timezone")
+                if (plan_allowance["plan"] == TokenerPlanKind.PAID) != (plan_end is not None):
+                    raise ValueError("invalid plan allowance end time for plan")
+                if plan_end is not None and plan_start >= plan_end:
+                    raise ValueError("invalid plan allowance period")
+                if int(plan_allowance["available_usd_micro"]) > int(plan_allowance["amount_usd_micro"]):
+                    raise ValueError("plan allowance available amount exceeds total")
         except (TypeError, ValueError, ValidationError):
             raise BillingUpstreamInvalidResponseError from None
 

@@ -38699,8 +38699,28 @@ Education subscriptions are not supported with Tokener billing.
 | current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
 | entitlement_error_code | string |  | No |
 | entitlement_status | string, <br>**Available values:** "active", "failed", "processing", "retrying" |  | No |
+| plan_allowance | [TokenerPlanAllowanceMeteringResponse](#tokenerplanallowancemeteringresponse) |  | No |
+| purchased_available_usd_micro | string |  | No |
 | tenant_id | string |  | Yes |
 | usage_generated_at | string |  | No |
+
+#### TokenerPlanAllowanceMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| amount_usd_micro | string |  | Yes |
+| available_usd_micro | string |  | Yes |
+| ends_at | string |  | No |
+| plan | [TokenerPlanKind](#tokenerplankind) |  | Yes |
+| starts_at | string |  | Yes |
+
+#### TokenerPlanKind
+
+Tokener's allowance class, independent of the Dify tier.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TokenerPlanKind | string | Tokener's allowance class, independent of the Dify tier. |  |
 
 #### TokensPerSecondStatisticItem
 
