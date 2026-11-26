@@ -55,6 +55,7 @@ from services.external_agents.protocol import (
     GatewayPort,
     GatewayReceipt,
     GatewayReceiptKind,
+    ResponseIssue,
     SendRequest,
     VerificationAuthCheck,
     VerificationResult,
@@ -322,6 +323,125 @@ def test_save_cas_rejects_stale_updates_and_output_resurrection(domain: Domain) 
                 outputs={"text": "late"},
             ),
         )
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(
+    ("omit", "changes", "issue", "expected_code"),
+    [
+        (("contextId",), {}, ResponseIssue.MESSAGE_CONTEXT_ID_MISSING, "invalid_message"),
+        ((), {"contextId": 42}, ResponseIssue.MESSAGE_CONTEXT_ID_INVALID, "invalid_response"),
+        (("role",), {}, ResponseIssue.MESSAGE_ROLE_MISSING, "invalid_response"),
+        ((), {"role": "ROLE_USER"}, ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_message"),
+        (("contextId", "role"), {}, ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID, "invalid_response"),
+    ],
+)
+def test_received_reply_diagnostic_survives_sql_result_reads_and_unknown_cancel_without_resend(
+    domain: Domain,
+    omit: tuple[str, ...],
+    changes: JsonObject,
+    issue: ResponseIssue,
+    expected_code: str,
+    streaming: bool,
+) -> None:
+    """Real gateway, HTTP and SQL preserve one unknown submission and fixed facts."""
+    from tests.unit_tests.providers.a2a.test_gateway import diagnostic_message, response
+    from tests.unit_tests.providers.a2a.test_gateway_branches import stream, wire
+
+    repo, sessions, scope, agent, revision = domain
+    payload = diagnostic_message(omit=omit, **changes)
+    with wire([stream(payload) if streaming else response(payload)]) as (gateway, spec, peer):
+        with sessions.begin() as session:
+            connection = stored(session, ExternalAgentConnectionRevision, revision)
+            connection.endpoint, connection.interface_url = spec.endpoint, spec.interface_url
+            connection.agent_card = {"defaultInputModes": ["text/plain"], "capabilities": {"streaming": streaming}}
+        runtime, clock, *_ = service(domain, gateway)
+        value = runtime.start(
+            scope,
+            draft(agent, policy=WaitPolicy(wait_seconds=60, on_timeout=TimeoutPolicy.CANCEL_AND_RETRY)),
+        )
+        identifier = command(domain, runtime, clock, "dispatch")
+        result = runtime.result(scope, value.id)
+        assert result.state is LocalState.FAILED
+        assert result.outputs is None
+        assert result.error_code == (
+            "invalid_stream_event" if streaming and expected_code == "invalid_response" else expected_code
+        )
+        assert result.metadata["submission_state"] == SubmissionState.UNKNOWN
+        assert result.metadata["response_issue"] == {"source": "external_agent_reply", "code": issue.value}
+        assert repo.get(scope, value.id).response_issue is issue
+        with sessions() as session:
+            row = stored(session, ExternalAgentInvocation, value.id)
+            assert row.runtime_snapshot["response_issue"] == issue.value
+            assert row.response_payload is None
+        # Reads, command redelivery, Cancel and timeout processing cannot create
+        # another Send after a reply failed to establish an accepted receipt.
+        assert runtime.result(scope, value.id) == result
+        assert runtime.logical_result(scope, value.id).metadata["response_issue"] == result.metadata["response_issue"]
+        runtime.run_command(scope, identifier)
+        assert runtime.cancel(scope, value.id).submission_state is SubmissionState.UNKNOWN
+        clock.value += timedelta(seconds=61)
+        command(domain, runtime, clock, "deadline")
+        assert runtime.result(scope, value.id) == result
+        assert [request[0] for request in peer.requests] == ["POST"]
+        with sessions() as session:
+            assert not session.scalars(
+                select(ExternalAgentCommand.id).where(
+                    ExternalAgentCommand.invocation_id == value.id,
+                    ExternalAgentCommand.kind.in_((CommandKind.RETRY, CommandKind.POLL, CommandKind.CANCEL)),
+                )
+            ).all()
+
+
+@pytest.mark.parametrize("raw_issue", [None, "future-unsupported-diagnostic", 42, {"source": "peer", "code": "secret"}])
+@pytest.mark.parametrize("omit", [False, True])
+def test_optional_reply_diagnostic_is_whitelisted_when_reading_old_or_future_snapshots(
+    domain: Domain, raw_issue: object, omit: bool
+) -> None:
+    repo, sessions, scope, agent, _ = domain
+    value = repo.create(scope, draft(agent), now=NOW)
+    with sessions.begin() as session:
+        row = stored(session, ExternalAgentInvocation, value.id)
+        snapshot = dict(row.runtime_snapshot)
+        snapshot.pop("response_issue", None)
+        if not omit:
+            snapshot["response_issue"] = raw_issue
+        row.runtime_snapshot = snapshot
+    loaded = repo.get(scope, value.id)
+    assert loaded.response_issue is None
+    with sessions() as session:
+        usage_value = ExternalObservabilityRepository._execution_usage_invocation(
+            stored(session, ExternalAgentInvocation, value.id)
+        )
+        assert present(usage_value).response_issue is None
+    runtime, *_ = service(domain, RemoteAgent())
+    assert "response_issue" not in runtime.result(scope, value.id).metadata
+    assert repo.save(scope, loaded, replace(loaded, version=loaded.version + 1))
+    with sessions() as session:
+        assert stored(session, ExternalAgentInvocation, value.id).runtime_snapshot["response_issue"] is None
+
+
+def test_valid_gateway_reply_has_no_failure_diagnostic_in_sql_or_result(domain: Domain) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway import diagnostic_message, response
+    from tests.unit_tests.providers.a2a.test_gateway_branches import wire
+
+    repo, sessions, scope, agent, revision = domain
+    peer_metadata = {"response_issue": {"source": "external_agent_reply", "code": "message_context_id_missing"}}
+    with wire([response(diagnostic_message(metadata=peer_metadata))]) as (gateway, spec, peer):
+        with sessions.begin() as session:
+            connection = stored(session, ExternalAgentConnectionRevision, revision)
+            connection.endpoint, connection.interface_url = spec.endpoint, spec.interface_url
+        runtime, clock, *_ = service(domain, gateway)
+        value = runtime.start(
+            scope, draft(agent, declared_outputs=(OutputField(name="text", kind=OutputFieldKind.STRING),))
+        )
+        command(domain, runtime, clock, "dispatch")
+        result = runtime.result(scope, value.id)
+        assert result.state is LocalState.SUCCEEDED
+        assert result.outputs == {"text": "result"}
+        assert "response_issue" not in result.metadata
+        assert repo.get(scope, value.id).response_issue is None
+        assert [request[0] for request in peer.requests] == ["POST"]
 
 
 def test_full_context_slot_is_busy_until_authoritative_terminal_and_keeps_context(domain: Domain) -> None:

@@ -11,7 +11,7 @@ import pytest
 
 from providers.a2a.gateway import DEFAULT_GATEWAY_LIMITS, A2AGateway, GatewayLimits, checked_url
 from providers.a2a.transport import BoundedTransport
-from services.external_agents.io_contracts import JsonObject
+from services.external_agents.io_contracts import JsonObject, JsonValue
 from services.external_agents.protocol import (
     TRACEABILITY_URI,
     Authentication,
@@ -20,6 +20,7 @@ from services.external_agents.protocol import (
     CredentialDecoderPort,
     GatewayError,
     NoAuth,
+    ResponseIssue,
     SealedBearerAuth,
     SendRequest,
 )
@@ -453,3 +454,189 @@ def test_incomplete_final_utf8_event_does_not_erase_known_task() -> None:
     body = f"data: {json.dumps({'task': task()})}\n\n".encode() + b'data: {"partial":"\xe4'
     adapter, _ = gateway([httpx.Response(200, content=body, headers={"content-type": "text/event-stream"})])
     assert adapter.send(connection(), send_request(), streaming=True).task_id == "task-1"
+
+
+def diagnostic_message(*, omit: tuple[str, ...] = (), **changes: JsonValue) -> JsonObject:
+    """Build an ordinary direct reply, with controlled missing/invalid fields."""
+    message: JsonObject = {
+        "messageId": "reply",
+        "role": "ROLE_AGENT",
+        "contextId": "context",
+        "parts": [{"text": "result"}],
+        **changes,
+    }
+    return {"message": {key: value for key, value in message.items() if key not in omit}}
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize(
+    ("payload", "issue", "code"),
+    [
+        (diagnostic_message(omit=("contextId",)), ResponseIssue.MESSAGE_CONTEXT_ID_MISSING, "invalid_message"),
+        (diagnostic_message(contextId=None), ResponseIssue.MESSAGE_CONTEXT_ID_MISSING, "invalid_message"),
+        (diagnostic_message(contextId=""), ResponseIssue.MESSAGE_CONTEXT_ID_INVALID, "invalid_response"),
+        (diagnostic_message(contextId=42), ResponseIssue.MESSAGE_CONTEXT_ID_INVALID, "invalid_response"),
+        (diagnostic_message(contextId=[]), ResponseIssue.MESSAGE_CONTEXT_ID_INVALID, "invalid_response"),
+        (diagnostic_message(contextId={}), ResponseIssue.MESSAGE_CONTEXT_ID_INVALID, "invalid_response"),
+        (diagnostic_message(omit=("role",)), ResponseIssue.MESSAGE_ROLE_MISSING, "invalid_response"),
+        (diagnostic_message(role=None), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role="agent"), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role="ROLE_UNKNOWN"), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role=42), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role=[]), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role={}), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_response"),
+        (diagnostic_message(role="ROLE_USER"), ResponseIssue.MESSAGE_ROLE_INVALID, "invalid_message"),
+        (
+            diagnostic_message(omit=("contextId", "role")),
+            ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID,
+            "invalid_response",
+        ),
+        (
+            diagnostic_message(omit=("contextId",), role="ROLE_USER"),
+            ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID,
+            "invalid_message",
+        ),
+        (
+            diagnostic_message(contextId=42, role=None),
+            ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID,
+            "invalid_response",
+        ),
+    ],
+)
+def test_received_initial_message_diagnoses_fields_without_resending(
+    payload: JsonObject, issue: ResponseIssue, code: str, streaming: bool
+) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import stream, wire
+
+    reply = stream(payload) if streaming else response(payload)
+    with wire([reply]) as (adapter, spec, peer):
+        with pytest.raises(GatewayError) as failure:
+            adapter.send(spec, send_request(), streaming=streaming)
+        error = failure.value
+        assert error.code == ("invalid_stream_event" if streaming and code == "invalid_response" else code)
+        assert error.response_issue is issue
+        assert error.submission_unknown
+        assert not error.retryable
+        assert error.known_receipt is None
+        assert "external agent reply" in str(error)
+        assert "external agent maintainer" in str(error)
+        if "context_id" in issue.value:
+            assert "message.contextId" in str(error)
+        if "role" in issue.value:
+            assert "message.role" in str(error)
+            assert "ROLE_AGENT" in str(error)
+        assert [request[0] for request in peer.requests] == ["POST"]
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("context", ["context", " "])
+def test_valid_direct_message_keeps_the_existing_context_contract(context: str, streaming: bool) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import stream, wire
+
+    payload = diagnostic_message(contextId=context)
+    with wire([stream(payload) if streaming else response(payload)]) as (adapter, spec, peer):
+        receipt = adapter.send(spec, send_request(), streaming=streaming)
+        assert receipt.kind == "message"
+        assert receipt.context_id == context
+        assert [request[0] for request in peer.requests] == ["POST"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        42,
+        [],
+        {"message": "not-a-message"},
+        {"task": {"role": "ROLE_USER"}},
+        {**diagnostic_message(omit=("contextId",)), "task": task()},
+        {**diagnostic_message(omit=("contextId",)), "unexpected-peer-key": "untrusted"},
+        diagnostic_message(parts=[]),
+        {"statusUpdate": {"taskId": "task", "contextId": "ctx", "status": {"state": "TASK_STATE_WORKING"}}},
+    ],
+)
+def test_other_invalid_response_shapes_do_not_claim_message_field_diagnostics(payload: object) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import wire
+
+    with wire([response(payload)]) as (adapter, spec, peer):
+        with pytest.raises(GatewayError) as failure:
+            adapter.send(spec, send_request(), streaming=False)
+        assert failure.value.code == "invalid_response"
+        assert failure.value.response_issue is None
+        assert failure.value.submission_unknown
+        assert [request[0] for request in peer.requests] == ["POST"]
+
+
+@pytest.mark.parametrize(
+    ("reply", "code", "unknown"),
+    [
+        (
+            httpx.Response(200, content=b'{"message":', headers={"content-type": "application/json"}),
+            "invalid_response",
+            True,
+        ),
+        (
+            httpx.Response(200, content=b'{"message":{},"message":{}}', headers={"content-type": "application/json"}),
+            "invalid_response",
+            True,
+        ),
+        (response(diagnostic_message(omit=("contextId",)), content_type="text/html"), "invalid_content_type", True),
+        (response(diagnostic_message(omit=("contextId",)), status=401), "authentication_failed", False),
+        (response(diagnostic_message(omit=("contextId",)), status=403), "permission_denied", False),
+        (response(diagnostic_message(omit=("contextId",)), status=429), "rate_limited", False),
+        (response(diagnostic_message(omit=("contextId",)), status=500), "remote_request_failed", True),
+        (
+            httpx.Response(
+                200, content=b'{"message":', headers={"content-type": "application/json", "content-length": "500"}
+            ),
+            "network_failure",
+            True,
+        ),
+    ],
+)
+def test_non_message_failures_keep_their_codes_without_field_diagnostics(
+    reply: httpx.Response, code: str, unknown: bool
+) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import wire
+
+    with wire([reply]) as (adapter, spec, peer):
+        with pytest.raises(GatewayError) as failure:
+            adapter.send(spec, send_request(), streaming=False)
+        assert failure.value.code == code
+        assert failure.value.response_issue is None
+        assert failure.value.submission_unknown is unknown
+        assert not failure.value.retryable
+        assert failure.value.known_receipt is None
+        assert [request[0] for request in peer.requests] == ["POST"]
+
+
+@pytest.mark.parametrize("streaming", [False, True])
+def test_diagnostics_never_echo_rejected_values_or_credentials(streaming: bool) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import stream, wire
+
+    token = "private-bearer-diagnostic-sentinel"
+    payload = diagnostic_message(role={token: token}, contextId=[token], metadata={token: token})
+    with wire([stream(payload) if streaming else response(payload)], auth=BearerAuth(token)) as (adapter, spec, peer):
+        with pytest.raises(GatewayError) as failure:
+            adapter.send(spec, send_request(), streaming=streaming)
+        error = failure.value
+        assert error.response_issue is ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID
+        assert token not in str(error)
+        assert token not in repr(error)
+        assert error.submission_unknown
+        assert error.known_receipt is None
+        assert [request[0] for request in peer.requests] == ["POST"]
+
+
+@pytest.mark.parametrize("omit", [("role",), ("contextId",)])
+def test_invalid_later_message_preserves_known_task_without_initial_reply_diagnostic(omit: tuple[str, ...]) -> None:
+    from tests.unit_tests.providers.a2a.test_gateway_branches import stream, wire
+
+    with wire([stream({"task": task()}, diagnostic_message(omit=omit))]) as (adapter, spec, peer):
+        with pytest.raises(GatewayError) as failure:
+            adapter.send(spec, send_request(), streaming=True)
+        assert failure.value.response_issue is None
+        assert failure.value.known_receipt is not None
+        assert failure.value.known_receipt.task_id == "task-1"
+        assert not failure.value.submission_unknown
+        assert [request[0] for request in peer.requests] == ["POST"]

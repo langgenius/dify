@@ -31,6 +31,20 @@ class GatewayReceiptKind(StrEnum):
     MESSAGE = "message"
 
 
+class ResponseIssue(StrEnum):
+    """Fixed facts about a received invalid initial direct Message.
+
+    These values contain no peer field names, values or text. Absence of a
+    diagnostic never implies a valid reply or a rejected business submission.
+    """
+
+    MESSAGE_CONTEXT_ID_MISSING = "message_context_id_missing"
+    MESSAGE_CONTEXT_ID_INVALID = "message_context_id_invalid"
+    MESSAGE_ROLE_MISSING = "message_role_missing"
+    MESSAGE_ROLE_INVALID = "message_role_invalid"
+    MESSAGE_CONTEXT_ID_AND_ROLE_INVALID = "message_context_id_and_role_invalid"
+
+
 @dataclass(frozen=True, slots=True)
 class NoAuth:
     kind: Literal["none"] = "none"
@@ -147,10 +161,13 @@ class GatewayError(ValueError):
         retry_after_seconds: float | None = None,
         verification_subreason: VerificationFailureSubreason | None = None,
         card_errors: tuple[AgentCardFieldError, ...] = (),
+        response_issue: ResponseIssue | None = None,
     ) -> None:
         """Retain safe gateway facts without changing runtime dispatch semantics.
 
-        Pre: verification diagnostics contain only validated fixed identifiers.
+        Pre: diagnostics contain only validated fixed identifiers; response_issue
+        describes a received invalid initial direct Message, never a transport
+        failure or an observation after a known receipt.
         Post: omitted diagnostics mean no reliable refinement; runtime codes,
         acceptance uncertainty and retry policy remain independent of them.
         """
@@ -162,6 +179,7 @@ class GatewayError(ValueError):
         self.retry_after_seconds = retry_after_seconds
         self.verification_subreason = verification_subreason
         self.card_errors = card_errors
+        self.response_issue = response_issue
 
 
 class GatewayPort(Protocol):
