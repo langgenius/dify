@@ -10,6 +10,27 @@ from core.plugin.utils.http_parser import (
 
 
 class TestSerializeRequest:
+    @pytest.mark.parametrize("body", [b'{"event":"created"}', b"", b"first\x00second"])
+    def test_serializes_decoded_chunked_body_with_matching_framing(self, body: bytes) -> None:
+        from io import BytesIO
+
+        request = Request.from_values(
+            "/triggers/plugin/subscription-id",
+            method="POST",
+            headers={"Transfer-Encoding": "chunked", "Trailer": "Digest", "Content-Type": "application/json"},
+            environ_overrides={"wsgi.input": BytesIO(body), "wsgi.input_terminated": True},
+        )
+
+        raw_data = serialize_request(request)
+        restored = deserialize_request(raw_data)
+
+        assert restored.get_data() == body
+        assert restored.content_length == len(body)
+        assert "Transfer-Encoding" not in restored.headers
+        assert "Trailer" not in restored.headers
+        assert request.headers["Transfer-Encoding"] == "chunked"
+        assert request.get_data() == body
+
     def test_serialize_simple_get_request(self) -> None:
         # Create a simple GET request
         environ = {

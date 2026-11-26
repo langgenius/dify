@@ -5,16 +5,28 @@ from werkzeug.datastructures import Headers
 
 
 def serialize_request(request: Request) -> bytes:
+    """Serialize a WSGI request whose input stream contains decoded body bytes.
+
+    Return an HTTP message with framing that matches those bytes, including for
+    chunked requests already decoded by the WSGI server. Reading caches the body
+    on the request; the original headers remain unchanged and read errors propagate.
+    """
+    body = request.get_data(as_text=False)
+    headers = Headers(request.headers)
+    if "Transfer-Encoding" in headers:
+        del headers["Transfer-Encoding"]
+        headers.pop("Trailer", None)
+        headers["Content-Length"] = str(len(body))
+
     method = request.method
     path = request.full_path.rstrip("?")
     raw = f"{method} {path} HTTP/1.1\r\n".encode()
 
-    for name, value in request.headers.items():
+    for name, value in headers.items():
         raw += f"{name}: {value}\r\n".encode()
 
     raw += b"\r\n"
 
-    body = request.get_data(as_text=False)
     if body:
         raw += body
 
