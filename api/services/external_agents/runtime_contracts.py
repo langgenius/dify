@@ -8,14 +8,17 @@ secrets or sessions cross these ports. All application timestamps are UTC.
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
-from typing import Protocol
+from typing import Annotated, Protocol
+
+from pydantic import BeforeValidator
 
 from .contracts import ExternalOrigin
 from .io_contracts import ExternalActorRole, JsonObject, OutputField
-from .protocol import ConnectionSpec, GatewayReceipt, SendRequest
+from .protocol import ConnectionSpec, GatewayReceipt, ResponseIssue, SendRequest
 
 
 class RuntimeError(ValueError):
@@ -185,6 +188,19 @@ class InvocationDraft:
     retry_of: str | None = None
 
 
+def _optional_response_issue(value: object) -> ResponseIssue | None:
+    """Read only known optional diagnostics at every typed snapshot boundary.
+
+    Pre: value may come from an older or newer persisted snapshot. Post: return
+    a local enum or None; unsupported values cannot fail otherwise valid reads
+    or become result metadata. No other Invocation field is reinterpreted.
+    """
+    if isinstance(value, str):
+        with suppress(ValueError):
+            return ResponseIssue(value)
+    return None
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Invocation:
     """Durable execution snapshot. None IDs mean unavailable, never fabricated.
@@ -224,6 +240,8 @@ class Invocation:
     terminal_receipt: GatewayReceipt | None = None
     error_code: str | None = None
     error_message: str | None = None
+    # None means no reliable field diagnostic, including older stored snapshots.
+    response_issue: Annotated[ResponseIssue | None, BeforeValidator(_optional_response_issue)] = None
     sequence: int = 0
     retry_of: str | None = None
     background_queries: int = 0

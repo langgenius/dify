@@ -13,7 +13,7 @@ from hashlib import sha256
 from services.external_agents.runtime_contracts import CancelTrigger
 
 from .invocation_agg import ExternalInvocationAgg, InvocationTransition, remote_state
-from .io_contracts import ExternalIOError
+from .io_contracts import ExternalIOError, JsonObject
 from .protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, GatewayPort, GatewayReceipt
 from .runtime_contracts import (
     CancelState,
@@ -80,7 +80,12 @@ class ExternalInvocationService:
         return self._store.create(scope, draft, now=self._clock.now())
 
     def result(self, scope: RuntimeScope, invocation_id: str) -> RuntimeResult:
-        """Read fixed state without consuming it; graph checkpoint owns progress confirmation."""
+        """Read fixed state without consuming it; graph checkpoint owns confirmation.
+
+        Pre: the store admits the complete owner scope. Post: any response_issue
+        contains only the persisted enum and a locally generated source marker;
+        absent diagnostics are omitted. No business I/O or state change occurs.
+        """
         value = self._store.get(scope, invocation_id)
         if scope.origin == "overview_test" and (
             value.deleted
@@ -90,24 +95,27 @@ class ExternalInvocationService:
             )
         ):
             raise RuntimeError("test_expired", "The temporary test result has expired.")
+        metadata: JsonObject = {
+            "invocation_id": value.id,
+            "agent_id": value.agent_id,
+            "test_generation": value.test_generation,
+            "external_task_id": value.remote_task_id,
+            "external_task_status": value.remote_state,
+            "submission_state": value.submission_state.value,
+            "cancellation_state": value.cancel_state.value,
+            "connection_revision_id": value.connection_revision_id,
+            "sequence": value.sequence,
+            "asset_snapshot": value.asset_snapshot,
+        }
+        if value.response_issue is not None:
+            metadata["response_issue"] = {"source": "external_agent_reply", "code": value.response_issue.value}
         return RuntimeResult(
             invocation_id=value.id,
             state=value.local_state,
             outputs=value.outputs,
             error_code=value.error_code,
             error_message=value.error_message,
-            metadata={
-                "invocation_id": value.id,
-                "agent_id": value.agent_id,
-                "test_generation": value.test_generation,
-                "external_task_id": value.remote_task_id,
-                "external_task_status": value.remote_state,
-                "submission_state": value.submission_state.value,
-                "cancellation_state": value.cancel_state.value,
-                "connection_revision_id": value.connection_revision_id,
-                "sequence": value.sequence,
-                "asset_snapshot": value.asset_snapshot,
-            },
+            metadata=metadata,
         )
 
     def logical_result(self, scope: RuntimeScope, anchor_invocation_id: str) -> RuntimeResult:
@@ -243,7 +251,8 @@ class ExternalInvocationService:
 
         Raw input construction precedes the durable send marker. Once marked,
         a missing receipt stays unknown; streaming failure never falls back to
-        another business submission.
+        another business submission. Only gateway-confirmed initial reply facts
+        accompany a failed Send; known-receipt recovery does not retain them.
         """
         if not self._settings.admission_enabled:
             if queued.submission_state == SubmissionState.PREPARED:
@@ -310,7 +319,11 @@ class ExternalInvocationService:
                 self._commit(
                     value,
                     agg.submission_failed(
-                        self._clock.now(), code=error.code, message=str(error), unknown=error.submission_unknown
+                        self._clock.now(),
+                        code=error.code,
+                        message=str(error),
+                        unknown=error.submission_unknown,
+                        response_issue=error.response_issue,
                     ),
                 )
             return

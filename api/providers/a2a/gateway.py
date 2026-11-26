@@ -29,6 +29,7 @@ from services.external_agents.protocol import (
     GatewayUsageCarrier,
     GatewayUsageSource,
     NoAuth,
+    ResponseIssue,
     SealedBearerAuth,
     SendRequest,
     VerificationAuthCheck,
@@ -40,6 +41,65 @@ from .types import AgentCardV1, MessageRoleV1, MessageV1, ResponseV1, SecurityRe
 from .verification import card_field_errors, invalid_bearer_challenge
 
 _TERMINAL = frozenset({"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED", "TASK_STATE_REJECTED"})
+
+
+def _response_issue(value: object) -> ResponseIssue | None:
+    """Inspect fixed fields of a decoded, unambiguous initial direct Message.
+
+    Pre: strict JSON decoding succeeded, and the initial response failed wire
+    or server-Message validation. Post: return only a whitelisted field fact;
+    scalar/ambiguous envelopes yield no diagnosis. No peer value is retained.
+    """
+    if not isinstance(value, dict) or set(value) - {"message", "task", "statusUpdate", "artifactUpdate"}:
+        return None
+    message = value.get("message")
+    if not isinstance(message, dict) or any(
+        value.get(key) is not None for key in ("task", "statusUpdate", "artifactUpdate")
+    ):
+        return None
+    context = message.get("contextId")
+    context_missing = context is None
+    context_invalid = context_missing or not isinstance(context, str) or not context
+    role_missing = "role" not in message
+    role_invalid = message.get("role") != MessageRoleV1.AGENT
+    if context_invalid and role_invalid:
+        return ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID
+    if context_invalid:
+        return ResponseIssue.MESSAGE_CONTEXT_ID_MISSING if context_missing else ResponseIssue.MESSAGE_CONTEXT_ID_INVALID
+    if role_invalid:
+        return ResponseIssue.MESSAGE_ROLE_MISSING if role_missing else ResponseIssue.MESSAGE_ROLE_INVALID
+    return None
+
+
+def _response_issue_message(issue: ResponseIssue) -> str:
+    """Return static maintainer guidance for a confirmed invalid reply field.
+
+    Pre: issue is a local enum member. Post: no received value, key or exception
+    text enters the message; business acceptance and retry policy are unchanged.
+    """
+    messages = {
+        ResponseIssue.MESSAGE_CONTEXT_ID_MISSING: (
+            "The external agent reply is missing message.contextId. "
+            "Ask the external agent maintainer to return a non-empty message.contextId."
+        ),
+        ResponseIssue.MESSAGE_CONTEXT_ID_INVALID: (
+            "The external agent reply has an invalid message.contextId. "
+            "Ask the external agent maintainer to return message.contextId as a non-empty string."
+        ),
+        ResponseIssue.MESSAGE_ROLE_MISSING: (
+            "The external agent reply is missing message.role. "
+            "Ask the external agent maintainer to return message.role as ROLE_AGENT."
+        ),
+        ResponseIssue.MESSAGE_ROLE_INVALID: (
+            "The external agent reply has an invalid message.role. "
+            "Ask the external agent maintainer to return message.role as ROLE_AGENT."
+        ),
+        ResponseIssue.MESSAGE_CONTEXT_ID_AND_ROLE_INVALID: (
+            "The external agent reply has missing or invalid message.contextId and message.role. "
+            "Ask the external agent maintainer to return a non-empty message.contextId and message.role as ROLE_AGENT."
+        ),
+    }
+    return messages[issue]
 
 
 @dataclass(frozen=True, slots=True)
@@ -444,7 +504,12 @@ class A2AGateway:
     def send(
         self, connection: ConnectionSpec, request: SendRequest, *, streaming: bool, timeout_seconds: float = 30
     ) -> GatewayReceipt:
-        """Dispatch one new message; never retry POST on transport/protocol uncertainty."""
+        """Dispatch one new message; never retry POST on transport/protocol uncertainty.
+
+        Pre: the connection has a frozen admitted interface. Post: only decoded
+        invalid initial direct Messages carry fixed reply diagnostics; receipt,
+        acceptance uncertainty and existing error codes remain independent.
+        """
         message: dict[str, object] = {
             "messageId": request.message_id,
             "role": MessageRoleV1.USER,
@@ -481,20 +546,31 @@ class A2AGateway:
             timeout_seconds=timeout_seconds,
             streaming=streaming,
         )
+        decoded: object = None
         try:
-            receipt = (
-                self._stream_receipt(reply)
-                if streaming
-                else self._receipt(ResponseV1.model_validate(strict_json(reply.body)))
-            )
+            if streaming:
+                receipt = self._stream_receipt(reply)
+            else:
+                decoded = strict_json(reply.body)
+                receipt = self._receipt(ResponseV1.model_validate(decoded))
         except ValueError as error:
             if isinstance(error, GatewayError):
                 safe_known = self._scrub_receipt(error.known_receipt, connection) if error.known_receipt else None
                 raise GatewayError(
-                    error.code, str(error), submission_unknown=error.submission_unknown, known_receipt=safe_known
+                    error.code,
+                    str(error),
+                    submission_unknown=error.submission_unknown,
+                    known_receipt=safe_known,
+                    response_issue=error.response_issue,
                 ) from None
+            issue = _response_issue(decoded)
             raise GatewayError(
-                "invalid_response", "The external response is not a valid A2A 1.0 result.", submission_unknown=True
+                "invalid_response",
+                _response_issue_message(issue)
+                if issue is not None
+                else "The external response is not a valid A2A 1.0 result.",
+                submission_unknown=True,
+                response_issue=issue,
             ) from None
         receipt = self._scrub_receipt(receipt, connection)
         self._correlate(receipt, request.context_id)
@@ -606,6 +682,12 @@ class A2AGateway:
 
     @staticmethod
     def _receipt(response: ResponseV1) -> GatewayReceipt:
+        """Build a receipt from a wire-valid initial response or reject its semantics.
+
+        Pre: wire validation succeeded. Post: a direct server Message requires
+        its own context and ROLE_AGENT; failures keep unknown acceptance and
+        contain only fixed field diagnostics, never the peer's rejected values.
+        """
         if response.task is not None:
             task = response.task
             return GatewayReceipt(
@@ -621,8 +703,14 @@ class A2AGateway:
         if response.message is not None:
             message = response.message
             if message.role != MessageRoleV1.AGENT or not message.contextId:
+                issue = _response_issue({"message": {"role": message.role, "contextId": message.contextId}})
                 raise GatewayError(
-                    "invalid_message", "Server Message context and role are required.", submission_unknown=True
+                    "invalid_message",
+                    _response_issue_message(issue)
+                    if issue is not None
+                    else "The external agent reply Message is invalid.",
+                    submission_unknown=True,
+                    response_issue=issue,
                 )
             return GatewayReceipt(
                 kind=GatewayReceiptKind.MESSAGE,
@@ -642,6 +730,12 @@ class A2AGateway:
             )
 
     def _stream_receipt(self, reply: HTTPReply) -> GatewayReceipt:
+        """Read bounded SSE events, retaining a known receipt before later failures.
+
+        Pre: reply passed transport and MIME admission. Post: field diagnostics
+        describe only decoded initial direct Messages, never later events after
+        a known Task; existing sequence, uncertainty and recovery rules remain.
+        """
         body = reply.body.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
         blocks = body.split(b"\n\n")[:-1]
         if len(blocks) > self._limits.sse_events:
@@ -661,14 +755,18 @@ class A2AGateway:
             if data:
                 if len(data.encode()) > self._limits.sse_event_bytes:
                     raise ValueError("Oversized SSE event")
+                decoded: object = None
                 try:
-                    response = ResponseV1.model_validate(strict_json(data))
+                    decoded = strict_json(data)
+                    response = ResponseV1.model_validate(decoded)
                 except ValueError:
+                    issue = _response_issue(decoded) if current is None else None
                     raise GatewayError(
                         "invalid_stream_event",
-                        "The stream event is invalid.",
+                        _response_issue_message(issue) if issue is not None else "The stream event is invalid.",
                         submission_unknown=current is None,
                         known_receipt=current,
+                        response_issue=issue,
                     ) from None
                 if current is None:
                     current = self._receipt(response)

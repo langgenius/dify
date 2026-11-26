@@ -13,7 +13,7 @@ from typing import Any
 from services.external_agents.runtime_contracts import CancelTrigger
 
 from .io_contracts import JsonObject
-from .protocol import GatewayReceipt
+from .protocol import GatewayReceipt, ResponseIssue
 from .runtime_contracts import (
     CancelState,
     CommandDraft,
@@ -134,13 +134,27 @@ class ExternalInvocationAgg:
             cancellation_deadline=deadline,
         )
 
-    def submission_failed(self, now: datetime, *, code: str, message: str, unknown: bool) -> InvocationTransition:
-        """Settle failed Send once. Unknown acceptance never schedules a second Send."""
+    def submission_failed(
+        self,
+        now: datetime,
+        *,
+        code: str,
+        message: str,
+        unknown: bool,
+        response_issue: ResponseIssue | None = None,
+    ) -> InvocationTransition:
+        """Settle failed Send once, retaining only an optional fixed reply fact.
+
+        Pre: the gateway supplied safe error text and any diagnostic describes
+        a received invalid initial Message. Post: unknown acceptance never
+        schedules a second Send; diagnostic absence preserves older callers.
+        """
         ended = self._end(now, code=code, message=message, state=LocalState.FAILED)
         return InvocationTransition(
             replace(
                 ended.invocation,
                 submission_state=SubmissionState.UNKNOWN if unknown else SubmissionState.REJECTED,
+                response_issue=response_issue,
             ),
             ended.commands,
         )
