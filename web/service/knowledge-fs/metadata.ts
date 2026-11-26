@@ -32,7 +32,6 @@ export function knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId: string) 
         params: { control_space_id: knowledgeSpaceId },
         query: { limit: 100 },
       },
-      meta: { errorToast: false },
       retry: false,
     }),
     queryFn: async () => {

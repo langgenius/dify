@@ -206,6 +206,8 @@ function ConnectedSourceEditDialogContent({
     isFetchNextPageError,
     isFetchingNextPage,
     isPending: connectionsPending,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
@@ -332,12 +334,12 @@ function ConnectedSourceEditDialogContent({
                   t(($) => $.providerLoadFailed))
                 : t(($) => $.providerUnavailable, { ns: 'knowledgeSources' })}
             </p>
-            {isFetchNextPageError && !connection && (
+            {connectionsError && !connection && (
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}
@@ -507,8 +509,11 @@ function WebsiteSourceEditDialogContent({
     error: connectionsError,
     fetchNextPage,
     hasNextPage,
+    isError: connectionsError,
     isFetchingNextPage,
     isFetchNextPageError,
+    isRefetching: connectionsRefetching,
+    refetch: refetchConnections,
   } = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
       // Failures, including a failed next page, are shown inline with a retry.
@@ -798,7 +803,7 @@ function WebsiteSourceEditDialogContent({
           ) : (
             <div>{sourceNameField}</div>
           )}
-          {initialSource.connectionId && !connection && isFetchNextPageError && (
+          {initialSource.connectionId && !connection && connectionsError && (
             <div className="mt-4">
               <p role="alert" className="system-sm-regular text-text-destructive">
                 {getRequestErrorMessage(connectionsError) ?? t(($) => $.providerLoadFailed)}
@@ -806,8 +811,8 @@ function WebsiteSourceEditDialogContent({
               <Button
                 className="mt-3"
                 disabled={pending}
-                loading={isFetchingNextPage}
-                onClick={() => void fetchNextPage()}
+                loading={isFetchingNextPage || connectionsRefetching}
+                onClick={() => void (isFetchNextPageError ? fetchNextPage() : refetchConnections())}
                 type="button"
               >
                 {tCommon(($) => $['operation.retry'])}

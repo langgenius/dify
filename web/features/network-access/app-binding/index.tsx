@@ -133,7 +133,6 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      meta: { errorToast: false },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),

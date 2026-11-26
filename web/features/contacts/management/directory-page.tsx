@@ -282,6 +282,7 @@ export function ContactsDirectoryPage() {
           context.imCentrallyManaged !== undefined &&
           (group !== 'platform' || context.imCentrallyManaged === true),
         select: (page) => page.total,
+        // Filter counts are optional; a failed count shows a dash.
         meta: { errorToast: false },
       }),
     ),

@@ -114,6 +114,7 @@ export function useAgentConfigureSync({
       context: {
         keepalive: true,
       },
+      // Best-effort save while the page closes; nothing is left on screen to report to.
       meta: { errorToast: false },
     }),
   )

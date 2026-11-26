@@ -311,7 +311,12 @@ function AgentWorkingDirectoryContent({
   const hasNoActiveBinding =
     isDefinedError(fileListQuery.error) && fileListQuery.error.code === 'no_active_binding'
   const expandedFolderQueries = useQueries({
-    queries: loadedFolderPaths.map((path) => ({ ...getFileListQueryOptions(path), retry: false })),
+    queries: loadedFolderPaths.map((path) => ({
+      ...getFileListQueryOptions(path),
+      retry: false,
+      // A folder that fails to expand has no error slot in the tree, so the query cache reports it.
+      meta: undefined,
+    })),
   })
   const expandedFolders = expandedFolderQueries.map((query) => {
     const noActiveBinding = isDefinedError(query.error) && query.error.code === 'no_active_binding'

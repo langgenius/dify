@@ -4,6 +4,8 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
 import { AgentWorkingDirectoryPanel } from '../working-directory-panel'
 
 type QueryOptionsInput = {
@@ -34,6 +36,7 @@ const mocks = vi.hoisted(() => ({
   })),
   downloadUrl: vi.fn(),
   toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 const agentSource = {
@@ -209,6 +212,7 @@ vi.mock('@/utils/download', () => ({
 vi.mock('@/app/notifications', () => ({
   toast: {
     success: mocks.toastSuccess,
+    error: mocks.toastError,
   },
 }))
 
@@ -226,13 +230,16 @@ function createDeferred<T>() {
 type RenderWorkingDirectoryPanelOptions = {
   open?: boolean
   source?: AgentWorkingDirectorySource
+  reportErrors?: boolean
 }
 
 function renderWorkingDirectoryPanel({
   open = true,
   source = agentSource,
+  reportErrors = false,
 }: RenderWorkingDirectoryPanelOptions = {}) {
   const queryClient = new QueryClient({
+    ...(reportErrors && createErrorToastCaches()),
     defaultOptions: {
       queries: { retry: false },
     },
@@ -245,7 +252,9 @@ function renderWorkingDirectoryPanel({
   )
   return {
     ...rendered,
-    rerenderPanel: (nextOptions: Required<RenderWorkingDirectoryPanelOptions>) => {
+    rerenderPanel: (
+      nextOptions: Required<Omit<RenderWorkingDirectoryPanelOptions, 'reportErrors'>>,
+    ) => {
       rendered.rerender(
         <QueryClientProvider client={queryClient}>
           <AgentWorkingDirectoryPanel
@@ -391,6 +400,32 @@ describe('AgentWorkingDirectoryPanel', () => {
         name: 'agentV2.agentDetail.configure.workingDirectory.persistentFiles',
       }),
     ).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('reports a folder that fails to expand', async () => {
+    const user = userEvent.setup()
+    mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {
+      const path = input.query?.path ?? '~'
+      return {
+        // Mirrors the real options: the panel renders a failed root listing itself.
+        meta: { errorToast: false },
+        queryFn: async () => {
+          if (path !== '~')
+            throw createHttpError(
+              { status: 500, statusText: '', headers: new Headers() },
+              { message: 'Sandbox unavailable' },
+            )
+          return { path, entries: [{ name: 'reports', type: 'dir' }] }
+        },
+      }
+    })
+    renderWorkingDirectoryPanel({ reportErrors: true })
+
+    await user.click(await screen.findByRole('button', { name: 'reports' }))
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Sandbox unavailable'),
+    )
   })
 
   it('lets keyboard users expand and enter a folder with separate controls', async () => {

@@ -22,6 +22,7 @@ import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { hasPermission } from '@/utils/permission'
 
 export type KnowledgeFsApiAccessStatus = 'active' | 'inactive' | 'loading' | 'unavailable'
@@ -45,7 +46,8 @@ export function KnowledgeFsApiAccessDialog({
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
   const apiKeyMutations = useDatasetApiKeyMutations()
-  const { data: apiBaseInfo } = useQuery(
+  // A failure is shown in the endpoint field.
+  const { data: apiBaseInfo, error: apiBaseInfoError } = useQuery(
     consoleQuery.datasets.apiBaseInfo.get.queryOptions({ meta: { errorToast: false } }),
   )
   // The shared prefix of every KnowledgeFS service API route for this space; the operation
@@ -76,7 +78,11 @@ export function KnowledgeFsApiAccessDialog({
               </p>
               <div className="mt-1 flex min-h-8 items-center gap-1 rounded-lg bg-components-input-bg-normal py-1 ps-3 pe-1">
                 <code className="min-w-0 flex-1 truncate system-xs-medium text-text-secondary">
-                  {endpoint || tAppApi(($) => $.loading)}
+                  {endpoint ||
+                    (apiBaseInfoError
+                      ? (getRequestErrorMessage(apiBaseInfoError) ??
+                        t(($) => $.unavailable, { ns: 'dataset' }))
+                      : tAppApi(($) => $.loading))}
                 </code>
                 {endpoint && <CopyFeedback content={endpoint} />}
               </div>
