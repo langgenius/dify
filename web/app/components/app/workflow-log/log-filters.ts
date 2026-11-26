@@ -53,11 +53,11 @@ export function toWorkflowLogFilters(
     ...(status && status !== 'all' ? { status } : {}),
     ...(keyword ? { keyword } : {}),
     ...(range && {
-      created_at__after: range.start.format('YYYY-MM-DDTHH:mm:ssZ'),
+      created_at__after: range.start.utc().format('YYYY-MM-DDTHH:mm:ss[Z]'),
       // The inclusive custom bound covers the final microsecond of the selected day.
-      created_at__before: range.end.format(
-        period === 'custom' ? 'YYYY-MM-DDTHH:mm:ss.SSS[999]Z' : 'YYYY-MM-DDTHH:mm:ssZ',
-      ),
+      created_at__before: range.end
+        .utc()
+        .format(period === 'custom' ? 'YYYY-MM-DDTHH:mm:ss.SSS[999Z]' : 'YYYY-MM-DDTHH:mm:ss[Z]'),
     }),
     ...logIdentityFilters(identities),
   }

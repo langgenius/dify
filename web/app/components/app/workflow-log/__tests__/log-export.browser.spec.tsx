@@ -1,11 +1,11 @@
 import type {
   WorkflowAppLogPartialResponse,
-  WorkflowLogExportCreatePayload,
   WorkflowLogExportLatestTaskResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { setupFakeApi } from '@/test/fake-api'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Logs from '../index'
@@ -35,6 +35,64 @@ const logs: WorkflowAppLogPartialResponse[] = [
   },
 ]
 
+const fake = setupFakeApi(() => {
+  let task: WorkflowLogExportLatestTaskResponse | null = null
+  return {
+    console: {
+      apps: {
+        byAppId: {
+          workflowAppLogs: {
+            get: () => ({
+              data: logs,
+              total: logs.length,
+              page: 1,
+              limit: 10,
+              has_more: false,
+            }),
+            identityOptions: {
+              get: ({ query }) => ({
+                data:
+                  query.keyword === '042'
+                    ? [{ id: olderEndUserId, label: 'customer-042', source: 'end-user' }]
+                    : [],
+              }),
+            },
+          },
+          workflowLogExports: {
+            preview: { get: ({ query }) => ({ row_count: query?.status === 'failed' ? 0 : 3 }) },
+            post: ({ body: filters }) => {
+              task = {
+                task_id: taskId,
+                status: 'pending',
+                estimated_rows: filters.estimated_rows,
+                identity_labels: filters.identity_labels ?? [],
+                filters: {
+                  created_at__after: filters.created_at__after ?? null,
+                  created_at__before: filters.created_at__before ?? null,
+                  end_user_ids: filters.end_user_ids ?? [],
+                  account_ids: filters.account_ids ?? [],
+                  status: filters.status ?? null,
+                  keyword: null,
+                },
+              }
+              return { task_id: taskId, status: 'pending', estimated_rows: task.estimated_rows }
+            },
+            latest: { get: () => ({ task }) },
+            byTaskId: {
+              get: ({ params }) => {
+                expect(params.task_id).toBe(taskId)
+                if (!task) throw new Error('The export must be created before reading its status')
+                task = { ...task, status: 'ready' }
+                return { task_id: taskId, status: 'ready', estimated_rows: task.estimated_rows }
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+})
+
 async function renderLogs({
   role = 'admin',
   sandbox = false,
@@ -42,77 +100,6 @@ async function renderLogs({
   role?: 'admin' | 'editor'
   sandbox?: boolean
 } = {}) {
-  const listQueries: URLSearchParams[] = []
-  const previews: URLSearchParams[] = []
-  const requests: WorkflowLogExportCreatePayload[] = []
-  let task: WorkflowLogExportLatestTaskResponse | null = null
-  let reads = 0
-  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    const request = input instanceof Request ? input : new Request(input)
-    const url = new URL(request.url)
-    const route = url.pathname.split(`/apps/${appId}/`)[1]
-    switch (route) {
-      case 'workflow-app-logs':
-        listQueries.push(url.searchParams)
-        return Response.json({
-          data: logs,
-          total: logs.length,
-          page: 1,
-          limit: 10,
-          has_more: false,
-        })
-      case 'workflow-app-logs/identity-options':
-        return Response.json({
-          data:
-            url.searchParams.get('keyword') === '042'
-              ? [{ id: olderEndUserId, label: 'customer-042', source: 'end-user' }]
-              : [],
-        })
-      case 'workflow-log-exports/preview':
-        previews.push(url.searchParams)
-        return Response.json({ row_count: url.searchParams.get('status') === 'failed' ? 0 : 3 })
-      case 'workflow-log-exports': {
-        expect(request.method).toBe('POST')
-        const filters: WorkflowLogExportCreatePayload = await request.json()
-        requests.push(filters)
-        task = {
-          task_id: taskId,
-          status: 'pending',
-          estimated_rows: filters.estimated_rows,
-          identity_labels: filters.identity_labels ?? [],
-          filters: {
-            created_at__after: filters.created_at__after ?? null,
-            created_at__before: filters.created_at__before ?? null,
-            end_user_ids: filters.end_user_ids ?? [],
-            account_ids: filters.account_ids ?? [],
-            status: filters.status ?? null,
-            keyword: null,
-          },
-        }
-        return Response.json(
-          { task_id: taskId, status: 'pending', estimated_rows: task.estimated_rows },
-          { status: 202 },
-        )
-      }
-      case 'workflow-log-exports/latest':
-        return Response.json({
-          task: task
-            ? { ...task, status: task.status !== 'ready' && ++reads === 1 ? 'processing' : 'ready' }
-            : null,
-        })
-      case `workflow-log-exports/${taskId}`:
-        if (!task) throw new Error('The export must be created before reading its status')
-        task = { ...task, status: 'ready' }
-        return Response.json({
-          task_id: taskId,
-          status: 'ready',
-          estimated_rows: task.estimated_rows,
-        })
-      default:
-        throw new Error(`Unexpected request ${url.pathname}`)
-    }
-  })
-  onTestFinished(() => fetch.mockRestore())
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     accountProfile: { timezone: 'UTC' },
     currentWorkspace: { role },
@@ -133,7 +120,7 @@ async function renderLogs({
       </UrlState>
     </ConsoleProvider>,
   )
-  return { screen, listQueries, previews, requests }
+  return screen
 }
 
 it('uses the Workflow list filters for CSV preview, restores the task, and downloads from the Workflow endpoint', async () => {
@@ -143,7 +130,10 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
     vi.useRealTimers()
   })
   await page.viewport(1024, 800)
-  const { screen, listQueries, previews, requests } = await renderLogs()
+  const screen = await renderLogs()
+  const { workflowAppLogs, workflowLogExports } = fake.console.apps.byAppId
+  const latestListQuery = () => workflowAppLogs.get.mock.lastCall?.[0].query
+  const latestPreviewQuery = () => workflowLogExports.preview.get.mock.lastCall?.[0].query
   await expect.element(screen.getByText('Mia Chen', { exact: true })).toBeVisible()
   await screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' }).click()
   await page.getByRole('option', { name: 'appLog.filter.period.custom' }).click()
@@ -165,15 +155,17 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
     .getByRole('combobox', { name: 'common.operation.search' })
     .fill('042')
   await page.getByRole('option', { name: 'customer-042' }).click()
-  expect(listQueries.at(-1)?.has('account_ids')).toBe(false)
+  expect(latestListQuery()).not.toHaveProperty('account_ids')
   await page.getByText('appLog.workflowTitle', { exact: true }).click()
   await screen.getByRole('searchbox', { name: 'common.operation.search' }).fill('report')
-  await expect.poll(() => listQueries.at(-1)?.get('keyword')).toBe('report')
-  expect(listQueries.at(-1)?.getAll('account_ids')).toEqual([accountId])
-  expect(listQueries.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
-  const listFilters = listQueries.at(-1)!
-  expect(listFilters.get('created_at__after')).toBe('2026-11-12T00:00:00+00:00')
-  expect(listFilters.get('created_at__before')).toBe('2026-11-23T23:59:59.999999+00:00')
+  await expect.poll(() => latestListQuery()?.keyword).toBe('report')
+  const listFilters = latestListQuery()
+  expect(listFilters).toMatchObject({
+    account_ids: [accountId],
+    end_user_ids: [olderEndUserId],
+    created_at__after: '2026-11-12T00:00:00Z',
+    created_at__before: '2026-11-23T23:59:59.999999Z',
+  })
 
   const trigger = screen.getByRole('button', { name: 'appLog.export.title' })
   await trigger.click()
@@ -183,36 +175,38 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
   await expect
     .element(dialog.getByText('appLog.export.previewWorkflowDescription', { exact: true }))
     .toBeVisible()
-  expect(previews.at(-1)?.getAll('end_user_ids')).toEqual([olderEndUserId])
-  expect(previews.at(-1)?.getAll('account_ids')).toEqual([accountId])
-  expect(previews.at(-1)?.get('created_at__after')).toBe(listFilters.get('created_at__after'))
-  expect(previews.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
-  expect(previews.at(-1)?.has('keyword')).toBe(false)
-  expect(previews.at(-1)?.has('page')).toBe(false)
+  expect(latestPreviewQuery()).toMatchObject({
+    end_user_ids: [olderEndUserId],
+    account_ids: [accountId],
+    created_at__after: listFilters?.created_at__after,
+    created_at__before: listFilters?.created_at__before,
+  })
+  expect(latestPreviewQuery()).not.toHaveProperty('keyword')
+  expect(latestPreviewQuery()).not.toHaveProperty('page')
 
   await dialog.getByRole('button', { name: /time\.picker\.endDate/ }).click()
   await page.getByRole('button', { name: /November 24th, 2026/ }).click()
-  const exportEnd = '2026-11-24T23:59:59.999999+00:00'
-  await expect.poll(() => previews.at(-1)?.get('created_at__before')).toBe(exportEnd)
-  expect(listQueries.at(-1)?.get('created_at__before')).toBe(listFilters.get('created_at__before'))
+  const exportEnd = '2026-11-24T23:59:59.999999Z'
+  await expect.poll(() => latestPreviewQuery()?.created_at__before).toBe(exportEnd)
+  expect(latestListQuery()?.created_at__before).toBe(listFilters?.created_at__before)
 
   const submit = dialog.getByRole('button', { name: 'appLog.export.submit' })
   await status.click()
   await page.getByRole('option', { name: 'appLog.status.failed' }).click()
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('appLog.export.noMatches')
   await expect.element(submit).toBeDisabled()
-  expect(listQueries.at(-1)?.get('status')).toBe('succeeded')
+  expect(latestListQuery()?.status).toBe('succeeded')
   await status.click()
   await page.getByRole('option', { name: 'appLog.status.succeeded' }).click()
   await expect.element(submit).toBeEnabled()
   await submit.click()
   await expect
-    .poll(() => requests)
+    .poll(() => workflowLogExports.post.mock.calls.map(([{ body }]) => body))
     .toEqual([
       {
         status: 'succeeded',
         estimated_rows: 3,
-        created_at__after: listFilters.get('created_at__after'),
+        created_at__after: listFilters?.created_at__after,
         created_at__before: exportEnd,
         end_user_ids: [olderEndUserId],
         account_ids: [accountId],
@@ -247,7 +241,7 @@ it('uses the Workflow list filters for CSV preview, restores the task, and downl
 })
 
 it('shows the Cloud Sandbox upgrade to workspace managers and keeps the list filter available', async () => {
-  const { screen, previews, requests } = await renderLogs({ sandbox: true })
+  const screen = await renderLogs({ sandbox: true })
   await expect
     .element(screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }))
     .toBeVisible()
@@ -255,12 +249,13 @@ it('shows the Cloud Sandbox upgrade to workspace managers and keeps the list fil
   await expect
     .element(page.getByRole('dialog', { name: 'appLog.export.upgradeTitle' }))
     .toBeVisible()
-  expect(previews).toEqual([])
-  expect(requests).toEqual([])
+  const { workflowLogExports } = fake.console.apps.byAppId
+  expect(workflowLogExports.preview.get).not.toHaveBeenCalled()
+  expect(workflowLogExports.post).not.toHaveBeenCalled()
 })
 
 it('keeps the Workflow Logs identity filter available to editors', async () => {
-  const { screen } = await renderLogs({ role: 'editor' })
+  const screen = await renderLogs({ role: 'editor' })
   await expect
     .element(screen.getByRole('combobox', { name: 'appLog.table.header.endUser' }))
     .toBeVisible()

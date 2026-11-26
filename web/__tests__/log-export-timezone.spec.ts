@@ -24,15 +24,15 @@ describe('log date filters', () => {
     })
   })
 
-  it('uses both account midnight and the offset at each Workflow boundary', () => {
+  it('serializes Workflow account-day bounds as UTC across daylight saving changes', () => {
     expect(toWorkflowLogFilters({ period: '1' }, 'unrestricted', 'UTC')).toEqual({
-      created_at__after: '2026-11-30T00:00:00+00:00',
-      created_at__before: '2026-11-30T23:59:59+00:00',
+      created_at__after: '2026-11-30T00:00:00Z',
+      created_at__before: '2026-11-30T23:59:59Z',
     })
     vi.setSystemTime(new Date('2026-03-08T18:00:00Z'))
     expect(toWorkflowLogFilters({ period: '1' }, 'unrestricted', 'America/Los_Angeles')).toEqual({
-      created_at__after: '2026-03-08T00:00:00-08:00',
-      created_at__before: '2026-03-08T23:59:59-07:00',
+      created_at__after: '2026-03-08T08:00:00Z',
+      created_at__before: '2026-03-09T06:59:59Z',
     })
   })
 
@@ -58,8 +58,8 @@ describe('log date filters', () => {
       end: '2026-03-08 23:59',
     })
     expect(toWorkflowLogFilters(selection, 'unrestricted', timezone)).toEqual({
-      created_at__after: '2026-03-08T00:00:00-08:00',
-      created_at__before: '2026-03-08T23:59:59.999999-07:00',
+      created_at__after: '2026-03-08T08:00:00Z',
+      created_at__before: '2026-03-09T06:59:59.999999Z',
     })
     expect(toAgentLogQuery({ ...defaultAgentLogFilters, ...selection }, timezone)).toEqual({
       start: '2026-03-08 00:00',
