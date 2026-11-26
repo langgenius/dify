@@ -115,15 +115,14 @@ def prepare_file_dict(
                         else:
                             parsed_tool_file_id = file_part
                             extension = ".bin"
-                        url = sign_tool_file(tool_file_id=parsed_tool_file_id, extension=extension)
+                        signing_tool_file_id = parse_uuid(parsed_tool_file_id) or parsed_tool_file_id
+                        url = sign_tool_file(tool_file_id=signing_tool_file_id, extension=extension)
                         filename = file_part
             if tool_files_map:
                 lookup_id = parse_uuid(message_file.upload_file_id or parsed_tool_file_id)
                 tool_file = tool_files_map.get(lookup_id) if lookup_id else None
                 if tool_file is not None:
-                    normalized_name = normalize_basename(tool_file.name)
-                    if normalized_name:
-                        filename = normalized_name
+                    filename = normalize_basename(tool_file.name) or f"{tool_file.id}{extension}"
                     mime_type = tool_file.mimetype or "application/octet-stream"
                     size = tool_file.size if isinstance(tool_file.size, int) and tool_file.size >= 0 else 0
                     upload_file_id = tool_file.id

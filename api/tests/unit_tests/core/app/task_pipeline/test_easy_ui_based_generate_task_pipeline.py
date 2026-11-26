@@ -10,6 +10,7 @@ from decimal import Decimal
 from threading import Thread
 from typing import cast
 from unittest.mock import MagicMock, Mock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from dify_trace_sdk.emitter import TraceScope
@@ -64,15 +65,17 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.moderation.output_moderation import ModerationRule, OutputModeration
+from core.workflow.file_reference import build_file_reference
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
-from graphon.file import FileTransferMethod, FileType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import AppMode, Conversation, Message, MessageAgentThought, MessageFile, UploadFile
 from models.tools import ToolFile
+from services.tool_file_download_service import ToolFileDownloadService
 from tests.helpers.unit.core.model_fixtures import make_model_config
 from tests.helpers.unit.model_factories import make_upload_file
 
@@ -2409,6 +2412,19 @@ class TestEasyUiMessageEndFilesCases:
             session.add_all(rows)
             session.commit()
 
+        class _InMemoryToolFileSource:
+            def __init__(self, payloads: dict[str, tuple[bytes, File]]) -> None:
+                self._payloads = payloads
+
+            def get_file_generator_by_tool_file_id(
+                self, tool_file_id: str
+            ) -> tuple[Iterator[bytes] | None, File | None]:
+                entry = self._payloads.get(tool_file_id)
+                if entry is None:
+                    return None, None
+                data, file = entry
+                return iter((data,)), file
+
         def test_message_end_with_no_files(
             self, sqlite_session: Session, pipeline: EasyUIBasedGenerateTaskPipeline
         ) -> None:
@@ -2639,7 +2655,7 @@ class TestEasyUiMessageEndFilesCases:
                 transfer_method=FileTransferMethod.TOOL_FILE,
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=str(uuid.uuid4()),
-                url=f"/files/tools/{fallback_tool.id}.pdf",
+                url=f"/files/tools/{fallback_tool.id.upper()}.pdf",
                 upload_file_id=None,
             )
             uppercase_message_file = MessageFile(
@@ -2653,11 +2669,7 @@ class TestEasyUiMessageEndFilesCases:
             )
             self._persist(sqlite_session, report_message_file, fallback_message_file, uppercase_message_file)
 
-            with patch(
-                "core.app.task_pipeline.message_file_utils.sign_tool_file",
-                side_effect=lambda *, tool_file_id, extension: f"https://example.com/signed/{tool_file_id}{extension}",
-            ):
-                result = pipeline._message_end_to_stream_response()
+            result = pipeline._message_end_to_stream_response()
 
             assert result.files is not None
             by_related_id = {file_dict["related_id"]: file_dict for file_dict in result.files}
@@ -2683,6 +2695,68 @@ class TestEasyUiMessageEndFilesCases:
             assert uppercase_dict["size"] == 1234
             assert uppercase_dict["extension"] == ".pdf"
             assert uppercase_dict["upload_file_id"] == uppercase_tool.id
+
+            download_service = ToolFileDownloadService(
+                tool_files=self._InMemoryToolFileSource(
+                    {
+                        report_tool.id: (
+                            b"%PDF-report",
+                            File(
+                                file_type=FileType.DOCUMENT,
+                                transfer_method=FileTransferMethod.TOOL_FILE,
+                                reference=build_file_reference(record_id=report_tool.id),
+                                filename="report.pdf",
+                                extension=".pdf",
+                                mime_type="application/pdf",
+                                size=len(b"%PDF-report"),
+                                storage_key=report_tool.file_key,
+                            ),
+                        ),
+                        fallback_tool.id: (
+                            b"%PDF-fallback",
+                            File(
+                                file_type=FileType.DOCUMENT,
+                                transfer_method=FileTransferMethod.TOOL_FILE,
+                                reference=build_file_reference(record_id=fallback_tool.id),
+                                filename=f"{fallback_tool.id}.pdf",
+                                extension=".pdf",
+                                mime_type="application/pdf",
+                                size=len(b"%PDF-fallback"),
+                                storage_key=fallback_tool.file_key,
+                            ),
+                        ),
+                        uppercase_tool.id: (
+                            b"%PDF-uppercase",
+                            File(
+                                file_type=FileType.DOCUMENT,
+                                transfer_method=FileTransferMethod.TOOL_FILE,
+                                reference=build_file_reference(record_id=uppercase_tool.id),
+                                filename="uppercase-report.pdf",
+                                extension=".pdf",
+                                mime_type="application/pdf",
+                                size=len(b"%PDF-uppercase"),
+                                storage_key=uppercase_tool.file_key,
+                            ),
+                        ),
+                    }
+                )
+            )
+            for file_dict, expected_id, expected_bytes in (
+                (report_dict, report_tool.id, b"%PDF-report"),
+                (fallback_dict, fallback_tool.id, b"%PDF-fallback"),
+                (uppercase_dict, uppercase_tool.id, b"%PDF-uppercase"),
+            ):
+                parsed = urlsplit(file_dict["url"])
+                assert parsed.path.endswith(f"/files/tools/{expected_id}.pdf")
+                path_stem = parsed.path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+                params = parse_qs(parsed.query)
+                downloaded = download_service.get_signed_file(
+                    file_id=str(uuid.UUID(path_stem)),
+                    timestamp=params["timestamp"][0],
+                    nonce=params["nonce"][0],
+                    sign=params["sign"][0],
+                )
+                assert b"".join(downloaded.content) == expected_bytes
 
         def test_message_end_with_tool_file_isolates_cross_tenant_metadata(
             self,

@@ -304,7 +304,8 @@ class MessageCycleManager:
             if message_file.url.startswith("http"):
                 url = message_file.url
             else:
-                url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
+                signing_tool_file_id = parse_uuid(tool_file_id) or tool_file_id
+                url = sign_tool_file(tool_file_id=signing_tool_file_id, extension=extension)
 
             filename, mime_type, size, upload_file_id = self._resolve_stream_file_metadata(
                 session,
