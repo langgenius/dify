@@ -1,27 +1,11 @@
+import type { MarketplacePlugin, PublisherPluginsResponse } from '@dify/contracts/marketplace'
 import type { CreatorCreation } from '../model'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createDeferred } from '@/test/deferred'
+import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import CreatorContent from '../creator-content'
-
-const marketplace = vi.hoisted(() => ({
-  fetchPluginPage: vi.fn(),
-  fetchTemplatePage: vi.fn(),
-}))
-
-// boundary: publisher pagination stops at the external Marketplace HTTP client.
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/marketplace')>()
-  return {
-    ...actual,
-    marketplaceClient: {
-      ...actual.marketplaceClient,
-      publisherPlugins: marketplace.fetchPluginPage,
-      publisherTemplates: marketplace.fetchTemplatePage,
-    },
-  }
-})
 
 const createCreation = (
   id: string,
@@ -50,6 +34,13 @@ const creations = [
 ]
 
 async function renderContent({ withMore = false } = {}) {
+  const fake = installFakeApi({
+    marketplace: {
+      publisherPlugins: () => ({ data: { plugins: [], total: 0 } }),
+      publisherTemplates: () => ({ data: { templates: [], total: 0 } }),
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
   const screen = await render(
     <UrlState>
@@ -71,7 +62,7 @@ async function renderContent({ withMore = false } = {}) {
       />
     </UrlState>,
   )
-  return { screen, onUrlUpdate }
+  return { screen, onUrlUpdate, fake }
 }
 
 async function expectCardOrder(
@@ -86,7 +77,6 @@ async function expectCardOrder(
 
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  vi.clearAllMocks()
 })
 
 it('sorts the real cards from the keyboard, persists the URL state, and restores menu focus', async () => {
@@ -118,24 +108,9 @@ it('sorts the real cards from the keyboard, persists the URL state, and restores
 })
 
 it('keeps one load-more request active and appends its real card before removing the control', async () => {
-  const nextPage = createDeferred<{
-    data: {
-      plugins: Array<{
-        type: 'plugin'
-        org: string
-        name: string
-        labels: { 'en-US': string }
-        brief: { 'en-US': string }
-        install_count: number
-        created_at: string
-        updated_at: string
-      }>
-      total: number
-    }
-  }>()
-  marketplace.fetchPluginPage.mockReturnValue(nextPage.promise)
-  marketplace.fetchTemplatePage.mockResolvedValue({ data: { templates: [], total: 0 } })
-  const { screen } = await renderContent({ withMore: true })
+  const nextPage = createDeferred<PublisherPluginsResponse>()
+  const { screen, fake } = await renderContent({ withMore: true })
+  fake.use({ marketplace: { publisherPlugins: () => nextPage.promise } })
   const loadMore = screen.getByRole('button', {
     name: 'plugin.marketplace.creatorProfile.loadMore',
   })
@@ -143,10 +118,14 @@ it('keeps one load-more request active and appends its real card before removing
   await loadMore.click()
   await expect.element(loadMore).toBeDisabled()
   await expect.element(loadMore).toHaveAttribute('aria-busy', 'true')
-  expect(marketplace.fetchPluginPage).toHaveBeenCalledExactlyOnceWith({
-    params: { uniqueHandle: 'scarlettmao' },
-    query: { page: 2, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
-  })
+  await expect.poll(() => fake.marketplace.publisherPlugins.mock.calls.length).toBe(1)
+  // The marketplace contract has no runtime schemas, so query values arrive as sent over HTTP.
+  expect(fake.marketplace.publisherPlugins).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      params: { uniqueHandle: 'scarlettmao' },
+      query: { page: '2', page_size: '40', sort_by: 'version_updated_at', sort_order: 'DESC' },
+    }),
+  )
   nextPage.resolve({
     data: {
       plugins: [
@@ -159,7 +138,7 @@ it('keeps one load-more request active and appends its real card before removing
           install_count: 4,
           created_at: '2026-01-04T00:00:00Z',
           updated_at: '2026-02-04T00:00:00Z',
-        },
+        } as Partial<MarketplacePlugin> as MarketplacePlugin,
       ],
       total: 4,
     },
@@ -167,6 +146,64 @@ it('keeps one load-more request active and appends its real card before removing
 
   await expect.element(screen.getByRole('link', { name: 'Delta' })).toBeVisible()
   await expect.element(loadMore).not.toBeInTheDocument()
-  expect(marketplace.fetchPluginPage).toHaveBeenCalledOnce()
-  expect(marketplace.fetchTemplatePage).not.toHaveBeenCalled()
+  expect(fake.marketplace.publisherPlugins).toHaveBeenCalledOnce()
+  expect(fake.marketplace.publisherTemplates).not.toHaveBeenCalled()
+})
+
+it('reports a failed first page instead of an empty list and retries it', async () => {
+  const fake = installFakeApi({
+    marketplace: {
+      publisherPlugins: () => ({
+        data: {
+          plugins: [
+            {
+              type: 'plugin',
+              org: 'dify',
+              name: 'delta',
+              labels: { 'en-US': 'Delta' },
+              brief: { 'en-US': 'Delta plugin' },
+              install_count: 4,
+              created_at: '2026-01-04T00:00:00Z',
+              updated_at: '2026-02-04T00:00:00Z',
+            } as Partial<MarketplacePlugin> as MarketplacePlugin,
+          ],
+          total: 1,
+        },
+      }),
+      publisherTemplates: () => ({ data: { templates: [], total: 0 } }),
+    },
+  })
+  onTestFinished(fake)
+  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
+  const screen = await render(
+    <UrlState>
+      <CreatorContent
+        creations={[]}
+        locale="en-US"
+        inventory={{
+          uniqueHandle: 'scarlettmao',
+          pluginHasMore: true,
+          templateHasMore: false,
+          pluginNextPage: 1,
+          templateNextPage: 2,
+          loadFailed: true,
+        }}
+        getCreationAction={(creation) => ({ type: 'link', href: `/creation/${creation.id}` })}
+      />
+    </UrlState>,
+  )
+
+  await expect
+    .element(screen.getByText('plugin.marketplace.creatorProfile.loadMoreFailed'))
+    .toBeVisible()
+  await expect
+    .element(screen.getByText('plugin.marketplace.creatorProfile.empty'))
+    .not.toBeInTheDocument()
+
+  await screen.getByRole('button', { name: 'plugin.marketplace.creatorProfile.loadMore' }).click()
+
+  await expect.element(screen.getByRole('link', { name: 'Delta' })).toBeVisible()
+  expect(fake.marketplace.publisherPlugins).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ query: expect.objectContaining({ page: '1' }) }),
+  )
 })

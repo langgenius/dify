@@ -15,7 +15,7 @@ from uuid import uuid4
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
-from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship, scoped_session, validates
 
 from configs import dify_config
@@ -48,7 +48,6 @@ from .enums import (
     MessageFileBelongsTo,
     MessageStatus,
     PromptType,
-    ProviderQuotaType,
     TagType,
 )
 from .provider_ids import GenericProviderID
@@ -2587,7 +2586,7 @@ class Tag(TypeBase):
         sa.Index("tag_name_idx", "name"),
     )
 
-    TAG_TYPE_LIST = ["knowledge", "app", "snippet", "skill"]
+    TAG_TYPE_LIST = ["knowledge", "app", "agent", "snippet", "skill"]
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
@@ -2665,39 +2664,3 @@ class TraceAppConfig(TypeBase):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
-
-
-class TenantCreditPool(TypeBase):
-    __tablename__ = "tenant_credit_pools"
-    __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="tenant_credit_pool_pkey"),
-        sa.Index("tenant_credit_pool_tenant_id_idx", "tenant_id"),
-        sa.Index("tenant_credit_pool_pool_type_idx", "pool_type"),
-    )
-
-    id: Mapped[str] = mapped_column(
-        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
-    )
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    pool_type: Mapped[ProviderQuotaType] = mapped_column(
-        EnumText(ProviderQuotaType, length=40), nullable=False, default=ProviderQuotaType.TRIAL
-    )
-    quota_limit: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    quota_used: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"), init=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
-        init=False,
-    )
-
-    @property
-    def remaining_credits(self) -> int:
-        return max(0, self.quota_limit - self.quota_used)
-
-    def has_sufficient_credits(self, required_credits: int) -> bool:
-        return self.remaining_credits >= required_credits

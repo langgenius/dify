@@ -323,11 +323,10 @@ export function AgentFileUploadDialog({
   onUploaded: (files: AgentFileNode[]) => void
 }) {
   const uploadFiles = useMutation({
+    meta: { errorToast: false },
     mutationFn: async (pendingFiles: PendingAgentFile[]): Promise<AgentFilesUploadResult> => {
       const uploads = await Promise.allSettled(
-        pendingFiles.map(({ file }) =>
-          consoleClient.files.upload.post({ body: { file } }, { context: { silent: true } }),
-        ),
+        pendingFiles.map(({ file }) => consoleClient.files.upload.post({ body: { file } })),
       )
       const failures = pendingFiles.flatMap(({ id }, index) => {
         const upload = uploads[index]
@@ -342,29 +341,23 @@ export function AgentFileUploadDialog({
 
       const body = { upload_file_ids }
       const { files } = apiContext.workflow
-        ? await consoleClient.apps.byAppId.agent.config.files.batch.post(
-            {
-              params: { app_id: apiContext.workflow.appId },
-              query: {
-                node_id: apiContext.workflow.nodeId,
-                draft_type: apiContext.draftType,
-                version_id: apiContext.versionId,
-              },
-              body,
+        ? await consoleClient.apps.byAppId.agent.config.files.batch.post({
+            params: { app_id: apiContext.workflow.appId },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
             },
-            { context: { silent: true } },
-          )
-        : await consoleClient.agent.byAgentId.config.files.batch.post(
-            {
-              params: { agent_id: apiContext.agentId },
-              query: {
-                draft_type: apiContext.draftType,
-                version_id: apiContext.versionId,
-              },
-              body,
+            body,
+          })
+        : await consoleClient.agent.byAgentId.config.files.batch.post({
+            params: { agent_id: apiContext.agentId },
+            query: {
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
             },
-            { context: { silent: true } },
-          )
+            body,
+          })
       return { files, failures }
     },
     onSuccess: ({ files, failures }) => {

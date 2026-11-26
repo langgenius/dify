@@ -124,7 +124,7 @@ const bannersResponseSchema = z.object({
   }),
 })
 
-const normalizePluginBanners = (response: unknown): PluginBanner[] => {
+export const normalizePluginBanners = (response: unknown): PluginBanner[] => {
   const parsedResponse = bannersResponseSchema.safeParse(response)
   if (!parsedResponse.success) return []
 

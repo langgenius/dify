@@ -19,13 +19,14 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useSelector } from '@tanstack/react-form'
+import { useQuery } from '@tanstack/react-query'
 import { isValidElement, memo, useCallback, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
+import { triggerPluginDynamicOptionsQueryOptions } from '@/service/trigger-queries'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -238,15 +239,17 @@ const BaseField = ({
     data: dynamicOptionsData,
     isLoading: isDynamicOptionsLoading,
     error: dynamicOptionsError,
-  } = useTriggerPluginDynamicOptions(
-    dynamicSelectParams || {
-      plugin_id: '',
-      provider: '',
-      action: '',
-      parameter: '',
-      credential_id: '',
-    },
-    formItemType === FormTypeEnum.dynamicSelect,
+  } = useQuery(
+    triggerPluginDynamicOptionsQueryOptions(
+      dynamicSelectParams || {
+        plugin_id: '',
+        provider: '',
+        action: '',
+        parameter: '',
+        credential_id: '',
+      },
+      formItemType === FormTypeEnum.dynamicSelect,
+    ),
   )
 
   const dynamicOptions = useMemo(() => {

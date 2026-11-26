@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
+import type { WorkflowRunOwner } from '@/service/log'
 import type { NodeTracing } from '@/types/workflow'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
-import { fetchRunDetail, fetchTracingList } from '@/service/log'
+import { fetchRunDetail, fetchTracingList, getRunOwnerId } from '@/service/log'
 import { useStore } from '../store'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
@@ -20,8 +21,9 @@ type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
-  runDetailUrl: string
-  tracingListUrl: string
+  // The run is loaded only when `runId` is set.
+  runOwner: WorkflowRunOwner
+  runId?: string
 }
 
 type RunTab = NonNullable<RunProps['activeTab']>
@@ -38,8 +40,8 @@ const RunPanel: FC<RunProps> = ({
   activeTab = 'RESULT',
   hideResult,
   getResultCallback,
-  runDetailUrl,
-  tracingListUrl,
+  runOwner,
+  runId,
 }) => {
   const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
   const isListening = useStore((s) => s.isListening)
@@ -50,12 +52,12 @@ const RunPanel: FC<RunProps> = ({
 
   return (
     <RunSession
-      key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      key={JSON.stringify([runOwner.kind, getRunOwnerId(runOwner), runId])}
       appId={appId}
       hideResult={hideResult}
       getResultCallback={getResultCallback}
-      runDetailUrl={runDetailUrl}
-      tracingListUrl={tracingListUrl}
+      runOwner={runOwner}
+      runId={runId}
       currentTab={currentTab}
       onTabChange={setCurrentTab}
       isListening={isListening}
@@ -73,8 +75,8 @@ function RunSession({
   appId,
   hideResult,
   getResultCallback,
-  runDetailUrl,
-  tracingListUrl,
+  runOwner,
+  runId,
   currentTab,
   onTabChange,
   isListening,
@@ -92,57 +94,53 @@ function RunSession({
     return 'N/A'
   }, [runDetail])
 
-  const getResult = useCallback(
-    async (lifetime: RequestLifetime) => {
-      const request = ++lifetime.detailRequest
-      try {
-        const res = await fetchRunDetail(runDetailUrl, { silent: true })
-        if (!lifetime.active || request !== lifetime.detailRequest) return
-        setRunDetail(res)
-        if (getResultCallback) getResultCallback(res)
-      } catch (err) {
-        if (lifetime.active && request === lifetime.detailRequest)
-          toast.error(err instanceof Error ? err.message : String(err))
-      } finally {
-        if (lifetime.active && request === lifetime.detailRequest) {
-          lifetime.detailSettled = true
-          if (lifetime.tracingSettled) setLoading(false)
-        }
+  // RunSession is keyed by the owner and run, so both stay the same for its lifetime.
+  const getResult = async (lifetime: RequestLifetime, runId: string) => {
+    const request = ++lifetime.detailRequest
+    try {
+      const res = await fetchRunDetail(runOwner, runId)
+      if (!lifetime.active || request !== lifetime.detailRequest) return
+      setRunDetail(res)
+      if (getResultCallback) getResultCallback(res)
+    } catch (err) {
+      if (lifetime.active && request === lifetime.detailRequest)
+        toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      if (lifetime.active && request === lifetime.detailRequest) {
+        lifetime.detailSettled = true
+        if (lifetime.tracingSettled) setLoading(false)
       }
-    },
-    [getResultCallback, runDetailUrl],
-  )
+    }
+  }
 
-  const getTracingList = useCallback(
-    async (lifetime: RequestLifetime) => {
-      const request = ++lifetime.tracingRequest
-      try {
-        const { data: nodeList } = await fetchTracingList({ url: tracingListUrl }, { silent: true })
-        if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
-      } catch (err) {
-        if (lifetime.active && request === lifetime.tracingRequest)
-          toast.error(err instanceof Error ? err.message : String(err))
-      } finally {
-        if (lifetime.active && request === lifetime.tracingRequest) {
-          lifetime.tracingSettled = true
-          if (lifetime.detailSettled) setLoading(false)
-        }
+  const getTracingList = async (lifetime: RequestLifetime, runId: string) => {
+    const request = ++lifetime.tracingRequest
+    try {
+      const { data: nodeList } = await fetchTracingList(runOwner, runId)
+      if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
+    } catch (err) {
+      if (lifetime.active && request === lifetime.tracingRequest)
+        toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      if (lifetime.active && request === lifetime.tracingRequest) {
+        lifetime.tracingSettled = true
+        if (lifetime.detailSettled) setLoading(false)
       }
-    },
-    [tracingListUrl],
-  )
+    }
+  }
 
   const switchTab = (tab: RunTab) => {
     onTabChange(tab)
     const lifetime = requestLifetimeRef.current
     if (!lifetime?.active) return
-    if (tab === 'RESULT' && runDetailUrl) void getResult(lifetime)
-    if (tracingListUrl) void getTracingList(lifetime)
+    if (!runId) return
+    if (tab === 'RESULT') void getResult(lifetime, runId)
+    void getTracingList(lifetime, runId)
   }
 
-  const loadRecord = useEffectEvent((lifetime: RequestLifetime) => {
-    void getResult(lifetime)
-    void getTracingList(lifetime)
+  const loadRecord = useEffectEvent((lifetime: RequestLifetime, runId: string) => {
+    void getResult(lifetime, runId)
+    void getTracingList(lifetime, runId)
   })
 
   useEffect(() => {
@@ -154,11 +152,11 @@ function RunSession({
       tracingSettled: false,
     }
     requestLifetimeRef.current = lifetime
-    if (runDetailUrl && tracingListUrl) loadRecord(lifetime)
+    if (runId) loadRecord(lifetime, runId)
     return () => {
       lifetime.active = false
     }
-  }, [runDetailUrl, tracingListUrl])
+  }, [runId])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -208,6 +206,7 @@ function RunSession({
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
         </TabsTab>
+        <TabsIndicator />
       </TabsList>
       {/* panel detail */}
       <div

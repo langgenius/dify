@@ -17,7 +17,6 @@ type MarketplaceSectionProps = {
   canInstallPlugin: boolean
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
-  onOpenMarketplace?: () => void
 }
 
 function MarketplaceSection({
@@ -28,7 +27,6 @@ function MarketplaceSection({
   canInstallPlugin,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
-  onOpenMarketplace,
 }: MarketplaceSectionProps) {
   const { t } = useTranslation(['plugin', 'modelProvider'])
   const theme = useResolvedTheme()
@@ -117,41 +115,22 @@ function MarketplaceSection({
             })}
           </ul>
           <div className="px-1 pb-1">
-            {onOpenMarketplace ? (
-              <Button
-                variant="ghost"
-                size="small"
-                className="h-auto w-full justify-start gap-0.5 px-3 py-1.5 text-start"
-                onClick={onOpenMarketplace}
-              >
-                <span className="flex-1 system-xs-regular text-text-accent">
-                  {t(($) => $['modelProvider.selector.discoverMoreInMarketplace'], {
-                    ns: 'modelProvider',
-                  })}
-                </span>
-                <span
-                  className="i-ri-arrow-right-up-line size-3! text-text-accent rtl:-scale-x-100"
-                  aria-hidden="true"
-                />
-              </Button>
-            ) : (
-              <a
-                className="flex cursor-pointer items-center gap-0.5 rounded-md px-3 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                href={marketplace.category(PluginCategoryEnum.model, { theme })}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="flex-1 system-xs-regular text-text-accent">
-                  {t(($) => $['modelProvider.selector.discoverMoreInMarketplace'], {
-                    ns: 'modelProvider',
-                  })}
-                </span>
-                <span
-                  className="i-ri-arrow-right-up-line size-3! text-text-accent rtl:-scale-x-100"
-                  aria-hidden="true"
-                />
-              </a>
-            )}
+            <a
+              className="flex cursor-pointer items-center gap-0.5 rounded-md px-3 py-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              href={marketplace.category(PluginCategoryEnum.model, { theme })}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="flex-1 system-xs-regular text-text-accent">
+                {t(($) => $['modelProvider.selector.discoverMoreInMarketplace'], {
+                  ns: 'modelProvider',
+                })}
+              </span>
+              <span
+                className="i-ri-arrow-right-up-line size-3! text-text-accent rtl:-scale-x-100"
+                aria-hidden="true"
+              />
+            </a>
           </div>
         </CollapsiblePanel>
       </Collapsible>

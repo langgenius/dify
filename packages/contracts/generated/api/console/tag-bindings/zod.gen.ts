@@ -30,7 +30,7 @@ export const zErrorResponse = z.object({
  *
  * Tag type
  */
-export const zTagType = z.enum(['app', 'knowledge', 'skill', 'snippet'])
+export const zTagType = z.enum(['agent', 'app', 'knowledge', 'skill', 'snippet'])
 
 /**
  * TagBindingPayload

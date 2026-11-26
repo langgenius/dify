@@ -8,7 +8,7 @@ import type {
 } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { selectWorkflowToolDetail } from '@/app/components/tools/utils/query-select'
@@ -133,8 +133,10 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   })
   const { data: detail, isLoading } = useQuery(
     consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryOptions({
-      input: { query: { workflow_app_id: workflowAppId } },
-      enabled: enabled && published && !!workflowAppId,
+      input:
+        enabled && published && workflowAppId
+          ? { query: { workflow_app_id: workflowAppId } }
+          : skipToken,
       select: selectWorkflowToolDetail,
     }),
   )
@@ -192,7 +194,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
       await handlePublish()
-      await createWorkflowToolProvider(data, { silent: true })
+      await createWorkflowToolProvider(data)
       invalidateAllWorkflowTools()
       onRefreshData?.()
       invalidateDetail()
@@ -212,7 +214,7 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   ) => {
     try {
       await handlePublish()
-      await saveWorkflowToolProvider(data, { silent: true })
+      await saveWorkflowToolProvider(data)
       onRefreshData?.()
       invalidateAllWorkflowTools()
       invalidateDetail()

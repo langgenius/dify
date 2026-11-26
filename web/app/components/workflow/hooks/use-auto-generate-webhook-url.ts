@@ -26,7 +26,6 @@ export const useAutoGenerateWebhookUrl = () => {
         const response = await queryClient.query(
           consoleQuery.apps.byAppId.workflows.triggers.webhook.get.queryOptions({
             input: { params: { app_id: appId }, query: { node_id: nodeId } },
-            staleTime: 0,
             retry: false,
           }),
         )

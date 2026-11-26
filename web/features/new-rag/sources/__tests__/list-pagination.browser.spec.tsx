@@ -1,27 +1,16 @@
 import { page } from 'vite-plus/test/browser'
+import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source } from './source-fixtures'
 import { resetSourceServer, sourceResponses } from './source-server'
 
-// boundary: the component test controls route inputs and observes navigation destinations.
-vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
-// boundary: replace operation responses while preserving generated queries, observers and business hooks.
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-  return (await import('./source-server')).withSourceResponses(actual)
-})
-
-const unexpectedFetch = vi.fn(() => Promise.reject(new Error('Unexpected request')))
 beforeEach(() => {
   resetSourceServer()
-  vi.stubGlobal('fetch', unexpectedFetch)
 })
 afterEach(() => {
   clearSourceClients()
   vi.useRealTimers()
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
 })
 
 describe('Source list pagination and recovery', () => {
@@ -43,7 +32,11 @@ describe('Source list pagination and recovery', () => {
   })
 
   it('recovers the source list through its retry action', async () => {
-    sourceResponses.error = new Error('temporary failure')
+    sourceResponses.error = apiError({
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'temporary failure',
+    })
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await expect
       .element(page.getByRole('heading', { name: 'knowledgeSources.sourcesErrorTitle' }))

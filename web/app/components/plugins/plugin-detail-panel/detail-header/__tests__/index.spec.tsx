@@ -10,6 +10,7 @@ import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { consoleQuery } from '@/service/console'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -41,17 +42,17 @@ vi.mock('@/service/console', async (importOriginal) => {
       'workspaces.current.models.modelTypes.byModelType.get': api.models,
       'workspaces.current.modelProviders.summary.get': async () => ({ data: [], plugins: {} }),
       'workspaces.current.plugin.list.installations.ids.post': async () => ({ plugins: [] }),
+      'workspaces.current.plugin.permission.fetch.get': async () => ({
+        install_permission: 'everyone',
+        debug_permission: 'everyone',
+      }),
+      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.upload.github.post': api.upload,
       'workspaces.current.plugin.upgrade.github.post': api.upgrade,
       'workspaces.current.plugin.upgrade.marketplace.post': api.marketplaceUpgrade,
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
-      'workspaces.current.plugin.permission.fetch.get': async () => ({
-        install_permission: 'everyone',
-        debug_permission: 'everyone',
-      }),
-      'workspaces.current.plugin.autoUpgrade.fetch.get': api.autoUpgrade,
     }),
   }
 })
@@ -105,8 +106,9 @@ const releases = [
     ],
   },
 ]
+let queryClient: ReturnType<typeof createConsoleQueryClient>
 const render = createNuqsTestRenderer((ui: ReactElement, enableMarketplace: boolean = true) => {
-  const queryClient = createConsoleQueryClient()
+  queryClient = createConsoleQueryClient()
   seedModelProviderQueries(queryClient)
   return renderWithConsoleQuery(ui, {
     queryClient,
@@ -182,12 +184,9 @@ it('updates the selected GitHub package, refreshes model catalogs, and keeps the
   )
   await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce())
   expect(api.releases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(api.upload).toHaveBeenCalledWith(
-    {
-      body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
-    },
-    { context: { silent: true } },
-  )
+  expect(api.upload).toHaveBeenCalledWith({
+    body: { repo: 'owner/repo', version: 'v2.0.0', package: 'plugin.difypkg' },
+  })
   expect(api.upgrade).toHaveBeenCalledWith({
     body: {
       repo: 'owner/repo',
@@ -201,7 +200,16 @@ it('updates the selected GitHub package, refreshes model catalogs, and keeps the
     within(dialog).getByRole('button', { name: 'plugin.installModal.installing' }),
   ).toHaveAttribute('aria-disabled', 'true')
   expect(dialog).toBeInTheDocument()
-  await waitFor(() => expect(api.models).toHaveBeenCalledWith({ params: { model_type: 'llm' } }))
+  // No model picker is on screen, so the model catalog is marked stale instead of refetched.
+  await waitFor(() =>
+    expect(
+      queryClient.getQueryState(
+        consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryKey({
+          input: { params: { model_type: 'llm' } },
+        }),
+      )?.isInvalidated,
+    ).toBe(true),
+  )
   await act(async () => refresh.resolve())
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
   expect(
