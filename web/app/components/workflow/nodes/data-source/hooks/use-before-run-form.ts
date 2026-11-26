@@ -16,7 +16,7 @@ import { fetchNodeInspectVars } from '@/service/workflow'
 import { lastRunQueryKey } from '@/service/workflow-queries'
 import { TransferMethod } from '@/types/app'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
-import { useNodesSyncDraft } from '../../../hooks/use-nodes-sync-draft'
+import { useScheduleDraftSave } from '../../../hooks/use-schedule-draft-save'
 import { NodeRunningStatus } from '../../../types'
 
 const useBeforeRunForm = ({
@@ -209,7 +209,7 @@ const useBeforeRunForm = ({
     )
   }
 
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleSyncWorkflowDraft } = useScheduleDraftSave()
 
   const handleRunWithSyncDraft = () => {
     setNodeRunning()

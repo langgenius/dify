@@ -15,6 +15,7 @@ import {
   getStepByStepTourGuides,
   STEP_BY_STEP_TOUR_TARGETS,
 } from '@/app/components/step-by-step-tour/target-registry'
+import { CreateAppEntry } from '@/features/app-creation/entry'
 import { TagFilter } from '@/features/tag-management/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
@@ -34,6 +35,7 @@ type AppListHeaderProps = {
   keywords: string
   creatorIDs: string[]
   sortBy: AppListSortBy
+  isBuilderEnabled: boolean
   onCategoryChange: (category: AppListCategory) => void
   onTagIDsChange: (tagIDs: string[]) => void
   onKeywordsChange: (keywords: string) => void
@@ -53,6 +55,7 @@ export function AppListHeader({
   keywords,
   creatorIDs,
   sortBy,
+  isBuilderEnabled,
   onCategoryChange,
   onTagIDsChange,
   onKeywordsChange,
@@ -76,6 +79,15 @@ export function AppListHeader({
   const activeStudioGuide = activeStudioGuides[activeStepByStepTourGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu =
     activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
+  const createMenuProps = {
+    onCreateTemplate,
+    onImportDSL,
+    stepByStepTourControlledOpen: activeStudioGuide
+      ? shouldOpenStepByStepTourCreateMenu
+      : undefined,
+    stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
+    stepByStepTourHighlightPart: STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+  }
 
   return (
     <StudioListHeader
@@ -115,18 +127,12 @@ export function AppListHeader({
             <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
             {t(($) => $['studio.viewSnippets'], { ns: 'app' })}
           </StudioListLink>
-          {showCreateButton && (
-            <CreateAppMenu
-              onCreateBlank={onCreateBlank}
-              onCreateTemplate={onCreateTemplate}
-              onImportDSL={onImportDSL}
-              stepByStepTourControlledOpen={
-                activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined
-              }
-              stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
-              stepByStepTourHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu}
-            />
-          )}
+          {showCreateButton &&
+            (isBuilderEnabled ? (
+              <CreateAppEntry {...createMenuProps} />
+            ) : (
+              <CreateAppMenu {...createMenuProps} onCreateBlank={onCreateBlank} />
+            ))}
         </div>
       </div>
     </StudioListHeader>

@@ -16,12 +16,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from graphon.engine_events import NodeRunFailedEvent
-from graphon.enums import (
-    BuiltinNodeTypes,
-    ErrorStrategy,
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events.base import NodeRunResult
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode

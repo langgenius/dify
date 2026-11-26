@@ -1,0 +1,235 @@
+import base64
+import json
+from datetime import datetime
+from unittest.mock import Mock, patch
+
+import pytest
+import pytest_mock
+from socketio import Server
+from socketio.exceptions import TimeoutError as SocketIOTimeoutError
+from sqlalchemy import delete, event
+from sqlalchemy.orm import Session, SessionTransaction
+
+from models.workflow import Workflow, WorkflowType
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_draft_sync_repository import ServerDraftChange, WorkflowDraftSyncRepository
+from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.workflow_draft_sync_service import WorkflowDraftSyncService, notify_workflow_draft_changed
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.installed_spies import installed_mock
+
+
+@pytest.fixture
+def workflow() -> Workflow:
+    row = Workflow(
+        app_id="app-1",
+        tenant_id="tenant-1",
+        version=Workflow.VERSION_DRAFT,
+        type=WorkflowType.WORKFLOW,
+        created_by="u-1",
+        graph=json.dumps({"nodes": [{"id": "new"}], "edges": []}),
+        _features="{}",
+    )
+    row.updated_at = datetime(2026, 9, 20, 12, 0, 0)
+    return row
+
+
+@pytest.fixture
+def setup(
+    workflow: Workflow, sqlite_session: Session, mocker: pytest_mock.MockerFixture
+) -> tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange]:
+    repository = WorkflowDraftSyncRepository()
+    for name in ("announce", "claim", "accept", "get", "release", "clear"):
+        mocker.patch.object(repository, name)
+    _installed_spy_1 = installed_mock(repository.announce)
+    _installed_spy_1.return_value = False
+    _installed_spy_2 = installed_mock(repository.claim)
+    _installed_spy_2.return_value = True
+    _installed_spy_3 = installed_mock(repository.accept)
+    _installed_spy_3.return_value = True
+    change = ServerDraftChange(
+        revision="revision-2",
+        hash=workflow.unique_hash,
+        updated_at=2,
+        graph=workflow.graph_dict,
+        previous_graph={"nodes": [{"id": "old"}], "edges": []},
+    )
+    _installed_spy_4 = installed_mock(repository.get)
+    _installed_spy_4.return_value = change
+    collaboration_repository = WorkflowCollaborationRepository()
+    for name in ("get_sid_mapping", "get_current_leader", "get_session_sids"):
+        mocker.patch.object(collaboration_repository, name)
+    _installed_spy_5 = installed_mock(collaboration_repository.get_sid_mapping)
+    _installed_spy_5.return_value = {"workflow_id": "app-1", "user_id": "u-1"}
+    _installed_spy_6 = installed_mock(collaboration_repository.get_current_leader)
+    _installed_spy_6.return_value = "leader"
+    _installed_spy_7 = installed_mock(collaboration_repository.get_session_sids)
+    _installed_spy_7.return_value = ["follower", "leader"]
+    socketio = Server(async_mode="threading")
+    for name in ("get_session", "call", "emit"):
+        mocker.patch.object(socketio, name)
+    collaboration = WorkflowCollaborationService(collaboration_repository, socketio)
+    mocker.patch.object(collaboration, "is_session_active", return_value=True)
+    _installed_spy_8 = installed_mock(socketio.get_session)
+    _installed_spy_8.return_value = {"tenant_id": "tenant-1"}
+    _installed_spy_9 = installed_mock(socketio.call)
+    _installed_spy_9.return_value = {"revision": change.revision, "update": b"accepted-update"}
+    session = sqlite_session
+    session.add(workflow)
+    session.commit()
+    completed_transactions: list[SessionTransaction] = []
+    session.info["completed_transactions"] = completed_transactions
+
+    def record_transaction_end(_session: object, transaction: SessionTransaction) -> None:
+        if transaction.parent is None:
+            session.info["completed_transactions"].append(transaction)
+
+    event.listen(session, "after_transaction_end", record_transaction_end)
+    mocker.spy(session, "scalar")
+    service = WorkflowDraftSyncService(repository, collaboration_repository, collaboration, socketio)
+    return service, repository, collaboration_repository, socketio, session, change
+
+
+def test_broadcasts_one_accepted_update_including_the_writer_and_replays_it_on_retry(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, repository, _collaboration_repository, socketio, session, change = setup
+    first, status = service.sync("follower", session=session)
+    assert status == 200
+    assert first["update"] == b"accepted-update"
+    socketio.emit.assert_called_once_with("server_draft_update", first, room="app-1")
+    assert socketio.call.call_args.kwargs["to"] == "leader"
+    assert len(session.info["completed_transactions"]) == 1
+    assert not session.in_transaction()
+
+    repository.get.return_value = change.model_copy(update={"update": base64.b64encode(b"accepted-update").decode()})
+    second, status = service.sync("follower", session=session)
+    assert status == 200
+    assert second == first
+    socketio.call.assert_called_once()
+    repository.accept.assert_called_once()
+
+
+def test_retries_another_ready_client_after_the_selected_writer_times_out(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, _repository, _collaboration_repository, socketio, session, change = setup
+    socketio.call.side_effect = [SocketIOTimeoutError(), {"revision": change.revision, "update": b"replacement"}]
+
+    result, status = service.sync("follower", session=session)
+
+    assert status == 200
+    assert result["update"] == b"replacement"
+    assert [call.kwargs["to"] for call in socketio.call.call_args_list] == ["leader", "follower"]
+    socketio.emit.assert_called_once_with("server_draft_update", result, room="app-1")
+
+
+def test_drops_a_proposal_when_its_lease_or_draft_version_was_superseded(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, repository, _collaboration_repository, socketio, session, _change = setup
+    repository.accept.return_value = False
+
+    result, status = service.sync("follower", session=session)
+
+    assert status == 409
+    assert result["msg"] == "draft_sync_superseded"
+    socketio.emit.assert_not_called()
+    repository.release.assert_called_once()
+
+
+def test_skips_unready_browsers_to_reach_a_ready_writer(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, _repository, collaboration_repository, socketio, session, change = setup
+    collaboration_repository.get_session_sids.return_value = ["leader", "reconnecting", "ready"]
+    socketio.call.side_effect = [
+        {"error": "graph_not_ready"},
+        {"error": "graph_not_ready"},
+        {"revision": change.revision, "update": b"ready-update"},
+    ]
+
+    result, status = service.sync("ready", session=session)
+
+    assert status == 200
+    assert result["update"] == b"ready-update"
+    assert [call.kwargs["to"] for call in socketio.call.call_args_list] == ["leader", "reconnecting", "ready"]
+
+
+def test_does_not_choose_another_writer_while_a_request_is_in_flight(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, repository, _collaboration_repository, socketio, session, _change = setup
+    repository.claim.return_value = False
+
+    assert service.sync("follower", session=session)[1] == 202
+
+    socketio.call.assert_not_called()
+    repository.accept.assert_not_called()
+
+
+def test_rejects_unjoined_clients_and_scopes_draft_reads_to_the_socket_tenant(
+    setup: tuple[WorkflowDraftSyncService, Mock, Mock, Mock, Session, ServerDraftChange],
+) -> None:
+    service, _repository, collaboration_repository, socketio, session, _change = setup
+    collaboration_repository.get_sid_mapping.return_value = None
+    assert service.sync("unjoined", session=session)[1] == 401
+    _installed_spy_10 = installed_mock(session.scalar)
+    _installed_spy_10.assert_not_called()
+    socketio.get_session.assert_not_called()
+
+    collaboration_repository.get_sid_mapping.return_value = {"workflow_id": "app-1", "user_id": "u-1"}
+    session.execute(delete(Workflow))
+    session.commit()
+    assert service.sync("follower", session=session)[1] == 404
+    _installed_spy_11 = installed_mock(session.scalar)
+    statement = _installed_spy_11.call_args.args[0]
+    assert set(statement.compile().params.values()) == {"app-1", "tenant-1", "draft"}
+    socketio.call.assert_not_called()
+
+
+def test_notification_carries_a_version_and_preserves_the_patch_baseline(workflow: Workflow) -> None:
+    before: dict[str, object] = {"nodes": [], "edges": []}
+    with (
+        config_overrides_context(ENABLE_COLLABORATION_MODE=True),
+        patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,
+        patch("services.workflow_draft_sync_service.WorkflowDraftSyncRepository") as repository,
+        patch("services.workflow_draft_sync_service.sio") as socketio,
+    ):
+        collaborators.return_value.get_session_sids.return_value = ["leader"]
+        repository.return_value.announce.return_value = True
+        notify_workflow_draft_changed(workflow, previous_graph=before)
+
+    app_id, change = repository.return_value.announce.call_args.args
+    assert app_id == "app-1"
+    assert change.previous_graph == before
+    assert change.graph == workflow.graph_dict
+    assert change.hash == workflow.unique_hash
+    socketio.emit.assert_called_once_with("server_draft_changed", {"revision": change.revision}, room="app-1")
+
+
+def test_notification_failure_does_not_turn_a_committed_write_into_a_failure(workflow: Workflow) -> None:
+    with (
+        config_overrides_context(ENABLE_COLLABORATION_MODE=True),
+        patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,
+        patch("services.workflow_draft_sync_service.WorkflowDraftSyncRepository") as repository,
+        patch("services.workflow_draft_sync_service.logger") as logger,
+    ):
+        collaborators.return_value.get_session_sids.return_value = ["leader"]
+        repository.return_value.announce.side_effect = RuntimeError("redis unavailable")
+        notify_workflow_draft_changed(workflow)
+    logger.exception.assert_called_once()
+
+
+def test_disabled_collaboration_does_not_access_redis_or_emit_notifications(workflow: Workflow) -> None:
+    with (
+        config_overrides_context(ENABLE_COLLABORATION_MODE=False),
+        patch("services.workflow_draft_sync_service.WorkflowCollaborationRepository") as collaborators,
+        patch("services.workflow_draft_sync_service.WorkflowDraftSyncRepository") as repository,
+        patch("services.workflow_draft_sync_service.sio") as socketio,
+    ):
+        notify_workflow_draft_changed(workflow, previous_graph={"nodes": [], "edges": []})
+
+    collaborators.assert_not_called()
+    repository.assert_not_called()
+    socketio.emit.assert_not_called()

@@ -1,0 +1,499 @@
+import json
+from collections.abc import Callable
+from copy import deepcopy
+from operator import itemgetter
+from unittest.mock import patch
+
+import pytest
+
+from core.dify_builder.errors import ConflictError
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, EntryMode, Graph, MutationIntent, Session
+from core.dify_builder.state import PcState
+from graphon.variables import SecretVariable, StringVariable
+from models.workflow import Workflow
+from services.app.console_gateway import _CHATFLOW_STARTER_GRAPH
+from services.dify_builder.graph_ops import apply_connect, apply_create_node
+from services.dify_builder.revision import executable_graph_revision, execution_revision, merge_canvas_presentation
+from services.dify_builder.service import DifyBuilderService
+from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
+from tests.unit_tests.services.dify_builder.test_service import FakeSessionLock
+
+
+@pytest.fixture
+def workflow() -> Workflow:
+    return Workflow(
+        tenant_id="tenant-1",
+        graph=json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "llm",
+                        "position": {"x": 10, "y": 20},
+                        "data": {"type": "llm", "prompt_template": [{"text": "Original"}], "selected": False},
+                    },
+                    {"id": "end", "data": {"type": "end"}},
+                ],
+                "edges": [{"source": "llm", "target": "end", "sourceHandle": "source"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 1},
+            }
+        ),
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
+    )
+
+
+def test_canvas_changes_preserve_execution_revision_but_change_persistence_hash(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    storage_hash = workflow.unique_hash
+    graph = deepcopy(dict(workflow.graph_dict))
+    graph["viewport"] = {"x": 100, "y": 100, "zoom": 2}
+    graph["nodes"][0].update(position={"x": 300, "y": 400}, width=200, height=100, selected=True)
+    graph["nodes"][0]["data"]["selected"] = True
+    graph["edges"][0]["selected"] = True
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) == revision
+    assert workflow.unique_hash != storage_hash
+
+
+def test_node_reordering_preserves_execution_revisions(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    graph_revision = executable_graph_revision(dict(workflow.graph_dict))
+    storage_hash = workflow.unique_hash
+    graph: Graph = dict(workflow.graph_dict)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) == revision
+    assert executable_graph_revision(dict(workflow.graph_dict)) == graph_revision
+    assert workflow.unique_hash != storage_hash
+    assert [node["id"] for node in workflow.graph_dict["nodes"]] == ["end", "llm"]
+
+
+def test_prompt_message_order_remains_execution_configuration(workflow: Workflow) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    prompts = [{"role": "system", "text": "Instructions"}, {"role": "user", "text": "Request"}]
+    graph["nodes"][0]["data"]["prompt_template"] = prompts
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph_revision = executable_graph_revision(graph)
+    prompts.reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+    assert executable_graph_revision(graph) != graph_revision
+
+
+def test_repair_preserves_concurrent_canvas_presentation(workflow: Workflow) -> None:
+    before = deepcopy(dict(workflow.graph_dict))
+    after = deepcopy(before)
+    after["nodes"][0]["data"]["prompt_template"][0]["text"] = "Builder edit"
+    latest = deepcopy(before)
+    latest["nodes"][0].update(position={"x": 900, "y": 500}, selected=True)
+    latest["nodes"][0]["data"].update(selected=True, _runningStatus="succeeded")
+    latest["edges"][0]["data"] = {"sourceType": "llm", "_waitingRun": True}
+    latest["viewport"] = {"x": 50, "y": 70, "zoom": 2}
+    latest["nodes"].append({"id": "note-1", "type": "custom-note", "data": {"text": "Keep me"}})
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged["nodes"][0]["data"]["prompt_template"][0]["text"] == "Builder edit"
+    assert merged["nodes"][0]["position"] == {"x": 900, "y": 500}
+    assert merged["nodes"][0]["data"]["_runningStatus"] == "succeeded"
+    assert merged["edges"][0]["data"] == {"sourceType": "llm", "_waitingRun": True}
+    assert merged["viewport"] == latest["viewport"]
+    assert merged["nodes"][-1] == latest["nodes"][-1]
+
+
+def test_repair_keeps_builder_layout_when_canvas_did_not_change_it(workflow: Workflow) -> None:
+    before = deepcopy(dict(workflow.graph_dict))
+    after = deepcopy(before)
+    after["nodes"][0]["position"] = {"x": 300, "y": 400}
+    after["viewport"] = {"x": 10, "y": 20, "zoom": 1.5}
+    latest = deepcopy(before)
+    latest["nodes"][0]["data"]["selected"] = True
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged["nodes"][0]["position"] == {"x": 300, "y": 400}
+    assert merged["nodes"][0]["data"]["selected"] is True
+    assert merged["viewport"] == {"x": 10, "y": 20, "zoom": 1.5}
+
+
+def test_repair_does_not_add_empty_edge_data(workflow: Workflow) -> None:
+    before = deepcopy(dict(workflow.graph_dict))
+    after = deepcopy(before)
+    latest = deepcopy(before)
+
+    merged = merge_canvas_presentation(before, after, latest)
+
+    assert merged == after
+
+
+@pytest.fixture
+def builder_workflow() -> Workflow:
+    graph: Graph = {"nodes": [], "edges": []}
+    for node_type in ("start", "code", "end"):
+        config = {"code": "def main(): return {'result': 'original'}"} if node_type == "code" else {}
+        graph, _ = apply_create_node(graph, node_type, config, node_id=node_type)
+    graph, _ = apply_connect(graph, "start", "code")
+    graph, _ = apply_connect(graph, "code", "end")
+    return Workflow(
+        tenant_id="tenant-1",
+        graph=json.dumps(graph),
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
+    )
+
+
+def _save_canvas_layout(workflow: Workflow) -> None:
+    """Persist the renderer metadata added by initialNodes/initialEdges on refresh."""
+    graph: Graph = dict(workflow.graph_dict)
+    for node in graph["nodes"]:
+        node.update(width=240, height=100, zIndex=0, positionAbsolute=node["position"])
+        node["data"]["selected"] = node["id"] == "code"
+    graph["nodes"][1]["position"] = {"x": 900, "y": 500}
+    for edge in graph["edges"]:
+        edge.update(
+            zIndex=0,
+            data={
+                "sourceType": edge["source"],
+                "targetType": edge["target"],
+                "isInIteration": False,
+                "isInLoop": False,
+            },
+        )
+    graph["viewport"] = {"x": 50, "y": 70, "zoom": 2}
+    graph["nodes"].sort(key=itemgetter("id"))
+    workflow.graph = json.dumps(graph)
+
+
+@pytest.mark.parametrize(
+    ("state", "kind"),
+    [(PcState.FIX_AWAIT_APPROVAL, "approve_repair"), (PcState.FIX_AWAIT_VERIFY, "run_verify")],
+)
+def test_actions_accept_canvas_save_after_builder_writes_graph(
+    builder_workflow: Workflow, state: PcState, kind: str
+) -> None:
+    session = Session(
+        id="session-1",
+        app_id="app-1",
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        entry_mode=EntryMode.FIX,
+        current_state=state,
+        version=1,
+    )
+    repo = InMemoryRepository()
+    context = DifyBuilderContext(
+        last_snapshot_hash=execution_revision(builder_workflow),
+        staged_repair=[
+            MutationIntent(
+                op="set_node_config",
+                args={"node_id": "code", "path": "code", "value": "def main(): return {'result': 'repaired'}"},
+            )
+        ]
+        if kind == "approve_repair"
+        else [],
+    )
+    repo.create_session(session, context, [])
+    lock = FakeSessionLock()
+    enqueued = []
+
+    def enqueue(*args: object) -> None:
+        enqueued.append(args)
+
+    service = DifyBuilderService(
+        repo,
+        lock,
+        enqueue,
+        get_app_revision_fn=lambda _app_id, _actor: execution_revision(builder_workflow),
+    )
+    actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
+    view = service.get_session_view(session.id, actor)
+    assert view.app_revision is not None
+    action = Action(kind=kind, base_version=view.version, base_app_revision=view.app_revision.current)
+    storage_hash = builder_workflow.unique_hash
+
+    # Clicking the action flushes the refreshed canvas before sending its
+    # previously rendered revision. Neither the view nor the action may drift.
+    _save_canvas_layout(builder_workflow)
+    assert builder_workflow.unique_hash != storage_hash
+    result = service.submit_action(session.id, actor, action)
+
+    assert result.app_revision is not None
+    assert result.app_revision.conflicted is False
+    assert result.app_revision.current == view.app_revision.current
+    assert enqueued == [(session.id, action, actor, lock._held[session.id])]
+
+    # Even if the client fetches the latest revision, an actual code edit must
+    # still conflict with the configuration that Builder planned against.
+    graph = builder_workflow.graph_dict
+    code_node = next(node for node in graph["nodes"] if node["id"] == "code")
+    code_node["data"]["code"] = "def main(): return {'result': 'changed'}"
+    builder_workflow.graph = json.dumps(graph)
+    with pytest.raises(ConflictError, match="stale app revision"):
+        service.submit_action(session.id, actor, action)
+    action.base_app_revision = execution_revision(builder_workflow)
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        service.submit_action(session.id, actor, action)
+    assert len(enqueued) == 1
+
+
+def test_chatflow_requirements_accept_canvas_node_reordering() -> None:
+    workflow = Workflow(
+        tenant_id="tenant-1",
+        graph=json.dumps(_CHATFLOW_STARTER_GRAPH),
+        _features="{}",
+        _environment_variables="{}",
+        _conversation_variables="{}",
+    )
+    session = Session(
+        id="session-1",
+        app_id="app-1",
+        tenant_id="tenant-1",
+        owner_account_id="account-1",
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_GOAL_ANALYSIS,
+        version=2,
+    )
+    repo = InMemoryRepository()
+    context = DifyBuilderContext(last_snapshot_hash=execution_revision(workflow))
+    repo.create_session(session, context, [])
+    session.version = repo.compare_and_advance(session.id, session.version, session.current_state, context, [])
+    lock = FakeSessionLock()
+    enqueued = []
+
+    def enqueue(*args: object) -> None:
+        enqueued.append(args)
+
+    service = DifyBuilderService(
+        repo,
+        lock,
+        enqueue,
+        get_app_revision_fn=lambda _app_id, _actor: execution_revision(workflow),
+    )
+    actor = Actor(account_id=session.owner_account_id, tenant_id=session.tenant_id)
+    view = service.get_session_view(session.id, actor)
+    assert view.app_revision is not None
+    action = Action(
+        kind="submit_requirements",
+        payload={"goal": "Reply to the user"},
+        base_version=view.version,
+        base_app_revision=view.app_revision.current,
+    )
+
+    # Refresh/collaboration can export the same graph in map order. The next
+    # command flushes that canvas before submitting the requirement form.
+    graph: Graph = dict(workflow.graph_dict)
+    start, llm, answer = graph["nodes"]
+    graph["nodes"] = [start, answer, llm]
+    workflow.graph = json.dumps(graph)
+    result = service.submit_action(session.id, actor, action)
+
+    assert result.app_revision is not None
+    assert result.app_revision.conflicted is False
+    assert result.app_revision.current == view.app_revision.current
+    assert enqueued == [(session.id, action, actor, lock._held[session.id])]
+
+    llm["data"]["prompt_template"][0]["text"] = "An actual configuration edit"
+    workflow.graph = json.dumps(graph)
+    with pytest.raises(ConflictError, match="stale app revision"):
+        service.submit_action(session.id, actor, action)
+    action.base_app_revision = execution_revision(workflow)
+    with pytest.raises(ConflictError, match="draft changed outside Builder"):
+        service.submit_action(session.id, actor, action)
+    assert len(enqueued) == 1
+
+
+def test_canvas_hydration_and_transient_state_preserve_revision(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    graph: Graph = dict(workflow.graph_dict)
+    for node in graph["nodes"]:
+        node["type"] = "custom"
+        node["data"]["_connectedSourceHandleIds"] = ["source"]
+        node["data"]["_runningStatus"] = "succeeded"
+    graph["edges"][0].update(
+        type="custom",
+        targetHandle="target",
+        data={"sourceType": "llm", "targetType": "end", "_connectedNodeIsSelected": True},
+    )
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) == revision
+
+
+@pytest.mark.parametrize("field", ["isInIteration", "iteration_id", "isInLoop", "loop_id"])
+def test_edge_container_hints_are_presentation_but_node_membership_is_configuration(
+    workflow: Workflow, field: str
+) -> None:
+    revision = execution_revision(workflow)
+    graph: Graph = dict(workflow.graph_dict)
+    graph["edges"][0]["data"] = {field: "container" if field.endswith("_id") else True}
+    workflow.graph = json.dumps(graph)
+    assert execution_revision(workflow) == revision
+
+    graph["nodes"][0]["data"][field] = graph["edges"][0]["data"][field]
+    workflow.graph = json.dumps(graph)
+    assert execution_revision(workflow) != revision
+
+
+def test_unknown_edge_configuration_is_not_stripped(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    graph: Graph = dict(workflow.graph_dict)
+    graph["edges"][0]["data"] = {"new_runtime_option": {"position": 1}}
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize("node_type", ["iteration", "loop"])
+def test_container_resizing_and_notes_do_not_invalidate_revision(workflow: Workflow, node_type: str) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    graph["nodes"].append({"id": "container", "data": {"type": node_type, "width": 500, "height": 300}})
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+
+    graph["nodes"][-1]["data"].update(width=700, height=400)
+    graph["nodes"].append({"id": "note", "type": "custom-note", "data": {"text": "Documentation"}})
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) == revision
+
+
+def test_configuration_dimensions_are_not_treated_as_container_geometry(workflow: Workflow) -> None:
+    revision = execution_revision(workflow)
+    graph: Graph = dict(workflow.graph_dict)
+    graph["nodes"][0]["data"]["width"] = 100
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize("change", ["prompt", "branch", "parent", "unknown", "nested_position", "order"])
+def test_execution_configuration_changes_invalidate_revision(workflow: Workflow, change: str) -> None:
+    revision = execution_revision(workflow)
+    graph = deepcopy(workflow.graph_dict)
+    node = graph["nodes"][0]
+    if change == "prompt":
+        node["data"]["prompt_template"][0]["text"] = "Changed"
+    elif change == "branch":
+        graph["edges"][0]["sourceHandle"] = "false"
+    elif change == "parent":
+        node["parentId"] = "loop"
+    elif change == "unknown":
+        node["data"]["new_runtime_option"] = True
+    elif change == "nested_position":
+        node["data"]["position"] = 5
+    else:
+        node["data"]["prompt_template"].insert(0, {"text": "First"})
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize("field", ["environment_variables", "conversation_variables", "features"])
+def test_execution_dependencies_outside_graph_invalidate_revision(workflow: Workflow, field: str) -> None:
+    revision = execution_revision(workflow)
+    storage_hash = workflow.unique_hash
+    if field == "features":
+        workflow.features = json.dumps({"file_upload": {"enabled": True}})
+    else:
+        setattr(workflow, field, [StringVariable(name="input", value="Changed")])
+
+    assert execution_revision(workflow) != revision
+    assert workflow.unique_hash == storage_hash
+
+
+def test_secret_reencryption_preserves_revision_but_a_changed_value_invalidates_it(workflow: Workflow) -> None:
+    secret = SecretVariable(name="TOKEN", value="ciphertext-1")
+    workflow._environment_variables = json.dumps({secret.id: secret.model_dump(mode="json")})
+    with patch("models.workflow.encrypter.decrypt_token", return_value="same-value") as decrypt:
+        revision = execution_revision(workflow)
+        secret = secret.model_copy(update={"value": "ciphertext-2"})
+        workflow._environment_variables = json.dumps({secret.id: secret.model_dump(mode="json")})
+        assert execution_revision(workflow) == revision
+
+        decrypt.return_value = "changed-value"
+        assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize(
+    "revision_fn", [execution_revision, lambda workflow: executable_graph_revision(workflow.graph_dict)]
+)
+def test_canvas_node_reordering_preserves_execution_revisions(
+    workflow: Workflow, revision_fn: Callable[[Workflow], str]
+) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    nodes: list[Graph] = [
+        {"id": "node1", "data": {"type": "start"}},
+        {"id": "node2", "data": {"type": "code", "code": "def main(): return {}"}},
+        {"id": "node10", "data": {"type": "end"}},
+    ]
+    graph["nodes"] = nodes
+    graph["edges"] = [{"source": "node1", "target": "node2"}, {"source": "node2", "target": "node10"}]
+    workflow.graph = json.dumps(graph)
+    revision = revision_fn(workflow)
+    graph["nodes"] = [graph["nodes"][0], graph["nodes"][2], graph["nodes"][1]]
+    graph["nodes"][1].update(selected=True, position={"x": 100, "y": 200})
+    graph["nodes"][1]["data"].update(selected=True, _targetBranches=["source"])
+    workflow.graph = json.dumps(graph)
+
+    assert revision_fn(workflow) == revision
+
+
+@pytest.mark.parametrize("invalid_id", [None, "", 123, "llm"])
+def test_ambiguous_node_identity_reordering_remains_revision_sensitive(
+    workflow: Workflow, invalid_id: str | int | None
+) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    if invalid_id is None:
+        graph["nodes"][1].pop("id")
+    else:
+        graph["nodes"][1]["id"] = invalid_id
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize(
+    "other_root_type", ["start", "datasource", "trigger-webhook", "trigger-schedule", "trigger-plugin"]
+)
+def test_reordering_multiple_default_entry_nodes_invalidates_revision(workflow: Workflow, other_root_type: str) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    graph["nodes"][0]["data"]["type"] = "start"
+    graph["nodes"][1]["data"]["type"] = other_root_type
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+@pytest.mark.parametrize("field", ["prompt_template", "inputs", "value_selector", "cases"])
+def test_nested_configuration_array_reordering_invalidates_revision(workflow: Workflow, field: str) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    graph["nodes"][0]["data"][field] = ["first", "second"]
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["nodes"][0]["data"][field].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision
+
+
+def test_edge_reordering_remains_revision_sensitive(workflow: Workflow) -> None:
+    graph: Graph = dict(workflow.graph_dict)
+    graph["edges"].append({"id": "other-edge", "source": "llm", "target": "end", "sourceHandle": "false"})
+    workflow.graph = json.dumps(graph)
+    revision = execution_revision(workflow)
+    graph["edges"].reverse()
+    workflow.graph = json.dumps(graph)
+
+    assert execution_revision(workflow) != revision

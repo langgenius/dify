@@ -10,6 +10,7 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   studioEmptyTemplate: 'step-by-step-tour-studio-empty-template',
   studioEmptyBlank: 'step-by-step-tour-studio-empty-blank',
   studioEmptyDSL: 'step-by-step-tour-studio-empty-dsl',
+  studioEmptyWorkflow: 'step-by-step-tour-studio-empty-workflow',
   studioEmptyLearnDify: 'step-by-step-tour-studio-empty-learn-dify',
   studioWithAppsCreate: 'step-by-step-tour-studio-with-apps-create',
   studioWithAppsCreateMenu: 'step-by-step-tour-studio-with-apps-create-menu',
@@ -92,23 +93,42 @@ export function getStepByStepTourGuideInteractionPolicy(
   return 'blocked'
 }
 
-const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<
-  Extract<
-    StepByStepTourGuideGroup,
-    'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'
-  >,
-  StepByStepTourGuide[]
-> = {
-  studioEmpty: [
-    {
-      id: 'studio.empty.template',
-      taskId: 'studio',
-      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
-      title: 'stepByStepTour.guides.studio.empty.template.title',
-      description: 'stepByStepTour.guides.studio.empty.template.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-    },
+type StudioGuideGroup = Extract<StepByStepTourGuideGroup, `studio${string}`>
+
+const studioEmptyTemplateGuide: StepByStepTourGuide = {
+  id: 'studio.empty.template',
+  taskId: 'studio',
+  target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
+  title: 'stepByStepTour.guides.studio.empty.template.title',
+  description: 'stepByStepTour.guides.studio.empty.template.description',
+  learnMoreLabel: 'stepByStepTour.learnMore',
+  primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+}
+
+const studioEmptyDSLGuide: StepByStepTourGuide = {
+  id: 'studio.empty.dsl',
+  taskId: 'studio',
+  target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
+  title: 'stepByStepTour.guides.studio.empty.dsl.title',
+  description: 'stepByStepTour.guides.studio.empty.dsl.description',
+  learnMoreLabel: 'stepByStepTour.learnMore',
+  primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+}
+
+const studioEmptyLearnDifyGuide: StepByStepTourGuide = {
+  id: 'studio.empty.learn_dify',
+  taskId: 'studio',
+  target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify,
+  title: 'stepByStepTour.guides.studio.empty.learnDify.title',
+  description: 'stepByStepTour.guides.studio.empty.learnDify.description',
+  learnMoreLabel: 'stepByStepTour.learnMore',
+  primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+  optional: true,
+}
+
+const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<StudioGuideGroup, StepByStepTourGuide[]> = {
+  studioEmptyLegacy: [
+    studioEmptyTemplateGuide,
     {
       id: 'studio.empty.blank',
       taskId: 'studio',
@@ -118,25 +138,22 @@ const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
     },
+    studioEmptyDSLGuide,
+    studioEmptyLearnDifyGuide,
+  ],
+  studioEmpty: [
+    studioEmptyTemplateGuide,
+    studioEmptyDSLGuide,
     {
-      id: 'studio.empty.dsl',
+      id: 'studio.empty.workflow',
       taskId: 'studio',
-      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
-      title: 'stepByStepTour.guides.studio.empty.dsl.title',
-      description: 'stepByStepTour.guides.studio.empty.dsl.description',
+      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyWorkflow,
+      title: 'stepByStepTour.guides.studio.empty.workflow.title',
+      description: 'stepByStepTour.guides.studio.empty.workflow.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
     },
-    {
-      id: 'studio.empty.learn_dify',
-      taskId: 'studio',
-      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify,
-      title: 'stepByStepTour.guides.studio.empty.learnDify.title',
-      description: 'stepByStepTour.guides.studio.empty.learnDify.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      optional: true,
-    },
+    studioEmptyLearnDifyGuide,
   ],
   studioWithApps: [
     {
@@ -425,11 +442,9 @@ const isStepByStepTourHomeGuideGroup = (
 
 const isStepByStepTourStudioGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
-): guideGroup is Extract<
-  StepByStepTourGuideGroup,
-  'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'
-> =>
+): guideGroup is StudioGuideGroup =>
   guideGroup === 'studioEmpty' ||
+  guideGroup === 'studioEmptyLegacy' ||
   guideGroup === 'studioWithApps' ||
   guideGroup === 'studioNoCreateEmpty' ||
   guideGroup === 'studioNoCreateWithApps'

@@ -1,30 +1,113 @@
 """Persistence-owned credential queries and visibility filtering shared across domains."""
 
+import json
 from collections.abc import Sequence
 from copy import deepcopy
 from typing import override
 
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, false, func, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
+from sqlalchemy.sql.elements import ColumnElement
 
 from libs.datetime_utils import naive_utc_now
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from models.oauth import DatasourceProvider
-from models.provider import ProviderCredential
-from models.provider_ids import ModelProviderID
+from models.provider import ProviderCredential, ProviderModelCredential
+from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+from models.workflow import Workflow
 from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
     ModelCredentialRecord,
+    ToolCredentialMetadata,
     ToolCredentialRecord,
     ToolCredentialSnapshot,
     TriggerSubscriptionRecord,
+    WorkflowToolCredentialMetadata,
 )
 from services.credentials.tool_runtime import ToolRuntimeCredential
+from services.workflow_ref_service import WorkflowRef
+
+
+def _workflow_tool_binding_graph(
+    session: Session,
+    *,
+    workflow_ref: WorkflowRef,
+    node_id: str,
+    provider: str,
+    action: str,
+    credential_id: str,
+    lock: bool = False,
+) -> str | None:
+    """Read an exact saved node binding; optionally lock it for a local SQL operation.
+
+    No credential values or external I/O are involved. Missing or changed node,
+    provider, action, credential or workflow ownership returns None.
+    """
+    statement = select(Workflow.graph).where(
+        Workflow.tenant_id == workflow_ref.tenant_id,
+        Workflow.app_id == workflow_ref.owner_id,
+        Workflow.id == workflow_ref.workflow_id,
+        Workflow.version == Workflow.VERSION_DRAFT,
+    )
+    graph = session.scalar(statement.with_for_update() if lock else statement)
+    if graph is None:
+        return None
+    nodes = [node for node in json.loads(graph).get("nodes", []) if node.get("id") == node_id]
+    if len(nodes) != 1:
+        return None
+    data = nodes[0].get("data", {})
+    stored_provider = data.get("provider_id") or data.get("provider_name")
+    if (
+        data.get("type") != "tool"
+        or data.get("provider_type", "builtin") not in {"builtin", "plugin"}
+        or data.get("tool_name") != action
+        or data.get("credential_id") != credential_id
+        or not isinstance(stored_provider, str)
+        or not stored_provider
+    ):
+        return None
+    try:
+        return graph if str(ToolProviderID(stored_provider)) == provider else None
+    except ValueError:
+        return None
+
+
+def workflow_tool_credential_binding_condition(
+    session: Session, credential: WorkflowToolCredentialMetadata
+) -> ColumnElement[bool]:
+    """Recheck and lock only the saved binding inside the native read/write session.
+
+    Unrelated autosaves during external OAuth I/O are accepted. The caller closes
+    this short SQL transaction before decrypting or contacting a provider.
+    """
+    ref = credential.workflow_ref
+    graph = _workflow_tool_binding_graph(
+        session,
+        workflow_ref=ref,
+        node_id=credential.node_id,
+        provider=str(ToolProviderID(credential.provider)),
+        action=credential.action,
+        credential_id=credential.id,
+        lock=True,
+    )
+    if graph is None:
+        return false()
+    return (
+        select(Workflow.id)
+        .where(
+            Workflow.tenant_id == ref.tenant_id,
+            Workflow.app_id == ref.owner_id,
+            Workflow.id == ref.workflow_id,
+            Workflow.version == Workflow.VERSION_DRAFT,
+            Workflow.graph == graph,
+        )
+        .exists()
+    )
 
 
 def apply_credential_visibility_filter_for_actor(
@@ -70,6 +153,163 @@ class CredentialQueryRepository(CredentialQuery):
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def model_credentials_visible(
+        self,
+        *,
+        workspace_id: str,
+        actor_id: str,
+        provider: str,
+        provider_credential_ids: Sequence[str],
+        model_credential_ids: Sequence[str],
+    ) -> bool:
+        names = {provider}
+        provider_id = ModelProviderID(provider)
+        if provider_id.is_langgenius():
+            names.add(provider_id.provider_name if "/" in provider else str(provider_id))
+        provider_ids = set(provider_credential_ids)
+        query = select(ProviderCredential.id).where(
+            ProviderCredential.tenant_id == workspace_id,
+            ProviderCredential.provider_name.in_(names),
+            ProviderCredential.id.in_(provider_ids),
+        )
+        query = apply_credential_visibility_filter_for_actor(
+            query,
+            tenant_id=workspace_id,
+            actor_id=actor_id,
+            model_id_column=ProviderCredential.id,
+            model_user_id_column=ProviderCredential.user_id,
+            model_visibility_column=ProviderCredential.visibility,
+            credential_type=CredentialType.PROVIDER_CREDENTIAL,
+        )
+        with self._session_factory() as session:
+            if set(session.scalars(query)) != provider_ids:
+                return False
+            # Native custom-model credential rows are tenant shared (the native
+            # schema has no actor visibility fields); still verify exact IDs.
+            model_ids = set(model_credential_ids)
+            visible = set(
+                session.scalars(
+                    select(ProviderModelCredential.id).where(
+                        ProviderModelCredential.tenant_id == workspace_id,
+                        ProviderModelCredential.provider_name.in_(names),
+                        ProviderModelCredential.id.in_(model_ids),
+                    )
+                )
+            )
+            return visible == model_ids
+
+    @override
+    def list_visible_tool_provider_ids(self, *, workspace_id: str, actor_id: str | None) -> set[str]:
+        query = select(BuiltinToolProvider.provider).where(BuiltinToolProvider.tenant_id == workspace_id)
+        if actor_id is None:
+            query = query.where(
+                or_(
+                    BuiltinToolProvider.visibility == PermissionEnum.ALL_TEAM,
+                    BuiltinToolProvider.user_id.is_(None),
+                )
+            )
+        else:
+            query = apply_credential_visibility_filter_for_actor(
+                query,
+                tenant_id=workspace_id,
+                model_id_column=BuiltinToolProvider.id,
+                model_user_id_column=BuiltinToolProvider.user_id,
+                model_visibility_column=BuiltinToolProvider.visibility,
+                credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                actor_id=actor_id,
+            )
+        with self._session_factory() as session:
+            return set(session.scalars(query))
+
+    @override
+    def resolve_tool_credential_metadata(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        legacy_provider: str | None,
+        actor_id: str | None,
+        credential_id: str | None,
+    ) -> ToolCredentialMetadata | None:
+        """Read scalar native selection without borrowing a different visible row."""
+        providers = (provider, legacy_provider) if legacy_provider is not None else (provider,)
+        owner = (BuiltinToolProvider.tenant_id == workspace_id, BuiltinToolProvider.provider.in_(providers))
+        query = select(BuiltinToolProvider.id, BuiltinToolProvider.provider).where(*owner)
+        if credential_id is not None:
+            query = query.where(BuiltinToolProvider.id == credential_id)
+        else:
+            # Native orders only by default/creation time. Refuse tied winners:
+            # a visible row must never mask a hidden equally ranked native row.
+            candidates = (
+                select(
+                    BuiltinToolProvider.id,
+                    BuiltinToolProvider.is_default,
+                    BuiltinToolProvider.created_at,
+                )
+                .where(*owner)
+                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                .limit(2)
+            )
+            with self._session_factory() as session:
+                rows = session.execute(candidates).all()
+            if not rows or (len(rows) > 1 and rows[0][1:] == rows[1][1:]):
+                return None
+            query = query.where(BuiltinToolProvider.id == rows[0][0])
+        if actor_id is None:
+            query = query.where(
+                or_(BuiltinToolProvider.visibility == PermissionEnum.ALL_TEAM, BuiltinToolProvider.user_id.is_(None))
+            )
+        else:
+            query = apply_credential_visibility_filter_for_actor(
+                query,
+                tenant_id=workspace_id,
+                model_id_column=BuiltinToolProvider.id,
+                model_user_id_column=BuiltinToolProvider.user_id,
+                model_visibility_column=BuiltinToolProvider.visibility,
+                credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                actor_id=actor_id,
+            )
+        with self._session_factory() as session:
+            row = session.execute(query).first()
+            return ToolCredentialMetadata(id=row[0], provider=row[1]) if row is not None else None
+
+    @override
+    def resolve_workflow_tool_credential_metadata(
+        self,
+        *,
+        workflow_ref: WorkflowRef,
+        node_id: str,
+        provider: str,
+        action: str,
+        credential_id: str,
+    ) -> WorkflowToolCredentialMetadata | None:
+        """Keep ordinary delegation confined to the exact persisted plugin node."""
+        with self._session_factory() as session:
+            graph = _workflow_tool_binding_graph(
+                session,
+                workflow_ref=workflow_ref,
+                node_id=node_id,
+                provider=provider,
+                action=action,
+                credential_id=credential_id,
+            )
+            if graph is None:
+                return None
+            canonical = ToolProviderID(provider)
+            providers = {provider}
+            if str(ToolProviderID(canonical.provider_name)) == provider:
+                providers.add(canonical.provider_name)
+            row = session.execute(
+                select(BuiltinToolProvider.id, BuiltinToolProvider.provider).where(
+                    BuiltinToolProvider.tenant_id == workflow_ref.tenant_id,
+                    BuiltinToolProvider.id == credential_id,
+                    BuiltinToolProvider.provider.in_(providers),
+                )
+            ).first()
+            if row is None:
+                return None
+            return WorkflowToolCredentialMetadata(row[0], row[1], workflow_ref, node_id, action)
 
     def get_tool_credential(
         self, *, workspace_id: str, providers: tuple[str, ...], credential_id: str | None
@@ -118,6 +358,8 @@ class CredentialQueryRepository(CredentialQuery):
                 )
             )
             assert isinstance(result, CursorResult)
+            if result.rowcount not in (0, 1):
+                raise ValueError("Tool credential refresh affected-row count is uncertain.")
             return result.rowcount == 1
 
     def get_tool(self, *, workspace_id: str, provider: str, credential_id: str | None) -> ToolCredentialSnapshot | None:

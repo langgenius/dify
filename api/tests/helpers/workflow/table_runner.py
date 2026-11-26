@@ -27,11 +27,7 @@ from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add
 from core.workflow.workflow_entry import iter_dify_graph_engine_events
 from graphon.engine import Engine
 from graphon.engine.command import InMemoryChannel
-from graphon.engine_events import (
-    EngineEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-)
+from graphon.engine_events import EngineEvent, GraphRunStartedEvent, GraphRunSucceededEvent
 from graphon.graph import Graph
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import (

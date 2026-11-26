@@ -13,6 +13,7 @@ from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaCharge
 from services.trigger.workflow_dispatch_service import TriggerEndUserProvisioner
 from services.workflow.entities import TriggerActor, WebhookTriggerData
+from services.workflow.webhook_policy import MAX_WEBHOOK_NODES_PER_WORKFLOW, WorkflowWebhookLimitError
 
 
 class WebhookNotFoundError(Exception):
@@ -77,14 +78,15 @@ def build_webhook_workflow_inputs(webhook_data: RawWebhookDataDict) -> WorkflowI
 
 
 class WebhookBindingService:
-    MAX_WEBHOOK_NODES_PER_WORKFLOW = 5
+    MAX_WEBHOOK_NODES_PER_WORKFLOW = MAX_WEBHOOK_NODES_PER_WORKFLOW
 
     def __init__(self, *, sync_bindings: WebhookBindingWriter) -> None:
         self._sync_bindings = sync_bindings
 
     def sync(self, *, tenant_id: str, app_id: str, created_by: str | None, node_ids: Sequence[str]) -> None:
         if len(node_ids) > self.MAX_WEBHOOK_NODES_PER_WORKFLOW:
-            raise ValueError(
+            # Typed so Workflow draft/publish callers can map the limit; still a ValueError.
+            raise WorkflowWebhookLimitError(
                 "Workflow exceeds maximum webhook node limit. "
                 f"Found {len(node_ids)} webhook nodes, maximum allowed is {self.MAX_WEBHOOK_NODES_PER_WORKFLOW}"
             )

@@ -1,0 +1,199 @@
+"""Tests for the cross-process Redis session-advance lock.
+
+The real lock is acquired in the web process (dispatch) and released in the
+Celery process (task), so it cannot rely on ``redis_client.lock()``'s
+context manager, which ties acquire+release to a single object/process.
+These tests model Redis with a small stateful in-memory fake rather than
+``fakeredis`` (not installed in this venv) and verify the SET-NX-token +
+compare-del contract directly.
+"""
+
+from unittest.mock import patch
+
+import pytest
+
+from configs import dify_config
+from extensions.redis_names import serialize_redis_name
+from services.dify_builder import session_lock
+from tests.helpers.unit.config_override import apply_config_overrides
+
+SESSION_ID = "11111111-1111-1111-1111-111111111111"
+
+
+class FakeRedis:
+    """Minimal stateful fake modeling the subset of the redis contract
+    ``session_lock`` relies on: NX-set, get, and Lua compare-and-update emulated
+    without actually running Lua.
+
+    ``set``/``get`` store/read under ``serialize_redis_name(name)`` to model
+    ``RedisClientWrapper`` prefixing those calls internally with
+    ``REDIS_KEY_PREFIX``. ``eval`` is NOT wrapped in production (it falls
+    through to the raw client), so it uses its ``key`` argument as-is —
+    the caller (``session_lock.release``) is responsible for pre-serializing
+    the key it passes to ``eval``.
+    """
+
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+        self.lease_ms: dict[str, int] = {}
+
+    def set(self, name: str, value: str, nx: bool = False, px: int | None = None) -> bool | None:
+        name = serialize_redis_name(name)
+        if nx and name in self.store:
+            return None
+        self.store[name] = value
+        if px is not None:
+            self.lease_ms[name] = px
+        return True
+
+    def get(self, name: str) -> str | None:
+        return self.store.get(serialize_redis_name(name))
+
+    def eval(self, script: str, numkeys: int, *args: str) -> int:  # noqa: ARG002
+        """Every session_lock script is ``GET == ARGV[1]`` then one write command:
+        ``set`` (KEYS[1] := ARGV[2] with PX ARGV[3]), ``pexpire`` (PX ARGV[2]) or ``del``."""
+        key, token = args[0], args[1]
+        if self.store.get(key) != token:
+            return 0
+        if "'set'" in script:
+            self.store[key] = args[2]
+            self.lease_ms[key] = int(args[3])
+            return 1
+        if "pexpire" in script:
+            self.lease_ms[key] = int(args[2])
+            return 1
+        del self.store[key]
+        self.lease_ms.pop(key, None)
+        return 1
+
+
+def test_acquire_returns_token_when_free() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+
+    assert token is not None
+    assert isinstance(token, str)
+
+
+def test_acquire_returns_none_when_already_held() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        first = session_lock.acquire(SESSION_ID)
+        second = session_lock.acquire(SESSION_ID)
+
+    assert first is not None
+    assert second is None
+
+
+def test_release_with_right_token_frees_the_lock() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        session_lock.release(SESSION_ID, token)
+
+        reacquired = session_lock.acquire(SESSION_ID)
+
+    assert reacquired is not None
+
+
+def test_release_with_wrong_token_does_not_free_the_lock() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        session_lock.release(SESSION_ID, "not-the-real-token")
+
+        still_held = session_lock.acquire(SESSION_ID)
+
+    assert still_held is None
+
+
+def test_worker_activation_extends_only_its_own_unexpired_lease() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        old_token = session_lock.acquire(SESSION_ID)
+        assert old_token is not None
+        key = serialize_redis_name(f"dify_builder:advance:{SESSION_ID}")
+        assert fake.lease_ms[key] == dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS * 1000
+        assert session_lock.activate(SESSION_ID, old_token)
+        assert fake.lease_ms[key] > session_lock.active_advance_time_limit() * 1000
+
+        fake.store.pop(key)  # Simulate expiry while the task waited in the queue.
+        new_token = session_lock.acquire(SESSION_ID)
+        assert new_token is not None
+        assert not session_lock.activate(SESSION_ID, old_token)
+        assert fake.store[key] == new_token
+
+
+def test_same_dispatch_token_activates_exactly_one_worker() -> None:
+    """Two deliveries of one queued command carry the same dispatch token; only the first may own it."""
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        winner = session_lock.activate(SESSION_ID, token)
+        loser = session_lock.activate(SESSION_ID, token)
+
+    assert winner
+    assert not loser
+
+
+def test_only_the_activated_owner_release_deletes_the_lease() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        owned = session_lock.activate(SESSION_ID, token)
+        assert owned
+
+        # A same-token loser (or a web-process release of the bare dispatch token) cannot delete it.
+        session_lock.release(SESSION_ID, token)
+        assert session_lock.exists(SESSION_ID) is True
+        # Malformed and stale values are no-ops.
+        session_lock.release(SESSION_ID, "not-the-real-token")
+        session_lock.release(SESSION_ID, f"{token}:forged")
+        assert session_lock.exists(SESSION_ID) is True
+        assert not session_lock.activate(SESSION_ID, "not-the-real-token")
+
+        assert isinstance(owned, str)
+        session_lock.release(SESSION_ID, owned)
+        assert session_lock.exists(SESSION_ID) is False
+        # A released dispatch token can never be activated again.
+        assert not session_lock.activate(SESSION_ID, token)
+
+
+def test_exists_reflects_held_and_free_state() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        assert session_lock.exists(SESSION_ID) is False
+
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        assert session_lock.exists(SESSION_ID) is True
+
+        session_lock.release(SESSION_ID, token)
+        assert session_lock.exists(SESSION_ID) is False
+
+
+def test_release_frees_the_lock_when_redis_key_prefix_is_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression test for the release()/eval key-prefix bug: RedisClientWrapper prefixes
+    .set/.get with REDIS_KEY_PREFIX internally, but .eval is delegated to the raw client, so
+    release() must serialize the key itself to match the key acquire() actually wrote. Without
+    that serialization, release()'s eval reads the unprefixed key (always nil), the compare-del
+    never matches, and the lock is never freed until its TTL expires.
+    """
+    apply_config_overrides(monkeypatch, REDIS_KEY_PREFIX="px")
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        assert session_lock.exists(SESSION_ID) is True
+
+        session_lock.release(SESSION_ID, token)
+
+        reacquired = session_lock.acquire(SESSION_ID)
+
+    assert reacquired is not None
+    assert reacquired != token

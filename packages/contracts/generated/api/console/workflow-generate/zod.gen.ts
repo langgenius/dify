@@ -67,6 +67,35 @@ export const zProviderQuotaExceededError = zErrorResponse.and(
 )
 
 /**
+ * WorkflowInstructionImprovePayload
+ *
+ * Payload for the workflow-generator instruction-improvement endpoint.
+ *
+ * Backs the composer's "Add missing details" action. It runs before an app
+ * exists and before the user picks a model, so the rewrite comes from the
+ * tenant's default model. The underlying generator never raises -- the
+ * original text with ``changed: false`` is a valid 200 (soft-fail).
+ */
+export const zWorkflowInstructionImprovePayload = z.object({
+  instruction: z.string(),
+  language: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']).optional().default('workflow'),
+})
+
+/**
+ * WorkflowInstructionImproveResponse
+ *
+ * ``instruction`` is always usable: the rewrite, or the caller's own text.
+ *
+ * ``changed`` is what distinguishes the two, so a client can tell an
+ * improvement from a soft failure without diffing the strings itself.
+ */
+export const zWorkflowInstructionImproveResponse = z.object({
+  changed: z.boolean(),
+  instruction: z.string(),
+})
+
+/**
  * WorkflowInstructionSuggestionsPayload
  *
  * Payload for the workflow-generator instruction-suggestions endpoint.
@@ -136,7 +165,9 @@ export const zWorkflowGenerateErrorCode = z.enum([
   'EMPTY_PLAN',
   'GRAPH_CYCLE',
   'INSTRUCTION_TOO_LONG',
+  'INVALID_BRANCH_HANDLE',
   'INVALID_CONTAINER',
+  'INVALID_HTTP_BODY',
   'INVALID_JSON',
   'INVALID_SCHEMA',
   'MISSING_START',
@@ -291,6 +322,13 @@ export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
  * Workflow graph generated successfully
  */
 export const zPostWorkflowGenerateResponse = zWorkflowGenerateResponse
+
+export const zPostWorkflowGenerateImproveBody = zWorkflowInstructionImprovePayload
+
+/**
+ * Instruction returned successfully
+ */
+export const zPostWorkflowGenerateImproveResponse = zWorkflowInstructionImproveResponse
 
 export const zPostWorkflowGenerateStreamBody = zWorkflowGeneratePayload
 

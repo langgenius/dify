@@ -31,6 +31,7 @@ from core.app.layers.pause_state_persist_layer import (
     _AdvancedChatAppGenerateEntityWrapper,
     _WorkflowGenerateEntityWrapper,
 )
+from core.tools.errors import ToolProviderCredentialValidationError
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
@@ -1242,6 +1243,29 @@ def test_resume_recovers_legacy_task_before_claiming_pause(
     with sqlite_session_factory.begin() as session:
         run = session.get(WorkflowRun, workflow_run_id)
         assert run is not None
+        app = session.get(App, run.app_id)
+        workflow = session.get(Workflow, run.workflow_id)
+        assert app is not None
+        assert workflow is not None
+        app.mode = app_mode
+        workflow.type = WorkflowType.CHAT if entry_point == "chat" else WorkflowType.WORKFLOW
+        run.type = workflow.type
+        graph = {
+            "nodes": [
+                {"id": "start", "data": {"type": "start", "title": "Start", "variables": []}},
+                {
+                    "id": "terminal",
+                    "data": (
+                        {"type": "answer", "title": "Answer", "answer": "Resumed"}
+                        if entry_point == "chat"
+                        else {"type": "end", "title": "End", "outputs": []}
+                    ),
+                },
+            ],
+            "edges": [{"id": "start-terminal", "source": "start", "target": "terminal"}],
+        }
+        workflow.graph = json.dumps(graph)
+        run.graph = workflow.graph
         run.task_id = task_id if scenario == "already-indexed-uppercase" else None
         run.status = WorkflowExecutionStatus.PAUSED
         pause = WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=run.id, state_object_key="legacy-pause")
@@ -1337,6 +1361,12 @@ def test_resume_recovers_legacy_task_before_claiming_pause(
     invoke = async_workflow_tasks.resume_workflow_execution.run if entry_point == "async" else _resume_app_execution
     if entry_point == "async" and scenario == "concurrent-stop":
         with pytest.raises(WorkflowRunNotPausedError):
+            invoke({"workflow_run_id": workflow_run_id})
+    elif entry_point != "async" and scenario in {"run_id", "tenant_id", "app_id", "user_id"}:
+        with pytest.raises(
+            ToolProviderCredentialValidationError,
+            match="Saved draft execution does not match its acting account and app",
+        ):
             invoke({"workflow_run_id": workflow_run_id})
     else:
         invoke({"workflow_run_id": workflow_run_id})

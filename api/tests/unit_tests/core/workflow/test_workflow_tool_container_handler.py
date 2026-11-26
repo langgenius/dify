@@ -900,7 +900,9 @@ class TestWorkflowToolContainerCases:
                 raise CodeExecutionError("source code failed")
             return {"output": "retried output"}
 
-        monkeypatch.setattr("core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute)
+        monkeypatch.setattr(
+            "core.workflow.node_factory.CodeExecutor.execute_workflow_code_template", execute
+        )
         source = _workflow_tool_container_workflow_tool_source()
         source_graph = dict(source.graph_config)
         source_graph["nodes"].insert(
@@ -1673,7 +1675,9 @@ class TestWorkflowToolEventDeliveryCases:
                 pytest.fail("Binding resolution must wait for a persisted caller")
 
             monkeypatch.setattr(binding_resolver, "resolve", reject_resolution)
-            monkeypatch.setattr("core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver)
+            monkeypatch.setattr(
+                "core.workflow.node_factory.WorkflowAgentBindingResolver", lambda: binding_resolver
+            )
             save = SQLAlchemyWorkflowNodeExecutionRepository.save
 
             def fail_caller_save(

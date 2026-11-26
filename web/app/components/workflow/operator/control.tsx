@@ -33,6 +33,7 @@ const Control = () => {
     handleModeComment,
     isCommentModeAvailable,
     canUseCommentMode,
+    moveModeReadOnly,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
@@ -70,13 +71,13 @@ const Control = () => {
         <Toggle
           pressed={controlMode === ControlMode.Pointer}
           onPressedChange={handleModePointer}
-          disabled={nodesReadOnly}
+          disabled={moveModeReadOnly}
           className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
               aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
-              disabled={nodesReadOnly}
+              disabled={moveModeReadOnly}
               focusableWhenDisabled
               className="me-px rounded-md"
             >
@@ -92,13 +93,13 @@ const Control = () => {
         <Toggle
           pressed={controlMode === ControlMode.Hand}
           onPressedChange={handleModeHand}
-          disabled={nodesReadOnly}
+          disabled={moveModeReadOnly}
           className={toolbarModeToggleClassName}
           render={
             <IconButton
               size="lg"
               aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
-              disabled={nodesReadOnly}
+              disabled={moveModeReadOnly}
               focusableWhenDisabled
               className="rounded-md"
             >

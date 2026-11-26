@@ -10,6 +10,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +30,12 @@ import HumanInputMigrationProvider from '@/app/components/workflow/nodes/human-i
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { DifyBuilderProvider } from '@/features/dify-builder/editor'
+import { DifyBuilderNodeDecoration } from '@/features/dify-builder/editor/node-decoration'
+import { useWorkflowDifyBuilderEnabled } from '@/features/dify-builder/editor/use-enabled'
+import { useDifyBuilderViewportInteraction } from '@/features/dify-builder/editor/use-viewport-interaction'
 import { consoleQuery } from '@/service/console'
 import { fetchAppWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -41,6 +47,8 @@ import { useWorkflowRunByCanEdit } from '../hooks/use-workflow-run'
 import { useWorkflowStartRunByCanEdit } from '../hooks/use-workflow-start-run'
 import WorkflowChildren from './workflow-children'
 import WorkflowPanel from './workflow-panel'
+
+const DifyBuilderPanel = dynamic(() => import('@/features/dify-builder/panel'), { ssr: false })
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 type WorkflowDataUpdatePayload = Pick<
@@ -61,6 +69,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
   const workflowStore = useWorkflowStore()
   const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const isWorkflowDataLoaded = useStore((state) => state.isWorkflowDataLoaded)
+  const builderEnabled = useWorkflowDifyBuilderEnabled()
+  const showBuilder = useStore((state) => state.showDifyBuilderPanel) && builderEnabled
+  const onViewportInteraction = useDifyBuilderViewportInteraction()
+  const renderNodeDecoration = useCallback(
+    (nodeId: string) => <DifyBuilderNodeDecoration nodeId={nodeId} />,
+    [],
+  )
+  const onWorkflowHistoryOpen = useCallback(() => {
+    workflowStore.getState().setShowDifyBuilderPanel(false)
+  }, [workflowStore])
+  useEffect(() => {
+    if (showBuilder) return
+    workflowStore.getState().setWorkflowDraftSyncPhase('idle')
+  }, [showBuilder, workflowStore])
   const { data: appDetail } = useSuspenseQuery(
     consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
   )
@@ -464,6 +488,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
 
   const hooksStore = useMemo(() => {
     return {
+      onViewportInteraction,
+      renderNodeDecoration,
+      onWorkflowHistoryOpen,
       syncWorkflowDraftWhenPageClose,
       doSyncWorkflowDraft,
       handleRefreshWorkflowDraft,
@@ -507,6 +534,9 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       fileSettings,
     }
   }, [
+    onViewportInteraction,
+    renderNodeDecoration,
+    onWorkflowHistoryOpen,
     syncWorkflowDraftWhenPageClose,
     doSyncWorkflowDraft,
     handleRefreshWorkflowDraft,
@@ -545,8 +575,59 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     fileSettings,
   ])
 
+  const getCanvasSnapshot = useCallback(
+    () => ({
+      nodes: reactFlow.getNodes(),
+      edges: reactFlow.getEdges(),
+      isChatflow: appDetail.mode === 'advanced-chat',
+    }),
+    [appDetail.mode, reactFlow],
+  )
+  const prepareBuilderDraft = useCallback(
+    async (saveDraft: boolean, signal: AbortSignal) => {
+      signal.throwIfAborted()
+      const state = workflowStore.getState()
+      state.debouncedSyncWorkflowDraft.cancel()
+      if (saveDraft) {
+        const saved = await doSyncWorkflowDraft(true, { onError: () => {} })
+        signal.throwIfAborted()
+        if (!saved) throw new Error(t(($) => $['common.draftSaveFailed']))
+      }
+      state.setWorkflowDraftSyncPhase('builder')
+    },
+    [doSyncWorkflowDraft, t, workflowStore],
+  )
+  const refreshBuilderCanvas = useCallback(
+    async (shouldApply: () => boolean) => {
+      const refreshed = await handleRefreshWorkflowDraft(false, { shouldApply })
+      if (!shouldApply()) return 'superseded'
+      if (!refreshed) return 'failed'
+      workflowStore.getState().setWorkflowDraftSyncPhase('idle')
+      return 'refreshed'
+    },
+    [handleRefreshWorkflowDraft, workflowStore],
+  )
+
   return (
-    <div ref={containerRef} className="relative size-full">
+    <DifyBuilderProvider
+      appId={appId}
+      canEdit={appACLCapabilities.canEdit}
+      canStartCreation={
+        isWorkflowDataLoaded &&
+        (!isCollaborationEnabled ||
+          (collaborationGraphState.appId === appId &&
+            collaborationGraphState.isReady &&
+            collaborationManager.canPersistLocalGraph()))
+      }
+      getCanvasSnapshot={getCanvasSnapshot}
+      onSyncDraft={prepareBuilderDraft}
+      onRefreshCanvas={refreshBuilderCanvas}
+      tenantId={currentWorkspaceId}
+      userId={myUserId ?? ''}
+    >
+      <div className="flex size-full min-w-0 overflow-hidden">
+        <div ref={containerRef} className="relative min-w-0 flex-1">
+
       <HooksStoreContextProvider {...(hooksStore as unknown as Partial<HooksStoreShape>)}>
         <HumanInputMigrationProvider canEdit={appACLCapabilities.canEdit}>
           <Workflow
@@ -607,7 +688,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
           </Workflow>
         </HumanInputMigrationProvider>
       </HooksStoreContextProvider>
-    </div>
+        </div>
+        {showBuilder && <DifyBuilderPanel />}
+      </div>
+    </DifyBuilderProvider>
   )
 }
 

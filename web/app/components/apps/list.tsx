@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic'
 import { throttle, useQueryStates } from 'nuqs'
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { useDifyBuilderEnabled } from '@/features/dify-builder/use-enabled'
 import { CheckResultToast } from '@/hooks/use-pay'
 import { hasPermission } from '@/utils/permission'
 import { AppListCatalog } from './app-list-catalog'
@@ -46,6 +47,7 @@ type Props = Readonly<{
 
 export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isBuilderEnabled = useDifyBuilderEnabled()
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
   const { category, keywords, creatorIDs, tagIDs, sort_by: sortBy } = urlQuery
@@ -120,14 +122,10 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
     void setUrlQuery({ sort_by: nextSortBy })
   }
 
-  // Opening pushes a history entry and switching between blank and template replaces it,
-  // so closing (or Back) returns to the list in one step. Blank creation defaults to the
-  // selected category; `mode` is only for links from elsewhere.
   const openCreationDialog = useCallback(
     async (create: 'blank' | 'template') => {
       if (!canCreateApp) return
       const switching = creationQuery.create !== null
-      // Replacing the entry drops its state, so carry the mark over when switching.
       const pushed = !switching || isPushedCreationEntry()
       await setCreationQuery({ create, mode: null }, { history: switching ? 'replace' : 'push' })
       if (pushed) markPushedCreationEntry()
@@ -185,6 +183,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             keywords={keywords}
             creatorIDs={creatorIDs}
             sortBy={sortBy}
+            isBuilderEnabled={isBuilderEnabled}
             onCategoryChange={changeCategory}
             onTagIDsChange={changeTagIDs}
             onKeywordsChange={changeKeywords}
@@ -201,6 +200,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
             canCreateApp={canCreateApp}
             dragging={dragging}
             hasActiveFilters={hasActiveFilters}
+            isBuilderEnabled={isBuilderEnabled}
             onCreateBlank={openCreateBlankModal}
             onCreateLearnDify={onCreateLearnDify}
             onCreateTemplate={openCreateTemplateDialog}
@@ -221,8 +221,9 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
 
       <AppListCreationModals
         canCreateApp={canCreateApp}
-        defaultMode={creationQuery.mode ?? category}
+        defaultMode={creationQuery.mode ?? (category === 'all' ? 'advanced-chat' : category)}
         dialog={creationDialog}
+        isBuilderEnabled={isBuilderEnabled}
         onClose={closeCreationDialog}
         onOpenBlank={openCreateBlankModal}
         onOpenTemplate={openCreateTemplateDialog}

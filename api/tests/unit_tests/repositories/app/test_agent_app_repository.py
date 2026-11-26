@@ -7,17 +7,49 @@ import pytest
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.model_template import default_app_templates
 from machinery.context import RequestContext
+from models.account import TenantAccountJoin, TenantAccountRole
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import AgentAppNotFoundError
-from services.entities.app_entities import AppListParams
+from services.entities.app_entities import AppCreationSettings, AppListParams, CreateAppParams
 from services.evaluation_service import EvaluationService
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 type Resolver = Literal["repository", "roster"]
+
+
+def test_agent_app_creation_uses_the_same_derived_name_for_app_and_agent(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = make_account(account_id="account-1", name="Creator", email="creator@example.com")
+    tenant = make_tenant(tenant_id="tenant-1", name="Workspace")
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                account,
+                tenant,
+                TenantAccountJoin(tenant_id="tenant-1", account_id="account-1", role=TenantAccountRole.OWNER),
+            ]
+        )
+
+    repository = AgentAppRepository(
+        session_factory=sqlite_session_factory,
+        stage_evaluation_cleanup=EvaluationService.stage_target_evaluation_cleanup,
+    )
+    app = repository.create_agent_app(
+        RequestContext("request", None, "account-1", "tenant-1"),
+        CreateAppParams(mode="agent", prompt="Refund approval for ecommerce orders"),
+        AppCreationSettings(app=dict(default_app_templates[AppMode.AGENT]["app"]), model_config=None),
+        default_model=None,
+    )
+    with sqlite_session_factory() as session:
+        agent = session.scalar(select(Agent).where(Agent.app_id == app.id))
+        assert agent is not None
+        assert app.name == agent.name == "Refund approval for ecommerce"
 
 
 @pytest.mark.usefixtures("_inline_agent")

@@ -143,6 +143,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     # Import other controllers
     from . import (
         apikey,
+        dify_builder,
+        dify_builder_policy,
         evaluation,
         extension,
         feature,
@@ -273,6 +275,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         apikey,
+        dify_builder,
+        dify_builder_policy,
         evaluation,
         extension,
         file_scan,
@@ -380,6 +384,8 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    dify_builder,
+    dify_builder_policy,
     evaluation,
     extension,
     file_scan,
@@ -522,6 +528,8 @@ __all__ = [
     "datasets_segments",
     "datasource_auth",
     "datasource_content_preview",
+    "dify_builder",
+    "dify_builder_policy",
     "email_register",
     "endpoint",
     "evaluation",
