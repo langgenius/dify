@@ -305,7 +305,14 @@ export const setProviderToolCallLimitAtom = atom(
           ? {
               ...tool,
               actions: tool.actions.map((action) =>
-                action.id === actionId ? { ...action, maxCallsPerRun } : action,
+                action.id === actionId
+                  ? {
+                      ...action,
+                      maxCallsPerRun,
+                      lastMaxCallsPerRun:
+                        maxCallsPerRun ?? action.maxCallsPerRun ?? action.lastMaxCallsPerRun,
+                    }
+                  : action,
               ),
             }
           : tool,
