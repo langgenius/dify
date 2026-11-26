@@ -24,7 +24,6 @@ export async function uploadSkillFile(
     { body: { file } },
     {
       context: {
-        silent: true,
         ...(onProgress && {
           onUploadProgress: ({ loaded, total }: { loaded: number; total: number }) => {
             onProgress(Math.floor((loaded / total) * 100))
@@ -47,24 +46,20 @@ export async function fetchSkillFileBlob({
   skillId: string
   versionId: string | null
 }): Promise<Blob> {
-  return consoleClient.workspaces.current.skills.bySkillId.files.content.get(
-    {
-      params: { skill_id: skillId },
-      query: {
-        path,
-        ...(versionId && { version_id: versionId }),
-        ...(download && { download: '1' }),
-      },
+  return consoleClient.workspaces.current.skills.bySkillId.files.content.get({
+    params: { skill_id: skillId },
+    query: {
+      path,
+      ...(versionId && { version_id: versionId }),
+      ...(download && { download: '1' }),
     },
-    { context: { silent: true } },
-  )
+  })
 }
 
 export async function fetchSkillArchiveBlob(skillId: string): Promise<Blob> {
-  return consoleClient.workspaces.current.skills.bySkillId.export.get(
-    { params: { skill_id: skillId } },
-    { context: { silent: true } },
-  )
+  return consoleClient.workspaces.current.skills.bySkillId.export.get({
+    params: { skill_id: skillId },
+  })
 }
 
 export async function sendSkillAssistMessage({
@@ -111,7 +106,6 @@ export async function sendSkillAssistMessage({
         options,
       ),
     {
-      silent: true,
       onNotifyError: noop,
       getAbortController,
       onCompleted: (hasError, errorMessage) => {

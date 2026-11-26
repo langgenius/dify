@@ -62,13 +62,12 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       }
 
       // Failed logins reject: `authentication_failed` gets its own message, other request errors the server's.
-      const res = await webAppLogin(loginData, { silent: true })
+      const res = await webAppLogin(loginData)
       setWebAppAccessToken(res.data.access_token)
 
       const { access_token } = await fetchAccessToken({
         appCode: loginRedirect.appCode,
         userId: embeddedUserId || undefined,
-        silent: true,
       })
       setWebAppPassport(loginRedirect.address, access_token)
       navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)

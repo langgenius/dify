@@ -541,7 +541,6 @@ function RunEvaluationForm({
   const submissionRef = useRef<{ idempotencyKey: string; mode: RetrievalMode }>(undefined)
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.replayRuns.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

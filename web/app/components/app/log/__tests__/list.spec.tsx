@@ -570,9 +570,7 @@ it('opens and closes the workflow run selected from an answer', async () => {
     'true',
   )
   await waitFor(() =>
-    expect(api.run).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1', {
-      silent: true,
-    }),
+    expect(api.run).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1'),
   )
   expect(await screen.findByRole('link', { name: 'app.tracing.run.viewTrace' })).toHaveAttribute(
     'href',
@@ -581,9 +579,7 @@ it('opens and closes the workflow run selected from an answer', async () => {
   expect(api.externalTrace).toHaveBeenCalledWith({
     params: { app_id: 'app-1', source_kind: 'workflow', source_id: 'run-1' },
   })
-  expect(api.tracing).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1', {
-    silent: true,
-  })
+  expect(api.tracing).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1' }, 'run-1')
   await user.click(within(runDialog).getByRole('button', { name: 'common.operation.close' }))
   await waitFor(() => expect(runDialog).not.toBeInTheDocument())
 })

@@ -237,19 +237,16 @@ it('persists custom tool labels when the refreshed parent still has the old labe
   await user.keyboard('{Escape}')
   await user.click(within(editor).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() =>
-    expect(api.customUpdate).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({
-          provider: 'Search API',
-          original_provider: 'Search API',
-          labels: ['productivity'],
-          schema,
-          schema_type: 'openapi',
-          credentials: { auth_type: 'none' },
-        }),
-      },
-      { context: { silent: true } },
-    ),
+    expect(api.customUpdate).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        provider: 'Search API',
+        original_provider: 'Search API',
+        labels: ['productivity'],
+        schema,
+        schema_type: 'openapi',
+        credentials: { auth_type: 'none' },
+      }),
+    }),
   )
   await waitFor(() =>
     expect(
@@ -320,17 +317,14 @@ it('updates a workflow tool only after confirmation and reloads the saved config
   api.workflowDetail.mockResolvedValue({ ...workflowDetail, label: 'Renamed Workflow' })
   await user.click(within(confirm).getByRole('button', { name: 'common.operation.confirm' }))
   await waitFor(() =>
-    expect(api.workflowUpdate).toHaveBeenCalledWith(
-      {
-        body: expect.objectContaining({
-          workflow_tool_id: 'workflow-id',
-          name: 'search_workflow',
-          label: 'Renamed Workflow',
-          parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
-        }),
-      },
-      { context: { silent: true } },
-    ),
+    expect(api.workflowUpdate).toHaveBeenCalledWith({
+      body: expect.objectContaining({
+        workflow_tool_id: 'workflow-id',
+        name: 'search_workflow',
+        label: 'Renamed Workflow',
+        parameters: [{ name: 'query', description: 'Search query', form: 'llm' }],
+      }),
+    }),
   )
   await waitFor(() =>
     expect(

@@ -183,12 +183,11 @@ export const useSegmentListData = (
   // Mutations
   const { mutateAsync: switchSegments } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const { mutateAsync: deleteSegment } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

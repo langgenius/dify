@@ -69,7 +69,6 @@ function TriggerAccessPointItem({
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },

@@ -47,7 +47,7 @@ export default function MailAndCodeAuth() {
         return
       }
       setLoading(true)
-      const ret = await sendWebAppEMailLoginCode(email, locale, { silent: true })
+      const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)

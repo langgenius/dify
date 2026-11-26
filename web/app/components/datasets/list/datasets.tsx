@@ -65,7 +65,6 @@ const Datasets = ({
   )
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

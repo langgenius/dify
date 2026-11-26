@@ -101,7 +101,6 @@ function CreateFromDSLModal({
   const { mutateAsync: requestImport } = useMutation(
     consoleQuery.apps.imports.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const importMutation = useMutation({
@@ -130,7 +129,6 @@ function CreateFromDSLModal({
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()

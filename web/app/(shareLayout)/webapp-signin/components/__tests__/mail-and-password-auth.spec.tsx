@@ -69,14 +69,11 @@ describe('MailAndPasswordAuth', () => {
     await user.type(passwordInput, 'strong-password{Enter}')
 
     await waitFor(() => {
-      expect(webAppLoginMock).toHaveBeenCalledWith(
-        {
-          email: 'user@example.com',
-          password: 'c3Ryb25nLXBhc3N3b3Jk',
-          remember_me: true,
-        },
-        { silent: true },
-      )
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        email: 'user@example.com',
+        password: 'c3Ryb25nLXBhc3N3b3Jk',
+        remember_me: true,
+      })
     })
   })
 
@@ -93,7 +90,6 @@ describe('MailAndPasswordAuth', () => {
     expect(fetchAccessTokenMock).toHaveBeenCalledWith({
       appCode: 'test-app',
       userId: 'embedded-user-99',
-      silent: true,
     })
     expect(toastErrorMock).not.toHaveBeenCalled()
   })
@@ -144,14 +140,11 @@ describe('MailAndPasswordAuth', () => {
     password.value = 'autofilled-password'
     await user.click(submit)
     await waitFor(() =>
-      expect(webAppLoginMock).toHaveBeenCalledWith(
-        {
-          email: 'autofill@example.com',
-          password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
-          remember_me: true,
-        },
-        { silent: true },
-      ),
+      expect(webAppLoginMock).toHaveBeenCalledWith({
+        email: 'autofill@example.com',
+        password: 'YXV0b2ZpbGxlZC1wYXNzd29yZA==',
+        remember_me: true,
+      }),
     )
   })
 

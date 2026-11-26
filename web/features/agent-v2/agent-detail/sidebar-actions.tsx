@@ -35,7 +35,6 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

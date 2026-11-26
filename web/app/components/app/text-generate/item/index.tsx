@@ -183,10 +183,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     if (!onOpenLog) return
     let data: Awaited<ReturnType<typeof fetchTextGenerationMessage>>
     try {
-      data = await fetchTextGenerationMessage(
-        { appId: params.appId as string, messageId: messageId! },
-        { silent: true },
-      )
+      data = await fetchTextGenerationMessage({
+        appId: params.appId as string,
+        messageId: messageId!,
+      })
     } catch (error) {
       toastRequestError(error)
       return
@@ -215,7 +215,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       const { form_version: formVersion, ...submission } = formData
       if (appSourceType === AppSourceType.installedApp) {
         try {
-          await submitHumanInputFormService(formToken, submission, formVersion, { silent: true })
+          await submitHumanInputFormService(formToken, submission, formVersion)
         } catch (error) {
           toastRequestError(error)
           throw error

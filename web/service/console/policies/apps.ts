@@ -179,7 +179,7 @@ export function appPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['apps']
       traceRuns: {
         bySourceKind: {
           bySourceId: {
-            get: { queryOptions: { context: { silent: true }, retry: false } },
+            get: { queryOptions: { meta: { errorToast: false }, retry: false } },
           },
         },
       },

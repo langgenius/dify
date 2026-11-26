@@ -59,7 +59,7 @@ function Splash({ children }: PropsWithChildren) {
     }
 
     try {
-      await webAppLogout(address, { silent: true })
+      await webAppLogout(address)
     } catch (error) {
       toastRequestError(error)
       return

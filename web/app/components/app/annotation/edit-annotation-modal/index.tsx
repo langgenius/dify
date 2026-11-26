@@ -52,7 +52,6 @@ export default function EditAnnotationDialog({
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   return (

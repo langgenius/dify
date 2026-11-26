@@ -56,14 +56,11 @@ export default function CheckCode() {
         return
       }
       setLoading(true)
-      const ret = await webAppEmailLoginWithCode(
-        {
-          email,
-          code: encryptVerificationCode(code),
-          token,
-        },
-        { silent: true },
-      )
+      const ret = await webAppEmailLoginWithCode({
+        email,
+        code: encryptVerificationCode(code),
+        token,
+      })
       if (ret.result === 'success') {
         if (ret?.data?.access_token) {
           setWebAppAccessToken(ret.data.access_token)
@@ -71,7 +68,6 @@ export default function CheckCode() {
         const { access_token } = await fetchAccessToken({
           appCode: loginRedirect.appCode,
           userId: embeddedUserId || undefined,
-          silent: true,
         })
         setWebAppPassport(loginRedirect.address, access_token)
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
@@ -95,7 +91,7 @@ export default function CheckCode() {
       return
     }
     try {
-      const ret = await sendWebAppEMailLoginCode(email, locale, { silent: true })
+      const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))

@@ -58,7 +58,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
   const { refetch } = useSubscriptionList()
 
   const { mutate: updateSubscription, isPending: isUpdating } = useMutation({
-    ...updateTriggerSubscriptionMutationOptions({ silent: true }),
+    ...updateTriggerSubscriptionMutationOptions(),
     meta: { errorToast: false },
   })
 

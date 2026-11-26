@@ -158,7 +158,6 @@ function UpdateDSLModal({
   const { mutateAsync: requestImport } = useMutation(
     consoleQuery.apps.imports.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const importMutation = useMutation({
@@ -188,7 +187,6 @@ function UpdateDSLModal({
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)

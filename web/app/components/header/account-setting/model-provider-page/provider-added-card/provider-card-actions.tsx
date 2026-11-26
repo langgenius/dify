@@ -168,7 +168,7 @@ function ProviderCardActions(props: Props) {
     const response = await queryClient.query(
       consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
         input: { body: { plugin_ids: [pluginID] } },
-        context: { silent: true },
+        meta: { errorToast: false },
       }),
     )
     return response.plugins[0] ? normalizeInstalledPluginDetail(response.plugins[0]) : undefined

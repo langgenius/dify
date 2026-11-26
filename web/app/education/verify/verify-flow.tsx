@@ -78,7 +78,6 @@ export function EducationVerifyFlow() {
     reset: resetVerification,
   } = useMutation(
     consoleQuery.account.education.verify.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -54,7 +54,6 @@ export const MemberMenu = memo(
       reset: resetRoleSave,
     } = useMutation(
       consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
-        context: { silent: true },
         meta: { errorToast: false },
       }),
     )

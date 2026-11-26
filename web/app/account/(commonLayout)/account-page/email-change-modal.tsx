@@ -50,25 +50,21 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   const latestEmailRef = useRef<string>('')
   const { mutateAsync: sendChangeEmailCode } = useMutation(
     consoleQuery.account.changeEmail.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: verifyChangeEmailCode } = useMutation(
     consoleQuery.account.changeEmail.validity.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: checkEmailUnique } = useMutation(
     consoleQuery.account.changeEmail.checkEmailUnique.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: resetEmail } = useMutation(
     consoleQuery.account.changeEmail.reset.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -193,7 +189,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   }
 
   const { mutateAsync: logout } = useMutation({
-    ...logoutMutationOptions({ context: { silent: true } }),
+    ...logoutMutationOptions(),
     meta: { errorToast: false },
   })
   const updateEmail = async (lastToken: string) => {

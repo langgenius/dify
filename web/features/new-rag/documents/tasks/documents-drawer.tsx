@@ -329,7 +329,7 @@ function DocumentsTaskAction({ task }: { task: BackgroundTask }) {
   )
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const refreshDocumentsAndTasks = () => {

@@ -471,7 +471,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           },
           appSourceType,
           appId,
-          { silent: true },
         )
       } catch (error) {
         toastRequestError(error)

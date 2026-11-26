@@ -105,9 +105,6 @@ export function useAgentConfigureSync({
 
   const { mutateAsync: saveComposerDraft } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
       meta: { errorToast: false },
     }),
   )
@@ -115,16 +112,12 @@ export function useAgentConfigureSync({
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       context: {
         keepalive: true,
-        silent: true,
       },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
     consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
       meta: { errorToast: false },
     }),
   )

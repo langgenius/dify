@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { captureAppAccessScope, handleAppAccessError } from '@/features/app-access-error/state'
-import { markErrorHandled, markSilentRequestError } from '@/service/handled-error'
+import { markErrorHandled } from '@/service/handled-error'
 import { createHttpError } from '@/service/http-error'
 import { getQueryClient } from '../get-query-client'
 import { toastRequestError } from '../query-error-toast'
@@ -262,43 +262,5 @@ describe('toastRequestError', () => {
     toastRequestError(error)
 
     expect(toast.error).not.toHaveBeenCalled()
-  })
-})
-
-describe('errors from requests that still pass `silent`', () => {
-  const queryClient = getQueryClient()
-
-  beforeEach(() => {
-    vi.mocked(toast.error).mockClear()
-  })
-
-  afterEach(() => {
-    queryClient.clear()
-  })
-
-  const silentError = () => {
-    const error = httpError(500, { message: 'Unavailable' })
-    markSilentRequestError(error)
-    return error
-  }
-
-  it('are not reported by the caches', async () => {
-    const queryKey = nextKey()
-    const queryFn = vi.fn().mockResolvedValueOnce('cached').mockRejectedValue(silentError())
-    await queryClient.query({ queryKey, queryFn })
-    await queryClient.refetchQueries({ queryKey })
-    await queryClient
-      .getMutationCache()
-      .build(queryClient, { mutationFn: () => Promise.reject(silentError()) })
-      .execute(undefined)
-      .catch(() => {})
-
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-
-  it('are still reported by an explicit toastRequestError', () => {
-    toastRequestError(silentError())
-
-    expect(toast.error).toHaveBeenCalledExactlyOnceWith('Unavailable')
   })
 })

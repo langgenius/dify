@@ -116,7 +116,6 @@ function ComplianceDocRowItem({ icon, label, docName }: ComplianceDocRowItemProp
 
   const { isPending, mutate: downloadCompliance } = useMutation(
     consoleQuery.compliance.download.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       onSuccess: (ret) => {
         downloadUrl({ url: ret.url })

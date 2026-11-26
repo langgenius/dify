@@ -77,10 +77,7 @@ const ChatVariablePanel = () => {
 
       // Use new dedicated conversation variables API instead of workflow draft sync
       try {
-        await updateConversationVariables(
-          { appId, conversationVariables: newVarList },
-          { silent: true },
-        )
+        await updateConversationVariables({ appId, conversationVariables: newVarList })
 
         // Emit update event to other connected clients
         const socket = webSocketClient.getSocket(appId)
@@ -125,10 +122,7 @@ const ChatVariablePanel = () => {
 
         // Use new dedicated conversation variables API
         try {
-          await updateConversationVariables(
-            { appId, conversationVariables: newList },
-            { silent: true },
-          )
+          await updateConversationVariables({ appId, conversationVariables: newList })
 
           const socket = webSocketClient.getSocket(appId)
           if (socket) {
@@ -171,10 +165,7 @@ const ChatVariablePanel = () => {
 
       // Use new dedicated conversation variables API
       try {
-        await updateConversationVariables(
-          { appId, conversationVariables: newList },
-          { silent: true },
-        )
+        await updateConversationVariables({ appId, conversationVariables: newList })
 
         const socket = webSocketClient.getSocket(appId)
         if (socket) {

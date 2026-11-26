@@ -51,7 +51,6 @@ export const useInputFieldsActions = ({
   const [uploadedFileMeta, setUploadedFileMeta] = useState<UploadedFileMeta | null>(null)
   const uploadMutation = useMutation(
     consoleQuery.files.upload.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       onSuccess: (uploadedFile, input) => {
         const file = input.body.file

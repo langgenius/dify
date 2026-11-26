@@ -36,7 +36,7 @@ describe('console contract uploads', () => {
 
     const pending = consoleClient.files.upload.post(
       { body: { file, source: 'datasets' } },
-      { context: { silent: true, onUploadProgress } },
+      { context: { onUploadProgress } },
     )
     await waitForSend()
     const xhr = FakeXMLHttpRequest.latest()
@@ -62,7 +62,7 @@ describe('console contract uploads', () => {
     const consoleClient = await loadConsoleClient()
     const pending = consoleClient.files.upload.post(
       { body: { file: new File(['x'], 'run.exe') } },
-      { context: { silent: true, onUploadProgress: vi.fn() } },
+      { context: { onUploadProgress: vi.fn() } },
     )
     await waitForSend()
     FakeXMLHttpRequest.latest().respond({
@@ -80,7 +80,7 @@ describe('console contract uploads', () => {
     const controller = new AbortController()
     const pending = consoleClient.files.upload.post(
       { body: { file: new File(['x'], 'notes.txt') } },
-      { context: { silent: true, onUploadProgress: vi.fn() }, signal: controller.signal },
+      { context: { onUploadProgress: vi.fn() }, signal: controller.signal },
     )
     await waitForSend()
 

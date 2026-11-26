@@ -38,14 +38,11 @@ describe('Webapp Reset Password Set Password Page', () => {
       'ValidPass123!',
     )
     await user.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
-    expect(changeWebAppPasswordWithToken).toHaveBeenCalledWith(
-      {
-        token: 'reset-token',
-        new_password: 'ValidPass123!',
-        password_confirm: 'ValidPass123!',
-      },
-      { silent: true },
-    )
+    expect(changeWebAppPasswordWithToken).toHaveBeenCalledWith({
+      token: 'reset-token',
+      new_password: 'ValidPass123!',
+      password_confirm: 'ValidPass123!',
+    })
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(

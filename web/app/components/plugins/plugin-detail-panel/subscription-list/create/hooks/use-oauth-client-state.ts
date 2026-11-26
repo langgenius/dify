@@ -89,7 +89,7 @@ export const useOAuthClientState = ({
   )
   const { mutate: configureOAuth } = useMutation(configureTriggerOAuthMutationOptions())
   const { mutate: deleteOAuth } = useMutation({
-    ...deleteTriggerOAuthMutationOptions({ silent: true }),
+    ...deleteTriggerOAuthMutationOptions(),
     meta: { errorToast: false },
   })
 

@@ -127,7 +127,7 @@ describe('installed plugin actions', () => {
     await user.click(confirmButton())
     expectLoadingButton(confirmButton())
     await user.click(confirmButton())
-    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation', { silent: true })
+    expect(requests.uninstall).toHaveBeenCalledExactlyOnceWith('new-installation')
     expect(requests.invalidate).not.toHaveBeenCalled()
     expect(props.onDelete).not.toHaveBeenCalled()
     pending.resolve({ success: true })
@@ -216,7 +216,6 @@ describe('installed plugin actions', () => {
       'test-author/test-plugin',
       '2.0.0',
       'test-plugin.difypkg',
-      { silent: true },
     )
     expect(requests.updateFromGitHub).toHaveBeenCalledExactlyOnceWith(
       'test-author/test-plugin',

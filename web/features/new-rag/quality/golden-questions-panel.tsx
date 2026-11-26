@@ -128,14 +128,12 @@ function GoldenQuestionEditorDialog({
   const [submitting, setSubmitting] = useState(false)
   const createMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const updateMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.patch.mutationOptions(
       {
-        context: { silent: true },
         meta: { errorToast: false },
       },
     ),
@@ -217,7 +215,7 @@ export function GoldenQuestionsPanel({ actionSlot }: GoldenQuestionsPanelProps) 
   const query = useInfiniteQuery(queryOptions)
   const deleteMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const items = query.data?.pages.flatMap((page) => page.data) ?? []

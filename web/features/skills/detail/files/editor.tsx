@@ -192,7 +192,6 @@ export function SkillFileEditor({
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
   const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -286,6 +285,7 @@ export function SkillFileEditor({
   const shouldFetchTextFileContent = !!file && isTextFile(file) && file.content == null
   const textContentQuery = useQuery({
     queryKey: ['skill-file-text-content', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: async () => {
       if (!filePath) throw new Error('file path is required')
       const blob = await fetchSkillFileBlob({
@@ -305,6 +305,7 @@ export function SkillFileEditor({
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
   const binaryPreviewQuery = useQuery({
     queryKey: ['skill-file-blob-preview', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: () => {
       if (!filePath) throw new Error('file path is required')
       return fetchSkillFileBlob({
@@ -991,7 +992,6 @@ export function SkillFileEditor({
 
     const references = await queryClient.query({
       ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
-        context: { silent: true },
         meta: { errorToast: false },
         input: {
           params: {

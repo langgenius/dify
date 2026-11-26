@@ -52,13 +52,11 @@ function ScannerItem({
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const testMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.test.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const deleteMutation = useMutation(
     consoleQuery.fileScan.providers.byProviderId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

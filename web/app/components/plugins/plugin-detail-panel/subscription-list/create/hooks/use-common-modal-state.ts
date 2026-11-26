@@ -130,15 +130,15 @@ export const useCommonModalState = ({
     verifyAndUpdateTriggerSubscriptionBuilderMutationOptions(),
   )
   const { mutateAsync: createBuilder } = useMutation({
-    ...createTriggerSubscriptionBuilderMutationOptions({ silent: true }),
+    ...createTriggerSubscriptionBuilderMutationOptions(),
     meta: { errorToast: false },
   })
   const { mutate: buildSubscription, isPending: isBuilding } = useMutation({
-    ...buildTriggerSubscriptionMutationOptions({ silent: true }),
+    ...buildTriggerSubscriptionMutationOptions(),
     meta: { errorToast: false },
   })
   const { mutate: updateBuilder } = useMutation({
-    ...updateTriggerSubscriptionBuilderMutationOptions({ silent: true }),
+    ...updateTriggerSubscriptionBuilderMutationOptions(),
     meta: { errorToast: false },
   })
 

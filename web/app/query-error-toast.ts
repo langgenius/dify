@@ -3,7 +3,7 @@ import { ORPCError } from '@orpc/client'
 import { MutationCache, QueryCache } from '@tanstack/react-query'
 import { getI18n } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { isErrorHandled, isSilentRequestError, markErrorHandled } from '@/service/handled-error'
+import { isErrorHandled, markErrorHandled } from '@/service/handled-error'
 import { getHttpErrorBodyMessage } from '@/service/http-error'
 
 const DEDUPE_WINDOW_MS = 10000
@@ -46,7 +46,6 @@ function pruneExpiredQueryToasts(now: number) {
  */
 function reportQueryError(error: unknown, query: AnyQuery) {
   if (query.meta?.errorToast === false) return
-  if (isSilentRequestError(error)) return
   const requestError = getReportableRequestError(error)
   if (!requestError) return
   const message = query.meta?.errorMessage ?? getHttpErrorBodyMessage(requestError.data)
@@ -82,7 +81,7 @@ export function toastRequestError(error: unknown, message?: string) {
  * the server's message, or `meta.errorToast: false` when its owner presents the failure itself.
  */
 function reportMutationError(error: unknown, mutation: AnyMutation) {
-  if (mutation.meta?.errorToast === false || isSilentRequestError(error)) return
+  if (mutation.meta?.errorToast === false) return
   toastRequestError(error, mutation.meta?.errorMessage)
 }
 

@@ -144,10 +144,7 @@ const MessageTemplateSession = ({
             .messageTemplate.test.post
         : consoleClient.apps.byAppId.workflows.draft.humanInput.nodes.byNodeId.messageTemplate.test
             .post
-      await operation(
-        { params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } },
-        { context: { silent: true } },
-      )
+      await operation({ params: { app_id: flowId, node_id: nodeId }, body: { channel, inputs } })
       return true
     },
   })

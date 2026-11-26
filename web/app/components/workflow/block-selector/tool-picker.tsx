@@ -144,7 +144,7 @@ export function ToolPickerContent({
     if (!canManageTools) return
 
     try {
-      await createCustomCollection(data, { silent: true })
+      await createCustomCollection(data)
     } catch (error) {
       toastRequestError(error)
       return

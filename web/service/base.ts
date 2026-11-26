@@ -68,7 +68,6 @@ export type IOtherOptions = {
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
-  silent?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean

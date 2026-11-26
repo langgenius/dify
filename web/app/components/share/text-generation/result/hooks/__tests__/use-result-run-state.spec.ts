@@ -74,7 +74,6 @@ describe('useResultRunState', () => {
       'task-1',
       AppSourceType.webApp,
       'app-1',
-      { silent: true },
     )
     expect(controller.signal.aborted).toBe(true)
   })
@@ -248,7 +247,6 @@ describe('useResultRunState', () => {
       },
       AppSourceType.installedApp,
       'app-2',
-      { silent: true },
     )
     expect(result.current.feedback).toEqual({
       rating: 'like',
@@ -293,7 +291,6 @@ describe('useResultRunState', () => {
       'task-3',
       AppSourceType.installedApp,
       'app-3',
-      { silent: true },
     )
   })
 
@@ -329,7 +326,6 @@ describe('useResultRunState', () => {
       'task-4',
       AppSourceType.webApp,
       '',
-      { silent: true },
     )
     expect(notify).toHaveBeenCalledWith({
       type: 'error',
@@ -364,7 +360,6 @@ describe('useResultRunState', () => {
       'task-5',
       AppSourceType.installedApp,
       '',
-      { silent: true },
     )
     expect(notify).toHaveBeenCalledWith({
       type: 'error',

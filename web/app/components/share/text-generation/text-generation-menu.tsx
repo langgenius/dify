@@ -42,7 +42,7 @@ function TextGenerationMenu({ data, side, align, hideLogout }: Props) {
 
   const handleLogout = async () => {
     try {
-      await webAppLogout(resolveWebAppAddress(), { silent: true })
+      await webAppLogout(resolveWebAppAddress())
     } catch (error) {
       toastRequestError(error)
       return

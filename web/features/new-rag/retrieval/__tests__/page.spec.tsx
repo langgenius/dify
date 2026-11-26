@@ -392,13 +392,10 @@ describe('RetrievalTestPage', () => {
     await user.click(screen.getByRole('button', { name: 'knowledgeRetrieval.retrievalTest.run' }))
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: { mode: 'research', query: 'Compare the refund policies' },
-          params: { control_space_id: 'space-1' },
-        },
-        { context: expect.objectContaining({ silent: true }) },
-      ),
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: { mode: 'research', query: 'Compare the refund policies' },
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -410,7 +407,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -769,7 +766,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -796,17 +793,14 @@ describe('RetrievalTestPage', () => {
     )
 
     await waitFor(() =>
-      expect(apiMock.planResearch).toHaveBeenCalledWith(
-        {
-          body: {
-            mode: 'research',
-            query: '',
-            queryImages: [{ uploadFileId: 'historical-image-1' }],
-          },
-          params: { control_space_id: 'space-1' },
+      expect(apiMock.planResearch).toHaveBeenCalledWith({
+        body: {
+          mode: 'research',
+          query: '',
+          queryImages: [{ uploadFileId: 'historical-image-1' }],
         },
-        { context: expect.objectContaining({ silent: true }) },
-      ),
+        params: { control_space_id: 'space-1' },
+      }),
     )
     expect(apiMock.createResearch).toHaveBeenCalledWith(
       {
@@ -819,7 +813,7 @@ describe('RetrievalTestPage', () => {
         },
         params: { control_space_id: 'space-1' },
       },
-      { context: expect.objectContaining({ silent: true }) },
+      { context: expect.any(Object) },
     )
   })
 
@@ -2086,7 +2080,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() => expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true))
@@ -2257,7 +2251,7 @@ describe('RetrievalTestPage', () => {
           },
           params: { control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2342,7 +2336,7 @@ describe('RetrievalTestPage', () => {
           body: { reason: 'low-score', tags: ['retrieval-test'], trace_id: 'trace-image' },
           params: { control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
   })
@@ -2552,16 +2546,13 @@ describe('RetrievalTestPage', () => {
       ),
     )
     expect(apiMock.resolveDocumentReference).toHaveBeenCalledOnce()
-    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1' },
-        query: {
-          document_asset_id: 'asset-1',
-          document_asset_version: 1,
-        },
+    expect(apiMock.resolveDocumentReference).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1' },
+      query: {
+        document_asset_id: 'asset-1',
+        document_asset_version: 1,
       },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    })
   })
 
   it('preserves the server reason when opening asset-only evidence fails', async () => {

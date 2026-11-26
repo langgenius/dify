@@ -36,7 +36,6 @@ const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
   const { t } = useTranslation(['app', 'common'])
   const { mutateAsync: updateProfile } = useMutation(
     consoleQuery.account.profile.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

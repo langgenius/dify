@@ -29,13 +29,11 @@ export const useImportDSL = () => {
   const { push } = useRouter()
   const { mutateAsync: importApp } = useMutation(
     consoleQuery.apps.imports.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: confirmImport } = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

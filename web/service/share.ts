@@ -69,26 +69,16 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return webAppClient.chatMessages.byTaskId.stop.post(
-    { params: { task_id: taskId } },
-    { context: options },
-  )
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return webAppClient.chatMessages.byTaskId.stop.post({ params: { task_id: taskId } })
 }
 
 // The app's input form builds these bodies, so they are passed through as the contract bodies.
@@ -207,27 +197,17 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return webAppClient.workflows.tasks.byTaskId.stop.post(
-    { params: { task_id: taskId } },
-    { context: options },
-  )
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return webAppClient.workflows.tasks.byTaskId.stop.post({ params: { task_id: taskId } })
 }
 
 export const fetchAppInfo = async () => {
@@ -274,20 +254,13 @@ export const pinConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch(
-      {
-        params: { installed_app_id: installedAppId, c_id: id },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.pin.patch({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.pin.patch(
-      { params: { c_id: id } },
-      { context: options },
-    )
+    return webAppClient.conversations.byCId.pin.patch({ params: { c_id: id } })
   return unsupportedTrialAppRequest()
 }
 
@@ -295,20 +268,13 @@ export const unpinConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch(
-      {
-        params: { installed_app_id: installedAppId, c_id: id },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.unpin.patch({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.unpin.patch(
-      { params: { c_id: id } },
-      { context: options },
-    )
+    return webAppClient.conversations.byCId.unpin.patch({ params: { c_id: id } })
   return unsupportedTrialAppRequest()
 }
 
@@ -316,17 +282,13 @@ export const delConversation = async (
   appSourceType: AppSourceType,
   installedAppId = '',
   id: string,
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete(
-      {
-        params: { installed_app_id: installedAppId, c_id: id },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.delete({
+      params: { installed_app_id: installedAppId, c_id: id },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.delete({ params: { c_id: id } }, { context: options })
+    return webAppClient.conversations.byCId.delete({ params: { c_id: id } })
   return unsupportedTrialAppRequest()
 }
 
@@ -335,21 +297,14 @@ export const renameConversation = async (
   installedAppId = '',
   id: string,
   name: string,
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post(
-      {
-        params: { installed_app_id: installedAppId, c_id: id },
-        body: { name },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.conversations.byCId.name.post({
+      params: { installed_app_id: installedAppId, c_id: id },
+      body: { name },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.conversations.byCId.name.post(
-      { params: { c_id: id }, body: { name } },
-      { context: options },
-    )
+    return webAppClient.conversations.byCId.name.post({ params: { c_id: id }, body: { name } })
   return unsupportedTrialAppRequest()
 }
 
@@ -408,82 +363,40 @@ export const fetchAppParams = async (appSourceType: AppSourceType, appId = '') =
   return webAppClient.parameters.get() as Promise<ChatConfig>
 }
 
-export const fetchWebSAMLSSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.samlLogin(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.samlLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
-export const fetchWebOIDCSSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.oidcLogin(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.oidcLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
-export const fetchWebOAuth2SSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.oAuth2Login(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.oAuth2Login({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
-export const fetchMembersSAMLSSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.members.samlLogin(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchMembersSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.members.samlLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
-export const fetchMembersOIDCSSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.members.oidcLogin(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchMembersOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.members.oidcLogin({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
-export const fetchMembersOAuth2SSOUrl = async (
-  appCode: string,
-  redirectUrl: string,
-  options?: { silent?: boolean },
-) => {
-  return webAppClient.enterprise.sso.members.oAuth2Login(
-    {
-      query: { app_code: appCode, redirect_url: redirectUrl },
-    },
-    { context: options },
-  )
+export const fetchMembersOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return webAppClient.enterprise.sso.members.oAuth2Login({
+    query: { app_code: appCode, redirect_url: redirectUrl },
+  })
 }
 
 export const fetchAppMeta = async (appSourceType: AppSourceType, installedAppId = '') => {
@@ -501,24 +414,17 @@ export const updateFeedback = async (
   { messageId, body }: { messageId: string; body: MessageFeedbackPayload },
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.feedbacks.post(
-      {
-        params: { installed_app_id: installedAppId, message_id: messageId },
-        body,
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.messages.byMessageId.feedbacks.post({
+      params: { installed_app_id: installedAppId, message_id: messageId },
+      body,
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.messages.byMessageId.feedbacks.post(
-      {
-        params: { message_id: messageId },
-        body,
-      },
-      { context: options },
-    )
+    return webAppClient.messages.byMessageId.feedbacks.post({
+      params: { message_id: messageId },
+      body,
+    })
   return unsupportedTrialAppRequest()
 }
 
@@ -544,34 +450,23 @@ export const saveMessage = (
   messageId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.post(
-      {
-        params: { installed_app_id: installedAppId },
-        body: { message_id: messageId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.post({
+      params: { installed_app_id: installedAppId },
+      body: { message_id: messageId },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.post(
-      { body: { message_id: messageId } },
-      { context: options },
-    )
+    return webAppClient.savedMessages.post({ body: { message_id: messageId } })
   return unsupportedTrialAppRequest()
 }
 
 export const fetchSavedMessage = async (appSourceType: AppSourceType, installedAppId = '') => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.get(
-      {
-        params: { installed_app_id: installedAppId },
-      },
-      { context: { silent: true } },
-    )
-  if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.get(undefined, { context: { silent: true } })
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.get({
+      params: { installed_app_id: installedAppId },
+    })
+  if (appSourceType === AppSourceType.webApp) return webAppClient.savedMessages.get()
   return unsupportedTrialAppRequest()
 }
 
@@ -579,20 +474,13 @@ export const removeMessage = (
   messageId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: { silent?: boolean },
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete(
-      {
-        params: { installed_app_id: installedAppId, message_id: messageId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.byMessageId.delete({
+      params: { installed_app_id: installedAppId, message_id: messageId },
+    })
   if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.byMessageId.delete(
-      { params: { message_id: messageId } },
-      { context: options },
-    )
+    return webAppClient.savedMessages.byMessageId.delete({ params: { message_id: messageId } })
   return unsupportedTrialAppRequest()
 }
 
@@ -675,26 +563,20 @@ const environmentPassportRequests = new Map<string, Promise<AccessTokenResponse>
 const requestAccessToken = ({
   userId,
   appCode,
-  silent,
 }: {
   userId?: string
   appCode: string
-  silent?: boolean
 }): Promise<AccessTokenResponse> => {
   const headers: Record<string, string> = { [WEB_APP_SHARE_CODE_HEADER_NAME]: appCode }
   const accessToken = getWebAppAccessToken()
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
   return webAppClient.passport.get(
     { query: userId ? { user_id: userId } : {} },
-    { context: { headers, silent } },
+    { context: { headers } },
   )
 }
 
-export const fetchAccessToken = (params: {
-  userId?: string
-  appCode: string
-  silent?: boolean
-}) => {
+export const fetchAccessToken = (params: { userId?: string; appCode: string }) => {
   const address = resolveWebAppAddress()
   if (address?.kind !== 'environment') return requestAccessToken(params)
 
@@ -816,7 +698,6 @@ const uploadHumanInputFormFile = async (
     { body },
     {
       context: {
-        silent: true,
         headers: { Authorization: `bearer ${uploadToken}` },
         onUploadProgress,
         // The legacy XHR upload had no time limit; remote URLs finish only after the server fetches the file.

@@ -186,9 +186,10 @@ export const useLazyModelProviderDetail = (providerName: string) => {
   const loadProviderDetail = useCallback(async () => {
     setEnabled(true)
     try {
-      const response = await queryClient.query(
-        modelProviderDetailsQueryOptions({ context: { silent: true } }),
-      )
+      const response = await queryClient.query({
+        ...modelProviderDetailsQueryOptions(),
+        meta: { errorToast: false },
+      })
       return response.data.find((provider) => provider.provider === providerName)
     } catch (error) {
       toastRequestError(error)

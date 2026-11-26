@@ -91,7 +91,7 @@ describe('TextGenerationMenu', () => {
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith(`/webapp-signin?redirect_url=${mockPathname}`),
     )
-    expect(mockWebAppLogout).toHaveBeenCalledExactlyOnceWith(webAppAddress, { silent: true })
+    expect(mockWebAppLogout).toHaveBeenCalledExactlyOnceWith(webAppAddress)
   })
 
   it('opens app information from the menu and closes the real dialog', async () => {

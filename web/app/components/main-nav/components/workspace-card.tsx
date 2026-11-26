@@ -270,7 +270,6 @@ export function WorkspaceCard() {
   })
   const switchWorkspaceMutation = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

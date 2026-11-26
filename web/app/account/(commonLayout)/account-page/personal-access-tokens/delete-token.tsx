@@ -26,7 +26,6 @@ export default function DeleteToken({
   const finalFocusRef = useRef<HTMLButtonElement>(null)
   const mutation = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

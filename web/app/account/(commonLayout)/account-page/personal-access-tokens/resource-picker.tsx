@@ -27,7 +27,7 @@ export default function ResourcePicker({
   const keyword = useDebounce(search.trim(), { wait: 200 })
   const query = useInfiniteQuery(
     consoleQuery.account.personalAccessTokenResources.get.infiniteOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       initialPageParam: 0,
       input: (cursor) => ({ query: { cursor, limit: 20, keyword, resource_type: 'app' } }),
       getNextPageParam: (page) => page.next_cursor ?? undefined,

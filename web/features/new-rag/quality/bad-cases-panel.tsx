@@ -93,21 +93,19 @@ function BadCasePromotionDialog({
   const promotedGoldenQuestionIdsRef = useRef(new Map<string, string>())
   const createGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const deleteGoldenMutation = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.goldenQuestions.byQuestionId.delete.mutationOptions(
       {
-        context: { silent: true },
         meta: { errorToast: false },
       },
     ),
   )
   const { mutateAsync: updateBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
 
@@ -116,10 +114,9 @@ function BadCasePromotionDialog({
     onOpenChange(undefined)
   }
   const getBadCase = (badCaseId: string) =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
-      { params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId } },
-      { context: { silent: true } },
-    )
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
+      params: { bad_case_id: badCaseId, control_space_id: knowledgeSpaceId },
+    })
   const markBadCaseDismissed = async (
     badCase: KnowledgeFsBadCaseResponse,
     tags: string[] = badCase.tags,
@@ -227,24 +224,20 @@ function BadCaseRow({
   const [pending, setPending] = useState(false)
   const { mutateAsync: updateBadCase } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.patch.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
 
   const getBadCase = () =>
-    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get(
-      {
-        params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
-      },
-      { context: { silent: true } },
-    )
+    consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.get({
+      params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId },
+    })
   const openTrace = async (retest: boolean) => {
     setPending(true)
     try {
       const reference =
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.quality.badCases.byBadCaseId.traceReference.get(
           { params: { bad_case_id: item.id, control_space_id: knowledgeSpaceId } },
-          { context: { silent: true } },
         )
       const search = new URLSearchParams(
         retest

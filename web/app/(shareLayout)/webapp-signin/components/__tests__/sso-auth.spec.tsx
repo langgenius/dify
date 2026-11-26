@@ -62,9 +62,7 @@ describe('SSOAuth redirect security', () => {
     await user.click(screen.getByRole('button', { name: 'login.withSSO' }))
 
     await waitFor(() => {
-      expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar', {
-        silent: true,
-      })
+      expect(serviceMock).toHaveBeenCalledWith('share-app', '/chatbot/share-app?foo=bar')
     })
     expect(navigationMocks.push).toHaveBeenCalledWith('https://idp.example/authorize')
   })

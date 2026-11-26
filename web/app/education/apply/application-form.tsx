@@ -78,7 +78,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     mutate: educationAdd,
   } = useMutation(
     consoleQuery.account.education.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -94,7 +93,6 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
     consoleQuery.workspaces.switch.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -133,9 +131,7 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get(undefined, {
-            context: { silent: true },
-          })
+          const res = await consoleClient.billing.invoices.get()
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')

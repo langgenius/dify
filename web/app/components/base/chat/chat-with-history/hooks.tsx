@@ -517,7 +517,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const handlePinConversation = useCallback(
     async (conversationId: string) => {
       try {
-        await pinConversation(appSourceType, appId, conversationId, { silent: true })
+        await pinConversation(appSourceType, appId, conversationId)
       } catch (error) {
         toastRequestError(error)
         return
@@ -532,7 +532,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const handleUnpinConversation = useCallback(
     async (conversationId: string) => {
       try {
-        await unpinConversation(appSourceType, appId, conversationId, { silent: true })
+        await unpinConversation(appSourceType, appId, conversationId)
       } catch (error) {
         toastRequestError(error)
         return
@@ -548,7 +548,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       if (conversationDeleting) return
       try {
         setConversationDeleting(true)
-        await delConversation(appSourceType, appId, conversationId, { silent: true })
+        await delConversation(appSourceType, appId, conversationId)
         toast.success(t(($) => $['api.success'], { ns: 'common' }))
         onSuccess()
       } catch (error) {
@@ -580,7 +580,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       }
       setConversationRenaming(true)
       try {
-        await renameConversation(appSourceType, appId, conversationId, newName, { silent: true })
+        await renameConversation(appSourceType, appId, conversationId, newName)
         updateConversationList(
           queryClient,
           conversationListQueryOptions.queryKey,
@@ -656,7 +656,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
           },
           appSourceType,
           appId,
-          { silent: true },
         )
       } catch (error) {
         toastRequestError(error)

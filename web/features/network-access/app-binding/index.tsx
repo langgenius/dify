@@ -132,7 +132,7 @@ function AccessControlSession({
   const bindingQuery = useQuery(
     consoleQuery.apps.byAppId.networkAccessGroup.get.queryOptions({
       input: { params: { app_id: appId } },
-      context: { silent: true },
+      meta: { errorToast: false },
       retry: false,
       enabled: canFetchNetworkAccess && Boolean(appId),
     }),
@@ -173,14 +173,11 @@ function AccessControlSession({
         selectedPolicyId
           ? { params: { group_id: selectedPolicyId } }
           : skipToken,
-      context: { silent: true },
       meta: { errorToast: false },
       retry: false,
     }),
   )
-  const saveCheck = useMutation(
-    checkCurrentIp.mutationOptions({ context: { silent: true }, meta: { errorToast: false } }),
-  )
+  const saveCheck = useMutation(checkCurrentIp.mutationOptions({ meta: { errorToast: false } }))
 
   if (!canFetchNetworkAccess) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null

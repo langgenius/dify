@@ -16,7 +16,6 @@ export const useSnippetPublish = ({ snippetId }: UseSnippetPublishOptions) => {
   const { mutateAsync: publishSnippet, isPending: isPublishing } = useMutation(
     consoleQuery.snippets.bySnippetId.workflows.publish.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   const { handleCheckBeforePublish } = useChecklistBeforePublish()

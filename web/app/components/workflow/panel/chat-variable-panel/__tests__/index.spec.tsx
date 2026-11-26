@@ -173,16 +173,13 @@ describe('ChatVariablePanel', () => {
         expect.objectContaining({ id: expect.any(String), name: 'fresh_var' }),
         createConversationVariable(),
       ])
-      expect(mockUpdateConversationVariables).toHaveBeenCalledWith(
-        {
-          appId: 'app-1',
-          conversationVariables: [
-            expect.objectContaining({ id: expect.any(String), name: 'fresh_var' }),
-            createConversationVariable(),
-          ],
-        },
-        { silent: true },
-      )
+      expect(mockUpdateConversationVariables).toHaveBeenCalledWith({
+        appId: 'app-1',
+        conversationVariables: [
+          expect.objectContaining({ id: expect.any(String), name: 'fresh_var' }),
+          createConversationVariable(),
+        ],
+      })
       expect(screen.getByLabelText('Inspected conversation variables')).toHaveTextContent(
         'server value',
       )
