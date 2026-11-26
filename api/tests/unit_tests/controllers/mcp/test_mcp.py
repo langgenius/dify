@@ -12,6 +12,8 @@ from uuid import uuid4
 import pytest
 from flask import Flask, Response
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 import controllers.mcp.mcp as module
 from models.engine import db
@@ -729,3 +731,115 @@ class TestMCPProtocolVersionNegotiationApi:
         result = response.get_json()["result"]
         assert "structuredContent" not in result
         assert result["content"][0]["text"] == "test answer"
+
+
+@pytest.mark.usefixtures("enterprise_edition")
+class TestMCPForwardedIdentity:
+    @staticmethod
+    @pytest.fixture
+    def enterprise_edition(monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(module.dify_config, "DEPLOYMENT_EDITION", module.DeploymentEdition.ENTERPRISE)
+
+    @staticmethod
+    def _post(flask_app: Flask, payload: dict[str, object], headers: dict[str, str] | None = None) -> Response:
+        api = module.MCPAppApi()
+        api._get_mcp_server_and_app = MagicMock(
+            return_value=(_server(module.AppMCPServerStatus.ACTIVE), _app(module.AppMode.CHAT, with_model_config=True))
+        )
+        fake_payload(payload)
+        with flask_app.test_request_context(headers=headers):
+            return unwrap(api.post)("server-1")
+
+    def test_forwarded_identity_runs_tool_as_verified_user(self, app: Flask) -> None:
+        run_as: list[str] = []
+
+        def generate(*, user: EndUser, **_: object) -> dict[str, str]:
+            run_as.append(user.session_id)
+            return {"answer": "ok"}
+
+        with (
+            patch.object(
+                module.EnterpriseService, "verify_mcp_identity_token", return_value="alice@example.com"
+            ) as verify,
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            for _ in range(2):
+                response = self._post(
+                    app, _tools_call_payload(), headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+                )
+                assert response.get_json()["result"]["content"][0]["text"] == "ok"
+
+        verify.assert_called_with("id.token.jwt", _APP_ID)
+        assert run_as == ["alice@example.com", "alice@example.com"]
+        end_users = db.session.scalars(select(EndUser).where(EndUser.session_id == "alice@example.com")).all()
+        assert len(end_users) == 1
+        assert end_users[0].type == EndUserType.MCP
+        assert end_users[0].app_id == _APP_ID
+        assert end_users[0].tenant_id == _TENANT_ID
+        assert end_users[0].name == "alice@example.com"
+
+    def test_forwarded_end_user_does_not_wait_for_the_request_transaction(self, app: Flask) -> None:
+        visible_to_app: list[bool] = []
+
+        def generate(*, session: Session, user: EndUser, **_: object) -> dict[str, str]:
+            session.rollback()
+            visible_to_app.append(db.session.get(EndUser, user.id) is not None)
+            return {"answer": "ok"}
+
+        with (
+            patch.object(module.EnterpriseService, "verify_mcp_identity_token", return_value="alice@example.com"),
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            self._post(app, _tools_call_payload(), headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"})
+
+        assert visible_to_app == [True]
+
+    def test_rejected_forwarded_identity_does_not_run_tool(self, app: Flask) -> None:
+        with (
+            patch.object(
+                module.EnterpriseService,
+                "verify_mcp_identity_token",
+                side_effect=module.MCPTokenError("forwarded identity token is invalid or expired"),
+            ),
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate") as generate,
+        ):
+            response = self._post(
+                app, _tools_call_payload(), headers={module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+            )
+
+        body = response.get_json()
+        assert body["id"] == 1
+        assert body["error"]["code"] == module.mcp_types.INVALID_REQUEST
+        assert "forwarded identity token is invalid or expired" in body["error"]["message"]
+        generate.assert_not_called()
+        assert db.session.scalars(select(EndUser)).all() == []
+
+    def test_forwarded_identity_is_only_verified_for_tool_calls(self, app: Flask) -> None:
+        headers = {module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+        with patch.object(module.EnterpriseService, "verify_mcp_identity_token") as verify:
+            initialized = self._post(app, _initialize_payload(), headers=headers)
+            listed = self._post(app, _tools_list_payload(), headers=headers)
+
+        assert "result" in initialized.get_json()
+        assert "result" in listed.get_json()
+        verify.assert_not_called()
+
+    def test_community_edition_ignores_forwarded_identity(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(module.dify_config, "DEPLOYMENT_EDITION", module.DeploymentEdition.COMMUNITY)
+        run_as: list[str] = []
+
+        def generate(*, user: EndUser, **_: object) -> dict[str, str]:
+            run_as.append(user.session_id)
+            return {"answer": "ok"}
+
+        headers = {module.FORWARDED_IDENTITY_HEADER: "id.token.jwt"}
+        with (
+            patch.object(module.EnterpriseService, "verify_mcp_identity_token") as verify,
+            patch("core.mcp.server.streamable_http.AppGenerateService.generate", side_effect=generate),
+        ):
+            self._post(app, _initialize_payload(), headers=headers)
+            response = self._post(app, _tools_call_payload(), headers=headers)
+
+        assert response.get_json()["result"]["content"][0]["text"] == "ok"
+        verify.assert_not_called()
+        assert run_as == [_SERVER_ID]

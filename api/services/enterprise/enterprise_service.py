@@ -4,6 +4,7 @@ import logging
 import uuid
 from datetime import datetime
 
+import httpx
 from cachetools.func import ttl_cache
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -191,6 +192,24 @@ class EnterpriseService:
         if isinstance(expires_at, bool) or not isinstance(expires_at, (int, float)):
             raise MCPTokenError(f"missing or non-numeric expires_at in enterprise response: {response!r}")
         return token, int(expires_at)
+
+    @classmethod
+    def verify_mcp_identity_token(cls, token: str, app_id: str) -> str:
+        try:
+            response = EnterpriseRequest.send_request(
+                "POST",
+                "/mcp/verify-token",
+                json={"token": token, "app_id": app_id},
+            )
+        except EnterpriseServiceError as e:
+            raise MCPTokenError(str(e) or "forwarded identity verification failed") from e
+        except (httpx.HTTPError, ValueError) as e:
+            raise MCPTokenError(f"Enterprise API request failed: {type(e).__name__}: {e}") from e
+
+        email = response.get("email") if isinstance(response, dict) else None
+        if not isinstance(email, str) or not email:
+            raise MCPTokenError("invalid response shape from enterprise /mcp/verify-token")
+        return email
 
     @classmethod
     def initiate_device_flow_sso(cls, signed_state: str) -> dict:
