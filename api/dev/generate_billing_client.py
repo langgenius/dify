@@ -154,15 +154,25 @@ class SnapshotSchema(BaseModel):
 type SnapshotSchemas = dict[str, SnapshotSchema]
 
 
-def parse_snapshot_schemas(snapshot: JsonObject) -> SnapshotSchemas:
-    """Postcondition: every named schema of `snapshot` is a `SnapshotSchema`.
+class SnapshotComponents(BaseModel):
+    """The named schemas under the snapshot's OpenAPI components."""
 
-    Raises `ValidationError` when a properties entry is not an object, which means the upstream spec
-    changed shape and generation must stop instead of silently skipping the field.
+    schemas: SnapshotSchemas
+
+
+class SnapshotSchemaEnvelope(BaseModel):
+    """The portion of the raw snapshot needed by the schema allowlist check."""
+
+    components: SnapshotComponents
+
+
+def parse_snapshot_schemas(snapshot: JsonObject) -> SnapshotSchemas:
+    """Parse the schema envelope without changing the raw rendering input.
+
+    Raise `GenerationError` when required sections or their schemas have an invalid shape.
     """
-    raw_schemas: JsonObject = snapshot["components"]["schemas"]
     try:
-        return {name: SnapshotSchema.model_validate(body) for name, body in raw_schemas.items()}
+        return SnapshotSchemaEnvelope.model_validate(snapshot).components.schemas
     except ValidationError as error:
         raise GenerationError(f"snapshot schemas do not match the expected OpenAPI shape: {error}") from error
 

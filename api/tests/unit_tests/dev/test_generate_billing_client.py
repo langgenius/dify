@@ -320,3 +320,39 @@ def test_open_enum_entries_must_exist_in_a_snapshot() -> None:
 
     with pytest.raises(generator.GenerationError, match="missing from the snapshots"):
         generator.check_open_enum_fields(snapshots, open_enum_fields=frozenset({("Reply", "value"), ("Reply", "gone")}))
+
+
+@pytest.mark.parametrize(
+    "snapshot",
+    [
+        {},
+        {"components": []},
+        {"components": {}},
+        {"components": {"schemas": []}},
+        {"components": {"schemas": {"Reply": []}}},
+        {"components": {"schemas": {"Reply": {"properties": {"value": []}}}}},
+    ],
+    ids=["missing-components", "invalid-components", "missing-schemas", "invalid-schemas", "schema", "property"],
+)
+def test_generation_rejects_malformed_snapshot_schemas(snapshot: generator.JsonObject) -> None:
+    with pytest.raises(generator.GenerationError, match="snapshot schemas do not match the expected OpenAPI shape"):
+        generator.expected_files({"billing": snapshot})
+
+
+def test_parse_snapshot_schemas_preserves_raw_rendering_input() -> None:
+    snapshot: generator.JsonObject = {
+        "paths": {},
+        "components": {
+            "schemas": {
+                "Second": {"properties": {"kind": {"type": "string", "enum": ["x", "y"]}}},
+                "First": {"$ref": "#/components/schemas/Second"},
+            }
+        },
+    }
+    original = generator.render_snapshot(snapshot)
+
+    schemas = generator.parse_snapshot_schemas(snapshot)
+
+    assert list(schemas) == ["Second", "First"]
+    assert schemas["Second"].properties["kind"].enum == ["x", "y"]
+    assert generator.render_snapshot(snapshot) == original
