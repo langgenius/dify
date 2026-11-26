@@ -106,11 +106,11 @@ function AccessPointContent({
           <TabsList
             activateOnFocus={false}
             aria-label={t(($) => $['studio.environments'], { ns: 'deployments' })}
-            className="relative -m-0.5 scroll-p-0.5 gap-1 overflow-x-auto p-0.5"
+            className="-m-0.5 scroll-p-0.5 gap-1 overflow-x-auto p-0.5"
           >
             <TabsTab
               value={BUILT_IN_ENVIRONMENT_ID}
-              className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
+              className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
             >
               {t(($) => $['nodes.common.memories.builtIn'], { ns: 'workflow' })}
             </TabsTab>
@@ -118,7 +118,7 @@ function AccessPointContent({
               <TabsTab
                 key={environment.id}
                 value={environment.id}
-                className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:border-transparent data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
+                className="h-8 shrink-0 rounded-lg border-b-0 px-2.5 py-0 system-sm-medium data-active:bg-state-base-active data-active:system-sm-semibold data-active:text-text-secondary"
               >
                 {environment.display_name}
               </TabsTab>
@@ -131,7 +131,7 @@ function AccessPointContent({
         <ScrollAreaViewport
           render={
             showEnvironmentTabs ? (
-              // ScrollArea paints the focus indicator above the viewport contents.
+              // oxlint-disable-next-line shadcn/no-restyle -- ScrollArea paints the focus indicator above the viewport contents.
               <TabsPanel value={selectedEnvironment} className="focus-visible:inset-ring-0" />
             ) : undefined
           }

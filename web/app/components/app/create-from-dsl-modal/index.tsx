@@ -16,7 +16,7 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
-import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -341,6 +341,7 @@ function CreateFromDSLModal({
               >
                 {t(($) => $.importFromDSLUrl, { ns: 'app' })}
               </TabsTab>
+              <TabsIndicator />
             </TabsList>
             <TabsPanel
               value={CreateFromDSLModalTab.FROM_FILE}
