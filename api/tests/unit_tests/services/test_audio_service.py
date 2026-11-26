@@ -99,7 +99,7 @@ class TestAudioInputsCases:
             return "transcript"
 
         monkeypatch.setattr(audio_provider_gateway, "speech_to_text", transcribe)
-        app = _audio_inputs_App(id="app", tenant_id="owner", mode=_audio_inputs_AppMode.CHAT)
+        app = AudioAppRef(app_id="app", tenant_id="owner", app_mode="chat")
         upload = AudioUpload(stream=BytesIO(b"audio"), mime_type=mime_type)
 
         assert AudioService.invoke_speech_to_text(app, upload) == {"text": "transcript"}
