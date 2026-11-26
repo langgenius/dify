@@ -1,6 +1,8 @@
 import type { HotkeyChord } from '@tanstack/react-hotkeys'
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import type {
+  DateFormInput,
+  DateTimeFormInput,
   FormInputItem,
   ParagraphFormInput,
   StringDefault,
@@ -22,6 +24,8 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import {
   createDefaultFormInputByType,
   createDefaultParagraphFormInput,
+  isDateFormInput,
+  isDateTimeFormInput,
   isFileFormInput,
   isFileListFormInput,
   isParagraphFormInput,
@@ -69,6 +73,14 @@ const InputField: React.FC<InputFieldProps> = ({
         value: InputVarType.select,
       },
       {
+        name: t(($) => $['variableConfig.date'], { ns: 'appDebug' }),
+        value: InputVarType.date,
+      },
+      {
+        name: t(($) => $['variableConfig.datetime'], { ns: 'appDebug' }),
+        value: InputVarType.datetime,
+      },
+      {
         name: t(($) => $['variableConfig.single-file'], { ns: 'appDebug' }),
         value: InputVarType.singleFile,
       },
@@ -78,8 +90,18 @@ const InputField: React.FC<InputFieldProps> = ({
       },
     ]
   }, [t])
-  const paragraphPayload = useMemo<ParagraphFormInput>(() => {
-    if (isParagraphFormInput(tempPayload)) {
+  const isStringDefaultType =
+    isParagraphFormInput(tempPayload) ||
+    isDateFormInput(tempPayload) ||
+    isDateTimeFormInput(tempPayload)
+  const stringDefaultPayload = useMemo<
+    (ParagraphFormInput | DateFormInput | DateTimeFormInput) & { default: StringDefault }
+  >(() => {
+    if (
+      isParagraphFormInput(tempPayload) ||
+      isDateFormInput(tempPayload) ||
+      isDateTimeFormInput(tempPayload)
+    ) {
       return {
         ...tempPayload,
         default: tempPayload.default || createDefaultParagraphFormInput().default,
@@ -141,7 +163,7 @@ const InputField: React.FC<InputFieldProps> = ({
   const handleDefaultValueChange = useCallback(
     (key: keyof StringDefault) => {
       return (value: ValueSelector | string) => {
-        const nextValue = produce(paragraphPayload, (draft) => {
+        const nextValue = produce(stringDefaultPayload, (draft) => {
           if (key === 'selector') {
             draft.default.type = 'variable'
             draft.default.selector = value as ValueSelector
@@ -155,7 +177,7 @@ const InputField: React.FC<InputFieldProps> = ({
         setTempPayload(nextValue)
       }
     },
-    [paragraphPayload],
+    [stringDefaultPayload],
   )
   const handleSelectOptionsChange = useCallback((options: string[]) => {
     setTempPayload((prev) => {
@@ -313,20 +335,20 @@ const InputField: React.FC<InputFieldProps> = ({
             </div>
           )}
         </div>
-        {isParagraphFormInput(tempPayload) && (
+        {isStringDefaultType && (
           <div className="mt-4">
             <div className="mb-1.5 system-xs-medium text-text-secondary">
               {t(($) => $[`${i18nPrefix}.prePopulateField`], { ns: 'workflowHumanInput' })}
             </div>
             <PrePopulate
-              isVariable={paragraphPayload.default.type === 'variable'}
+              isVariable={stringDefaultPayload.default.type === 'variable'}
               onIsVariableChange={(isVariable) => {
                 handleDefaultValueChange('type')(isVariable ? 'variable' : 'constant')
               }}
               nodeId={nodeId}
-              valueSelector={paragraphPayload.default.selector}
+              valueSelector={stringDefaultPayload.default.selector}
               onValueSelectorChange={handleDefaultValueChange('selector')}
-              value={paragraphPayload.default.value}
+              value={stringDefaultPayload.default.value}
               onValueChange={handleDefaultValueChange('value')}
             />
           </div>

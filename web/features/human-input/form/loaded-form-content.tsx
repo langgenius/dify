@@ -343,6 +343,7 @@ const FormBody = ({
               <HumanInputFieldRenderer
                 field={field}
                 label={label}
+                labelId={labelID}
                 value={value}
                 onChange={(nextValue) => changeInput(field.output_variable_name, nextValue)}
               />

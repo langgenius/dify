@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   createDefaultParagraphFormInput,
+  isDateFormInput,
+  isDateTimeFormInput,
   isFileFormInput,
   isParagraphFormInput,
   isSelectFormInput,
@@ -108,6 +110,10 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
       return t(($) => $['variableConfig.paragraph'], { ns: 'appDebug' })
     if (isSelectFormInput(resolvedFormInput))
       return t(($) => $['variableConfig.select'], { ns: 'appDebug' })
+    if (isDateFormInput(resolvedFormInput))
+      return t(($) => $['variableConfig.date'], { ns: 'appDebug' })
+    if (isDateTimeFormInput(resolvedFormInput))
+      return t(($) => $['variableConfig.datetime'], { ns: 'appDebug' })
     if (isFileFormInput(resolvedFormInput))
       return t(($) => $['variableConfig.single-file'], { ns: 'appDebug' })
     return t(($) => $['variableConfig.multi-files'], { ns: 'appDebug' })

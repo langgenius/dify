@@ -353,6 +353,12 @@ export type FormInputConfig =
   | ({
       type: 'file-list'
     } & FileListInputConfig)
+  | ({
+      type: 'date'
+    } & DateInputConfig)
+  | ({
+      type: 'datetime'
+    } & DateTimeInputConfig)
 
 export type FormSubmitResponse = {
   [key: string]: unknown
@@ -631,6 +637,18 @@ export type NotCompletionAppError = ErrorResponse & {
 export type NotWorkflowAppError = ErrorResponse & {
   code: 'not_workflow_app'
   status: 400
+}
+
+export type DateInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'date'
+}
+
+export type DateTimeInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'datetime'
 }
 
 export type ParagraphInputConfig = {
@@ -1054,6 +1072,18 @@ export type RemoteFileUrlBlockedError = ErrorResponse & {
   status: 400
 }
 
+export type ResolvedDateResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'date_input'
+}
+
+export type ResolvedDateTimeResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'datetime_input'
+}
+
 export type ResolvedFileListResponse = {
   allowed_file_extensions: Array<string>
   allowed_file_types: Array<FileType>
@@ -1105,6 +1135,12 @@ export type ResolvedPartResponse =
   | ({
       type: 'file_list_input'
     } & ResolvedFileListResponse)
+  | ({
+      type: 'date_input'
+    } & ResolvedDateResponse)
+  | ({
+      type: 'datetime_input'
+    } & ResolvedDateTimeResponse)
 
 export type ResolvedSelectResponse = {
   default_value: string | null

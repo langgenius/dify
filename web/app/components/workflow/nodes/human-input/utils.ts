@@ -1,6 +1,11 @@
 import type { FormInputItem } from './types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { isParagraphFormInput, isSelectFormInput } from './types'
+import {
+  isDateFormInput,
+  isDateTimeFormInput,
+  isParagraphFormInput,
+  isSelectFormInput,
+} from './types'
 
 export const isOutput = (valueSelector: string[]) => {
   return valueSelector[0] === '$output'
@@ -9,7 +14,7 @@ export const isOutput = (valueSelector: string[]) => {
 export const getHumanInputFormDependencySelectors = (inputs: FormInputItem[]): ValueSelector[] => {
   return inputs.flatMap((input) => {
     if (
-      isParagraphFormInput(input) &&
+      (isParagraphFormInput(input) || isDateFormInput(input) || isDateTimeFormInput(input)) &&
       input.default?.type === 'variable' &&
       input.default.selector.length > 0
     )

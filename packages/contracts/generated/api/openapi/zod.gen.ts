@@ -2981,6 +2981,28 @@ export const zStringSource = z.object({
 })
 
 /**
+ * DateInputConfig
+ *
+ * Calendar date picker input definition (YYYY-MM-DD).
+ */
+export const zDateInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('date').optional().default('date'),
+})
+
+/**
+ * DateTimeInputConfig
+ *
+ * Calendar date and time picker input definition (ISO 8601).
+ */
+export const zDateTimeInputConfig = z.object({
+  default: zStringSource.nullish(),
+  output_variable_name: z.string(),
+  type: z.literal('datetime').optional().default('datetime'),
+})
+
+/**
  * ParagraphInputConfig
  *
  * Form input definition.
@@ -2996,6 +3018,8 @@ export const zFormInputConfig = z.discriminatedUnion('type', [
   zSelectInputConfig,
   zFileInputConfig,
   zFileListInputConfig,
+  zDateInputConfig,
+  zDateTimeInputConfig,
 ])
 
 /**

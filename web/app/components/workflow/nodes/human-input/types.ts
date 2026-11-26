@@ -1,4 +1,6 @@
 import type {
+  DateFormInput as SharedDateFormInput,
+  DateTimeFormInput as SharedDateTimeFormInput,
   FormInputItem as SharedFormInputItem,
   FormInputItemDefault as SharedFormInputItemDefault,
   HumanInputSharedNodeType as SharedHumanInputNodeType,
@@ -9,6 +11,8 @@ import type {
 import {
   createDefaultFormInputByType as createSharedDefaultFormInputByType,
   createDefaultParagraphFormInput as createSharedDefaultParagraphFormInput,
+  isDateFormInput as isSharedDateFormInput,
+  isDateTimeFormInput as isSharedDateTimeFormInput,
   isFileFormInput as isSharedFileFormInput,
   isFileListFormInput as isSharedFileListFormInput,
   isParagraphFormInput as isSharedParagraphFormInput,
@@ -21,6 +25,8 @@ export type UserActionButtonType = SharedUserActionButtonType
 export type UserAction = SharedUserAction
 export type StringDefault = SharedFormInputItemDefault
 export type ParagraphFormInput = SharedParagraphFormInput
+export type DateFormInput = SharedDateFormInput
+export type DateTimeFormInput = SharedDateTimeFormInput
 export type FormInputItem = SharedFormInputItem
 
 export const UserActionButtonType = SharedUserActionButtonTypes
@@ -28,6 +34,8 @@ export const isParagraphFormInput = isSharedParagraphFormInput
 export const isSelectFormInput = isSharedSelectFormInput
 export const isFileFormInput = isSharedFileFormInput
 export const isFileListFormInput = isSharedFileListFormInput
+export const isDateFormInput = isSharedDateFormInput
+export const isDateTimeFormInput = isSharedDateTimeFormInput
 export const createDefaultParagraphFormInput = createSharedDefaultParagraphFormInput
 export const createDefaultFormInputByType = createSharedDefaultFormInputByType
 

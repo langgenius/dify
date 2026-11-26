@@ -1457,7 +1457,12 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
           recipient.type === 'dynamic_email' ? [recipient.selector] : [],
         )
         const inputSelectors = payload.inputs.flatMap((input) => {
-          if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+          if (
+            (input.type === InputVarType.paragraph ||
+              input.type === InputVarType.date ||
+              input.type === InputVarType.datetime) &&
+            input.default?.type === 'variable'
+          )
             return [input.default.selector]
           if (input.type === InputVarType.select && input.option_source.type === 'variable')
             return [input.option_source.selector]
@@ -1482,7 +1487,12 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
         return [method.config.body]
       })
       const inputSelectors = payload.inputs.flatMap((input) => {
-        if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+        if (
+          (input.type === InputVarType.paragraph ||
+            input.type === InputVarType.date ||
+            input.type === InputVarType.datetime) &&
+          input.default?.type === 'variable'
+        )
           return [input.default.selector]
         if (input.type === InputVarType.select && input.option_source.type === 'variable')
           return [input.option_source.selector]
@@ -1995,8 +2005,10 @@ export const updateNodeVars = (
           })
           payload.inputs = payload.inputs.map((input) => {
             if (
-              input.type === InputVarType.paragraph &&
-              input.default.type === 'variable' &&
+              (input.type === InputVarType.paragraph ||
+                input.type === InputVarType.date ||
+                input.type === InputVarType.datetime) &&
+              input.default?.type === 'variable' &&
               input.default.selector.join('.') === oldVarSelector.join('.')
             )
               input.default.selector = newVarSelector
@@ -2030,8 +2042,10 @@ export const updateNodeVars = (
         })
         payload.inputs = payload.inputs.map((input) => {
           if (
-            input.type === InputVarType.paragraph &&
-            input.default.type === 'variable' &&
+            (input.type === InputVarType.paragraph ||
+              input.type === InputVarType.date ||
+              input.type === InputVarType.datetime) &&
+            input.default?.type === 'variable' &&
             input.default.selector.join('.') === oldVarSelector.join('.')
           ) {
             input.default.selector = newVarSelector

@@ -111,6 +111,12 @@ export type ResolvedPartResponse =
   | ({
       type: 'file_list_input'
     } & ResolvedFileListResponse)
+  | ({
+      type: 'date_input'
+    } & ResolvedDateResponse)
+  | ({
+      type: 'datetime_input'
+    } & ResolvedDateTimeResponse)
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
@@ -138,6 +144,18 @@ export type ResolvedFileResponse = {
   allowed_file_upload_methods: Array<FileTransferMethod>
   output_variable_name: string
   type: 'file_input'
+}
+
+export type ResolvedDateResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'date_input'
+}
+
+export type ResolvedDateTimeResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'datetime_input'
 }
 
 export type ResolvedFileListResponse = {

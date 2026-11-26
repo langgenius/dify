@@ -16,6 +16,18 @@ const selectFormInput = (input: FormInputConfig): FormInputItem => {
           value: input.default?.value ?? '',
         },
       }
+    case 'date':
+    case 'datetime':
+      return {
+        ...input,
+        default: input.default
+          ? {
+              type: input.default.type ?? 'constant',
+              selector: input.default.selector ?? [],
+              value: input.default.value ?? '',
+            }
+          : null,
+      }
     case 'select':
       return {
         ...input,
