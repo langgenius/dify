@@ -260,7 +260,7 @@ class TestArchiveWorkflowRunsCases:
     def test_archive_command_db_retry_retries_retryable_db_disconnect(monkeypatch: pytest.MonkeyPatch) -> None:
         attempts = iter([_db_disconnect_error(), "ok"])
         sleep = Mock()
-        monkeypatch.setattr("services.retention.workflow_run.db_retry.time.sleep", sleep)
+        monkeypatch.setattr("services.retention.workflow_run.db_retry.sleep", sleep)
 
         def operation() -> str:
             result = next(attempts)
@@ -309,7 +309,7 @@ class TestArchiveWorkflowRunsCases:
             opened_sessions.append(session)
 
         sleep = Mock()
-        monkeypatch.setattr("services.retention.workflow_run.db_retry.time.sleep", sleep)
+        monkeypatch.setattr("services.retention.workflow_run.db_retry.sleep", sleep)
         event.listen(sqlite_engine, "before_cursor_execute", disconnect_once)
         event.listen(archive_db.session_maker.class_, "after_begin", record_session)
         try:
