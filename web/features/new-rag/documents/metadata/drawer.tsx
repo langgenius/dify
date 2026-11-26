@@ -41,7 +41,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { knowledgeFsMetadataFieldsQueryOptions } from '@/service/knowledge-fs/metadata'
 import { documentMetadataAtom, documentsKnowledgeSpaceIdAtom } from '../state/inputs'
 import { denyDocumentWriteAtom, documentCanReadAtom, documentCanWriteAtom } from '../state/runtime'
@@ -54,7 +54,7 @@ const metadataTypeIconClass: Record<DocumentMetadataType, string> = {
   time: 'i-ri-time-line',
 }
 // Requests report failures once through useMetadataFieldMutation, including server messages.
-const silentRequest = { context: { silent: true }, meta: { errorToast: false as const } }
+const noErrorToast = { meta: { errorToast: false as const } }
 
 function useMetadataFields() {
   const knowledgeSpaceId = useAtomValueRawSync(documentsKnowledgeSpaceIdAtom)
@@ -62,6 +62,8 @@ function useMetadataFields() {
   const metadataRequest = useAtomValueRawSync(documentMetadataAtom)
   return useQuery({
     ...knowledgeFsMetadataFieldsQueryOptions(knowledgeSpaceId),
+    // The drawer renders a failed field list inline.
+    meta: { errorToast: false },
     enabled: metadataRequest === '1' && canRead,
   })
 }
@@ -73,9 +75,9 @@ function useMetadataFieldMutation() {
   const canWrite = useAtomValueRawSync(documentCanWriteAtom)
   const denyWrite = useSetAtom(denyDocumentWriteAtom)
   const metadata = consoleQuery.knowledgeFs.spaces.byControlSpaceId.metadata
-  const createField = useMutation(metadata.post.mutationOptions(silentRequest))
-  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(silentRequest))
-  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(silentRequest))
+  const createField = useMutation(metadata.post.mutationOptions(noErrorToast))
+  const renameField = useMutation(metadata.byFieldId.patch.mutationOptions(noErrorToast))
+  const deleteField = useMutation(metadata.byFieldId.delete.mutationOptions(noErrorToast))
   const isPending = createField.isPending || renameField.isPending || deleteField.isPending
   const fieldMutations = {
     create: createField.mutateAsync,
@@ -381,9 +383,10 @@ export function DocumentMetadataDrawer() {
                 {metadataFieldsQuery.error && !metadataFieldsQuery.isFetching && (
                   <div className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-background-section-burn px-3 py-2">
                     <span className="min-w-0 system-xs-regular text-text-tertiary">
-                      {t(($) => $.documentLoadErrorDescription, {
-                        ns: 'knowledgeCitation',
-                      })}
+                      {getRequestErrorMessage(metadataFieldsQuery.error) ??
+                        t(($) => $.documentLoadErrorDescription, {
+                          ns: 'knowledgeCitation',
+                        })}
                     </span>
                     <Button
                       className="shrink-0"

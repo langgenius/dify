@@ -704,7 +704,9 @@ describe('WebsiteCrawlPreview', () => {
     await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))
-    expect(screen.getByText('knowledgeSources.crawlFailedDescription')).toBeInTheDocument()
+    // The cancel failure carries the server's message in place of the generic copy.
+    expect(screen.getByText('conflict')).toBeInTheDocument()
+    expect(screen.queryByText('knowledgeSources.crawlFailedDescription')).not.toBeInTheDocument()
     expect(routerMock.push).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'knowledgeSources.cancelAddSource' }))

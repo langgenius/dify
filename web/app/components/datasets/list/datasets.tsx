@@ -65,7 +65,6 @@ const Datasets = ({
   )
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -177,9 +176,7 @@ const Datasets = ({
               <DeleteDatasetConfirmation
                 datasetId={payload.id}
                 isPending={deletion.isPending}
-                error={
-                  deletion.isError ? t(($) => $['api.actionFailed'], { ns: 'common' }) : undefined
-                }
+                error={deletion.error}
                 onConfirm={() => {
                   if (deletion.isPending) return
                   deletion.mutate(

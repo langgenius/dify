@@ -152,14 +152,15 @@ export function workspacePluginPolicies(
       readme: {
         get: {
           queryOptions: {
-            context: { silent: true },
+            meta: { errorToast: false },
             retry: false,
           },
         },
       },
       asset: {
         get: {
-          queryOptions: { context: { silent: true } },
+          // README images fall back to the URL in the markdown.
+          queryOptions: { meta: { errorToast: false } },
         },
       },
       autoUpgrade: {

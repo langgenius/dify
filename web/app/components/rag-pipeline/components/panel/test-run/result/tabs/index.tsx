@@ -1,5 +1,5 @@
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
-import { TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
+import { TabsIndicator, TabsList, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 
 type TabsProps = {
@@ -28,6 +28,7 @@ const Tabs = ({ workflowRunningData }: TabsProps) => {
           {tab.label}
         </TabsTab>
       ))}
+      <TabsIndicator />
     </TabsList>
   )
 }

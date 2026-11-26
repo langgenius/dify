@@ -106,7 +106,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
           onRefreshData()
         },
       })
-    } catch {}
+    } catch {
+      // The query cache reports the failed provider lookup.
+    }
   }
   // custom provider
   const [customCollection, setCustomCollection] = useState<
@@ -119,24 +121,29 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
-      if (res.credentials.api_key_value)
-        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    try {
+      const res = await fetchCustomCollection(collection.name)
+      if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+        if (res.credentials.api_key_value)
+          res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+      }
+      setCustomCollection({
+        ...res,
+        labels: collection.labels,
+        provider: collection.name,
+      })
+      // A failed load keeps the editor hidden, so it never opens with an empty payload to save.
+      setIsDetailLoading(false)
+    } catch (error) {
+      toastRequestError(error)
     }
-    setCustomCollection({
-      ...res,
-      labels: collection.labels,
-      provider: collection.name,
-    })
-    setIsDetailLoading(false)
   }, [canManageTools, collection.labels, collection.name])
 
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     if (!canManageTools) return
 
     try {
-      await updateCustomCollection(data, { silent: true })
+      await updateCustomCollection(data)
     } catch (error) {
       toastRequestError(error)
       return
@@ -155,23 +162,28 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
-    const res = await fetchWorkflowToolDetail(collection.id)
-    const payload = {
-      ...res,
-      parameters:
-        res.tool?.parameters.map((item) => {
-          return {
-            name: item.name,
-            description: item.llm_description,
-            form: item.form,
-            required: item.required,
-            type: item.type,
-          }
-        }) || [],
-      labels: res.tool?.labels || [],
+    try {
+      const res = await fetchWorkflowToolDetail(collection.id)
+      const payload = {
+        ...res,
+        parameters:
+          res.tool?.parameters.map((item) => {
+            return {
+              name: item.name,
+              description: item.llm_description,
+              form: item.form,
+              required: item.required,
+              type: item.type,
+            }
+          }) || [],
+        labels: res.tool?.labels || [],
+      }
+      setCustomCollection(payload)
+      // A failed load keeps the drawer hidden, so it never opens with an empty payload to save.
+      setIsDetailLoading(false)
+    } catch (error) {
+      toastRequestError(error)
     }
-    setCustomCollection(payload)
-    setIsDetailLoading(false)
   }, [collection.id])
   const updateWorkflowToolProvider = async (
     data: WorkflowToolProviderRequest &
@@ -183,7 +195,7 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     if (!canManageTools) return
 
     try {
-      await saveWorkflowToolProvider(data, { silent: true })
+      await saveWorkflowToolProvider(data)
     } catch (error) {
       toastRequestError(error)
       return
@@ -239,7 +251,9 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
-    } catch {}
+    } catch (error) {
+      toastRequestError(error)
+    }
     setIsDetailLoading(false)
   }, [collection.name, collection.type])
 
@@ -315,21 +329,24 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                   ></Description>
                 )}
                 <div className="-mx-4 flex gap-1 border-b-[0.5px] border-divider-subtle px-4">
-                  {collection.type === CollectionType.custom && !isDetailLoading && (
-                    <Button
-                      className={cn('my-3 w-full shrink-0')}
-                      onClick={() => setIsShowEditCustomCollectionModal(true)}
-                      disabled={!canManageTools}
-                    >
-                      <span
-                        aria-hidden
-                        className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
-                      />
-                      <div className="system-sm-medium text-text-secondary">
-                        {t(($) => $['createTool.editAction'], { ns: 'tools' })}
-                      </div>
-                    </Button>
-                  )}
+                  {/* An editor without the loaded provider would save an empty collection over it. */}
+                  {collection.type === CollectionType.custom &&
+                    !isDetailLoading &&
+                    (customCollection || !canManageTools) && (
+                      <Button
+                        className={cn('my-3 w-full shrink-0')}
+                        onClick={() => setIsShowEditCustomCollectionModal(true)}
+                        disabled={!canManageTools}
+                      >
+                        <span
+                          aria-hidden
+                          className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text"
+                        />
+                        <div className="system-sm-medium text-text-secondary">
+                          {t(($) => $['createTool.editAction'], { ns: 'tools' })}
+                        </div>
+                      </Button>
+                    )}
                   {collection.type === CollectionType.workflow &&
                     !isDetailLoading &&
                     customCollection && (

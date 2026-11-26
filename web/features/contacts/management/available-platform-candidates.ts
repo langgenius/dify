@@ -14,6 +14,7 @@ export function availablePlatformCandidatesOptions(
       ...api.organizationCandidates.get.queryKey({ input: { query } }),
       { workspaceId, view: 'available-contacts' },
     ],
+    meta: { errorToast: false },
     initialPageParam: 1,
     queryFn: async ({ pageParam, signal }) => {
       let page = pageParam
@@ -28,7 +29,6 @@ export function availablePlatformCandidatesOptions(
               ...api.organizationCandidates.get.queryKey({ input: candidateInput }),
               { workspaceId },
             ],
-            context: { silent: true },
             meta: { errorToast: false },
           }),
         )
@@ -51,7 +51,6 @@ export function availablePlatformCandidatesOptions(
                   ...api.contacts.batch.get.queryKey({ input: batchInput }),
                   { workspaceId },
                 ],
-                context: { silent: true },
                 meta: { errorToast: false },
               }),
             )

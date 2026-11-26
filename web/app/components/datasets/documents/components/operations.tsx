@@ -70,43 +70,36 @@ const Operations = ({
   const documents = consoleQuery.datasets.byDatasetId.documents
   const { mutateAsync: changeDocumentStatus } = useMutation(
     documents.status.byAction.batch.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: downloadDocument, isPending: isDownloading } = useMutation(
     documents.byDocumentId.download.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: syncNotionDocument } = useMutation(
     documents.byDocumentId.notion.sync.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: syncWebsiteDocument } = useMutation(
     documents.byDocumentId.websiteSync.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: generateSummary } = useMutation(
     documents.generateSummary.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: pauseDocument } = useMutation(
     documents.byDocumentId.processing.pause.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const { mutateAsync: resumeDocument } = useMutation(
     documents.byDocumentId.processing.resume.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 
 const endpoints = consoleQuery.datasets.externalKnowledgeApi
@@ -38,7 +39,6 @@ function DeleteExternalApiConfirmation({
   const usage = useQuery(
     endpoints.byExternalKnowledgeApiId.useCheck.get.queryOptions({
       input: { params: { external_knowledge_api_id: api.id } },
-      context: { silent: true },
       // A failed check is shown inline with a retry button.
       meta: { errorToast: false },
       networkMode: 'always',
@@ -49,7 +49,7 @@ function DeleteExternalApiConfirmation({
   )
   const usageCount = usage.data?.is_using ? usage.data.count : 0
   const description = usage.isError
-    ? t(($) => $['api.actionFailed'], { ns: 'common' })
+    ? (getRequestErrorMessage(usage.error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
     : !usage.isSuccess || usage.isFetching
       ? t(($) => $.loading, { ns: 'common' })
       : usageCount > 0
@@ -114,7 +114,6 @@ export default function DeleteExternalApiDialog({
   const filter = { mutationKey: operation.mutationKey(), exact: true }
   const deletion = useMutation(
     operation.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
       networkMode: 'always',
       onSuccess: () => {

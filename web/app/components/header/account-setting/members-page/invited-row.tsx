@@ -11,6 +11,7 @@ import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getAvatarInitial } from '@/utils/avatar'
 import { InvitationResultsContent } from './invitation-results-content'
 import { RoleBadges } from './role-badges'
@@ -63,7 +64,7 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
   })
   const resend = useMutation(
     consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
-      context: { silent: true },
+      meta: { errorToast: false },
       onSuccess: (response) => {
         const result = response.invitation_results.find(
           ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),
@@ -93,7 +94,8 @@ export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProp
             ? t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' })
             : code === 'invalid_role'
               ? t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' })
-              : t(($) => $['api.actionFailed'], { ns: 'common' }),
+              : (getRequestErrorMessage(error) ??
+                t(($) => $['api.actionFailed'], { ns: 'common' })),
         )
       },
     }),

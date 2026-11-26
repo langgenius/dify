@@ -3,8 +3,9 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
 import { createHttpError } from '@/service/http-error'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { QualityPage } from '../page'
 
@@ -91,10 +92,12 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((done) => {
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((done, fail) => {
     resolve = done
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 function delayedCsvFile(name: string, content: string) {
@@ -104,7 +107,7 @@ function delayedCsvFile(name: string, content: string) {
   return { file, finishReading: () => gate.resolve() }
 }
 
-function renderPage() {
+function renderPage({ errorToasts = false }: { errorToasts?: boolean } = {}) {
   const onUrlUpdate = vi.fn()
   const searchParams = new URLSearchParams({
     ...(navigationMock.run ? { run: navigationMock.run } : {}),
@@ -118,6 +121,10 @@ function renderPage() {
         <QualityPage />
       </KnowledgeSpaceTestProvider>
     </NuqsTestingAdapter>,
+    // Mirror the app's cache-level error toasts for specs that count the failure's messages.
+    errorToasts
+      ? { queryClient: createConsoleQueryClient({ caches: createErrorToastCaches() }) }
+      : undefined,
   )
   return { ...rendered, onUrlUpdate }
 }
@@ -554,6 +561,31 @@ describe('QualityPage', () => {
     )
   })
 
+  it('shows a failed CSV import once, with the server reason in the dialog', async () => {
+    const message = 'This workspace cannot import more golden questions'
+    serviceMock.bulkImport.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 422 }), { message }),
+    )
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['question,evidence,tags\nWhat is the refund window?,30 days,billing'], 'q.csv', {
+        type: 'text/csv',
+      }),
+    )
+    await screen.findByText('What is the refund window?')
+    await user.click(
+      screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
+    )
+
+    expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(message)
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
   it('requires only the question and allows an empty annotation', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -612,6 +644,28 @@ describe('QualityPage', () => {
       await screen.findByText('knowledgeQuality.qualityPage.noEvidenceMatch'),
     ).toBeInTheDocument()
     expect(screen.queryByText('dataset.unknownError')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed evidence search once, with the server reason at the search field', async () => {
+    const message = 'Evidence search timed out'
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message }),
+    )
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.addGolden' }))
+    await user.type(
+      screen.getByPlaceholderText('knowledgeQuality.qualityPage.evidencePlaceholder'),
+      'refund within 30 days',
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.findEvidence' }),
+    )
+
+    expect(await within(screen.getByRole('dialog')).findByText(message)).toBeVisible()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it.each(['create', 'edit'] as const)(
@@ -791,6 +845,39 @@ describe('QualityPage', () => {
     )
   })
 
+  it('reports a failed saved-evidence lookup and keeps the edit dialog open', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: 'Must cite both permission rules.',
+          created_at: '2026-07-28T00:00:00Z',
+          expected_evidence_ids: ['node-1'],
+          id: 'golden-1',
+          question: 'Who can change permissions?',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.matchEvidence.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'Evidence lookup failed' }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Who can change permissions?')
+    await user.click(
+      screen.getByRole('button', { name: /knowledgeQuality\.qualityPage\.questionActions/ }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'knowledgeQuality.qualityPage.edit' }),
+    )
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Evidence lookup failed'))
+    expect(screen.getByRole('dialog')).toBeVisible()
+  })
+
   it('resolves the protected trace reference before navigating', async () => {
     const user = userEvent.setup()
     navigationMock.tab = 'bad-cases'
@@ -809,12 +896,9 @@ describe('QualityPage', () => {
     )
 
     await waitFor(() =>
-      expect(serviceMock.getTraceReference).toHaveBeenCalledWith(
-        {
-          params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
-        },
-        { context: expect.objectContaining({ silent: true }) },
-      ),
+      expect(serviceMock.getTraceReference).toHaveBeenCalledWith({
+        params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+      }),
     )
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/retrieval?trace=trace-42')
   })
@@ -1043,7 +1127,7 @@ describe('QualityPage', () => {
           },
           params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
         },
-        { context: expect.objectContaining({ silent: true }) },
+        { context: expect.any(Object) },
       ),
     )
     await waitFor(() =>
@@ -1144,12 +1228,11 @@ describe('QualityPage', () => {
     await user.click(promote)
     await screen.findByText('dismiss failed')
     expect(toast.error).not.toHaveBeenCalled()
-    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith(
-      { params: { bad_case_id: 'bad-1', control_space_id: 'space-1' } },
-      { context: expect.objectContaining({ silent: true }) },
-    )
+    expect(serviceMock.getBadCase).toHaveBeenLastCalledWith({
+      params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
     expect(serviceMock.updateBadCase).toHaveBeenLastCalledWith(expect.anything(), {
-      context: expect.objectContaining({ silent: true }),
+      context: expect.any(Object),
     })
     await user.click(promote)
 
@@ -1182,7 +1265,10 @@ describe('QualityPage', () => {
     })
     serviceMock.deleteGolden.mockImplementation(
       async (input: { params: { question_id: string } }) => {
-        if (input.params.question_id === 'golden-2') throw new Error('temporary failure')
+        if (input.params.question_id === 'golden-2')
+          throw createHttpError(new Response(null, { status: 409 }), {
+            message: 'Server says why',
+          })
       },
     )
     const user = userEvent.setup()
@@ -1197,7 +1283,8 @@ describe('QualityPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
 
-    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Server says why'))
+    expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2)
     expect(
       screen.getByRole('checkbox', {
         hidden: true,
@@ -1318,6 +1405,39 @@ describe('QualityPage', () => {
     second.finishReading()
     expect(await screen.findByText('Second file question')).toBeInTheDocument()
     expect(importButton).toBeEnabled()
+  })
+
+  it('stays open while an import is pending, so its failure is still shown', async () => {
+    const message = 'This workspace cannot import more golden questions'
+    const importResult = deferred<{ active_count: number; draft_count: number; items: [] }>()
+    serviceMock.bulkImport.mockReturnValue(importResult.promise)
+    const user = userEvent.setup()
+    renderPage({ errorToasts: true })
+
+    await screen.findByText('What is the refund policy?')
+    await user.click(screen.getByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }))
+    await user.upload(
+      document.querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['question,evidence,tags\nWhat is the refund window?,30 days,billing'], 'q.csv', {
+        type: 'text/csv',
+      }),
+    )
+    await screen.findByText('What is the refund window?')
+    await user.click(
+      screen.getAllByRole('button', { name: 'knowledgeQuality.qualityPage.importCsv' }).at(-1)!,
+    )
+    await waitFor(() => expect(serviceMock.bulkImport).toHaveBeenCalledOnce())
+
+    const dialog = screen.getByRole('dialog')
+    await user.click(
+      within(dialog).getByRole('button', { name: 'knowledgeQuality.qualityPage.closeDialog' }),
+    )
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+
+    importResult.reject(createHttpError(new Response(null, { status: 422 }), { message }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(message)
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('locks the CSV selection during import and starts fresh after closing the result', async () => {

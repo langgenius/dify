@@ -18,7 +18,7 @@ const VectorSpaceFull: FC = () => {
     }),
   )
   const { data: vectorSpace, isPending: isVectorSpacePending } = useQuery(
-    consoleQuery.features.vectorSpace.get.queryOptions({ context: { silent: true } }),
+    consoleQuery.features.vectorSpace.get.queryOptions({ meta: { errorToast: false } }),
   )
 
   return (

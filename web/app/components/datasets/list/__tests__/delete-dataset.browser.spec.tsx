@@ -106,7 +106,7 @@ describe('Classic dataset deletion', () => {
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Usage check failed' }),
     )
     await open('Alpha')
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    await expect.element(screen.getByRole('alert')).toHaveTextContent('Usage check failed')
     expect(fake.console.datasets.byDatasetId.delete).not.toHaveBeenCalled()
     await screen.getByRole('button', { name: 'common.operation.retry' }).click()
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
@@ -166,7 +166,7 @@ describe('Classic dataset deletion', () => {
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
-    await expect.element(screen.getByRole('alert')).toBeVisible()
+    await expect.element(screen.getByRole('alert')).toHaveTextContent('Failed')
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('region')).toHaveFocus()

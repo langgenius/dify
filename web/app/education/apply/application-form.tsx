@@ -19,7 +19,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { billingErrorMessageKey } from '@/app/components/billing/billing-error'
+import { getBillingErrorMessage } from '@/app/components/billing/billing-error'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
@@ -56,7 +56,7 @@ function educationApplyErrorMessage(
     case 'education_activate_limit':
       return t(($) => $.tooManyAttempts, { ns: 'education' })
     default:
-      return t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' })
+      return getBillingErrorMessage(error, t)
   }
 }
 
@@ -77,7 +77,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     isPending,
     mutate: educationAdd,
   } = useMutation(
-    consoleQuery.account.education.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.account.education.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({
@@ -90,7 +92,9 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const { handleEducationDiscount } = useEducationDiscount()
   const openAsyncWindow = useAsyncWindowOpen()
   const switchWorkspaceMutation = useMutation(
-    consoleQuery.workspaces.switch.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.workspaces.switch.post.mutationOptions({
+      meta: { errorToast: false },
+    }),
   )
 
   const appliedEducationCase = (() => {
@@ -127,16 +131,14 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
     try {
       await openAsyncWindow(
         async () => {
-          const res = await consoleClient.billing.invoices.get(undefined, {
-            context: { silent: true },
-          })
+          const res = await consoleClient.billing.invoices.get()
           if (res.url) return res.url
 
           throw new Error('Failed to open billing page')
         },
         {
           onError: (error) => {
-            toast.error(t(($) => $[billingErrorMessageKey(error)], { ns: 'billing' }))
+            toast.error(getBillingErrorMessage(error, t))
           },
         },
       )

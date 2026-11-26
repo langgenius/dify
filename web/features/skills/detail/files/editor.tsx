@@ -19,6 +19,7 @@ import { toast } from '@/app/notifications'
 import { toastRequestError } from '@/app/query-error-toast'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob } from '../../client'
@@ -192,7 +193,6 @@ export function SkillFileEditor({
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
   const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -286,6 +286,7 @@ export function SkillFileEditor({
   const shouldFetchTextFileContent = !!file && isTextFile(file) && file.content == null
   const textContentQuery = useQuery({
     queryKey: ['skill-file-text-content', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: async () => {
       if (!filePath) throw new Error('file path is required')
       const blob = await fetchSkillFileBlob({
@@ -305,6 +306,7 @@ export function SkillFileEditor({
     !!file && !isTextFile(file) && (isSkillImageFile(file) || isSkillPdfFile(file))
   const binaryPreviewQuery = useQuery({
     queryKey: ['skill-file-blob-preview', skillId, selectedVersionId, filePath, fileHash],
+    meta: { errorToast: false },
     queryFn: () => {
       if (!filePath) throw new Error('file path is required')
       return fetchSkillFileBlob({
@@ -449,7 +451,9 @@ export function SkillFileEditor({
         }
 
         setSaveStatus('error')
-        toast.error(t(($) => $['skillManagement.detail.saveFailed']))
+        toast.error(
+          getRequestErrorMessage(error) ?? t(($) => $['skillManagement.detail.saveFailed']),
+        )
         return false
       }
     },
@@ -991,7 +995,6 @@ export function SkillFileEditor({
 
     const references = await queryClient.query({
       ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
-        context: { silent: true },
         meta: { errorToast: false },
         input: {
           params: {

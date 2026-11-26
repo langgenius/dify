@@ -18,7 +18,6 @@ export function prefetchCommentThread(client: QueryClient, params: CommentParams
       ...consoleQuery.apps.byAppId.workflow.comments.byCommentId.get.queryOptions({
         input: { params },
         meta: { errorToast: false },
-        context: { silent: true },
       }),
       staleTime: Infinity,
     })

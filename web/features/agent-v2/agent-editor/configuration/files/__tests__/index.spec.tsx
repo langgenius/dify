@@ -557,22 +557,19 @@ describe('AgentFiles', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith(
-        {
-          params: {
-            app_id: 'app-1',
-          },
-          query: {
-            draft_type: 'draft',
-            node_id: 'node-1',
-            version_id: 'draft-1',
-          },
-          body: {
-            upload_file_ids: ['upload-1'],
-          },
+      expect(mocks.commitFileMutationFn).toHaveBeenCalledExactlyOnceWith({
+        params: {
+          app_id: 'app-1',
         },
-        expect.anything(),
-      )
+        query: {
+          draft_type: 'draft',
+          node_id: 'node-1',
+          version_id: 'draft-1',
+        },
+        body: {
+          upload_file_ids: ['upload-1'],
+        },
+      })
     })
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
@@ -659,13 +656,10 @@ describe('AgentFiles', () => {
         fileName: 'diagram.png',
       })
     })
-    expect(mocks.downloadFile).toHaveBeenCalledWith(
-      {
-        params: { agent_id: 'agent-1', name: 'diagram.png' },
-        query: { draft_type: 'draft', version_id: undefined },
-      },
-      { context: { silent: true } },
-    )
+    expect(mocks.downloadFile).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', name: 'diagram.png' },
+      query: { draft_type: 'draft', version_id: undefined },
+    })
   })
 
   it('should download the selected file from the preview header action', async () => {
@@ -687,13 +681,10 @@ describe('AgentFiles', () => {
         fileName: 'diagram.png',
       })
     })
-    expect(mocks.downloadFile).toHaveBeenCalledWith(
-      {
-        params: { agent_id: 'agent-1', name: 'diagram.png' },
-        query: { draft_type: 'draft', version_id: undefined },
-      },
-      { context: { silent: true } },
-    )
+    expect(mocks.downloadFile).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1', name: 'diagram.png' },
+      query: { draft_type: 'draft', version_id: undefined },
+    })
     const trialFile = consoleQuery.trialApps.byAppId.agent.config.files.byName
     for (const operation of [trialFile.preview.get, trialFile.download.get]) {
       expect(queryClient.getQueryState(operation.queryKey({ input: skipToken }))).toMatchObject({

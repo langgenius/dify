@@ -7,7 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { downloadBlob } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 import {
@@ -102,7 +102,6 @@ export function useBulkReindexAction() {
   const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
   const { mutateAsync: reindexDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -157,7 +156,8 @@ export function useBulkReindexAction() {
         toast.error(
           messageKey
             ? tError(($) => $[messageKey])
-            : t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' }),
+            : (getRequestErrorMessage(error) ??
+                t(($) => $.documentsReindexFailed, { ns: 'knowledgeDocuments' })),
         )
       }
     } finally {
@@ -193,13 +193,10 @@ export function useBulkDownloadAction() {
     if (!canDownload || !downloadableDocumentIds.length || !begin()) return
     try {
       const file =
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post(
-          {
-            body: { document_ids: downloadableDocumentIds },
-            params: { control_space_id: knowledgeSpaceId },
-          },
-          { context: { silent: true } },
-        )
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.downloadZip.post({
+          body: { document_ids: downloadableDocumentIds },
+          params: { control_space_id: knowledgeSpaceId },
+        })
       downloadBlob({
         data: file,
         fileName:
@@ -233,7 +230,6 @@ export function useBulkAvailabilityAction() {
   const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: updateDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -304,7 +300,6 @@ export function useBulkRemoveAction() {
   const { invalidateDocumentsAndTasks, knowledgeSpaceId } = useDocumentInvalidation()
   const { mutateAsync: removeDocuments } = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.bulk.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

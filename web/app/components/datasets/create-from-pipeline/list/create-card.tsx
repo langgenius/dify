@@ -15,7 +15,6 @@ const CreateCard = () => {
 
   const { mutateAsync: createEmptyDataset } = useMutation(
     consoleQuery.rag.pipeline.emptyDataset.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

@@ -27,6 +27,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { ContactImBindingContent } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { providerMetadata, toDetailView } from './credentials'
@@ -60,7 +61,7 @@ function ConfigurationSession({
         target.integration?.kind === 'email'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const im = useQuery(
@@ -69,7 +70,7 @@ function ConfigurationSession({
         target.integration?.kind === 'im'
           ? { params: { channel_id: target.integration.id } }
           : skipToken,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const detail = target.integration?.kind === 'email' ? email : im
@@ -82,7 +83,10 @@ function ConfigurationSession({
         </DialogHeader>
         {detail.isError ? (
           <div role="alert" className="p-6">
-            <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+            <p>
+              {getRequestErrorMessage(detail.error) ??
+                t(($) => $['imPlatform.loadError.description'])}
+            </p>
             <Button onClick={() => detail.refetch()}>
               {t(($) => $['imPlatform.action.retry'])}
             </Button>
@@ -124,23 +128,21 @@ export function ContactsImPlatformManagementSurface() {
   })
   const api = consoleQuery.workspaces.current.humanInput.v2
   const integrationsQuery = useQuery(
-    api.channels.get.queryOptions({ enabled: organization.canManage, context: { silent: true } }),
+    api.channels.get.queryOptions({ enabled: organization.canManage, meta: { errorToast: false } }),
   )
   const providersQuery = useQuery(
     api.channelProviders.get.queryOptions({
       enabled: organization.canManage,
-      context: { silent: true },
+      meta: { errorToast: false },
     }),
   )
   const deleteEmail = useMutation(
     api.channels.email.byChannelId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const deleteIM = useMutation(
     api.channels.im.byChannelId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -230,7 +232,10 @@ export function ContactsImPlatformManagementSurface() {
         className="max-w-190 rounded-xl border border-divider-subtle bg-background-default-subtle p-5"
       >
         <div className="system-md-semibold">{t(($) => $['imPlatform.loadError.title'])}</div>
-        <p>{t(($) => $['imPlatform.loadError.description'])}</p>
+        <p>
+          {getRequestErrorMessage(integrationsQuery.error ?? providersQuery.error) ??
+            t(($) => $['imPlatform.loadError.description'])}
+        </p>
         <Button
           onClick={() => {
             void integrationsQuery.refetch()
@@ -393,7 +398,8 @@ export function ContactsImPlatformManagementSurface() {
                 {channelError(deleteMutation.error).code ===
                 ContactImRepositoryErrorCode.ConfigurationUpdated
                   ? t(($) => $['imPlatform.configurationUpdated'])
-                  : t(($) => $['imPlatform.delete.failed'])}
+                  : (getRequestErrorMessage(deleteMutation.error) ??
+                    t(($) => $['imPlatform.delete.failed']))}
               </div>
             </AlertDialogBody>
           )}

@@ -43,6 +43,7 @@ import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/mode
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { documentRenameFilter } from '@/service/datasets'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
@@ -68,7 +69,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const deletion = useMutation(
     consoleQuery.datasets.byDatasetId.documents.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -109,7 +109,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: checkSegmentBatchImportProgress } = useMutation(
     consoleQuery.datasets.batchImportStatus.byJobId.get.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -137,7 +136,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const { mutateAsync: segmentBatchImport } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.batchImport.post.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const runBatch = async (csv: FileItem) => {
@@ -516,7 +515,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               </AlertDialogDescription>
               {deletion.isError && (
                 <p role="alert" className="text-text-destructive">
-                  {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  {getRequestErrorMessage(deletion.error) ??
+                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
                 </p>
               )}
             </AlertDialogHeader>

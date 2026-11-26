@@ -52,7 +52,6 @@ export default function EditAnnotationDialog({
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
     }),
   )
   return (
@@ -117,7 +116,7 @@ export default function EditAnnotationDialog({
               answer={answer}
               onlyEditResponse={onlyEditResponse}
               isPending={update.isPending}
-              isError={update.isError}
+              error={update.error}
               onSave={(body, onSuccess) =>
                 update.mutate(
                   { params: { app_id: appId, annotation_id: annotationId }, body },

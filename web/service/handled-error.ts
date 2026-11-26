@@ -1,6 +1,6 @@
 /**
  * Request errors whose feedback the request layer already owns, such as a sign-in redirect,
- * an app-access dialog or a deleted app, so nothing reports them again.
+ * an app-access dialog or a deleted app, so the query cache must not report them again.
  */
 const handledErrors = new WeakSet<object>()
 

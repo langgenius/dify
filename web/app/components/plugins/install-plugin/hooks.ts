@@ -59,7 +59,7 @@ export const handleUpload = async (
   selectedPackage: string,
   onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
 ) => {
-  const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage, { silent: true })
+  const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
   const GitHubPackage = {
     manifest: response.manifest,
     unique_identifier: response.unique_identifier,

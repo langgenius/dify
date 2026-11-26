@@ -10,7 +10,6 @@ export function useMarketplacePublish(appId?: string) {
   const { isPending: isPublishing, mutate } = useMutation(
     consoleQuery.apps.byAppId.publishToCreatorsPlatform.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       onSuccess: (response) => {
         if (response.redirect_url) window.open(response.redirect_url, '_blank')
       },

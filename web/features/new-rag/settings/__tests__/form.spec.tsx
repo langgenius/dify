@@ -627,6 +627,21 @@ describe('KnowledgeSettingsPage workflows', () => {
       expect(pageSaveButton()).toBeEnabled()
     })
 
+    it('shows the server message when the scan policy save fails', async () => {
+      const user = userEvent.setup()
+      const enable = await renderFormWithFileScan()
+      serviceMock.putFileScanPolicy.mockRejectedValue(
+        createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+      )
+
+      await user.click(enable)
+      await user.click(screen.getByRole('combobox', { name: 'fileScan.policy.scanner' }))
+      await user.click(await screen.findByRole('option', { name: /Office scanner/ }))
+      await user.click(pageSaveButton())
+
+      await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+    })
+
     it('drops the scan policy changes on Cancel', async () => {
       const user = userEvent.setup()
       const enable = await renderFormWithFileScan()
@@ -1124,6 +1139,19 @@ describe('KnowledgeSettingsPage workflows', () => {
     expect(serviceMock.deleteSpace).toHaveBeenCalledTimes(2)
   })
 
+  it('shows the server message when deletion fails', async () => {
+    const user = userEvent.setup()
+    serviceMock.deleteSpace.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+    )
+    await renderForm()
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Server says why')
+  })
+
   it('keeps the deletion dialog modal until the pending deletion settles', async () => {
     const user = userEvent.setup()
     let finishDeletion = () => {}
@@ -1174,6 +1202,35 @@ describe('KnowledgeSettingsPage workflows', () => {
     await user.click(saveButton)
     await waitFor(() => expect(serviceMock.patchSpace).toHaveBeenCalledTimes(2))
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('shows the server message when reloading the settings on Cancel fails', async () => {
+    const user = userEvent.setup()
+    await renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.type(nameInput, ' draft')
+    serviceMock.getSpace.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
+  })
+
+  it('shows the server message when saving fails without a mapped error', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSpace.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { message: 'Server says why' }),
+    )
+    await renderForm()
+
+    const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Camera specs draft')
+    await user.click(screen.getByRole('button', { name: 'knowledgeSettings.settings.saveChanges' }))
+
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith('Server says why'))
   })
 
   it('shows an error toast for a failed retrieval settings update without submitting basic info', async () => {

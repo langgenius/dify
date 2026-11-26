@@ -395,7 +395,7 @@ export const runTriggerDebug = async ({
       // event stream.
       const response = await request({
         signal: controller.signal,
-        context: { silent: true, stream: true },
+        context: { stream: true },
       })
 
       if (controller.signal.aborted) return

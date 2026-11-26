@@ -7,14 +7,15 @@ import type { CommonNodeType, NodePanelProps } from '@/app/components/workflow/t
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import AllStartBlocks from '@/app/components/workflow/block-selector/all-start-blocks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useAutoGenerateWebhookUrl } from '../../hooks/use-auto-generate-webhook-url'
+import { useCollaborativeWorkflow } from '../../hooks/use-collaborative-workflow'
 import { useNodesSyncDraft } from '../../hooks/use-nodes-sync-draft'
+import { useWorkflowHistory, WorkflowHistoryEvent } from '../../hooks/use-workflow-history'
 
 const getTriggerPluginNodeData = (
   triggerConfig: TriggerDefaultValue,
@@ -50,7 +51,8 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
   const setShouldAutoOpenStartNodeSelector = useWorkflowStore(
     (s) => s.setShouldAutoOpenStartNodeSelector,
   )
-  const reactFlowStore = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { saveStateToHistory } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
@@ -84,8 +86,8 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
         }
       })()
 
-      const { getNodes, setNodes } = reactFlowStore.getState()
-      const nextNodes = getNodes().map((node) => {
+      const { nodes, setNodes } = collaborativeWorkflow.getState()
+      const nextNodes = nodes.map((node) => {
         if (node.id !== id) {
           return {
             ...node,
@@ -106,7 +108,8 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
         }
       })
 
-      setNodes(nextNodes)
+      if (!setNodes(nextNodes)) return
+      saveStateToHistory(WorkflowHistoryEvent.NodeChange, { nodeId: id })
       setHasSelectedStartNode?.(true)
       setShouldAutoOpenStartNodeSelector?.(true)
 
@@ -122,9 +125,10 @@ const Panel: FC<NodePanelProps<CommonNodeType>> = ({ id }) => {
     [
       autoGenerateWebhookUrl,
       availableNodesMetaData?.nodesMap,
+      collaborativeWorkflow,
       handleSyncWorkflowDraft,
       id,
-      reactFlowStore,
+      saveStateToHistory,
       setHasSelectedStartNode,
       setShouldAutoOpenStartNodeSelector,
     ],

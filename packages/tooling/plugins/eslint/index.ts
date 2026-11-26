@@ -6,6 +6,7 @@ import noExtraKeys from './rules/no-extra-keys.ts'
 import noFileWideDisable from './rules/no-file-wide-disable.ts'
 import noModuleScopeClock from './rules/no-module-scope-clock.ts'
 import noMutationPolicyBypass from './rules/no-mutation-policy-bypass.ts'
+import noRawReactflowGraphWrite from './rules/no-raw-reactflow-graph-write.ts'
 import preferTailwindIcons from './rules/prefer-tailwind-icons.ts'
 import requireDisableDirectiveDescription from './rules/require-disable-directive-description.ts'
 import requireI18nNamespace from './rules/require-i18n-namespace.ts'
@@ -25,6 +26,7 @@ const plugin: ESLint.Plugin = {
     'no-file-wide-disable': noFileWideDisable,
     'no-module-scope-clock': noModuleScopeClock,
     'no-mutation-policy-bypass': noMutationPolicyBypass,
+    'no-raw-reactflow-graph-write': noRawReactflowGraphWrite,
     'prefer-tailwind-icons': preferTailwindIcons,
     'require-disable-directive-description': requireDisableDirectiveDescription,
     'require-i18n-namespace': requireI18nNamespace,

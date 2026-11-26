@@ -149,7 +149,6 @@ export function List({
   const update = useMutation(
     consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
       meta: { errorToast: false },
-      context: { silent: true },
       onSuccess: onEdited,
     }),
   )
@@ -268,7 +267,7 @@ export function List({
                   appId={appId}
                   item={payload}
                   isPending={update.isPending}
-                  isError={update.isError}
+                  error={update.error}
                   onSave={(body, onSuccess) =>
                     update.mutate(
                       { params: { app_id: appId, annotation_id: payload.id }, body },

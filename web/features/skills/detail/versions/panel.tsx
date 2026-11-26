@@ -193,7 +193,6 @@ function VersionRow({
   const [dialog, setDialog] = useState<'rename' | 'restore' | 'delete' | null>(null)
   const renameMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

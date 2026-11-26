@@ -43,7 +43,6 @@ export function AgentSkillItem({
     if (apiContext.trialAppId) {
       const result = await queryClient.query({
         ...consoleQuery.trialApps.byAppId.agent.config.skills.byName.download.get.queryOptions({
-          context: { silent: true },
           meta: { errorToast: false },
           input: {
             params: { app_id: apiContext.trialAppId, name: skill.name },
@@ -58,7 +57,6 @@ export function AgentSkillItem({
     if (apiContext.workflow) {
       const result = await queryClient.query({
         ...consoleQuery.apps.byAppId.agent.config.skills.byName.download.get.queryOptions({
-          context: { silent: true },
           meta: { errorToast: false },
           input: {
             params: {
@@ -79,7 +77,6 @@ export function AgentSkillItem({
 
     const result = await queryClient.query({
       ...consoleQuery.agent.byAgentId.config.skills.byName.download.get.queryOptions({
-        context: { silent: true },
         meta: { errorToast: false },
         input: {
           params: {

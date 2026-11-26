@@ -13,6 +13,7 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getSkillErrorCode, getSkillErrorDetailString } from '../error'
 import { useSkillPermissions } from '../permissions'
 import { SkillGrid } from './grid'
@@ -45,13 +46,11 @@ export default function SkillsPage() {
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
   const createMutation = useMutation(
     consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const importMutation = useMutation(
     consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -90,7 +89,7 @@ export default function SkillsPage() {
           toast.error(
             getSkillErrorCode(error) === 'skill_limit_exceeded'
               ? t(($) => $['skillManagement.errors.workspaceLimit'])
-              : t(($) => $['skillManagement.createFailed']),
+              : (getRequestErrorMessage(error) ?? t(($) => $['skillManagement.createFailed'])),
           )
         },
       },
@@ -129,7 +128,7 @@ export default function SkillsPage() {
             toast.error(t(($) => $['skillManagement.errors.missingSkillMd']))
             return
           }
-          toast.error(t(($) => $['skillManagement.importFailed']))
+          toast.error(getRequestErrorMessage(error) ?? t(($) => $['skillManagement.importFailed']))
         },
       },
     )

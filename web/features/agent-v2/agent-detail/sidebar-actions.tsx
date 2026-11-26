@@ -22,6 +22,7 @@ import { DuplicateAgentDialogContent } from '@/features/agent-v2/roster/componen
 import { EditAgentDialogContent } from '@/features/agent-v2/roster/components/edit-agent-dialog'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 
 type AgentDetailSidebarActionAgent = AgentFormSource &
   Pick<AgentAppPartial, 'app_id' | 'permission_keys'>
@@ -35,7 +36,6 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
   const [deleteDialog] = useState(() => createAlertDialogHandle())
   const deletion = useMutation(
     consoleQuery.agent.byAgentId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -189,7 +189,11 @@ export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebar
             <DeleteAgentForm
               agentName={agent.name}
               isPending={deletion.isPending}
-              error={deletion.isError ? t(($) => $['roster.deleteFailed']) : undefined}
+              error={
+                deletion.isError
+                  ? (getRequestErrorMessage(deletion.error) ?? t(($) => $['roster.deleteFailed']))
+                  : undefined
+              }
               onSubmit={() => {
                 if (deletion.isPending) return
                 deletion.mutate(

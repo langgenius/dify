@@ -27,6 +27,7 @@ import {
 } from '@/features/network-access/ip-policy'
 import { PolicyReferencedApps } from '@/features/network-access/policy-references'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { AllowlistField } from './allowlist-field'
 import { createAllowlistRow } from './allowlist-row'
 import { recordPolicyValidation } from './policy-form-analytics'
@@ -114,7 +115,6 @@ export function IpPolicyForm({
     consoleQuery.workspaces.current.networkAccessGroups.currentIp.get.queryOptions({
       enabled: mode !== 'view' && currentIp === undefined,
       retry: false,
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -224,6 +224,7 @@ export function IpPolicyForm({
                 entries={entries}
                 currentIp={resolvedCurrentIp}
                 currentIpStatus={currentIpStatus}
+                currentIpErrorMessage={getRequestErrorMessage(currentIpQuery.error)}
                 isRetryingCurrentIp={
                   currentIpStatus !== undefined &&
                   currentIpQuery.isFetched &&

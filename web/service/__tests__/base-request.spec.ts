@@ -7,6 +7,7 @@ import {
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
 import { request } from '../base'
+import { isErrorHandled } from '../handled-error'
 
 const mocks = vi.hoisted(() => ({
   isClient: true,
@@ -117,29 +118,43 @@ describe('request 401 handling', () => {
     vi.unstubAllGlobals()
   })
 
-  it.each([false, true])(
-    'keeps initialization password failures on the init page when silent is %s',
-    async (silent) => {
-      const message = 'Init validation failed. Please check the password and try again.'
-      const response = Response.json({ code: 'init_validate_failed', message }, { status: 401 })
-      arrangeClientRequest({ response, refreshError: new Error('No refresh token during setup') })
-      globalThis.location.pathname = '/app/init'
-      globalThis.location.href = 'https://example.com/app/init'
-      const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+  it('keeps initialization password failures on the init page for its field error', async () => {
+    const message = 'Init validation failed. Please check the password and try again.'
+    const response = Response.json({ code: 'init_validate_failed', message }, { status: 401 })
+    arrangeClientRequest({ response, refreshError: new Error('No refresh token during setup') })
+    globalThis.location.pathname = '/app/init'
+    globalThis.location.href = 'https://example.com/app/init'
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
 
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's initialization auth handling directly.
-      await expect(request('/init', { method: 'POST' }, { silent })).rejects.toMatchObject({
-        code: 'init_validate_failed',
-        status: 401,
-        message,
-      })
+    // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's initialization auth handling directly.
+    await expect(request('/init', { method: 'POST' })).rejects.toMatchObject({
+      code: 'init_validate_failed',
+      status: 401,
+      message,
+    })
 
-      expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
-      expect(globalThis.location.href).toBe('https://example.com/app/init')
-      if (silent) expect(toastError).not.toHaveBeenCalled()
-      else expect(toastError).toHaveBeenCalledExactlyOnceWith(message, { timeout: 4000 })
-    },
-  )
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+    expect(globalThis.location.href).toBe('https://example.com/app/init')
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it('leaves a failed session on the sign-in page to the sign-in forms', async () => {
+    arrangeClientRequest({
+      response: createUnauthorizedResponse(),
+      refreshError: new Error('refresh failed'),
+    })
+    globalThis.location.pathname = '/app/signin'
+    globalThis.location.href = 'https://example.com/app/signin'
+    const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+
+    // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's auth handling directly.
+    await expect(request('/account/init', { method: 'POST' })).rejects.toMatchObject({
+      status: 401,
+    })
+
+    expect(globalThis.location.href).toBe('https://example.com/app/signin')
+    expect(toastError).not.toHaveBeenCalled()
+  })
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
     const response = createUnauthorizedResponse()
@@ -313,5 +328,24 @@ describe('request 401 handling', () => {
     expect(globalThis.location.href).toContain('code=403')
     expect(mocks.clearWebAppPassport).not.toHaveBeenCalled()
     expect(globalThis.location.reload).not.toHaveBeenCalled()
+  })
+
+  it('marks a WebApp access denial as handled so the query cache does not report it', async () => {
+    mocks.resolveWebAppAddress.mockReturnValue({ kind: 'environment', code: 'environment-code' })
+    arrangeClientRequest({
+      response: Response.json(
+        { code: 'web_app_access_denied', message: 'Access denied.' },
+        { status: 403 },
+      ),
+    })
+
+    // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's auth handling directly.
+    const error = await request('/messages', {}, { isPublicAPI: true }).catch(
+      (reason: unknown) => reason,
+    )
+
+    expect(error).toMatchObject({ status: 403 })
+    expect(isErrorHandled(error)).toBe(true)
+    expect(globalThis.location.href).toContain('/webapp-signin?')
   })
 })

@@ -11,7 +11,7 @@ import { KnowledgeTaskFailure } from '@/features/new-rag/components/knowledge-ta
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -67,14 +67,18 @@ export function DocumentTaskRow({
   currentLifecycleRef.current = currentLifecycle
   const [actionFailure, setActionFailure] = useState<{
     lifecycle: string
+    message?: string
     messageKey?: KnowledgeFsTaskFailureMessageKey
   }>()
   const cancelTask = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+    // Cancel and retry failures are shown next to the task's action button.
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(
+      { meta: { errorToast: false } },
+    ),
   )
   const retryTask = useMutation(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.retry.post.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const pending = Boolean(cancelTask.isPending || retryTask.isPending)
@@ -168,13 +172,16 @@ export function DocumentTaskRow({
       if (currentLifecycleRef.current !== actionLifecycle) return
       if (document.activeElement === actionFocusTarget) focusDrawerCloseButton()
     } catch (error) {
-      const permissionDenied = getHttpErrorStatus(error) === 403
-      if (permissionDenied) void retryWritePermission(refreshWritePermission)
-      else {
-        const messageKey = await knowledgeFsRequestFailureMessageKey(error)
-        if (currentLifecycleRef.current === actionLifecycle)
-          setActionFailure({ lifecycle: actionLifecycle, messageKey })
-      }
+      // A 403 is also how a knowledge rate limit fails, so the failure stays recorded while write
+      // access is rechecked; it is shown only if that access holds.
+      if (getHttpErrorStatus(error) === 403) void retryWritePermission(refreshWritePermission)
+      const messageKey = await knowledgeFsRequestFailureMessageKey(error)
+      if (currentLifecycleRef.current === actionLifecycle)
+        setActionFailure({
+          lifecycle: actionLifecycle,
+          message: getRequestErrorMessage(error),
+          messageKey,
+        })
     } finally {
       void onSettled()
     }
@@ -212,11 +219,11 @@ export function DocumentTaskRow({
         {taskFailureMessageKey && (
           <KnowledgeTaskFailure messageKey={taskFailureMessageKey} failure={task.failure} />
         )}
-        {actionFailure?.lifecycle === currentLifecycle && (
+        {canEdit && actionFailure?.lifecycle === currentLifecycle && (
           <p className="mt-1 system-2xs-regular text-text-destructive" role="alert">
             {actionFailureMessageKey
               ? tError(($) => $[actionFailureMessageKey])
-              : t(($) => $.taskActionFailed)}
+              : (actionFailure.message ?? t(($) => $.taskActionFailed))}
           </p>
         )}
       </div>

@@ -43,7 +43,6 @@ function SkillDetailDeleteDialog({
   const router = useRouter()
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -203,7 +202,6 @@ export function SkillDetailSidebarActions({
   const router = useRouter()
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )

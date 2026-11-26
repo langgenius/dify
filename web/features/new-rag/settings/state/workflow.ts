@@ -4,6 +4,7 @@ import type { SettingsMigrationProgress, SettingsSaveStep } from '../save-workfl
 import { atom } from 'jotai'
 import { atomWithMutation, queryClientAtom } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { settingsDraftChanges } from '../draft'
 import { settingsSaveErrorMessageKey } from '../save-error'
 import {
@@ -25,6 +26,7 @@ type SaveErrorKey = Awaited<ReturnType<typeof settingsSaveErrorMessageKey>>
 export type KnowledgeSettingsSaveResult = {
   status: 'saved' | 'failed' | 'skipped' | 'reset'
   errorKey?: SaveErrorKey
+  errorMessage?: string
 }
 
 const pendingSaveOwnersAtom = atom<Set<string>>(new globalThis.Set<string>())
@@ -68,28 +70,24 @@ const spaceApi = consoleQuery.knowledgeFs.spaces.byControlSpaceId
 const saveSpaceMutationAtom = atomWithMutation(() =>
   spaceApi.patch.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveMembersMutationAtom = atomWithMutation(() =>
   spaceApi.members.put.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveExternalMutationAtom = atomWithMutation(() =>
   spaceApi.externalAccess.put.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
 const saveSettingsMutationAtom = atomWithMutation(() =>
   spaceApi.settings.patch.mutationOptions({
     retry: false,
-    context: { silent: true },
     meta: { errorToast: false },
   }),
 )
@@ -99,7 +97,6 @@ function snapshotQueries(control_space_id: string) {
     input: { params: { control_space_id } },
     staleTime: 0,
     retry: false as const,
-    context: { silent: true },
     // The save flow reports its own failure and deliberately ignores failed recovery reads.
     meta: { errorToast: false as const },
   }
@@ -173,7 +170,6 @@ export const saveKnowledgeSettingsAtom = atom(
           spaceApi.settings.migrations.byMigrationId.get.queryOptions({
             input: { params: { ...params, migration_id: progress.id } },
             retry: false,
-            context: { silent: true },
             meta: { errorToast: false },
           }),
         )
@@ -265,7 +261,7 @@ export const saveKnowledgeSettingsAtom = atom(
         /* Keep the prior baseline and draft if recovery reads fail. */
       }
       set(knowledgeSettingsSaveErrorAtom, errorKey)
-      return { status: 'failed', errorKey }
+      return { status: 'failed', errorKey, errorMessage: getRequestErrorMessage(error) }
     } finally {
       set(setKnowledgeSettingsSavePendingAtom, { owner: 'save', pending: false })
     }
@@ -287,7 +283,7 @@ export const resetKnowledgeSettingsDraftAtom = atom(
     } catch (error) {
       const errorKey = await settingsSaveErrorMessageKey(error)
       set(knowledgeSettingsSaveErrorAtom, errorKey)
-      return { status: 'failed', errorKey }
+      return { status: 'failed', errorKey, errorMessage: getRequestErrorMessage(error) }
     } finally {
       set(setKnowledgeSettingsSavePendingAtom, { owner: 'reset', pending: false })
     }

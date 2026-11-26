@@ -129,7 +129,7 @@ export const useChildSegmentData = (
   // Mutations
   const { mutateAsync: deleteChildSegment } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.childChunks.byChildChunkId.delete.mutationOptions(
-      { context: { silent: true }, meta: { errorToast: false } },
+      { meta: { errorToast: false } },
     ),
   )
   const { mutateAsync: updateChildSegment } = useMutation(

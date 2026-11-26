@@ -10,16 +10,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
-from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
-from controllers.console.agent.composer import (
-    WorkflowAgentComposerApi,
-    WorkflowAgentComposerCandidatesApi,
-    WorkflowAgentComposerCopyFromRosterApi,
-    WorkflowAgentComposerImpactApi,
-    WorkflowAgentComposerSaveToRosterApi,
-    WorkflowAgentComposerValidateApi,
-)
 from controllers.console.agent.roster import (
     AgentAppCopyApi,
     AgentAppListApi,
@@ -32,13 +23,6 @@ from enums import DeploymentEdition
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
-from services.entities.agent_entities import (
-    ComposerSavePayload,
-    ComposerSaveStrategy,
-    ComposerVariant,
-    WorkflowAgentComposerQuery,
-    WorkflowComposerCopyFromRosterPayload,
-)
 from tests.helpers.unit.model_factories import make_account
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
@@ -72,26 +56,6 @@ def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
 
     with app.test_request_context("/?source%5B0%5D=workflow:app-3"):
         assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
-
-
-def _workflow_composer_response(**overrides: object) -> dict[str, object]:
-    response: dict[str, object] = {
-        "variant": "workflow",
-        "agent": None,
-        "active_config_snapshot": None,
-        "binding": None,
-        "soul_lock": {"locked": False, "can_unlock": False, "reason": "workflow_only_empty"},
-        "agent_soul": {},
-        "node_job": {},
-        "effective_declared_outputs": [],
-        "save_options": ["node_job_only"],
-        "impact_summary": None,
-        "app_id": "app-1",
-        "workflow_id": "workflow-1",
-        "node_id": "node-1",
-    }
-    response.update(overrides)
-    return response
 
 
 def _app_detail_obj(**overrides: object) -> App:
@@ -223,186 +187,6 @@ def test_agent_app_create_payload_allows_optional_role() -> None:
     )
     assert omitted.role is None
     assert blank.role == ""
-
-
-def test_workflow_composer_get_put_validate_candidates_impact_and_save(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    app_model = _app_detail_obj(id="app-1")
-    payload = {
-        "variant": ComposerVariant.WORKFLOW.value,
-        "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
-        "binding": {"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
-    }
-    captured_load: dict[str, object] = {}
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "load_workflow_composer",
-        lambda **kwargs: captured_load.update(kwargs) or _workflow_composer_response(node_id=kwargs["node_id"]),
-    )
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "save_workflow_composer",
-        lambda **kwargs: _workflow_composer_response(save_options=[kwargs["payload"].save_strategy.value]),
-    )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "get_workflow_candidates",
-        lambda **kwargs: _candidates_response("workflow"),
-    )
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService,
-        "calculate_impact",
-        lambda **kwargs: {
-            "current_snapshot_id": kwargs["current_snapshot_id"],
-            "workflow_node_count": 1,
-            "bindings": [],
-        },
-    )
-    with app.test_request_context("?snapshot_id=preview-version"):
-        workflow_state = unwrap(WorkflowAgentComposerApi.get)(
-            WorkflowAgentComposerApi(),
-            WorkflowAgentComposerQuery(snapshot_id="preview-version"),
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-    assert workflow_state["node_id"] == "node-1"
-    assert captured_load["account_id"] == account_id
-    assert captured_load["snapshot_id"] == "preview-version"
-    composer_save_payload = ComposerSavePayload(
-        variant=ComposerVariant.WORKFLOW,
-        save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
-        binding={"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
-    )
-    with app.test_request_context(json=payload):
-        saved_state = unwrap(WorkflowAgentComposerApi.put)(
-            WorkflowAgentComposerApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-        assert saved_state["save_options"] == ["node_job_only"]
-        assert unwrap(WorkflowAgentComposerValidateApi.post)(
-            WorkflowAgentComposerValidateApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            app_model,
-            "node-1",
-        ) == {"result": "success", "errors": [], "warnings": [], "knowledge_retrieval_placeholder": []}
-    assert (
-        unwrap(WorkflowAgentComposerCandidatesApi.get)(
-            WorkflowAgentComposerCandidatesApi(), MagicMock(), "tenant-1", account_id, app_model, "node-1"
-        )["variant"]
-        == "workflow"
-    )
-    with app.test_request_context(json=payload):
-        assert unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            app_model,
-            "node-1",
-        ) == {"current_snapshot_id": "version-1", "workflow_node_count": 1, "bindings": []}
-        assert unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
-            WorkflowAgentComposerSaveToRosterApi(),
-            composer_save_payload,
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )["save_options"] == ["node_job_only"]
-
-
-def test_workflow_composer_get_uses_write_transaction() -> None:
-    assert "@with_session\n    @get_app_model" in getsource(WorkflowAgentComposerApi)
-
-
-def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str) -> None:
-    app_model = _app_detail_obj(id="app-1")
-    captured: dict[str, object] = {}
-
-    def fake_copy_from_roster(**kwargs: object) -> dict[str, object]:
-        captured.update(kwargs)
-        return _workflow_composer_response(
-            binding={
-                "id": "binding-1",
-                "binding_type": "inline_agent",
-                "agent_id": "inline-agent-1",
-                "current_snapshot_id": "inline-version-1",
-                "workflow_id": "workflow-1",
-                "node_id": kwargs["node_id"],
-            },
-            agent={
-                "id": "inline-agent-1",
-                "name": "Nadia",
-                "description": "",
-                "scope": "workflow_only",
-                "status": "active",
-            },
-            active_config_snapshot={"id": "inline-version-1", "version": 1},
-        )
-
-    monkeypatch.setattr(
-        composer_controller.AgentComposerService, "copy_workflow_composer_from_roster", fake_copy_from_roster
-    )
-    with app.test_request_context(
-        json={
-            "source_agent_id": "roster-agent-1",
-            "source_snapshot_id": "roster-version-1",
-            "idempotency_key": "copy-1",
-        }
-    ):
-        result = unwrap(WorkflowAgentComposerCopyFromRosterApi.post)(
-            WorkflowAgentComposerCopyFromRosterApi(),
-            WorkflowComposerCopyFromRosterPayload(
-                source_agent_id="roster-agent-1",
-                source_snapshot_id="roster-version-1",
-                idempotency_key="copy-1",
-            ),
-            MagicMock(),
-            "tenant-1",
-            account_id,
-            app_model,
-            "node-1",
-        )
-    assert result["binding"]["binding_type"] == "inline_agent"
-    captured.pop("session", None)
-    assert captured == {
-        "tenant_id": "tenant-1",
-        "app_id": "app-1",
-        "node_id": "node-1",
-        "account_id": account_id,
-        "source_agent_id": "roster-agent-1",
-        "source_snapshot_id": "roster-version-1",
-        "idempotency_key": "copy-1",
-    }
-
-
-def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
-    payload = {"variant": ComposerVariant.WORKFLOW.value, "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value}
-    with app.test_request_context(json=payload):
-        result = unwrap(WorkflowAgentComposerImpactApi.post)(
-            WorkflowAgentComposerImpactApi(),
-            ComposerSavePayload(
-                variant=ComposerVariant.WORKFLOW,
-                save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
-            ),
-            MagicMock(),
-            "tenant-1",
-            _app_detail_obj(id="app-1"),
-            "node-1",
-        )
-    assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(

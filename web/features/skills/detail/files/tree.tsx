@@ -68,6 +68,7 @@ import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob, uploadSkillFile } from '../../client'
 import { getSkillErrorCode } from '../../error'
@@ -315,13 +316,11 @@ export function SkillFileTree({
 
   const fileMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
   const fileCheckMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.files.check.post.mutationOptions({
-      context: { silent: true },
       meta: { errorToast: false },
     }),
   )
@@ -481,8 +480,10 @@ export function SkillFileTree({
       })
       setUploadReviewItems(reviewItems)
       setUploadReviewOpen(true)
-    } catch {
-      toast.error(t(($) => $['skillManagement.detail.uploadCheckFailed']))
+    } catch (error) {
+      toast.error(
+        getRequestErrorMessage(error) ?? t(($) => $['skillManagement.detail.uploadCheckFailed']),
+      )
     }
   }
 

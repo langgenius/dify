@@ -72,8 +72,9 @@ export function accountPolicies(consoleQuery: ConsoleQuery): ConsolePolicies['ac
     education: {
       get: {
         queryOptions: {
-          // Passive probe: every callsite degrades to "not a student", so no toast.
-          context: { silent: true },
+          // Passive probe: most callers degrade to "not a student"; verification and pricing
+          // render their own error.
+          meta: { errorToast: false },
           retry: false,
         },
       },

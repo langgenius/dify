@@ -37,9 +37,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
-const silentRequest = expect.objectContaining({
-  context: expect.objectContaining({ silent: true }),
-})
+const requestOptions = expect.anything()
 vi.mock('@/app/notifications', () => ({
   default: {
     notify: (args: unknown) => toastMocks.mockNotify(args),
@@ -178,7 +176,7 @@ describe('TransferOwnershipContent', () => {
       {
         body: { code: '123456', token: 'step-token' },
       },
-      silentRequest,
+      requestOptions,
     )
     expect(await screen.findByText(/members\.transferModal\.transferLabel/i)).toBeInTheDocument()
     await selectNewOwnerAndSubmit(user)
@@ -191,7 +189,7 @@ describe('TransferOwnershipContent', () => {
           params: { member_id: 'new-owner-id' },
           body: { token: 'final-token' },
         },
-        silentRequest,
+        requestOptions,
       )
       expect(window.location.reload).toHaveBeenCalled()
     })

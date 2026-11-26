@@ -58,7 +58,6 @@ const useWebAppBrand = () => {
         { body: { file } },
         {
           context: {
-            silent: true,
             onUploadProgress: ({ loaded, total }) => {
               setUploadProgress(Math.floor((loaded / total) * 100))
             },
