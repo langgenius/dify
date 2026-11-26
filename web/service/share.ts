@@ -69,26 +69,16 @@ export const stopChatMessageResponding = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.chatMessages.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return webAppClient.chatMessages.byTaskId.stop.post(
-    { params: { task_id: taskId } },
-    { context: options },
-  )
+    return consoleClient.trialApps.byAppId.chatMessages.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return webAppClient.chatMessages.byTaskId.stop.post({ params: { task_id: taskId } })
 }
 
 // The app's input form builds these bodies, so they are passed through as the contract bodies.
@@ -207,27 +197,17 @@ export const stopWorkflowMessage = async (
   taskId: string,
   appSourceType: AppSourceType,
   installedAppId = '',
-  options?: Pick<StreamCallbacks, 'silent'>,
 ) => {
   if (!taskId) return
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { installed_app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
+    return consoleClient.installedApps.byInstalledAppId.workflows.tasks.byTaskId.stop.post({
+      params: { installed_app_id: installedAppId, task_id: taskId },
+    })
   if (appSourceType === AppSourceType.tryApp)
-    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post(
-      {
-        params: { app_id: installedAppId, task_id: taskId },
-      },
-      { context: options },
-    )
-  return webAppClient.workflows.tasks.byTaskId.stop.post(
-    { params: { task_id: taskId } },
-    { context: options },
-  )
+    return consoleClient.trialApps.byAppId.workflows.tasks.byTaskId.stop.post({
+      params: { app_id: installedAppId, task_id: taskId },
+    })
+  return webAppClient.workflows.tasks.byTaskId.stop.post({ params: { task_id: taskId } })
 }
 
 export const fetchAppInfo = async () => {
@@ -483,14 +463,10 @@ export const saveMessage = (
 
 export const fetchSavedMessage = async (appSourceType: AppSourceType, installedAppId = '') => {
   if (appSourceType === AppSourceType.installedApp)
-    return consoleClient.installedApps.byInstalledAppId.savedMessages.get(
-      {
-        params: { installed_app_id: installedAppId },
-      },
-      { context: { silent: true } },
-    )
-  if (appSourceType === AppSourceType.webApp)
-    return webAppClient.savedMessages.get(undefined, { context: { silent: true } })
+    return consoleClient.installedApps.byInstalledAppId.savedMessages.get({
+      params: { installed_app_id: installedAppId },
+    })
+  if (appSourceType === AppSourceType.webApp) return webAppClient.savedMessages.get()
   return unsupportedTrialAppRequest()
 }
 
@@ -722,7 +698,6 @@ const uploadHumanInputFormFile = async (
     { body },
     {
       context: {
-        silent: true,
         headers: { Authorization: `bearer ${uploadToken}` },
         onUploadProgress,
         // The legacy XHR upload had no time limit; remote URLs finish only after the server fetches the file.

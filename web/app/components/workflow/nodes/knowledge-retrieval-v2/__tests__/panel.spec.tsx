@@ -3,6 +3,12 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
+import { createConsoleQueryClient } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
 import { renderNodePanel } from '../../__tests__/render-node-panel'
 import Panel from '../panel'
 
@@ -120,6 +126,27 @@ describe('KnowledgeRetrievalV2Panel', () => {
       data: [field('department', 'string')],
       next_cursor: null,
     })
+  })
+
+  it('reports metadata fields that fail to load instead of showing an empty filter', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    service.listMetadata.mockRejectedValue(
+      createHttpError(
+        { status: 503, statusText: '', headers: new Headers() },
+        { message: 'Metadata unavailable' },
+      ),
+    )
+    const queryClient = createConsoleQueryClient({ caches: createErrorToastCaches() })
+    seedToolProviders(queryClient, {
+      builtInTools: [],
+      customTools: [],
+      workflowTools: [],
+      mcpTools: [],
+    })
+    queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+    renderNodePanel(Panel, nodeData(), { queryClient })
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Metadata unavailable'))
   })
 
   it('lists the selected spaces by name and routes recall changes to the node config', async () => {

@@ -18,14 +18,17 @@ from repositories.agent_build_collection_repository import (
     AgentBuildCollectionIntent,
     AgentBuildCollectionRepository,
 )
-from services.agent.deletion_service import AgentDeletionService
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.workspace_service import AgentWorkspaceService
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="retention")
+@shared_task(
+    queue="retention",
+    autoretry_for=(Exception,),
+    max_retries=5,
+    retry_backoff=30,
+    retry_backoff_max=10 * 60,
+)
 def collect_agent_resources(
     *,
     tenant_id: str,
@@ -38,8 +41,15 @@ def collect_agent_resources(
 
     Collection is best-effort across the complete explicit batch so one failed
     resource does not hide later failures. If any resource fails, aggregate
-    purge is skipped and one summary error is raised after all attempts.
+    purge is skipped and the summary error retries the batch. The resource
+    collectors accept already-removed IDs so redelivering the batch is safe.
+    The task stops retrying after five attempts beyond the initial delivery.
     """
+
+    # Agent retirement services also import the enqueue function in this module.
+    from services.agent.deletion_service import AgentDeletionService
+    from services.agent.home_snapshot_service import AgentHomeSnapshotService
+    from services.agent.workspace_service import AgentWorkspaceService
 
     collectors = (
         (workspace_ids, "workspace_id", AgentWorkspaceService.collect_retired_workspace),
@@ -92,12 +102,12 @@ def _publish_collection(
     try:
         collect_agent_resources.delay(tenant_id=tenant_id, **payload)
     except Exception as exc:
-        attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
-        for intent in intents:
-            attempts.record_error(intent=intent, error_type=type(exc).__name__)
         message = "Failed to enqueue retired Agent resource collection"
         extra: dict[str, object] = {"tenant_id": tenant_id, **payload}
         if intents:
+            attempts = AgentBuildCollectionRepository(session_factory.get_session_maker())
+            for intent in intents:
+                attempts.record_error(intent=intent, error_type=type(exc).__name__)
             message = "Failed to publish Build collection attempt"
             extra["build_attempt_counts"] = [intent.attempt_count for intent in intents]
         logger.exception(message, extra=extra)
@@ -174,10 +184,10 @@ def enqueue_agent_resource_collection(
 ) -> None:
     """Publish retired resources after the caller's database commit.
 
-    Build-owned bindings use durable claims; all other resource IDs retain the
-    legacy payload. Broker errors propagate without deleting a Build intent.
-    Successful publication does not imply physical cleanup or exactly-once
-    delivery.
+    Build bindings use durable dispatch claims outside aggregate purge. A purge
+    batch must retain all of its explicit prerequisites, even bindings with
+    exhausted claims. Broker errors propagate; publication does not settle an
+    intent or guarantee cleanup.
     """
 
     payload = {
@@ -187,6 +197,9 @@ def enqueue_agent_resource_collection(
         "purge_agent_ids": sorted({agent_id for agent_id in purge_agent_ids if agent_id}),
     }
     if not any(payload.values()):
+        return
+    if payload["purge_agent_ids"] or not payload["binding_ids"]:
+        _publish_collection(tenant_id=tenant_id, payload=payload, build_intents=())
         return
     repository = AgentBuildCollectionRepository(session_factory.get_session_maker())
     pending = repository.pending_binding_ids(tenant_id=tenant_id, binding_ids=set(payload["binding_ids"]))

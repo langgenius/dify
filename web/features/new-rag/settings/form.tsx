@@ -54,16 +54,16 @@ export function KnowledgeSettingsForm() {
   const submit = async () => {
     // The scan policy has its own endpoint; it goes first so a rejected policy stops the save.
     const fileScanResult = await fileScan.save()
-    if (fileScanResult === 'invalid') {
+    if (fileScanResult.status === 'invalid') {
       toast.error(tFileScan(($) => $['policy.scannerRequired']))
       return
     }
-    if (fileScanResult === 'failed') {
-      toast.error(tFileScan(($) => $['policy.saveFailed']))
+    if (fileScanResult.status === 'failed') {
+      toast.error(fileScanResult.errorMessage ?? tFileScan(($) => $['policy.saveFailed']))
       return
     }
     if (!canSave) {
-      if (fileScanResult === 'saved') toast.success(tCommon(($) => $['api.actionSuccess']))
+      if (fileScanResult.status === 'saved') toast.success(tCommon(($) => $['api.actionSuccess']))
       return
     }
     const result = await save()
@@ -71,9 +71,11 @@ export function KnowledgeSettingsForm() {
     const errorKey = result.errorKey
     if (errorKey)
       toast.error(
-        errorKey === 'permissionRestricted' || errorKey === 'settings.saveFailed'
-          ? t(($) => $[errorKey])
-          : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
+        errorKey === 'settings.saveFailed'
+          ? (result.errorMessage ?? t(($) => $[errorKey]))
+          : errorKey === 'permissionRestricted'
+            ? t(($) => $[errorKey])
+            : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
       )
   }
   const cancel = async () => {
@@ -82,9 +84,11 @@ export function KnowledgeSettingsForm() {
     const errorKey = result.errorKey
     if (errorKey)
       toast.error(
-        errorKey === 'permissionRestricted' || errorKey === 'settings.saveFailed'
-          ? t(($) => $[errorKey])
-          : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
+        errorKey === 'settings.saveFailed'
+          ? (result.errorMessage ?? t(($) => $[errorKey]))
+          : errorKey === 'permissionRestricted'
+            ? t(($) => $[errorKey])
+            : t(($) => $[errorKey], { ns: 'knowledgeErrors' }),
       )
   }
 

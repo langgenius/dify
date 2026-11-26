@@ -2,7 +2,7 @@ import { ORPCError } from '@orpc/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
-import { get, request } from './base'
+import { request } from './base'
 import { consoleClient } from './console'
 
 const refresh = vi.hoisted(() => vi.fn())
@@ -40,11 +40,9 @@ describe('HTTP failure contract', () => {
         }),
       )
 
-      const error = await request(
-        '/test-errors',
-        { body: {}, method: 'POST' },
-        { silent: true },
-      ).catch((error: unknown) => error)
+      const error = await request('/test-errors', { body: {}, method: 'POST' }).catch(
+        (error: unknown) => error,
+      )
 
       expect(error).toBeInstanceOf(Error)
       expect(error).toBeInstanceOf(ORPCError)
@@ -74,7 +72,7 @@ describe('HTTP failure contract', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         new Response(body, { status: 502, statusText: 'Bad Gateway' }),
       )
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+      await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
         defined: false,
         message: 'Bad Gateway',
         status: 502,
@@ -85,16 +83,14 @@ describe('HTTP failure contract', () => {
   it('accepts the legacy error field and uses a status fallback for invalid messages', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     fetch.mockResolvedValueOnce(Response.json({ error: 'Upload rejected' }, { status: 413 }))
-    await expect(
-      request('/test-errors', { method: 'POST' }, { silent: true }),
-    ).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'POST' })).rejects.toMatchObject({
       message: 'Upload rejected',
       status: 413,
     })
     fetch.mockResolvedValueOnce(
       Response.json({ message: { internal: 'invalid' } }, { status: 500 }),
     )
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
       message: 'HTTP 500',
       status: 500,
     })
@@ -104,7 +100,7 @@ describe('HTTP failure contract', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ code: 'invalid_credentials', message: 'Invalid password' }, { status: 401 }),
     )
-    await expect(request('/login', { method: 'POST' }, { silent: true })).rejects.toMatchObject({
+    await expect(request('/login', { method: 'POST' })).rejects.toMatchObject({
       defined: false,
       code: 'invalid_credentials',
       message: 'Invalid password',
@@ -121,7 +117,7 @@ describe('HTTP failure contract', () => {
         Response.json({ code: 'forbidden', message: 'Access denied' }, { status: 403 }),
       )
     refresh.mockResolvedValue(undefined)
-    await expect(get('/test-errors', {}, { silent: true })).rejects.toMatchObject({
+    await expect(request('/test-errors', { method: 'GET' })).rejects.toMatchObject({
       defined: false,
       message: 'Access denied',
       status: 403,
@@ -140,7 +136,7 @@ describe('HTTP failure contract', () => {
       refresh.mockRejectedValue(refreshError)
       const initialUrl = window.location.href
 
-      await expect(get('/test-errors', {}, { silent: true })).rejects.toBe(refreshError)
+      await expect(request('/test-errors', { method: 'GET' })).rejects.toBe(refreshError)
       expect(refresh).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(initialUrl)
     },
@@ -161,9 +157,7 @@ describe('HTTP failure contract', () => {
       new DOMException('Cancelled', 'AbortError'),
     ]) {
       fetch.mockRejectedValueOnce(error)
-      const caught = await request('/test-errors', {}, { silent: true }).catch(
-        (error: unknown) => error,
-      )
+      const caught = await request('/test-errors', {}).catch((error: unknown) => error)
       expect(caught).toBeInstanceOf(Error)
       expect(caught).not.toBeInstanceOf(ORPCError)
       if (error.name === 'AbortError') expect(caught).toBe(error)
@@ -197,7 +191,7 @@ describe('HTTP failure contract', () => {
       )
     })
 
-    const pending = get('/test-errors', { signal: controller.signal }).catch(
+    const pending = request('/test-errors', { method: 'GET', signal: controller.signal }).catch(
       (error: unknown) => error,
     )
     await bodyRead
@@ -213,9 +207,7 @@ describe('HTTP failure contract', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json({ code: 'forbidden', message: 'Profile is read-only' }, { status: 403 }),
     )
-    const error = await consoleClient.account.profile
-      .get({}, { context: { silent: true } })
-      .catch((error: unknown) => error)
+    const error = await consoleClient.account.profile.get({}).catch((error: unknown) => error)
     expect(error).toBeInstanceOf(ORPCError)
     expect(error).toMatchObject({ message: 'Profile is read-only', status: 403, code: 'forbidden' })
   })

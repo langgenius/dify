@@ -37,14 +37,14 @@ it('blocks local mutations until ready while still accepting graph imports', asy
     expect(result.current.getState().nodes.map((node) => node.id)).toEqual(['old-node', 'target']),
   )
   act(() => {
-    result.current.setNodes([newNode])
-    result.current.setEdges([newEdge])
+    expect(result.current.setNodes([newNode])).toBe(false)
+    expect(result.current.setEdges([newEdge])).toBe(false)
   })
   expect(result.current.getState().nodes.map((node) => node.id)).toEqual(['old-node', 'target'])
   expect(result.current.getState().edges).toMatchObject([oldEdge])
   act(() => {
-    result.current.setNodes([newNode], false)
-    result.current.setEdges([newEdge], false)
+    expect(result.current.setNodes([newNode], false)).toBe(true)
+    expect(result.current.setEdges([newEdge], false)).toBe(true)
   })
   expect(result.current.getState().nodes).toMatchObject([newNode])
   expect(result.current.getState().edges).toMatchObject([newEdge])
@@ -57,8 +57,8 @@ it('updates the local graph while stripping selection state from broadcasts', as
   const { result } = setup()
   await waitFor(() => expect(result.current.getState().nodes).toHaveLength(2))
   act(() => {
-    result.current.setNodes([newNode], true, 'user-edit')
-    result.current.setEdges([newEdge])
+    expect(result.current.setNodes([newNode], true, 'user-edit')).toBe(true)
+    expect(result.current.setEdges([newEdge])).toBe(true)
   })
   expect(result.current.getState().nodes).toMatchObject([newNode])
   expect(result.current.getState().edges).toMatchObject([newEdge])

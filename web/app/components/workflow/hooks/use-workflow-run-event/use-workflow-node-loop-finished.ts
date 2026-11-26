@@ -3,16 +3,18 @@ import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useCollaborativeWorkflow } from '../use-collaborative-workflow'
 
 export const useWorkflowNodeLoopFinished = () => {
   const store = useStoreApi()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowNodeLoopFinished = useCallback(
     (params: LoopFinishedResponse) => {
       const { data } = params
       const { workflowRunningData, setWorkflowRunningData } = workflowStore.getState()
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
+      const { getNodes, edges } = store.getState()
       const nodes = getNodes()
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
@@ -31,7 +33,7 @@ export const useWorkflowNodeLoopFinished = () => {
 
         currentNode.data._runningStatus = data.status
       })
-      setNodes(newNodes)
+      collaborativeWorkflow.setNodes(newNodes, false)
       const newEdges = produce(edges, (draft) => {
         const incomeEdges = draft.filter((edge) => {
           return edge.target === data.node_id
@@ -43,9 +45,9 @@ export const useWorkflowNodeLoopFinished = () => {
           }
         })
       })
-      setEdges(newEdges)
+      collaborativeWorkflow.setEdges(newEdges, false)
     },
-    [workflowStore, store],
+    [collaborativeWorkflow, workflowStore, store],
   )
 
   return {

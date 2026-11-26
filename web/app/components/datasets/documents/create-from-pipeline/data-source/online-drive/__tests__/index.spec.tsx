@@ -103,7 +103,7 @@ function callbacks(): {
 function lastRun() {
   void streamEvents.mock.lastCall![0]({
     signal: new AbortController().signal,
-    context: { silent: true, stream: true },
+    context: { stream: true },
   })
   return runNode.mock.lastCall!.slice(0, 2)
 }

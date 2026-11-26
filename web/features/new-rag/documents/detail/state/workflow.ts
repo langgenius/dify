@@ -11,7 +11,7 @@ import {
 import { selectAtom } from 'jotai/utils'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import {
   knowledgeFsRequestFailureMessageKey,
   knowledgeFsTaskFailureMessageKey,
@@ -296,11 +296,14 @@ export const documentSubmissionPendingAtom = atom((get) => {
 
 const reindexDocumentMutationAtom = atomWithMutation(() =>
   consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.reindex.post.mutationOptions({
-    context: { silent: true },
+    meta: { errorToast: false },
   }),
 )
+// The cancel action reports its own failure through the result it returns.
 const cancelTaskMutationAtom = atomWithMutation(() =>
-  consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(),
+  consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.byTaskKind.byTaskId.cancel.post.mutationOptions(
+    { meta: { errorToast: false } },
+  ),
 )
 
 function workflowQueryKeys(get: Getter) {
@@ -503,6 +506,7 @@ export const reindexDocumentAtom = atom(
         return {
           status: 'failed',
           messageKey: knowledgeFsTaskFailureMessageKey(undefined, item.code ?? undefined),
+          errorMessage: undefined,
         } as const
       }
       const taskId =
@@ -522,6 +526,7 @@ export const reindexDocumentAtom = atom(
       return {
         status: 'failed',
         messageKey: await knowledgeFsRequestFailureMessageKey(error),
+        errorMessage: getRequestErrorMessage(error),
       } as const
     } finally {
       updateWorkflowState(get, set, (current) => ({ ...current, reindexBusy: false }))
@@ -541,7 +546,7 @@ export const cancelDocumentReindexAtom = atom(
       (!state.submittedReindex &&
         (!task || !documentTaskIsActive(task.state) || task.canCancel === false))
     )
-      return 'unavailable' as const
+      return { status: 'unavailable' as const }
     updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: true }))
     try {
       await get(cancelTaskMutationAtom).mutateAsync({
@@ -553,13 +558,13 @@ export const cancelDocumentReindexAtom = atom(
       })
       updateWorkflowState(get, set, (current) => ({ ...current, submittedReindex: undefined }))
       await invalidateDocumentWorkflow(get)
-      return 'canceled' as const
+      return { status: 'canceled' as const }
     } catch (error) {
       if (getHttpErrorStatus(error) === 403) {
         updateWorkflowState(get, set, (current) => ({ ...current, writePermissionRevoked: true }))
         await retryWritePermission(get, set, refreshWritePermission)
       }
-      return 'failed' as const
+      return { message: getRequestErrorMessage(error), status: 'failed' as const }
     } finally {
       updateWorkflowState(get, set, (current) => ({ ...current, cancelBusy: false }))
     }

@@ -56,12 +56,22 @@ vi.mock(import('@/service/client-error'), async (importOriginal) => {
 const isSimulatedRequestFailure = (value: unknown) =>
   !!value && typeof value === 'object' && simulatedRequestFailures.has(value)
 
+// boundary: Chromium reports a ResizeObserver whose callbacks resized an observed element as an
+// `ErrorEvent` with no error object; the remaining notifications are delivered in the next frame.
+// Vitest logs that event through `console.error`. Under CI load it reaches specs whose components
+// observe nothing themselves (floating-ui positioners, canvases), so the guard ignores exactly
+// this message. A spec that checks for a real resize loop listens for the window `error` event.
+const isResizeObserverLoopNotice = (value: unknown) =>
+  value instanceof Error &&
+  value.message === 'ResizeObserver loop completed with undelivered notifications.'
+
 // Fail a test that logs `console.error`. A spec that expects one silences it with
 // `vi.spyOn(console, 'error').mockImplementation(…)`, which replaces this recorder.
 beforeEach(() => {
   consoleErrors = []
   console.error = (...args: unknown[]) => {
-    if (!args.some(isSimulatedRequestFailure)) consoleErrors.push(args)
+    if (!args.some(isSimulatedRequestFailure) && !args.every(isResizeObserverLoopNotice))
+      consoleErrors.push(args)
     writeConsoleError(...args)
   }
 })

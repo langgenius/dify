@@ -50,6 +50,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
       'workspaces.current.toolProvider.builtin.byProvider.credential.info.get': api.credentials,
       'workspaces.current.triggerProvider.byProvider.info.get': api.trigger,
       'workspaces.current.triggerProvider.byProvider.subscriptions.list.get': api.subscriptions,

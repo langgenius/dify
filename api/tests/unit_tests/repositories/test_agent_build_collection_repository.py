@@ -16,7 +16,15 @@ from sqlalchemy import Connection, Engine, create_engine, event, inspect, select
 from sqlalchemy.orm import Session
 
 from libs.datetime_utils import naive_utc_now
-from models.agent import AgentBuildCollectionRequest, AgentWorkspace, AgentWorkspaceBinding
+from models.agent import (
+    Agent,
+    AgentBuildCollectionRequest,
+    AgentHomeSnapshot,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+)
 from repositories.agent_build_collection_repository import AgentBuildCollectionRepository
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
 from repositories.app.agent_app_repository import AgentAppRepository
@@ -316,6 +324,60 @@ def test_enqueue_does_not_bypass_an_exhausted_build_claim(harness: Harness, monk
         pending = session.scalar(select(AgentBuildCollectionRequest))
         assert pending is not None
         assert pending.attempt_count == 100
+
+
+@pytest.mark.usefixtures("memory_broker")
+def test_aggregate_collection_keeps_an_exhausted_build_binding(
+    harness: Harness, build_state: BuildState, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exhausted dispatch claim does not remove an explicit prerequisite for purge."""
+    _retire_and_stage(harness, build_state)
+    with harness.sessions.begin() as session:
+        intent = session.scalars(select(AgentBuildCollectionRequest)).one()
+        intent.attempt_count = 100
+        intent.last_attempt_at = naive_utc_now() - timedelta(minutes=10)
+        session.get_one(Agent, build_state.agent_id).status = AgentStatus.ARCHIVED
+        session.get_one(AgentHomeSnapshot, build_state.home_id).status = AgentWorkingResourceStatus.RETIRED
+
+    published: list[_PublishedCollection] = []
+
+    def on_publish(body: tuple[object, _PublishedCollection, object], **_kwargs: object) -> None:
+        published.append(body[1])
+
+    with observe_collection_publication(on_publish):
+        enqueue_agent_resource_collection(
+            tenant_id=harness.tenant_id,
+            binding_ids=[build_state.binding_id],
+            purge_agent_ids=[build_state.agent_id],
+        )
+
+    assert published == [
+        {
+            "tenant_id": harness.tenant_id,
+            "binding_ids": [build_state.binding_id],
+            "workspace_ids": [],
+            "home_snapshot_ids": [],
+            "purge_agent_ids": [build_state.agent_id],
+        }
+    ]
+    client = _RecordingBackendClient()
+    client.error = RuntimeError("backend not ready")
+    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+
+    with pytest.raises(RuntimeError, match="Failed to collect 1 retired Agent resource"):
+        collect_agent_resources.run(**published[0])
+    with harness.sessions() as session:
+        assert session.get(Agent, build_state.agent_id) is not None
+        assert session.get(AgentWorkspaceBinding, build_state.binding_id) is not None
+        assert session.scalars(select(AgentBuildCollectionRequest)).one().attempt_count == 100
+
+    client.error = None
+    collect_agent_resources.run(**published[0])
+    assert len(client.requests) == 2
+    with harness.sessions() as session:
+        assert session.get(Agent, build_state.agent_id) is None
+        assert session.get(AgentWorkspaceBinding, build_state.binding_id) is None
+        assert session.scalar(select(AgentBuildCollectionRequest)) is None
 
 
 def test_apply_maps_binding_loss_after_revalidation(

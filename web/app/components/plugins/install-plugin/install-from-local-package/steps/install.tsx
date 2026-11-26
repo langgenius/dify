@@ -10,6 +10,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { uninstallPlugin } from '@/service/plugins'
 import { usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
@@ -102,7 +103,7 @@ const Installed: FC<Props> = ({
         onFailed(e)
         return
       }
-      onFailed()
+      onFailed(getRequestErrorMessage(e))
     }
   }
 

@@ -933,6 +933,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -950,6 +952,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -973,6 +977,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files/batch
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -996,6 +1002,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1014,6 +1022,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1032,6 +1042,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1050,6 +1062,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1067,6 +1081,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1084,6 +1100,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
+**Post the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1107,6 +1125,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
+**Delete the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1125,6 +1145,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1143,6 +1165,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1159,6 +1183,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1178,6 +1204,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1197,6 +1225,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
+**Get the selected Agent configuration asset for the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1215,6 +1245,8 @@ Stop a running Agent App chat message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
+**Copy an admitted roster Agent App and render its committed private detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1398,6 +1430,8 @@ Get Agent App message details by ID
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
+**Publish the current shared draft and return the committed version and draft metadata**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1418,6 +1452,7 @@ Get Agent App message details by ID
 | 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -2407,6 +2442,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2426,6 +2463,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2451,6 +2490,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files/batch
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2476,6 +2517,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2496,6 +2539,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2516,6 +2561,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2536,6 +2583,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2555,6 +2604,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2574,6 +2625,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
+**Post the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2599,6 +2652,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
+**Delete the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2619,6 +2674,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2639,6 +2696,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2656,6 +2715,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2677,6 +2738,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2698,6 +2761,8 @@ Run draft workflow for advanced chat application
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
+**Get the selected workflow Agent configuration asset**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5116,6 +5181,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5133,6 +5200,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5157,6 +5226,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5173,6 +5244,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5197,6 +5270,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5219,6 +5294,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5243,6 +5320,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13505,6 +13584,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13522,6 +13603,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13546,6 +13629,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13561,6 +13646,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13585,6 +13672,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13606,6 +13695,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13630,6 +13721,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

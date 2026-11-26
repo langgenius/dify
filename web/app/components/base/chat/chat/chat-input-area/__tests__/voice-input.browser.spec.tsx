@@ -60,9 +60,8 @@ it('preserves the draft, reports transcription failure, and returns focus to the
     await microphone.click()
     await screen.getByRole('button', { name: 'common.voiceInput.stop' }).click()
 
-    await expect
-      .element(screen.getByRole('dialog', { name: 'common.api.actionFailed' }))
-      .toBeVisible()
+    // The transcription failure reports the server's message; the generic text is its fallback.
+    await expect.element(screen.getByRole('dialog', { name: 'API error' })).toBeVisible()
     expect(fake.console.apps.byAppId.audioToText.post).toHaveBeenCalledExactlyOnceWith({
       params: { app_id: TEST_APP_ID },
       body: { file: expect.any(File) },
