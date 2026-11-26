@@ -2,7 +2,7 @@ import type { TestNavigation } from '@/test/next-navigation'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, setupFakeApi } from '@/test/fake-api'
+import { apiError, networkError, setupFakeApi } from '@/test/fake-api'
 import { createTestNavigation } from '@/test/next-navigation'
 import InitPasswordPopup from '../InitPasswordPopup'
 
@@ -77,12 +77,22 @@ it('reports other failures inside the form until the password is edited', async 
   await userEvent.fill(password, 'secret')
   await userEvent.keyboard('{Enter}')
 
-  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('Internal error')
   await expect.element(password).not.toHaveAttribute('aria-invalid', 'true')
 
   await userEvent.type(password, '!')
 
   await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
+})
+
+it('falls back to a generic message when the failure carries no server message', async () => {
+  fake.console.init.post.mockRejectedValue(networkError())
+  const screen = await renderPopup()
+
+  await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'secret')
+  await userEvent.keyboard('{Enter}')
+
+  await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
 })
 
 it('continues to install once after a correct password', async () => {

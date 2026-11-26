@@ -5,7 +5,6 @@
   "directory.removalSingleFailed": "연락처를 삭제하지 못했습니다. 다시 시도하세요.",
   "directory.removalSingleTitle": "{{name}} 님을 삭제하시겠습니까?",
   "directory.resultCount": "결과: {{count}}",
-  "imPlatform.action.configure": "구성",
   "imPlatform.action.configureChannel": "{{provider}} 구성",
   "imPlatform.action.connect": "연결",
   "imPlatform.action.copied": "복사",

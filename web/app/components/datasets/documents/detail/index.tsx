@@ -43,6 +43,7 @@ import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/mode
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { documentRenameFilter } from '@/service/datasets'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
@@ -514,7 +515,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               </AlertDialogDescription>
               {deletion.isError && (
                 <p role="alert" className="text-text-destructive">
-                  {t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
+                  {getRequestErrorMessage(deletion.error) ??
+                    t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' })}
                 </p>
               )}
             </AlertDialogHeader>

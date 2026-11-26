@@ -103,6 +103,7 @@ from services.errors.evaluation import (
     EvaluationPlanRequiredError,
 )
 from services.errors.llm import InvokeRateLimitError
+from services.errors.workflow_service import WorkflowDraftInitializationBusyError
 from services.trigger.debug_service import TriggerDebugEvent
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
@@ -724,9 +725,12 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                serialize_creation=True,
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
+        except WorkflowDraftInitializationBusyError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
         except VariableError as e:
             raise InvalidArgumentError(description=str(e)) from e
 

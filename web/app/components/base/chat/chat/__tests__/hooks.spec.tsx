@@ -2659,6 +2659,41 @@ describe('useChat', () => {
       },
     )
 
+    it.each([
+      [
+        'the server message',
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'invalid_param',
+          message: 'Server says why',
+        }),
+        'appDebug.operation.stopResponding: Server says why',
+      ],
+      [
+        'the localized fallback',
+        new Error('Stop request failed'),
+        'appDebug.operation.stopResponding: common.api.actionFailed',
+      ],
+    ])('should report %s when a new agent cannot stop', async (_case, error, message) => {
+      const stopChat = vi.fn(() => Promise.reject(error))
+      const { result } = renderHookWithConsoleQuery(() =>
+        useChat(undefined, undefined, undefined, stopChat, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+      act(() => {
+        result.current.handleSend(streams.sender('chat-messages'), { query: 'test' }, {})
+      })
+      const callbacks = vi.mocked(ssePost).mock.calls[0]![2] as HookCallbacks
+      await act(async () => {
+        callbacks.onWorkflowStarted({ task_id: 'task-123' })
+        await result.current.handleStop()
+      })
+
+      expect(stopChat).toHaveBeenCalledWith('task-123')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+      expect(result.current.isResponding).toBe(true)
+    })
+
     it('clears messages and suggested questions when restarting', async () => {
       const cb = vi.fn()
       const { result } = renderHookWithConsoleQuery(() =>

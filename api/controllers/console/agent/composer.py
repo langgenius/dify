@@ -4,24 +4,16 @@ from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
 
 from controllers.common.rbac import AgentId, PlainApp, RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
-from controllers.common.session import with_session
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
-    account_initialization_required,
-    edit_permission_required,
     model_validate,
-    rbac_permission_required,
-    setup_required,
-    with_current_tenant_id,
-    with_current_user_id,
 )
 from extensions.ext_application_services import application_services
 from fields.agent_fields import (
@@ -32,15 +24,12 @@ from fields.agent_fields import (
     ComposerValidationFindingsResponse,
     WorkflowAgentComposerResponse,
 )
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
-from libs.login import login_required
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from models.model import App, AppMode
 from services.agent.app_composer_store import AgentComposerAgentMissingError, AgentComposerSnapshotMissingError
-from services.agent.composer_service import AgentComposerService
-from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
@@ -50,12 +39,17 @@ from services.agent.errors import (
     InvalidComposerConfigError,
     PlaintextSecretNotAllowedError,
 )
+from services.agent.workflow_composer_gateway import (
+    WorkflowComposerAppMissingError,
+    WorkflowComposerSnippetMissingError,
+    WorkflowComposerTarget,
+    WorkflowComposerTargetKind,
+)
 from services.entities.agent_entities import (
     ComposerSavePayload,
     WorkflowAgentComposerQuery,
     WorkflowComposerCopyFromRosterPayload,
 )
-from services.snippet_service import SnippetService
 
 register_schema_models(
     console_ns, ComposerSavePayload, WorkflowAgentComposerQuery, WorkflowComposerCopyFromRosterPayload
@@ -70,41 +64,50 @@ register_response_schema_models(
 )
 
 
+_COMPOSER_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+
+
+class SnippetNotFoundError(BaseHTTPException):
+    """Keep the historical generic not-found code for a missing Composer snippet."""
+
+    error_code = "not_found"
+    description = "Snippet not found"
+    code = HTTPStatus.NOT_FOUND
+
+
+@contextmanager
+def _workflow_composer_errors() -> Generator[None]:
+    """Map target admission failures to the existing workflow and snippet responses."""
+    try:
+        yield
+    except WorkflowComposerAppMissingError as exc:
+        raise AppNotFoundError(*exc.args) from exc
+    except WorkflowComposerSnippetMissingError as exc:
+        raise SnippetNotFoundError from exc
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class WorkflowAgentComposerApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(
-        200, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
+        HTTPStatus.OK, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
     @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @error_responses(AppNotFoundError)
+    @console_account_admission()
     @model_validate(WorkflowAgentComposerQuery)
     def get(
-        self,
-        req_data: WorkflowAgentComposerQuery,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        app_model: App,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.load_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
+        self, req_data: WorkflowAgentComposerQuery, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Return the Composer state for the admitted workflow or snippet node."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.get(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 node_id=node_id,
-                account_id=account_id,
                 snapshot_id=req_data.snapshot_id,
-            ),
-        )
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
     @error_responses(
         AgentNameConflictError,
@@ -116,38 +119,25 @@ class WorkflowAgentComposerApi(Resource):
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Workflow agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
+        HTTPStatus.OK, "Workflow agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())]
+    )
     @model_validate(ComposerSavePayload)
     def put(
-        self,
-        req_data: ComposerSavePayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        app_model: App,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.save_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
+        self, req_data: ComposerSavePayload, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Save the admitted workflow or snippet node’s configuration."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.save(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 node_id=node_id,
-                account_id=account_id,
                 payload=req_data,
-            ),
-        )
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
@@ -157,42 +147,27 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
     )
     @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Workflow roster agent copied to inline agent",
         console_ns.models[WorkflowAgentComposerResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())]
+    )
     @model_validate(WorkflowComposerCopyFromRosterPayload)
     def post(
-        self,
-        req_data: WorkflowComposerCopyFromRosterPayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        app_model: App,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.copy_workflow_composer_from_roster(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
+        self, req_data: WorkflowComposerCopyFromRosterPayload, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Copy the admitted node’s roster Agent into an inline Agent."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.copy_from_roster(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 node_id=node_id,
-                account_id=account_id,
-                source_agent_id=req_data.source_agent_id,
-                source_snapshot_id=req_data.source_snapshot_id,
-                idempotency_key=req_data.idempotency_key,
-            ),
-        )
+                payload=req_data,
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
@@ -200,72 +175,60 @@ class WorkflowAgentComposerValidateApi(Resource):
     @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Workflow agent composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
+        HTTPStatus.OK,
+        "Workflow agent composer validation result",
+        console_ns.models[AgentComposerValidateResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @error_responses(AppNotFoundError)
+    @console_account_admission()
     @model_validate(ComposerSavePayload)
-    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, app_model: App, node_id: str):
-        ComposerConfigValidator.validate_publish_payload(req_data)
-        AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
-        )
-        findings = AgentComposerService.collect_validation_findings(payload=req_data)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
+    def post(
+        self, req_data: ComposerSavePayload, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Validate the configuration for the admitted workflow or snippet."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.validate(
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)), payload=req_data
+            )
+        return dump_response(AgentComposerValidateResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/candidates")
 class WorkflowAgentComposerCandidatesApi(Resource):
     @console_ns.response(
-        200, "Workflow agent composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
+        HTTPStatus.OK, "Workflow agent composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
-    def get(self, session: Session, tenant_id: str, current_user_id: str, app_model: App, node_id: str):
-        return dump_response(
-            AgentComposerCandidatesResponse,
-            AgentComposerService.get_workflow_candidates(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
-                node_id=node_id,
-                user_id=current_user_id,
-            ),
-        )
+    @error_responses(AppNotFoundError)
+    @console_account_admission()
+    def get(self, context: RequestContext, app_id: UUID, node_id: str) -> dict[str, object]:
+        """Return candidates for the admitted workflow or snippet node."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.candidates(
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)), node_id=node_id
+            )
+        return dump_response(AgentComposerCandidatesResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/impact")
 class WorkflowAgentComposerImpactApi(Resource):
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
-    @console_ns.response(200, "Workflow agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @console_ns.response(
+        HTTPStatus.OK, "Workflow agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__]
+    )
+    @error_responses(AppNotFoundError)
+    @console_account_admission()
     @model_validate(ComposerSavePayload)
-    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, app_model: App, node_id: str):
-        current_snapshot_id = req_data.binding.current_snapshot_id if req_data.binding else None
-        if not current_snapshot_id:
-            return dump_response(
-                AgentComposerImpactResponse, {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
+    def post(
+        self, req_data: ComposerSavePayload, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Return the number of workflow nodes using the selected snapshot."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.impact(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
+                snapshot_id=req_data.binding.current_snapshot_id if req_data.binding else None,
             )
-        return dump_response(
-            AgentComposerImpactResponse,
-            AgentComposerService.calculate_impact(
-                session=session, tenant_id=tenant_id, current_snapshot_id=current_snapshot_id
-            ),
-        )
+        return dump_response(AgentComposerImpactResponse, result)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
@@ -280,83 +243,52 @@ class WorkflowAgentComposerSaveToRosterApi(Resource):
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Workflow agent composer saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
+        HTTPStatus.OK,
+        "Workflow agent composer saved to roster",
+        console_ns.models[WorkflowAgentComposerResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_EDIT, PlainApp()))
+    @error_responses(AppNotFoundError)
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.APP_EDIT, PlainApp())],
+    )
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
-    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @model_validate(ComposerSavePayload)
     def post(
-        self,
-        req_data: ComposerSavePayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        app_model: App,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.save_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
+        self, req_data: ComposerSavePayload, context: RequestContext, app_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Save the admitted workflow or snippet node’s configuration."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.save(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.WORKFLOW, str(app_id)),
                 node_id=node_id,
-                account_id=account_id,
                 payload=req_data,
-            ),
-        )
-
-
-def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUID) -> str:
-    snippet = SnippetService(session=session).get_snippet_by_id(
-        snippet_id=str(snippet_id),  # pyrefly: ignore[unnecessary-type-conversion]
-        tenant_id=tenant_id,
-    )
-    if snippet is None:
-        raise NotFound("Snippet not found")
-    return snippet.id
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class SnippetAgentComposerApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Snippet agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Snippet agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
+    )
     @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
+    @console_account_admission()
     @model_validate(WorkflowAgentComposerQuery)
     def get(
-        self,
-        req_data: WorkflowAgentComposerQuery,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        snippet_id: UUID,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.load_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
+        self, req_data: WorkflowAgentComposerQuery, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Return the Composer state for the admitted workflow or snippet node."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.get(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 node_id=node_id,
-                account_id=account_id,
                 snapshot_id=req_data.snapshot_id,
-            ),
-        )
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
     @error_responses(
         AgentNameConflictError,
@@ -367,36 +299,26 @@ class SnippetAgentComposerApi(Resource):
         PlaintextSecretNotAllowedError,
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
-    @console_ns.response(200, "Snippet agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Snippet agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
     @model_validate(ComposerSavePayload)
     def put(
-        self,
-        req_data: ComposerSavePayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        snippet_id: UUID,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.save_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
+        self, req_data: ComposerSavePayload, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Save the admitted workflow or snippet node’s configuration."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.save(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 node_id=node_id,
-                account_id=account_id,
                 payload=req_data,
-            ),
-        )
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
@@ -406,39 +328,25 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
     )
     @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
     @console_ns.response(
-        200, "Roster agent copied into snippet", console_ns.models[WorkflowAgentComposerResponse.__name__]
+        HTTPStatus.OK, "Roster agent copied into snippet", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
     @model_validate(WorkflowComposerCopyFromRosterPayload)
     def post(
-        self,
-        req_data: WorkflowComposerCopyFromRosterPayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        snippet_id: UUID,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.copy_workflow_composer_from_roster(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
+        self, req_data: WorkflowComposerCopyFromRosterPayload, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Copy the admitted node’s roster Agent into an inline Agent."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.copy_from_roster(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 node_id=node_id,
-                account_id=account_id,
-                source_agent_id=req_data.source_agent_id,
-                source_snapshot_id=req_data.source_snapshot_id,
-                idempotency_key=req_data.idempotency_key,
-            ),
-        )
+                payload=req_data,
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
@@ -446,73 +354,55 @@ class SnippetAgentComposerValidateApi(Resource):
     @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Snippet agent composer validation", console_ns.models[AgentComposerValidateResponse.__name__]
+        HTTPStatus.OK, "Snippet agent composer validation", console_ns.models[AgentComposerValidateResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_account_admission()
     @model_validate(ComposerSavePayload)
-    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
-        _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
-        ComposerConfigValidator.validate_publish_payload(req_data)
-        AgentComposerService.validate_knowledge_datasets(
-            session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
-        )
-        findings = AgentComposerService.collect_validation_findings(payload=req_data)
-        return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
+    def post(
+        self, req_data: ComposerSavePayload, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Validate the configuration for the admitted workflow or snippet."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.validate(
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)), payload=req_data
+            )
+        return dump_response(AgentComposerValidateResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/candidates")
 class SnippetAgentComposerCandidatesApi(Resource):
     @console_ns.response(
-        200, "Snippet agent composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
+        HTTPStatus.OK, "Snippet agent composer candidates", console_ns.models[AgentComposerCandidatesResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user_id: str, snippet_id: UUID, node_id: str):
-        return dump_response(
-            AgentComposerCandidatesResponse,
-            AgentComposerService.get_workflow_candidates(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
-                node_id=node_id,
-                user_id=current_user_id,
-            ),
-        )
+    @console_account_admission()
+    def get(self, context: RequestContext, snippet_id: UUID, node_id: str) -> dict[str, object]:
+        """Return candidates for the admitted workflow or snippet node."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.candidates(
+                context, WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)), node_id=node_id
+            )
+        return dump_response(AgentComposerCandidatesResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/impact")
 class SnippetAgentComposerImpactApi(Resource):
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
-    @console_ns.response(200, "Snippet agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(
+        HTTPStatus.OK, "Snippet agent composer impact", console_ns.models[AgentComposerImpactResponse.__name__]
+    )
+    @console_account_admission()
     @model_validate(ComposerSavePayload)
-    def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
-        _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
-        current_snapshot_id = req_data.binding.current_snapshot_id if req_data.binding else None
-        if not current_snapshot_id:
-            return dump_response(
-                AgentComposerImpactResponse, {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
+    def post(
+        self, req_data: ComposerSavePayload, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Return the number of workflow nodes using the selected snapshot."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.impact(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
+                snapshot_id=req_data.binding.current_snapshot_id if req_data.binding else None,
             )
-        return dump_response(
-            AgentComposerImpactResponse,
-            AgentComposerService.calculate_impact(
-                session=session,
-                tenant_id=tenant_id,
-                current_snapshot_id=current_snapshot_id,
-            ),
-        )
+        return dump_response(AgentComposerImpactResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
@@ -527,41 +417,26 @@ class SnippetAgentComposerSaveToRosterApi(Resource):
     )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
-        200, "Snippet agent saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
+        HTTPStatus.OK, "Snippet agent saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace()))
+    @console_account_admission(
+        allowed_roles=_COMPOSER_EDIT_ROLES,
+        rbac_checks=[RBACCheck(RBACPermission.SNIPPETS_CREATE_AND_MODIFY, Workspace())],
+    )
     @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
-    @with_current_user_id
-    @with_current_tenant_id
-    @with_session
     @model_validate(ComposerSavePayload)
     def post(
-        self,
-        req_data: ComposerSavePayload,
-        session: Session,
-        tenant_id: str,
-        account_id: str,
-        snippet_id: UUID,
-        node_id: str,
-    ):
-        return dump_response(
-            WorkflowAgentComposerResponse,
-            AgentComposerService.save_workflow_composer(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=_require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id),
+        self, req_data: ComposerSavePayload, context: RequestContext, snippet_id: UUID, node_id: str
+    ) -> dict[str, object]:
+        """Save the admitted workflow or snippet node’s configuration."""
+        with _workflow_composer_errors():
+            result = application_services().workflow_composer.save(
+                context,
+                WorkflowComposerTarget(WorkflowComposerTargetKind.SNIPPET, str(snippet_id)),
                 node_id=node_id,
-                account_id=account_id,
                 payload=req_data,
-            ),
-        )
-
-
-_COMPOSER_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})
+            )
+        return dump_response(WorkflowAgentComposerResponse, result)
 
 
 @contextmanager

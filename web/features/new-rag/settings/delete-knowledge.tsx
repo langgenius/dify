@@ -13,6 +13,7 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { DeleteKnowledgeForm } from '../delete-knowledge-form'
 import { newKnowledgeListPath } from '../routes'
 import { knowledgeSettingsSpaceAtom } from './state/queries'
@@ -86,7 +87,11 @@ export function DeleteKnowledgeAction() {
         <DeleteKnowledgeForm
           knowledgeName={name}
           isPending={mutation.isPending}
-          error={mutation.isError ? tCommon(($) => $['api.actionFailed']) : undefined}
+          error={
+            mutation.isError
+              ? (getRequestErrorMessage(mutation.error) ?? tCommon(($) => $['api.actionFailed']))
+              : undefined
+          }
           onSubmit={deleteKnowledge}
         />
       </AlertDialogContent>

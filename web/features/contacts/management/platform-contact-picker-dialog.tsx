@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { availablePlatformCandidatesOptions } from './available-platform-candidates'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactAvatar } from './contact-avatar'
@@ -58,12 +59,12 @@ function PlatformContactPickerContent({
       checked ? [...new Set([...current, id])] : current.filter((candidate) => candidate !== id),
     )
   }
-  const errorKey =
+  const addError =
     add.error && 'status' in add.error && add.error.status === 403
-      ? 'platformPicker.addForbidden'
+      ? t(($) => $['platformPicker.addForbidden'])
       : add.error && 'status' in add.error && add.error.status === 409
-        ? 'platformPicker.addConflict'
-        : 'platformPicker.addFailed'
+        ? t(($) => $['platformPicker.addConflict'])
+        : (getRequestErrorMessage(add.error) ?? t(($) => $['platformPicker.addFailed']))
   return (
     <>
       <DialogHeader>
@@ -119,7 +120,7 @@ function PlatformContactPickerContent({
             className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
           >
             <p className="system-sm-regular text-text-secondary">
-              {t(($) => $['platformPicker.error'])}
+              {getRequestErrorMessage(error) ?? t(($) => $['platformPicker.error'])}
             </p>
             <Button
               size="small"
@@ -162,7 +163,7 @@ function PlatformContactPickerContent({
           <div className="p-2">
             {candidates.isFetchNextPageError && (
               <p role="alert" className="mb-2 system-xs-regular text-text-destructive">
-                {t(($) => $['platformPicker.error'])}
+                {getRequestErrorMessage(error) ?? t(($) => $['platformPicker.error'])}
               </p>
             )}
             <Button
@@ -184,7 +185,7 @@ function PlatformContactPickerContent({
       <div className="shrink-0 border-t border-divider-subtle px-3 py-2">
         {add.isError && (
           <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
-            {t(($) => $[errorKey])}
+            {addError}
           </p>
         )}
         <div className="flex items-center justify-between gap-3">

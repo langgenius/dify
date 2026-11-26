@@ -44,6 +44,7 @@ import { isContactsManagementEnabled } from '@/features/contacts/management/feat
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceContent } from './edit-workspace-content'
@@ -171,7 +172,8 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
     revocation.isError && !isInvitationGone(revocation.error)
       ? isDefinedError(revocation.error)
         ? revocation.error.message
-        : t(($) => $['api.actionFailed'], { ns: 'common' })
+        : (getRequestErrorMessage(revocation.error) ??
+          t(($) => $['api.actionFailed'], { ns: 'common' }))
       : null
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
@@ -511,7 +513,8 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                           </AlertDialogDescription>
                           {removal.isError && (
                             <p role="alert" className="text-text-destructive">
-                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                              {getRequestErrorMessage(removal.error) ??
+                                t(($) => $['api.actionFailed'], { ns: 'common' })}
                             </p>
                           )}
                         </AlertDialogBody>
@@ -534,7 +537,8 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                         {removal.isError && (
                           <AlertDialogBody>
                             <p role="alert" className="text-text-destructive">
-                              {t(($) => $['api.actionFailed'], { ns: 'common' })}
+                              {getRequestErrorMessage(removal.error) ??
+                                t(($) => $['api.actionFailed'], { ns: 'common' })}
                             </p>
                           </AlertDialogBody>
                         )}
@@ -593,7 +597,10 @@ const MembersPageContent = ({ language, canManageMembers }: MembersPageContentPr
                   />
                 </fieldset>
                 {roleUpdate.isError && (
-                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                  <p role="alert">
+                    {getRequestErrorMessage(roleUpdate.error) ??
+                      t(($) => $['api.actionFailed'], { ns: 'common' })}
+                  </p>
                 )}
               </form>
             )}

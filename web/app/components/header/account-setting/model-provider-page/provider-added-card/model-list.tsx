@@ -101,10 +101,8 @@ const ModelList: FC<ModelListProps> = ({ provider, models, onCollapse, onChange 
         providerDetail = provider
       }
 
-      if (!providerDetail) {
-        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
-        return
-      }
+      // The loader has already reported why the details are missing.
+      if (!providerDetail) return
 
       setModelLoadBalancingModalProps({
         provider: providerDetail,

@@ -23,6 +23,7 @@ import { parseAsInteger, useQueryState } from 'nuqs'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import DeleteToken from './delete-token'
 import SavedTokenForm from './saved-token-form'
 import ScopeDetails from './scope-details'
@@ -111,7 +112,7 @@ export default function PersonalAccessTokens() {
           )}
           {query.isError && (
             <div role="alert" className="my-auto flex flex-wrap items-center justify-center gap-2">
-              {t(($) => $['resourceAccessToken.loadError'])}
+              {getRequestErrorMessage(query.error) ?? t(($) => $['resourceAccessToken.loadError'])}
               <Button onClick={() => query.refetch()}>
                 {t(($) => $['operation.retry'], { ns: 'common' })}
               </Button>

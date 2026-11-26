@@ -800,6 +800,70 @@ it('creates and saves the user-input entry selected in onboarding', async () => 
   expect(api.webhook).not.toHaveBeenCalled()
 })
 
+it('writes the onboarding entry through the collaborative graph', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  const collabSetEdges = vi.spyOn(collaborationManager, 'setEdges')
+  onTestFinished(() => {
+    collabSetNodes.mockRestore()
+    collabSetEdges.mockRestore()
+  })
+  await renderMain({ collaboration: false, nodes: [], initialStoreState: { showOnboarding: true } })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(collabSetNodes).toHaveBeenCalledWith(
+    [],
+    [expect.objectContaining({ data: expect.objectContaining({ type: BlockEnum.Start }) })],
+    expect.any(String),
+  )
+  expect(collabSetEdges).toHaveBeenCalledWith([], [])
+})
+
+it('keeps onboarding open while the collaborative graph is not ready', async () => {
+  const user = userEvent.setup()
+  const canApply = vi
+    .spyOn(collaborationManager, 'canApplyLocalGraphMutation')
+    .mockReturnValue(false)
+  onTestFinished(() => canApply.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    nodes: [],
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  expect(dialog).toBeInTheDocument()
+  expect(store.getState()).toMatchObject({ showOnboarding: true, hasSelectedStartNode: false })
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
+it('closes onboarding without replacing a graph that a collaborator already created', async () => {
+  const user = userEvent.setup()
+  const collabSetNodes = vi.spyOn(collaborationManager, 'setNodes')
+  onTestFinished(() => collabSetNodes.mockRestore())
+  const { store } = await renderMain({
+    collaboration: false,
+    initialStoreState: { showOnboarding: true },
+  })
+  const dialog = await screen.findByRole('dialog', { name: 'workflow.onboarding.title' })
+  await user.click(
+    within(dialog).getByRole('button', { name: /workflow.onboarding.userInputFull/ }),
+  )
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.onboarding.title' }),
+    ).not.toBeInTheDocument(),
+  )
+  expect(collabSetNodes).not.toHaveBeenCalled()
+  expect(store.getState()).toMatchObject({ showOnboarding: false, hasSelectedStartNode: false })
+  expect(screen.getByText('Workflow entry')).toBeInTheDocument()
+  expect(api.saveDraft).not.toHaveBeenCalled()
+})
+
 it('generates webhook URLs only after saving the trigger chosen in onboarding', async () => {
   const user = userEvent.setup()
   const save = createDeferred<Awaited<ReturnType<typeof api.saveDraft>>>()

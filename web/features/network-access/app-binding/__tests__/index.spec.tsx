@@ -1653,6 +1653,20 @@ describe('trusted IP checks before saving', () => {
     expect(server.checks).toBeGreaterThanOrEqual(2)
   })
 
+  it('explains a failed recheck inside the lockout confirmation', async () => {
+    const user = userEvent.setup()
+    const server = setupBindingServer()
+    renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
+    await openSelectedConfig(user)
+    await screen.findByText(lockoutWarning)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    const dialog = await screen.findByRole('alertdialog')
+    server.checkStatus = 503
+    await user.click(within(dialog).getByRole('button', { name: 'Save anyway' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('IP unavailable')
+    expect(server.writes).toHaveLength(0)
+  })
+
   it('requires renewed confirmation when the policy changes before Save anyway', async () => {
     const user = userEvent.setup()
     const server = setupBindingServer()
@@ -1677,9 +1691,7 @@ describe('trusted IP checks before saving', () => {
     server.checkStatus = 503
     renderEntry({ plan: 'professional', groups: server.groups, isPublished: true })
     await openSelectedConfig(user)
-    expect(
-      await screen.findByText('Unable to check your IP address. Please try again.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(server.writes).toHaveLength(0)
     server.checkStatus = 200
@@ -1699,9 +1711,7 @@ describe('trusted IP checks before saving', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled())
     server.checkStatus = 503
     await user.click(screen.getByRole('button', { name: 'Save' }))
-    expect(
-      await screen.findByText('Unable to check your IP address. Please try again.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('IP unavailable')).toBeInTheDocument()
     expect(server.writes).toHaveLength(0)
   })
 })

@@ -45,7 +45,7 @@ import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-se
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { SearchInput } from '@/app/components/base/search-input'
 import { consoleQuery } from '@/service/console'
-import { isNotFoundError } from '@/service/http-error'
+import { getRequestErrorMessage, isNotFoundError } from '@/service/http-error'
 import UserCommunityIcon from './assets/user-community.svg'
 import { ContactChannelIcon } from './channel-icon'
 import { getContactChannelLabel } from './channel-utils'
@@ -548,7 +548,10 @@ export function ContactsDirectoryPage() {
                       {t(($) => $['action.retry'])}
                     </Button>
                   }
-                  description={t(($) => $['directory.errorDescription'])}
+                  description={
+                    getRequestErrorMessage(directoryQuery.error) ??
+                    t(($) => $['directory.errorDescription'])
+                  }
                   icon="i-ri-error-warning-line"
                   title={t(($) => $['directory.errorTitle'])}
                 />
@@ -656,7 +659,8 @@ export function ContactsDirectoryPage() {
                       {directoryQuery.isFetchNextPageError && (
                         <div className="flex flex-col items-center gap-2 p-3">
                           <p role="alert" className="system-xs-regular text-text-destructive">
-                            {t(($) => $['directory.pageError'])}
+                            {getRequestErrorMessage(directoryQuery.error) ??
+                              t(($) => $['directory.pageError'])}
                           </p>
                           <Button loading={directoryQuery.isFetchingNextPage} onClick={loadMore}>
                             {t(($) => $['action.retry'])}
@@ -725,7 +729,9 @@ export function ContactsDirectoryPage() {
                 role={detailsQuery.isError ? 'alert' : undefined}
                 className="my-auto text-center system-sm-regular text-text-tertiary"
               >
-                {t(($) => $[detailsFailed ? 'details.error' : 'details.notFound'])}
+                {detailsFailed
+                  ? (getRequestErrorMessage(detailsQuery.error) ?? t(($) => $['details.error']))
+                  : t(($) => $['details.notFound'])}
               </p>
             )}
             {detailsFailed && (
@@ -816,14 +822,15 @@ export function ContactsDirectoryPage() {
           {removalError && (
             <AlertDialogBody>
               <p role="alert" className="system-sm-regular text-text-destructive">
-                {t(
-                  ($) =>
-                    $[
-                      removalContactName
-                        ? 'directory.removalSingleFailed'
-                        : 'directory.removalFailed'
-                    ],
-                )}
+                {getRequestErrorMessage(removeContacts.error) ??
+                  t(
+                    ($) =>
+                      $[
+                        removalContactName
+                          ? 'directory.removalSingleFailed'
+                          : 'directory.removalFailed'
+                      ],
+                  )}
               </p>
             </AlertDialogBody>
           )}

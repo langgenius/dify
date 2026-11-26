@@ -27,7 +27,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorStatus, getRequestErrorMessage } from '@/service/http-error'
 import { KnowledgeSpaceIcon } from '../components/knowledge-space-icon'
 import {
   newKnowledgeDetailPath,
@@ -151,7 +151,10 @@ export function KnowledgeSpaceShell({
             {t(($) => (notFound ? $.notFoundTitle : $.detailErrorTitle))}
           </h1>
           <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
-            {t(($) => (notFound ? $.notFoundDescription : $.detailErrorDescription))}
+            {notFound
+              ? t(($) => $.notFoundDescription)
+              : (getRequestErrorMessage(knowledgeSpaceQuery.error) ??
+                t(($) => $.detailErrorDescription))}
           </p>
           <div className="mt-5 flex gap-2">
             <Link href={newKnowledgeListPath} className={buttonVariants()}>
