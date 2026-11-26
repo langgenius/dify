@@ -32,6 +32,7 @@ from clients.agent_backend.errors import (
     AgentBackendError,
     AgentBackendHTTPError,
     AgentBackendStreamError,
+    AgentBackendTimeoutError,
     AgentBackendTransportError,
     AgentBackendValidationError,
 )
@@ -40,8 +41,8 @@ from clients.agent_backend.errors import (
 class AgentBackendRunClient(Protocol):
     """Local boundary used by API workflow integrations to run Agent backend jobs."""
 
-    def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
-        """Create one Agent backend run and return its accepted status."""
+    def create_run(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        """Submit one run under an optional total timeout and return its accepted status."""
 
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for one Agent backend run."""
@@ -52,17 +53,19 @@ class AgentBackendRunClient(Protocol):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        """Request cancellation and wait for runner cleanup to finish."""
+        """Cancel and observe cleanup within the given total timeout, if supplied."""
 
     def stream_events(
         self,
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        """Yield public ``dify-agent`` run events in stream order."""
+        """Yield ordered run events with an optional total timeout or stop callback."""
 
     def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
         """Wait for a run to reach a terminal status and return that status."""
@@ -71,8 +74,8 @@ class AgentBackendRunClient(Protocol):
 class _DifyAgentSyncClient(Protocol):
     """Subset of ``dify_agent.client.Client`` used by the API wrapper."""
 
-    def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
-        """Create one run synchronously."""
+    def create_run_sync(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        """Create one run synchronously under an optional total timeout."""
 
     def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Cancel one run synchronously."""
@@ -83,8 +86,9 @@ class _DifyAgentSyncClient(Protocol):
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        """Cancel one run and wait for its terminal event synchronously."""
+        """Cancel and wait synchronously within an optional total timeout."""
 
     def stream_events_sync(
         self,
@@ -115,10 +119,10 @@ class DifyAgentBackendRunClient:
         self.client = client
         self._stream_max_reconnects = stream_max_reconnects
 
-    def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
+    def create_run(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
         """Create one run through ``POST /runs`` and normalize client exceptions."""
         try:
-            return self.client.create_run_sync(request)
+            return self.client.create_run_sync(request, timeout_seconds=timeout_seconds)
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 
@@ -135,10 +139,13 @@ class DifyAgentBackendRunClient:
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        """Cancel one run, then wait for the cleanup-complete terminal event."""
+        """Cancel and observe runner cleanup within the supplied total timeout."""
         try:
-            return self.client.cancel_run_and_wait_sync(run_id, request=request, after=after)
+            return self.client.cancel_run_and_wait_sync(
+                run_id, request=request, after=after, timeout_seconds=timeout_seconds
+            )
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 
@@ -147,14 +154,16 @@ class DifyAgentBackendRunClient:
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        """Stream run events from ``/events/sse`` with the wrapped client's reconnect policy."""
+        """Stream events under the client's reconnect policy and optional total deadline."""
         try:
             yield from self.client.stream_events_sync(
                 run_id,
                 after=after,
                 max_reconnects=self._stream_max_reconnects,
+                timeout_seconds=timeout_seconds,
                 should_stop=should_stop,
             )
         except Exception as exc:
@@ -182,7 +191,7 @@ def _normalize_dify_agent_error(exc: Exception) -> AgentBackendError:
                 detail=error.detail,
             )
         case DifyAgentTimeoutError() as error:
-            return AgentBackendTransportError(str(error))
+            return AgentBackendTimeoutError(str(error))
         case DifyAgentStreamError() as error:
             return AgentBackendStreamError(str(error))
         case DifyAgentClientError() as error:

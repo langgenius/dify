@@ -54,6 +54,10 @@ class AgentBackendTransportError(AgentBackendError):
     """Raised for timeout or request-level failures talking to Agent backend."""
 
 
+class AgentBackendTimeoutError(AgentBackendTransportError):
+    """Raised when an Agent backend request or event deadline expires."""
+
+
 class AgentBackendHTTPError(AgentBackendTransportError):
     """Raised for Agent backend HTTP errors after status/detail normalization."""
 

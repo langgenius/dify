@@ -12,6 +12,7 @@ from clients.agent_backend.errors import (
     AgentBackendRequestBuildError,
     AgentBackendRunFailedError,
     AgentBackendStreamError,
+    AgentBackendTimeoutError,
     AgentBackendTransportError,
     AgentBackendValidationError,
 )
@@ -73,6 +74,7 @@ __all__ = [
     "AgentBackendRunSucceededInternalEvent",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
+    "AgentBackendTimeoutError",
     "AgentBackendTransportError",
     "AgentBackendValidationError",
     "AgentBackendWorkflowNodeRunInput",

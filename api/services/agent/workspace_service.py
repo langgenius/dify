@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 
-from dify_agent.client import Client
+from dify_agent.client import Client, DifyAgentClientError
 from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionBindingRequest
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
@@ -122,6 +122,9 @@ class AgentWorkspaceService:
     ) -> AgentWorkspaceBinding:
         """Allocate one new participant in the caller-owned transaction.
 
+        A client allocation failure raises AgentWorkspaceError with a public message
+        before any Workspace or Binding rows are added. Diagnostics stay in server logs.
+
         After backend creation returns successfully, any later Python, flush,
         or commit failure may leave an orphan. Dify API does not perform
         cross-system compensation; a future global reconciler is responsible
@@ -145,17 +148,23 @@ class AgentWorkspaceService:
         workspace = cls.resolve_active_workspace(session=session, scope=scope)
         workspace_id = workspace.id if workspace is not None else str(uuidv7())
         binding_id = str(uuidv7())
-        with cls._client() as client:
-            allocation = client.create_execution_binding_sync(
-                CreateExecutionBindingRequest(
-                    tenant_id=scope.tenant_id,
-                    agent_id=agent_id,
-                    binding_id=binding_id,
-                    workspace_id=workspace_id,
-                    existing_workspace_ref=workspace.backend_workspace_ref if workspace is not None else None,
-                    home_snapshot_ref=home_snapshot_ref,
+        try:
+            with cls._client() as client:
+                allocation = client.create_execution_binding_sync(
+                    CreateExecutionBindingRequest(
+                        tenant_id=scope.tenant_id,
+                        agent_id=agent_id,
+                        binding_id=binding_id,
+                        workspace_id=workspace_id,
+                        existing_workspace_ref=workspace.backend_workspace_ref if workspace is not None else None,
+                        home_snapshot_ref=home_snapshot_ref,
+                    )
                 )
+        except DifyAgentClientError as exc:
+            logger.warning(
+                "Agent workspace allocation failed: tenant_id=%s agent_id=%s", scope.tenant_id, agent_id, exc_info=True
             )
+            raise AgentWorkspaceError("Agent workspace allocation failed.") from exc
         if workspace is not None and allocation.workspace_ref != workspace.backend_workspace_ref:
             raise AgentWorkspaceError("backend changed the existing Workspace ref")
         if workspace is None:

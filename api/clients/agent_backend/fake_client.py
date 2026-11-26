@@ -59,8 +59,9 @@ class FakeAgentBackendRunClient:
         self.run_id = run_id
         self.request = None
 
-    def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
-        """Record the request and return a deterministic accepted response."""
+    def create_run(self, request: CreateRunRequest, *, timeout_seconds: float | None = None) -> CreateRunResponse:
+        """Record the request and return its accepted status immediately."""
+        del timeout_seconds
         self.request = request
         return CreateRunResponse(run_id=self.run_id, status="running")
 
@@ -75,9 +76,10 @@ class FakeAgentBackendRunClient:
         request: CancelRunRequest | None = None,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
     ) -> RunCancelledEvent:
-        """Return a deterministic cleanup-complete cancellation event."""
-        del after
+        """Return an immediate cleanup event. The timeout is accepted for client parity."""
+        del after, timeout_seconds
         request = request or CancelRunRequest()
         _ = self.cancel_run(run_id, request)
         return RunCancelledEvent(
@@ -96,9 +98,11 @@ class FakeAgentBackendRunClient:
         run_id: str,
         *,
         after: str | None = None,
+        timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
     ) -> Iterator[RunEvent]:
-        """Yield the deterministic public ``RunEvent`` sequence for ``run_id``."""
+        """Yield immediately while honoring the stop callback and resume cursor."""
+        del timeout_seconds
         for event in self._events(run_id):
             if should_stop is not None and should_stop():
                 return

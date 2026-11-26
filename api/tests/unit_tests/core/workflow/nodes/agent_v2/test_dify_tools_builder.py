@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from typing import Any, override
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,9 +26,15 @@ from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolsBuilder,
     WorkflowAgentDifyToolsBuildError,
+    _list_provider_tool_names,
+    _resolve_mcp_provider_id,
 )
+from extensions.ext_database import db
 from models.agent_config_entities import AgentKnowledgeSpaceConfig, AgentSoulToolsConfig
+from models.model import AppMode
+from models.tools import MCPToolProvider, WorkflowToolProvider
 from services.knowledge_fs.builtin_tool.knowledge_fs.knowledge_fs import KnowledgeFSProvider
+from tests.helpers.unit.model_factories import make_app, make_workflow
 
 
 class FakeRuntimeProvider:
@@ -1262,3 +1270,69 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch: pytest.Mon
 
     assert names == ["ddg_search", "ddg_news"]
     assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}
+
+
+@pytest.fixture
+def scoped_tool_session(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> Iterator[scoped_session[Session]]:
+    """Bind the ambient session to SQLite so an accidental lookup is observable."""
+    request_sessions = scoped_session(sqlite_session_factory)
+    monkeypatch.setattr(db, "session", request_sessions)
+    try:
+        yield request_sessions
+    finally:
+        request_sessions.remove()
+
+
+def test_workflow_provider_tool_lookup_releases_connections(
+    sqlite_session: Session, sqlite_engine: Engine, scoped_tool_session: scoped_session[Session]
+) -> None:
+    """Expand a persisted provider's pinned workflow without using the ambient session."""
+    app_model = make_app(mode=AppMode.WORKFLOW)
+    workflow = make_workflow(app_id=app_model.id, tenant_id=app_model.tenant_id, version="1")
+    provider = WorkflowToolProvider(
+        name="lookup",
+        label="Lookup",
+        icon="icon.svg",
+        app_id=app_model.id,
+        version=workflow.version,
+        user_id=workflow.created_by,
+        tenant_id=app_model.tenant_id,
+        description="Look up data",
+    )
+    sqlite_session.add_all([app_model, workflow, provider])
+    sqlite_session.commit()
+
+    names = _list_provider_tool_names(
+        tenant_id=provider.tenant_id, provider_type=ToolProviderType.WORKFLOW, provider_id=provider.id
+    )
+
+    assert names == ["lookup"]
+    assert not scoped_tool_session.registry.has()
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0
+
+
+def test_mcp_provider_reference_lookup_releases_connections(
+    sqlite_session: Session, sqlite_engine: Engine, scoped_tool_session: scoped_session[Session]
+) -> None:
+    """Resolve a stored provider ID to its server identifier in an independent session."""
+    provider = MCPToolProvider(
+        name="Test MCP",
+        server_identifier="test-mcp",
+        server_url="encrypted-url",
+        server_url_hash="url-hash",
+        icon=None,
+        tenant_id="tenant-1",
+        user_id="user-1",
+    )
+    sqlite_session.add(provider)
+    sqlite_session.commit()
+
+    server_identifier = _resolve_mcp_provider_id(tenant_id=provider.tenant_id, provider_id=provider.id)
+
+    assert server_identifier == "test-mcp"
+    assert not scoped_tool_session.registry.has()
+    assert isinstance(sqlite_engine.pool, QueuePool)
+    assert sqlite_engine.pool.checkedout() == 0

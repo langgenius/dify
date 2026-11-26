@@ -156,6 +156,36 @@ class AppGenerateService:
         )
 
     @classmethod
+    def finalize_agent_build_chat(
+        cls,
+        *,
+        session: Session,
+        app_model: App,
+        user: Account,
+        conversation_id: str,
+        external_trace_id: str | None = None,
+    ) -> None:
+        """Synchronously finalize an admitted Console account's build draft.
+
+        Requires its resolved debug conversation id and shares ``generate``'s
+        admission guard. In Cloud, the guard reserves workflow quota before
+        rate-limit admission and commits it after acquiring a slot. On admission
+        failure, ``refund()`` releases the uncommitted reservation. The concurrency
+        slot covers the entire synchronous run and is released on exit.
+        """
+        cls._run_with_guardrails(
+            app_model=app_model,
+            streaming=False,
+            action=lambda _rate_limit, _request_id: AgentAppGenerator().finalize_build_chat(
+                session=session,
+                app_model=app_model,
+                user=user,
+                conversation_id=conversation_id,
+                external_trace_id=external_trace_id,
+            ),
+        )
+
+    @classmethod
     def _run_with_guardrails(
         cls,
         *,
