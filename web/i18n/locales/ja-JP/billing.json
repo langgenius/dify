@@ -20,7 +20,7 @@
     "Difyオープンソースライセンスに準拠"
   ],
   "plans.community.includesTitle": "無料機能：",
-  "plans.community.name": "コミュニティ",
+  "plans.community.name": "Community",
   "plans.community.price": "無料",
   "plans.community.priceTip": "",
   "plans.enterprise.btnText": "営業に相談",
@@ -37,7 +37,7 @@
     "プロフェッショナル技術サポート"
   ],
   "plans.enterprise.includesTitle": "<highlight>プレミアム</highlight>版機能に加えて：",
-  "plans.enterprise.name": "エンタープライズ",
+  "plans.enterprise.name": "Enterprise",
   "plans.enterprise.price": "カスタム",
   "plans.enterprise.priceTip": "年間契約専用",
   "plans.premium.btnText": "プレミアム版を取得",
@@ -51,7 +51,7 @@
   ],
   "plans.premium.includesTitle": "コミュニティ版機能に加えて：",
   "plans.premium.marketplaceName": "AWS Marketplace",
-  "plans.premium.name": "プレミアム",
+  "plans.premium.name": "Premium",
   "plans.premium.price": "従量制",
   "plans.premium.priceTip": "クラウドマーケットプレイス基準",
   "plans.professional.description": "個人開発者・小規模チームに最適",

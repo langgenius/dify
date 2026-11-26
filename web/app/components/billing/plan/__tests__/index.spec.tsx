@@ -33,7 +33,7 @@ vi.mock('../assets', () => ({
 }))
 
 const renderPlan = (
-  educationStatus = { allow_refresh: false, is_student: false },
+  educationStatus = { allow_refresh: false, is_student: false, can_redeem_discount: false },
   role: 'normal' | 'owner' = 'normal',
 ) => {
   const { queryClient, wrapper } = createConsoleQueryWrapper({
@@ -72,7 +72,7 @@ describe('PlanComp education actions', () => {
   })
 
   it('hides education verification for a verified account that is not expiring', () => {
-    renderPlan({ allow_refresh: false, is_student: true })
+    renderPlan({ allow_refresh: false, is_student: true, can_redeem_discount: false })
 
     expect(screen.queryByRole('link', { name: 'education.toVerified' })).not.toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe('PlanComp education actions', () => {
       await pendingRequest
       return { url: checkoutUrl }
     })
-    renderPlan({ allow_refresh: false, is_student: true }, 'owner')
+    renderPlan({ allow_refresh: false, is_student: true, can_redeem_discount: true }, 'owner')
 
     const discountButton = screen.getByRole('button', { name: 'education.useEducationDiscount' })
     await user.click(discountButton)
@@ -108,5 +108,13 @@ describe('PlanComp education actions', () => {
 
     expect(navigate).toHaveBeenCalledWith(checkoutUrl)
     expect(discountButton).toBeEnabled()
+  })
+
+  it('hides the education discount once this verification period has used it', () => {
+    renderPlan({ allow_refresh: false, is_student: true, can_redeem_discount: false }, 'owner')
+
+    expect(
+      screen.queryByRole('button', { name: 'education.useEducationDiscount' }),
+    ).not.toBeInTheDocument()
   })
 })

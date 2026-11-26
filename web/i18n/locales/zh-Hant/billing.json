@@ -20,7 +20,7 @@
     "符合 Dify 開源授權"
   ],
   "plans.community.includesTitle": "免費功能：",
-  "plans.community.name": "社區",
+  "plans.community.name": "Community",
   "plans.community.price": "免費",
   "plans.community.priceTip": "",
   "plans.enterprise.btnText": "聯繫銷售",
@@ -51,7 +51,7 @@
   ],
   "plans.premium.includesTitle": "來自社群的一切，加上：",
   "plans.premium.marketplaceName": "AWS Marketplace",
-  "plans.premium.name": "高級",
+  "plans.premium.name": "Premium",
   "plans.premium.price": "可擴展的",
   "plans.premium.priceTip": "根據 Cloud Marketplace",
   "plans.professional.description": "適合準備打造正式環境 AI 應用的獨立開發者和小型團隊。",

@@ -20,7 +20,7 @@
     "Entspricht der Dify Open-Source-Lizenz"
   ],
   "plans.community.includesTitle": "Kostenlose Funktionen:",
-  "plans.community.name": "Gemeinschaft",
+  "plans.community.name": "Community",
   "plans.community.price": "Kostenlos",
   "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Vertrieb kontaktieren",
@@ -37,7 +37,7 @@
     "Professioneller technischer Support"
   ],
   "plans.enterprise.includesTitle": "Alles im <highlight>Team-Tarif</highlight>, plus:",
-  "plans.enterprise.name": "Unternehmen",
+  "plans.enterprise.name": "Enterprise",
   "plans.enterprise.price": "Benutzerdefiniert",
   "plans.enterprise.priceTip": "Jährliche Abrechnung nur",
   "plans.premium.btnText": "Jetzt Premium erhalten in",
@@ -56,7 +56,7 @@
   "plans.premium.priceTip": "Basierend auf dem Cloud-Marktplatz",
   "plans.professional.description": "Für unabhängige Entwickler und kleine Teams, die produktionsreife KI-Anwendungen entwickeln möchten.",
   "plans.professional.for": "Für unabhängige Entwickler/kleine Teams",
-  "plans.professional.name": "Professionell",
+  "plans.professional.name": "Professional",
   "plans.sandbox.description": "Kernfunktionen kostenlos testen.",
   "plans.sandbox.for": "Kostenlose Testversion der Kernfunktionen",
   "plans.sandbox.name": "Sandbox",
