@@ -117,7 +117,9 @@ it('renders submitted values in their original readonly form layout', async () =
 
   await expect.element(page.getByText('Approved after review')).toBeVisible()
   await expect.element(page.getByTestId('submitted-field-due_date')).toHaveTextContent('2026-11-25')
-  await expect.element(page.getByTestId('submitted-field-meeting_at')).toHaveTextContent('2026-11-25T14:30:00.000Z')
+  await expect
+    .element(page.getByTestId('submitted-field-meeting_at'))
+    .toHaveTextContent('2026-11-25T14:30:00.000Z')
   const decision = page.getByRole('combobox', { name: 'decision' })
   await expect.element(decision).toBeDisabled()
   await expect.element(decision).toHaveTextContent('approve')

@@ -57,7 +57,8 @@ export const initializeInputs = (
     if (isParagraphFormInput(item) || isDateFormInput(item) || isDateTimeFormInput(item)) {
       const resolvedValue = defaultValues[item.output_variable_name]
       if (!item.default) {
-        initialInputs[item.output_variable_name] = typeof resolvedValue === 'string' ? resolvedValue : ''
+        initialInputs[item.output_variable_name] =
+          typeof resolvedValue === 'string' ? resolvedValue : ''
         return
       }
       initialInputs[item.output_variable_name] =
@@ -127,8 +128,7 @@ export const hasInvalidRequiredHumanInput = (
     if (isParagraphFormInput(input) || isDateFormInput(input) || isDateTimeFormInput(input))
       return typeof value !== 'string' || value.trim().length === 0
 
-    if (isSelectFormInput(input))
-      return typeof value !== 'string' || value.length === 0
+    if (isSelectFormInput(input)) return typeof value !== 'string' || value.length === 0
 
     if (isFileFormInput(input))
       return Array.isArray(value)

@@ -376,9 +376,18 @@ describe('human-input utils', () => {
         datetimeInput({ output_variable_name: 'meeting_at' }),
       ]
 
-      expect(hasInvalidSelectOrFileInput(inputs, { due_date: '', meeting_at: '2026-11-25T14:30:00Z' })).toBe(true)
-      expect(hasInvalidSelectOrFileInput(inputs, { due_date: '2026-11-25', meeting_at: '' })).toBe(true)
-      expect(hasInvalidRequiredHumanInput(inputs, { due_date: '   ', meeting_at: '2026-11-25T14:30:00Z' })).toBe(true)
+      expect(
+        hasInvalidSelectOrFileInput(inputs, { due_date: '', meeting_at: '2026-11-25T14:30:00Z' }),
+      ).toBe(true)
+      expect(hasInvalidSelectOrFileInput(inputs, { due_date: '2026-11-25', meeting_at: '' })).toBe(
+        true,
+      )
+      expect(
+        hasInvalidRequiredHumanInput(inputs, {
+          due_date: '   ',
+          meeting_at: '2026-11-25T14:30:00Z',
+        }),
+      ).toBe(true)
       expect(
         hasInvalidSelectOrFileInput(inputs, {
           due_date: '2026-11-25',

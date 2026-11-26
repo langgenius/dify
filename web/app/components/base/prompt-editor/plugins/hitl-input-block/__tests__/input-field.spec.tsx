@@ -903,7 +903,9 @@ describe('InputField', () => {
         name: 'workflowHumanInput.nodes.humanInput.insertInputField.fieldType',
       }),
     )
-    await user.click(await screen.findByRole('option', { name: /appDebug\.variableConfig\.date\b/ }))
+    await user.click(
+      await screen.findByRole('option', { name: /appDebug\.variableConfig\.date\b/ }),
+    )
     await user.click(
       screen.getByRole('button', {
         name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,

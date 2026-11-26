@@ -169,7 +169,9 @@ const HumanInputFieldRenderer = ({ field, label, labelId, value, onChange }: Pro
         timeZone={timeZone}
         onValueChange={(next) => onChange(next ? next.toISOString() : '')}
       >
-        {!labelId && <DateTimePickerLabel className="sr-only">{accessibleLabel}</DateTimePickerLabel>}
+        {!labelId && (
+          <DateTimePickerLabel className="sr-only">{accessibleLabel}</DateTimePickerLabel>
+        )}
         <div className="flex w-full items-center gap-1">
           <DateTimePickerTrigger aria-labelledby={labelId} className="min-w-0 flex-1">
             <DateTimePickerValue className="min-w-0 flex-1 truncate" />

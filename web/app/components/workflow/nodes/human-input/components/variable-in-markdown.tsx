@@ -16,7 +16,13 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
-import { isDateFormInput, isDateTimeFormInput, isFileFormInput, isFileListFormInput, isSelectFormInput } from '../types'
+import {
+  isDateFormInput,
+  isDateTimeFormInput,
+  isFileFormInput,
+  isFileListFormInput,
+  isSelectFormInput,
+} from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
 const noteRegex = /\{\{#\$(.+?)#\}\}/g
