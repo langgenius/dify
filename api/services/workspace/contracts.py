@@ -45,7 +45,6 @@ class WorkspaceMemberWrite:
 class WorkspaceMemberRemoval:
     account_id: str
     email: str
-    account_deleted: bool
 
 
 @dataclass(frozen=True)
@@ -208,6 +207,5 @@ class WorkspaceCreation:
     id: str
     name: str
     encrypt_public_key: str
-    trial_credits: int
     plugin_upgrade_time: int
     plugin_upgrade_settings: Mapping[str, str]

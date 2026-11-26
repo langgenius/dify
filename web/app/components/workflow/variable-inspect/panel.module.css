@@ -1,0 +1,28 @@
+@reference "../../../styles/globals.css";
+
+.sidebar {
+  @apply w-60 shrink-0 border-e border-divider-burn;
+}
+
+.backdrop,
+.menuTrigger {
+  display: none;
+}
+
+@container variable-inspect (width < 488px) {
+  .sidebar:not([data-open]) {
+    display: none;
+  }
+
+  .sidebar[data-open] {
+    @apply absolute inset-s-0 top-0 z-1 h-full w-54.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs;
+  }
+
+  .backdrop {
+    @apply absolute inset-0 block;
+  }
+
+  .menuTrigger {
+    @apply inline-flex shrink-0;
+  }
+}

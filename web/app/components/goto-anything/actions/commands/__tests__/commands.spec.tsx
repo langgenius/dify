@@ -1,13 +1,14 @@
 import type { CommandContext } from '../types'
 import { createInstance } from 'i18next'
 import { renderToString } from 'react-dom/server'
+import { systemModelDialog } from '@/app/components/header/account-setting/model-provider-page/system-model-selector/handle'
 import { accountCommand } from '../account'
 import { slashCommandRegistry } from '../catalog'
 import { discordCommand } from '../discord'
 import { docsCommand } from '../docs'
 import { goCommand } from '../go'
 import { languageCommand } from '../language'
-import { modelsCommand, SYSTEM_MODELS_PATH } from '../models'
+import { modelsCommand } from '../models'
 import { refineCommand } from '../refine'
 import { SlashCommandRegistry } from '../registry'
 import { createSlashAction } from '../slash'
@@ -18,6 +19,13 @@ const executeResult = (query: string, context: CommandContext) => {
   const action = createSlashAction(context)
   const result = slashCommandRegistry.search(query, context)[0]!
   action.action?.(result)
+}
+
+// boundary: the dialog root is mounted by the console layout, outside these command journeys.
+const spyOnSystemModelDialogOpen = () => {
+  const open = vi.spyOn(systemModelDialog, 'open').mockImplementation(() => {})
+  onTestFinished(() => open.mockRestore())
+  return open
 }
 
 describe('command journeys', () => {
@@ -41,7 +49,7 @@ describe('command journeys', () => {
   })
 
   it('uses the current destination for direct and search-result activation', async () => {
-    for (const command of [accountCommand, modelsCommand, docsCommand, discordCommand]) {
+    for (const command of [accountCommand, docsCommand, discordCommand]) {
       const context = createCommandContext({
         getDocsHomeUrl: () => 'https://enterprise.example/help/zh',
       })
@@ -49,21 +57,39 @@ describe('command journeys', () => {
       await registry.execute(command.name, {}, context)
       const result = registry.search(`/${command.name}`, context)[0]!
       await registry.execute(result.data.command, result.data.args ?? {}, context)
-      const callback =
-        command === accountCommand || command === modelsCommand
-          ? context.navigate
-          : context.openExternal
+      const callback = command === accountCommand ? context.navigate : context.openExternal
       const destination =
         command === accountCommand
           ? '/account'
-          : command === modelsCommand
-            ? SYSTEM_MODELS_PATH
-            : command === docsCommand
-              ? 'https://enterprise.example/help/zh'
-              : 'https://discord.gg/5AEfbxcd9k'
+          : command === docsCommand
+            ? 'https://enterprise.example/help/zh'
+            : 'https://discord.gg/5AEfbxcd9k'
       expect(callback).toHaveBeenCalledTimes(2)
       expect(callback).toHaveBeenLastCalledWith(destination)
     }
+  })
+
+  it('opens the system model dialog in place for direct and search-result activation', async () => {
+    const open = spyOnSystemModelDialogOpen()
+    const context = createCommandContext()
+    const registry = new SlashCommandRegistry([modelsCommand])
+    await registry.execute('models', {}, context)
+    const result = registry.search('/models', context)[0]!
+    await registry.execute(result.data.command, result.data.args ?? {}, context)
+    expect(open).toHaveBeenCalledTimes(2)
+    expect(open).toHaveBeenLastCalledWith(null)
+    expect(context.navigate).not.toHaveBeenCalled()
+  })
+
+  it('hides the models command and blocks a selected result without model configuration access', async () => {
+    const open = spyOnSystemModelDialogOpen()
+    const registry = new SlashCommandRegistry([modelsCommand])
+    const result = registry.search('/models', createCommandContext())[0]!
+    const restricted = createCommandContext({ canConfigureModels: false })
+    expect(registry.search('/models', restricted)).toEqual([])
+    expect(registry.getAvailableCommands(restricted)).not.toContain(modelsCommand)
+    await registry.execute(result.data.command, result.data.args ?? {}, restricted)
+    expect(open).not.toHaveBeenCalled()
   })
 
   it('hides unavailable destinations and blocks a result selected before access changed', async () => {

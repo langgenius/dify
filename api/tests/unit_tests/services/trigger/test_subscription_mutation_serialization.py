@@ -88,7 +88,7 @@ class _Provider:
         provider_id: TriggerProviderID,
         user_id: str,
         subscription: Subscription,
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> UnsubscribeResult:
         assert tenant_id
@@ -113,7 +113,7 @@ class _Provider:
         user_id: str,
         endpoint: str,
         parameters: Mapping[str, object],
-        credentials: Mapping[str, str],
+        credentials: Mapping[str, object],
         credential_type: CredentialType,
     ) -> Subscription:
         assert tenant_id

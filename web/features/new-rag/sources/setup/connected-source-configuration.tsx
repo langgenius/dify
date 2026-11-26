@@ -16,6 +16,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleClient } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { connectedInitialSource } from './connected-source-selection'
 import { DatasourceParameterForm } from './datasource-parameter-form'
 import {
@@ -25,6 +26,7 @@ import {
   withDatasourceParameterDefaults,
 } from './datasource-parameter-model'
 import { SourceNameField, SourceSyncPolicyField } from './fields'
+import { InitialGitHubTreePreview } from './initial-github-tree-preview'
 
 type NextPageRequest = {
   bucket?: string
@@ -151,7 +153,7 @@ function ConnectedSourceConfigurationFields({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<{ message?: string } | false>(false)
   const [previewed, setPreviewed] = useState(false)
   const [nextPageRequests, setNextPageRequests] = useState<Map<string, NextPageRequest>>(
     () => new Map(),
@@ -160,6 +162,9 @@ function ConnectedSourceConfigurationFields({
   // previews start a new session so pending root or pagination responses are discarded.
   const previewSessionRef = useRef(0)
   const driveTransport = providerOption.providerType === 'online_drive'
+  const githubTreePreview =
+    providerOption.plugin.plugin_id === 'langgenius/github_datasource' &&
+    providerOption.datasource.identity.name === 'github'
   const parameterSchemas = useMemo(
     () => datasourceParameterSchemas(providerOption.datasource),
     [providerOption.datasource],
@@ -279,8 +284,9 @@ function ConnectedSourceConfigurationFields({
           return next
         })
         setPreviewed(true)
-      } catch {
-        if (previewSessionRef.current === session) setError(true)
+      } catch (error) {
+        if (previewSessionRef.current === session)
+          setError({ message: getRequestErrorMessage(error) })
       } finally {
         if (previewSessionRef.current === session) {
           setLoading(false)
@@ -371,7 +377,17 @@ function ConnectedSourceConfigurationFields({
           onDraftChange({ ...draft, parameters: nextParameters })
         }}
       />
-      {!previewed && (
+      {githubTreePreview && (
+        <InitialGitHubTreePreview
+          key={JSON.stringify(parameters)}
+          binding={previewBinding}
+          disabled={disabled || !parametersValid}
+          parameters={parameters}
+          selectedResources={selectedResources}
+          onSelectionChange={onSelectionChange ?? setLocalSelection}
+        />
+      )}
+      {!githubTreePreview && !previewed && (
         <Button
           type="button"
           variant="primary"
@@ -383,20 +399,22 @@ function ConnectedSourceConfigurationFields({
           {t(($) => $.preview)}
         </Button>
       )}
-      {loading && (
+      {!githubTreePreview && loading && (
         <div className="flex min-h-40 items-center justify-center rounded-lg border border-divider-subtle">
           <LoadingPlaceholder />
         </div>
       )}
-      {error && (
+      {!githubTreePreview && error && (
         <div role="alert" className="rounded-lg bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {error.message ?? t(($) => $.providerLoadFailed)}
+          </p>
           <Button className="mt-3" type="button" onClick={() => void requestPreview()}>
             {t(($) => $.retryProviderLoad)}
           </Button>
         </div>
       )}
-      {previewed && !loading && (
+      {!githubTreePreview && previewed && !loading && (
         <section className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default">
           <div className="flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             <Checkbox
@@ -423,10 +441,10 @@ function ConnectedSourceConfigurationFields({
                 ? t(($) => $.selectPagesToSync, { ns: 'knowledgeSources' })
                 : t(($) => $.selectFilesAndFolders, { ns: 'knowledgeSources' })}
             </span>
-            <span role="status" className="ml-auto system-xs-regular text-text-tertiary">
+            <span role="status" className="ms-auto system-xs-regular text-text-tertiary">
               {t(($) => $.pagesSelected, { ns: 'knowledgeSources', count: selected.size })}
               {selectionAtLimit && (
-                <span id={SELECTION_LIMIT_ID} className="ml-2 text-text-destructive">
+                <span id={SELECTION_LIMIT_ID} className="ms-2 text-text-destructive">
                   {t(($) => $.maxPages, { ns: 'knowledgeSources' })}: {MAX_SELECTION}
                 </span>
               )}

@@ -182,7 +182,7 @@ const Editor: FC<Props> = ({
             containerClassName,
           )}
         >
-          <div className={cn('flex items-center justify-between pt-1 pr-2 pl-3', headerClassName)}>
+          <div className={cn('flex items-center justify-between ps-3 pe-2 pt-1', headerClassName)}>
             <div className="flex gap-2">
               <div
                 className={cn(
@@ -229,7 +229,7 @@ const Editor: FC<Props> = ({
                 <PromptGeneratorBtn
                   nodeId={nodeId!}
                   editorId={editorId}
-                  className="ml-1.25"
+                  className="ms-1.25"
                   onGenerated={onGenerated}
                   modelConfig={modelConfig}
                   currentPrompt={value}
@@ -347,6 +347,7 @@ const Editor: FC<Props> = ({
                 )}
                 onClick={(e) => {
                   if (readOnly) return
+                  if (e.target instanceof Node && !e.currentTarget.contains(e.target)) return
                   const editable = e.currentTarget.querySelector<HTMLElement>(
                     '[contenteditable="true"]',
                   )

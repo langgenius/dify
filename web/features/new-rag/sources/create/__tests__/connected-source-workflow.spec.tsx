@@ -19,6 +19,9 @@ import type {
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
+import { createErrorToastCaches } from '@/app/query-error-toast'
+import { createHttpError } from '@/service/http-error'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
@@ -48,6 +51,11 @@ const clientMock = vi.hoisted(() => ({
 
 const openMock = vi.hoisted(() => vi.fn())
 
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: vi.fn() } }
+})
+
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -57,31 +65,34 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { createConsoleQuery } = await import('@/service/console/query-policies')
   const { withConsoleClientResponses, withConsoleResponses } =
     await import('@/test/console/service-responses')
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const source = `${space}.sources.bySourceId`
+  // Mutations run through generated mutation options, which also forward the operation context.
+  const consoleClient = withConsoleClientResponses(actual.consoleClient, {
+    [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
+    [`${space}.sourceConnections.post`]: (input: never) => clientMock.createConnection(input),
+    [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
+    [`${source}.asyncImport.post`]: (input: never) => clientMock.createWorkflowImport(input),
+    [`${source}.delete`]: clientMock.deleteSource,
+    [`${source}.files.get`]: clientMock.getFiles,
+    [`${source}.get`]: clientMock.getSource,
+    [`${source}.import.post`]: clientMock.importPages,
+    [`${source}.importFiles.post`]: clientMock.importFiles,
+    [`${source}.pages.get`]: clientMock.getPages,
+    [`${source}.patch`]: (input: never) => clientMock.patchSource(input),
+    [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
+    [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
+    [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
+    [`${space}.sources.get`]: clientMock.listSources,
+    [`${space}.sources.post`]: clientMock.createSource,
+  })
   return {
     ...actual,
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
-      [`${space}.sourceConnections.byConnectionId.refresh.post`]: clientMock.refreshConnection,
-      [`${space}.sourceConnections.post`]: clientMock.createConnection,
-      [`${space}.sourceWorkflows.byRunId.get`]: clientMock.getWorkflow,
-      [`${source}.asyncImport.post`]: clientMock.createWorkflowImport,
-      [`${source}.delete`]: clientMock.deleteSource,
-      [`${source}.files.get`]: clientMock.getFiles,
-      [`${source}.get`]: clientMock.getSource,
-      [`${source}.import.post`]: clientMock.importPages,
-      [`${source}.importFiles.post`]: clientMock.importFiles,
-      [`${source}.pages.get`]: clientMock.getPages,
-      [`${source}.patch`]: clientMock.patchSource,
-      [`${source}.syncPolicy.get`]: clientMock.getSyncPolicy,
-      [`${source}.syncPolicy.put`]: clientMock.updateSyncPolicy,
-      [`${source}.workflowImports.post`]: clientMock.createWorkflowImport,
-      [`${space}.sources.get`]: clientMock.listSources,
-      [`${space}.sources.post`]: clientMock.createSource,
-    }),
-    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+    consoleClient,
+    consoleQuery: withConsoleResponses(createConsoleQuery(consoleClient), {
       'auth.plugin.datasource.list.get': () => clientMock.listDatasourceAuth(),
       'rag.pipelines.datasourcePlugins.get': () => clientMock.listDatasourcePlugins(),
       [`${space}.sourceConnections.get`]: clientMock.listConnections,
@@ -191,6 +202,44 @@ const notionDatasourcePluginWithParameters: DataSourceItem = {
       },
     ],
   },
+}
+
+const githubProvider: KnowledgeFsSourceProviderResponse = {
+  ...notionProvider,
+  display_name: 'GitHub Repository',
+  id: 'github-provider',
+}
+
+const githubCredential: DatasourceCredentialResponse = {
+  ...notionCredential,
+  id: 'github-credential-1',
+  name: 'GitHub token',
+}
+
+const githubDatasourcePlugin: DataSourceItem = {
+  ...notionDatasourcePlugin,
+  declaration: {
+    ...notionDatasourcePlugin.declaration,
+    datasources: [
+      {
+        ...notionDatasourcePlugin.declaration.datasources![0]!,
+        identity: {
+          ...notionDatasourcePlugin.declaration.datasources![0]!.identity,
+          label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+          name: 'github',
+          provider: 'github_datasource',
+        },
+      },
+    ],
+    identity: {
+      ...notionDatasourcePlugin.declaration.identity,
+      label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+      name: 'github_datasource',
+    },
+  },
+  plugin_id: 'langgenius/github_datasource',
+  plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+  provider: 'github_datasource',
 }
 
 const s3Provider: KnowledgeFsSourceProviderResponse = {
@@ -307,6 +356,17 @@ function notionDatasourceAuth(
   }
 }
 
+function githubDatasourceAuth(): DatasourceProviderAuthResponse {
+  return {
+    ...notionDatasourceAuth([githubCredential]),
+    label: { en_US: 'GitHub Repository', zh_Hans: 'GitHub 仓库' },
+    name: 'github_datasource',
+    plugin_id: 'langgenius/github_datasource',
+    plugin_unique_identifier: 'langgenius/github_datasource:0.4.12@local',
+    provider: 'github_datasource',
+  }
+}
+
 function connectionResponse(
   overrides: Partial<KnowledgeFsSourceConnectionResponse> = {},
 ): KnowledgeFsSourceConnectionResponse {
@@ -407,8 +467,15 @@ async function settle(queryClient: QueryClient) {
   await waitFor(() => expect(queryClient.isFetching()).toBe(0))
 }
 
-async function renderSetup(draft: ConnectedDraft = defaultDraft, { settled = true } = {}) {
-  const queryClient = createTestQueryClient()
+async function renderSetup(
+  draft: ConnectedDraft = defaultDraft,
+  { errorToasts = false, settled = true } = {},
+) {
+  // `errorToasts` mirrors the app's cache-level error toasts so a failure's messages can be counted.
+  const queryClient = createTestQueryClient(
+    undefined,
+    errorToasts ? { caches: createErrorToastCaches() } : undefined,
+  )
   const onCompleted = vi.fn()
   const onDraftChange = vi.fn()
   const onExit = vi.fn()
@@ -467,6 +534,7 @@ async function renderStatefulSetup(draft: ConnectedDraft = defaultDraft) {
 describe('ConnectedSourceWorkflow', () => {
   beforeEach(() => {
     for (const mock of Object.values(clientMock)) mock.mockReset()
+    vi.mocked(toast.error).mockClear()
     openMock.mockReset()
     vi.stubGlobal('open', openMock)
 
@@ -631,6 +699,23 @@ describe('ConnectedSourceWorkflow', () => {
     expect(prompt.closest('[role="status"]')).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Notion' })).not.toBeInTheDocument()
     expect(screen.queryByText('knowledgeSources.providerUnavailable')).not.toBeInTheDocument()
+  })
+
+  it('shows a failed provider connection once, with the server reason under its title', async () => {
+    const message = 'The Notion credential has expired'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message }),
+    )
+    await renderSetup(defaultDraft, { errorToasts: true })
+
+    expect(
+      await screen.findByText('knowledgeSources.connectionFailed:{"provider":"Notion"}'),
+    ).toHaveAttribute('role', 'alert')
+    expect(screen.getByText(message)).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('clears a failed connection attempt when a provider refresh selects another integration', async () => {
@@ -853,6 +938,179 @@ describe('ConnectedSourceWorkflow', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
   })
 
+  it('selects only loaded GitHub pages through repository and folder checkboxes', async () => {
+    const user = userEvent.setup()
+    const connection = connectionResponse({
+      configuration: {
+        credentialId: githubCredential.id,
+        datasource: 'github',
+        pluginId: 'langgenius/github_datasource',
+        provider: 'github_datasource',
+        providerKind: 'online-document',
+      },
+      name: 'GitHub token',
+      provider_id: githubProvider.id,
+    })
+    clientMock.listProviders.mockResolvedValue({ data: [githubProvider] })
+    clientMock.listDatasourcePlugins.mockResolvedValue([githubDatasourcePlugin])
+    clientMock.listDatasourceAuth.mockResolvedValue({ result: [githubDatasourceAuth()] })
+    clientMock.listConnections.mockResolvedValue({ data: [connection], next_cursor: null })
+    clientMock.getPages.mockImplementation(
+      ({ query }: { query: { cursor?: string; parentId?: string } }) => {
+        const node = (
+          page_id: string,
+          page_name: string,
+          parent_id: string | null,
+          type: string,
+          has_children = false,
+        ) => ({
+          has_children,
+          page_id,
+          page_name,
+          parent_id,
+          type,
+        })
+        const pages = !query.parentId
+          ? query.cursor
+            ? [node('repo:FFXN/checkin', 'checkin', null, 'repository', true)]
+            : [node('repo:FFXN/dify', 'dify', null, 'repository', true)]
+          : query.parentId === 'repo:FFXN/dify'
+            ? [
+                node('contents:FFXN/dify', 'Contents', query.parentId, 'github_collection', true),
+                node('issues:FFXN/dify', 'Issues', query.parentId, 'github_collection', true),
+                node('prs:FFXN/dify', 'Pull requests', query.parentId, 'github_collection', true),
+              ]
+            : query.parentId === 'contents:FFXN/dify'
+              ? [
+                  node('dir:FFXN/dify:src', 'src', query.parentId, 'github_directory', true),
+                  node('file:FFXN/dify:README.md', 'README.md', query.parentId, 'file'),
+                ]
+              : query.parentId === 'dir:FFXN/dify:src'
+                ? [node('file:FFXN/dify:src/main.py', 'main.py', query.parentId, 'file')]
+                : query.parentId === 'prs:FFXN/dify'
+                  ? [
+                      node(
+                        `pr:FFXN/dify:${query.cursor ? '2' : '1'}`,
+                        `PR #${query.cursor ? '2' : '1'}`,
+                        query.parentId,
+                        'pull_request',
+                      ),
+                    ]
+                  : []
+        return Promise.resolve({
+          next_cursor: !query.cursor
+            ? query.parentId === 'prs:FFXN/dify'
+              ? 'pr-next'
+              : !query.parentId
+                ? 'root-next'
+                : null
+            : null,
+          workspaces: [
+            {
+              pages,
+              total: pages.length,
+              workspace_id: 'FFXN',
+              workspace_name: "FFXN's GitHub",
+            },
+          ],
+        })
+      },
+    )
+
+    const view = await renderSetup({
+      ...defaultDraft,
+      provider: 'GitHub Repository',
+      sourceName: 'GitHub docs',
+    })
+    const repository = await screen.findByRole('checkbox', { name: 'dify' })
+    expect(clientMock.getPages).toHaveBeenCalledExactlyOnceWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 10, view: 'tree' },
+    })
+    expect(screen.queryByRole('button', { name: 'Contents' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.loadMore' }))
+    expect(await screen.findByRole('checkbox', { name: 'checkin' })).not.toBeChecked()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'root-next', limit: 10, view: 'tree' },
+    })
+
+    await user.click(repository)
+    await user.click(screen.getByRole('button', { name: 'dify' }))
+    const contents = await screen.findByRole('button', { name: 'Contents' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 30, parentId: 'repo:FFXN/dify', view: 'tree' },
+    })
+    const contentsCheckbox = screen.getByRole('checkbox', { name: 'Contents' })
+    const pullRequestsCheckbox = screen.getByRole('checkbox', { name: 'Pull requests' })
+    expect(contentsCheckbox).toHaveAttribute('aria-disabled', 'true')
+    expect(pullRequestsCheckbox).toHaveAttribute('aria-disabled', 'true')
+    expect(repository).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: 'Pull requests' }))
+    const firstPr = await screen.findByRole('checkbox', { name: 'PR #1' })
+    expect(firstPr).not.toBeChecked()
+    expect(repository).toBePartiallyChecked()
+    expect(pullRequestsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
+    const branchLoadMore = screen.getByRole('button', { name: 'knowledgeSpace.loadMore' })
+    expect(firstPr.closest('li')?.nextElementSibling).toBe(branchLoadMore.closest('li'))
+    await user.click(branchLoadMore)
+    const secondPr = await screen.findByRole('checkbox', { name: 'PR #2' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { cursor: 'pr-next', limit: 30, parentId: 'prs:FFXN/dify', view: 'tree' },
+    })
+    expect(secondPr).not.toBeChecked()
+    expect(pullRequestsCheckbox).toBePartiallyChecked()
+    await user.click(pullRequestsCheckbox)
+    expect(firstPr).toBeChecked()
+    expect(secondPr).toBeChecked()
+
+    await user.click(contents)
+    expect(await screen.findByRole('button', { name: 'src' })).toBeInTheDocument()
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 100, parentId: 'contents:FFXN/dify', view: 'tree' },
+    })
+    const srcCheckbox = screen.getByRole('checkbox', { name: 'src' })
+    expect(contentsCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    expect(srcCheckbox).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'src' }))
+    const codeFile = await screen.findByRole('checkbox', { name: 'main.py' })
+    expect(clientMock.getPages).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', source_id: 'preview-source' },
+      query: { limit: 100, parentId: 'dir:FFXN/dify:src', view: 'tree' },
+    })
+    expect(codeFile).not.toBeChecked()
+    expect(srcCheckbox).not.toHaveAttribute('aria-disabled', 'true')
+    await user.click(srcCheckbox)
+    expect(codeFile).toBeChecked()
+    await user.click(repository)
+    expect(screen.getByRole('checkbox', { name: 'README.md' })).toBeChecked()
+    await user.click(repository)
+    expect(firstPr).not.toBeChecked()
+    expect(secondPr).not.toBeChecked()
+    expect(codeFile).not.toBeChecked()
+    await user.click(secondPr)
+    await user.click(codeFile)
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(clientMock.createWorkflowImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          items: [
+            expect.objectContaining({ pageId: 'pr:FFXN/dify:2' }),
+            expect.objectContaining({ pageId: 'file:FFXN/dify:src/main.py' }),
+          ],
+        }),
+      }),
+    )
+  })
+
   it('stops the import and cleans up the renamed source when canceled while the rename is pending', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourceAuth.mockResolvedValue({
@@ -952,6 +1210,53 @@ describe('ConnectedSourceWorkflow', () => {
 
     await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
     expect(clientMock.createWorkflowImport).toHaveBeenCalledOnce()
+  })
+
+  it('shows a failed import once, with the server reason next to the submit button', async () => {
+    const user = userEvent.setup()
+    const message = 'Too many pages are selected for this plan'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    clientMock.createWorkflowImport.mockRejectedValue(
+      createHttpError(new Response(null, { status: 422 }), { message }),
+    )
+    // The source is still a preview, so the import did not happen.
+    clientMock.getSource.mockResolvedValue(sourceResponse({ name: 'Team wiki', version: 4 }))
+    const view = await renderSetup(
+      { ...defaultDraft, sourceName: 'Team wiki' },
+      { errorToasts: true },
+    )
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.addSource' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(view.onCompleted).not.toHaveBeenCalled()
   })
 
   it('reconciles an accepted import when the response is lost before navigation', async () => {
@@ -1119,6 +1424,33 @@ describe('ConnectedSourceWorkflow', () => {
       ),
     )
     expect(clientMock.refreshConnection).not.toHaveBeenCalled()
+  })
+
+  it('shows a failed retry of an errored connection in its panel, without a toast', async () => {
+    const user = userEvent.setup()
+    const message = 'The Notion credential has expired'
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse({ error_code: 'PROVIDER_AUTH_FAILED', status: 'error' })],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.createConnection.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { message }),
+    )
+
+    await renderSetup(defaultDraft, { errorToasts: true })
+    expect(
+      await screen.findByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.retryProviderLoad' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    expect(
+      screen.getByText('knowledgeSources.connectionNeedsAttention:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('uses the Google Drive datasource as the Google Docs transport and imports a selected doc', async () => {

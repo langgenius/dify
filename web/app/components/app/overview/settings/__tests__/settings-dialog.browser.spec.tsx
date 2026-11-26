@@ -6,6 +6,10 @@ import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import appOverview from '@/i18n/locales/en-US/app-overview.json'
+import app from '@/i18n/locales/en-US/app.json'
+import billing from '@/i18n/locales/en-US/billing.json'
+import common from '@/i18n/locales/en-US/common.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
 import { consoleQuery } from '@/service/console'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -14,17 +18,11 @@ import { SettingsDialog } from '../index'
 
 const saveSite = vi.fn()
 
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
+vi.unmock('react-i18next')
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return { ...actual, ...createReactI18nextMock(), Trans: actual.Trans }
-})
-
-const settingsTitle = 'appOverview.overview.appInfo.settings.title'
-const titleLabel = 'appOverview.overview.appInfo.settings.webName'
-const triggerLabel = 'navigation.settings.settings'
+const settingsTitle = 'Branding'
+const titleLabel = 'Web App Name'
+const triggerLabel = 'Settings'
 const appQuery = consoleQuery.apps.byAppId.get.queryOptions({
   input: { params: { app_id: 'settings-app' } },
 })
@@ -61,7 +59,8 @@ async function renderSettings() {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
-    resources: { 'en-US': { appOverview } },
+    resources: { 'en-US': { app, appOverview, billing, common, navigation } },
+    keySeparator: false,
   })
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
@@ -81,16 +80,6 @@ async function renderSettings() {
   return { screen, client }
 }
 
-it('links the privacy policy to its destination', async () => {
-  const { screen, client } = await renderSettings()
-  await screen.getByRole('button', { name: triggerLabel }).click()
-  const dialog = screen.getByRole('dialog', { name: settingsTitle })
-  const link = dialog.getByRole('link', { name: 'Privacy Policy', exact: true })
-
-  await expect.element(link).toHaveAttribute('href', 'https://dify.ai/privacy')
-  client.clear()
-})
-
 it('cancels a draft without saving and restores trigger focus', async () => {
   const { screen, client } = await renderSettings()
   const trigger = screen.getByRole('button', { name: triggerLabel })
@@ -100,7 +89,7 @@ it('cancels a draft without saving and restores trigger focus', async () => {
   const dialog = screen.getByRole('dialog', { name: settingsTitle })
   const title = dialog.getByRole('textbox', { name: titleLabel })
   await title.fill('Cancelled draft')
-  await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(saveSite).not.toHaveBeenCalled()

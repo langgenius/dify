@@ -1,14 +1,10 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { KnowledgeSpaceCard } from '../knowledge-space-card'
-
-vi.mock('@/context/permission-state', async () => {
-  const { atom } = await import('jotai')
-  return { workspacePermissionKeysAtom: atom([]) }
-})
 
 const knowledgeSpace: KnowledgeFsSpaceListItemResponse = {
   control_space_id: 'space-1',
@@ -35,15 +31,16 @@ const knowledgeSpace: KnowledgeFsSpaceListItemResponse = {
 }
 
 const renderCard = async () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  onTestFinished(guardUnexpectedFetch())
+  const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
+    workspacePermissionKeys: [],
   })
   queryClient.setQueryData(
     consoleQuery.tags.get.queryOptions({ input: { query: { type: 'knowledge' } } }).queryKey,
     [{ id: 'tag-1', name: 'Support', type: 'knowledge', binding_count: '1' }],
   )
   return render(
-    <QueryClientProvider client={queryClient}>
+    <Providers>
       <button type="button">Before card</button>
       <ul className="mt-4 grid w-80 p-4">
         <KnowledgeSpaceCard
@@ -52,7 +49,7 @@ const renderCard = async () => {
           onOpenTagManagement={vi.fn()}
         />
       </ul>
-    </QueryClientProvider>,
+    </Providers>,
   )
 }
 
@@ -68,7 +65,7 @@ it('draws the card focus inside the clipped card and leaves inner controls their
   // inner controls stay separate pointer targets above the stretched link.
   const screen = await renderCard()
   const link = screen.getByRole('link', { name: knowledgeSpace.technical_summary!.name })
-  const card = link.element().closest('li')!
+  const card = screen.getByRole('listitem').element()
   const tags = screen.getByRole('combobox', { name: /^Support:/ })
   const more = screen.getByRole('button', { name: 'common.operation.more' })
 
@@ -90,8 +87,14 @@ it('draws the card focus inside the clipped card and leaves inner controls their
   for (const control of [tags.element(), more.element()]) {
     const target = document.elementFromPoint(...centerOf(control))
     expect(control.contains(target)).toBe(true)
-    expect(target?.closest('a')).toBeNull()
   }
   const footer = screen.getByText('12').element()
-  expect(document.elementFromPoint(...centerOf(footer))?.closest('a')).toBe(link.element())
+  expect(link.element().contains(document.elementFromPoint(...centerOf(footer)))).toBe(true)
+
+  await userEvent.keyboard('{Enter}')
+  await expect
+    .element(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+    .toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(more).toHaveFocus()
 })

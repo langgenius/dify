@@ -1,35 +1,44 @@
 import inspect
 import json
 from collections.abc import Sequence
+from datetime import datetime
 from http import HTTPStatus
 from importlib import import_module
 from inspect import unwrap
 from pathlib import Path
 from typing import Never
+from unittest.mock import create_autospec
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 from werkzeug.local import LocalProxy
 
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
-from core.human_input_v2.resolved_form import FileInput, FileListInput, ParagraphInput, SelectInput
-from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    ParagraphDefaultConfig,
+    ParagraphInput,
+    SelectInput,
+)
+from core.human_input_v2.shared.values import ContactId, TenantId
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.enums import FormInputType, ValueSourceType
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
 from core.workflow.nodes.human_input_v2.migration import (
-    MemberEmailSnapshot,
+    MemberContactSnapshot,
     MigrationBlockerCode,
-    ResolvedMemberEmail,
     convert_legacy_human_input_node_data,
 )
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import ArrayStringSegment
 from models.account import Account, TenantAccountRole
+from repositories.human_input_v2.contact import Contact, ContactRepository, ContactType
 from services.human_input_v2.node_data_migration import (
     HumanInputNodeDataMigrationService,
     MigratedNode,
@@ -42,15 +51,23 @@ from services.human_input_v2.node_data_migration import (
 _CONTROLLER_MODULE = import_module("controllers.console.human_input_v2.contact")
 
 
-class _StaticMemberEmailLookup:
-    def find_member_emails(self, tenant_id: TenantId, account_ids: Sequence[str]) -> MemberEmailSnapshot:
-        del tenant_id
-        return MemberEmailSnapshot(
-            tuple(
-                ResolvedMemberEmail(account_id, NormalizedEmail(f"{account_id}@example.com"))
-                for account_id in account_ids
-            )
+def _migration_service() -> HumanInputNodeDataMigrationService:
+    repository = create_autospec(ContactRepository, instance=True)
+    repository.get_contacts_by_account_ids.side_effect = lambda _tenant_id, account_ids: {
+        account_id: Contact(
+            id=ContactId(f"contact-{account_id}"),
+            type=ContactType.WORKSPACE,
+            name=account_id,
+            email=f"{account_id}@example.com",
+            avatar_file_id=None,
+            created_at=datetime(2026, 11, 16),
         )
+        for account_id in account_ids
+    }
+    return HumanInputNodeDataMigrationService(
+        session_factory=Session,
+        contact_repository_factory=lambda _session: repository,
+    )
 
 
 def _legacy_webapp_node(title: str = "Approval") -> HumanInputNodeDataFull:
@@ -63,7 +80,7 @@ def _legacy_webapp_node(title: str = "Approval") -> HumanInputNodeDataFull:
 
 
 def _migrated_webapp_node() -> HumanInputNodeData:
-    conversion = convert_legacy_human_input_node_data(_legacy_webapp_node(), MemberEmailSnapshot())
+    conversion = convert_legacy_human_input_node_data(_legacy_webapp_node(), MemberContactSnapshot())
     assert conversion.node_data is not None
     return conversion.node_data
 
@@ -165,7 +182,7 @@ def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendere
             "user_actions": [{"id": "submit", "title": "B" * 21}],
         }
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -190,9 +207,15 @@ def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendere
     pool.add(["start", "reviewers"], ArrayStringSegment(value=["Alice", "Bob"]))
     resolved = compile_resolved_form(HumanInputNodeData.model_validate_json(json.dumps(migrated)), pool)
     assert resolved.parts == (
-        ParagraphInput(output_variable_name="reason", default_value="Keep this reason"),
-        SelectInput(output_variable_name="decision", options=("Yes", "No"), default_value=None),
-        SelectInput(output_variable_name="reviewer", options=("Alice", "Bob"), default_value=None),
+        ParagraphInput(
+            output_variable_name="reason",
+            resolved_default_value="Keep this reason",
+            default_config=ParagraphDefaultConfig(
+                type=ValueSourceType.CONSTANT, selector=("start", "reason"), value="Keep this reason"
+            ),
+        ),
+        SelectInput(output_variable_name="decision", options=("Yes", "No"), resolved_default_value=None),
+        SelectInput(output_variable_name="reviewer", options=("Alice", "Bob"), resolved_default_value=None),
         FileInput(
             output_variable_name="attachment",
             allowed_file_types=(FileType.CUSTOM,),
@@ -232,7 +255,7 @@ def test_controller_maps_invalid_delivery_method_ids_to_typed_failure_without_pa
 ) -> None:
     invalid_method: dict[str, object] = {"type": "webapp", "config": {}}
     invalid_method["id"] = method_id
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -269,7 +292,7 @@ def test_controller_preserves_historically_accepted_action_id_with_trailing_line
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     historical_action_id = f"{'a' * 19}\n"
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -305,7 +328,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -336,7 +359,7 @@ def test_controller_normalizes_compatibility_member_id_before_service(
         response = handler(NodeDataMigrationAPI(), "workspace-1")
 
     assert response["data"][0]["node_data"]["recipients_spec"] == [
-        {"type": "onetime_email", "email": "member-1@example.com"}
+        {"type": "contact", "contact_id": "contact-member-1"}
     ]
 
 
@@ -344,7 +367,7 @@ def test_controller_maps_unsupported_methods_to_ordered_blockers_regardless_of_e
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -394,7 +417,7 @@ def test_controller_rejects_disabled_unknown_method_with_empty_config_without_pa
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -439,7 +462,7 @@ def test_controller_maps_invalid_default_value_to_typed_all_or_error_response(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     handler = unwrap(NodeDataMigrationAPI.post)
 
@@ -628,7 +651,7 @@ def test_http_migration_accepts_unserialized_v1_defaults(
     assert HumanInputNodeDataFull.model_validate_json(v1.model_dump_json()).model_dump(mode="json") == v1.model_dump(
         mode="json"
     )
-    service = HumanInputNodeDataMigrationService(member_email_lookup=_StaticMemberEmailLookup())
+    service = _migration_service()
     monkeypatch.setattr(_CONTROLLER_MODULE, "build_human_input_node_data_migration_service", lambda: service)
     with app.test_request_context(method="POST", json={"nodes": [{"node_id": "defaults", "node_data": raw_v1}]}):
         response = unwrap(NodeDataMigrationAPI.post)(NodeDataMigrationAPI(), "workspace-1")

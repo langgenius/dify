@@ -1,34 +1,42 @@
+import csv
 import datetime
 import hashlib
 import io
 import json
 import subprocess
 import sys
+import threading
 import zipfile
-from contextlib import nullcontext
+from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from typing import cast
-from unittest.mock import MagicMock
+from typing import cast, override
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from libs.archive_storage import ArchiveStorage
-from services.retention.workflow_run.archive_bundle_index import ARCHIVE_BUNDLE_ROOT_PREFIX, ArchiveBundleManifest
+from services.retention.workflow_run.archive_bundle_index import (
+    ARCHIVE_BUNDLE_ROOT_PREFIX,
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+)
 from services.retention.workflow_run.archive_deletion_task import WorkflowRunArchiveDeletionStatus
 from services.retention.workflow_run.archive_download_preparation import (
     WorkflowRunArchiveDownloadPreparer,
     build_archive_download_storage_key,
 )
 from services.retention.workflow_run.archive_download_task import (
+    MAX_ARCHIVE_DOWNLOAD_ATTEMPTS,
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
     build_archive_download_id,
     build_pending_archive_download_task,
 )
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
-from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease
+from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease, WorkflowRunArchiveMonthLock
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -52,6 +60,14 @@ class FakeArchiveStorage:
     def get_object(self, key: str) -> bytes:
         return self.objects[key]
 
+    def get_object_stream(self, key: str) -> Generator[bytes]:
+        payload = self.objects[key]
+        for offset in range(0, len(payload), 1024):
+            yield payload[offset : offset + 1024]
+
+    def upload_file(self, key: str, filename: str) -> None:
+        self.put_objects[key] = Path(filename).read_bytes()
+
     def put_object(self, key: str, data: bytes) -> str:
         self.put_objects[key] = data
         return hashlib.md5(data).hexdigest()
@@ -74,7 +90,7 @@ class FakeTaskCache:
             return self.task
         return None
 
-    def lock(self, *, tenant_id: str, download_id: str):
+    def lock(self, *, tenant_id: str, download_id: str) -> nullcontext[None]:
         return nullcontext()
 
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
@@ -138,7 +154,7 @@ def _task(bundle_refs: list[tuple[str, str]] | None = None) -> WorkflowRunArchiv
             bundle_refs=refs,
         ),
         now=datetime.datetime(2026, 6, 25, 8, 0, tzinfo=datetime.UTC),
-    )
+    ).model_copy(update={"celery_task_id": "celery-task-1"})
 
 
 def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE_ID) -> bytes:
@@ -161,12 +177,12 @@ def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE
         max_run_id="run-b",
         archived_at="2026-06-25T08:00:00+00:00",
         tables={
-            table_name: {
-                "row_count": 1,
-                "checksum": hashlib.md5(payload).hexdigest(),
-                "size_bytes": len(payload),
-                "object_key": f"{object_prefix}/{table_name}.parquet",
-            }
+            table_name: ArchiveBundleTableManifestEntry(
+                row_count=1,
+                checksum=hashlib.md5(payload).hexdigest(),
+                size_bytes=len(payload),
+                object_key=f"{object_prefix}/{table_name}.parquet",
+            )
             for table_name, payload in table_payloads.items()
         },
         run_ids=["run-a", "run-b"],
@@ -182,6 +198,7 @@ def _preparer(
     cache: FakeTaskCache,
     lease: WorkflowRunArchiveMonthLease,
     bundles: list[WorkflowRunArchiveBundleRecord] | None = None,
+    month_lock: WorkflowRunArchiveMonthLock | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     source_storage = archive_storage or storage
     target_storage = download_storage or storage
@@ -192,7 +209,7 @@ def _preparer(
         bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
         cache=cache,
         download_storage_provider=lambda: cast(ArchiveStorage, target_storage),
-        month_lock=lambda **_kwargs: nullcontext(lease),
+        month_lock=month_lock or (lambda **_kwargs: nullcontext(lease)),
     )
 
 
@@ -204,7 +221,7 @@ def _parquet_bytes(records: list[dict[str, object]]) -> bytes:
 
 @pytest.mark.parametrize("after_upload", ["pending", "failed", "missing"])
 def test_preparation_does_not_revive_archives_deleted_during_upload(
-    after_upload: str, month_lease: WorkflowRunArchiveMonthLease
+    after_upload: str, month_lease: WorkflowRunArchiveMonthLease, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task = _task()
     payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
@@ -216,18 +233,17 @@ def test_preparation_does_not_revive_archives_deleted_during_upload(
     )
     cache = FakeTaskCache(task)
     bundles = FakeBundleQuery((_bundle(),))
-    original_upload = storage.put_object
+    original_upload = storage.upload_file
 
-    def upload(key: str, data: bytes) -> str:
-        checksum = original_upload(key, data)
+    def upload(key: str, filename: str) -> None:
+        original_upload(key, filename)
         bundles.records = (
             ()
             if after_upload == "missing"
             else (_bundle()._replace(deletion_status=WorkflowRunArchiveDeletionStatus(after_upload)),)
         )
-        return checksum
 
-    storage.put_object = upload
+    monkeypatch.setattr(storage, "upload_file", upload)
     preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=lambda: cast(ArchiveStorage, storage),
         download_storage_provider=lambda: cast(ArchiveStorage, storage),
@@ -236,7 +252,7 @@ def test_preparation_does_not_revive_archives_deleted_during_upload(
         month_lock=lambda **_kwargs: nullcontext(month_lease),
     )
 
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
 
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
@@ -330,17 +346,19 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
         bundles=[_bundle("bundle-a"), _bundle("bundle-b")],
     )
 
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
 
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.READY
-    assert result.storage_key == build_archive_download_storage_key(task)
+    assert result.storage_key == build_archive_download_storage_key(result)
     assert result.file_name == "workflow-run-logs-2025-03.zip"
     assert cache.saved_tasks[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
     assert cache.saved_tasks[-1].status == WorkflowRunArchiveDownloadStatus.READY
     assert archive_storage.put_objects == {}
 
-    archive_payload = download_storage.put_objects[result.storage_key]
+    storage_key = result.storage_key
+    assert storage_key is not None
+    archive_payload = download_storage.put_objects[storage_key]
     with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
         names = set(archive.namelist())
         assert names == {
@@ -369,7 +387,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     cache = FakeTaskCache(task)
     preparer = _preparer(storage=storage, cache=cache, lease=month_lease)
 
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
 
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
@@ -400,7 +418,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unav
         month_lock=lambda **_kwargs: nullcontext(month_lease),
     )
 
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
 
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
@@ -408,34 +426,59 @@ def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unav
     assert not download_storage_calls
 
 
-def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
+def test_prepare_workflow_run_archive_download_serializes_duplicate_delivery(
     month_lease: WorkflowRunArchiveMonthLease,
 ) -> None:
-    task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
-    storage = FakeArchiveStorage({})
+    task = _task()
+    payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
+    uploading, release_upload, duplicate_waiting = threading.Event(), threading.Event(), threading.Event()
+    mutex = threading.Lock()
+
+    class BlockingStorage(FakeArchiveStorage):
+        @override
+        def upload_file(self, key: str, filename: str) -> None:
+            uploading.set()
+            assert release_upload.wait(timeout=5)
+            super().upload_file(key, filename)
+
+    storage = BlockingStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(payloads),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": payloads["workflow_runs"],
+        }
+    )
     cache = FakeTaskCache(task)
+
+    @contextmanager
+    def month_lock(**_kwargs: object) -> Generator[WorkflowRunArchiveMonthLease]:
+        if mutex.locked():
+            duplicate_waiting.set()
+        with mutex:
+            yield month_lease
+
     preparer = _preparer(
         storage=storage,
         cache=cache,
         lease=month_lease,
-        bundles=[],
+        month_lock=month_lock,
     )
-    nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
-    preparer._get_task_bundles = MagicMock(return_value=[])
-
-    def build_payload(*_args: object) -> bytes:
-        nested_results.append(preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id))
-        return b"zip"
-
-    preparer._build_zip_payload = MagicMock(side_effect=build_payload)
-
-    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
-
-    assert result is not None
-    assert result.status == WorkflowRunArchiveDownloadStatus.READY
-    assert nested_results[0] is not None
-    assert nested_results[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
-    preparer._build_zip_payload.assert_called_once()
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(
+            preparer.prepare, tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1"
+        )
+        assert uploading.wait(timeout=5)
+        second = executor.submit(
+            preparer.prepare, tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1"
+        )
+        try:
+            assert duplicate_waiting.wait(timeout=5)
+        finally:
+            release_upload.set()
+        assert first.result(timeout=5) == second.result(timeout=5)
+    assert cache.task is not None
+    assert cache.task.status == WorkflowRunArchiveDownloadStatus.READY
+    assert cache.task.attempt_count == 1
+    assert len(storage.put_objects) == 1
 
 
 def test_failed_worker_cannot_overwrite_ready_task(month_lease: WorkflowRunArchiveMonthLease) -> None:
@@ -451,3 +494,186 @@ def test_failed_worker_cannot_overwrite_ready_task(month_lease: WorkflowRunArchi
     assert result == ready_task
     assert cache.task == ready_task
     assert cache.saved_tasks == []
+
+
+def test_interrupted_processing_task_is_recovered_on_redelivery(
+    month_lease: WorkflowRunArchiveMonthLease,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tempfile
+
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+    payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
+
+    class InterruptedStorage(FakeArchiveStorage):
+        interrupted = False
+
+        @override
+        def get_object_stream(self, key: str) -> Generator[bytes]:
+            if not self.interrupted:
+                self.interrupted = True
+                raise SystemExit("worker exited")
+            yield from super().get_object_stream(key)
+
+    storage = InterruptedStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(payloads),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": payloads["workflow_runs"],
+        }
+    )
+    task = _task()
+    cache = FakeTaskCache(task)
+    preparer = _preparer(storage=storage, cache=cache, lease=month_lease)
+    with pytest.raises(SystemExit, match="worker exited"):
+        preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
+    interrupted = cache.task
+    assert interrupted is not None
+    assert interrupted.status == WorkflowRunArchiveDownloadStatus.PROCESSING
+    assert interrupted.attempt_count == 1
+    assert not list(tmp_path.iterdir())
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id, celery_task_id="celery-task-1")
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert result.attempt_count == 2
+    assert result.execution_id != interrupted.execution_id
+    assert not list(tmp_path.iterdir())
+    # A delayed failure from the previous execution of the same Celery task cannot overwrite the recovered result.
+    assert preparer._mark_failed(interrupted, error="late failure") == result
+    assert cache.task == result
+
+
+def test_interrupted_task_has_a_persisted_attempt_limit(month_lease: WorkflowRunArchiveMonthLease) -> None:
+    task = _task().model_copy(
+        update={
+            "status": WorkflowRunArchiveDownloadStatus.PROCESSING,
+            "execution_id": "old-execution",
+            "attempt_count": MAX_ARCHIVE_DOWNLOAD_ATTEMPTS,
+        }
+    )
+    cache = FakeTaskCache(task)
+    storage = FakeArchiveStorage({})
+    result = _preparer(storage=storage, cache=cache, lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="celery-task-1",
+    )
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
+    assert result.attempt_count == MAX_ARCHIVE_DOWNLOAD_ATTEMPTS
+    assert "interrupted too many times" in (result.error or "")
+    assert not storage.put_objects
+
+
+def test_old_message_cannot_claim_a_new_request(month_lease: WorkflowRunArchiveMonthLease) -> None:
+    task = _task()
+    cache = FakeTaskCache(task)
+    result = _preparer(storage=FakeArchiveStorage({}), cache=cache, lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="superseded-message",
+    )
+    assert result == task
+    assert not cache.saved_tasks
+
+
+def test_stale_upload_cannot_overwrite_or_delete_a_new_execution(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
+    task = _task()
+    cache = FakeTaskCache(task)
+    payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
+    newer_key = "downloads/new-execution.zip"
+
+    class SupersededStorage(FakeArchiveStorage):
+        @override
+        def upload_file(self, key: str, filename: str) -> None:
+            assert cache.task is not None
+            cache.save(
+                cache.task.model_copy(
+                    update={
+                        "execution_id": "new-execution",
+                        "status": WorkflowRunArchiveDownloadStatus.READY,
+                        "storage_key": newer_key,
+                    }
+                )
+            )
+            self.put_objects[newer_key] = b"new result"
+            super().upload_file(key, filename)
+
+    storage = SupersededStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(payloads),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": payloads["workflow_runs"],
+        }
+    )
+    result = _preparer(storage=storage, cache=cache, lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="celery-task-1",
+    )
+    assert result is not None
+    assert result.execution_id == "new-execution"
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert storage.put_objects == {newer_key: b"new result"}
+
+
+def test_multiple_batches_preserve_csv_escaping(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
+    values = ["=formula", "+formula", "-formula", "@formula", "tab\tcomma,newline\n", 'quote"']
+    records: list[dict[str, object]] = [{"id": str(i), "value": values[i % len(values)]} for i in range(8300)]
+    payloads = {"workflow_runs": _parquet_bytes(records)}
+    storage = FakeArchiveStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(payloads),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": payloads["workflow_runs"],
+        }
+    )
+    task = _task()
+    result = _preparer(storage=storage, cache=FakeTaskCache(task), lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="celery-task-1",
+    )
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert result.storage_key is not None
+    with zipfile.ZipFile(io.BytesIO(storage.put_objects[result.storage_key])) as archive:
+        with archive.open("workflow-run-logs-2025-03/workflow_runs.csv") as source:
+            rows = list(csv.DictReader(io.TextIOWrapper(source, encoding="utf-8")))
+    assert len(rows) == len(records)
+    for row, record in zip(rows, records, strict=True):
+        value = str(record["value"])
+        assert row == {"id": record["id"], "value": "'" + value if value[0] in "=+-@" else value}
+
+
+@pytest.mark.parametrize("has_schema", [True, False])
+def test_empty_parquet_preserves_header_only_or_missing_csv(
+    has_schema: bool,
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
+    buffer = io.BytesIO()
+    table = pa.table({"id": pa.array([], type=pa.string())}) if has_schema else pa.table({})
+    pq.write_table(table, buffer)
+    payloads = {"workflow_runs": buffer.getvalue()}
+    storage = FakeArchiveStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(payloads),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": payloads["workflow_runs"],
+        }
+    )
+    task = _task()
+    result = _preparer(storage=storage, cache=FakeTaskCache(task), lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="celery-task-1",
+    )
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert result.storage_key is not None
+    with zipfile.ZipFile(io.BytesIO(storage.put_objects[result.storage_key])) as archive:
+        if has_schema:
+            assert archive.read("workflow-run-logs-2025-03/workflow_runs.csv") == b'"id"\n'
+        else:
+            assert not archive.namelist()

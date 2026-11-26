@@ -4,18 +4,15 @@ import type { FC } from 'react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import {
-  useInstallPackageFromMarketPlace,
-  usePluginDeclarationFromMarketPlace,
-  usePluginTaskList,
-  useUpdatePackageFromMarketPlace,
-} from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
+import { usePluginTaskList } from '@/service/use-plugins'
 import { isEqualOrLaterThanVersion } from '@/utils/semver'
 import Card from '../../../card'
 // import { RiInformation2Line } from '@remixicon/react'
@@ -57,8 +54,12 @@ const Installed: FC<Props> = ({
   const installedVersion = installedInfoPayload?.installedVersion
   const hasInstalled = !!installedVersion
 
-  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
-  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
+  const { mutateAsync: installPackageFromMarketPlace } = useMutation(
+    consoleQuery.workspaces.current.plugin.install.marketplace.post.mutationOptions(),
+  )
+  const { mutateAsync: updatePackageFromMarketPlace } = useMutation(
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions(),
+  )
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { check, stop } = checkTaskStatus()
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
@@ -82,8 +83,10 @@ const Installed: FC<Props> = ({
       let installResponse: PluginInstallTaskStartResponse | undefined
       if (hasInstalled) {
         const response = await updatePackageFromMarketPlace({
-          original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
-          new_plugin_unique_identifier: uniqueIdentifier,
+          body: {
+            original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
+            new_plugin_unique_identifier: uniqueIdentifier,
+          },
         })
         installResponse = response
         const { all_installed, task_id } = response
@@ -91,7 +94,9 @@ const Installed: FC<Props> = ({
         taskId = task_id
         isInstalled = all_installed
       } else {
-        const response = await installPackageFromMarketPlace(uniqueIdentifier)
+        const response = await installPackageFromMarketPlace({
+          body: { plugin_unique_identifiers: [uniqueIdentifier] },
+        })
         installResponse = response
         const { all_installed, task_id } = response
         handleInstallTaskStart(response)
@@ -123,7 +128,7 @@ const Installed: FC<Props> = ({
         onFailed(e)
         return
       }
-      onFailed()
+      onFailed(getRequestErrorMessage(e))
     }
   }
 
@@ -131,7 +136,13 @@ const Installed: FC<Props> = ({
     ...userProfileQueryOptions(),
     select: (data) => data.meta.currentVersion ?? '',
   })
-  const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
+  const { data: pluginDeclaration } = useQuery(
+    consoleQuery.workspaces.current.plugin.marketplace.pkg.get.queryOptions({
+      input: uniqueIdentifier
+        ? { query: { plugin_unique_identifier: uniqueIdentifier } }
+        : skipToken,
+    }),
+  )
   const isDifyVersionCompatible = useMemo(() => {
     if (!pluginDeclaration || !currentVersion) return true
     return isEqualOrLaterThanVersion(

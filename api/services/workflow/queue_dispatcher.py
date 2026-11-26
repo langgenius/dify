@@ -8,9 +8,8 @@ with appropriate queue routing and priority assignment.
 from enum import StrEnum
 from typing import Protocol, override
 
-from configs import dify_config
-from enums import DeploymentEdition
-from services.billing_service import BillingService
+from enums import CloudPlan
+from services.feature_service import FeatureService
 
 
 class QueuePriority(StrEnum):
@@ -92,16 +91,14 @@ class QueueDispatcherManager:
         Returns:
             Appropriate queue dispatcher instance
         """
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            try:
-                billing_info = BillingService.get_info(tenant_id)
-                plan = billing_info.subscription.plan
-            except Exception:
-                # If billing service fails, default to sandbox
-                plan = "sandbox"
-        else:
-            # Self-hosted editions use the team queue by default.
-            plan = "team"
+        try:
+            plan = FeatureService.get_workspace_plan(tenant_id)
+        except Exception:
+            # Queue routing degrades to the sandbox queue when billing fails.
+            plan = CloudPlan.SANDBOX
+        if plan is None:
+            # Self-hosted editions have no plan and use the team queue.
+            return TeamQueueDispatcher()
 
         dispatcher_class = cls.PLAN_DISPATCHER_MAP.get(
             plan,
@@ -109,3 +106,27 @@ class QueueDispatcherManager:
         )
 
         return dispatcher_class()  # type: ignore
+
+
+class CeleryWorkflowQueuePublisher:
+    """Resolve the existing plan queue and publish through its existing Celery task."""
+
+    def get_queue(self, tenant_id: str) -> str:
+        return QueueDispatcherManager.get_dispatcher(tenant_id).get_queue_name()
+
+    def publish(self, *, queue: str, trigger_log_id: str) -> str:
+        from services.workflow.entities import WorkflowTaskData
+        from tasks.async_workflow_tasks import (
+            execute_workflow_professional,
+            execute_workflow_sandbox,
+            execute_workflow_team,
+        )
+
+        payload = WorkflowTaskData(workflow_trigger_log_id=trigger_log_id).model_dump(mode="json")
+        if queue == QueuePriority.PROFESSIONAL:
+            task = execute_workflow_professional.delay(payload)
+        elif queue == QueuePriority.TEAM:
+            task = execute_workflow_team.delay(payload)
+        else:
+            task = execute_workflow_sandbox.delay(payload)
+        return task.id

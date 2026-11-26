@@ -1,30 +1,30 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
+import { QueryClient } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import common from '@/i18n/locales/en-US/common.json'
+import contacts from '@/i18n/locales/en-US/contacts.json'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { installFakeApi } from '@/test/fake-api'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
-import { channelSummary } from './fixtures/channel-client'
-import { channel, defaultResponse, json } from './fixtures/http'
+import { channelSummary, emailDetail, imDetail } from './fixtures/channel-client'
+import { channel as feishuChannel, providers, syncRun } from './fixtures/http'
 
-const network = vi.hoisted(() => ({
-  handle: vi.fn<(request: Request) => Promise<Response> | Response>(),
-}))
-vi.mock('@/service/base', async () => {
-  const { httpErrorFromResponse } = await import('@/service/http-error')
-  return {
-    request: async (_url: string, _init: RequestInit, options: { request: Request }) => {
-      const response = await network.handle(options.request)
-      if (!response.ok) throw await httpErrorFromResponse(response)
-      return response
-    },
-  }
+// Channel ids are UUIDs in the contract.
+const channel = { ...feishuChannel, id: '00000000-0000-4000-8000-000000000001' }
+const emailChannel = channelSummary({
+  id: '00000000-0000-4000-8000-000000000002',
+  kind: 'email',
+  provider: 'resend',
 })
-vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-vi.mock('@/context/i18n', () => ({
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
-}))
+
+vi.unmock('react-i18next')
 
 // These surfaces previously lost their scrims when moved under Settings' transparent modal.
 // Independent component tests miss that nested-dialog condition. Real rendering must prove
@@ -53,35 +53,72 @@ function visibleViewportScrims() {
 }
 
 async function setup() {
-  network.handle.mockImplementation((request) => {
-    if (new URL(request.url).pathname.endsWith('/channels'))
-      return json({
-        channels: [
-          channel,
-          channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' }),
-        ],
-      })
-    return defaultResponse(request)
-  })
+  // Only reads are served: any write from opening or dismissing a surface fails the test.
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            humanInput: {
+              v2: {
+                channelProviders: {
+                  get: () =>
+                    zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
+                },
+                channels: {
+                  get: () => ({ channels: [channel, emailChannel] }),
+                  im: { byChannelId: { get: () => imDetail(channel) } },
+                  email: { byChannelId: { get: () => emailDetail(emailChannel) } },
+                },
+                imSyncRuns: {
+                  latest: {
+                    get: () => ({ run: syncRun({ channel_id: channel.id }) }),
+                    results: {
+                      get: ({ query }) => ({
+                        data: [],
+                        total: 0,
+                        limit: query.limit,
+                        page: query.page,
+                      }),
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  )
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { common, contacts } },
+    keySeparator: false,
+    interpolation: { escapeValue: false },
+  })
+  seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
   await render(
-    <QueryClientProvider client={queryClient}>
-      <NuqsTestingAdapter hasMemory>
-        <ContactsImPlatformRuntimeProvider
-          organization={{
-            canManage: true,
-            organizationId: 'workspace-1',
-            workspaceId: 'workspace-1',
-          }}
-        >
-          <MenuDialog title="Workspace settings" onClose={vi.fn()}>
-            <ContactsImPlatformManagementSurface />
-          </MenuDialog>
-        </ContactsImPlatformRuntimeProvider>
-      </NuqsTestingAdapter>
-    </QueryClientProvider>,
+    <QueryClientTestProvider queryClient={queryClient}>
+      <I18nextProvider i18n={i18n}>
+        <NuqsTestingAdapter hasMemory>
+          <ContactsImPlatformRuntimeProvider
+            organization={{
+              canManage: true,
+              organizationId: 'workspace-1',
+              workspaceId: 'workspace-1',
+            }}
+          >
+            <MenuDialog title="Workspace settings" onClose={vi.fn()}>
+              <ContactsImPlatformManagementSurface />
+            </MenuDialog>
+          </ContactsImPlatformRuntimeProvider>
+        </NuqsTestingAdapter>
+      </I18nextProvider>
+    </QueryClientTestProvider>,
   )
   await expect.element(page.getByRole('group', { name: 'Feishu', exact: true })).toBeVisible()
   expect(visibleViewportScrims()).toBe(0)
@@ -95,40 +132,46 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
     const client = await setup()
     try {
       let role: 'dialog' | 'alertdialog' = 'dialog'
-      let title = /contacts\.imPlatform\.bindingDialog\.configureTitle/
+      let title = /^Configure /i
       if (surface === 'IM configuration' || surface === 'Email configuration') {
         const provider = surface === 'IM configuration' ? 'Feishu' : 'Email'
         await page
           .getByRole('group', { name: provider, exact: true })
-          .getByRole('button', { name: /contacts\.imPlatform\.action\.configureChannel/ })
+          .getByRole('button', { name: `Configure ${provider}` })
           .click()
-        if (surface === 'Email configuration') title = /contacts\.imPlatform\.email\.title/
+        title = new RegExp(`^Configure ${provider}$`)
       } else if (surface === 'replacement') {
         await page
           .getByRole('group', { name: 'Slack', exact: true })
-          .getByRole('button', { name: /contacts\.imPlatform\.action\.replace/ })
+          .getByRole('button', { name: 'Slack — Replace' })
           .click()
         role = 'alertdialog'
-        title = /contacts\.imPlatform\.replacement\.title/
+        title = /^Replace .+ with .+\?$/
       } else if (surface === 'deletion') {
         await page
           .getByRole('group', { name: 'Feishu', exact: true })
-          .getByRole('button', { name: /contacts\.imPlatform\.action\.deleteChannel/ })
+          .getByRole('button', { name: 'Delete Feishu' })
           .click()
         role = 'alertdialog'
-        title = /contacts\.imPlatform\.delete\.title/
+        title = /^Delete Feishu channel\?$/
       } else {
-        await page.getByRole('button', { name: 'contacts.imPlatform.action.viewDetails' }).click()
-        title = /contacts\.imPlatform\.details\.title/
+        await page.getByRole('button', { name: 'View details' }).click()
+        title = /^Sync details$/
       }
       const popup = page.getByRole(role, { name: title })
       await expect.element(popup).toBeVisible()
       await expect.poll(visibleViewportScrims).toBe(1)
-      if (surface === 'IM configuration') {
-        await popup.getByRole('button', { name: 'contacts.imPlatform.bindingDialog.back' }).click()
+      if (surface === 'Email configuration') {
         await expect
-          .element(popup.getByLabelText('contacts.imPlatform.bindingDialog.field.appId'))
-          .toBeVisible()
+          .element(popup.getByRole('link', { name: 'Learn more' }))
+          .toHaveAttribute(
+            'href',
+            'https://docs.dify.ai/en/self-host/use-dify/workspace/channels/overview',
+          )
+      }
+      if (surface === 'IM configuration') {
+        await popup.getByRole('button', { name: 'Back' }).click()
+        await expect.element(popup.getByLabelText('App ID')).toBeVisible()
         expect(visibleViewportScrims()).toBe(1)
       }
       await userEvent.keyboard('{Escape}')
@@ -137,7 +180,6 @@ it.each(['IM configuration', 'Email configuration', 'replacement', 'deletion', '
       await expect
         .element(page.getByRole('dialog', { name: 'Workspace settings', exact: true }))
         .toBeVisible()
-      expect(network.handle.mock.calls.every(([request]) => request.method === 'GET')).toBe(true)
     } finally {
       client.clear()
     }

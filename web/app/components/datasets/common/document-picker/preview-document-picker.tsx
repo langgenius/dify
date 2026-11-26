@@ -46,7 +46,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
             )}
           >
             <FileIcon name={name} extension={extension} size="lg" />
-            <div className="ml-1 flex min-w-0 flex-col items-start">
+            <div className="ms-1 flex min-w-0 flex-col items-start">
               <div className="flex max-w-full items-center space-x-0.5">
                 <span
                   className={cn('max-w-50 min-w-0 truncate system-md-semibold text-text-primary')}
@@ -67,7 +67,7 @@ const PreviewDocumentPicker: FC<Props> = ({ className, value, files, onChange })
       >
         <div className="w-98 max-w-[calc(100vw-2rem)] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
           {files?.length > 1 && (
-            <div className="flex h-8 items-center pl-2 system-xs-medium-uppercase text-text-tertiary">
+            <div className="flex h-8 items-center ps-2 system-xs-medium-uppercase text-text-tertiary">
               {t(($) => $.preprocessDocument, { ns: 'dataset', num: files.length })}
             </div>
           )}
@@ -98,7 +98,7 @@ function PreviewDocumentList({
         <button
           key={item.id}
           type="button"
-          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-left hover:bg-state-base-hover"
+          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg border-0 bg-transparent px-2 text-start hover:bg-state-base-hover"
           onClick={() => onChange(item)}
         >
           <FileIcon name={item.name} extension={item.extension} size="lg" />

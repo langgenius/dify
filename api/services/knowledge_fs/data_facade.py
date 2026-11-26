@@ -1894,8 +1894,21 @@ class KnowledgeFSDataFacade:
         source_id: str,
         cursor: str | None = None,
         limit: int = 50,
+        parent_id: str | None = None,
+        view: Literal["tree"] | None = None,
     ) -> KnowledgeFSSourcePagesResponse:
-        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        """List preview pages, optionally fetching a single tree branch.
+
+        Omitting tree arguments preserves flat previews. Background scans use a
+        separate path. Tree requests forward only the requested branch and cursor.
+        """
+        query = (("limit", str(limit)),)
+        if cursor:
+            query += (("cursor", cursor),)
+        if parent_id:
+            query += (("parentId", parent_id),)
+        if view:
+            query += (("view", view),)
         raw = self._interactive_child(
             tenant_id=tenant_id,
             account_id=account_id,

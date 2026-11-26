@@ -205,6 +205,8 @@ const ConfigPrompt: FC<Props> = ({
                 onChange(list.map((item) => item.p))
               }}
               handle=".handle"
+              filter="input, textarea, select, [contenteditable]"
+              preventOnFilter={false}
               ghostClass="opacity-50"
               animation={150}
             >
@@ -221,7 +223,7 @@ const ConfigPrompt: FC<Props> = ({
                     {canDrag && (
                       <IconButton
                         {...keyboardSort.getHandleProps(index)}
-                        className="handle pointer-events-none absolute top-1 -left-6 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
+                        className="handle pointer-events-none absolute -inset-s-6 top-1 opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus:pointer-events-auto focus:opacity-100 aria-pressed:pointer-events-auto aria-pressed:opacity-100"
                       >
                         <span
                           aria-hidden="true"
@@ -235,7 +237,7 @@ const ConfigPrompt: FC<Props> = ({
                           ? `${nodeId}-chat-workflow-llm-prompt-editor`
                           : `${nodeId}-chat-workflow-llm-prompt-editor-${index}`
                       }
-                      headerClassName={cn(canDrag && 'cursor-grab')}
+                      headerClassName={cn(canDrag && 'handle cursor-grab')}
                       canNotChooseSystemRole={!canChooseSystemRole}
                       canRemove={
                         payload.length > 1 && !(index === 0 && item.role === PromptRole.system)

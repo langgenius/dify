@@ -18,7 +18,7 @@ from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from core.helper import http_client_pooling
-from core.tools.signature import verify_tool_file_signature
+from core.tools.signature import sign_tool_file, sign_upload_file_preview_url, verify_tool_file_signature
 from core.workflow.file_reference import build_file_reference, resolve_file_record_id
 from extensions.storage.storage_type import StorageType
 from fields.conversation_fields import ConversationMessageDetail
@@ -670,11 +670,19 @@ def test_detail_attachment_fields_match_the_legacy_model_projection(
 @pytest.mark.parametrize("shape", ["{}", "`{}`", "[download]({})"])
 @pytest.mark.parametrize("kind", ["tool", "file-preview", "image-preview"])
 def test_detail_signs_answer_urls_without_rewriting_stored_answer(
-    sqlite_session_factory: sessionmaker[Session], detail_data: DetailData, shape: str, kind: str
+    sqlite_session_factory: sessionmaker[Session],
+    detail_data: DetailData,
+    shape: str,
+    kind: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     file_id = detail_data.tool_id if kind == "tool" else detail_data.upload_id
     path = f"/files/tools/{file_id}.pdf" if kind == "tool" else f"/files/{file_id}/{kind}"
-    original = shape.format(f"http://internal.example{path}?timestamp=1&nonce=old&sign=old&as_attachment=true")
+    sign_file = sign_upload_file_preview_url if kind == "image-preview" else sign_tool_file
+    with monkeypatch.context() as clock:
+        clock.setattr("core.tools.signature.time.time", lambda: 1)
+        old_query = urlsplit(sign_file(file_id, ".pdf")).query
+    original = shape.format(f"http://internal.example{path}?{old_query}&as_attachment=true")
     with sqlite_session_factory.begin() as session:
         session.get_one(Message, detail_data.message_id).answer = original
     detail = _detail(sqlite_session_factory, detail_data)
@@ -685,7 +693,7 @@ def test_detail_signs_answer_urls_without_rewriting_stored_answer(
     assert parsed.netloc == "files.example.test"
     assert parsed.path == (f"/files/tools/{file_id}.pdf" if kind == "tool" else f"/files/{file_id}/file-preview")
     assert query["as_attachment"] == ["true"]
-    assert query["nonce"] != ["old"]
+    assert query["nonce"] != parse_qs(old_query)["nonce"]
     assert query["timestamp"] != ["1"]
     assert verify_tool_file_signature(file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0])
     with sqlite_session_factory() as session:

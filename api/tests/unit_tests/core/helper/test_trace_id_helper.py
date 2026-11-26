@@ -16,13 +16,31 @@ from core.helper.trace_id_helper import (
 )
 
 
-def test_extract_trace_session_id_from_args_for_generator_extras():
+@pytest.mark.parametrize(
+    ("trace_id", "expected"),
+    [
+        ("abc", True),
+        ("a" * 128, True),
+        ("a" * 129, False),
+        # `$` also matches before a trailing newline, so "abc\n" used to slip
+        # through the character filter and the 128-character ceiling.
+        ("abc\n", False),
+        ("\nabc", False),
+        ("a" * 128 + "\n", False),
+        ("abc\r", False),
+    ],
+)
+def test_is_valid_trace_id_boundaries(trace_id: str, expected: bool) -> None:
+    assert is_valid_trace_id(trace_id) is expected
+
+
+def test_extract_trace_session_id_from_args_for_generator_extras() -> None:
     assert extract_trace_session_id_from_args({"trace_session_id": "session-1"}) == {
         "trace_session_id": "session-1",
     }
 
 
-def test_extract_trace_session_id_from_args_missing_value_keeps_extras_clean():
+def test_extract_trace_session_id_from_args_missing_value_keeps_extras_clean() -> None:
     assert extract_trace_session_id_from_args({"inputs": {}}) == {}
 
 
@@ -299,14 +317,14 @@ class TestTraceIdHelper:
 
 
 class TestGetSpanIdFromOtelContext:
-    def test_returns_none_without_span(self):
+    def test_returns_none_without_span(self) -> None:
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
         with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = get_span_id_from_otel_context()
             assert result is None
 
-    def test_returns_span_id_when_available(self):
+    def test_returns_span_id_when_available(self) -> None:
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
         span = NonRecordingSpan(SpanContext(trace_id=1, span_id=0x051581BF3BB55C45, is_remote=False))
@@ -314,7 +332,7 @@ class TestGetSpanIdFromOtelContext:
             result = get_span_id_from_otel_context()
             assert result == "051581bf3bb55c45"
 
-    def test_returns_none_on_exception(self):
+    def test_returns_none_on_exception(self) -> None:
         from core.helper.trace_id_helper import get_span_id_from_otel_context
 
         with mock.patch("opentelemetry.trace.get_current_span", side_effect=Exception("Test error"), autospec=True):
@@ -323,7 +341,7 @@ class TestGetSpanIdFromOtelContext:
 
 
 class TestGenerateTraceparentHeader:
-    def test_generates_valid_format(self):
+    def test_generates_valid_format(self) -> None:
         from core.helper.trace_id_helper import generate_traceparent_header
 
         with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
@@ -338,7 +356,7 @@ class TestGenerateTraceparentHeader:
             assert len(parts[2]) == 16  # span_id (16 hex chars)
             assert parts[3] == "01"  # flags
 
-    def test_uses_otel_context_when_available(self):
+    def test_uses_otel_context_when_available(self) -> None:
         from core.helper.trace_id_helper import generate_traceparent_header
 
         span = NonRecordingSpan(
@@ -352,11 +370,12 @@ class TestGenerateTraceparentHeader:
             result = generate_traceparent_header()
             assert result == "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
 
-    def test_generates_hex_only_values(self):
+    def test_generates_hex_only_values(self) -> None:
         from core.helper.trace_id_helper import generate_traceparent_header
 
         with mock.patch("opentelemetry.trace.get_current_span", return_value=None, autospec=True):
             result = generate_traceparent_header()
+            assert result is not None
 
             parts = result.split("-")
             # All parts should be valid hex
@@ -365,7 +384,7 @@ class TestGenerateTraceparentHeader:
 
 
 class TestParseTraceparentHeader:
-    def test_parses_valid_traceparent(self):
+    def test_parses_valid_traceparent(self) -> None:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01"
@@ -373,7 +392,7 @@ class TestParseTraceparentHeader:
 
         assert result == "5b8aa5a2d2c872e8321cf37308d69df2"
 
-    def test_returns_none_for_invalid_format(self):
+    def test_returns_none_for_invalid_format(self) -> None:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         # Wrong number of parts
@@ -381,7 +400,38 @@ class TestParseTraceparentHeader:
         # Wrong trace_id length
         assert parse_traceparent_header("00-abc-def-01") is None
 
-    def test_returns_none_for_empty_string(self):
+    def test_returns_none_for_empty_string(self) -> None:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         assert parse_traceparent_header("") is None
+
+    @pytest.mark.parametrize(
+        "traceparent",
+        [
+            # trace-id must not be all zeroes
+            "00-00000000000000000000000000000000-051581bf3bb55c45-01",
+            # trace-id must be lowercase hex
+            "00-5B8AA5A2D2C872E8321CF37308D69DF2-051581bf3bb55c45-01",
+            "00-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz-051581bf3bb55c45-01",
+            # version `ff` is forbidden
+            "ff-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01",
+            # parent-id must be 16 hex characters and must not be all zeroes
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-0000000000000000-01",
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c4-01",
+            # flags must be two hex characters
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-1",
+            # version 00 does not allow additional fields
+            "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01-extra",
+        ],
+    )
+    def test_returns_none_for_traceparent_the_spec_rejects(self, traceparent: str) -> None:
+        from core.helper.trace_id_helper import parse_traceparent_header
+
+        assert parse_traceparent_header(traceparent) is None
+
+    def test_accepts_an_upper_bound_flags_byte(self) -> None:
+        from core.helper.trace_id_helper import parse_traceparent_header
+
+        traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-ff"
+
+        assert parse_traceparent_header(traceparent) == "5b8aa5a2d2c872e8321cf37308d69df2"

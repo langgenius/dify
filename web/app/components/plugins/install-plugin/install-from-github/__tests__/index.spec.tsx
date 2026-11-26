@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createHttpError } from '@/service/http-error'
@@ -6,7 +7,33 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
 import { TaskStatus } from '../../../types'
-import InstallFromGitHub from '../index'
+import useHideLogic from '../../hooks/use-hide-logic'
+import { GitHubInstallContent } from '../dialog'
+import Installer from '../index'
+
+function InstallFromGitHub(
+  props: Omit<ComponentProps<typeof Installer>, 'onStartInstalling' | 'onFinishInstalling'>,
+) {
+  const { popupRef, foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(
+    props.onClose,
+  )
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) foldAnimInto()
+      }}
+    >
+      <GitHubInstallContent popupRef={popupRef}>
+        <Installer
+          {...props}
+          onStartInstalling={handleStartToInstall}
+          onFinishInstalling={() => setIsInstalling(false)}
+        />
+      </GitHubInstallContent>
+    </Dialog>
+  )
+}
 
 const { fetchReleases, upload, install, pollTask, refresh, notify, installed, upgrade } =
   vi.hoisted(() => ({
@@ -27,14 +54,11 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleClientResponses, withConsoleResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.plugin.list.installations.ids.post': installed,
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.tasks.get': async () => ({ tasks: [] }),
       'workspaces.current.plugin.install.github.post': install,
     }),
@@ -116,9 +140,7 @@ it('submits the URL with Enter, installs the selected release, and waits for asy
   expect(nextButton()).toBeDisabled()
   const button = await loadPackage(user)
   expect(fetchReleases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
-    silent: true,
-  })
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
   await user.click(button)
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
   const pendingButton = screen.getByRole('button', { name: 'plugin.installModal.installing' })
@@ -326,9 +348,7 @@ it('blocks repeated upload and backward navigation until the selected package fi
   expect(back).toBeDisabled()
   await user.click(next)
   await user.click(back)
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
-    silent: true,
-  })
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
   expect(
     screen.queryByRole('button', { name: 'plugin.installModal.install' }),
   ).not.toBeInTheDocument()

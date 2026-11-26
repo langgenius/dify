@@ -1,18 +1,24 @@
+import type { i18n as I18n } from 'i18next'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
+import common from '@/i18n/locales/en-US/common.json'
+import workflowAgent from '@/i18n/locales/en-US/workflow-agent.json'
 import { SchemaDialog } from '../schema-dialog'
 
-vi.mock('react-i18next', async () => {
-  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: workflowAgent } = await import('@/i18n/locales/en-US/workflow-agent.json')
-  return {
-    ...actual,
-    ...createReactI18nextMock({
-      'workflowAgent.nodes.agent.parameterSchema': workflowAgent['nodes.agent.parameterSchema'],
-    }),
-  }
+vi.unmock('react-i18next')
+
+let i18n: I18n
+
+beforeEach(async () => {
+  i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { common, workflowAgent } },
+  })
 })
 
 it('keeps a long schema scrollable and Close reachable on a small viewport', async () => {
@@ -21,12 +27,14 @@ it('keeps a long schema scrollable and Close reachable on a small viewport', asy
     Array.from({ length: 50 }, (_, index) => [`property_${index}`, { type: Type.string }]),
   )
   const screen = await render(
-    <SchemaDialog rootName="Profile" schema={{ type: Type.object, properties }} />,
+    <I18nextProvider i18n={i18n}>
+      <SchemaDialog rootName="Profile" schema={{ type: Type.object, properties }} />
+    </I18nextProvider>,
   )
   const entry = screen.getByRole('button', { name: 'JSON Schema: Profile' })
   await entry.click()
   const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
-  const close = dialog.getByRole('button', { name: 'common.operation.close' })
+  const close = dialog.getByRole('button', { name: 'Close' })
   await expect.element(close).toBeVisible()
   const closeBounds = close.element().getBoundingClientRect()
   expect(closeBounds.left).toBeGreaterThanOrEqual(0)
@@ -51,20 +59,22 @@ it('shows complete schema names and descriptions on a narrow viewport', async ()
     'Use the receiving warehouse address, including the building, floor, and loading bay.'
   const fieldName = 'receiving_warehouse_building_floor_and_loading_bay_identifier'
   const screen = await render(
-    <SchemaDialog
-      rootName="Profile"
-      schema={{
-        type: Type.object,
-        description,
-        properties: {
-          destination: {
-            type: Type.object,
-            description: nestedDescription,
-            properties: { [fieldName]: { type: Type.string } },
+    <I18nextProvider i18n={i18n}>
+      <SchemaDialog
+        rootName="Profile"
+        schema={{
+          type: Type.object,
+          description,
+          properties: {
+            destination: {
+              type: Type.object,
+              description: nestedDescription,
+              properties: { [fieldName]: { type: Type.string } },
+            },
           },
-        },
-      }}
-    />,
+        }}
+      />
+    </I18nextProvider>,
   )
   await screen.getByRole('button', { name: 'JSON Schema: Profile' }).click()
   const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })

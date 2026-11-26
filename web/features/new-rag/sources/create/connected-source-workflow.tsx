@@ -24,15 +24,20 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   infiniteQueryOptions,
+  queryOptions,
+  skipToken,
   useInfiniteQuery,
+  useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getRequestErrorMessage } from '@/service/http-error'
 import { formatFileSize } from '@/utils/format'
 import { createRequestId } from '../../request-id'
 import {
@@ -107,9 +112,18 @@ type DriveBranch = {
   loaded: boolean
   loading: boolean
 }
+type PageBranchRequest = { parentId: string; cursors: (string | null)[] }
+type PageBranch = {
+  error: boolean
+  loading: boolean
+  nextCursor: string | null
+}
 
 const CONNECTION_PAGE_SIZE = 200
 const RESOURCE_PAGE_SIZE = 200
+const GITHUB_ROOT_PAGE_SIZE = 10
+const GITHUB_CHILD_PAGE_SIZE = 30
+const GITHUB_DIRECTORY_PAGE_SIZE = 100
 const MAX_SELECTION = 200
 const MAX_SOURCE_CURSOR_PAGES = 100
 
@@ -300,7 +314,16 @@ function resourceType(resource: SelectableResource) {
 }
 
 function isFolder(resource: SelectableResource) {
-  return /folder|directory|workspace/i.test(resourceType(resource))
+  return (
+    isGitHubPreviewContainer(resource) || /folder|directory|workspace/i.test(resourceType(resource))
+  )
+}
+
+function isGitHubPreviewContainer(resource: SelectableResource) {
+  return (
+    resource.kind === 'page' &&
+    (resource.page.type === 'github_collection' || resource.page.type === 'github_directory')
+  )
 }
 
 function isBucket(resource: SelectableResource) {
@@ -316,7 +339,9 @@ function isExpandableResource(resource: SelectableResource) {
 }
 
 function isSelectableResource(resource: SelectableResource) {
-  return resource.kind === 'page' || !isDriveContainer(resource)
+  return resource.kind === 'page'
+    ? !isGitHubPreviewContainer(resource)
+    : !isDriveContainer(resource)
 }
 
 function hasDriveFolderCheckbox(resource: SelectableResource) {
@@ -324,6 +349,8 @@ function hasDriveFolderCheckbox(resource: SelectableResource) {
 }
 
 function resourceIcon(resource: SelectableResource) {
+  if (resource.kind === 'page' && resource.page.type === 'repository')
+    return 'i-ri-folder-3-fill text-text-warning'
   if (isFolder(resource) || isBucket(resource)) return 'i-ri-folder-3-fill text-text-warning'
   if (resource.kind === 'page' && /database/i.test(resource.page.type))
     return 'i-ri-database-2-line text-text-accent'
@@ -337,14 +364,18 @@ function ResourceList({
   driveBranches,
   driveDescendantLeafKeys,
   expandedDriveContainers,
+  expandedPageKeys,
   folderSelectionIntents,
   hasMore,
   loadingMore,
   onLoadMore,
+  onLoadMorePageBranch,
+  onRetryPageBranch,
   onToggle,
   onToggleAll,
   onToggleExpanded,
   providerRegion,
+  pageBranches,
   resources,
   selectionAtLimit,
   selectionLimitId,
@@ -352,20 +383,25 @@ function ResourceList({
   selectionPending,
   selectionScope,
   selected,
+  treePreview,
 }: {
   collapsed: ReadonlySet<string>
   connection: SourceConnection
   driveBranches: ReadonlyMap<string, DriveBranch>
   driveDescendantLeafKeys: ReadonlyMap<string, string[]>
   expandedDriveContainers: ReadonlySet<string>
+  expandedPageKeys: ReadonlySet<string>
   folderSelectionIntents: ReadonlySet<string>
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
+  onLoadMorePageBranch: (resource: PageResource) => void
+  onRetryPageBranch: (resource: PageResource) => void
   onToggle: (resource: SelectableResource) => void
   onToggleAll: () => void
   onToggleExpanded: (resource: SelectableResource) => void
   providerRegion?: string
+  pageBranches: ReadonlyMap<string, PageBranch>
   resources: SelectableResource[]
   selectionAtLimit: boolean
   selectionLimitId: string
@@ -373,9 +409,11 @@ function ResourceList({
   selectionPending: boolean
   selectionScope: SelectableResource[]
   selected: ReadonlyMap<string, SelectableResource>
+  treePreview: boolean
 }) {
-  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
+  const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources', 'common'])
   const selectableResources = selectionScope.filter(isSelectableResource)
+  const selectableKeys = new Set(selectableResources.map((resource) => resource.key))
   const driveContainers = selectionScope.filter(isDriveContainer)
   const allDriveContainersLoaded = driveContainers.every(
     (resource) => driveBranches.get(resource.key)?.loaded,
@@ -388,6 +426,31 @@ function ResourceList({
     allDriveContainersLoaded &&
     selectableResources.every((item) => selected.has(item.key))
   const someSelected = selectableResources.some((item) => selected.has(item.key))
+  const lastVisibleChildByParent = new Map<string, string>()
+  const branchLoadMoreAfter = new Map<string, PageResource[]>()
+  if (treePreview) {
+    // Place each branch continuation after its last visible descendant, even when nested folders are open.
+    for (const resource of resources) {
+      if (resource.kind !== 'page') continue
+      for (const ancestorKey of resource.ancestorKeys)
+        lastVisibleChildByParent.set(ancestorKey, resource.key)
+    }
+    for (const resource of resources) {
+      if (resource.kind !== 'page') continue
+      const branch = pageBranches.get(resource.key)
+      if (
+        !expandedPageKeys.has(resource.key) ||
+        branch?.loading ||
+        branch?.error ||
+        !branch?.nextCursor
+      )
+        continue
+      const lastChildKey = lastVisibleChildByParent.get(resource.key) ?? resource.key
+      const rows = branchLoadMoreAfter.get(lastChildKey) ?? []
+      rows.unshift(resource)
+      branchLoadMoreAfter.set(lastChildKey, rows)
+    }
+  }
 
   return (
     <div className="flex h-78 flex-col overflow-hidden rounded-xl border border-divider-regular">
@@ -414,7 +477,7 @@ function ResourceList({
           const expandable = isExpandableResource(resource)
           const selectionKeys =
             resource.kind === 'page'
-              ? [resource.key, ...resource.descendantKeys]
+              ? [resource.key, ...resource.descendantKeys].filter((key) => selectableKeys.has(key))
               : isDriveContainer(resource)
                 ? (driveDescendantLeafKeys.get(resource.key) ?? [])
                 : [resource.key]
@@ -426,70 +489,109 @@ function ResourceList({
             (hasSelectionKeys && selectionKeys.every((key) => selected.has(key)))
           const indeterminate = !checked && selectionKeys.some((key) => selected.has(key))
           const driveBranch = resource.kind === 'file' ? driveBranches.get(resource.key) : undefined
+          const pageBranch = resource.kind === 'page' ? pageBranches.get(resource.key) : undefined
           const emptyDriveFolder =
             hasDriveFolderCheckbox(resource) && driveBranch?.loaded && !selectionKeys.length
+          const githubPreviewContainer = isGitHubPreviewContainer(resource)
           const selectionBlocked = selectionAtLimit && !checked
           const checkboxDisabled =
-            selectionBlocked || emptyDriveFolder || Boolean(driveBranch?.loading)
+            selectionBlocked ||
+            emptyDriveFolder ||
+            Boolean(driveBranch?.loading) ||
+            (githubPreviewContainer && !hasSelectionKeys)
           const expanded =
             resource.kind === 'page'
-              ? !collapsed.has(resource.key)
+              ? treePreview
+                ? expandedPageKeys.has(resource.key)
+                : !collapsed.has(resource.key)
               : expandedDriveContainers.has(resource.key)
           const rendersCheckbox =
-            resource.kind === 'page' ||
             hasDriveFolderCheckbox(resource) ||
+            githubPreviewContainer ||
             isSelectableResource(resource)
           return (
-            <li
-              key={resource.key}
-              className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
-              style={{
-                paddingInlineStart: `${12 + resource.depth * 26}px`,
-              }}
-            >
-              {expandable ? (
-                <button
-                  type="button"
-                  aria-label={resourceName(resource)}
-                  aria-expanded={expanded}
-                  className="flex size-5 items-center justify-center rounded text-text-tertiary hover:bg-state-base-hover"
-                  onClick={() => onToggleExpanded(resource)}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none',
-                      expanded && 'rotate-90',
-                    )}
+            <Fragment key={resource.key}>
+              <li
+                className={cn('flex items-center gap-2 pe-3', expandable ? 'h-8.5' : 'h-7.5')}
+                style={{ paddingInlineStart: `${12 + resource.depth * 26}px` }}
+              >
+                {expandable ? (
+                  <button
+                    type="button"
+                    aria-label={resourceName(resource)}
+                    aria-expanded={expanded}
+                    className="flex size-5 items-center justify-center rounded text-text-tertiary hover:bg-state-base-hover"
+                    onClick={() => onToggleExpanded(resource)}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'i-ri-arrow-right-s-line size-4 transition-transform motion-reduce:transition-none',
+                        expanded && 'rotate-90',
+                      )}
+                    />
+                  </button>
+                ) : (
+                  <span className="size-5" />
+                )}
+                {rendersCheckbox ? (
+                  <Checkbox
+                    aria-label={resourceName(resource)}
+                    aria-describedby={
+                      selectionLimitVisible && !checked ? selectionLimitId : undefined
+                    }
+                    checked={checked}
+                    disabled={checkboxDisabled}
+                    indeterminate={indeterminate}
+                    onCheckedChange={() => onToggle(resource)}
                   />
-                </button>
-              ) : (
-                <span className="size-5" />
-              )}
-              {rendersCheckbox ? (
-                <Checkbox
-                  aria-label={resourceName(resource)}
-                  aria-describedby={
-                    selectionLimitVisible && !checked ? selectionLimitId : undefined
-                  }
-                  checked={checked}
-                  disabled={checkboxDisabled}
-                  indeterminate={indeterminate}
-                  onCheckedChange={() => onToggle(resource)}
-                />
-              ) : (
-                <span className="size-4 shrink-0" />
-              )}
-              <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
-              <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
-                {resourceName(resource)}
-              </span>
-              {resource.kind === 'file' && resource.file.size != null && (
-                <span className="system-xs-regular text-text-quaternary">
-                  {formatFileSize(resource.file.size)}
+                ) : (
+                  <span className="size-4 shrink-0" />
+                )}
+                <span aria-hidden className={`${resourceIcon(resource)} size-4 shrink-0`} />
+                <span className="min-w-0 flex-1 truncate system-xs-regular text-text-primary">
+                  {resourceName(resource)}
                 </span>
-              )}
-            </li>
+                {expanded && pageBranch?.loading && (
+                  <span
+                    role="status"
+                    aria-label={t(($) => $.loading, { ns: 'common' })}
+                    className="i-ri-loader-4-line size-4 animate-spin text-text-tertiary"
+                  />
+                )}
+                {expanded && pageBranch?.error && resource.kind === 'page' && (
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    onClick={() => onRetryPageBranch(resource)}
+                  >
+                    {t(($) => $.retryProviderLoad)}
+                  </Button>
+                )}
+                {resource.kind === 'file' && resource.file.size != null && (
+                  <span className="system-xs-regular text-text-quaternary">
+                    {formatFileSize(resource.file.size)}
+                  </span>
+                )}
+              </li>
+              {branchLoadMoreAfter.get(resource.key)?.map((parent) => (
+                <li
+                  key={`load-more:${parent.key}`}
+                  className="flex h-8.5 items-center pe-3"
+                  style={{ paddingInlineStart: `${12 + (parent.depth + 1) * 26}px` }}
+                >
+                  <Button
+                    type="button"
+                    size="small"
+                    variant="ghost"
+                    onClick={() => onLoadMorePageBranch(parent)}
+                  >
+                    {t(($) => $.loadMore)}
+                  </Button>
+                </li>
+              ))}
+            </Fragment>
           )
         })}
       </ul>
@@ -532,6 +634,7 @@ type PreviewSourceSession = {
 function ResourceConfiguration({
   connection,
   draft,
+  githubTreePreview,
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
@@ -542,6 +645,7 @@ function ResourceConfiguration({
 }: {
   connection: SourceConnection
   draft: ConnectedSourceDraft
+  githubTreePreview: boolean
   knowledgeSpaceId: string
   onCompleted: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
@@ -552,15 +656,32 @@ function ResourceConfiguration({
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  // A failed submission is reconciled first and then shown next to the submit button.
+  const { mutateAsync: updateSource } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mutationOptions({
+      meta: { errorToast: false },
+    }),
+  )
+  const { mutateAsync: importSourceItems } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mutationOptions(
+      {
+        meta: { errorToast: false },
+      },
+    ),
+  )
   const previewRequestIdRef = useRef(createRequestId())
   const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
   const sessionRef = useRef<PreviewSourceSession>({ active: false, committed: false })
   const sourceNameInitializedRef = useRef(Boolean(draft.sourceName.trim()))
   const [previewSource, setPreviewSource] = useState<Source>()
-  const [previewError, setPreviewError] = useState(false)
+  const [previewError, setPreviewError] = useState<{ message?: string } | false>(false)
   const [selected, setSelected] = useState<Map<string, SelectableResource>>(() => new Map())
   const selectedRef = useRef<Map<string, SelectableResource>>(new Map())
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
+  const [expandedPageKeys, setExpandedPageKeys] = useState<Set<string>>(() => new Set())
+  const [pageBranchRequests, setPageBranchRequests] = useState<Map<string, PageBranchRequest>>(
+    () => new Map(),
+  )
   const [driveBranches, setDriveBranches] = useState<Map<string, DriveBranch>>(() => new Map())
   const [expandedDriveContainers, setExpandedDriveContainers] = useState<Set<string>>(
     () => new Set(),
@@ -569,7 +690,7 @@ function ResourceConfiguration({
   const [selectingAll, setSelectingAll] = useState(false)
   const [selectionLimitError, setSelectionLimitError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState(false)
+  const [submitError, setSubmitError] = useState<{ message?: string } | false>(false)
   const driveBranchesRef = useRef<Map<string, DriveBranch>>(new Map())
   const driveLoadPromisesRef = useRef<Map<string, Promise<FileResource[]>>>(new Map())
   const driveTransport = usesDriveTransport(draft)
@@ -635,8 +756,8 @@ function ResourceConfiguration({
         }
         session.source = source
         setPreviewSource(source)
-      } catch {
-        if (session.active) setPreviewError(true)
+      } catch (error) {
+        if (session.active) setPreviewError({ message: getRequestErrorMessage(error) })
       }
     }
     void createPreviewSource()
@@ -663,42 +784,105 @@ function ResourceConfiguration({
 
   const pagesQuery = useInfiniteQuery(
     infiniteQueryOptions({
-      queryKey: ['new-rag', 'connected-source-pages', knowledgeSpaceId, previewSource?.id],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            limit: RESOURCE_PAGE_SIZE,
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-      enabled: !driveTransport && Boolean(previewSource),
+      queryKey: [
+        'new-rag',
+        'connected-source-pages',
+        knowledgeSpaceId,
+        previewSource?.id,
+        githubTreePreview,
+      ],
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                limit: githubTreePreview ? GITHUB_ROOT_PAGE_SIZE : RESOURCE_PAGE_SIZE,
+                ...(githubTreePreview ? { view: 'tree' as const } : {}),
+                ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+              },
+            })
+        : skipToken,
+      enabled: !driveTransport,
       getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
       initialPageParam: null as string | null,
       retry: false,
     }),
   )
+  const pageBranchEntries = useMemo(
+    () =>
+      [...pageBranchRequests].flatMap(([resourceKey, request]) =>
+        request.cursors.map((cursor) => ({ cursor, parentId: request.parentId, resourceKey })),
+      ),
+    [pageBranchRequests],
+  )
+  const pageBranchQueries = useQueries({
+    queries: pageBranchEntries.map(({ cursor, parentId }) =>
+      queryOptions({
+        queryKey: [
+          'new-rag',
+          'connected-source-page-branch',
+          knowledgeSpaceId,
+          previewSource?.id,
+          parentId,
+          cursor,
+        ],
+        queryFn: previewSource
+          ? () =>
+              consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.pages.get({
+                params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+                query: {
+                  limit:
+                    parentId.startsWith('contents:') || parentId.startsWith('dir:')
+                      ? GITHUB_DIRECTORY_PAGE_SIZE
+                      : GITHUB_CHILD_PAGE_SIZE,
+                  parentId,
+                  view: 'tree',
+                  ...(cursor ? { cursor } : {}),
+                },
+              })
+          : skipToken,
+        enabled: githubTreePreview,
+        retry: false,
+      }),
+    ),
+  })
+  const pageBranches = (() => {
+    const branches = new Map<string, PageBranch>()
+    pageBranchEntries.forEach(({ resourceKey }, index) => {
+      const query = pageBranchQueries[index]
+      if (!query) return
+      const current = branches.get(resourceKey)
+      const nextCursor = query.data
+        ? (query.data.next_cursor ?? null)
+        : (current?.nextCursor ?? null)
+      branches.set(resourceKey, {
+        error: Boolean(current?.error || query.isError),
+        loading: Boolean(current?.loading || query.isPending || query.isFetching),
+        nextCursor:
+          nextCursor && !pageBranchRequests.get(resourceKey)?.cursors.includes(nextCursor)
+            ? nextCursor
+            : null,
+      })
+    })
+    return branches
+  })()
   const filesQuery = useInfiniteQuery(
     infiniteQueryOptions({
       queryKey: ['new-rag', 'connected-source-files', knowledgeSpaceId, previewSource?.id],
-      queryFn: ({ pageParam }) =>
-        consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: previewSource?.id ?? '',
-          },
-          query: {
-            maxKeys: RESOURCE_PAGE_SIZE,
-            ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
-            ...(pageParam?.continuationToken
-              ? { continuationToken: pageParam.continuationToken }
-              : {}),
-          },
-        }),
-      enabled: driveTransport && Boolean(previewSource),
+      queryFn: previewSource
+        ? ({ pageParam }) =>
+            consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.files.get({
+              params: { control_space_id: knowledgeSpaceId, source_id: previewSource.id },
+              query: {
+                maxKeys: RESOURCE_PAGE_SIZE,
+                ...(pageParam?.bucket ? { bucket: pageParam.bucket } : {}),
+                ...(pageParam?.continuationToken
+                  ? { continuationToken: pageParam.continuationToken }
+                  : {}),
+              },
+            })
+        : skipToken,
+      enabled: driveTransport,
       getNextPageParam: (lastPage, _allPages, _lastPageParam, allPageParams) => {
         const candidate = lastPage.buckets.find(
           (bucket) => bucket.is_truncated && bucket.continuation_token,
@@ -720,12 +904,16 @@ function ResourceConfiguration({
     }),
   )
 
-  const pageResources = useMemo<PageResource[]>(() => {
+  const pageResources: PageResource[] = (() => {
     const groups = new Map<
       string,
       { name: string; pages: Map<string, KnowledgeFsSourcePageResponse> }
     >()
-    for (const response of pagesQuery.data?.pages ?? []) {
+    const responses = [
+      ...(pagesQuery.data?.pages ?? []),
+      ...pageBranchQueries.flatMap((query) => (query.data ? [query.data] : [])),
+    ]
+    for (const response of responses) {
       for (const workspace of response.workspaces) {
         const groupId = workspace.workspace_id?.trim() || 'workspace'
         const group = groups.get(groupId) ?? {
@@ -768,7 +956,27 @@ function ResourceConfiguration({
         }
         return descendants
       }
-      return [...group.pages.values()].map((page) => {
+      const orderedPages = [...group.pages.values()]
+      if (githubTreePreview) {
+        const byId = group.pages
+        const visited = new Set<string>()
+        const treeOrder: KnowledgeFsSourcePageResponse[] = []
+        const visit = (page: KnowledgeFsSourcePageResponse) => {
+          if (visited.has(page.page_id)) return
+          visited.add(page.page_id)
+          treeOrder.push(page)
+          for (const childId of children.get(page.page_id) ?? []) {
+            const child = byId.get(childId)
+            if (child) visit(child)
+          }
+        }
+        for (const page of orderedPages) {
+          if (!page.parent_id || !byId.has(page.parent_id)) visit(page)
+        }
+        for (const page of orderedPages) visit(page)
+        orderedPages.splice(0, orderedPages.length, ...treeOrder)
+      }
+      return orderedPages.map((page) => {
         const ancestorKeys = ancestorsFor(page)
         return {
           ancestorKeys,
@@ -776,14 +984,14 @@ function ResourceConfiguration({
           descendantKeys: descendantsFor(page.page_id),
           groupId,
           groupName: group.name,
-          hasChildren: Boolean(children.get(page.page_id)?.length),
+          hasChildren: Boolean(page.has_children || children.get(page.page_id)?.length),
           key: keyFor(page.page_id),
           kind: 'page' as const,
           page,
         }
       })
     })
-  }, [connection.name, pagesQuery.data?.pages])
+  })()
   const rootFileResources = useMemo<FileResource[]>(() => {
     const resourcesByKey = new Map<string, FileResource>()
     for (const response of filesQuery.data?.pages ?? []) {
@@ -966,9 +1174,19 @@ function ResourceConfiguration({
       driveTransport
         ? visibleDriveResources
         : pageResources.filter(
-            (resource) => !resource.ancestorKeys.some((ancestorKey) => collapsed.has(ancestorKey)),
+            (resource) =>
+              !resource.ancestorKeys.some((ancestorKey) =>
+                githubTreePreview ? !expandedPageKeys.has(ancestorKey) : collapsed.has(ancestorKey),
+              ),
           ),
-    [collapsed, driveTransport, pageResources, visibleDriveResources],
+    [
+      collapsed,
+      driveTransport,
+      expandedPageKeys,
+      githubTreePreview,
+      pageResources,
+      visibleDriveResources,
+    ],
   )
   const queryPending = driveTransport ? filesQuery.isPending : pagesQuery.isPending
   const queryError = driveTransport ? filesQuery.error : pagesQuery.error
@@ -1057,7 +1275,7 @@ function ResourceConfiguration({
       void toggleDriveFolder(resource)
       return
     }
-    if (!isSelectableResource(resource)) return
+    if (!isSelectableResource(resource) && !isGitHubPreviewContainer(resource)) return
     const removingResource = selectedRef.current.has(resource.key)
     if (resource.kind === 'file' && removingResource)
       setFolderSelectionIntents((intents) => {
@@ -1068,10 +1286,14 @@ function ResourceConfiguration({
     const resourcesToToggle =
       resource.kind === 'page'
         ? [
-            resource,
-            ...pageResources.filter((candidate) => resource.descendantKeys.includes(candidate.key)),
+            ...(isSelectableResource(resource) ? [resource] : []),
+            ...pageResources.filter(
+              (candidate) =>
+                resource.descendantKeys.includes(candidate.key) && isSelectableResource(candidate),
+            ),
           ]
         : [resource]
+    if (!resourcesToToggle.length) return
     updateSelected((current) => {
       const next = new Map(current)
       const removing = resourcesToToggle.every((candidate) => next.has(candidate.key))
@@ -1161,6 +1383,25 @@ function ResourceConfiguration({
 
   const toggleExpanded = (resource: SelectableResource) => {
     if (resource.kind === 'page') {
+      if (githubTreePreview) {
+        const expanding = !expandedPageKeys.has(resource.key)
+        setExpandedPageKeys((current) => {
+          const next = new Set(current)
+          if (expanding) next.add(resource.key)
+          else next.delete(resource.key)
+          return next
+        })
+        if (expanding) {
+          setPageBranchRequests((current) => {
+            if (current.has(resource.key)) return current
+            return new Map(current).set(resource.key, {
+              parentId: resource.page.page_id,
+              cursors: [null],
+            })
+          })
+        }
+        return
+      }
       setCollapsed((current) => {
         const next = new Set(current)
         if (next.has(resource.key)) next.delete(resource.key)
@@ -1177,6 +1418,26 @@ function ResourceConfiguration({
       return next
     })
     if (expanding) void loadDriveChildren(resource).catch(() => undefined)
+  }
+
+  const loadMorePageBranch = (resource: PageResource) => {
+    const nextCursor = pageBranches.get(resource.key)?.nextCursor
+    if (!nextCursor) return
+    setPageBranchRequests((current) => {
+      const request = current.get(resource.key)
+      if (!request || request.cursors.includes(nextCursor)) return current
+      return new Map(current).set(resource.key, {
+        ...request,
+        cursors: [...request.cursors, nextCursor],
+      })
+    })
+  }
+
+  const retryPageBranch = (resource: PageResource) => {
+    pageBranchEntries.forEach(({ resourceKey }, index) => {
+      if (resourceKey === resource.key && pageBranchQueries[index]?.isError)
+        void pageBranchQueries[index].refetch()
+    })
   }
 
   const loadMore = () => {
@@ -1212,7 +1473,7 @@ function ResourceConfiguration({
       const currentSource = session.source
       if (!currentSource?.version) throw new Error('Source has no version')
       const finalSource = sourceFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
+        await updateSource({
           body: {
             expectedVersion: currentSource.version,
             name: draft.sourceName.trim(),
@@ -1250,7 +1511,7 @@ function ResourceConfiguration({
       }
       const importWorkflow = sourceWorkflowFromApi(
         await (!driveTransport
-          ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          ? importSourceItems({
               body: {
                 items: selectedPages.map((resource) => ({
                   lastEditedTime: resource.page.last_edited_time ?? undefined,
@@ -1269,7 +1530,7 @@ function ResourceConfiguration({
                 source_id: finalSource.id,
               },
             })
-          : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+          : importSourceItems({
               body: {
                 items: selectedFiles.map((resource) => ({
                   bucket: resource.bucket,
@@ -1306,7 +1567,8 @@ function ResourceConfiguration({
       session.committed = true
       if (session.active) setPreviewSource(committedSource)
       await completeSubmission()
-    } catch {
+    } catch (submissionError) {
+      let reconcileErrorMessage: string | undefined
       try {
         if (session.source) {
           const reconciledSource = sourceFromApi(
@@ -1329,10 +1591,14 @@ function ResourceConfiguration({
           if (!session.active) return
           setPreviewSource(reconciledSource)
         }
-      } catch {
+      } catch (error) {
         // Keep the last known source so the visible retry path remains available.
+        reconcileErrorMessage = getRequestErrorMessage(error)
       }
-      if (session.active) setSubmitError(true)
+      if (session.active)
+        setSubmitError({
+          message: getRequestErrorMessage(submissionError) ?? reconcileErrorMessage,
+        })
     }
   }
 
@@ -1368,7 +1634,9 @@ function ResourceConfiguration({
         </div>
       ) : previewError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {previewError.message ?? t(($) => $.providerLoadFailed)}
+          </p>
           <Button type="button" className="mt-3" onClick={() => globalThis.location.reload()}>
             {t(($) => $.retryProviderLoad)}
           </Button>
@@ -1422,14 +1690,18 @@ function ResourceConfiguration({
                 driveBranches={driveBranches}
                 driveDescendantLeafKeys={driveDescendantLeafKeys}
                 expandedDriveContainers={expandedDriveContainers}
+                expandedPageKeys={expandedPageKeys}
                 folderSelectionIntents={folderSelectionIntents}
                 hasMore={hasMore}
                 loadingMore={loadingMore}
                 onLoadMore={loadMore}
+                onLoadMorePageBranch={loadMorePageBranch}
+                onRetryPageBranch={retryPageBranch}
                 onToggle={toggle}
                 onToggleAll={toggleAll}
                 onToggleExpanded={toggleExpanded}
                 providerRegion={providerRegion}
+                pageBranches={pageBranches}
                 resources={visibleResources}
                 selectionAtLimit={selectionAtLimit}
                 selectionLimitId={selectionLimitId}
@@ -1437,6 +1709,7 @@ function ResourceConfiguration({
                 selectionPending={selectionPending}
                 selectionScope={resources}
                 selected={selected}
+                treePreview={githubTreePreview}
               />
             )}
           </section>
@@ -1446,7 +1719,7 @@ function ResourceConfiguration({
       <ConnectedSourceSyncPolicyField draft={draft} onDraftChange={onDraftChange} />
       {submitError && (
         <p role="alert" className="system-xs-regular text-text-destructive">
-          {t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
+          {submitError.message ?? t(($) => $.addSourceFailed, { ns: 'knowledgeSources' })}
         </p>
       )}
       <div className="mt-1 flex justify-end gap-2 border-t border-divider-subtle pt-4.75">
@@ -1475,6 +1748,7 @@ function ResourceConfiguration({
 function AppliedResourceConfiguration({
   connection,
   draft,
+  githubTreePreview,
   knowledgeSpaceId,
   onCompleted,
   onDraftChange,
@@ -1487,6 +1761,7 @@ function AppliedResourceConfiguration({
 }: {
   connection: SourceConnection
   draft: ConnectedSourceDraft
+  githubTreePreview: boolean
   knowledgeSpaceId: string
   onCompleted: () => void
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
@@ -1534,6 +1809,7 @@ function AppliedResourceConfiguration({
         <ResourceConfiguration
           connection={connection}
           draft={draft}
+          githubTreePreview={githubTreePreview}
           knowledgeSpaceId={knowledgeSpaceId}
           onCompleted={onCompleted}
           onDraftChange={onDraftChange}
@@ -1617,10 +1893,17 @@ function ConnectedSourceWorkflowSession({
 }: ConnectedSourceWorkflowProps) {
   const { t } = useTranslation(['knowledgeSpace', 'knowledgeSources'])
   const queryClient = useQueryClient()
+  const { mutateAsync: createConnection } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post.mutationOptions({
+      // A failed provision is reconciled first and then shown inline with a retry.
+      meta: { errorToast: false },
+    }),
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceProviders.get.queryOptions({
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: { params: { control_space_id: knowledgeSpaceId } },
-      context: { silent: true },
       retry: false,
       select: sourceProviderListFromApi,
     }),
@@ -1633,7 +1916,8 @@ function ConnectedSourceWorkflowSession({
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.infiniteOptions({
-      context: { silent: true },
+      // Failures, including a failed next page, are shown inline with a retry.
+      meta: { errorToast: false },
       input: (pageParam) => ({
         params: { control_space_id: knowledgeSpaceId },
         query: {
@@ -1697,7 +1981,7 @@ function ConnectedSourceWorkflowSession({
   )
   const [connectionOverride, setConnectionOverride] = useState<SourceConnection>()
   const [provisioningConnection, setProvisioningConnection] = useState(false)
-  const [provisionError, setProvisionError] = useState(false)
+  const [provisionError, setProvisionError] = useState<{ message?: string } | false>(false)
   const provisioningAttemptsRef = useRef(new Set<string>())
   const connection =
     connectionOverride &&
@@ -1766,7 +2050,7 @@ function ConnectedSourceWorkflowSession({
       try {
         rememberConnection(
           sourceConnectionFromApi(
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceConnections.post({
+            await createConnection({
               body: {
                 authKind: 'endpoint',
                 configuration: {
@@ -1784,7 +2068,7 @@ function ConnectedSourceWorkflowSession({
             }),
           ),
         )
-      } catch {
+      } catch (error) {
         const refreshed = await refetchConnections()
         const refreshedConnections =
           refreshed.data?.pages.flatMap((page) => sourceConnectionListFromApi(page).items) ?? []
@@ -1795,12 +2079,13 @@ function ConnectedSourceWorkflowSession({
         )
         if (reconciled && ['active', 'provisioning'].includes(reconciled.status))
           rememberConnection(reconciled)
-        else setProvisionError(true)
+        else setProvisionError({ message: getRequestErrorMessage(error) })
       } finally {
         setProvisioningConnection(false)
       }
     },
     [
+      createConnection,
       credential,
       datasourceIdentity,
       datasourceProvider,
@@ -1845,7 +2130,10 @@ function ConnectedSourceWorkflowSession({
         </div>
       ) : queryError ? (
         <div className="rounded-xl bg-background-section p-4">
-          <p className="system-sm-semibold text-text-primary">{t(($) => $.providerLoadFailed)}</p>
+          <p className="system-sm-semibold text-text-primary">
+            {getRequestErrorMessage(queryError === true ? connectionsQuery.error : queryError) ??
+              t(($) => $.providerLoadFailed)}
+          </p>
           <Button
             className="mt-3"
             onClick={() =>
@@ -1884,6 +2172,10 @@ function ConnectedSourceWorkflowSession({
           key={`${provider.id}:${connection.id}`}
           connection={connection}
           draft={providerDraft}
+          githubTreePreview={
+            datasourceProvider?.plugin.plugin_id === 'langgenius/github_datasource' &&
+            datasourceProvider.datasource.identity.name === 'github'
+          }
           knowledgeSpaceId={knowledgeSpaceId}
           onCompleted={onCompleted}
           onDraftChange={onDraftChange}
@@ -1922,6 +2214,16 @@ function ConnectedSourceWorkflowSession({
               provider: providerDraft.provider,
             })}
           </p>
+          {/* A failed retry keeps this panel, so its failure is shown here. */}
+          {provisionError && (
+            <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
+              {provisionError.message ??
+                t(($) => $.connectionFailed, {
+                  ns: 'knowledgeSources',
+                  provider: providerDraft.provider,
+                })}
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
             <Button
               variant="primary"
@@ -1960,6 +2262,9 @@ function ConnectedSourceWorkflowSession({
               provider: providerDraft.provider,
             })}
           </p>
+          {provisionError.message && (
+            <p className="mt-1 system-xs-regular text-text-tertiary">{provisionError.message}</p>
+          )}
           <Button
             className="mt-3"
             onClick={() => {

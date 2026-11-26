@@ -1,9 +1,18 @@
+import type { MarketplacePlugin, SearchAdvancedResponse } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { createInstance } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appMessages from '@/i18n/locales/en-US/app.json'
+import commonMessages from '@/i18n/locales/en-US/common.json'
+import navigationMessages from '@/i18n/locales/en-US/navigation.json'
+import pluginMessages from '@/i18n/locales/en-US/plugin.json'
+import { createDeferred } from '@/test/deferred'
+import { setupFakeApi } from '@/test/fake-api'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
 import HomeSearch from '../home-search'
@@ -14,63 +23,49 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const { mockTemplateSearch } = vi.hoisted(() => ({
-  mockTemplateSearch: vi.fn(),
-}))
+vi.unmock('react-i18next')
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const original = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+const plugin = {
+  type: 'plugin',
+  org: 'langgenius',
+  name: 'google-search',
+  label: { en_US: 'Google Search' },
+  brief: { en_US: 'Search the web from your workflow.' },
+  category: 'tool',
+} as Partial<MarketplacePlugin> as MarketplacePlugin
 
-  return {
-    ...original,
-    ...createReactI18nextMock({
-      clearSearch: 'Clear search',
-      loading: 'Loading',
-      'marketplace.loadError': 'Failed to load. Please try again.',
-      'marketplace.home.plugins': 'Plugins',
-      'marketplace.home.templates': 'Templates',
-      'marketplace.noPluginFound': 'No integration found',
-      'newApp.noTemplateFound': 'No templates found',
-    }),
-  }
-})
-
-vi.mock('@/service/marketplace', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/service/marketplace')>()
-
-  return {
-    ...original,
-    marketplaceQuery: {
-      searchAdvanced: {
-        queryOptions: (
-          options: Parameters<typeof original.marketplaceQuery.searchAdvanced.queryOptions>[0],
-        ) => ({
-          ...original.marketplaceQuery.searchAdvanced.queryOptions(options),
-          queryFn: () => ({ data: { plugins: [], total: 0 } }),
-        }),
-      },
-      templateSearch: {
-        queryOptions: (
-          options: Parameters<typeof original.marketplaceQuery.templateSearch.queryOptions>[0],
-        ) => ({
-          ...original.marketplaceQuery.templateSearch.queryOptions(options),
-          queryFn: () => mockTemplateSearch(options.input),
-        }),
-      },
-    },
-  }
-})
+const template = {
+  id: 'template-1',
+  template_name: 'Legal Research Agent',
+  overview: 'Research legal questions with cited sources.',
+  publisher_handle: 'dify',
+  usage_count: 120,
+  categories: ['knowledge'],
+  icon: '📄',
+  icon_background: '#FFFFFF',
+  icon_file_key: '',
+}
 
 let queryClient: QueryClient
+let i18n: ReturnType<typeof createInstance>
+
+const fake = setupFakeApi(() => ({
+  marketplace: {
+    searchAdvanced: () => ({ data: { plugins: [], total: 0 } }),
+    templateSearch: () => ({ data: { templates: [], total: 0 } }),
+  },
+}))
 
 function Wrapper({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+    </QueryClientProvider>
+  )
 }
 
 function StickyTemplateSearch() {
   const [value, setValue] = useState('')
-
   return (
     <MarketplaceSearchAutocomplete
       locale="en-US"
@@ -84,7 +79,6 @@ function StickyTemplateSearch() {
 
 function PinnedHeaderState() {
   const isCatalogPinned = useAtomValue(homeCatalogPinnedAtom)
-
   return (
     <header className="sticky top-0 z-50 flex h-12 items-center bg-background-default">
       <span>Dify Marketplace</span>
@@ -97,16 +91,57 @@ function PinnedHeaderState() {
   )
 }
 
-describe('Marketplace search autocomplete layout', () => {
-  beforeEach(() => {
+function SelectionOwner() {
+  const [value, setValue] = useState('')
+  const [selection, setSelection] = useState('None')
+  const [submitted, setSubmitted] = useState(false)
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        setSubmitted(true)
+      }}
+    >
+      <MarketplaceSearchAutocomplete
+        inputName="q"
+        locale="en-US"
+        onSuggestionSelect={(result) => {
+          setSelection(
+            result.kind === 'plugin' ? result.plugin.name : result.template.template_name,
+          )
+        }}
+        onValueChange={setValue}
+        placeholder="Search plugins or templates"
+        scope="all"
+        value={value}
+      />
+      <output aria-label="Selected result">{selection}</output>
+      <output aria-label="Form submitted">{submitted ? 'yes' : 'no'}</output>
+    </form>
+  )
+}
+
+describe('Marketplace search autocomplete', () => {
+  beforeEach(async () => {
+    await page.viewport(1280, 720)
     queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } })
-    mockTemplateSearch.mockReset()
-    mockTemplateSearch.mockResolvedValue({ data: { templates: [], total: 0 } })
+    i18n = createInstance()
+    await i18n.init({
+      lng: 'en-US',
+      keySeparator: false,
+      resources: {
+        'en-US': {
+          app: appMessages,
+          common: commonMessages,
+          navigation: navigationMessages,
+          plugin: pluginMessages,
+        },
+      },
+    })
+    vi.clearAllMocks()
   })
 
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {
-    await page.viewport(1280, 720)
-
     const screen = await render(
       <Wrapper>
         <HomeStickyStateProvider>
@@ -131,49 +166,36 @@ describe('Marketplace search autocomplete layout', () => {
         </HomeStickyStateProvider>
       </Wrapper>,
     )
-
     const container = screen.getByTestId('marketplace-scroll-container')
-    await expect.element(container).toBeVisible()
     const scrollContainer = container.element()
     scrollContainer.scrollTop = 300
     scrollContainer.dispatchEvent(new Event('scroll'))
     await new Promise(requestAnimationFrame)
 
     const input = screen.getByRole('combobox', { name: 'Search templates' })
-    await expect.element(screen.getByRole('tablist', { name: 'Header catalog tabs' })).toBeVisible()
-
-    const catalogNavigation = screen
-      .getByRole('region', { name: 'navigation.mainNav.marketplace' })
-      .element()
-    const scrollTopBefore = scrollContainer.scrollTop
-    await expect.element(input).toBeVisible()
-    const inputTopBefore = input.element().getBoundingClientRect().top
-    const navigationTopBefore = catalogNavigation.getBoundingClientRect().top
+    const navigation = screen.getByRole('region', { name: 'Marketplace' }).element()
+    const scrollTop = scrollContainer.scrollTop
+    const inputTop = input.element().getBoundingClientRect().top
+    const navigationTop = navigation.getBoundingClientRect().top
 
     await input.fill('open')
     await expect.element(screen.getByText('No templates found')).toBeVisible()
 
-    expect(scrollContainer.scrollTop).toBe(scrollTopBefore)
-    // Base UI hides the page outside the open suggestions from assistive technology, so the
-    // pinned tabs are only reachable when hidden elements are included.
+    expect(scrollContainer.scrollTop).toBe(scrollTop)
+    expect(input.element().getBoundingClientRect().top).toBeCloseTo(inputTop)
+    expect(navigation.getBoundingClientRect().top).toBeCloseTo(navigationTop)
     await expect
       .element(screen.getByRole('tablist', { name: 'Header catalog tabs', includeHidden: true }))
       .toBeVisible()
-    expect(input.element().getBoundingClientRect().top).toBeCloseTo(inputTopBefore)
-    expect(catalogNavigation.getBoundingClientRect().top).toBeCloseTo(navigationTopBefore)
   })
 
-  // The search owns no Enter handler: the browser's implicit submission submits the route form
-  // when no suggestion is highlighted. Only a real browser performs that submission.
-  it('submits the route search form on Enter when no suggestion is highlighted', async () => {
-    const handleSubmit = vi.fn((event: Event) => {
-      event.preventDefault()
-    })
-
+  it('uses native implicit submission with the route form fields when no result is highlighted', async () => {
+    let submitted: Record<string, FormDataEntryValue> | undefined
     const screen = await render(
       <Wrapper>
         <MarketplaceSearchForm
           action="/search/templates"
+          language="en-US"
           locale="en-US"
           placeholder="Search templates"
           query=""
@@ -181,16 +203,114 @@ describe('Marketplace search autocomplete layout', () => {
         />
       </Wrapper>,
     )
-
-    screen.container.querySelector('form')!.addEventListener('submit', handleSubmit)
-
+    let action: string | undefined
+    screen.container.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const form = event.target
+      if (!(form instanceof HTMLFormElement)) return
+      action = form.action
+      submitted = Object.fromEntries(new FormData(form))
+    })
     const input = screen.getByRole('combobox', { name: 'Search templates' })
+
     await input.fill('open')
     await expect.element(screen.getByText('No templates found')).toBeVisible()
-
     await userEvent.keyboard('{Enter}')
 
-    expect(handleSubmit).toHaveBeenCalledOnce()
+    expect(action).toContain('/search/templates')
+    expect(submitted).toEqual({ language: 'en-US', q: 'open' })
     await expect.element(input).toHaveValue('open')
+  })
+
+  it('groups mixed results and selects the highlighted option without submitting its owner', async () => {
+    fake.use({
+      marketplace: {
+        searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+        templateSearch: () => ({ data: { templates: [template], total: 1 } }),
+      },
+    })
+    const screen = await render(
+      <Wrapper>
+        <SelectionOwner />
+      </Wrapper>,
+    )
+    const input = screen.getByRole('combobox', { name: 'Search plugins or templates' })
+
+    await input.fill('search')
+    await expect
+      .element(screen.getByRole('group', { name: 'Templates' }).getByText('Legal Research Agent'))
+      .toBeVisible()
+    await expect
+      .element(screen.getByRole('group', { name: 'Plugins' }).getByText('Google Search'))
+      .toBeVisible()
+    await userEvent.keyboard('{ArrowDown}')
+    await expect.element(input).toHaveAttribute('aria-activedescendant')
+    await userEvent.keyboard('{Enter}')
+
+    await expect
+      .element(screen.getByRole('status', { name: 'Selected result' }))
+      .toHaveTextContent('Legal Research Agent')
+    await expect
+      .element(screen.getByRole('status', { name: 'Form submitted' }))
+      .toHaveTextContent('no')
+    await expect.element(input).toHaveValue('')
+  })
+
+  it('keeps prior results during refresh but does not reopen after the user dismisses them', async () => {
+    const refresh = createDeferred<SearchAdvancedResponse>()
+    fake.use({
+      marketplace: {
+        searchAdvanced: ({ body }) =>
+          body.query === 'google' ? { data: { plugins: [plugin], total: 1 } } : refresh.promise,
+      },
+    })
+    const screen = await render(
+      <Wrapper>
+        <SelectionOwner />
+        <button type="button">Outside search</button>
+      </Wrapper>,
+    )
+    const input = screen.getByRole('combobox', { name: 'Search plugins or templates' })
+
+    await input.fill('google')
+    await expect.element(screen.getByText('Google Search')).toBeVisible()
+    await input.fill('google drive')
+    await expect.element(screen.getByText('Google Search')).toBeVisible()
+    await expect.element(screen.getByText('Loading')).toBeVisible()
+    await expect
+      .poll(() => fake.marketplace.searchAdvanced)
+      .toHaveBeenCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ query: 'google drive' }) }),
+      )
+
+    await userEvent.keyboard('{Escape}')
+    await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
+    refresh.resolve({ data: { plugins: [plugin], total: 1 } })
+    await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('announces an empty result and clears the controlled value without querying the other scope', async () => {
+    const screen = await render(
+      <Wrapper>
+        <MarketplaceSearchForm
+          action="/plugins"
+          locale="en-US"
+          placeholder="Search plugins"
+          query=""
+          scope="plugins"
+        />
+      </Wrapper>,
+    )
+    const input = screen.getByRole('combobox', { name: 'Search plugins' })
+
+    await input.fill('zzzz')
+    await expect.element(screen.getByText('No integration found')).toBeVisible()
+    await expect.element(screen.getByText('Loading')).not.toBeInTheDocument()
+    await userEvent.keyboard('{Escape}')
+    await screen.getByRole('button', { name: 'Clear Search plugins' }).click()
+
+    await expect.element(input).toHaveValue('')
+    await expect.element(input).toHaveFocus()
+    expect(fake.marketplace.templateSearch).not.toHaveBeenCalled()
   })
 })

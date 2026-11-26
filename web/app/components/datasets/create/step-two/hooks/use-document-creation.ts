@@ -14,7 +14,7 @@ import type {
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -86,10 +86,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
   const { mutateAsync: createDocument, isPending: isCreatingDocument } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.post.mutationOptions(),
   )
-  const queryClient = useQueryClient()
-  const invalidDatasetList = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: consoleQuery.datasets.get.key() })
-  }, [queryClient])
   const isCreating = isCreatingFirstDocument || isCreatingDocument
   // Validate creation params
   const validateParams = useCallback(
@@ -247,7 +243,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         )
       }
       mutateDatasetRes?.()
-      invalidDatasetList()
       trackEvent('create_datasets', {
         data_source_type: dataSourceType,
         indexing_technique: indexType,
@@ -263,7 +258,6 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
       updateResultCache,
       updateRetrievalMethodCache,
       mutateDatasetRes,
-      invalidDatasetList,
       dataSourceType,
       onStepChange,
       isSetting,

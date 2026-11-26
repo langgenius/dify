@@ -19,8 +19,8 @@ import Badge from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import { toast } from '@/app/notifications'
-import { consoleClient } from '@/service/console'
-import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
+import { consoleQuery } from '@/service/console'
+import { usePluginTaskList } from '@/service/use-plugins'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningContent from './downgrade-warning'
@@ -55,14 +55,23 @@ const UpdateFromMarketplaceContent = ({
   const icon = getIconUrl(originalPackageInfo.payload.icon)
 
   const { handleInstallTaskStart } = usePluginTaskList(payload.category)
-  const exclude = useRemoveAutoUpgrade()
+  const exclude = useMutation(
+    consoleQuery.workspaces.current.plugin.autoUpgrade.exclude.post.mutationOptions(),
+  )
+  const upgradeFromMarketplace = useMutation(
+    consoleQuery.workspaces.current.plugin.upgrade.marketplace.post.mutationOptions(),
+  )
   const upgrade = useMutation({
     mutationKey: updateMutationKey(payload),
+    // The nested exclude and upgrade mutations report their own request failures.
+    meta: { errorToast: false },
     // Keep exclusion and task creation in one submission. The task list owns installation progress.
     mutationFn: async (excludeFromAutoUpdate: boolean) => {
       if (excludeFromAutoUpdate)
-        await exclude.mutateAsync({ plugin_id: pluginId, category: payload.category })
-      const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
+        await exclude.mutateAsync({
+          body: { plugin_id: pluginId, category: payload.category },
+        })
+      const response = await upgradeFromMarketplace.mutateAsync({
         body: {
           original_plugin_unique_identifier: originalPackageInfo.id,
           new_plugin_unique_identifier: targetPackageInfo.id,

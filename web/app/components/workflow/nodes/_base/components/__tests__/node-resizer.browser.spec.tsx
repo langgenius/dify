@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import ReactFlow, { useNodes } from 'reactflow'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -7,21 +6,12 @@ import { renderWorkflowBrowserComponent as render } from '@/app/components/workf
 import NoteNode from '@/app/components/workflow/note-node'
 import { NoteTheme } from '@/app/components/workflow/note-node/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import 'reactflow/dist/style.css'
 
-const unexpectedFetch = vi.fn<typeof fetch>(() => new Promise(() => {}))
-beforeEach(() => vi.stubGlobal('fetch', unexpectedFetch))
-afterEach(() => {
-  vi.unstubAllGlobals()
-  expect(unexpectedFetch).not.toHaveBeenCalled()
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
 })
-
-// Editing and persistence are independent of the Note's rendered resize affordance.
-vi.mock('../../../../note-node/note-editor', () => ({
-  NoteEditorContextProvider: ({ children }: { children: ReactNode }) => children,
-  NoteEditor: () => <span>Note content</span>,
-  NoteEditorToolbar: () => null,
-}))
 
 const noteNodeTypes = { note: NoteNode }
 

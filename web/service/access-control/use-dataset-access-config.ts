@@ -110,19 +110,11 @@ export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
           access_policy_ids: payload.accessPolicyIds,
         },
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.accessPolicy.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this knowledge base can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: datasetRbacContract.key({ input: { params: { dataset_id: datasetId } } }),
+      }),
   })
 }
 
@@ -145,19 +137,11 @@ export const useRemoveDatasetAccessPolicyMemberBindings = (datasetId: string) =>
           }),
         ),
       ),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.accessPolicy.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this knowledge base can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: datasetRbacContract.key({ input: { params: { dataset_id: datasetId } } }),
+      }),
   })
 }
 
@@ -175,18 +159,10 @@ export const useUpdateDatasetAutomaticIncludeWorkspaceMembers = (datasetId: stri
           automatic_include_workspace_members: automaticIncludeWorkspaceMembers,
         },
       }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.userAccessPolicies.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.whitelist.get.key({ type: 'query' }),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: datasetRbacContract.whitelistConfig.get.key({ type: 'query' }),
-        }),
-      ])
-    },
+    // Every access setting of this knowledge base can change with membership.
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: datasetRbacContract.key({ input: { params: { dataset_id: datasetId } } }),
+      }),
   })
 }

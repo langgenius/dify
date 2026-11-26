@@ -1,6 +1,12 @@
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import appDebug from '@/i18n/locales/en-US/app-debug.json'
+import appGeneration from '@/i18n/locales/en-US/app-generation.json'
+import common from '@/i18n/locales/en-US/common.json'
+import workflow from '@/i18n/locales/en-US/workflow.json'
 import { consoleQuery } from '@/service/console'
 import {
   createCatalogModelFixture,
@@ -9,25 +15,10 @@ import {
   seedModelProviderQueries,
 } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { installFakeApi } from '@/test/fake-api'
 import GetAutomaticRes from '../get-automatic-res'
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: appDebug } = await import('@/i18n/locales/en-US/app-debug.json')
-  const { default: appGeneration } = await import('@/i18n/locales/en-US/app-generation.json')
-  const { default: common } = await import('@/i18n/locales/en-US/common.json')
-  return createReactI18nextMock({ ...appDebug, ...appGeneration, ...common })
-})
-
-vi.mock('@/service/debug', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/debug')>()),
-  generateBasicAppFirstTimeRule: async () => ({
-    prompt: 'Summarize the supplied meeting notes into actionable next steps for the team.',
-    variables: [],
-    opening_statement: '',
-  }),
-  generateRule: vi.fn(),
-}))
+vi.unmock('react-i18next')
 
 const expectWithin = (element: Element, container: Element) => {
   const rect = element.getBoundingClientRect()
@@ -39,6 +30,21 @@ const expectWithin = (element: Element, container: Element) => {
 
 describe('Prompt generator reflow', () => {
   beforeEach(() => {
+    onTestFinished(
+      installFakeApi({
+        console: {
+          ruleGenerate: {
+            post: () => ({
+              prompt:
+                'Summarize the supplied meeting notes into actionable next steps for the team.',
+              variables: [],
+              opening_statement: '',
+              error: '',
+            }),
+          },
+        },
+      }),
+    )
     localStorage.clear()
     sessionStorage.clear()
   })
@@ -71,18 +77,26 @@ describe('Prompt generator reflow', () => {
         consoleQuery.workspaces.current.modelProviders.byProvider.models.parameterRules.get.key(),
         { initialData: { data: [] } },
       )
+      const i18n = createInstance()
+      await i18n.init({
+        lng: 'en-US',
+        resources: { 'en-US': { appDebug, appGeneration, common, workflow } },
+        keySeparator: false,
+      })
       const screen = await render(
         <NuqsTestingAdapter>
-          <QueryProvider>
-            <GetAutomaticRes
-              modelMode="chat"
-              isShow
-              onClose={vi.fn()}
-              onFinished={vi.fn()}
-              flowId={`reflow-${width}`}
-              isBasicMode
-            />
-          </QueryProvider>
+          <I18nextProvider i18n={i18n}>
+            <QueryProvider>
+              <GetAutomaticRes
+                modelMode="chat"
+                isShow
+                onClose={vi.fn()}
+                onFinished={vi.fn()}
+                flowId={`reflow-${width}`}
+                isBasicMode
+              />
+            </QueryProvider>
+          </I18nextProvider>
         </NuqsTestingAdapter>,
       )
 

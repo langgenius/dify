@@ -11,7 +11,7 @@ const Header = () => {
   return (
     <div className="flex min-h-26.25 w-full justify-center px-3 xl:px-10">
       <div className="relative flex max-w-[1680px] min-w-0 grow flex-col justify-end gap-y-1 border-x border-divider-accent p-3 pt-8 xl:p-6 xl:pt-8">
-        <div className="flex flex-wrap items-end pr-14">
+        <div className="flex flex-wrap items-end pe-14">
           <div aria-hidden="true" className="py-1.25">
             <DifyLogo alt="" className="h-6.75 w-15" />
           </div>

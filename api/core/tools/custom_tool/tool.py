@@ -3,7 +3,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from os import getenv
 from typing import Any, override
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from graphon.file.file_manager import download
+from libs.http_headers import content_type_media_type
 
 API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv("API_TOOL_DEFAULT_CONNECT_TIMEOUT", "10")),
@@ -263,13 +264,15 @@ class ApiTool(Tool):
                             pass
                     break
 
-        # replace path parameters
+        # replace path parameters (percent-encoded so reserved characters
+        # like ?, #, % or newlines cannot alter the URL structure)
         for name, value in path_params.items():
-            url = url.replace(f"{{{name}}}", f"{value}")
+            url = url.replace(f"{{{name}}}", quote(str(value), safe=""))
 
         # parse http body data if needed
         if "Content-Type" in headers:
-            if headers["Content-Type"] == "application/json":
+            # Compare the media type alone so a declared charset still gets a JSON body
+            if content_type_media_type(headers["Content-Type"]) == "application/json":
                 body = json.dumps(body)
             elif headers["Content-Type"] == "application/x-www-form-urlencoded":
                 body = urlencode(

@@ -1,5 +1,5 @@
 # base image
-ARG NODE_VERSION=24.22.1
+ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
@@ -23,6 +23,7 @@ FROM base AS packages
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+COPY patches /app/patches
 COPY web/package.json /app/web/
 COPY e2e/package.json /app/e2e/
 COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
@@ -43,7 +44,7 @@ COPY . .
 WORKDIR /app/web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV pnpm_config_verify_deps_before_run=false
-RUN pnpm build && pnpm build:vinext
+RUN pnpm build
 
 
 # production stage
@@ -56,7 +57,9 @@ ENV APP_API_URL=http://127.0.0.1:5001
 ENV MARKETPLACE_API_URL=https://marketplace.dify.ai
 ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
-ENV EXPERIMENTAL_ENABLE_VINEXT=false
+# Next.js standalone binds to HOSTNAME. Docker defaults it to the container ID, and
+# net.Server.listen() takes an ID like 30889528e495 as a numeric backlog, not a host.
+ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # set timezone
@@ -77,7 +80,6 @@ WORKDIR /app
 COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
 COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
 COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
-COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
 
 COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
 

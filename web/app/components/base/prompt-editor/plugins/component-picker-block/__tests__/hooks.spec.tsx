@@ -1,7 +1,6 @@
 import type { LexicalCommand } from 'lexical'
 import type { ReactNode } from 'react'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, renderHook } from '@testing-library/react'
 import {
@@ -13,6 +12,7 @@ import {
 } from 'lexical'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { VarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { CustomTextNode } from '../../custom-text/node'
 import { INSERT_HISTORY_BLOCK_COMMAND } from '../../history-block'
@@ -22,7 +22,7 @@ import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../../variable-block'
 import { useExternalToolOptions, useOptions, usePromptOptions, useVariableOptions } from '../hooks'
 
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <LexicalComposer
+  <TestLexicalComposer
     initialConfig={{
       namespace: 'picker-options',
       nodes: [CustomTextNode],
@@ -35,7 +35,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
     }}
   >
     {children}
-  </LexicalComposer>
+  </TestLexicalComposer>
 )
 
 const available = { show: true, selectable: true }
@@ -171,7 +171,7 @@ describe('prompt picker options', () => {
   ])(
     'filters external tools literally for "$query" and opens the add flow',
     ({ query, expected }) => {
-      const onAddExternalTool = vi.fn()
+      const onAddExternalTool = vi.fn<(insert: (name: string) => void) => void>()
       const { result } = renderOptions(() =>
         useExternalToolOptions({ show: true, externalTools: tools, onAddExternalTool }, query),
       )
@@ -180,7 +180,13 @@ describe('prompt picker options', () => {
         'common.promptEditor.variable.modal.addTool',
       ])
       act(() => result.current.options.at(-1)!.onSelectMenuOption())
-      expect(onAddExternalTool).toHaveBeenCalledExactlyOnceWith()
+      expect(onAddExternalTool).toHaveBeenCalledTimes(1)
+      const dispatch = vi.spyOn(result.current.editor, 'dispatchCommand')
+      act(() => onAddExternalTool.mock.calls[0]![0]('search'))
+      expect(dispatch).toHaveBeenCalledExactlyOnceWith(
+        INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+        '{{search}}',
+      )
     },
   )
 

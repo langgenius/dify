@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createHttpError } from '@/service/http-error'
 import Recipients from '../components/recipients'
 import {
   contact,
@@ -38,10 +39,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 const Harness = ({
   initial = [],
   readonly = false,
+  isTriggerMode = false,
   observe = () => {},
 }: {
   initial?: HumanInputV2Recipient[]
   readonly?: boolean
+  isTriggerMode?: boolean
   observe?: (value: HumanInputV2Recipient[]) => void
 }) => {
   const [value, setValue] = useState(initial)
@@ -49,6 +52,7 @@ const Harness = ({
     <Recipients
       nodeId="hitl"
       readonly={readonly}
+      isTriggerMode={isTriggerMode}
       value={value}
       onChange={(next) => {
         setValue(next)
@@ -66,6 +70,9 @@ const openPicker = async (user: ReturnType<typeof userEvent.setup>) => {
   return screen.findByRole('listbox')
 }
 const field = () => screen.getByRole('combobox')
+const initiatorLabel = 'workflow.nodes.humanInputV2.recipients.type.initiator'
+const initiatorUnavailableMessage =
+  'workflow.nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow'
 beforeEach(resetContactApi)
 
 describe('recipient selection through generated queries', () => {
@@ -126,6 +133,58 @@ describe('recipient selection through generated queries', () => {
     await user.click(await screen.findByRole('button', { name: /recipients.remove.*Evan Zhang/ }))
     expect(observe).toHaveBeenLastCalledWith([])
     expect(field()).toHaveFocus()
+  })
+
+  it('prevents adding Initiator with the pointer or Enter in a trigger workflow', async () => {
+    contactApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    renderContactOwner(<Harness isTriggerMode observe={observe} />)
+    await openPicker(user)
+
+    const initiator = await screen.findByRole('option', { name: initiatorLabel })
+    expect(initiator).toHaveAttribute('aria-disabled', 'true')
+    expect(initiator).toHaveAccessibleDescription(initiatorUnavailableMessage)
+    expect(within(initiator).getByText(initiatorUnavailableMessage)).toBeVisible()
+    await user.click(initiator)
+    expect(observe).not.toHaveBeenCalled()
+
+    await user.type(field(), 'initiator')
+    await screen.findByText(/recipients\.resultCount/)
+    await user.keyboard('{Enter}')
+    expect(observe).not.toHaveBeenCalled()
+  })
+
+  it('keeps Initiator selectable with Enter in a manual workflow', async () => {
+    contactApi.options.mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 })
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    renderContactOwner(<Harness observe={observe} />)
+
+    await user.type(await screen.findByRole('combobox'), 'initiator')
+    const initiator = await screen.findByRole('option', { name: initiatorLabel })
+    expect(initiator).not.toHaveAttribute('aria-disabled', 'true')
+    await screen.findByText(/recipients\.resultCount/)
+    await user.keyboard('{Enter}')
+    expect(observe).toHaveBeenLastCalledWith([{ type: 'initiator' }])
+  })
+
+  it('keeps an existing Initiator visible and removable in a trigger workflow', async () => {
+    const user = userEvent.setup()
+    const observe = vi.fn()
+    renderContactOwner(
+      <Harness initial={[{ type: 'initiator' }]} isTriggerMode observe={observe} />,
+    )
+
+    const initiator = screen.getByLabelText(initiatorLabel)
+    expect(initiator).toHaveAttribute('aria-invalid', 'true')
+    expect(initiator).toHaveAccessibleDescription(initiatorUnavailableMessage)
+    expect(screen.getByText(initiatorUnavailableMessage)).toBeVisible()
+    expect(observe).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: /recipients.remove.*initiator/ }))
+    expect(observe).toHaveBeenLastCalledWith([])
+    expect(screen.queryByText(initiatorUnavailableMessage)).not.toBeInTheDocument()
   })
 
   it.each([true, false])(
@@ -197,6 +256,19 @@ describe('recipient selection through generated queries', () => {
     await openPicker(user)
     await user.click(await screen.findByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findByRole('option', { name: /Evan Zhang/ })).toBeVisible()
+  })
+
+  it('shows the server message when the search fails', async () => {
+    const user = userEvent.setup()
+    contactApi.options.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 }), {
+        code: 'forbidden',
+        message: 'Server says why',
+      }),
+    )
+    renderContactOwner(<Harness />)
+    await openPicker(user)
+    expect(await screen.findByText('Server says why')).toBeVisible()
   })
 
   it.each(['one@example.com', 'one@example.com, two@example.com'])(
